@@ -109,7 +109,7 @@ class SnapshotManageTest(test.TestCase):
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
-    @mock.patch('cinder.db.service_get_by_args')
+    @mock.patch('cinder.db.service_get')
     def test_manage_snapshot_ok(self, mock_db,
                                 mock_create_snapshot, mock_rpcapi):
         """Test successful manage volume execution.
@@ -126,11 +126,9 @@ class SnapshotManageTest(test.TestCase):
         res = self._get_resp_post(body)
         self.assertEqual(202, res.status_int, res)
 
-        # Check the db.service_get_by_host_and_topic was called with correct
-        # arguments.
-        self.assertEqual(1, mock_db.call_count)
-        args = mock_db.call_args[0]
-        self.assertEqual('fake_host', args[1])
+        # Check the db.service_get was called with correct arguments.
+        mock_db.assert_called_once_with(
+            mock.ANY, host='fake_host', binary='cinder-volume')
 
         # Check the create_snapshot_in_db was called with correct arguments.
         self.assertEqual(1, mock_create_snapshot.call_count)

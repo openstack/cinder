@@ -362,105 +362,84 @@ QUOTA_SYNC_FUNCTIONS = {
 ###################
 
 
-@require_admin_context
-def service_destroy(context, service_id):
-    session = get_session()
-    with session.begin():
-        service_ref = _service_get(context, service_id, session=session)
-        service_ref.delete(session=session)
+def _clean_filters(filters):
+    return {k: v for k, v in filters.items() if v is not None}
 
 
-@require_admin_context
-def _service_get(context, service_id, session=None):
-    result = model_query(
-        context,
-        models.Service,
-        session=session).\
-        filter_by(id=service_id).\
-        first()
-    if not result:
-        raise exception.ServiceNotFound(service_id=service_id)
-
-    return result
-
-
-@require_admin_context
-def service_get(context, service_id):
-    return _service_get(context, service_id)
-
-
-@require_admin_context
-def service_get_all(context, filters=None):
+def _service_query(context, session=None, read_deleted='no', host=None,
+                   is_up=None, **filters):
+    filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(models.Service, filters):
-        return []
+        return None
 
-    query = model_query(context, models.Service)
+    query = model_query(context, models.Service, session=session,
+                        read_deleted=read_deleted)
+
+    # Host is a particular case of filter, because we must retrieve not only
+    # exact matches (single backend configuration), but also match hosts that
+    # have the backend defined (multi backend configuration).
+    if host:
+        host_attr = models.Service.host
+        # Mysql is not doing case sensitive filtering, so we force it
+        if CONF.database.connection.startswith('mysql:'):
+            conditions = or_(host_attr == func.binary(host),
+                             host_attr.op('LIKE BINARY')(host + '@%'))
+        else:
+            conditions = or_(host_attr == host,
+                             host_attr.op('LIKE')(host + '@%'))
+        query = query.filter(conditions)
 
     if filters:
-        try:
-            host = filters.pop('host')
-            host_attr = models.Service.host
-            conditions = or_(host_attr ==
-                             host, host_attr.op('LIKE')(host + '@%'))
-            query = query.filter(conditions)
-        except KeyError:
-            pass
-
         query = query.filter_by(**filters)
 
-    return query.all()
+    if is_up is not None:
+        date_limit = (timeutils.utcnow() -
+                      dt.timedelta(seconds=CONF.service_down_time))
+        svc = models.Service
+        filter_ = or_(
+            and_(svc.created_at.isnot(None), svc.created_at >= date_limit),
+            and_(svc.updated_at.isnot(None), svc.updated_at >= date_limit))
+        query = query.filter(filter_ == is_up)
+
+    return query
 
 
 @require_admin_context
-def service_get_all_by_topic(context, topic, disabled=None):
-    query = model_query(
-        context, models.Service, read_deleted="no").\
-        filter_by(topic=topic)
-
-    if disabled is not None:
-        query = query.filter_by(disabled=disabled)
-
-    return query.all()
+def service_destroy(context, service_id):
+    query = _service_query(context, id=service_id)
+    if not query.update(models.Service.delete_values()):
+        raise exception.ServiceNotFound(service_id=service_id)
 
 
 @require_admin_context
-def service_get_all_by_binary(context, binary, disabled=None):
-    query = model_query(
-        context, models.Service, read_deleted="no").filter_by(binary=binary)
+def service_get(context, service_id=None, **filters):
+    """Get a service that matches the criteria.
 
-    if disabled is not None:
-        query = query.filter_by(disabled=disabled)
+    A possible filter is is_up=True and it will filter nodes that are down.
 
-    return query.all()
-
-
-@require_admin_context
-def service_get_by_host_and_topic(context, host, topic):
-    result = model_query(
-        context, models.Service, read_deleted="no").\
-        filter_by(disabled=False).\
-        filter_by(host=host).\
-        filter_by(topic=topic).\
-        first()
-    if not result:
-        raise exception.ServiceNotFound(service_id=topic,
-                                        host=host)
-    return result
+    :param service_id: Id of the service.
+    :param filters: Filters for the query in the form of key/value.
+    :raise ServiceNotFound: If service doesn't exist.
+    """
+    query = _service_query(context, id=service_id, **filters)
+    service = None if not query else query.first()
+    if not service:
+        serv_id = service_id or filters.get('topic') or filters.get('binary')
+        raise exception.ServiceNotFound(service_id=serv_id,
+                                        host=filters.get('host'))
+    return service
 
 
 @require_admin_context
-def service_get_by_args(context, host, binary):
-    results = model_query(context, models.Service).\
-        filter_by(host=host).\
-        filter_by(binary=binary).\
-        all()
+def service_get_all(context, **filters):
+    """Get all services that match the criteria.
 
-    for result in results:
-        if host == result['host']:
-            return result
+    A possible filter is is_up=True and it will filter nodes that are down.
 
-    raise exception.ServiceNotFound(service_id=binary,
-                                    host=host)
+    :param filters: Filters for the query in the form of key/value.
+    """
+    query = _service_query(context, **filters)
+    return [] if not query else query.all()
 
 
 @require_admin_context
@@ -479,14 +458,15 @@ def service_create(context, values):
 @require_admin_context
 @_retry_on_deadlock
 def service_update(context, service_id, values):
-    session = get_session()
-    with session.begin():
-        service_ref = _service_get(context, service_id, session=session)
-        if ('disabled' in values):
-            service_ref['modified_at'] = timeutils.utcnow()
-            service_ref['updated_at'] = literal_column('updated_at')
-        service_ref.update(values)
-        return service_ref
+    if 'disabled' in values:
+        values = values.copy()
+        values['modified_at'] = values.get('modified_at', timeutils.utcnow())
+        values['updated_at'] = values.get('updated_at',
+                                          literal_column('updated_at'))
+    query = _service_query(context, id=service_id)
+    result = query.update(values)
+    if not result:
+        raise exception.ServiceNotFound(service_id=service_id)
 
 
 ###################

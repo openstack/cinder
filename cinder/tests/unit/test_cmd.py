@@ -439,7 +439,7 @@ class TestCinderManageCmd(test.TestCase):
             host_cmds.list()
 
             get_admin_context.assert_called_once_with()
-            service_get_all.assert_called_once_with(mock.sentinel.ctxt, None)
+            service_get_all.assert_called_once_with(mock.sentinel.ctxt)
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.db.service_get_all')
@@ -462,7 +462,7 @@ class TestCinderManageCmd(test.TestCase):
             host_cmds.list(zone='fake-az1')
 
             get_admin_context.assert_called_once_with()
-            service_get_all.assert_called_once_with(mock.sentinel.ctxt, None)
+            service_get_all.assert_called_once_with(mock.sentinel.ctxt)
             self.assertEqual(expected_out, fake_out.getvalue())
 
     @mock.patch('cinder.objects.base.CinderObjectSerializer')
@@ -747,7 +747,7 @@ class TestCinderManageCmd(test.TestCase):
 
             self.assertEqual(expected_out, fake_out.getvalue())
             get_admin_context.assert_called_with()
-            service_get_all.assert_called_with(ctxt, None)
+            service_get_all.assert_called_with(ctxt)
 
     def test_service_commands_list(self):
         service = {'binary': 'cinder-binary',
@@ -858,8 +858,7 @@ class TestCinderManageCmd(test.TestCase):
         self.assertEqual(2, exit)
 
     @mock.patch('cinder.db.service_destroy')
-    @mock.patch('cinder.db.service_get_by_args',
-                return_value = {'id': '12'})
+    @mock.patch('cinder.db.service_get', return_value = {'id': '12'})
     def test_remove_service_success(self, mock_get_by_args,
                                     mock_service_destroy):
         service_commands = cinder_manage.ServiceCommands()

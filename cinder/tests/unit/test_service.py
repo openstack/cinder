@@ -128,6 +128,12 @@ class ServiceTestCase(test.TestCase):
         self.host = 'foo'
         self.binary = 'cinder-fake'
         self.topic = 'fake'
+        self.service_ref = {'host': self.host,
+                            'binary': self.binary,
+                            'topic': self.topic,
+                            'report_count': 0,
+                            'availability_zone': 'nova',
+                            'id': 1}
 
     def test_create(self):
         # NOTE(vish): Create was moved out of mock replay to make sure that
@@ -143,17 +149,13 @@ class ServiceTestCase(test.TestCase):
         # Check that the entry has been really created in the DB
         objects.Service.get_by_id(context.get_admin_context(), app.service_id)
 
-    def test_report_state_newly_disconnected(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
+    @mock.patch.object(objects.service.Service, 'get_by_args')
+    @mock.patch.object(objects.service.Service, 'get_by_id')
+    def test_report_state_newly_disconnected(self, get_by_id, get_by_args):
+        get_by_args.side_effect = exception.NotFound()
+        get_by_id.side_effect = db_exc.DBConnectionError()
         with mock.patch.object(objects.service, 'db') as mock_db:
-            mock_db.service_get_by_args.side_effect = exception.NotFound()
-            mock_db.service_create.return_value = service_ref
-            mock_db.service_get.side_effect = db_exc.DBConnectionError()
+            mock_db.service_create.return_value = self.service_ref
 
             serv = service.Service(
                 self.host,
@@ -166,17 +168,13 @@ class ServiceTestCase(test.TestCase):
             self.assertTrue(serv.model_disconnected)
             self.assertFalse(mock_db.service_update.called)
 
-    def test_report_state_disconnected_DBError(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
+    @mock.patch.object(objects.service.Service, 'get_by_args')
+    @mock.patch.object(objects.service.Service, 'get_by_id')
+    def test_report_state_disconnected_DBError(self, get_by_id, get_by_args):
+        get_by_args.side_effect = exception.NotFound()
+        get_by_id.side_effect = db_exc.DBError()
         with mock.patch.object(objects.service, 'db') as mock_db:
-            mock_db.service_get_by_args.side_effect = exception.NotFound()
-            mock_db.service_create.return_value = service_ref
-            mock_db.service_get.side_effect = db_exc.DBError()
+            mock_db.service_create.return_value = self.service_ref
 
             serv = service.Service(
                 self.host,
@@ -189,41 +187,27 @@ class ServiceTestCase(test.TestCase):
             self.assertTrue(serv.model_disconnected)
             self.assertFalse(mock_db.service_update.called)
 
-    def test_report_state_newly_connected(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
-        with mock.patch.object(objects.service, 'db') as mock_db,\
-                mock.patch('cinder.db.sqlalchemy.api.get_by_id') as get_by_id:
-            mock_db.service_get_by_args.side_effect = exception.NotFound()
-            mock_db.service_create.return_value = service_ref
-            get_by_id.return_value = service_ref
+    @mock.patch('cinder.db.sqlalchemy.api.service_update')
+    @mock.patch('cinder.db.sqlalchemy.api.service_get')
+    def test_report_state_newly_connected(self, get_by_id, service_update):
+        get_by_id.return_value = self.service_ref
 
-            serv = service.Service(
-                self.host,
-                self.binary,
-                self.topic,
-                'cinder.tests.unit.test_service.FakeManager'
-            )
-            serv.start()
-            serv.model_disconnected = True
-            serv.report_state()
+        serv = service.Service(
+            self.host,
+            self.binary,
+            self.topic,
+            'cinder.tests.unit.test_service.FakeManager'
+        )
+        serv.start()
+        serv.model_disconnected = True
+        serv.report_state()
 
-            self.assertFalse(serv.model_disconnected)
-            self.assertTrue(mock_db.service_update.called)
+        self.assertFalse(serv.model_disconnected)
+        self.assertTrue(service_update.called)
 
     def test_report_state_manager_not_working(self):
-        service_ref = {'host': self.host,
-                       'binary': self.binary,
-                       'topic': self.topic,
-                       'report_count': 0,
-                       'availability_zone': 'nova',
-                       'id': 1}
         with mock.patch('cinder.db') as mock_db:
-            mock_db.service_get.return_value = service_ref
+            mock_db.service_get.return_value = self.service_ref
 
             serv = service.Service(
                 self.host,

@@ -240,104 +240,70 @@ class BaseVolumeTestCase(test.TestCase):
 
 
 class AvailabilityZoneTestCase(BaseVolumeTestCase):
+    def setUp(self):
+        super(AvailabilityZoneTestCase, self).setUp()
+        self.get_all = self.patch(
+            'cinder.db.service_get_all', autospec=True,
+            return_value = [{'availability_zone': 'a', 'disabled': False}])
+
     def test_list_availability_zones_cached(self):
-        volume_api = cinder.volume.api.API()
-        with mock.patch.object(volume_api.db,
-                               'service_get_all_by_topic') as get_all:
-            get_all.return_value = [
-                {
-                    'availability_zone': 'a',
-                    'disabled': False,
-                },
-            ]
-            azs = volume_api.list_availability_zones(enable_cache=True)
-            self.assertEqual([{"name": 'a', 'available': True}], list(azs))
-            self.assertIsNotNone(volume_api.availability_zones_last_fetched)
-            self.assertTrue(get_all.called)
-            volume_api.list_availability_zones(enable_cache=True)
-            self.assertEqual(1, get_all.call_count)
+        azs = self.volume_api.list_availability_zones(enable_cache=True)
+        self.assertEqual([{"name": 'a', 'available': True}], list(azs))
+        self.assertIsNotNone(self.volume_api.availability_zones_last_fetched)
+        self.assertTrue(self.get_all.called)
+        self.volume_api.list_availability_zones(enable_cache=True)
+        self.assertEqual(1, self.get_all.call_count)
 
     def test_list_availability_zones_no_cached(self):
-        volume_api = cinder.volume.api.API()
-        with mock.patch.object(volume_api.db,
-                               'service_get_all_by_topic') as get_all:
-            get_all.return_value = [
-                {
-                    'availability_zone': 'a',
-                    'disabled': False,
-                },
-            ]
-            azs = volume_api.list_availability_zones(enable_cache=False)
-            self.assertEqual([{"name": 'a', 'available': True}], list(azs))
-            self.assertIsNone(volume_api.availability_zones_last_fetched)
+        azs = self.volume_api.list_availability_zones(enable_cache=False)
+        self.assertEqual([{"name": 'a', 'available': True}], list(azs))
+        self.assertIsNone(self.volume_api.availability_zones_last_fetched)
 
-        with mock.patch.object(volume_api.db,
-                               'service_get_all_by_topic') as get_all:
-            get_all.return_value = [
-                {
-                    'availability_zone': 'a',
-                    'disabled': True,
-                },
-            ]
-            azs = volume_api.list_availability_zones(enable_cache=False)
-            self.assertEqual([{"name": 'a', 'available': False}], list(azs))
-            self.assertIsNone(volume_api.availability_zones_last_fetched)
+        self.get_all.return_value[0]['disabled'] = True
+        azs = self.volume_api.list_availability_zones(enable_cache=False)
+        self.assertEqual([{"name": 'a', 'available': False}], list(azs))
+        self.assertIsNone(self.volume_api.availability_zones_last_fetched)
 
     def test_list_availability_zones_refetched(self):
         timeutils.set_time_override()
         self.addCleanup(timeutils.clear_time_override)
-        volume_api = cinder.volume.api.API()
-        with mock.patch.object(volume_api.db,
-                               'service_get_all_by_topic') as get_all:
-            get_all.return_value = [
-                {
-                    'availability_zone': 'a',
-                    'disabled': False,
-                },
-            ]
-            azs = volume_api.list_availability_zones(enable_cache=True)
-            self.assertEqual([{"name": 'a', 'available': True}], list(azs))
-            self.assertIsNotNone(volume_api.availability_zones_last_fetched)
-            last_fetched = volume_api.availability_zones_last_fetched
-            self.assertTrue(get_all.called)
-            volume_api.list_availability_zones(enable_cache=True)
-            self.assertEqual(1, get_all.call_count)
+        azs = self.volume_api.list_availability_zones(enable_cache=True)
+        self.assertEqual([{"name": 'a', 'available': True}], list(azs))
+        self.assertIsNotNone(self.volume_api.availability_zones_last_fetched)
+        last_fetched = self.volume_api.availability_zones_last_fetched
+        self.assertTrue(self.get_all.called)
+        self.volume_api.list_availability_zones(enable_cache=True)
+        self.assertEqual(1, self.get_all.call_count)
 
-            # The default cache time is 3600, push past that...
-            timeutils.advance_time_seconds(3800)
-            get_all.return_value = [
-                {
-                    'availability_zone': 'a',
-                    'disabled': False,
-                },
-                {
-                    'availability_zone': 'b',
-                    'disabled': False,
-                },
-            ]
-            azs = volume_api.list_availability_zones(enable_cache=True)
-            azs = sorted([n['name'] for n in azs])
-            self.assertEqual(['a', 'b'], azs)
-            self.assertEqual(2, get_all.call_count)
-            self.assertGreater(volume_api.availability_zones_last_fetched,
-                               last_fetched)
+        # The default cache time is 3600, push past that...
+        timeutils.advance_time_seconds(3800)
+        self.get_all.return_value = [
+            {
+                'availability_zone': 'a',
+                'disabled': False,
+            },
+            {
+                'availability_zone': 'b',
+                'disabled': False,
+            },
+        ]
+        azs = self.volume_api.list_availability_zones(enable_cache=True)
+        azs = sorted([n['name'] for n in azs])
+        self.assertEqual(['a', 'b'], azs)
+        self.assertEqual(2, self.get_all.call_count)
+        self.assertGreater(self.volume_api.availability_zones_last_fetched,
+                           last_fetched)
 
     def test_list_availability_zones_enabled_service(self):
-        services = [
+        def sort_func(obj):
+            return obj['name']
+
+        self.get_all.return_value = [
             {'availability_zone': 'ping', 'disabled': 0},
             {'availability_zone': 'ping', 'disabled': 1},
             {'availability_zone': 'pong', 'disabled': 0},
             {'availability_zone': 'pung', 'disabled': 1},
         ]
-
-        def stub_service_get_all_by_topic(*args, **kwargs):
-            return services
-
-        self.stubs.Set(db, 'service_get_all_by_topic',
-                       stub_service_get_all_by_topic)
-
-        def sort_func(obj):
-            return obj['name']
 
         volume_api = cinder.volume.api.API()
         azs = volume_api.list_availability_zones()
@@ -1493,8 +1459,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
                                                        **snapshot)
 
-        with mock.patch.object(db,
-                               'service_get_all_by_topic') as mock_get_service, \
+        with mock.patch('cinder.db.service_get_all') as mock_get_service, \
             mock.patch.object(volume_api,
                               'list_availability_zones') as mock_get_azs:
             mock_get_service.return_value = [{'host': 'foo'}]
@@ -5356,7 +5321,7 @@ class ReplicationTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'failover_host')
     @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_by_args')
+    @mock.patch.object(cinder.db, 'service_get')
     def test_failover_host(self, mock_db_args, mock_db_update,
                            mock_failover):
         """Test replication failover_host."""
@@ -5371,7 +5336,7 @@ class ReplicationTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'failover_host')
     @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_by_args')
+    @mock.patch.object(cinder.db, 'service_get')
     def test_failover_host_unexpected_status(self, mock_db_args,
                                              mock_db_update,
                                              mock_failover):
@@ -5389,7 +5354,7 @@ class ReplicationTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'freeze_host')
     @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_by_args')
+    @mock.patch.object(cinder.db, 'service_get')
     def test_freeze_host(self, mock_db_args, mock_db_update,
                          mock_freeze):
         """Test replication freeze_host."""
@@ -5404,7 +5369,7 @@ class ReplicationTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'freeze_host')
     @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_by_args')
+    @mock.patch.object(cinder.db, 'service_get')
     def test_freeze_host_unexpected_status(self, mock_db_args,
                                            mock_db_update,
                                            mock_freeze):
@@ -5422,7 +5387,7 @@ class ReplicationTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'thaw_host')
     @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_by_args')
+    @mock.patch.object(cinder.db, 'service_get')
     def test_thaw_host(self, mock_db_args, mock_db_update,
                        mock_thaw):
         """Test replication thaw_host."""
@@ -5438,7 +5403,7 @@ class ReplicationTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'thaw_host')
     @mock.patch.object(cinder.db, 'conditional_update')
-    @mock.patch.object(cinder.db, 'service_get_by_args')
+    @mock.patch.object(cinder.db, 'service_get')
     def test_thaw_host_unexpected_status(self, mock_db_args,
                                          mock_db_update,
                                          mock_thaw):

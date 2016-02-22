@@ -40,13 +40,13 @@ def app():
     return mapper
 
 
-def db_service_get_by_host_and_topic(context, host, topic):
-    """Replacement for db.service_get_by_host_and_topic.
+def service_get_by_host_and_topic(context, host, topic):
+    """Replacement for Service.service_get_by_host_and_topic.
 
-    We stub the db.service_get_by_host_and_topic method to return something
-    for a specific host, and raise an exception for anything else.  We don't
-    use the returned data (the code under test just use the call to check for
-    existence of a host, so the content returned doesn't matter.
+    We mock the Service.service_get_by_host_and_topic method to return
+    something for a specific host, and raise an exception for anything else.
+    We don't use the returned data (the code under test just use the call to
+    check for existence of a host, so the content returned doesn't matter.
     """
     if host == 'host_ok':
         return {}
@@ -126,8 +126,8 @@ def api_get_manageable_volumes(*args, **kwargs):
     return vols
 
 
-@mock.patch('cinder.db.service_get_by_host_and_topic',
-            db_service_get_by_host_and_topic)
+@mock.patch('cinder.objects.service.Service.get_by_host_and_topic',
+            service_get_by_host_and_topic)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',
             vt_get_volume_type_by_name)
 @mock.patch('cinder.volume.volume_types.get_volume_type',

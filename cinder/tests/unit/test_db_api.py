@@ -18,6 +18,7 @@ import datetime
 
 import enum
 import mock
+from oslo_config import cfg
 from oslo_utils import uuidutils
 import six
 
@@ -33,6 +34,7 @@ from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 
+CONF = cfg.CONF
 THREE = 3
 THREE_HUNDREDS = 300
 ONE_HUNDREDS = 100
@@ -127,7 +129,12 @@ class DBAPIServiceTestCase(BaseTest):
     def _create_service(self, values):
         v = self._get_base_values()
         v.update(values)
-        return db.service_create(self.ctxt, v)
+        service = db.service_create(self.ctxt, v)
+        # We need to read the contents from the DB if we have set updated_at
+        # or created_at fields
+        if 'updated_at' in values or 'created_at' in values:
+            service = db.service_get(self.ctxt, service.id)
+        return service
 
     def test_service_create(self):
         service = self._create_service({})
@@ -142,8 +149,9 @@ class DBAPIServiceTestCase(BaseTest):
         db.service_destroy(self.ctxt, service1['id'])
         self.assertRaises(exception.ServiceNotFound,
                           db.service_get, self.ctxt, service1['id'])
-        self._assertEqualObjects(db.service_get(self.ctxt, service2['id']),
-                                 service2)
+        self._assertEqualObjects(
+            service2,
+            db.service_get(self.ctxt, service2['id']))
 
     def test_service_update(self):
         service = self._create_service({})
@@ -175,33 +183,35 @@ class DBAPIServiceTestCase(BaseTest):
     def test_service_get_by_host_and_topic(self):
         service1 = self._create_service({'host': 'host1', 'topic': 'topic1'})
 
-        real_service1 = db.service_get_by_host_and_topic(self.ctxt,
-                                                         host='host1',
-                                                         topic='topic1')
+        real_service1 = db.service_get(self.ctxt, host='host1', topic='topic1')
         self._assertEqualObjects(service1, real_service1)
 
     def test_service_get_all(self):
+        expired = (datetime.datetime.utcnow()
+                   - datetime.timedelta(seconds=CONF.service_down_time + 1))
         values = [
-            {'host': 'host1', 'binary': 'b1'},
+            {'host': 'host1', 'binary': 'b1', 'created_at': expired},
             {'host': 'host1@ceph', 'binary': 'b2'},
             {'host': 'host2', 'binary': 'b2'},
-            {'disabled': True}
+            {'disabled': True, 'created_at': expired, 'updated_at': expired}
         ]
         services = [self._create_service(vals) for vals in values]
 
-        disabled_services = [services[-1]]
+        disabled_services = services[-1:]
         non_disabled_services = services[:-1]
+        up_services = services[1:3]
+        down_services = [services[0], services[3]]
         expected = services[:2]
         expected_bin = services[1:3]
         compares = [
-            (services, db.service_get_all(self.ctxt, {})),
             (services, db.service_get_all(self.ctxt)),
-            (expected, db.service_get_all(self.ctxt, {'host': 'host1'})),
-            (expected_bin, db.service_get_all(self.ctxt, {'binary': 'b2'})),
-            (disabled_services, db.service_get_all(self.ctxt,
-                                                   {'disabled': True})),
+            (expected, db.service_get_all(self.ctxt, host='host1')),
+            (expected_bin, db.service_get_all(self.ctxt, binary='b2')),
+            (disabled_services, db.service_get_all(self.ctxt, disabled=True)),
             (non_disabled_services, db.service_get_all(self.ctxt,
-                                                       {'disabled': False})),
+                                                       disabled=False)),
+            (up_services, db.service_get_all(self.ctxt, is_up=True)),
+            (down_services, db.service_get_all(self.ctxt, is_up=False)),
         ]
         for comp in compares:
             self._assertEqualListsOfObjects(*comp)
@@ -215,7 +225,7 @@ class DBAPIServiceTestCase(BaseTest):
         ]
         services = [self._create_service(vals) for vals in values]
         expected = services[:3]
-        real = db.service_get_all_by_topic(self.ctxt, 't1')
+        real = db.service_get_all(self.ctxt, topic='t1')
         self._assertEqualListsOfObjects(expected, real)
 
     def test_service_get_all_by_binary(self):
@@ -227,7 +237,7 @@ class DBAPIServiceTestCase(BaseTest):
         ]
         services = [self._create_service(vals) for vals in values]
         expected = services[:3]
-        real = db.service_get_all_by_binary(self.ctxt, 'b1')
+        real = db.service_get_all(self.ctxt, binary='b1')
         self._assertEqualListsOfObjects(expected, real)
 
     def test_service_get_by_args(self):
@@ -237,58 +247,30 @@ class DBAPIServiceTestCase(BaseTest):
         ]
         services = [self._create_service(vals) for vals in values]
 
-        service1 = db.service_get_by_args(self.ctxt, 'host1', 'a')
+        service1 = db.service_get(self.ctxt, host='host1', binary='a')
         self._assertEqualObjects(services[0], service1)
 
-        service2 = db.service_get_by_args(self.ctxt, 'host2', 'b')
+        service2 = db.service_get(self.ctxt, host='host2', binary='b')
         self._assertEqualObjects(services[1], service2)
 
     def test_service_get_by_args_not_found_exception(self):
         self.assertRaises(exception.ServiceNotFound,
-                          db.service_get_by_args,
-                          self.ctxt, 'non-exists-host', 'a')
+                          db.service_get,
+                          self.ctxt, host='non-exists-host', binary='a')
 
-    @mock.patch('cinder.db.sqlalchemy.api.model_query')
-    def test_service_get_by_args_with_case_insensitive(self, model_query):
-        class case_insensitive_filter(object):
-            def __init__(self, records):
-                self.records = records
+    @mock.patch('sqlalchemy.orm.query.Query.filter_by')
+    def test_service_get_by_args_with_case_insensitive(self, filter_by):
+        CONF.set_default('connection', 'mysql://', 'database')
+        db.service_get(self.ctxt, host='host', binary='a')
 
-            def filter_by(self, **kwargs):
-                ret = mock.Mock()
-                ret.all = mock.Mock()
-
-                results = []
-                for record in self.records:
-                    for key, value in kwargs.items():
-                        if record[key].lower() != value.lower():
-                            break
-                    else:
-                        results.append(record)
-
-                ret.filter_by = case_insensitive_filter(results).filter_by
-                ret.all.return_value = results
-                return ret
-
-        values = [
-            {'host': 'host', 'binary': 'a'},
-            {'host': 'HOST', 'binary': 'a'}
-        ]
-        services = [self._create_service(vals) for vals in values]
-
-        query = mock.Mock()
-        query.filter_by = case_insensitive_filter(services).filter_by
-        model_query.return_value = query
-
-        service1 = db.service_get_by_args(self.ctxt, 'host', 'a')
-        self._assertEqualObjects(services[0], service1)
-
-        service2 = db.service_get_by_args(self.ctxt, 'HOST', 'a')
-        self._assertEqualObjects(services[1], service2)
-
-        self.assertRaises(exception.ServiceNotFound,
-                          db.service_get_by_args,
-                          self.ctxt, 'Host', 'a')
+        self.assertNotEqual(0, filter_by.call_count)
+        self.assertEqual(1, filter_by.return_value.filter.call_count)
+        or_op = filter_by.return_value.filter.call_args[0][0].clauses[0]
+        self.assertIsInstance(or_op,
+                              sqlalchemy_api.sql.elements.BinaryExpression)
+        binary_op = or_op.right
+        self.assertIsInstance(binary_op, sqlalchemy_api.sql.functions.Function)
+        self.assertEqual('binary', binary_op.name)
 
 
 class DBAPIVolumeTestCase(BaseTest):

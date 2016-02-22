@@ -59,8 +59,9 @@ class VolumeApiTest(test.TestCase):
 
         self.stubs.Set(db, 'volume_get_all', stubs.stub_volume_get_all)
         self.stubs.Set(volume_api.API, 'delete', stubs.stub_volume_delete)
-        self.stubs.Set(db, 'service_get_all_by_topic',
-                       stubs.stub_service_get_all_by_topic)
+        self.patch(
+            'cinder.db.service_get_all', autospec=True,
+            return_value=stubs.stub_service_get_all_by_topic(None, None))
         self.maxDiff = None
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 

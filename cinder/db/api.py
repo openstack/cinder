@@ -99,34 +99,27 @@ def service_destroy(context, service_id):
     return IMPL.service_destroy(context, service_id)
 
 
-def service_get(context, service_id):
-    """Get a service or raise if it does not exist."""
-    return IMPL.service_get(context, service_id)
+def service_get(context, service_id=None, **filters):
+    """Get a service that matches the criteria.
+
+    A possible filter is is_up=True and it will filter nodes that are down.
+
+    :param service_id: Id of the service.
+    :param filters: Filters for the query in the form of key/value.
+
+    :raise ServiceNotFound: If service doesn't exist.
+    """
+    return IMPL.service_get(context, service_id, **filters)
 
 
-def service_get_by_host_and_topic(context, host, topic):
-    """Get a service by host it's on and topic it listens to."""
-    return IMPL.service_get_by_host_and_topic(context, host, topic)
+def service_get_all(context, **filters):
+    """Get all services that match the criteria.
 
+    A possible filter is is_up=True and it will filter nodes that are down.
 
-def service_get_all(context, filters=None):
-    """Get all services."""
-    return IMPL.service_get_all(context, filters)
-
-
-def service_get_all_by_topic(context, topic, disabled=None):
-    """Get all services for a given topic."""
-    return IMPL.service_get_all_by_topic(context, topic, disabled=disabled)
-
-
-def service_get_all_by_binary(context, binary, disabled=None):
-    """Get all services for a given binary."""
-    return IMPL.service_get_all_by_binary(context, binary, disabled)
-
-
-def service_get_by_args(context, host, binary):
-    """Get the state of a service by node name and binary."""
-    return IMPL.service_get_by_args(context, host, binary)
+    :param filters: Filters for the query in the form of key/value arguments.
+    """
+    return IMPL.service_get_all(context, **filters)
 
 
 def service_create(context, values):
@@ -138,7 +131,6 @@ def service_update(context, service_id, values):
     """Set the given properties on an service and update it.
 
     Raises NotFound if service does not exist.
-
     """
     return IMPL.service_update(context, service_id, values)
 

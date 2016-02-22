@@ -30,25 +30,25 @@ class TestService(test_objects.BaseObjectsTestCase):
         self._compare(self, db_service, service)
         service_get.assert_called_once_with(self.context, 1)
 
-    @mock.patch('cinder.db.service_get_by_host_and_topic')
-    def test_get_by_host_and_topic(self, service_get_by_host_and_topic):
+    @mock.patch('cinder.db.service_get')
+    def test_get_by_host_and_topic(self, service_get):
         db_service = fake_service.fake_db_service()
-        service_get_by_host_and_topic.return_value = db_service
+        service_get.return_value = db_service
         service = objects.Service.get_by_host_and_topic(
             self.context, 'fake-host', 'fake-topic')
         self._compare(self, db_service, service)
-        service_get_by_host_and_topic.assert_called_once_with(
-            self.context, 'fake-host', 'fake-topic')
+        service_get.assert_called_once_with(
+            self.context, disabled=False, host='fake-host', topic='fake-topic')
 
-    @mock.patch('cinder.db.service_get_by_args')
-    def test_get_by_args(self, service_get_by_args):
+    @mock.patch('cinder.db.service_get')
+    def test_get_by_args(self, service_get):
         db_service = fake_service.fake_db_service()
-        service_get_by_args.return_value = db_service
+        service_get.return_value = db_service
         service = objects.Service.get_by_args(
             self.context, 'fake-host', 'fake-key')
         self._compare(self, db_service, service)
-        service_get_by_args.assert_called_once_with(
-            self.context, 'fake-host', 'fake-key')
+        service_get.assert_called_once_with(
+            self.context, host='fake-host', binary='fake-key')
 
     @mock.patch('cinder.db.service_create')
     def test_create(self, service_create):
@@ -102,21 +102,21 @@ class TestService(test_objects.BaseObjectsTestCase):
                                       call_bool,
                                       mock.call(self.context, 123)])
 
-    @mock.patch('cinder.db.service_get_all_by_binary')
+    @mock.patch('cinder.db.service_get_all')
     def _test_get_minimum_version(self, services_update, expected,
-                                  service_get_all_by_binary):
+                                  service_get_all):
         services = [fake_service.fake_db_service(**s) for s in services_update]
-        service_get_all_by_binary.return_value = services
+        service_get_all.return_value = services
 
         min_rpc = objects.Service.get_minimum_rpc_version(self.context, 'foo')
         self.assertEqual(expected[0], min_rpc)
         min_obj = objects.Service.get_minimum_obj_version(self.context, 'foo')
         self.assertEqual(expected[1], min_obj)
-        service_get_all_by_binary.assert_has_calls(
-            [mock.call(self.context, 'foo', disabled=None)] * 2)
+        service_get_all.assert_has_calls(
+            [mock.call(self.context, binary='foo', disabled=None)] * 2)
 
-    @mock.patch('cinder.db.service_get_all_by_binary')
-    def test_get_minimum_version(self, service_get_all_by_binary):
+    @mock.patch('cinder.db.service_get_all')
+    def test_get_minimum_version(self, service_get_all):
         services_update = [
             {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
             {'rpc_current_version': '1.1', 'object_current_version': '1.2'},
@@ -125,8 +125,8 @@ class TestService(test_objects.BaseObjectsTestCase):
         expected = ('1.0', '1.2')
         self._test_get_minimum_version(services_update, expected)
 
-    @mock.patch('cinder.db.service_get_all_by_binary')
-    def test_get_minimum_version_liberty(self, service_get_all_by_binary):
+    @mock.patch('cinder.db.service_get_all')
+    def test_get_minimum_version_liberty(self, service_get_all):
         services_update = [
             {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
             {'rpc_current_version': '1.1', 'object_current_version': None},
@@ -144,30 +144,30 @@ class TestServiceList(test_objects.BaseObjectsTestCase):
 
         filters = {'host': 'host', 'binary': 'foo', 'disabled': False}
         services = objects.ServiceList.get_all(self.context, filters)
-        service_get_all.assert_called_once_with(self.context, filters)
+        service_get_all.assert_called_once_with(self.context, **filters)
         self.assertEqual(1, len(services))
         TestService._compare(self, db_service, services[0])
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
-    def test_get_all_by_topic(self, service_get_all_by_topic):
+    @mock.patch('cinder.db.service_get_all')
+    def test_get_all_by_topic(self, service_get_all):
         db_service = fake_service.fake_db_service()
-        service_get_all_by_topic.return_value = [db_service]
+        service_get_all.return_value = [db_service]
 
         services = objects.ServiceList.get_all_by_topic(
             self.context, 'foo', 'bar')
-        service_get_all_by_topic.assert_called_once_with(
-            self.context, 'foo', disabled='bar')
+        service_get_all.assert_called_once_with(
+            self.context, topic='foo', disabled='bar')
         self.assertEqual(1, len(services))
         TestService._compare(self, db_service, services[0])
 
-    @mock.patch('cinder.db.service_get_all_by_binary')
-    def test_get_all_by_binary(self, service_get_all_by_binary):
+    @mock.patch('cinder.db.service_get_all')
+    def test_get_all_by_binary(self, service_get_all):
         db_service = fake_service.fake_db_service()
-        service_get_all_by_binary.return_value = [db_service]
+        service_get_all.return_value = [db_service]
 
         services = objects.ServiceList.get_all_by_binary(
             self.context, 'foo', 'bar')
-        service_get_all_by_binary.assert_called_once_with(
-            self.context, 'foo', disabled='bar')
+        service_get_all.assert_called_once_with(
+            self.context, binary='foo', disabled='bar')
         self.assertEqual(1, len(services))
         TestService._compare(self, db_service, services[0])

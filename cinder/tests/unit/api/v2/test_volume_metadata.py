@@ -132,8 +132,9 @@ class volumeMetaDataTest(test.TestCase):
         self.stubs.Set(volume.api.API, 'get', get_volume)
         self.stubs.Set(db, 'volume_metadata_get',
                        return_volume_metadata)
-        self.stubs.Set(db, 'service_get_all_by_topic',
-                       stubs.stub_service_get_all_by_topic)
+        self.patch(
+            'cinder.db.service_get_all', autospec=True,
+            return_value=stubs.stub_service_get_all_by_topic(None, None))
 
         self.stubs.Set(self.volume_api, 'update_volume_metadata',
                        fake_update_volume_metadata)

@@ -17,15 +17,13 @@
 import datetime
 
 from iso8601 import iso8601
-from oslo_utils import timeutils
+import mock
 import webob.exc
 
 from cinder.api.contrib import services
 from cinder.api import extensions
 from cinder import context
-from cinder import db
 from cinder import exception
-from cinder import policy
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -132,21 +130,24 @@ class FakeRequestWithHostBinary(object):
     GET = {"host": "host1", "binary": "cinder-volume"}
 
 
-def fake_service_get_all(context, filters=None):
-    filters = filters or {}
-    host = filters.get('host')
-    binary = filters.get('binary')
-    return [s for s in fake_services_list
-            if (not host or s['host'] == host or
-                s['host'].startswith(host + '@'))
-            and (not binary or s['binary'] == binary)]
-
-
-def fake_service_get_by_host_binary(context, host, binary):
+def fake_service_get_all(context, **filters):
+    result = []
+    host = filters.pop('host', None)
     for service in fake_services_list:
-        if service['host'] == host and service['binary'] == binary:
-            return service
-    return None
+        if (host and service['host'] != host and
+                not service['host'].startswith(host + '@')):
+            continue
+
+        if all(v is None or service.get(k) == v for k, v in filters.items()):
+            result.append(service)
+    return result
+
+
+def fake_service_get(context, service_id=None, **filters):
+    result = fake_service_get_all(context, id=service_id, **filters)
+    if not result:
+        raise exception.ServiceNotFound(service_id=service_id)
+    return result[0]
 
 
 def fake_service_get_by_id(value):
@@ -174,17 +175,15 @@ def fake_utcnow(with_timezone=False):
     return datetime.datetime(2012, 10, 29, 13, 42, 11, tzinfo=tzinfo)
 
 
+@mock.patch('cinder.db.service_get_all', fake_service_get_all)
+@mock.patch('cinder.db.service_get', fake_service_get)
+@mock.patch('oslo_utils.timeutils.utcnow', fake_utcnow)
+@mock.patch('cinder.db.sqlalchemy.api.service_update', fake_service_update)
+@mock.patch('cinder.policy.enforce', fake_policy_enforce)
 class ServicesTest(test.TestCase):
 
     def setUp(self):
         super(ServicesTest, self).setUp()
-
-        self.stubs.Set(db, "service_get_all", fake_service_get_all)
-        self.stubs.Set(timeutils, "utcnow", fake_utcnow)
-        self.stubs.Set(db, "service_get_by_args",
-                       fake_service_get_by_host_binary)
-        self.stubs.Set(db, "service_update", fake_service_update)
-        self.stubs.Set(policy, "enforce", fake_policy_enforce)
 
         self.context = context.get_admin_context()
         self.ext_mgr = extensions.ExtensionManager()

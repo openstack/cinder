@@ -145,8 +145,10 @@ class volumeMetaDataTest(test.TestCase):
         self.stubs.Set(volume.api.API, 'get', stubs.stub_volume_get)
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_volume_metadata)
-        self.stubs.Set(cinder.db, 'service_get_all_by_topic',
-                       stubs.stub_service_get_all_by_topic)
+        self.patch(
+            'cinder.db.service_get_all', autospec=True,
+            return_value=stubs.stub_service_get_all(None))
+
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
         self.volume_controller = volumes.VolumeController(self.ext_mgr)

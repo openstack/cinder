@@ -70,12 +70,13 @@ class Service(base.CinderPersistentObject, base.CinderObject,
 
     @classmethod
     def get_by_host_and_topic(cls, context, host, topic):
-        db_service = db.service_get_by_host_and_topic(context, host, topic)
+        db_service = db.service_get(context, disabled=False, host=host,
+                                    topic=topic)
         return cls._from_db_object(context, cls(context), db_service)
 
     @classmethod
     def get_by_args(cls, context, host, binary_key):
-        db_service = db.service_get_by_args(context, host, binary_key)
+        db_service = db.service_get(context, host=host, binary=binary_key)
         return cls._from_db_object(context, cls(context), db_service)
 
     def create(self):
@@ -139,20 +140,19 @@ class ServiceList(base.ObjectListBase, base.CinderObject):
 
     @classmethod
     def get_all(cls, context, filters=None):
-        services = db.service_get_all(context, filters)
+        services = db.service_get_all(context, **(filters or {}))
         return base.obj_make_list(context, cls(context), objects.Service,
                                   services)
 
     @classmethod
     def get_all_by_topic(cls, context, topic, disabled=None):
-        services = db.service_get_all_by_topic(context, topic,
-                                               disabled=disabled)
+        services = db.service_get_all(context, topic=topic, disabled=disabled)
         return base.obj_make_list(context, cls(context), objects.Service,
                                   services)
 
     @classmethod
     def get_all_by_binary(cls, context, binary, disabled=None):
-        services = db.service_get_all_by_binary(context, binary,
-                                                disabled=disabled)
+        services = db.service_get_all(context, binary=binary,
+                                      disabled=disabled)
         return base.obj_make_list(context, cls(context), objects.Service,
                                   services)

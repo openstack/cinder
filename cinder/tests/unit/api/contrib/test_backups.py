@@ -57,6 +57,8 @@ class BackupsAPITestCase(test.TestCase):
         self.user_context = context.RequestContext(
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
         self.controller = backups.BackupsController()
+        self.patch('cinder.objects.service.Service._get_minimum_version',
+                   return_value=None)
 
     @staticmethod
     def _create_backup(volume_id=fake.VOLUME_ID,
@@ -462,12 +464,12 @@ class BackupsAPITestCase(test.TestCase):
             fake_auth_context=self.user_context))
         self.assertEqual(400, res.status_int)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_create_backup_json(self, mock_validate,
-                                _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
@@ -491,15 +493,17 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        self.assertTrue(_mock_service_get_all_by_topic.called)
+        _mock_service_get_all.assert_called_once_with(mock.ANY,
+                                                      disabled=False,
+                                                      topic='cinder-backup')
         self.assertTrue(mock_validate.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_create_backup_inuse_no_force(self,
-                                          _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                          _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
@@ -528,9 +532,9 @@ class BackupsAPITestCase(test.TestCase):
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
-    def test_create_backup_inuse_force(self, _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+    @mock.patch('cinder.db.service_get_all')
+    def test_create_backup_inuse_force(self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
@@ -557,17 +561,19 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        self.assertTrue(_mock_service_get_all_by_topic.called)
+        _mock_service_get_all.assert_called_once_with(mock.ANY,
+                                                      disabled=False,
+                                                      topic='cinder-backup')
 
         db.backup_destroy(context.get_admin_context(), backup_id)
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_create_backup_snapshot_json(self, mock_validate,
-                                         _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                         _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
@@ -591,7 +597,9 @@ class BackupsAPITestCase(test.TestCase):
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        self.assertTrue(_mock_service_get_all_by_topic.called)
+        _mock_service_get_all.assert_called_once_with(mock.ANY,
+                                                      disabled=False,
+                                                      topic='cinder-backup')
         self.assertTrue(mock_validate.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
@@ -705,14 +713,14 @@ class BackupsAPITestCase(test.TestCase):
                           req,
                           body)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     @ddt.data(False, True)
     def test_create_backup_delta(self, backup_from_snapshot,
                                  mock_validate,
-                                 _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                 _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
@@ -746,7 +754,9 @@ class BackupsAPITestCase(test.TestCase):
 
         self.assertEqual(202, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        self.assertTrue(_mock_service_get_all_by_topic.called)
+        _mock_service_get_all.assert_called_once_with(mock.ANY,
+                                                      disabled=False,
+                                                      topic='cinder-backup')
         self.assertTrue(mock_validate.called)
 
         db.backup_destroy(context.get_admin_context(), backup_id)
@@ -754,10 +764,10 @@ class BackupsAPITestCase(test.TestCase):
             snapshot.destroy()
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_create_incremental_backup_invalid_status(
-            self, _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+            self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
@@ -869,12 +879,12 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_create_backup_WithOUT_enabled_backup_service(
             self,
-            _mock_service_get_all_by_topic):
+            _mock_service_get_all):
         # need an enabled backup service available
-        _mock_service_get_all_by_topic.return_value = []
+        _mock_service_get_all.return_value = []
 
         volume_id = utils.create_volume(self.context, size=2).id
         req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
@@ -901,10 +911,10 @@ class BackupsAPITestCase(test.TestCase):
         volume = self.volume_api.get(context.get_admin_context(), volume_id)
         self.assertEqual('available', volume['status'])
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_create_incremental_backup_invalid_no_full(
-            self, _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+            self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
@@ -934,8 +944,8 @@ class BackupsAPITestCase(test.TestCase):
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
-    def test_is_backup_service_enabled(self, _mock_service_get_all_by_topic):
+    @mock.patch('cinder.db.service_get_all')
+    def test_is_backup_service_enabled(self, _mock_service_get_all):
 
         testhost = 'test_host'
         alt_host = 'strange_host'
@@ -960,12 +970,12 @@ class BackupsAPITestCase(test.TestCase):
                            'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
         # Setup mock to run through the following service cases
-        _mock_service_get_all_by_topic.side_effect = [empty_service,
-                                                      host_not_match,
-                                                      az_not_match,
-                                                      disabled_service,
-                                                      dead_service,
-                                                      multi_services]
+        _mock_service_get_all.side_effect = [empty_service,
+                                             host_not_match,
+                                             az_not_match,
+                                             disabled_service,
+                                             dead_service,
+                                             multi_services]
 
         volume_id = utils.create_volume(self.context, size=2,
                                         host=testhost).id
@@ -1006,10 +1016,9 @@ class BackupsAPITestCase(test.TestCase):
                         volume['availability_zone'],
                         testhost))
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
-    def test_get_available_backup_service(self,
-                                          _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+    @mock.patch('cinder.db.service_get_all')
+    def test_get_available_backup_service(self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost1',
              'disabled': 0, 'updated_at': timeutils.utcnow()},
             {'availability_zone': 'az2', 'host': 'testhost2',
@@ -1026,10 +1035,10 @@ class BackupsAPITestCase(test.TestCase):
             'testhost4', 'az1')
         self.assertEqual('testhost1', actual_host)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_get_available_backup_service_with_same_host(
-            self, _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+            self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost1',
              'disabled': 0, 'updated_at': timeutils.utcnow()},
             {'availability_zone': 'az2', 'host': 'testhost2',
@@ -1045,10 +1054,9 @@ class BackupsAPITestCase(test.TestCase):
                           self.backup_api._get_available_backup_service_host,
                           'testhost4', 'az1')
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
-    def test_delete_backup_available(
-            self, _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+    @mock.patch('cinder.db.service_get_all')
+    def test_delete_backup_available(self, _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
@@ -1065,10 +1073,10 @@ class BackupsAPITestCase(test.TestCase):
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_delete_delta_backup(self,
-                                 _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                 _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
@@ -1088,10 +1096,10 @@ class BackupsAPITestCase(test.TestCase):
         db.backup_destroy(context.get_admin_context(), delta_id)
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_delete_backup_error(self,
-                                 _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                 _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
         backup_id = self._create_backup(status=fields.BackupStatus.ERROR)
@@ -1141,10 +1149,10 @@ class BackupsAPITestCase(test.TestCase):
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_delete_backup_with_InvalidBackup2(self,
-                                               _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                               _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
         volume_id = utils.create_volume(self.context, size=5).id
@@ -1170,10 +1178,10 @@ class BackupsAPITestCase(test.TestCase):
         db.backup_destroy(context.get_admin_context(), delta_backup_id)
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_delete_backup_service_down(self,
-                                        _mock_service_get_all_by_topic):
-        _mock_service_get_all_by_topic.return_value = [
+                                        _mock_service_get_all):
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': '1775-04-19 05:00:00'}]
         backup_id = self._create_backup(status='available')
@@ -1256,18 +1264,17 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual("Missing required element 'restore' in request body.",
                          res_dict['badRequest']['message'])
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.volume.api.API.create')
     def test_restore_backup_volume_id_unspecified(
-            self, _mock_volume_api_create,
-            _mock_service_get_all_by_topic):
+            self, _mock_volume_api_create, _mock_service_get_all):
         # intercept volume creation to ensure created volume
         # has status of available
         def fake_volume_api_create(context, size, name, description):
             volume_id = utils.create_volume(self.context, size=size).id
             return db.volume_get(context, volume_id)
 
-        _mock_service_get_all_by_topic.return_value = [
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
         _mock_volume_api_create.side_effect = fake_volume_api_create
@@ -1288,11 +1295,11 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.volume.api.API.create')
     def test_restore_backup_name_specified(self,
                                            _mock_volume_api_create,
-                                           _mock_service_get_all_by_topic):
+                                           _mock_service_get_all):
         # Intercept volume creation to ensure created volume
         # has status of available
         def fake_volume_api_create(context, size, name, description):
@@ -1301,7 +1308,7 @@ class BackupsAPITestCase(test.TestCase):
             return db.volume_get(context, volume_id)
 
         _mock_volume_api_create.side_effect = fake_volume_api_create
-        _mock_service_get_all_by_topic.return_value = [
+        _mock_service_get_all.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 

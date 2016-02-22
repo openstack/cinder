@@ -50,16 +50,16 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           sched.schedule_create_consistencygroup,
                           fake_context, 'faki-id1', request_spec_list, {})
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_schedule_consistencygroup(self,
-                                       _mock_service_get_all_by_topic):
+                                       _mock_service_get_all):
         # Make sure _schedule_group() can find host successfully.
         sched = fakes.FakeFilterScheduler()
         sched.host_manager = fakes.FakeHostManager()
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
-        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all)
 
         specs = {'capabilities:consistencygroup_support': '<is> True'}
         request_spec = {'volume_properties': {'project_id': 1,
@@ -75,12 +75,12 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                              request_spec_list,
                                              {})
         self.assertIsNotNone(weighed_host.obj)
-        self.assertTrue(_mock_service_get_all_by_topic.called)
+        self.assertTrue(_mock_service_get_all.called)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_schedule_consistencygroup_no_cg_support_in_extra_specs(
             self,
-            _mock_service_get_all_by_topic):
+            _mock_service_get_all):
         # Make sure _schedule_group() can find host successfully even
         # when consistencygroup_support is not specified in volume type's
         # extra specs
@@ -89,7 +89,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
-        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all)
 
         request_spec = {'volume_properties': {'project_id': 1,
                                               'size': 0},
@@ -104,7 +104,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                              request_spec_list,
                                              {})
         self.assertIsNotNone(weighed_host.obj)
-        self.assertTrue(_mock_service_get_all_by_topic.called)
+        self.assertTrue(_mock_service_get_all.called)
 
     def test_create_volume_no_hosts(self):
         # Ensure empty hosts/child_zones result in NoValidHosts exception.
@@ -174,8 +174,8 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           fake_context, request_spec, {})
         self.assertTrue(self.was_admin)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
-    def test_schedule_happy_day(self, _mock_service_get_all_by_topic):
+    @mock.patch('cinder.db.service_get_all')
+    def test_schedule_happy_day(self, _mock_service_get_all):
         # Make sure there's nothing glaringly wrong with _schedule()
         # by doing a happy day pass through.
         sched = fakes.FakeFilterScheduler()
@@ -183,16 +183,16 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         fake_context = context.RequestContext('user', 'project',
                                               is_admin=True)
 
-        fakes.mock_host_manager_db_calls(_mock_service_get_all_by_topic)
+        fakes.mock_host_manager_db_calls(_mock_service_get_all)
 
         request_spec = {'volume_type': {'name': 'LVM_iSCSI'},
                         'volume_properties': {'project_id': 1,
                                               'size': 1}}
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertIsNotNone(weighed_host.obj)
-        self.assertTrue(_mock_service_get_all_by_topic.called)
+        self.assertTrue(_mock_service_get_all.called)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_create_volume_clear_host_different_with_cg(self,
                                                         _mock_service_get_all):
         # Ensure we clear those hosts whose backend is not same as
@@ -208,7 +208,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         weighed_host = sched._schedule(fake_context, request_spec, {})
         self.assertIsNone(weighed_host)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_create_volume_host_same_as_cg(self, _mock_service_get_all):
         # Ensure we don't clear the host whose backend is same as
         # consistencygroup's backend.
@@ -338,7 +338,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
 
         return (sched, fake_context)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_host_passes_filters_happy_day(self, _mock_service_get_topic):
         """Do a successful pass through of with host_passes_filters()."""
         sched, ctx = self._host_passes_filters_setup(
@@ -352,7 +352,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertEqual('host1', utils.extract_host(ret_host.host))
         self.assertTrue(_mock_service_get_topic.called)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_host_passes_filters_default_pool_happy_day(
             self, _mock_service_get_topic):
         """Do a successful pass through of with host_passes_filters()."""
@@ -367,7 +367,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
         self.assertEqual('host5', utils.extract_host(ret_host.host))
         self.assertTrue(_mock_service_get_topic.called)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_host_passes_filters_no_capacity(self, _mock_service_get_topic):
         """Fail the host due to insufficient capacity."""
         sched, ctx = self._host_passes_filters_setup(
@@ -381,7 +381,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           ctx, 'host1#lvm1', request_spec, {})
         self.assertTrue(_mock_service_get_topic.called)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_retype_policy_never_migrate_pass(self, _mock_service_get_topic):
         # Retype should pass if current host passes filters and
         # policy=never. host4 doesn't have enough space to hold an additional
@@ -401,7 +401,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                             migration_policy='never')
         self.assertEqual('host4', utils.extract_host(host_state.host))
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_retype_with_pool_policy_never_migrate_pass(
             self, _mock_service_get_topic):
         # Retype should pass if current host passes filters and
@@ -422,7 +422,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                             migration_policy='never')
         self.assertEqual('host3#lvm3', host_state.host)
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_retype_policy_never_migrate_fail(self, _mock_service_get_topic):
         # Retype should fail if current host doesn't pass filters and
         # policy=never.
@@ -439,7 +439,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                           request_spec, filter_properties={},
                           migration_policy='never')
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_retype_policy_demand_migrate_pass(self, _mock_service_get_topic):
         # Retype should pass if current host fails filters but another host
         # is suitable when policy=on-demand.
@@ -457,7 +457,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                             migration_policy='on-demand')
         self.assertEqual('host1', utils.extract_host(host_state.host))
 
-    @mock.patch('cinder.db.service_get_all_by_topic')
+    @mock.patch('cinder.db.service_get_all')
     def test_retype_policy_demand_migrate_fail(self, _mock_service_get_topic):
         # Retype should fail if current host doesn't pass filters and
         # no other suitable candidates exist even if policy=on-demand.
