@@ -215,7 +215,7 @@ class HGSTDriver(driver.VolumeDriver):
         """Adjust space size to next legal value because of redundancy."""
         # Extending requires expanding to a multiple of the # of
         # storage hosts in the cluster
-        count = len(self._make_server_list()) / 2  # Remove -s from count
+        count = len(self._make_server_list()) // 2  # Remove -s from count
         if size_g % count:
             size_g = int(size_g + count)
             size_g -= size_g % count
@@ -328,12 +328,12 @@ class HGSTDriver(driver.VolumeDriver):
         try:
             out, unused = self._execute(*params, run_as_root=True)
             ret = json.loads(out)
-            cap = int(ret["totalCapacityBytes"] / units.Gi)
-            used = int(ret["totalUsedBytes"] / units.Gi)
+            cap = ret["totalCapacityBytes"] // units.Gi
+            used = ret["totalUsedBytes"] // units.Gi
             avail = cap - used
             if int(self.configuration.safe_get('hgst_redundancy')) == 1:
-                cap = int(cap / 2)
-                avail = int(avail / 2)
+                cap = cap // 2
+                avail = avail // 2
             # Reduce both by 1 GB due to BZ 28320
             if cap > 0:
                 cap = cap - 1
@@ -374,7 +374,7 @@ class HGSTDriver(driver.VolumeDriver):
         volutils.copy_volume(
             self.local_path(src_vref),
             "/dev/" + provider['provider_id'],
-            info['sizeBytes'] / units.Mi,
+            info['sizeBytes'] // units.Mi,
             self.configuration.volume_dd_blocksize,
             execute=self._execute)
 
@@ -526,7 +526,7 @@ class HGSTDriver(driver.VolumeDriver):
         volutils.copy_volume(
             self.local_path(origvol),
             "/dev/" + provider['provider_id'],
-            info['sizeBytes'] / units.Mi,
+            info['sizeBytes'] // units.Mi,
             self.configuration.volume_dd_blocksize,
             execute=self._execute)
         return provider
@@ -551,7 +551,7 @@ class HGSTDriver(driver.VolumeDriver):
         volnewbytes = new_size * units.Gi
         new_size_g = math.ceil(float(volnewbytes) / float(self.SPACEGB))
         wantedsize_g = self._adjust_size_g(new_size_g)
-        havesize_g = (info['sizeBytes'] / self.SPACEGB)
+        havesize_g = (info['sizeBytes'] // self.SPACEGB)
         if havesize_g >= wantedsize_g:
             return  # Already big enough, happens with redundancy
         else:
