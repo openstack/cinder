@@ -388,7 +388,7 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             'total_capacity_gb': 'unknown',
             'free_capacity_gb': 'unknown',
             'reserved_percentage': 0,
-            'multiattach': True,
+            'multiattach': False,
         }
         backend_name = self.configuration.safe_get('volume_backend_name')
         stats['volume_backend_name'] = backend_name or 'RBD'
