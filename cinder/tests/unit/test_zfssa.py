@@ -466,6 +466,15 @@ class TestZFSSAISCSIDriver(test.TestCase):
             self.test_vol['name'],
             '')
 
+    def test_volume_attach_detach_negative(self):
+        self.drv.zfssa.get_initiator_initiatorgroup.return_value = []
+
+        connector = dict(initiator='iqn.1-0.org.deb:01:d7')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.drv.initialize_connection,
+                          self.test_vol,
+                          connector)
+
     def test_get_volume_stats(self):
         self.drv.zfssa.get_project_stats.return_value = 2 * units.Gi,\
             3 * units.Gi
