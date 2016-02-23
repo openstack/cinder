@@ -5334,6 +5334,26 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 self.standard_logout)
             self.assertNotIn('initiator_target_map', conn_info['data'])
 
+    def test_get_3par_host_from_wwn_iqn(self):
+        mock_client = self.setup_driver()
+        mock_client.getHosts.return_value = {
+            'name': self.FAKE_HOST,
+            'FCPaths': [{'driverVersion': None,
+                         'firmwareVersion': None,
+                         'hostSpeed': 0,
+                         'model': None,
+                         'portPos': {'cardPort': 1, 'node': 1,
+                                     'slot': 2},
+                         'vendor': None,
+                         'wwn': '123ab6789012345'}]}
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            hostname = mock_client._get_3par_hostname_from_wwn_iqn(
+                wwns=['123AB6789012345', '123CD6789054321'],
+                iqns=None)
+            self.assertIsNotNone(hostname)
+
     def test_get_volume_stats1(self):
         # setup_mock_client drive with the configuration
         # and return the mock HTTP 3PAR client
