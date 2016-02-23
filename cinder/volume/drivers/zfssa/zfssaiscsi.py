@@ -425,6 +425,14 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         data['free_capacity_gb'] = int(avail) / units.Gi
         data['reserved_percentage'] = 0
         data['QoS_support'] = False
+
+        pool_details = self.zfssa.get_pool_details(lcfg.zfssa_pool)
+        data['zfssa_poolprofile'] = pool_details['profile']
+        data['zfssa_volblocksize'] = lcfg.zfssa_lun_volblocksize
+        data['zfssa_sparse'] = six.text_type(lcfg.zfssa_lun_sparse)
+        data['zfssa_compression'] = lcfg.zfssa_lun_compression
+        data['zfssa_logbias'] = lcfg.zfssa_lun_logbias
+
         self._stats = data
 
     def get_volume_stats(self, refresh=False):

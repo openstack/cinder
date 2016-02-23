@@ -478,11 +478,15 @@ class TestZFSSAISCSIDriver(test.TestCase):
     def test_get_volume_stats(self):
         self.drv.zfssa.get_project_stats.return_value = 2 * units.Gi,\
             3 * units.Gi
+        self.drv.zfssa.get_pool_details.return_value = \
+            {"profile": "mirror:log_stripe"}
         lcfg = self.configuration
         stats = self.drv.get_volume_stats(refresh=True)
         self.drv.zfssa.get_project_stats.assert_called_once_with(
             lcfg.zfssa_pool,
             lcfg.zfssa_project)
+        self.drv.zfssa.get_pool_details.assert_called_once_with(
+            lcfg.zfssa_pool)
         self.assertEqual('Oracle', stats['vendor_name'])
         self.assertEqual(self.configuration.volume_backend_name,
                          stats['volume_backend_name'])
@@ -492,6 +496,15 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.assertFalse(stats['QoS_support'])
         self.assertEqual(3, stats['total_capacity_gb'])
         self.assertEqual(2, stats['free_capacity_gb'])
+        self.assertEqual('mirror:log_stripe', stats['zfssa_poolprofile'])
+        self.assertEqual('8k', stats['zfssa_volblocksize'])
+        self.assertEqual('false', stats['zfssa_sparse'])
+        self.assertEqual('off', stats['zfssa_compression'])
+        self.assertEqual('latency', stats['zfssa_logbias'])
+
+        self.drv.zfssa.get_pool_details.return_value = {"profile": "raidz2"}
+        stats = self.drv.get_volume_stats(refresh=True)
+        self.assertEqual('raidz2', stats['zfssa_poolprofile'])
 
     def test_extend_volume(self):
         lcfg = self.configuration
@@ -777,6 +790,7 @@ class TestZFSSANFSDriver(test.TestCase):
         self.configuration.zfssa_rest_timeout = '30'
         self.configuration.zfssa_enable_local_cache = True
         self.configuration.zfssa_cache_directory = zfssa_cache_dir
+        self.configuration.nfs_sparsed_volumes = 'true'
 
     def test_migrate_volume(self):
         self.drv.zfssa.get_asn.return_value = (
@@ -866,15 +880,38 @@ class TestZFSSANFSDriver(test.TestCase):
                                     method='COPY')
 
     def test_get_volume_stats(self):
+        lcfg = self.configuration
         self.drv._mounted_shares = ['nfs_share']
         with mock.patch.object(self.drv, '_ensure_shares_mounted'):
             with mock.patch.object(self.drv, '_get_share_capacity_info') as \
                     mock_get_share_capacity_info:
                 mock_get_share_capacity_info.return_value = (1073741824,
                                                              9663676416)
+                self.drv.zfssa.get_pool_details.return_value = \
+                    {"profile": "mirror:log_stripe"}
+                self.drv.zfssa.get_share.return_value = {"compression": "lzjb",
+                                                         "encryption": "off",
+                                                         "logbias": "latency"}
                 stats = self.drv.get_volume_stats(refresh=True)
+                self.drv.zfssa.get_pool_details.assert_called_once_with(
+                    lcfg.zfssa_nfs_pool)
+                self.drv.zfssa.get_share.assert_called_with(
+                    lcfg.zfssa_nfs_pool, lcfg.zfssa_nfs_project,
+                    lcfg.zfssa_nfs_share)
+
                 self.assertEqual(1, stats['free_capacity_gb'])
                 self.assertEqual(10, stats['total_capacity_gb'])
+                self.assertEqual('mirror:log_stripe',
+                                 stats['zfssa_poolprofile'])
+                self.assertEqual('lzjb', stats['zfssa_compression'])
+                self.assertEqual('true', stats['zfssa_sparse'])
+                self.assertEqual('off', stats['zfssa_encryption'])
+                self.assertEqual('latency', stats['zfssa_logbias'])
+
+                self.drv.zfssa.get_pool_details.return_value = \
+                    {"profile": "mirror3"}
+                stats = self.drv.get_volume_stats(refresh=True)
+                self.assertEqual('mirror3', stats['zfssa_poolprofile'])
 
     def tearDown(self):
         super(TestZFSSANFSDriver, self).tearDown()

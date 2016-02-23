@@ -62,6 +62,33 @@ class ZFSSAApi(object):
         return vdata['version']['asn'] == pdata['pool']['asn'] and \
             vdata['version']['nodename'] == pdata['pool']['owner']
 
+    def get_pool_details(self, pool):
+        """Get properties of a pool."""
+        svc = '/api/storage/v1/pools/%s' % pool
+        ret = self.rclient.get(svc)
+        if ret.status != restclient.Status.OK:
+            exception_msg = (_('Error Getting Pool Stats: '
+                               'Pool: %(pool)s '
+                               'Return code: %(status)d '
+                               'Message: %(data)s.')
+                             % {'pool': pool,
+                                'status': ret.status,
+                                'data': ret.data})
+            LOG.error(exception_msg)
+            raise exception.VolumeBackendAPIException(data=exception_msg)
+
+        val = json.loads(ret.data)
+
+        if not self._is_pool_owned(val):
+            exception_msg = (_('Error Pool ownership: '
+                               'Pool %(pool)s is not owned '
+                               'by %(host)s.')
+                             % {'pool': pool,
+                                'host': self.host})
+            LOG.error(exception_msg)
+            raise exception.InvalidInput(reason=exception_msg)
+        return val['pool']
+
     def set_host(self, host, timeout=None):
         self.host = host
         self.url = "https://" + self.host + ":215"

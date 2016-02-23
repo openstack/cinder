@@ -553,6 +553,17 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         data['total_capacity_gb'] = float(capacity) / units.Gi
         data['free_capacity_gb'] = float(free) / units.Gi
 
+        share_details = self.zfssa.get_share(lcfg.zfssa_nfs_pool,
+                                             lcfg.zfssa_nfs_project,
+                                             lcfg.zfssa_nfs_share)
+        pool_details = self.zfssa.get_pool_details(lcfg.zfssa_nfs_pool)
+
+        data['zfssa_compression'] = share_details['compression']
+        data['zfssa_encryption'] = share_details['encryption']
+        data['zfssa_logbias'] = share_details['logbias']
+        data['zfssa_poolprofile'] = pool_details['profile']
+        data['zfssa_sparse'] = six.text_type(lcfg.nfs_sparsed_volumes)
+
         self._stats = data
 
     def migrate_volume(self, ctxt, volume, host):
