@@ -214,7 +214,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.nms.zvol.create(
             self._get_zvol_name(volume['name']),
             '%sG' % (volume['size'],),
-            self.configuration.nexenta_blocksize,
+            str(self.configuration.nexenta_blocksize),
             self.configuration.nexenta_sparse)
 
     def extend_volume(self, volume, new_size):
