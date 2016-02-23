@@ -29,6 +29,7 @@ from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import volume
 from cinder.volume import api as volume_api
@@ -999,7 +1000,7 @@ class VolumeImageActionsTest(test.TestCase):
         res_dict = self.controller._volume_upload_image(req, id, body)
         expected_res = {
             'os-volume_upload_image': {
-                'id': '1',
+                'id': fake.volume_id,
                 'updated_at': None,
                 'status': 'uploading',
                 'display_description': None,

@@ -15,12 +15,13 @@
 from oslo_versionedobjects import fields
 
 from cinder.objects import snapshot
+from cinder.tests.unit import fake_constants as fake
 
 
 def fake_db_snapshot(**updates):
     db_snapshot = {
-        'id': '1',
-        'volume_id': 'fake_id',
+        'id': fake.snapshot_id,
+        'volume_id': fake.volume_id,
         'status': "creating",
         'progress': '0%',
         'volume_size': 1,

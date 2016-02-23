@@ -19,6 +19,7 @@ from cinder import context
 from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
@@ -35,8 +36,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
     def test_get_by_id(self, volume_get):
         db_volume = fake_volume.fake_db_volume()
         volume_get.return_value = db_volume
-        volume = objects.Volume.get_by_id(self.context, 1)
-        volume_get.assert_called_once_with(self.context, 1)
+        volume = objects.Volume.get_by_id(self.context, fake.volume_id)
+        volume_get.assert_called_once_with(self.context, fake.volume_id)
         self._compare(self, db_volume, volume)
 
     @mock.patch('cinder.db.sqlalchemy.api.model_query')
@@ -140,12 +141,13 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertTrue(admin_context.is_admin)
 
     def test_obj_fields(self):
-        volume = objects.Volume(context=self.context, id=2, _name_id=2)
+        volume = objects.Volume(context=self.context, id=fake.volume_id,
+                                name_id=fake.volume_name_id)
         self.assertEqual(['name', 'name_id', 'volume_metadata',
                           'volume_admin_metadata', 'volume_glance_metadata'],
                          volume.obj_extra_fields)
-        self.assertEqual('volume-2', volume.name)
-        self.assertEqual('2', volume.name_id)
+        self.assertEqual('volume-%s' % fake.volume_name_id, volume.name)
+        self.assertEqual(fake.volume_name_id, volume.name_id)
 
     def test_obj_field_previous_status(self):
         volume = objects.Volume(context=self.context,
@@ -154,12 +156,13 @@ class TestVolume(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.volume_metadata_delete')
     def test_delete_metadata_key(self, metadata_delete):
-        volume = objects.Volume(self.context, id=1)
+        volume = objects.Volume(self.context, id=fake.volume_id)
         volume.metadata = {'key1': 'value1', 'key2': 'value2'}
         self.assertEqual({}, volume._orig_metadata)
         volume.delete_metadata_key('key2')
         self.assertEqual({'key1': 'value1'}, volume.metadata)
-        metadata_delete.assert_called_once_with(self.context, '1', 'key2')
+        metadata_delete.assert_called_once_with(self.context, fake.volume_id,
+                                                'key2')
 
     @mock.patch('cinder.db.volume_metadata_get')
     @mock.patch('cinder.db.volume_glance_metadata_get')
@@ -195,24 +198,27 @@ class TestVolume(test_objects.BaseObjectsTestCase):
 
         # Case2. volume2.volume_type_id = 1
         fake2 = fake_volume.fake_db_volume()
-        fake2.update({'volume_type_id': 1})
+        fake2.update({'volume_type_id': fake.volume_id})
         volume2 = objects.Volume._from_db_object(
             self.context, objects.Volume(), fake2)
-        volume_type = objects.VolumeType(context=self.context, id=1)
+        volume_type = objects.VolumeType(context=self.context,
+                                         id=fake.volume_type_id)
         mock_vt_get_by_id.return_value = volume_type
         self.assertEqual(volume_type, volume2.volume_type)
         mock_vt_get_by_id.assert_called_once_with(self.context,
                                                   volume2.volume_type_id)
 
         # Test consistencygroup lazy-loaded field
-        consistencygroup = objects.ConsistencyGroup(context=self.context, id=2)
+        consistencygroup = objects.ConsistencyGroup(
+            context=self.context, id=fake.consistency_group_id)
         mock_cg_get_by_id.return_value = consistencygroup
         self.assertEqual(consistencygroup, volume.consistencygroup)
         mock_cg_get_by_id.assert_called_once_with(self.context,
                                                   volume.consistencygroup_id)
 
         # Test snapshots lazy-loaded field
-        snapshots = objects.SnapshotList(context=self.context, id=2)
+        snapshots = objects.SnapshotList(context=self.context,
+                                         id=fake.snapshot_id)
         mock_sl_get_all_for_volume.return_value = snapshots
         self.assertEqual(snapshots, volume.snapshots)
         mock_sl_get_all_for_volume.assert_called_once_with(self.context,
@@ -220,7 +226,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
 
         # Test volume_attachment lazy-loaded field
         va_objs = [objects.VolumeAttachment(context=self.context, id=i)
-                   for i in [3, 4, 5]]
+                   for i in [fake.object_id, fake.object2_id, fake.object3_id]]
         va_list = objects.VolumeAttachmentList(context=self.context,
                                                objects=va_objs)
         mock_va_get_all_by_vol.return_value = va_list
@@ -285,7 +291,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         # On the second volume_get, return the volume with an updated
         # display_name
         volume_get.side_effect = [db_volume1, db_volume2]
-        volume = objects.Volume.get_by_id(self.context, '1')
+        volume = objects.Volume.get_by_id(self.context, fake.volume_id)
         self._compare(self, db_volume1, volume)
 
         # display_name was updated, so a volume refresh should have a new value
@@ -296,9 +302,9 @@ class TestVolume(test_objects.BaseObjectsTestCase):
             call_bool = mock.call.__bool__()
         else:
             call_bool = mock.call.__nonzero__()
-        volume_get.assert_has_calls([mock.call(self.context, '1'),
+        volume_get.assert_has_calls([mock.call(self.context, fake.volume_id),
                                      call_bool,
-                                     mock.call(self.context, '1')])
+                                     mock.call(self.context, fake.volume_id)])
 
     def test_metadata_aliases(self):
         volume = objects.Volume(context=self.context)
@@ -330,8 +336,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_metadata_update', return_value={})
     @mock.patch('cinder.db.volume_update')
     def test_finish_volume_migration(self, volume_update, metadata_update):
-        src_volume_db = fake_volume.fake_db_volume(**{'id': '1'})
-        dest_volume_db = fake_volume.fake_db_volume(**{'id': '2'})
+        src_volume_db = fake_volume.fake_db_volume(**{'id': fake.volume_id})
+        dest_volume_db = fake_volume.fake_db_volume(**{'id': fake.volume2_id})
         src_volume = objects.Volume._from_db_object(
             self.context, objects.Volume(), src_volume_db,
             expected_attrs=['metadata', 'glance_metadata'])
