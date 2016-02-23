@@ -2006,8 +2006,25 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         data = self.driver.get_volume_stats()
         self.assertEqual('2.0.5', data['driver_version'])
 
-    def test_extend_volume(self):
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={"CAPACITY": 6291456})
+    @mock.patch.object(rest_client.RestClient, 'extend_lun')
+    def test_extend_volume_size_equal(self, mock_extend, mock_lun_info):
         self.driver.extend_volume(test_volume, 3)
+        self.assertEqual(0, mock_extend.call_count)
+
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={"CAPACITY": 5291456})
+    @mock.patch.object(rest_client.RestClient, 'extend_lun')
+    def test_extend_volume_success(self, mock_extend, mock_lun_info):
+        self.driver.extend_volume(test_volume, 3)
+        self.assertEqual(1, mock_extend.call_count)
+
+    @mock.patch.object(rest_client.RestClient, 'get_lun_info',
+                       return_value={"CAPACITY": 7291456})
+    def test_extend_volume_fail(self, mock_lun_info):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.extend_volume, test_volume, 3)
 
     def test_login_fail(self):
         self.driver.client.test_fail = True
