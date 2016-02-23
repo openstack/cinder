@@ -2814,8 +2814,7 @@ Time Remaining:  0 second(s)
         new_volume['name_id'] = new_volume['id']
         vol = self.driver.create_volume_from_snapshot(
             new_volume, test_snap)
-        self.assertTrue(
-            vol['provider_location'].find('type^smp') > 0)
+        self.assertIn('type^smp', vol['provider_location'])
         expect_cmd = [
             mock.call(
                 *self.testData.SNAP_COPY_CMD(
@@ -6144,11 +6143,14 @@ class EMCVNXCLIDriverReplicationV2TestCase(DriverTestCaseBase):
         self.assertEqual(
             self.configuration.replication_device[0]['managed_backend_name'],
             model_update['host'])
-        self.assertEqual(
-            build_provider_location(
-                '1', 'lun', rep_volume.name,
-                self.target_device_id),
-            model_update['provider_location'])
+        expected = build_provider_location('1', 'lun', rep_volume.name,
+                                           self.target_device_id)
+        provider_location = model_update['provider_location']
+        # Don't compare the exact string but the set of items: dictionary
+        # items are rendered in a random order because of the hash
+        # randomization
+        self.assertSetEqual(set(expected.split('|')),
+                            set(provider_location.split('|')))
 
     def test_failover_replication_from_secondary(self):
         rep_volume = EMCVNXCLIDriverTestData.convert_volume(

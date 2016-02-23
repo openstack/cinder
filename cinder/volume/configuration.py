@@ -77,4 +77,6 @@ class Configuration(object):
             return None
 
     def __getattr__(self, value):
-        return getattr(self.local_conf, value)
+        # Don't use self.local_conf to avoid reentrant call to __getattr__()
+        local_conf = object.__getattribute__(self, 'local_conf')
+        return getattr(local_conf, value)
