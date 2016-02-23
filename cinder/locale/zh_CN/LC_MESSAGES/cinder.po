@@ -17,9 +17,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev72\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 23:17+0000\n"
+"POT-Creation-Date: 2016-02-22 23:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -260,13 +260,6 @@ msgid ""
 msgstr ""
 "（命令：%(cmd)s）（返回码：%(exit_code)s）（标准输出：%(stdout)s）（标准错"
 "误：%(stderr)s）"
-
-msgid ""
-"3PAR drivers do not support enabling the image cache capability at this "
-"time.  You must disable the configuration setting in cinder.conf"
-msgstr ""
-"此时，3PAR 驱动程序不支持启用图像高速缓存功能。您必须在 cinder.conf 中禁用配"
-"置设置"
 
 #, python-format
 msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
@@ -1358,12 +1351,6 @@ msgid ""
 msgstr "创建并激活区域集失败（区域集为 %(cfg_name)s，发生的错误为 %(err)s）。"
 
 #, python-format
-msgid ""
-"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
-"%(err)s)."
-msgstr "创建并激活区域集失败（区域集为 %(zoneset)s，发生的错误为 %(err)s）。"
-
-#, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
 msgstr "正在为 %(begin_period)s 直到 %(end_period)s 创建使用情况"
 
@@ -2022,10 +2009,6 @@ msgid "Error deleting volume %(vol)s: %(err)s."
 msgstr "删除卷 %(vol)s 时出错：%(err)s。"
 
 #, python-format
-msgid "Error deleting volume %s: volume not found."
-msgstr "删除卷 %s 时出错：找不到该卷。"
-
-#, python-format
 msgid "Error during evaluator parsing: %(reason)s"
 msgstr "在评估程序解析期间，发生错误：%(reason)s"
 
@@ -2055,10 +2038,6 @@ msgstr "执行 CloudByte API [%(cmd)s] 时出错，错误为 %(err)s。"
 
 msgid "Error executing EQL command"
 msgstr "执行 EQL 命令时出错"
-
-#, python-format
-msgid "Error executing command via ssh: %s"
-msgstr "通过 ssh 执行命令时发生错误：%s"
 
 #, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
@@ -2369,13 +2348,6 @@ msgstr "未能扩展卷 %(volname)s"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "未能登录到 3PAR (%(url)s)，因为存在 %(err)s"
-
-msgid "Failed to access active zoning configuration."
-msgstr "未能访问活动分区配置。"
-
-#, python-format
-msgid "Failed to access zoneset status:%s"
-msgstr "未能访问区域集状态：%s"
 
 #, python-format
 msgid ""
@@ -2823,9 +2795,6 @@ msgstr "未能获取具有卷 %(volume_id)s 的池标识。"
 msgid "Failed to get replica info."
 msgstr "未能获取副本信息。"
 
-msgid "Failed to get show fcns database info."
-msgstr "未能获取显示 fcns 数据库信息。"
-
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "未能获取卷 %s 的大小"
@@ -3072,9 +3041,6 @@ msgstr "未能更新一致性组：%(cgName)s。"
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "未能更新卷的元数据：%(reason)s"
 
-msgid "Failed to update or delete zoning configuration"
-msgstr "未能更新或删除分区配置"
-
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
 msgstr "未能通过规范 %(qos_specs)s 更新 qos_specs：%(specs_id)s。"
@@ -3163,9 +3129,6 @@ msgstr "%s 处已存在文件。"
 #, python-format
 msgid "File already exists at: %s"
 msgstr "在以下位置处，已存在文件：%s"
-
-msgid "Find array version error."
-msgstr "查找阵列版本时发生错误。"
 
 msgid "Find host in hostgroup error."
 msgstr "在主机组中查找主机时发生错误。"
@@ -4064,10 +4027,6 @@ msgid "Lun migration error."
 msgstr "Lun 迁移错误。"
 
 #, python-format
-msgid "Malformed fcns output string: %s"
-msgstr "以下 fcns 输出字符串的格式不正确：%s"
-
-#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "错误格式的消息体： %(reason)s"
 
@@ -4092,21 +4051,11 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "错误格式的 scheduler_hints 属性"
 
 #, python-format
-msgid "Malformed show fcns database string: %s"
-msgstr "以下显示 fcns 数据库字符串的格式不正确：%s"
-
-#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "区域配置的格式不正确：(switch=%(switch)s zone_config=%(zone_config)s)。"
-
-#, python-format
-msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
-msgstr ""
-"区域状态的格式不正确：（交换机为 %(switch)s，zone_config 为 "
-"%(zone_config)s）。"
 
 msgid "Manage existing get size requires 'id'."
 msgstr "管理现有 get 大小需要“id”。"
@@ -4362,9 +4311,6 @@ msgstr "未发现 NFS 文件 %s。"
 msgid "NFS file could not be discovered."
 msgstr "未能发现 NFS 文件。"
 
-msgid "NULL host not allowed for volume backend lookup."
-msgstr "对于卷后端查找，不允许 NULL 主机。"
-
 msgid "Name"
 msgstr "名称"
 
@@ -4587,10 +4533,6 @@ msgstr "找不到有效主机，原因是 %(reason)s。"
 #, python-format
 msgid "No valid hosts for volume %(id)s with type %(type)s"
 msgstr "对于类型为 %(type)s 的卷 %(id)s，不存在任何有效主机"
-
-#, python-format
-msgid "No vdisk with the UID specified by source-id %s."
-msgstr "没有带有 source-id %s 指定的 UID 的 vdisk。"
 
 #, python-format
 msgid ""
@@ -4922,9 +4864,6 @@ msgstr "引用必须包含 source-id 或 source-name 元素。"
 
 msgid "Reference must contain either source-name or source-id element."
 msgstr "引用必须包含 source-name 或 source-id 元素。"
-
-msgid "Reference must contain source-id element."
-msgstr "引用必须包含 source-id 元素。"
 
 msgid "Reference must contain source-id or source-name key."
 msgstr "引用必须包含 source-id 或 source-name 键。"
@@ -5922,9 +5861,6 @@ msgstr "无法创建或获取快速策略 %(fastPolicyName)s 的缺省存储器�
 msgid "Unable to create replica clone for volume %s."
 msgstr "无法为卷 %s 创建副本克隆。"
 
-msgid "Unable to create volume"
-msgstr "无法创建卷"
-
 #, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
 msgstr "无法删除一致性组快照 %s"
@@ -6569,10 +6505,6 @@ msgstr "卷不是此节点的本地卷"
 msgid "Volume is not local to this node."
 msgstr "该卷不是此节点的本地卷。"
 
-#, python-format
-msgid "Volume manager for backend '%s' does not exist."
-msgstr "用于后端“%s”的卷管理器不存在。"
-
 msgid ""
 "Volume metadata backup requested but this driver does not yet support this "
 "feature."
@@ -6799,10 +6731,6 @@ msgid "Zone"
 msgstr "域"
 
 #, python-format
-msgid "Zoning Policy: %s, not recognized"
-msgstr "分区策略：%s，无法识别"
-
-#, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."
 msgstr "_create_and_copy_vdisk_data：未能获取 vdisk %s 的属性。"
 
@@ -6990,11 +6918,6 @@ msgstr "必须定义 control_location"
 
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume：源和目标大小不同。"
-
-msgid ""
-"create_consistencygroup_from_src only supports a cgsnapshot source, other "
-"sources cannot be used."
-msgstr "create_consistencygroup_from_src 仅支持 cg 快照源，其他源无法使用。"
 
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."

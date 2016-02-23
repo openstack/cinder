@@ -12,9 +12,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev72\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 23:17+0000\n"
+"POT-Creation-Date: 2016-02-22 23:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -264,13 +264,6 @@ msgid ""
 msgstr ""
 "(Comando: %(cmd)s) (Código de Retorno: %(exit_code)s) (Saída padrão: "
 "%(stdout)s) (Erro padrão: %(stderr)s)"
-
-msgid ""
-"3PAR drivers do not support enabling the image cache capability at this "
-"time.  You must disable the configuration setting in cinder.conf"
-msgstr ""
-"Drivers 3PAR não suportam a ativação do recurso de cache de imagem neste "
-"momento. Deve-se desativar a definição de configuração em cinder.conf"
 
 #, python-format
 msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
@@ -1496,14 +1489,6 @@ msgstr ""
 "%(cfg_name)s erro=%(err)s)."
 
 #, python-format
-msgid ""
-"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
-"%(err)s)."
-msgstr ""
-"Criação e ativação de conjunto de zonas falhou: (Conjunto de Zona="
-"%(zoneset)s erro=%(err)s)."
-
-#, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
 msgstr "Criando usos para %(begin_period)s até %(end_period)s"
 
@@ -2234,10 +2219,6 @@ msgid "Error deleting volume %(vol)s: %(err)s."
 msgstr "Erro ao excluir o volume %(vol)s: %(err)s."
 
 #, python-format
-msgid "Error deleting volume %s: volume not found."
-msgstr "Erro ao excluir o volume %s: volume não localizado."
-
-#, python-format
 msgid "Error during evaluator parsing: %(reason)s"
 msgstr "Erro durante a análise do avaliador: %(reason)s"
 
@@ -2267,10 +2248,6 @@ msgstr "Erro ao executar a API do CloudByte [%(cmd)s], Erro: %(err)s."
 
 msgid "Error executing EQL command"
 msgstr "Erro ao executar o comando EQL"
-
-#, python-format
-msgid "Error executing command via ssh: %s"
-msgstr "Erro ao executar comando via ssh: %s"
 
 #, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
@@ -2599,13 +2576,6 @@ msgstr "Falha ao Estender Volume %(volname)s"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "Falha ao efetuar login para o 3PAR (%(url)s) porque %(err)s"
-
-msgid "Failed to access active zoning configuration."
-msgstr "Falha ao acessar a configuração de zoneamento ativa."
-
-#, python-format
-msgid "Failed to access zoneset status:%s"
-msgstr "Falha ao acessar o status do conjunto de zonas:%s"
 
 #, python-format
 msgid ""
@@ -3085,9 +3055,6 @@ msgstr "Falha ao obter ID do conjunto com o volume %(volume_id)s."
 msgid "Failed to get replica info."
 msgstr "Falha ao obter informações de réplica."
 
-msgid "Failed to get show fcns database info."
-msgstr "Falha ao obter/mostrar informações do banco de dados fcns."
-
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "Falha ao obter o tamanho do volume %s"
@@ -3373,9 +3340,6 @@ msgstr "Falha ao atualizar grupo de consistências: %(cgName)s."
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "Falha ao atualizar metadados para o volume: %(reason)s"
 
-msgid "Failed to update or delete zoning configuration"
-msgstr "Falha ao atualizar ou excluir a configuração de zoneamento"
-
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
 msgstr ""
@@ -3472,9 +3436,6 @@ msgstr "O arquivo já existe em %s."
 #, python-format
 msgid "File already exists at: %s"
 msgstr "O arquivo já existe em: %s"
-
-msgid "Find array version error."
-msgstr "Erro ao localizar versão da matriz."
 
 msgid "Find host in hostgroup error."
 msgstr "Erro ao localizar host no grupo de hosts."
@@ -4454,10 +4415,6 @@ msgid "Lun migration error."
 msgstr "Erro de migração de lun."
 
 #, python-format
-msgid "Malformed fcns output string: %s"
-msgstr "Sequência de saída de fcns malformada: %s"
-
-#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "Corpo da mensagem malformado: %(reason)s"
 
@@ -4482,21 +4439,12 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "Atributo scheduler_hints malformado"
 
 #, python-format
-msgid "Malformed show fcns database string: %s"
-msgstr "Sequência de demonstração do banco de dados fcns malformada: %s"
-
-#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "Configuração de zona mal formada: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
-
-#, python-format
-msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
-msgstr ""
-"Status da zona malformado: (switch=%(switch)s zone_config=%(zone_config)s)."
 
 msgid "Manage existing get size requires 'id'."
 msgstr "Gerenciar o tamanho da obtenção existente requer 'id'."
@@ -4783,9 +4731,6 @@ msgstr "Arquivo NFS %s não descoberto."
 msgid "NFS file could not be discovered."
 msgstr "O arquivo NFS não pôde ser descoberto."
 
-msgid "NULL host not allowed for volume backend lookup."
-msgstr "host NULO não permitido para consulta do backend do volume."
-
 msgid "Name"
 msgstr "Nome"
 
@@ -5030,10 +4975,6 @@ msgstr "Nenhum host válido localizado. %(reason)s"
 #, python-format
 msgid "No valid hosts for volume %(id)s with type %(type)s"
 msgstr "Nenhum host válido para o volume %(id)s com tipo %(type)s"
-
-#, python-format
-msgid "No vdisk with the UID specified by source-id %s."
-msgstr "Nenhum vdisk com o UID especificado pelo id da fonte %s."
 
 #, python-format
 msgid ""
@@ -5397,9 +5338,6 @@ msgstr "A referência deve conter um elemento source-id ou source-name."
 
 msgid "Reference must contain either source-name or source-id element."
 msgstr "A referência deve conter um elemento source-id ou source-name."
-
-msgid "Reference must contain source-id element."
-msgstr "A referência deve conter o elemento de id da origem."
 
 msgid "Reference must contain source-id or source-name key."
 msgstr "A referência deve conter a chave source-id ou source-name."
@@ -6534,9 +6472,6 @@ msgstr ""
 msgid "Unable to create replica clone for volume %s."
 msgstr "Não é possível criar clone de réplica para o volume %s."
 
-msgid "Unable to create volume"
-msgstr "Não é possível criar o volume"
-
 #, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
 msgstr ""
@@ -7260,10 +7195,6 @@ msgstr "O volume não é local para este nó"
 msgid "Volume is not local to this node."
 msgstr "O volume não é local para este nó."
 
-#, python-format
-msgid "Volume manager for backend '%s' does not exist."
-msgstr "Gerenciador de volume para o backend '%s' não existe."
-
 msgid ""
 "Volume metadata backup requested but this driver does not yet support this "
 "feature."
@@ -7520,10 +7451,6 @@ msgid "Zone"
 msgstr "Zona"
 
 #, python-format
-msgid "Zoning Policy: %s, not recognized"
-msgstr "Política de Zoneamento: %s, não reconhecido"
-
-#, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."
 msgstr "_create_and_copy_vdisk_data: Falha ao obter atributos para o vdisk %s."
 
@@ -7724,13 +7651,6 @@ msgstr "control_location deve ser definido"
 
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: Os tamanhos de origem e destino diferem."
-
-msgid ""
-"create_consistencygroup_from_src only supports a cgsnapshot source, other "
-"sources cannot be used."
-msgstr ""
-"create_consistencygroup_from_src suporta apenas uma origem cgsnapshot, "
-"outras fontes não podem ser usadas."
 
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."

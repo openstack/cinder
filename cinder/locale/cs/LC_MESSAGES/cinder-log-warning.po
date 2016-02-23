@@ -7,9 +7,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev72\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 23:18+0000\n"
+"POT-Creation-Date: 2016-02-22 23:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -377,10 +377,6 @@ msgstr "Chyba při zpracování názvu cílové zásoby a pole."
 #, python-format
 msgid "Error refreshing volume info. Message: %s"
 msgstr "Chyba při obnovování informaci o svazku. Zpráva: %s"
-
-#, python-format
-msgid "Error running SSH command: %s"
-msgstr "Chyba při provádění příkazu SSH: %s"
 
 #, python-format
 msgid "Error unmapping LUN. Code :%(code)s, Message: %(message)s"
@@ -758,14 +754,6 @@ msgstr ""
 
 msgid "Id not in sort_keys; is sort_keys unique?"
 msgstr "id není v seřazení klíčů; je seřazení jedinečné?"
-
-#, python-format
-msgid ""
-"Ignoring error in delete volume %s: volume not found due to force delete "
-"settings."
-msgstr ""
-"Ignorování chyby ve smazání svazku %s: svazek nenalezen kvůli nastavení "
-"vynucující smazání."
 
 msgid "Image delete encountered an error."
 msgstr "Při mazání obrazu nastala chyba."

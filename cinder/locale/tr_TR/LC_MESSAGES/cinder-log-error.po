@@ -8,9 +8,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 06:30+0000\n"
+"POT-Creation-Date: 2016-02-22 23:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -97,9 +97,6 @@ msgstr "İstek yetkilendiriliyor: %(zfssaurl)s tekrar deneme: %(retry)d ."
 
 msgid "Backend returned err for lun export."
 msgstr "Artalanda çalışan uygulama lun dışa aktarımı için hata döndürdü."
-
-msgid "Backup driver has not been initialized"
-msgstr "Yedekleme sürücüsü başlatılamadı"
 
 #, python-format
 msgid "Backup id %s is not invalid. Skipping reset."
@@ -498,15 +495,8 @@ msgstr "İlkeden depolama grubu ayırırken hata: %s."
 msgid "Error during re-export on driver init."
 msgstr "Sürücü init'inde yeniden dışa aktarma sırasında hata."
 
-#, python-format
-msgid "Error encountered during initialization of driver: %(name)s."
-msgstr "Sürücü başlatma sırasında hata ile karşılaşıldı: %(name)s."
-
 msgid "Error executing SSH command."
 msgstr "SSH komutu yürütülürken hata."
-
-msgid "Error executing command via ssh."
-msgstr "ssh yoluyla komut yürütürken hata."
 
 #, python-format
 msgid "Error executing command via ssh: %s"
@@ -558,9 +548,6 @@ msgstr "Gizli veri alırken hata."
 msgid "Error getting secret metadata."
 msgstr "Gizli metadata alınırken hata."
 
-msgid "Error getting show fcns database info."
-msgstr "fcns veritabanı bilgisini göster sonucu alınırken hata."
-
 msgid "Error getting target pool name and array."
 msgstr "Hedef havuz adı ve dizisi alınırken hata."
 
@@ -588,10 +575,6 @@ msgstr "Önbellekten iş akışı kopyalamasında hata. %s."
 #, python-format
 msgid "Error invalid json: %s"
 msgstr "Geçersiz json hatası: %s"
-
-#, python-format
-msgid "Error loading app %s"
-msgstr "%s uygulaması yüklenirken hata oluştu"
 
 msgid "Error manage existing get volume size."
 msgstr "Varolan mantıksal sürücü boyutu alma işleminde hata."
@@ -851,10 +834,6 @@ msgid "FAST is not supported on this array."
 msgstr "Bu dizide FAST desteklenmiyor."
 
 #, python-format
-msgid "Failed collecting fcns database info for fabric %s"
-msgstr "Fabric %s için fcns veritabanı bilgisi toplanamadı"
-
-#, python-format
 msgid "Failed collecting name server info from fabric %s"
 msgstr "Fabric %s'den ad sunucu bilgisi toplanamadı"
 
@@ -867,9 +846,6 @@ msgstr "Fabric için nsshow bilgisi toplanamadı"
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
 msgstr "Fabric %s için nsshow bilgisi toplanamadı"
-
-msgid "Failed collecting show fcns database for fabric"
-msgstr "Fabric için show fcns veritabanı toplanamadı"
 
 #, python-format
 msgid "Failed destroying volume entry %s"
@@ -887,10 +863,6 @@ msgstr ""
 #, python-format
 msgid "Failed getting active zone set from fabric %s"
 msgstr "Fabric %s'den etkin bölge ayarı alınamadı"
-
-#, python-format
-msgid "Failed getting zone status from fabric %s"
-msgstr "Fabric %s'den bölge durumu alınamadı"
 
 #, python-format
 msgid "Failed image conversion during cache creation: %s"

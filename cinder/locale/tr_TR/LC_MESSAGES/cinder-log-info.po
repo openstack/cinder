@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 06:29+0000\n"
+"POT-Creation-Date: 2016-02-22 23:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -178,10 +178,6 @@ msgid "Backend name is %s."
 msgstr "Arka uç ismi %s."
 
 #, python-format
-msgid "Backend not found in hostname (%s) so using default."
-msgstr "Arka uç makine adında bulunamadı (%s) varsayılan kullanılıyor."
-
-#, python-format
 msgid "Backend type: %s"
 msgstr "Arka uç türü: %s"
 
@@ -226,10 +222,6 @@ msgstr "Mantıksal sürücü %s yedeğine başla."
 
 msgid "Begin detaching volume completed successfully."
 msgstr "Mantıksal sürücünün ayrılmasına başlanması başarıyla tamamlandı."
-
-#, python-format
-msgid "Body: %s"
-msgstr "Gövde: %s"
 
 #, python-format
 msgid "CONCERTO version: %s"
@@ -302,14 +294,6 @@ msgid "Cinder secure environment indicator file exists."
 msgstr "Cinder güvenli ortam göstergesi dosyası mevcut."
 
 #, python-format
-msgid "CiscoFCZoneDriver - Add connection for I-T map: %s"
-msgstr "CiscoFCZoneDriver - I-T haritası için bağlantı ekle: %s"
-
-#, python-format
-msgid "CiscoFCZoneDriver - Delete connection for I-T map: %s"
-msgstr "CiscoFCZoneDriver - I-T haritası için bağlantı sil: %s"
-
-#, python-format
 msgid "Cleaning cache for share %s."
 msgstr "%s paylaşımı için zula temizleniyor."
 
@@ -369,10 +353,6 @@ msgstr ""
 #, python-format
 msgid "Connecting to host: %s."
 msgstr "İstemciye bağlanılıyor: %s."
-
-#, python-format
-msgid "Connector returning fcnsinfo-%s"
-msgstr "Bağlayıcı fcnsinfo-%s döndürüyor"
 
 #, python-format
 msgid "Consistency group %s was deleted successfully."
@@ -835,10 +815,6 @@ msgid "Dissociating volume %s "
 msgstr "Mantıksal sürücü %s ilişiği kesiliyor "
 
 #, python-format
-msgid "Doing %(method)s on %(relative_url)s"
-msgstr "%(relative_url)s'de %(method)s işlemleri yapılıyor"
-
-#, python-format
 msgid "Domain id is %s."
 msgstr "Alan id'si %s."
 
@@ -933,10 +909,6 @@ msgstr "%(vol_id)s için iet oturumu açılamadı: %(e)s"
 #, python-format
 msgid "Fault thrown: %s"
 msgstr "Hata fırlatıldı: %s"
-
-#, python-format
-msgid "Filtered targets for SAN is: %s"
-msgstr "SAN için filtrelenen hedefler: %s"
 
 #, python-format
 msgid "Fixing previous mount %s which was not unmounted correctly."
@@ -1301,10 +1273,6 @@ msgid "No rpm info found for %(pkg)s package."
 msgstr "%(pkg)s paketi için rpm bilgisi bulunamadı."
 
 #, python-format
-msgid "No snapshot found for %(cgsnapshot)s."
-msgstr "%(cgsnapshot)s için anlık görüntü bulunamadı."
-
-#, python-format
 msgid "OpenStack OS Version Info: %(info)s"
 msgstr "OpenStack OS Sürüm Bilgisi: %(info)s"
 
@@ -1336,10 +1304,6 @@ msgstr "Kimlik doğrulama için düz metin kimlik bilgileri kullanılıyor"
 #, python-format
 msgid "Pool id is %s."
 msgstr "Havuz id'si %s."
-
-#, python-format
-msgid "Populating status for cgsnapshot: %(id)s."
-msgstr "cgsnapshot: %(id)s için durum dolduruluyor."
 
 #, python-format
 msgid "Port group instance name is %(foundPortGroupInstanceName)s."
@@ -1732,10 +1696,6 @@ msgstr "%(topic)s düğüm başlatılıyor (sürüm %(version_string)s)"
 #, python-format
 msgid "Starting volume driver %(driver_name)s (%(version)s)"
 msgstr "Mantıksal sürücü %(driver_name)s (%(version)s) başlatılıyor"
-
-#, python-format
-msgid "Starting volume driver %(driver_name)s (%(version)s)."
-msgstr "Mantıksal sürücü sürücüsü başlatılıyor %(driver_name)s (%(version)s)."
 
 #, python-format
 msgid "Storage Group %s was empty."
@@ -2273,26 +2233,6 @@ msgstr "XtremIO SW sürümü %s"
 #, python-format
 msgid "ZFSSA version: %s"
 msgstr "ZFSSA sürümü: %s"
-
-#, python-format
-msgid "Zone exists in I-T mode. Skipping zone creation %s"
-msgstr "Bölge I-T kipinde mevcut. Bölge oluşturma %s atlanıyor"
-
-#, python-format
-msgid "Zone map to add: %s"
-msgstr "Eklenecek bölge haritası: %s"
-
-#, python-format
-msgid "Zoning Policy: %s, not recognized"
-msgstr "Bölgeleme İlkesi: %s, tanınmıyor"
-
-#, python-format
-msgid "Zoning policy for Fabric %s"
-msgstr "Fabric %s için bölgeleme ilkesi"
-
-#, python-format
-msgid "Zoning policy for fabric %s"
-msgstr "Fabric %s için bölgeleme haritası"
 
 #, python-format
 msgid ""

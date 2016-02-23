@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 06:29+0000\n"
+"POT-Creation-Date: 2016-02-22 23:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1180,14 +1180,6 @@ msgstr ""
 "%(cfg_name)s hata=%(err)s)."
 
 #, python-format
-msgid ""
-"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
-"%(err)s)."
-msgstr ""
-"Bölge kümesinin oluşturulup etkinleştirilmesi başarısız: (Bölge kümesi="
-"%(zoneset)s hata=%(err)s)."
-
-#, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
 msgstr "%(begin_period)s %(end_period)s aralığı için kullanımlar oluşturuluyor"
 
@@ -1738,11 +1730,6 @@ msgid "Error deleting volume %(vol)s: %(err)s."
 msgstr "%(vol)s mantıksal sürücüsünün silinmesinde hata: %(err)s."
 
 #, python-format
-msgid "Error deleting volume %s: volume not found."
-msgstr ""
-"%s mantıksal sürücüsünün silinmesinde hata: mantıksal sürücü bulunamadı."
-
-#, python-format
 msgid "Error during evaluator parsing: %(reason)s"
 msgstr "Değerlendirici ayrıştırma sırasında hata: %(reason)s"
 
@@ -1773,10 +1760,6 @@ msgstr "CloudByte API [%(cmd)s] yürütülürken hata, Hata: %(err)s."
 
 msgid "Error executing EQL command"
 msgstr "EQL komutu yürütülürken hata"
-
-#, python-format
-msgid "Error executing command via ssh: %s"
-msgstr "Ssh ile komut çalıştırmada hata: %s"
 
 #, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
@@ -2024,13 +2007,6 @@ msgstr "Mantıksal Sürücü %(volname)s Genişletilemedi"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "3PAR'a giriş başarısız (%(url)s) çünkü %(err)s"
-
-msgid "Failed to access active zoning configuration."
-msgstr "Etkin bölgeleme yapılandırmasına erişim başarısız."
-
-#, python-format
-msgid "Failed to access zoneset status:%s"
-msgstr "Bölge kümesi durumuna erişim başarısız: %s"
 
 #, python-format
 msgid ""
@@ -2467,9 +2443,6 @@ msgstr "%(volume_id)s mantıksal sürücüsüne sahip havuz kimliği alınamadı
 msgid "Failed to get replica info."
 msgstr "Kopya bilgisi alma başarısız."
 
-msgid "Failed to get show fcns database info."
-msgstr "Fcns veri tabanı bilgisi göstermeyi alma başarısız."
-
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "%s mantıksal sürücü boyutu alınamadı"
@@ -2698,9 +2671,6 @@ msgstr ""
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "Mantıksal sürücü için metadata güncellenemedi: %(reason)s"
-
-msgid "Failed to update or delete zoning configuration"
-msgstr "Bölgeleme yapılandırması güncellemesi ya da silinmesi başarısız"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3580,10 +3550,6 @@ msgstr ""
 "seçeneğinin arama servisinin somut bir uygulamasını belirtmesi gerekir."
 
 #, python-format
-msgid "Malformed fcns output string: %s"
-msgstr "Bozuk fcns çıktı karakter dizisi: %s"
-
-#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "Hatalı biçimlendirilmiş mesaj gövdesi: %(reason)s"
 
@@ -3605,19 +3571,11 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "Bozuk scheduler_hints özelliği"
 
 #, python-format
-msgid "Malformed show fcns database string: %s"
-msgstr "Bozuk fcns veri tabanı gösterme karakter dizisi: %s"
-
-#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "Bozuk bölge yapılandırması: (anahtar=%(switch)s zone_config=%(zone_config)s)."
-
-#, python-format
-msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
-msgstr "Bozuk bölge durumu: (anahtar=%(switch)s zone_config=%(zone_config)s)."
 
 msgid "Manage existing get size requires 'id'."
 msgstr "Mevcut alma boyutunu yönetme 'id' gerektirir."
@@ -3865,9 +3823,6 @@ msgstr "NFS dosyası %s keşfedilmemiş."
 msgid "NFS file could not be discovered."
 msgstr "NFS dosyası keşfedilemedi."
 
-msgid "NULL host not allowed for volume backend lookup."
-msgstr "Mantıksal sürücü arka uç araması için NULL istemciye izin verilmez."
-
 msgid "Name"
 msgstr "Ad"
 
@@ -4084,10 +4039,6 @@ msgstr "Geçerli bir sunucu bulunamadı: %(reason)s"
 #, python-format
 msgid "No valid hosts for volume %(id)s with type %(type)s"
 msgstr "%(type)s türü ile %(id)s mantıksal sürücüsü için geçerli istemci yok"
-
-#, python-format
-msgid "No vdisk with the UID specified by source-id %s."
-msgstr "source-id %s ile belirtilen UID'e sahip bir vdisk yok."
 
 #, python-format
 msgid ""
@@ -4388,9 +4339,6 @@ msgstr "Başvuru kaynak-id veya kaynak-isim öğelerini içermeli."
 
 msgid "Reference must contain either source-name or source-id element."
 msgstr "Başvuru ya kaynak-ismi ya da kaynak-kimliği öğelerini içermeli."
-
-msgid "Reference must contain source-id element."
-msgstr "Başvuru source-id öğesini içermeli."
 
 msgid "Reference must contain source-id or source-name key."
 msgstr "Başvuru source-id veya source-name anahtarını içermeli."
@@ -5332,9 +5280,6 @@ msgstr ""
 msgid "Unable to create replica clone for volume %s."
 msgstr "%s mantıksal sürücüsü için kopya çoğaltma oluşturulamıyor."
 
-msgid "Unable to create volume"
-msgstr "Mantıksal sürücü oluşturulamadı"
-
 #, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
 msgstr "%s Tutarlılık Grubu anlık görüntüsü silinemedi"
@@ -5971,12 +5916,6 @@ msgstr "Mantıksal sürücü bu düğüme yerel değil"
 msgid "Volume is not local to this node."
 msgstr "Mantıksal sürücü bu düğüme yerel değil."
 
-#, python-format
-msgid "Volume manager for backend '%s' does not exist."
-msgstr ""
-"Art alanda çalışan uygulama '%s' için mantıksal sürücü yöneticisi mevcut "
-"değil."
-
 msgid ""
 "Volume metadata backup requested but this driver does not yet support this "
 "feature."
@@ -6193,10 +6132,6 @@ msgid "Zone"
 msgstr "Bölge"
 
 #, python-format
-msgid "Zoning Policy: %s, not recognized"
-msgstr "Bölgeleme İlkesi: %s, tanınmıyor"
-
-#, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."
 msgstr ""
 "_create_and_copy_vdisk_data: %s vdiski için özniteliklerin alınması "
@@ -6378,13 +6313,6 @@ msgstr "control_location tanımlanmalıdır"
 
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: Kaynak ve hedef boyutu farklı."
-
-msgid ""
-"create_consistencygroup_from_src only supports a cgsnapshot source, other "
-"sources cannot be used."
-msgstr ""
-"create_consistencygroup_from_src sadece cgsnapshot kaynağını destekler, "
-"diğer kaynaklar kullanılamaz."
 
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."

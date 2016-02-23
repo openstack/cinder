@@ -8,9 +8,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev67\n"
+"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-03 06:30+0000\n"
+"POT-Creation-Date: 2016-02-22 23:21+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -124,9 +124,6 @@ msgstr "Ověřování žádosti:  %(zfssaurl)s pokus: %(retry)d ."
 
 msgid "Backend returned err for lun export."
 msgstr "Při export lun vrátila podpůrná vrstva chybu!"
-
-msgid "Backup driver has not been initialized"
-msgstr "Ovladač zálohy nebyl zaveden."
 
 #, python-format
 msgid "Backup id %s is not invalid. Skipping reset."
@@ -759,15 +756,8 @@ msgstr "Chyba při odloučení skupiny úložiště od zásady: %s"
 msgid "Error during re-export on driver init."
 msgstr "Chyba při znovu exportování během zavádění ovladače."
 
-#, python-format
-msgid "Error encountered during initialization of driver: %(name)s."
-msgstr "Při zavádění ovladače %(name)s došlo k chybě."
-
 msgid "Error executing SSH command."
 msgstr "Chyba při provádění příkazu SSH."
-
-msgid "Error executing command via ssh."
-msgstr "Chyba při provádění příkazu pomocí ssh."
 
 #, python-format
 msgid "Error executing command via ssh: %s"
@@ -826,9 +816,6 @@ msgstr "Chyba při získávání tajných dat."
 msgid "Error getting secret metadata."
 msgstr "Chyba při získávání tajných popisných dat."
 
-msgid "Error getting show fcns database info."
-msgstr "Při získávání informací o zobrazení databáze fcns nastala chyba."
-
 msgid "Error getting target pool name and array."
 msgstr "Chyba při získávání názvu cílového pole a zásoby."
 
@@ -855,10 +842,6 @@ msgstr "Chyba v postupu při kopírování z mezipaměti. %s."
 #, python-format
 msgid "Error invalid json: %s"
 msgstr "Chyba neplatný json: %s"
-
-#, python-format
-msgid "Error loading app %s"
-msgstr "Chyba při načítání aplikace %s"
 
 msgid "Error manage existing get volume size."
 msgstr "Chyba při získávání velikosti spravovaného svazku."
@@ -1131,10 +1114,6 @@ msgid "Exception: %(ex)s"
 msgstr "Výjimka: %(ex)s"
 
 #, python-format
-msgid "Exception: %(ex)s."
-msgstr "Výjimka: %(ex)s."
-
-#, python-format
 msgid "Exception: %s"
 msgstr "Výjimka: %s"
 
@@ -1175,19 +1154,8 @@ msgstr ""
 "Dodatečná specifikace  replication:sync_period musí být větší než 299 a "
 "menší než 31622401 vteřin."
 
-#, python-format
-msgid ""
-"Extra specs must be specified as capabilities:%s='<is> True' or '<is> true'."
-msgstr ""
-"Dodatečné specifikace musí být zadány jako schopnosti: %s='<is> True' nebo "
-"'<is> true'."
-
 msgid "FAST is not supported on this array."
 msgstr "FAST není podporován v tomto poli."
-
-#, python-format
-msgid "Failed collecting fcns database info for fabric %s"
-msgstr "Shromažďování informací databáze fcns pro fabric %s selhalo"
 
 #, python-format
 msgid "Failed collecting name server info from fabric %s"
@@ -1202,9 +1170,6 @@ msgstr "Shromáždění informací nsshow pro fabric selhalo"
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
 msgstr "Shromáždění informací nsshow pro fabric %s selhalo"
-
-msgid "Failed collecting show fcns database for fabric"
-msgstr "Shromažďování zobrazení databáze fcns pro fabric selhalo"
 
 #, python-format
 msgid "Failed destroying volume entry %s"
@@ -1225,10 +1190,6 @@ msgstr ""
 #, python-format
 msgid "Failed getting active zone set from fabric %s"
 msgstr "Získání aktivní zóny nastavené z fabric %s selhalo"
-
-#, python-format
-msgid "Failed getting zone status from fabric %s"
-msgstr "Získání stavu zóny z fabric %s selhalo"
 
 #, python-format
 msgid "Failed image conversion during cache creation: %s"
@@ -2369,10 +2330,6 @@ msgstr ""
 #, python-format
 msgid "Problem cleaning up backup %(bkup)s."
 msgstr "Při čištění zálohy %(bkup)s se vyskytl problém."
-
-#, python-format
-msgid "Problem cleaning up volume %(vol)s."
-msgstr "Při čištění svazku %(vol)s se vyskytl problém."
 
 msgid "Promote volume replica failed."
 msgstr "Povýšení repliky svazku selhalo."
