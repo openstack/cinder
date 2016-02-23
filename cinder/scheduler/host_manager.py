@@ -483,7 +483,7 @@ class HostManager(object):
         for service in volume_services:
             host = service['host']
             if not utils.service_is_up(service):
-                LOG.warn(_LW("volume service is down. (host: %s)") % host)
+                LOG.debug("volume service is down. (host: %s)" % host)
                 continue
             capabilities = self.service_states.get(host, None)
             if capabilities is None:
