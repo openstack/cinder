@@ -879,7 +879,7 @@ class SBSBackupDriver(driver.BackupDriver):
             if ret == False:
                 LOG.error("Deleting backup %s from DSS failed" % backup['id'])
             self._delete_snap_from_src(backup)
-            self.db.backup_destroy(self.context, backup['id'])
+            self.db.backup_destroy(self.context.elevated(), backup['id'])
             last_backup = backup
             i = i+1
         LOG.debug("Last backup deleted %s" % last_backup['id'])
