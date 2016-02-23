@@ -16,6 +16,7 @@ import mock
 import six
 
 from cinder import objects
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
@@ -26,7 +27,8 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
     def test_get_by_id(self, volume_attachment_get):
         db_attachment = fake_volume.fake_db_volume_attachment()
         volume_attachment_get.return_value = db_attachment
-        attachment = objects.VolumeAttachment.get_by_id(self.context, '1')
+        attachment = objects.VolumeAttachment.get_by_id(self.context,
+                                                        fake.attachment_id)
         self._compare(self, db_attachment, attachment)
 
     @mock.patch('cinder.db.volume_attachment_update')
@@ -46,7 +48,8 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         # On the second volume_attachment_get, return the volume attachment
         # with an updated mountpoint
         attachment_get.side_effect = [db_attachment1, db_attachment2]
-        attachment = objects.VolumeAttachment.get_by_id(self.context, '1')
+        attachment = objects.VolumeAttachment.get_by_id(self.context,
+                                                        fake.attachment_id)
         self._compare(self, db_attachment1, attachment)
 
         # mountpoint was updated, so a volume attachment refresh should have a
@@ -57,9 +60,11 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
             call_bool = mock.call.__bool__()
         else:
             call_bool = mock.call.__nonzero__()
-        attachment_get.assert_has_calls([mock.call(self.context, '1'),
+        attachment_get.assert_has_calls([mock.call(self.context,
+                                                   fake.attachment_id),
                                          call_bool,
-                                         mock.call(self.context, '1')])
+                                         mock.call(self.context,
+                                                   fake.attachment_id)])
 
 
 class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):
