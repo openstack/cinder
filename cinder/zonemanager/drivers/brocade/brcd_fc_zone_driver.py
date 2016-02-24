@@ -200,7 +200,6 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     client.add_zones(
                         zone_map, zone_activate,
                         cfgmap_from_fabric)
-                    client.cleanup()
                 except (exception.BrocadeZoningCliException,
                         exception.BrocadeZoningHttpException) as brocade_ex:
                     raise exception.FCZoneDriverException(brocade_ex)
@@ -208,8 +207,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     msg = _("Failed to add zoning configuration.")
                     LOG.exception(msg)
                     raise exception.FCZoneDriverException(msg)
-            LOG.debug("Zones added successfully: %(zonemap)s",
-                      {'zonemap': zone_map})
+                LOG.debug("Zones added successfully: %(zonemap)s",
+                          {'zonemap': zone_map})
+            client.cleanup()
 
     @lockutils.synchronized('brcd', 'fcfabric-', True)
     def delete_connection(self, fabric, initiator_target_map, host_name=None,
@@ -342,7 +342,6 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     conn.delete_zones(
                         zone_name_string, zone_activate,
                         cfgmap_from_fabric)
-                conn.cleanup()
             except (exception.BrocadeZoningCliException,
                     exception.BrocadeZoningHttpException) as brocade_ex:
                 raise exception.FCZoneDriverException(brocade_ex)
@@ -351,6 +350,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                         "configuration.")
                 LOG.exception(msg)
                 raise exception.FCZoneDriverException(msg)
+            finally:
+                conn.cleanup()
 
     def get_san_context(self, target_wwn_list):
         """Lookup SAN context for visible end devices.
@@ -380,7 +381,6 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     nsinfo = conn.get_nameserver_info()
                     LOG.debug("Name server info from fabric: %(nsinfo)s",
                               {'nsinfo': nsinfo})
-                    conn.cleanup()
                 except (exception.BrocadeZoningCliException,
                         exception.BrocadeZoningHttpException):
                     if not conn.is_supported_firmware():
@@ -395,6 +395,8 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     msg = _("Failed to get name server info.")
                     LOG.exception(msg)
                     raise exception.FCZoneDriverException(msg)
+                finally:
+                    conn.cleanup()
                 visible_targets = filter(
                     lambda x: x in formatted_target_list,
                     nsinfo)
