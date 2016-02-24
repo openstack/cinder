@@ -15,6 +15,7 @@
 #
 
 import math
+import paramiko
 import random
 import re
 import string
@@ -33,6 +34,8 @@ import six
 
 from cinder import context
 from cinder import exception
+from cinder import ssh_utils
+from cinder import utils as cinder_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.objects import fields
 from cinder.volume import driver
@@ -97,6 +100,10 @@ storwize_svc_opts = [
                help='If operating in stretched cluster mode, specify the '
                     'name of the pool in which mirrored copies are stored.'
                     'Example: "pool2"'),
+    cfg.StrOpt('storwize_san_secondary_ip',
+               default=None,
+               help='Specifies secondary management IP or hostname to be '
+                    'used if san_ip is invalid or becomes inaccessible.'),
     cfg.BoolOpt('storwize_svc_vol_nofmtdisk',
                 default=False,
                 help='Specifies that the volume not be formatted during '
@@ -1964,6 +1971,100 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._helpers.check_vdisk_opts(self._state, opts)
 
         LOG.debug('leave: check_for_setup_error')
+
+    def _run_ssh(self, cmd_list, check_exit_code=True, attempts=1):
+        cinder_utils.check_ssh_injection(cmd_list)
+        command = ' '.join(cmd_list)
+        if not self.sshpool:
+            try:
+                self.sshpool = self._set_up_sshpool(self.configuration.san_ip)
+            except paramiko.SSHException:
+                LOG.warning(_LW('Unable to use san_ip to create SSHPool. Now '
+                                'attempting to use storwize_san_secondary_ip '
+                                'to create SSHPool.'))
+                if self.configuration.storwize_san_secondary_ip is not None:
+                    self.sshpool = self._set_up_sshpool(
+                        self.configuration.storwize_san_secondary_ip)
+                else:
+                    LOG.warning(_LW('Unable to create SSHPool using san_ip '
+                                    'and not able to use '
+                                    'storwize_san_secondary_ip since it is '
+                                    'not configured.'))
+                    raise
+        try:
+            self._ssh_execute(self.sshpool.command,
+                              check_exit_code, attempts)
+
+        except Exception:
+            # Need to check if creating an SSHPool storwize_san_secondary_ip
+            # before raising an error.
+
+            if self.configuration.storwize_san_secondary_ip is not None:
+
+                LOG.warning(_LW("Unable to execute SSH command. "
+                                "Attempting to switch IP to %s."),
+                            self.configuration.storwize_san_secondary_ip)
+                self.sshpool = self._set_up_sshpool(
+                    self.configuration.storwize_san_secondary_ip)
+                self._ssh_execute(self.sshpool.command,
+                                  check_exit_code, attempts)
+            else:
+                LOG.warning(_LW('Unable to execute SSH command. '
+                                'Not able to use '
+                                'storwize_san_secondary_ip since it is '
+                                'not configured.'))
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE("Error running SSH command: %s"),
+                              command)
+
+    def _set_up_sshpool(self, ip):
+        password = self.configuration.san_password
+        privatekey = self.configuration.san_private_key
+        min_size = self.configuration.ssh_min_pool_conn
+        max_size = self.configuration.ssh_max_pool_conn
+        sshpool = ssh_utils.SSHPool(
+            ip,
+            self.configuration.san_ssh_port,
+            self.configuration.ssh_conn_timeout,
+            self.configuration.san_login,
+            password=password,
+            privatekey=privatekey,
+            min_size=min_size,
+            max_size=max_size)
+
+        return sshpool
+
+    def _ssh_execute(self, sshpool, command,
+                     check_exit_code = True, attempts=1):
+        try:
+            with sshpool.item() as ssh:
+                while attempts > 0:
+                    attempts -= 1
+                    try:
+                        return processutils.ssh_execute(
+                            ssh,
+                            command,
+                            check_exit_code=check_exit_code)
+                    except Exception as e:
+                            LOG.error(_LE('Error has occurred: %s'), e)
+                            last_exception = e
+                            greenthread.sleep(random.randint(20, 500) / 100.0)
+                    try:
+                        raise processutils.ProcessExecutionError(
+                            exit_code=last_exception.exit_code,
+                            stdout=last_exception.stdout,
+                            stderr=last_exception.stderr,
+                            cmd=last_exception.cmd)
+                    except AttributeError:
+                        raise processutils.ProcessExecutionError(
+                            exit_code=-1,
+                            stdout="",
+                            stderr="Error running SSH command",
+                            cmd=command)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error running SSH command: %s"), command)
 
     def ensure_export(self, ctxt, volume):
         """Check that the volume exists on the storage.
