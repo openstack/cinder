@@ -130,9 +130,12 @@ ISCSI_SERVICE_IQN = 'fake_iscsi_service_iqn'
 
 ISCSI_CONNECTION_PROPERTIES = {
     'data': {
-        'auth_method': 'fake',
+        'auth_method': 'fake_method',
         'auth_password': 'auth',
         'auth_username': 'provider',
+        'discovery_auth_method': 'fake_method',
+        'discovery_auth_username': 'provider',
+        'discovery_auth_password': 'auth',
         'target_discovered': False,
         'target_iqn': ISCSI_SERVICE_IQN,
         'target_lun': 42,

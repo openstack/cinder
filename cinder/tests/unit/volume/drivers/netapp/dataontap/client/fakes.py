@@ -91,6 +91,10 @@ FAKE_RESULT_SUCCESS = netapp_api.NaElement('result')
 FAKE_RESULT_SUCCESS.add_attr('status', 'passed')
 
 FAKE_HTTP_OPENER = urllib.request.build_opener()
+INITIATOR_IQN = 'iqn.2015-06.com.netapp:fake_iqn'
+USER_NAME = 'fake_user'
+PASSWORD = 'passw0rd'
+ENCRYPTED_PASSWORD = 'B351F145DA527445'
 
 NO_RECORDS_RESPONSE = etree.XML("""
   <results status="passed">
@@ -676,3 +680,12 @@ SYSTEM_GET_INFO_RESPONSE = etree.XML("""
     </system-info>
   </results>
 """ % {'node': NODE_NAME})
+
+ISCSI_INITIATOR_GET_AUTH_ELEM = etree.XML("""
+<iscsi-initiator-get-auth>
+  <initiator>%s</initiator>
+</iscsi-initiator-get-auth>""" % INITIATOR_IQN)
+
+ISCSI_INITIATOR_AUTH_LIST_INFO_FAILURE = etree.XML("""
+<results status="failed" errno="13112" reason="Initiator %s not found,
+ please use default authentication." />""" % INITIATOR_IQN)

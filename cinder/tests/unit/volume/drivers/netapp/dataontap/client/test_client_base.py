@@ -41,8 +41,10 @@ class NetAppBaseClientTestCase(test.TestCase):
         super(NetAppBaseClientTestCase, self).setUp()
 
         self.mock_object(client_base, 'LOG')
+        self.mock_object(client_base.Client, '_init_ssh_client')
         self.client = client_base.Client(**CONNECTION_INFO)
         self.client.connection = mock.MagicMock()
+        self.client.ssh_client = mock.MagicMock()
         self.connection = self.client.connection
         self.fake_volume = six.text_type(uuid.uuid4())
         self.fake_lun = six.text_type(uuid.uuid4())

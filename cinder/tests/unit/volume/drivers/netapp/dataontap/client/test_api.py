@@ -21,6 +21,7 @@ Tests for NetApp API layer
 import ddt
 from lxml import etree
 import mock
+import paramiko
 import six
 from six.moves import urllib
 
@@ -507,3 +508,104 @@ class NetAppApiInvokeTests(test.TestCase):
 
         self.assertEqual(zapi_fakes.FAKE_API_NAME_ELEMENT.to_string(),
                          netapp_api.create_api_request(**params).to_string())
+
+
+@ddt.ddt
+class SSHUtilTests(test.TestCase):
+    """Test Cases for SSH API invocation."""
+
+    def setUp(self):
+        super(SSHUtilTests, self).setUp()
+        self.mock_object(netapp_api.SSHUtil, '_init_ssh_pool')
+        self.sshutil = netapp_api.SSHUtil('127.0.0.1',
+                                          'fake_user',
+                                          'fake_password')
+
+    def test_execute_command(self):
+        ssh = mock.Mock(paramiko.SSHClient)
+        stdin, stdout, stderr = self._mock_ssh_channel_files(
+            paramiko.ChannelFile)
+        self.mock_object(ssh, 'exec_command',
+                         mock.Mock(return_value=(stdin,
+                                                 stdout,
+                                                 stderr)))
+
+        wait_on_stdout = self.mock_object(self.sshutil, '_wait_on_stdout')
+        stdout_read = self.mock_object(stdout, 'read',
+                                       mock.Mock(return_value=''))
+        self.sshutil.execute_command(ssh, 'ls')
+
+        wait_on_stdout.assert_called_once_with(stdout,
+                                               netapp_api.SSHUtil.RECV_TIMEOUT)
+        stdout_read.assert_called_once_with()
+
+    def test_execute_read_exception(self):
+        ssh = mock.Mock(paramiko.SSHClient)
+        exec_command = self.mock_object(ssh, 'exec_command')
+        exec_command.side_effect = paramiko.SSHException('Failure')
+        wait_on_stdout = self.mock_object(self.sshutil, '_wait_on_stdout')
+
+        self.assertRaises(paramiko.SSHException,
+                          self.sshutil.execute_command, ssh, 'ls')
+        wait_on_stdout.assert_not_called()
+
+    @ddt.data('Password:',
+              'Password: ',
+              'Password: \n\n')
+    def test_execute_command_with_prompt(self, response):
+        ssh = mock.Mock(paramiko.SSHClient)
+        stdin, stdout, stderr = self._mock_ssh_channel_files(paramiko.Channel)
+        stdout_read = self.mock_object(stdout.channel, 'recv',
+                                       mock.Mock(return_value=response))
+        stdin_write = self.mock_object(stdin, 'write')
+        self.mock_object(ssh, 'exec_command',
+                         mock.Mock(return_value=(stdin,
+                                                 stdout,
+                                                 stderr)))
+
+        wait_on_stdout = self.mock_object(self.sshutil, '_wait_on_stdout')
+        self.sshutil.execute_command_with_prompt(ssh, 'sudo ls',
+                                                 'Password:', 'easypass')
+
+        wait_on_stdout.assert_called_once_with(stdout,
+                                               netapp_api.SSHUtil.RECV_TIMEOUT)
+        stdout_read.assert_called_once_with(999)
+        stdin_write.assert_called_once_with('easypass' + '\n')
+
+    def test_execute_command_unexpected_response(self):
+        ssh = mock.Mock(paramiko.SSHClient)
+        stdin, stdout, stderr = self._mock_ssh_channel_files(paramiko.Channel)
+        stdout_read = self.mock_object(stdout.channel, 'recv',
+                                       mock.Mock(return_value='bad response'))
+        self.mock_object(ssh, 'exec_command',
+                         mock.Mock(return_value=(stdin,
+                                                 stdout,
+                                                 stderr)))
+
+        wait_on_stdout = self.mock_object(self.sshutil, '_wait_on_stdout')
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.sshutil.execute_command_with_prompt,
+                          ssh, 'sudo ls', 'Password:', 'easypass')
+
+        wait_on_stdout.assert_called_once_with(stdout,
+                                               netapp_api.SSHUtil.RECV_TIMEOUT)
+        stdout_read.assert_called_once_with(999)
+
+    def test_wait_on_stdout(self):
+        stdout = mock.Mock()
+        stdout.channel = mock.Mock(paramiko.Channel)
+
+        exit_status = self.mock_object(stdout.channel, 'exit_status_ready',
+                                       mock.Mock(return_value=False))
+        self.sshutil._wait_on_stdout(stdout, 1)
+        exit_status.assert_any_call()
+        self.assertTrue(exit_status.call_count > 2)
+
+    def _mock_ssh_channel_files(self, channel):
+        stdin = mock.Mock()
+        stdin.channel = mock.Mock(channel)
+        stdout = mock.Mock()
+        stdout.channel = mock.Mock(channel)
+        stderr = mock.Mock()
+        stderr.channel = mock.Mock(channel)
+        return stdin, stdout, stderr

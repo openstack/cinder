@@ -109,6 +109,18 @@ class Client(client_base.Client):
                 tgt_list.append(d)
         return tgt_list
 
+    def check_iscsi_initiator_exists(self, iqn):
+        """Returns True if initiator exists."""
+        initiator_exists = True
+        try:
+            auth_list = netapp_api.NaElement('iscsi-initiator-auth-list-info')
+            auth_list.add_new_child('initiator', iqn)
+            self.connection.invoke_successfully(auth_list, True)
+        except netapp_api.NaApiError:
+            initiator_exists = False
+
+        return initiator_exists
+
     def get_fc_target_wwpns(self):
         """Gets the FC target details."""
         wwpns = []
@@ -126,6 +138,31 @@ class Client(client_base.Client):
         iscsi_service_iter = netapp_api.NaElement('iscsi-node-get-name')
         result = self.connection.invoke_successfully(iscsi_service_iter, True)
         return result.get_child_content('node-name')
+
+    def set_iscsi_chap_authentication(self, iqn, username, password):
+        """Provides NetApp host's CHAP credentials to the backend."""
+
+        command = ("iscsi security add -i %(iqn)s -s CHAP "
+                   "-p %(password)s -n %(username)s") % {
+            'iqn': iqn,
+            'password': password,
+            'username': username,
+        }
+
+        LOG.debug('Updating CHAP authentication for %(iqn)s.', {'iqn': iqn})
+
+        try:
+            ssh_pool = self.ssh_client.ssh_pool
+            with ssh_pool.item() as ssh:
+                self.ssh_client.execute_command(ssh, command)
+        except Exception as e:
+            msg = _('Failed to set CHAP authentication for target IQN '
+                    '%(iqn)s. Details: %(ex)s') % {
+                'iqn': iqn,
+                'ex': e,
+            }
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
     def get_lun_list(self):
         """Gets the list of LUNs on filer."""

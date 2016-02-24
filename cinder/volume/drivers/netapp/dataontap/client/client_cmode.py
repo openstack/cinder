@@ -91,6 +91,62 @@ class Client(client_base.Client):
                 tgt_list.append(d)
         return tgt_list
 
+    def set_iscsi_chap_authentication(self, iqn, username, password):
+        """Provides NetApp host's CHAP credentials to the backend."""
+        initiator_exists = self.check_iscsi_initiator_exists(iqn)
+
+        command_template = ('iscsi security %(mode)s -vserver %(vserver)s '
+                            '-initiator-name %(iqn)s -auth-type CHAP '
+                            '-user-name %(username)s')
+
+        if initiator_exists:
+            LOG.debug('Updating CHAP authentication for %(iqn)s.',
+                      {'iqn': iqn})
+            command = command_template % {
+                'mode': 'modify',
+                'vserver': self.vserver,
+                'iqn': iqn,
+                'username': username,
+            }
+        else:
+            LOG.debug('Adding initiator %(iqn)s with CHAP authentication.',
+                      {'iqn': iqn})
+            command = command_template % {
+                'mode': 'create',
+                'vserver': self.vserver,
+                'iqn': iqn,
+                'username': username,
+            }
+
+        try:
+            with self.ssh_client.ssh_connect_semaphore:
+                ssh_pool = self.ssh_client.ssh_pool
+                with ssh_pool.item() as ssh:
+                    self.ssh_client.execute_command_with_prompt(ssh,
+                                                                command,
+                                                                'Password:',
+                                                                password)
+        except Exception as e:
+            msg = _('Failed to set CHAP authentication for target IQN %(iqn)s.'
+                    ' Details: %(ex)s') % {
+                'iqn': iqn,
+                'ex': e,
+            }
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def check_iscsi_initiator_exists(self, iqn):
+        """Returns True if initiator exists."""
+        initiator_exists = True
+        try:
+            auth_list = netapp_api.NaElement('iscsi-initiator-get-auth')
+            auth_list.add_new_child('initiator', iqn)
+            self.connection.invoke_successfully(auth_list, True)
+        except netapp_api.NaApiError:
+            initiator_exists = False
+
+        return initiator_exists
+
     def get_fc_target_wwpns(self):
         """Gets the FC target details."""
         wwpns = []
