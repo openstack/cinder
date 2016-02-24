@@ -835,6 +835,8 @@ def quota_reserve(context, resources, quotas, deltas, expire,
 
         # Get the current usages
         usages = _get_quota_usages(context, session, project_id)
+        allocated = quota_allocated_get_all_by_project(context, project_id)
+        allocated.pop('project_id')
 
         # Handle usage refresh
         work = set(deltas.keys())
@@ -915,7 +917,7 @@ def quota_reserve(context, resources, quotas, deltas, expire,
         #            problems.
         overs = [r for r, delta in deltas.items()
                  if quotas[r] >= 0 and delta >= 0 and
-                 quotas[r] < delta + usages[r].total]
+                 quotas[r] < delta + usages[r].total + allocated.get(r, 0)]
 
         # NOTE(Vek): The quota check needs to be in the transaction,
         #            but the transaction doesn't fail just because
