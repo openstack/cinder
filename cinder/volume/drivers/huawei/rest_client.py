@@ -112,7 +112,9 @@ class RestClient(object):
                                   calltimeout=constants.LOGIN_SOCKET_TIMEOUT)
 
             if (result['error']['code'] != 0) or ("data" not in result):
-                LOG.error(_LE("Login error, reason is: %s."), result)
+                LOG.error(_LE("Login error. URL: %(url)s\n"
+                              "Reason: %(reason)s."),
+                          {"url": item_url, "reason": result})
                 continue
 
             LOG.debug('Login success: %(url)s', {'url': item_url})
