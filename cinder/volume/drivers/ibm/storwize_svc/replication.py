@@ -357,7 +357,7 @@ class StorwizeSVCReplicationGlobalMirror(
         try:
             rel_info = self.driver._helpers.get_relationship_info(vref)
         except Exception as e:
-            msg = (_('Fail to get remote copy information for %(volume)s '
+            msg = (_('Failed to get remote copy information for %(volume)s '
                      'due to %(err)s.'), {'volume': vref['id'], 'err': e})
             LOG.error(msg)
             raise exception.VolumeDriverException(data=msg)
@@ -379,7 +379,7 @@ class StorwizeSVCReplicationGlobalMirror(
         try:
             rel_info = self.driver._helpers.get_relationship_info(vref)
         except Exception as e:
-            msg = (_('Fail to get remote copy information for %(volume)s '
+            msg = (_('Failed to get remote copy information for %(volume)s '
                      'due to %(err)s'), {'volume': vref['id'], 'err': e})
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
