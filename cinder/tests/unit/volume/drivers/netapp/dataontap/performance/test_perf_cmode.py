@@ -142,8 +142,8 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
     def test_update_performance_cache(self):
 
         self.perf_library.performance_counters = {
-            'node1': range(11, 21),
-            'node2': range(21, 31),
+            'node1': list(range(11, 21)),
+            'node2': list(range(21, 31)),
         }
         mock_get_aggregates_for_pools = self.mock_object(
             self.perf_library, '_get_aggregates_for_pools',
@@ -162,8 +162,8 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
         self.perf_library.update_performance_cache(self.fake_volumes)
 
         expected_performance_counters = {
-            'node1': range(12, 22),
-            'node2': range(22, 32),
+            'node1': list(range(12, 22)),
+            'node2': list(range(22, 32)),
         }
         self.assertEqual(expected_performance_counters,
                          self.perf_library.performance_counters)

@@ -41,7 +41,7 @@ def get_fake_volume():
 
 FAKE_MAPPINGS = [{u'lun': 1}]
 
-FAKE_USED_UP_MAPPINGS = map(lambda n: {u'lun': n}, range(256))
+FAKE_USED_UP_MAPPINGS = [{u'lun': n} for n in range(256)]
 
 FAKE_USED_UP_LUN_ID_DICT = {n: 1 for n in range(256)}
 

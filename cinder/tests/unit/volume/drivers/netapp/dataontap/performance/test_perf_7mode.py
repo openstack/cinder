@@ -87,7 +87,7 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
     def test_update_performance_cache(self):
 
-        self.perf_library.performance_counters = range(11, 21)
+        self.perf_library.performance_counters = list(range(11, 21))
 
         mock_get_node_utilization_counters = self.mock_object(
             self.perf_library, '_get_node_utilization_counters',
@@ -98,7 +98,8 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         self.perf_library.update_performance_cache()
 
-        self.assertEqual(range(12, 22), self.perf_library.performance_counters)
+        self.assertEqual(list(range(12, 22)),
+                         self.perf_library.performance_counters)
         self.assertEqual(25, self.perf_library.utilization)
         mock_get_node_utilization_counters.assert_called_once_with()
         mock_get_node_utilization.assert_called_once_with(12, 21, fake.NODE)
@@ -120,7 +121,7 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
     def test_update_performance_cache_counters_unavailable(self):
 
-        self.perf_library.performance_counters = range(11, 21)
+        self.perf_library.performance_counters = list(range(11, 21))
         self.perf_library.utilization = 55.0
 
         mock_get_node_utilization_counters = self.mock_object(
@@ -132,7 +133,7 @@ class Performance7modeLibraryTestCase(test.TestCase):
 
         self.perf_library.update_performance_cache()
 
-        self.assertEqual(range(11, 21),
+        self.assertEqual(list(range(11, 21)),
                          self.perf_library.performance_counters)
         self.assertEqual(55.0, self.perf_library.utilization)
         mock_get_node_utilization_counters.assert_called_once_with()

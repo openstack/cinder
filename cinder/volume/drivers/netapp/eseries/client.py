@@ -488,21 +488,18 @@ class RestClient(WebserviceClient):
     def get_volume_mappings_for_volume(self, volume):
         """Gets all host mappings for given volume from array."""
         mappings = self.get_volume_mappings() or []
-        host_maps = filter(lambda x: x.get('volumeRef') == volume['volumeRef'],
-                           mappings)
-        return host_maps
+        return [x for x in mappings
+                if x.get('volumeRef') == volume['volumeRef']]
 
     def get_volume_mappings_for_host(self, host_ref):
         """Gets all volume mappings for given host from array."""
         mappings = self.get_volume_mappings() or []
-        host_maps = filter(lambda x: x.get('mapRef') == host_ref, mappings)
-        return host_maps
+        return [x for x in mappings if x.get('mapRef') == host_ref]
 
     def get_volume_mappings_for_host_group(self, hg_ref):
         """Gets all volume mappings for given host group from array."""
         mappings = self.get_volume_mappings() or []
-        hg_maps = filter(lambda x: x.get('mapRef') == hg_ref, mappings)
-        return hg_maps
+        return [x for x in mappings if x.get('mapRef') == hg_ref]
 
     def create_volume_mapping(self, object_id, target_id, lun):
         """Creates volume mapping on array."""
