@@ -24,7 +24,29 @@ import mock
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp.eseries import utils
 import cinder.volume.drivers.netapp.options as na_opts
+import cinder.volume.drivers.netapp.utils as na_utils
 
+FAKE_CINDER_VOLUME = {
+    'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'size': 1,
+    'volume_name': 'lun1',
+    'host': 'hostname@backend#DDP',
+    'os_type': 'linux',
+    'provider_location': 'lun1',
+    'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'provider_auth': 'provider a b',
+    'project_id': 'project',
+    'display_name': None,
+    'display_description': 'lun1',
+    'volume_type_id': None,
+    'migration_status': None,
+    'attach_status': "detached"
+}
+
+FAKE_CINDER_SNAPSHOT = {
+    'id': '78f95b9d-3f02-4781-a512-1a1c921d48a1',
+    'volume': FAKE_CINDER_VOLUME
+}
 
 MULTIATTACH_HOST_GROUP = {
     'clusterRef': '8500000060080E500023C7340036035F515B78FC',
@@ -636,15 +658,15 @@ STORAGE_SYSTEM = {
 }
 
 SNAPSHOT_GROUP = {
+    'id': '3300000060080E500023C7340000098D5294AC9A',
     'status': 'optimal',
     'autoDeleteLimit': 0,
     'maxRepositoryCapacity': '-65536',
     'rollbackStatus': 'none',
     'unusableRepositoryCapacity': '0',
-    'pitGroupRef':
-    '3300000060080E500023C7340000098D5294AC9A',
+    'pitGroupRef': '3300000060080E500023C7340000098D5294AC9A',
     'clusterSize': 65536,
-    'label': 'C6JICISVHNG2TFZX4XB5ZWL7O',
+    'label': 'C6JICISVHNG2TFZX4XB5ZWL7F',
     'maxBaseCapacity': '476187142128128',
     'repositoryVolume': '3600000060080E500023BB3400001FA952CEF12C',
     'fullWarnThreshold': 99,
@@ -655,10 +677,13 @@ SNAPSHOT_GROUP = {
     'consistencyGroupRef': '0000000000000000000000000000000000000000',
     'volumeHandle': 49153,
     'consistencyGroup': False,
-    'baseVolume': '0200000060080E500023C734000009825294A534'
+    'baseVolume': '0200000060080E500023C734000009825294A534',
+    'snapshotCount': 32
 }
 
 SNAPSHOT_IMAGE = {
+    'id': '3400000060080E500023BB3400631F335294A5A8',
+    'baseVol': '0200000060080E500023C734000009825294A534',
     'status': 'optimal',
     'pitCapacity': '2147483648',
     'pitTimestamp': '1389315375',
@@ -669,6 +694,84 @@ SNAPSHOT_IMAGE = {
     'isRollbackSource': False,
     'pitRef': '3400000060080E500023BB3400631F335294A5A8',
     'pitSequenceNumber': '19'
+}
+
+SNAPSHOT_VOLUME = {
+    'id': '35000000600A0980006077F80000F8BF566581AA',
+    'viewRef': '35000000600A0980006077F80000F8BF566581AA',
+    'worldWideName': '600A0980006077F80000F8BF566581AA',
+    'baseVol': '02000000600A0980006077F80000F89B56657E26',
+    'basePIT': '0000000000000000000000000000000000000000',
+    'boundToPIT': False,
+    'accessMode': 'readOnly',
+    'label': 'UZJ45SLUKNGWRF3QZHBTOG4C4E_DEL',
+    'status': 'stopped',
+    'currentManager': '070000000000000000000001',
+    'preferredManager': '070000000000000000000001',
+    'repositoryVolume': '0000000000000000000000000000000000000000',
+    'fullWarnThreshold': 0,
+    'viewTime': '1449453419',
+    'viewSequenceNumber': '2104',
+    'volumeHandle': 16510,
+    'clusterSize': 0,
+    'maxRepositoryCapacity': '0',
+    'unusableRepositoryCapacity': '0',
+    'membership': {
+        'viewType': 'individual',
+        'cgViewRef': None
+    },
+    'mgmtClientAttribute': 0,
+    'offline': False,
+    'volumeFull': False,
+    'repositoryCapacity': '0',
+    'baseVolumeCapacity': '1073741824',
+    'totalSizeInBytes': '0',
+    'consistencyGroupId': None,
+    'volumeCopyTarget': False,
+    'cloneCopy': False,
+    'volumeCopySource': False,
+    'pitBaseVolume': False,
+    'asyncMirrorTarget': False,
+    'asyncMirrorSource': False,
+    'protectionType': 'type0Protection',
+    'remoteMirrorSource': False,
+    'remoteMirrorTarget': False,
+    'wwn': '600A0980006077F80000F8BF566581AA',
+    'listOfMappings': [],
+    'mapped': False,
+    'currentControllerId': '070000000000000000000001',
+    'preferredControllerId': '070000000000000000000001',
+    'onlineVolumeCopy': False,
+    'objectType': 'pitView',
+    'name': 'UZJ45SLUKNGWRF3QZHBTOG4C4E',
+}
+
+FAKE_BACKEND_STORE = {
+    'key': 'cinder-snapshots',
+    'value': '{"3300000060080E50003416400000E90D56B047E5":"2"}'
+}
+
+FAKE_CINDER_VOLUME = {
+    'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'size': 1,
+    'volume_name': 'lun1',
+    'host': 'hostname@backend#DDP',
+    'os_type': 'linux',
+    'provider_location': 'lun1',
+    'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'provider_auth': 'provider a b',
+    'project_id': 'project',
+    'display_name': None,
+    'display_description': 'lun1',
+    'volume_type_id': None,
+    'migration_status': None,
+    'attach_status': "detached"
+}
+
+FAKE_CINDER_SNAPSHOT = {
+    'id': '78f95b9d-3f02-4781-a512-1a1c921d48a1',
+    'volume': FAKE_CINDER_VOLUME,
+    'provider_id': '3400000060080E500023BB3400631F335294A5A8'
 }
 
 HARDWARE_INVENTORY_SINGLE_CONTROLLER = {
@@ -909,6 +1012,15 @@ FAKE_CLIENT_PARAMS = {
 }
 
 
+def list_snapshot_groups(numGroups):
+    snapshots = []
+    for n in range(0, numGroups):
+        s = copy.deepcopy(SNAPSHOT_GROUP)
+        s['label'] = s['label'][:-1] + str(n)
+        snapshots.append(s)
+    return snapshots
+
+
 def create_configuration_eseries():
     config = conf.Configuration(None)
     config.append_config_values(na_opts.netapp_connection_opts)
@@ -958,10 +1070,13 @@ def deepcopy_return_value_class_decorator(cls):
 
 @deepcopy_return_value_class_decorator
 class FakeEseriesClient(object):
-    features = mock.Mock()
+    features = na_utils.Features()
 
     def __init__(self, *args, **kwargs):
-        pass
+        self.features.add_feature('AUTOSUPPORT')
+        self.features.add_feature('SSC_API_V2')
+        self.features.add_feature('REST_1_3_RELEASE')
+        self.features.add_feature('REST_1_4_RELEASE')
 
     def list_storage_pools(self):
         return STORAGE_POOLS
@@ -1028,6 +1143,9 @@ class FakeEseriesClient(object):
     def get_host(self, *args, **kwargs):
         return HOST
 
+    def create_volume(self, *args, **kwargs):
+        return VOLUME
+
     def create_volume_mapping(self, *args, **kwargs):
         return VOLUME_MAPPING
 
@@ -1060,6 +1178,9 @@ class FakeEseriesClient(object):
 
     def list_snapshot_images(self):
         return [SNAPSHOT_IMAGE]
+
+    def list_snapshot_image(self):
+        return SNAPSHOT_IMAGE
 
     def list_host_types(self):
         return [
@@ -1117,6 +1238,24 @@ class FakeEseriesClient(object):
     def delete_vol_copy_job(self, *args, **kwargs):
         pass
 
+    def create_snapshot_image(self, *args, **kwargs):
+        return SNAPSHOT_IMAGE
+
+    def create_snapshot_volume(self, *args, **kwargs):
+        return SNAPSHOT_VOLUME
+
+    def list_snapshot_volumes(self, *args, **kwargs):
+        return [SNAPSHOT_VOLUME]
+
+    def list_snapshot_volume(self, *args, **kwargs):
+        return SNAPSHOT_IMAGE
+
+    def create_snapshot_group(self, *args, **kwargs):
+        return SNAPSHOT_GROUP
+
+    def list_snapshot_group(self, *args, **kwargs):
+        return SNAPSHOT_GROUP
+
     def delete_snapshot_volume(self, *args, **kwargs):
         pass
 
@@ -1124,4 +1263,22 @@ class FakeEseriesClient(object):
         return [WWPN_2]
 
     def update_stored_system_password(self, *args, **kwargs):
+        pass
+
+    def update_snapshot_volume(self, *args, **kwargs):
+        return SNAPSHOT_VOLUME
+
+    def delete_snapshot_image(self, *args, **kwargs):
+        pass
+
+    def delete_snapshot_group(self, *args, **kwargs):
+        pass
+
+    def restart_snapshot_volume(self, *args, **kwargs):
+        pass
+
+    def list_backend_store(self, key):
+        return {}
+
+    def save_backend_store(self, key, val):
         pass

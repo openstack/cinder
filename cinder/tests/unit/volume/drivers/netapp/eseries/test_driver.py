@@ -93,9 +93,12 @@ class NetAppESeriesDriverTestCase(object):
         self.library = self.driver.library
         self.mock_object(self.library,
                          '_check_mode_get_or_register_storage_system')
+        self.mock_object(self.library, '_version_check')
         self.mock_object(self.driver.library, '_check_storage_system')
         self.driver.do_setup(context='context')
         self.driver.library._client._endpoint = fakes.FAKE_ENDPOINT_HTTP
+        self.driver.library._client.features = mock.Mock()
+        self.driver.library._client.features.REST_1_4_RELEASE = True
 
     def _set_config(self, configuration):
         configuration.netapp_storage_family = 'eseries'
@@ -126,13 +129,11 @@ class NetAppESeriesDriverTestCase(object):
         pass
 
     def test_embedded_mode(self):
-        self.mock_object(self.driver.library,
-                         '_check_mode_get_or_register_storage_system')
         self.mock_object(client.RestClient, '_init_features')
         configuration = self._set_config(self.create_configuration())
         configuration.netapp_controller_ips = '127.0.0.1,127.0.0.3'
-
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(driver.library, '_version_check')
         self.mock_object(client.RestClient, 'list_storage_systems', mock.Mock(
             return_value=[fakes.STORAGE_SYSTEM]))
         driver.do_setup(context='context')

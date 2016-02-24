@@ -114,6 +114,20 @@ class NetAppESeriesLibrary(object):
 
     DEFAULT_HOST_TYPE = 'linux_dm_mp'
 
+    # Define name marker string to use in snapshot groups that are for copying
+    # volumes.  This is to differentiate them from ordinary snapshot groups.
+    SNAPSHOT_VOL_COPY_SUFFIX = 'SGCV'
+    # Define a name marker string used to identify snapshot volumes that have
+    # an underlying snapshot that is awaiting deletion.
+    SNAPSHOT_VOL_DEL_SUFFIX = '_DEL'
+    # Maximum number of snapshots per snapshot group
+    MAX_SNAPSHOT_COUNT = 32
+    # Maximum number of snapshot groups
+    MAX_SNAPSHOT_GROUP_COUNT = 4
+    RESERVED_SNAPSHOT_GROUP_COUNT = 1
+    SNAPSHOT_PERSISTENT_STORE_KEY = 'cinder-snapshots'
+    SNAPSHOT_PERSISTENT_STORE_LOCK = str(uuid.uuid4())
+
     def __init__(self, driver_name, driver_protocol="iSCSI",
                  configuration=None, **kwargs):
         self.configuration = configuration
@@ -139,6 +153,7 @@ class NetAppESeriesLibrary(object):
 
         self._client = self._create_rest_client(self.configuration)
         self._check_mode_get_or_register_storage_system()
+        self._version_check()
         if self.configuration.netapp_enable_multiattach:
             self._ensure_multi_attach_host_group_exists()
 
@@ -158,6 +173,17 @@ class NetAppESeriesLibrary(object):
             service_path=configuration.netapp_webservice_path,
             username=configuration.netapp_login,
             password=configuration.netapp_password)
+
+    def _version_check(self):
+        """Ensure that the minimum version of the REST API is available"""
+        if not self._client.features.REST_1_4_RELEASE:
+            min_version = (
+                self._client.features.REST_1_4_RELEASE.minimum_version)
+            raise exception.NetAppDriverException(
+                'This version (%(cur)s of the NetApp SANtricity Webservices '
+                'Proxy is not supported. Install version %(supp)s or '
+                'later.' % {'cur': self._client.api_version,
+                            'supp': min_version})
 
     def _start_periodic_tasks(self):
         ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
@@ -356,24 +382,99 @@ class NetAppESeriesLibrary(object):
 
         return self._client.list_volume(uid)
 
-    def _get_snapshot_group_for_snapshot(self, snapshot_id):
-        label = utils.convert_uuid_to_es_fmt(snapshot_id)
+    def _get_snapshot_group_for_snapshot(self, snapshot):
+        snapshot = self._get_snapshot(snapshot)
+        try:
+            return self._client.list_snapshot_group(snapshot['pitGroupRef'])
+        except (exception.NetAppDriverException,
+                eseries_exc.WebServiceException):
+            msg = _("Specified snapshot group with id %s could not be found.")
+            raise exception.NotFound(msg % snapshot['pitGroupRef'])
+
+    def _get_snapshot_legacy(self, snapshot):
+        """Find a E-Series snapshot by the name of the snapshot group.
+
+        Snapshots were previously identified by the unique name of the
+        snapshot group. A snapshot volume is now utilized to uniquely
+        identify the snapshot, so any snapshots previously defined in this
+        way must be updated.
+
+        :param snapshot_id: Cinder snapshot identifer
+        :return: An E-Series snapshot image
+        """
+        label = utils.convert_uuid_to_es_fmt(snapshot['id'])
         for group in self._client.list_snapshot_groups():
             if group['label'] == label:
-                return group
-        msg = _("Specified snapshot group with label %s could not be found.")
-        raise exception.NotFound(msg % label)
+                image = self._get_oldest_image_in_snapshot_group(group['id'])
+                group_label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
+                # Modify the group label so we don't have a name collision
+                self._client.update_snapshot_group(group['id'],
+                                                   group_label)
 
-    def _get_latest_image_in_snapshot_group(self, snapshot_id):
-        group = self._get_snapshot_group_for_snapshot(snapshot_id)
+                snapshot.update({'provider_id': image['id']})
+                snapshot.save()
+
+                return image
+
+        raise exception.NotFound(_('Snapshot with id of %s could not be '
+                                   'found.') % snapshot['id'])
+
+    def _get_snapshot(self, snapshot):
+        """Find a E-Series snapshot by its Cinder identifier
+
+        An E-Series snapshot image does not have a configuration name/label,
+        so we define a snapshot volume underneath of it that will help us to
+        identify it. We retrieve the snapshot volume with the matching name,
+        and then we find its underlying snapshot.
+
+        :param snapshot_id: Cinder snapshot identifer
+        :return: An E-Series snapshot image
+        """
+        try:
+            return self._client.list_snapshot_image(
+                snapshot.get('provider_id'))
+        except (eseries_exc.WebServiceException or
+                exception.NetAppDriverException):
+            try:
+                LOG.debug('Unable to locate snapshot by its id, falling '
+                          'back to legacy behavior.')
+                return self._get_snapshot_legacy(snapshot)
+            except exception.NetAppDriverException:
+                raise exception.NotFound(_('Snapshot with id of %s could not'
+                                           ' be found.') % snapshot['id'])
+
+    def _get_snapshot_group(self, snapshot_group_id):
+        try:
+            return self._client.list_snapshot_group(snapshot_group_id)
+        except exception.NetAppDriverException:
+            raise exception.NotFound(_('Unable to retrieve snapshot group '
+                                       'with id of %s.') % snapshot_group_id)
+
+    def _get_ordered_images_in_snapshot_group(self, snapshot_group_id):
         images = self._client.list_snapshot_images()
         if images:
             filtered_images = filter(lambda img: (img['pitGroupRef'] ==
-                                                  group['pitGroupRef']),
+                                                  snapshot_group_id),
                                      images)
             sorted_imgs = sorted(filtered_images, key=lambda x: x[
                 'pitTimestamp'])
-            return sorted_imgs[0]
+            return sorted_imgs
+        return list()
+
+    def _get_oldest_image_in_snapshot_group(self, snapshot_group_id):
+        group = self._get_snapshot_group(snapshot_group_id)
+        images = self._get_ordered_images_in_snapshot_group(snapshot_group_id)
+        if images:
+            return images[0]
+
+        msg = _("No snapshot image found in snapshot group %s.")
+        raise exception.NotFound(msg % group['label'])
+
+    def _get_latest_image_in_snapshot_group(self, snapshot_group_id):
+        group = self._get_snapshot_group(snapshot_group_id)
+        images = self._get_ordered_images_in_snapshot_group(snapshot_group_id)
+        if images:
+            return images[-1]
 
         msg = _("No snapshot image found in snapshot group %s.")
         raise exception.NotFound(msg % group['label'])
@@ -524,14 +625,24 @@ class NetAppESeriesLibrary(object):
         msg = _("Failure creating volume %s.")
         raise exception.NetAppDriverException(msg % label)
 
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot."""
+    def _create_volume_from_snapshot(self, volume, image):
+        """Define a new volume based on an E-Series snapshot image.
+
+        This method should be synchronized on the snapshot id.
+
+        :param volume: a Cinder volume
+        :param image: an E-Series snapshot image
+        :return: the clone volume
+        """
         label = utils.convert_uuid_to_es_fmt(volume['id'])
         size = volume['size']
+
         dst_vol = self._schedule_and_create_volume(label, size)
         try:
             src_vol = None
-            src_vol = self._create_snapshot_volume(snapshot['id'])
+            src_vol = self._client.create_snapshot_volume(
+                image['id'], utils.convert_uuid_to_es_fmt(
+                    uuid.uuid4()), image['baseVol'])
             self._copy_volume_high_prior_readonly(src_vol, dst_vol)
             LOG.info(_LI("Created volume with label %s."), label)
         except exception.NetAppDriverException:
@@ -542,21 +653,18 @@ class NetAppESeriesLibrary(object):
                 try:
                     self._client.delete_snapshot_volume(src_vol['id'])
                 except exception.NetAppDriverException as e:
-                    LOG.error(_LE("Failure deleting snap vol. Error: %s."), e)
+                    LOG.error(_LE("Failure restarting snap vol. Error: %s."),
+                              e)
             else:
                 LOG.warning(_LW("Snapshot volume not found."))
 
-    def _create_snapshot_volume(self, snapshot_id):
-        """Creates snapshot volume for given group with snapshot_id."""
-        group = self._get_snapshot_group_for_snapshot(snapshot_id)
-        LOG.debug("Creating snap vol for group %s", group['label'])
-        image = self._get_latest_image_in_snapshot_group(snapshot_id)
-        label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
-        capacity = int(image['pitCapacity']) / units.Gi
-        storage_pools = self._get_sorted_available_storage_pools(capacity)
-        s_id = storage_pools[0]['volumeGroupRef']
-        return self._client.create_snapshot_volume(image['pitRef'], label,
-                                                   group['baseVolume'], s_id)
+        return dst_vol
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot."""
+        es_snapshot = self._get_snapshot(snapshot)
+        cinder_utils.synchronized(snapshot['id'])(
+            self._create_volume_from_snapshot)(volume, es_snapshot)
 
     def _copy_volume_high_prior_readonly(self, src_vol, dst_vol):
         """Copies src volume to dest volume."""
@@ -596,12 +704,17 @@ class NetAppESeriesLibrary(object):
         """Creates a clone of the specified volume."""
         snapshot = {'id': uuid.uuid4(), 'volume_id': src_vref['id'],
                     'volume': src_vref}
-        self.create_snapshot(snapshot)
+        group_name = (utils.convert_uuid_to_es_fmt(snapshot['id']) +
+                      self.SNAPSHOT_VOL_COPY_SUFFIX)
+        es_vol = self._get_volume(src_vref['id'])
+
+        es_snapshot = self._create_es_snapshot(es_vol, group_name)
+
         try:
-            self.create_volume_from_snapshot(volume, snapshot)
+            self._create_volume_from_snapshot(volume, es_snapshot)
         finally:
             try:
-                self.delete_snapshot(snapshot)
+                self._client.delete_snapshot_group(es_snapshot['pitGroupRef'])
             except exception.NetAppDriverException:
                 LOG.warning(_LW("Failure deleting temp snapshot %s."),
                             snapshot['id'])
@@ -615,33 +728,332 @@ class NetAppESeriesLibrary(object):
             LOG.warning(_LW("Volume %s already deleted."), volume['id'])
             return
 
-    def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
+    def _create_snapshot_volume(self, snapshot_id, label=None):
+        """Creates snapshot volume for given group with snapshot_id."""
+        image = self._get_snapshot(snapshot_id)
+        group = self._get_snapshot_group(image['pitGroupRef'])
+        LOG.debug("Creating snap vol for group %s", group['label'])
+        if label is None:
+            label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
+        return self._client.create_snapshot_volume(image['pitRef'], label,
+                                                   image['baseVol'])
+
+    def _create_snapshot_group(self, label, volume, percentage_capacity=20.0):
+        """Define a new snapshot group for a volume
+
+        :param label: the label for the snapshot group
+        :param volume: an E-Series volume
+        :param percentage_capacity: an optional repository percentage
+        :return a new snapshot group
+        """
+
+        # Newer versions of the REST API are capable of automatically finding
+        # the best pool candidate
+        if not self._client.features.REST_1_3_RELEASE:
+            vol_size_gb = int(volume['totalSizeInBytes']) / units.Gi
+            pools = self._get_sorted_available_storage_pools(vol_size_gb)
+            volume_pool = next(pool for pool in pools if volume[
+                'volumeGroupRef'] == pool['id'])
+
+            # A disk pool can only utilize a candidate from its own pool
+            if volume_pool.get('raidLevel') == 'raidDiskPool':
+                pool_id_to_use = volume_pool['volumeGroupRef']
+
+            # Otherwise, choose the best available pool
+            else:
+                pool_id_to_use = pools[0]['volumeGroupRef']
+            group = self._client.create_snapshot_group(
+                label, volume['volumeRef'], pool_id_to_use,
+                repo_percent=percentage_capacity)
+
+        else:
+            group = self._client.create_snapshot_group(
+                label, volume['volumeRef'], repo_percent=percentage_capacity)
+
+        return group
+
+    def _get_snapshot_groups_for_volume(self, vol):
+        """Find all snapshot groups associated with an E-Series volume
+
+        :param vol: An E-Series volume object
+        :return A list of snapshot groups
+        :raise NetAppDriverException: if the list of snapshot groups cannot be
+        retrieved
+        """
+        return [grp for grp in self._client.list_snapshot_groups()
+                if grp['baseVolume'] == vol['id']]
+
+    def _get_available_snapshot_group(self, vol):
+        """Find a snapshot group that has remaining capacity for snapshots.
+
+        In order to minimize repository usage, we prioritize the snapshot
+        group with remaining snapshot capacity that has most recently had a
+        snapshot defined on it.
+
+        :param vol: An E-Series volume object
+        :return A valid snapshot group that has available snapshot capacity,
+         or None
+        :raise NetAppDriverException: if the list of snapshot groups cannot be
+        retrieved
+        """
+        groups_for_v = self._get_snapshot_groups_for_volume(vol)
+
+        # Filter out reserved snapshot groups
+        groups = filter(lambda g: self.SNAPSHOT_VOL_COPY_SUFFIX not in g[
+            'label'], groups_for_v)
+
+        # Find all groups with free snapshot capacity
+        groups = [group for group in groups if group.get('snapshotCount') <
+                  self.MAX_SNAPSHOT_COUNT]
+
+        # Order by the last defined snapshot on the group
+        if len(groups) > 1:
+            group_by_id = {g['id']: g for g in groups}
+
+            snap_imgs = list()
+            for group in groups:
+                try:
+                    snap_imgs.append(
+                        self._get_latest_image_in_snapshot_group(group['id']))
+                except exception.NotFound:
+                    pass
+
+            snap_imgs = sorted(snap_imgs, key=lambda x: x['pitSequenceNumber'])
+
+            if snap_imgs:
+                # The newest image
+                img = snap_imgs[-1]
+                return group_by_id[img['pitGroupRef']]
+            else:
+                return groups[0] if groups else None
+
+        # Skip the snapshot image checks if there is only one snapshot group
+        elif groups:
+            return groups[0]
+        else:
+            return None
+
+    def _create_es_snapshot(self, vol, group_name=None):
         snap_grp, snap_image = None, None
-        snapshot_name = utils.convert_uuid_to_es_fmt(snapshot['id'])
-        os_vol = snapshot['volume']
-        vol = self._get_volume(os_vol['name_id'])
-        vol_size_gb = int(vol['totalSizeInBytes']) / units.Gi
-        pools = self._get_sorted_available_storage_pools(vol_size_gb)
         try:
-            snap_grp = self._client.create_snapshot_group(
-                snapshot_name, vol['volumeRef'], pools[0]['volumeGroupRef'])
-            snap_image = self._client.create_snapshot_image(
-                snap_grp['pitGroupRef'])
-            LOG.info(_LI("Created snap grp with label %s."), snapshot_name)
+            snap_grp = self._get_available_snapshot_group(vol)
+            # If a snapshot group is not available, create one if possible
+            if snap_grp is None:
+                snap_groups_for_vol = self._get_snapshot_groups_for_volume(
+                    vol)
+
+                # We need a reserved snapshot group
+                if (group_name is not None and
+                        (self.SNAPSHOT_VOL_COPY_SUFFIX in group_name)):
+
+                    # First we search for an existing reserved group
+                    for grp in snap_groups_for_vol:
+                        if grp['label'].endswith(
+                                self.SNAPSHOT_VOL_COPY_SUFFIX):
+                            snap_grp = grp
+                            break
+
+                    # No reserved group exists, so we create it
+                    if (snap_grp is None and
+                            (len(snap_groups_for_vol) <
+                             self.MAX_SNAPSHOT_GROUP_COUNT)):
+                        snap_grp = self._create_snapshot_group(group_name,
+                                                               vol)
+
+                # Ensure we don't exceed the snapshot group limit
+                elif (len(snap_groups_for_vol) <
+                      (self.MAX_SNAPSHOT_GROUP_COUNT -
+                       self.RESERVED_SNAPSHOT_GROUP_COUNT)):
+
+                    label = group_name if group_name is not None else (
+                        utils.convert_uuid_to_es_fmt(uuid.uuid4()))
+
+                    snap_grp = self._create_snapshot_group(label, vol)
+                    LOG.info(_LI("Created snap grp with label %s."), label)
+
+                # We couldn't retrieve or create a snapshot group
+                if snap_grp is None:
+                    raise exception.SnapshotLimitExceeded(
+                        allowed=(self.MAX_SNAPSHOT_COUNT *
+                                 (self.MAX_SNAPSHOT_GROUP_COUNT -
+                                  self.RESERVED_SNAPSHOT_GROUP_COUNT)))
+
+            return self._client.create_snapshot_image(
+                snap_grp['id'])
+
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
                 if snap_image is None and snap_grp:
-                    self.delete_snapshot(snapshot)
+                    self._delete_snapshot_group(snap_grp['id'])
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot.
+
+        :param snapshot: The Cinder snapshot
+        :param group_name: An optional label for the snapshot group
+        :return An E-Series snapshot image
+        """
+
+        os_vol = snapshot['volume']
+        vol = self._get_volume(os_vol['name_id'])
+
+        snap_image = cinder_utils.synchronized(vol['id'])(
+            self._create_es_snapshot)(vol)
+        model_update = {
+            'provider_id': snap_image['id']
+        }
+
+        return model_update
+
+    def _delete_es_snapshot(self, es_snapshot):
+        """Perform a soft-delete on an E-Series snapshot.
+
+        Mark the snapshot image as no longer needed, so that it can be
+        purged from the backend when no other snapshots are dependent upon it.
+
+        :param es_snapshot: an E-Series snapshot image
+        :return None
+        """
+        index = self._get_soft_delete_map()
+        snapgroup_ref = es_snapshot['pitGroupRef']
+        if snapgroup_ref in index:
+            bitset = na_utils.BitSet(int((index[snapgroup_ref])))
+        else:
+            bitset = na_utils.BitSet(0)
+
+        images = [img for img in self._client.list_snapshot_images() if
+                  img['pitGroupRef'] == snapgroup_ref]
+        for i, image in enumerate(sorted(images, key=lambda x: x[
+                'pitSequenceNumber'])):
+            if(image['pitSequenceNumber'] == es_snapshot[
+                    'pitSequenceNumber']):
+                bitset.set(i)
+                break
+
+        index_update, keys_to_del = (
+            self._cleanup_snapshot_images(images, bitset))
+
+        self._merge_soft_delete_changes(index_update, keys_to_del)
 
     def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
+        """Delete a snapshot."""
         try:
-            snap_grp = self._get_snapshot_group_for_snapshot(snapshot['id'])
+            es_snapshot = self._get_snapshot(snapshot)
         except exception.NotFound:
             LOG.warning(_LW("Snapshot %s already deleted."), snapshot['id'])
-            return
-        self._client.delete_snapshot_group(snap_grp['pitGroupRef'])
+        else:
+            os_vol = snapshot['volume']
+            vol = self._get_volume(os_vol['name_id'])
+
+            cinder_utils.synchronized(vol['id'])(self._delete_es_snapshot)(
+                es_snapshot)
+
+    def _get_soft_delete_map(self):
+        """Retrieve the snapshot index from the storage backend"""
+        return self._client.list_backend_store(
+            self.SNAPSHOT_PERSISTENT_STORE_KEY)
+
+    @cinder_utils.synchronized(SNAPSHOT_PERSISTENT_STORE_LOCK)
+    def _merge_soft_delete_changes(self, index_update, keys_to_del):
+        """Merge changes to the snapshot index and save it on the backend
+
+        This method merges provided changes into the index, locking, to ensure
+        that concurrent changes that don't overlap are not overwritten. No
+        update will occur if neither an update or keys to delete are provided.
+
+        :param index_update: a dict of keys/value pairs to update in the index
+        :param keys_to_del: a list of keys to purge from the index
+        """
+        if index_update or keys_to_del:
+            index = self._get_soft_delete_map()
+            if index_update:
+                index.update(index_update)
+            if keys_to_del:
+                for key in keys_to_del:
+                    if key in index:
+                        del index[key]
+
+            self._client.save_backend_store(
+                self.SNAPSHOT_PERSISTENT_STORE_KEY, index)
+
+    def _cleanup_snapshot_images(self, images, bitset):
+        """Delete snapshot images that are marked for removal from the backend.
+
+        This method will iterate over all snapshots (beginning with the
+        oldest), that are defined on the same snapshot group as the provided
+        snapshot image. If the snapshot is marked for deletion, it will be
+        purged from the backend. Otherwise, the method will return because
+        no further snapshots can be purged.
+
+        The bitset will be updated based on the return from this method.
+        Any updates to the index will be provided as a dict, and any keys
+        to be removed from the index should be returned as (dict, list).
+
+        :param images: a list of E-Series snapshot images
+        :param bitset: a bitset representing the snapshot images that are
+        no longer needed on the backend (and may be deleted when possible)
+        :return (dict, list) a tuple containing a dict of updates for the
+        index and a list of keys to remove from the index
+        """
+        snap_grp_ref = images[0]['pitGroupRef']
+        # All images are marked as deleted, we can delete the snapshot group
+        if bitset == 2 ** len(images) - 1:
+            try:
+                self._delete_snapshot_group(snap_grp_ref)
+            except exception.NetAppDriverException as e:
+                LOG.warning(_LW("Unable to remove snapshot group - "
+                                "%s."), e.msg)
+            return None, [snap_grp_ref]
+        else:
+            # Order by their sequence number, from oldest to newest
+            snapshots = sorted(images,
+                               key=lambda x: x['pitSequenceNumber'])
+            deleted = 0
+
+            for i, snapshot in enumerate(snapshots):
+                if bitset.is_set(i):
+                    self._delete_snapshot_image(snapshot)
+                    deleted += 1
+                else:
+                    # Snapshots must be deleted in order, so if the current
+                    # snapshot is not pending deletion, we don't want to
+                    # process any more
+                    break
+
+            if deleted:
+                # Update the bitset based on the deleted snapshots
+                bitset >>= deleted
+                LOG.debug('Deleted %(count)s snapshot images from snapshot '
+                          'group: %(grp)s.', {'count': deleted,
+                                              'grp': snap_grp_ref})
+                if deleted >= len(images):
+                    try:
+                        self._delete_snapshot_group(snap_grp_ref)
+                    except exception.NetAppDriverException as e:
+                        LOG.warning(_LW("Unable to remove snapshot group - "
+                                        "%s."), e.msg)
+                    return None, [snap_grp_ref]
+
+            return {snap_grp_ref: repr(bitset)}, None
+
+    def _delete_snapshot_group(self, group_id):
+        try:
+            self._client.delete_snapshot_group(group_id)
+        except eseries_exc.WebServiceException as e:
+            raise exception.NetAppDriverException(e.msg)
+
+    def _delete_snapshot_image(self, es_snapshot):
+        """Remove a snapshot image from the storage backend
+
+        If a snapshot group has no remaining snapshot images associated with
+        it, it will be deleted as well. When the snapshot is deleted,
+        any snapshot volumes that are associated with it will be orphaned,
+        so they are also deleted.
+
+        :param es_snapshot: An E-Series snapshot image
+        :param snapshot_volumes: Snapshot volumes associated with the snapshot
+        """
+        self._client.delete_snapshot_image(es_snapshot['id'])
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a volume."""
