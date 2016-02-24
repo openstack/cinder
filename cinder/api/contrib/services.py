@@ -82,27 +82,20 @@ class ServiceController(wsgi.Controller):
         authorize(context, action='index')
         detailed = self.ext_mgr.is_loaded('os-extended-services')
         now = timeutils.utcnow(with_timezone=True)
-        services = objects.ServiceList.get_all(context)
 
-        host = ''
+        filters = {}
+
         if 'host' in req.GET:
-            host = req.GET['host']
-        service = ''
-        if 'service' in req.GET:
-            service = req.GET['service']
+            filters['host'] = req.GET['host']
+        if 'binary' in req.GET:
+            filters['binary'] = req.GET['binary']
+        elif 'service' in req.GET:
+            filters['binary'] = req.GET['service']
             versionutils.report_deprecated_feature(LOG, _(
                 "Query by service parameter is deprecated. "
                 "Please use binary parameter instead."))
-        binary = ''
-        if 'binary' in req.GET:
-            binary = req.GET['binary']
 
-        if host:
-            services = [s for s in services if s.host == host]
-        # NOTE(uni): deprecating service request key, binary takes precedence
-        binary_key = binary or service
-        if binary_key:
-            services = [s for s in services if s.binary == binary_key]
+        services = objects.ServiceList.get_all(context, filters)
 
         svcs = []
         for svc in services:

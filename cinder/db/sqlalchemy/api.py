@@ -373,11 +373,22 @@ def service_get(context, service_id):
 
 
 @require_admin_context
-def service_get_all(context, disabled=None):
+def service_get_all(context, filters=None):
+    if filters and not is_valid_model_filters(models.Service, filters):
+        return []
+
     query = model_query(context, models.Service)
 
-    if disabled is not None:
-        query = query.filter_by(disabled=disabled)
+    try:
+        host = filters.pop('host')
+        host_attr = models.Service.host
+        conditions = or_(host_attr == host, host_attr.op('LIKE')(host + '@%'))
+        query = query.filter(conditions)
+    except KeyError:
+        pass
+
+    if filters:
+        query = query.filter_by(**filters)
 
     return query.all()
 

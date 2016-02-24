@@ -142,8 +142,9 @@ class TestServiceList(test_objects.BaseObjectsTestCase):
         db_service = fake_service.fake_db_service()
         service_get_all.return_value = [db_service]
 
-        services = objects.ServiceList.get_all(self.context, 'foo')
-        service_get_all.assert_called_once_with(self.context, 'foo')
+        filters = {'host': 'host', 'binary': 'foo', 'disabled': False}
+        services = objects.ServiceList.get_all(self.context, filters)
+        service_get_all.assert_called_once_with(self.context, filters)
         self.assertEqual(1, len(services))
         TestService._compare(self, db_service, services[0])
 

@@ -178,18 +178,25 @@ class DBAPIServiceTestCase(BaseTest):
 
     def test_service_get_all(self):
         values = [
-            {'host': 'host1', 'topic': 'topic1'},
-            {'host': 'host2', 'topic': 'topic2'},
+            {'host': 'host1', 'binary': 'b1'},
+            {'host': 'host1@ceph', 'binary': 'b2'},
+            {'host': 'host2', 'binary': 'b2'},
             {'disabled': True}
         ]
         services = [self._create_service(vals) for vals in values]
+
         disabled_services = [services[-1]]
         non_disabled_services = services[:-1]
-
+        expected = services[:2]
+        expected_bin = services[1:3]
         compares = [
-            (services, db.service_get_all(self.ctxt)),
-            (disabled_services, db.service_get_all(self.ctxt, True)),
-            (non_disabled_services, db.service_get_all(self.ctxt, False))
+            (services, db.service_get_all(self.ctxt, {})),
+            (expected, db.service_get_all(self.ctxt, {'host': 'host1'})),
+            (expected_bin, db.service_get_all(self.ctxt, {'binary': 'b2'})),
+            (disabled_services, db.service_get_all(self.ctxt,
+                                                   {'disabled': True})),
+            (non_disabled_services, db.service_get_all(self.ctxt,
+                                                       {'disabled': False})),
         ]
         for comp in compares:
             self._assertEqualListsOfObjects(*comp)
