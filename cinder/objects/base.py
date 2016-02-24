@@ -18,6 +18,7 @@ import contextlib
 import datetime
 
 from oslo_log import log as logging
+from oslo_utils import versionutils
 from oslo_versionedobjects import base
 from oslo_versionedobjects import fields
 
@@ -394,8 +395,20 @@ class CinderObjectSerializer(base.VersionedObjectSerializer):
 
     def _get_capped_obj_version(self, obj):
         objname = obj.obj_name()
-        objver = OBJ_VERSIONS.get(self.version_cap, {})
-        return objver.get(objname, None)
+        version_dict = OBJ_VERSIONS.get(self.version_cap, {})
+        version_cap = version_dict.get(objname, None)
+
+        if version_cap:
+            cap_tuple = versionutils.convert_version_to_tuple(version_cap)
+            obj_tuple = versionutils.convert_version_to_tuple(obj.VERSION)
+            if cap_tuple > obj_tuple:
+                # NOTE(dulek): Do not set version cap to be higher than actual
+                # object version as we don't support "forwardporting" of
+                # objects. If service will receive an object that's too old it
+                # should handle it explicitly.
+                version_cap = None
+
+        return version_cap
 
     def serialize_entity(self, context, entity):
         if isinstance(entity, (tuple, list, set, dict)):

@@ -19,6 +19,8 @@ Client side of the volume RPC API.
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder import exception
+from cinder.i18n import _
 from cinder import quota
 from cinder import rpc
 from cinder.volume import utils
@@ -334,12 +336,22 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'get_capabilities', discover=discover)
 
     def get_backup_device(self, ctxt, backup, volume):
+        if not self.client.can_send_version('1.38'):
+            msg = _('One of cinder-volume services is too old to accept such '
+                    'request. Are you running mixed Liberty-Mitaka '
+                    'cinder-volumes?')
+            raise exception.ServiceTooOld(msg)
         new_host = utils.extract_host(volume.host)
         cctxt = self.client.prepare(server=new_host, version='1.38')
         return cctxt.call(ctxt, 'get_backup_device',
                           backup=backup)
 
     def secure_file_operations_enabled(self, ctxt, volume):
+        if not self.client.can_send_version('1.38'):
+            msg = _('One of cinder-volume services is too old to accept such '
+                    'request. Are you running mixed Liberty-Mitaka '
+                    'cinder-volumes?')
+            raise exception.ServiceTooOld(msg)
         new_host = utils.extract_host(volume.host)
         cctxt = self.client.prepare(server=new_host, version='1.38')
         return cctxt.call(ctxt, 'secure_file_operations_enabled',

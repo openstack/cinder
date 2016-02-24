@@ -351,6 +351,10 @@ class ServiceNotFound(NotFound):
     message = _("Service %(service_id)s could not be found.")
 
 
+class ServiceTooOld(Invalid):
+    message = _("Service is too old to fulfil this request.")
+
+
 class HostNotFound(NotFound):
     message = _("Host %(host)s could not be found.")
 
