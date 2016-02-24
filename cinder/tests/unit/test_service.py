@@ -325,7 +325,8 @@ class TestWSGIService(test.TestCase):
         # Resetting pool size to default
         test_service.reset()
         test_service.start()
-        self.assertEqual(1000, test_service.server._pool.size)
+        self.assertEqual(cfg.CONF.wsgi_default_pool_size,
+                         test_service.server._pool.size)
         self.assertTrue(mock_loader.called)
 
     @mock.patch('oslo_service.wsgi.Loader')
