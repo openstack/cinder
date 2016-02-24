@@ -95,6 +95,7 @@ cinder.tests.unit.test_ibm_xiv_ds8k
 cinder.tests.unit.test_ibmnas
 cinder.tests.unit.test_image_utils
 cinder.tests.unit.test_infortrend_cli
+cinder.tests.unit.test_infortrend_common
 cinder.tests.unit.test_migrations
 cinder.tests.unit.test_misc
 cinder.tests.unit.test_netapp

@@ -522,7 +522,7 @@ class InfortrendCommon(object):
         if extraspecs_dict:
             cmd = self._create_part_parameters_str(extraspecs_dict)
 
-        commands = (pool_id, volume_id, 'size=%s' % volume_size, cmd)
+        commands = (pool_id, volume_id, 'size=%s' % int(volume_size), cmd)
         self._execute('CreatePartition', *commands)
 
     def _create_part_parameters_str(self, extraspecs_dict):
@@ -776,7 +776,9 @@ class InfortrendCommon(object):
         empty_lun_num = 0
         min_map_chl = -1
 
-        for key, value in self.map_dict[controller].items():
+        # Sort items to get a reliable behaviour. Dictionary items
+        # are iterated in a random order because of hash randomization.
+        for key, value in sorted(self.map_dict[controller].items()):
             if empty_lun_num < len(value):
                 min_map_chl = key
                 empty_lun_num = len(value)
@@ -1303,7 +1305,9 @@ class InfortrendCommon(object):
 
         map_lun = self._get_common_lun_map_id(wwpn_channel_info)
 
-        for initiator_wwpn in initiator_target_map:
+        # Sort items to get a reliable behaviour. Dictionary items
+        # are iterated in a random order because of hash randomization.
+        for initiator_wwpn in sorted(initiator_target_map):
             for target_wwpn in initiator_target_map[initiator_wwpn]:
                 channel_id = wwpn_channel_info[target_wwpn.upper()]['channel']
                 controller = wwpn_channel_info[target_wwpn.upper()]['slot']
