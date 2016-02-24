@@ -63,11 +63,11 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     """
 
     def __init__(self, *args, **kwargs):
-
         super(EMCCLIFCDriver, self).__init__(*args, **kwargs)
         self.cli = emc_vnx_cli.getEMCVnxCli(
             'FC',
-            configuration=self.configuration)
+            configuration=self.configuration,
+            active_backend_id=kwargs.get('active_backend_id'))
         self.VERSION = self.cli.VERSION
 
     def check_for_setup_error(self):
@@ -301,18 +301,6 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     def backup_use_temp_snapshot(self):
         return True
 
-    def replication_enable(self, context, volume):
-        """Enables replication on a replication capable volume."""
-        return self.cli.replication_enable(context, volume)
-
-    def replication_disable(self, context, volume):
-        """Disables replication on a replication-enabled volume."""
-        return self.cli.replication_disable(context, volume)
-
-    def replication_failover(self, context, volume, secondary):
+    def failover_host(self, context, volumes, secondary_backend_id):
         """Failovers volume from primary device to secondary."""
-        return self.cli.replication_failover(context, volume, secondary)
-
-    def list_replication_targets(self, context, volume):
-        """Returns volume replication info."""
-        return self.cli.list_replication_targets(context, volume)
+        return self.cli.failover_host(context, volumes, secondary_backend_id)
