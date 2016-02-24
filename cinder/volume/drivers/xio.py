@@ -63,7 +63,7 @@ def RaiseXIODriverException():
 
 class XIOISEDriver(object):
 
-    VERSION = '1.1.3'
+    VERSION = '1.1.4'
 
     # Version   Changes
     # 1.0.0     Base driver
@@ -71,6 +71,7 @@ class XIOISEDriver(object):
     # 1.1.1     Fix retry loop (Bug 1429283)
     # 1.1.2     Fix host object deletion (Bug 1433450).
     # 1.1.3     Wait for volume/snapshot to be deleted.
+    # 1.1.4     Force target_lun to be int (Bug 1549048)
 
     def __init__(self, *args, **kwargs):
         super(XIOISEDriver, self).__init__()
@@ -1343,7 +1344,7 @@ class XIOISEDriver(object):
         target_lun = self._present_volume(volume, host['name'], target_lun)
         # Fill in target information.
         data = {}
-        data['target_lun'] = target_lun
+        data['target_lun'] = int(target_lun)
         data['volume_id'] = volume['id']
         return data
 
