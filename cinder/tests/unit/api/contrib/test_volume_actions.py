@@ -667,6 +667,20 @@ class VolumeImageActionsTest(test.TestCase):
                           id,
                           body)
 
+    def test_copy_volume_to_image_invalid_disk_format(self):
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+        vol = {"container_format": 'bare',
+               "disk_format": 'iso',
+               "image_name": 'image_name',
+               "force": True}
+        body = {"os-volume_upload_image": vol}
+        req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller._volume_upload_image,
+                          req,
+                          id,
+                          body)
+
     def test_copy_volume_to_image_valueerror(self):
         def stub_upload_volume_to_image_service_raise(self, context, volume,
                                                       metadata, force):
