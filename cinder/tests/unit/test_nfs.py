@@ -21,6 +21,7 @@ import os
 import mock
 from mox3 import mox as mox_lib
 from mox3.mox import stubout
+from oslo_log import versionutils
 from oslo_utils import units
 
 from cinder import exception
@@ -935,15 +936,17 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_oversub_ratio = nfs_oversub_ratio
         self._driver.configuration = self.configuration
         self.mock_object(nfs, 'LOG')
+        mock_report = self.mock_object(versionutils,
+                                       'report_deprecated_feature')
 
         oversub_ratio = self._driver._get_over_subscription_ratio()
 
         if nfs_oversub_ratio == 1.0:
             self.assertEqual(1.0, oversub_ratio)
-            self.assertFalse(nfs.LOG.warn.called)
+            self.assertFalse(mock_report.called)
         else:
             self.assertEqual(nfs_oversub_ratio, oversub_ratio)
-            self.assertTrue(nfs.LOG.warn.called)
+            self.assertTrue(mock_report.called)
 
     @ddt.data({'nfs_used_ratio': 0.95, 'nfs_reserved_percentage': 0.05},
               {'nfs_used_ratio': 0.80, 'nfs_reserved_percentage': 0.20})
@@ -954,17 +957,19 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_reserved_percentage = nfs_reserved_percentage
         self._driver.configuration = self.configuration
         self.mock_object(nfs, 'LOG')
+        mock_report = self.mock_object(versionutils,
+                                       'report_deprecated_feature')
 
         reserved_percentage = self._driver._get_reserved_percentage()
 
         if nfs_used_ratio == 0.95:
             self.assertEqual(self._driver.configuration.reserved_percentage,
                              reserved_percentage)
-            self.assertFalse(nfs.LOG.warn.called)
+            self.assertFalse(mock_report.called)
         else:
             expected = (1 - self._driver.configuration.nfs_used_ratio) * 100
             self.assertEqual(expected, reserved_percentage)
-            self.assertTrue(nfs.LOG.warn.called)
+            self.assertTrue(mock_report.called)
 
     def _check_is_share_eligible(self, total_size, total_available,
                                  total_allocated, requested_volume_size):

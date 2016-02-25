@@ -24,10 +24,11 @@ import copy
 import uuid
 
 import mock
+from oslo_log import versionutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LW
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
@@ -55,24 +56,24 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def get_config_base(self):
         return na_fakes.create_configuration()
 
-    def test_get_reserved_percentage_default_multipler(self):
+    @mock.patch.object(versionutils, 'report_deprecated_feature')
+    def test_get_reserved_percentage_default_multipler(self, mock_report):
 
         default = 1.2
         reserved_percentage = 20.0
         self.library.configuration.netapp_size_multiplier = default
         self.library.configuration.reserved_percentage = reserved_percentage
-        self.mock_object(block_base, 'LOG')
 
         result = self.library._get_reserved_percentage()
 
         self.assertEqual(reserved_percentage, result)
-        self.assertFalse(block_base.LOG.warn.called)
+        self.assertFalse(mock_report.called)
 
-    def test_get_reserved_percentage(self):
+    @mock.patch.object(versionutils, 'report_deprecated_feature')
+    def test_get_reserved_percentage(self, mock_report):
 
         multiplier = 2.0
         self.library.configuration.netapp_size_multiplier = multiplier
-        self.mock_object(block_base, 'LOG')
 
         result = self.library._get_reserved_percentage()
 
@@ -80,7 +81,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         reserved_percentage = 100 * int(reserved_ratio)
 
         self.assertEqual(reserved_percentage, result)
-        self.assertTrue(block_base.LOG.warn.called)
+        msg = _LW('The "netapp_size_multiplier" configuration option is '
+                  'deprecated and will be removed in the Mitaka release. '
+                  'Please set "reserved_percentage = %d" instead.') % (
+                      result)
+        mock_report.assert_called_once_with(block_base.LOG, msg)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_lun_attr',
