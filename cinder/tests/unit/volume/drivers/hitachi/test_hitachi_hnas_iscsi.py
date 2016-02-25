@@ -71,7 +71,7 @@ class HNASiSCSIDriverTest(test.TestCase):
             self.context, **_VOLUME)
         self.volume_clone = fake_volume.fake_volume_obj(
             self.context, **_VOLUME2)
-        self.snapshot = self.snapshot = self.instantiate_snapshot(_SNAPSHOT)
+        self.snapshot = self.instantiate_snapshot(_SNAPSHOT)
 
         self.volume_type = fake_volume.fake_volume_type_obj(
             None,
@@ -115,7 +115,7 @@ class HNASiSCSIDriverTest(test.TestCase):
             },
             'cluster_admin_ip0': None,
             'ssh_private_key': None,
-            'chap_enabled': 'True',
+            'chap_enabled': True,
             'mgmt_ip0': '172.17.44.15',
             'ssh_enabled': None
         }
@@ -123,7 +123,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.hds_hnas_iscsi_config_file = 'fake.xml'
 
-        self.mock_object(hnas_utils, 'read_config',
+        self.mock_object(hnas_utils, 'read_cinder_conf',
                          mock.Mock(return_value=self.parsed_xml))
 
         self.driver = iscsi.HNASISCSIDriver(configuration=self.configuration)
@@ -189,7 +189,7 @@ class HNASiSCSIDriverTest(test.TestCase):
                    'auth': 'Enabled'}}
         iqn = 'iqn.2014-12.10.10.10.10:evstest1.cinder-default'
 
-        self.driver.config['chap_enabled'] = 'False'
+        self.driver.config['chap_enabled'] = False
 
         self.mock_object(HNASSSHBackend, 'get_evs',
                          mock.Mock(return_value='1'))

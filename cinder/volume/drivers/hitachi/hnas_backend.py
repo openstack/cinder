@@ -36,7 +36,7 @@ class HNASSSHBackend(object):
     def __init__(self, backend_opts):
 
         self.mgmt_ip0 = backend_opts.get('mgmt_ip0')
-        self.hnas_cmd = backend_opts.get('hnas_cmd', 'ssc')
+        self.hnas_cmd = backend_opts.get('ssc_cmd', 'ssc')
         self.cluster_admin_ip0 = backend_opts.get('cluster_admin_ip0')
         self.ssh_port = backend_opts.get('ssh_port', '22')
         self.ssh_username = backend_opts.get('username')

@@ -1,0 +1,7 @@
+---
+upgrade:
+  - HNAS drivers will now read configuration from cinder.conf.
+deprecations:
+  - The XML configuration file used by the HNAS drivers is now
+    deprecated and will no longer be used in the future. Please
+    use cinder.conf for all driver configuration.

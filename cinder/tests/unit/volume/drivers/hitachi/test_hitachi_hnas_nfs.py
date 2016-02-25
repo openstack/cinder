@@ -119,7 +119,7 @@ class HNASNFSDriverTest(test.TestCase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.hds_hnas_nfs_config_file = 'fake.xml'
 
-        self.mock_object(hnas_utils, 'read_config',
+        self.mock_object(hnas_utils, 'read_cinder_conf',
                          mock.Mock(return_value=self.parsed_xml))
 
         self.configuration = mock.Mock(spec=conf.Configuration)
