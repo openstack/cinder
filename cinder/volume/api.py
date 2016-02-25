@@ -1597,7 +1597,7 @@ class API(base.Base):
         result = service.conditional_update(
             {'frozen': True}, expected)
         if not result:
-            msg = _LE('Host is already Frozen.')
+            msg = _('Host is already Frozen.')
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
 
@@ -1618,7 +1618,7 @@ class API(base.Base):
         result = service.conditional_update(
             {'frozen': False}, expected)
         if not result:
-            msg = _LE('Host is NOT Frozen.')
+            msg = _('Host is NOT Frozen.')
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
         if not self.volume_rpcapi.thaw_host(ctxt, host):
