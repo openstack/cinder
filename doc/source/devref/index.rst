@@ -27,6 +27,8 @@ Programming HowTos and Tutorials
     :maxdepth: 3
 
     development.environment
+    api_microversion_dev
+    api_microversion_history
     unit_tests
     addmethod.openstackapi
     drivers
