@@ -191,6 +191,7 @@ class DBAPIServiceTestCase(BaseTest):
         expected_bin = services[1:3]
         compares = [
             (services, db.service_get_all(self.ctxt, {})),
+            (services, db.service_get_all(self.ctxt)),
             (expected, db.service_get_all(self.ctxt, {'host': 'host1'})),
             (expected_bin, db.service_get_all(self.ctxt, {'binary': 'b2'})),
             (disabled_services, db.service_get_all(self.ctxt,
