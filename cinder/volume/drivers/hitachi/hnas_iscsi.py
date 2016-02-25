@@ -36,7 +36,7 @@ from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume import utils
 from cinder.volume import volume_types
 
-HDS_HNAS_ISCSI_VERSION = '4.1.0'
+HDS_HNAS_ISCSI_VERSION = '4.3.0'
 
 LOG = logging.getLogger(__name__)
 
@@ -174,6 +174,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
     Version 3.3.0: Fixed iSCSI target limitation error
     Version 4.0.0: Added manage/unmanage features
     Version 4.1.0: Fixed XML parser checks on blank options
+    Version 4.2.0: Fixed SSH and cluster_admin_ip0 verification
+    Version 4.3.0: Fixed attachment with os-brick 1.0.0
     """
 
     def __init__(self, *args, **kwargs):
@@ -701,7 +703,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         properties['target_discovered'] = False
         properties['target_portal'] = hnas_portal
         properties['target_iqn'] = fulliqn
-        properties['target_lun'] = hlun
+        properties['target_lun'] = int(hlun)
         properties['volume_id'] = volume['id']
         properties['auth_username'] = connector['initiator']
 

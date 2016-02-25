@@ -415,6 +415,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         vol = self._create_volume()
         conn = self.driver.initialize_connection(vol, connector)
         self.assertTrue('3260' in conn['data']['target_portal'])
+        self.assertTrue(type(conn['data']['target_lun']) is int)
 
         self.backend.add_iscsi_conn = mock.MagicMock()
         self.backend.add_iscsi_conn.side_effect = putils.ProcessExecutionError
