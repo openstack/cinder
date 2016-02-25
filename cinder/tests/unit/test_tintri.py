@@ -24,6 +24,7 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
+from cinder.tests.unit import utils as cinder_utils
 from cinder.volume.drivers.tintri import TClient
 from cinder.volume.drivers.tintri import TintriDriver
 
@@ -47,6 +48,7 @@ class TintriDriverTestCase(test.TestCase):
         self._driver._username = 'user'
         self._driver._password = 'password'
         self._driver._api_version = 'v310'
+        self._driver._image_cache_expiry = 30
         self._provider_location = 'localhost:/share'
         self._driver._mounted_shares = [self._provider_location]
         self.fake_stubs()
@@ -62,6 +64,8 @@ class TintriDriverTestCase(test.TestCase):
         self.stubs.Set(TClient, 'login', self.fake_login)
         self.stubs.Set(TClient, 'logout', self.fake_logout)
         self.stubs.Set(TClient, 'get_snapshot', self.fake_get_snapshot)
+        self.stubs.Set(TClient, 'get_image_snapshots_to_date',
+                       self.fake_get_image_snapshots_to_date)
         self.stubs.Set(TintriDriver, '_move_cloned_volume',
                        self.fake_move_cloned_volume)
         self.stubs.Set(TintriDriver, '_get_provider_location',
@@ -83,6 +87,9 @@ class TintriDriverTestCase(test.TestCase):
 
     def fake_get_snapshot(self, volume_id):
         return 'snapshot-id'
+
+    def fake_get_image_snapshots_to_date(self, date):
+        return [{'uuid': {'uuid': 'image_snapshot-id'}}]
 
     def fake_move_cloned_volume(self, clone_name, volume_id, share=None):
         pass
@@ -122,6 +129,27 @@ class TintriDriverTestCase(test.TestCase):
         snapshot.volume = volume
         self.assertRaises(exception.VolumeDriverException,
                           self._driver.create_snapshot, snapshot)
+
+    @mock.patch.object(TClient, 'delete_snapshot', mock.Mock())
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_cleanup_cache(self):
+        self.assertFalse(self._driver.cache_cleanup)
+        timer = self._driver._initiate_image_cache_cleanup()
+        # wait for cache cleanup to complete
+        timer.wait()
+        self.assertFalse(self._driver.cache_cleanup)
+
+    @mock.patch.object(TClient, 'delete_snapshot', mock.Mock(
+                       side_effect=exception.VolumeDriverException))
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_cleanup_cache_delete_fail(self):
+        self.assertFalse(self._driver.cache_cleanup)
+        timer = self._driver._initiate_image_cache_cleanup()
+        # wait for cache cleanup to complete
+        timer.wait()
+        self.assertFalse(self._driver.cache_cleanup)
 
     @mock.patch.object(TClient, 'delete_snapshot', mock.Mock())
     def test_delete_snapshot(self):

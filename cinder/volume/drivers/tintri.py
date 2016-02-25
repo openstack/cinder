@@ -16,6 +16,7 @@
 Volume driver for Tintri storage.
 """
 
+import datetime
 import json
 import math
 import os
@@ -24,6 +25,7 @@ import socket
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import units
 import requests
 from six.moves import urllib
@@ -52,6 +54,9 @@ tintri_opts = [
     cfg.StrOpt('tintri_api_version',
                default=default_api_version,
                help='API version for the storage system'),
+    cfg.IntOpt('tintri_image_cache_expiry_days',
+               default=30,
+               help='Delete unused image snapshots older than mentioned days'),
 ]
 
 CONF = cfg.CONF
@@ -62,10 +67,18 @@ class TintriDriver(driver.ManageableVD,
                    driver.CloneableImageVD,
                    driver.SnapshotVD,
                    nfs.NfsDriver):
-    """Base class for Tintri driver."""
+    """Base class for Tintri driver.
+
+    Version History
+
+        2.1.0.1 - Liberty driver
+        2.2.0.1 - Mitaka driver
+                -- Retype
+                -- Image cache clean up
+    """
 
     VENDOR = 'Tintri'
-    VERSION = '2.1.0.1'
+    VERSION = '2.2.0.1'
     REQUIRED_OPTIONS = ['tintri_server_hostname', 'tintri_server_username',
                         'tintri_server_password']
 
@@ -75,6 +88,7 @@ class TintriDriver(driver.ManageableVD,
         super(TintriDriver, self).__init__(*args, **kwargs)
         self._execute_as_root = True
         self.configuration.append_config_values(tintri_opts)
+        self.cache_cleanup = False
 
     def do_setup(self, context):
         super(TintriDriver, self).do_setup(context)
@@ -86,6 +100,9 @@ class TintriDriver(driver.ManageableVD,
         self._password = getattr(self.configuration, 'tintri_server_password')
         self._api_version = getattr(self.configuration, 'tintri_api_version',
                                     CONF.tintri_api_version)
+        self._image_cache_expiry = getattr(self.configuration,
+                                           'tintri_image_cache_expiry_days',
+                                           CONF.tintri_image_cache_expiry_days)
 
     def get_pool(self, volume):
         """Returns pool name where volume resides.
@@ -207,6 +224,46 @@ class TintriDriver(driver.ManageableVD,
 
         self._move_cloned_volume(clone_name, volume_id, share)
 
+    @utils.synchronized('cache_cleanup')
+    def _initiate_image_cache_cleanup(self):
+        if self.cache_cleanup:
+            LOG.debug('Image cache cleanup in progress.')
+            return
+        else:
+            self.cache_cleanup = True
+            timer = loopingcall.FixedIntervalLoopingCall(
+                self._cleanup_cache)
+            timer.start(interval=None)
+            return timer
+
+    def _cleanup_cache(self):
+        LOG.debug('Cache cleanup: starting.')
+        try:
+            # Cleanup used cached image snapshots 30 days and older
+            t = datetime.datetime.utcnow() - datetime.timedelta(
+                days=self._image_cache_expiry)
+            date = t.strftime("%Y-%m-%dT%H:%M:%S")
+            with self._get_client() as c:
+                # Get eligible snapshots to clean
+                image_snaps = c.get_image_snapshots_to_date(date)
+                if image_snaps:
+                    for snap in image_snaps:
+                        uuid = snap['uuid']['uuid']
+                        LOG.debug(
+                            'Cache cleanup: deleting image snapshot %s', uuid)
+                        try:
+                            c.delete_snapshot(uuid)
+                        except Exception:
+                            LOG.exception(_LE('Unexpected exception during '
+                                              'cache cleanup of snapshot %s'),
+                                          uuid)
+                else:
+                    LOG.debug('Cache cleanup: nothing to clean')
+        finally:
+            self.cache_cleanup = False
+            LOG.debug('Cache cleanup: finished')
+            raise loopingcall.LoopingCallDone()
+
     def _update_volume_stats(self):
         """Retrieves stats info from volume group."""
 
@@ -218,7 +275,7 @@ class TintriDriver(driver.ManageableVD,
         data['storage_protocol'] = self.driver_volume_type
 
         self._ensure_shares_mounted()
-
+        self._initiate_image_cache_cleanup()
         pools = []
         for share in self._mounted_shares:
             pool = dict()
@@ -823,6 +880,26 @@ class TClient(object):
 
         if int(r.json()['filteredTotal']) > 0:
             return r.json()['items'][0]['uuid']['uuid']
+
+    def get_image_snapshots_to_date(self, date):
+        filter = {'sortedBy': 'createTime',
+                  'target': 'SNAPSHOT',
+                  'consistency': 'CRASH_CONSISTENT',
+                  'hasClone': 'No',
+                  'type': 'CINDER_GENERATED_SNAPSHOT',
+                  'contain': 'image-',
+                  'limit': '100',
+                  'page': '1',
+                  'sortOrder': 'DESC',
+                  'since': '1970-01-01T00:00:00',
+                  'until': date,
+                  }
+        payload = '/' + self.api_version + '/snapshot'
+        r = self.get_query(payload, filter)
+        if r.status_code != 200:
+            msg = _('Failed to get image snapshots.')
+            raise exception.VolumeDriverException(msg)
+        return r.json()['items']
 
     def delete_snapshot(self, snapshot_uuid):
         """Deletes a snapshot."""
