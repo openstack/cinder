@@ -43,6 +43,7 @@ from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_common
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_fc
 from cinder.volume.drivers.ibm.storwize_svc import storwize_svc_iscsi
 from cinder.volume import qos_specs
+from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
 
@@ -377,25 +378,30 @@ class StorwizeSVCManagementSimulator(object):
 
     # Print mostly made-up stuff in the correct syntax, assume -bytes passed
     def _cmd_lsmdiskgrp(self, **kwargs):
-        rows = [None] * 4
-        rows[0] = ['id', 'name', 'status', 'mdisk_count',
-                   'vdisk_count', 'capacity', 'extent_size',
-                   'free_capacity', 'virtual_capacity', 'used_capacity',
-                   'real_capacity', 'overallocation', 'warning',
-                   'easy_tier', 'easy_tier_status']
-        rows[1] = ['1', self._flags['storwize_svc_volpool_name'], 'online',
-                   '1', six.text_type(len(self._volumes_list)),
-                   '3573412790272', '256', '3529926246400', '1693247906775',
-                   '277841182', '38203734097', '47', '80', 'auto',
-                   'inactive']
-        rows[2] = ['2', 'openstack2', 'online',
-                   '1', '0', '3573412790272', '256',
-                   '3529432325160', '1693247906775', '277841182',
-                   '38203734097', '47', '80', 'auto', 'inactive']
-        rows[3] = ['3', 'openstack3', 'online',
-                   '1', '0', '3573412790272', '128',
-                   '3529432325160', '1693247906775', '277841182',
-                   '38203734097', '47', '80', 'auto', 'inactive']
+        pool_num = len(self._flags['storwize_svc_volpool_name'])
+        rows = []
+        rows.append(['id', 'name', 'status', 'mdisk_count',
+                     'vdisk_count', 'capacity', 'extent_size',
+                     'free_capacity', 'virtual_capacity', 'used_capacity',
+                     'real_capacity', 'overallocation', 'warning',
+                     'easy_tier', 'easy_tier_status'])
+        for i in range(0, pool_num):
+            row_data = [str(i + 1),
+                        self._flags['storwize_svc_volpool_name'][i], 'online',
+                        '1', six.text_type(len(self._volumes_list)),
+                        '3573412790272', '256', '3529926246400',
+                        '1693247906775',
+                        '26843545600', '38203734097', '47', '80', 'auto',
+                        'inactive']
+            rows.append(row_data)
+        rows.append([str(pool_num + 1), 'openstack2', 'online',
+                     '1', '0', '3573412790272', '256',
+                     '3529432325160', '1693247906775', '26843545600',
+                     '38203734097', '47', '80', 'auto', 'inactive'])
+        rows.append([str(pool_num + 2), 'openstack3', 'online',
+                     '1', '0', '3573412790272', '128',
+                     '3529432325160', '1693247906775', '26843545600',
+                     '38203734097', '47', '80', 'auto', 'inactive'])
         if 'obj' not in kwargs:
             return self._print_info_cmd(rows=rows, **kwargs)
         else:
@@ -403,19 +409,20 @@ class StorwizeSVCManagementSimulator(object):
             if pool_name == kwargs['obj']:
                 raise exception.InvalidInput(
                     reason=_('obj missing quotes %s') % kwargs['obj'])
-            elif pool_name == self._flags['storwize_svc_volpool_name']:
-                row = rows[1]
+            elif pool_name in self._flags['storwize_svc_volpool_name']:
+                for each_row in rows:
+                    if pool_name in each_row:
+                        row = each_row
+                        break
             elif pool_name == 'openstack2':
-                row = rows[2]
+                row = rows[-2]
             elif pool_name == 'openstack3':
-                row = rows[3]
+                row = rows[-1]
             else:
                 return self._errors['CMMVC5754E']
-
             objrows = []
             for idx, val in enumerate(rows[0]):
                 objrows.append([val, row[idx]])
-
             if 'nohdr' in kwargs:
                 for index in range(len(objrows)):
                     objrows[index] = ' '.join(objrows[index][1:])
@@ -425,6 +432,19 @@ class StorwizeSVCManagementSimulator(object):
                     objrows[index] = kwargs['delim'].join(objrows[index])
 
             return ('%s' % '\n'.join(objrows), '')
+
+    def _get_mdiskgrp_id(self, mdiskgrp):
+        grp_num = len(self._flags['storwize_svc_volpool_name'])
+        if mdiskgrp in self._flags['storwize_svc_volpool_name']:
+            for i in range(grp_num):
+                if mdiskgrp == self._flags['storwize_svc_volpool_name'][i]:
+                    return i + 1
+        elif mdiskgrp == 'openstack2':
+            return grp_num + 1
+        elif mdiskgrp == 'openstack3':
+            return grp_num + 2
+        else:
+            return None
 
     # Print mostly made-up stuff in the correct syntax
     def _cmd_lsnodecanister(self, **kwargs):
@@ -620,6 +640,14 @@ port_speed!N/A
         volume_info['id'] = self._find_unused_id(self._volumes_list)
         volume_info['uid'] = ('ABCDEF' * 3) + ('0' * 14) + volume_info['id']
 
+        mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
+        if mdiskgrp == kwargs['mdiskgrp']:
+            raise exception.InvalidInput(
+                reason=_('mdiskgrp missing quotes %s') % kwargs['mdiskgrp'])
+        mdiskgrp_id = self._get_mdiskgrp_id(mdiskgrp)
+        volume_info['mdisk_grp_name'] = mdiskgrp
+        volume_info['mdisk_grp_id'] = str(mdiskgrp_id)
+
         if 'name' in kwargs:
             volume_info['name'] = kwargs['name'].strip('\'\"')
         else:
@@ -677,16 +705,11 @@ port_speed!N/A
                   'status': 'online',
                   'sync': 'yes',
                   'primary': 'yes',
-                  'mdisk_grp_id': '1',
-                  'mdisk_grp_name': self._flags['storwize_svc_volpool_name'],
+                  'mdisk_grp_id': str(mdiskgrp_id),
+                  'mdisk_grp_name': mdiskgrp,
                   'easy_tier': volume_info['easy_tier'],
                   'compressed_copy': volume_info['compressed_copy']}
         volume_info['copies'] = {'0': vol_cp}
-
-        mdiskgrp = kwargs['mdiskgrp'].strip('\'\"')
-        if mdiskgrp == kwargs['mdiskgrp']:
-            raise exception.InvalidInput(
-                reason=_('mdiskgrp missing quotes %s') % kwargs['mdiskgrp'])
 
         if volume_info['name'] in self._volumes_list:
             return self._errors['CMMVC6035E']
@@ -773,13 +796,12 @@ port_speed!N/A
                 rows.append([six.text_type(vol['id']), vol['name'],
                              vol['IO_group_id'],
                              vol['IO_group_name'], 'online', '0',
-                             self._flags['storwize_svc_volpool_name'],
+                             self._flags['storwize_svc_volpool_name'][0],
                              cap, 'striped',
                              fcmap_info['fc_id'], fcmap_info['fc_name'],
                              '', '', vol['uid'],
                              fcmap_info['fc_map_count'], '1', 'empty',
                              '1', 'no'])
-
         if 'obj' not in kwargs:
             return self._print_info_cmd(rows=rows, **kwargs)
         else:
@@ -1510,12 +1532,8 @@ port_speed!N/A
         copy_info['sync'] = 'no'
         copy_info['primary'] = 'no'
         copy_info['mdisk_grp_name'] = mdiskgrp
-        if mdiskgrp == self._flags['storwize_svc_volpool_name']:
-            copy_info['mdisk_grp_id'] = '1'
-        elif mdiskgrp == 'openstack2':
-            copy_info['mdisk_grp_id'] = '2'
-        elif mdiskgrp == 'openstack3':
-            copy_info['mdisk_grp_id'] = '3'
+        copy_info['mdisk_grp_id'] = str(self._get_mdiskgrp_id(mdiskgrp))
+
         if 'easytier' in kwargs:
             if kwargs['easytier'] == 'on':
                 copy_info['easy_tier'] = 'on'
@@ -1776,7 +1794,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             self._def_flags = {'san_ip': 'hostname',
                                'san_login': 'user',
                                'san_password': 'pass',
-                               'storwize_svc_volpool_name': 'openstack',
+                               'storwize_svc_volpool_name': ['openstack'],
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
                                'storwize_svc_multipath_enabled': False,
@@ -1790,7 +1808,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                                'host': 'storwize-svc-test',
                                'wwpns': wwpns,
                                'initiator': initiator}
-            self.sim = StorwizeSVCManagementSimulator('openstack')
+            self.sim = StorwizeSVCManagementSimulator(['openstack'])
 
             self.iscsi_driver.set_fake_storage(self.sim)
             self.ctxt = context.get_admin_context()
@@ -1814,6 +1832,12 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
             self._set_flag(k, v)
 
     def _create_volume(self, **kwargs):
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
+        prop = {'host': 'openstack@svc#%s' % pool,
+                'size': 1}
+        for p in prop.keys():
+            if p not in kwargs:
+                kwargs[p] = prop[p]
         vol = testutils.create_volume(self.ctxt, **kwargs)
         self.iscsi_driver.create_volume(vol)
         return vol
@@ -1823,6 +1847,7 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.db.volume_destroy(self.ctxt, volume['id'])
 
     def _generate_vol_info(self, vol_name, vol_id):
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
         rand_id = six.text_type(random.randint(10000, 99999))
         if vol_name:
             return {'name': 'snap_volume%s' % rand_id,
@@ -1830,13 +1855,14 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
                     'id': rand_id,
                     'volume_id': vol_id,
                     'volume_size': 10,
-                    'mdisk_grp_name': 'openstack'}
+                    'mdisk_grp_name': pool}
         else:
             return {'name': 'test_volume%s' % rand_id,
                     'size': 10,
                     'id': rand_id,
                     'volume_type_id': None,
-                    'mdisk_grp_name': 'openstack'}
+                    'mdisk_grp_name': pool,
+                    'host': 'openstack@svc#%s' % pool}
 
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.iscsi_driver._helpers.is_vdisk_defined(name)
@@ -2104,7 +2130,8 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
             self._def_flags = {'san_ip': 'hostname',
                                'san_login': 'user',
                                'san_password': 'pass',
-                               'storwize_svc_volpool_name': 'openstack',
+                               'storwize_svc_volpool_name':
+                               ['openstack', 'openstack1'],
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
                                'storwize_svc_multipath_enabled': False,
@@ -2118,7 +2145,8 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                                'host': 'storwize-svc-test',
                                'wwpns': wwpns,
                                'initiator': initiator}
-            self.sim = StorwizeSVCManagementSimulator('openstack')
+            self.sim = StorwizeSVCManagementSimulator(['openstack',
+                                                      'openstack1'])
 
             self.fc_driver.set_fake_storage(self.sim)
             self.ctxt = context.get_admin_context()
@@ -2142,6 +2170,12 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
             self._set_flag(k, v)
 
     def _create_volume(self, **kwargs):
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
+        prop = {'host': 'openstack@svc#%s' % pool,
+                'size': 1}
+        for p in prop.keys():
+            if p not in kwargs:
+                kwargs[p] = prop[p]
         vol = testutils.create_volume(self.ctxt, **kwargs)
         self.fc_driver.create_volume(vol)
         return vol
@@ -2151,6 +2185,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.db.volume_destroy(self.ctxt, volume['id'])
 
     def _generate_vol_info(self, vol_name, vol_id):
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
         rand_id = six.text_type(random.randint(10000, 99999))
         if vol_name:
             return {'name': 'snap_volume%s' % rand_id,
@@ -2158,13 +2193,14 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
                     'id': rand_id,
                     'volume_id': vol_id,
                     'volume_size': 10,
-                    'mdisk_grp_name': 'openstack'}
+                    'mdisk_grp_name': pool}
         else:
             return {'name': 'test_volume%s' % rand_id,
                     'size': 10,
                     'id': '%s' % rand_id,
                     'volume_type_id': None,
-                    'mdisk_grp_name': 'openstack'}
+                    'mdisk_grp_name': pool,
+                    'host': 'openstack@svc#%s' % pool}
 
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.fc_driver._helpers.is_vdisk_defined(name)
@@ -2529,7 +2565,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self._def_flags = {'san_ip': 'hostname',
                                'san_login': 'user',
                                'san_password': 'pass',
-                               'storwize_svc_volpool_name': 'openstack',
+                               'storwize_svc_volpool_name':
+                               ['openstack', 'openstack1'],
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
                                'storwize_svc_allow_tenant_qos': True}
@@ -2542,7 +2579,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                'host': 'storwize-svc-test',
                                'wwpns': wwpns,
                                'initiator': initiator}
-            self.sim = StorwizeSVCManagementSimulator('openstack')
+            self.sim = StorwizeSVCManagementSimulator(['openstack',
+                                                      'openstack1'])
 
             self.driver.set_fake_storage(self.sim)
             self.ctxt = context.get_admin_context()
@@ -2640,6 +2678,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
 
     def _generate_vol_info(self, vol_name, vol_id):
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
         rand_id = six.text_type(random.randint(10000, 99999))
         if vol_name:
             return {'name': 'snap_volume%s' % rand_id,
@@ -2647,15 +2686,22 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                     'id': rand_id,
                     'volume_id': vol_id,
                     'volume_size': 10,
-                    'mdisk_grp_name': 'openstack'}
+                    'mdisk_grp_name': pool}
         else:
             return {'name': 'test_volume%s' % rand_id,
                     'size': 10,
                     'id': '%s' % rand_id,
                     'volume_type_id': None,
-                    'mdisk_grp_name': 'openstack'}
+                    'mdisk_grp_name': pool,
+                    'host': 'openstack@svc#%s' % pool}
 
     def _create_volume(self, **kwargs):
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
+        prop = {'host': 'openstack@svc#%s' % pool,
+                'size': 1}
+        for p in prop.keys():
+            if p not in kwargs:
+                kwargs[p] = prop[p]
         vol = testutils.create_volume(self.ctxt, **kwargs)
         self.driver.create_volume(vol)
         return vol
@@ -2962,7 +3008,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         attributes = self.driver._helpers.get_vdisk_attributes(volume['name'])
         attr_size = float(attributes['capacity']) / units.Gi  # bytes to GB
         self.assertEqual(attr_size, float(volume['size']))
-        pool = self.driver.configuration.local_conf.storwize_svc_volpool_name
+        pool =\
+            self.driver.configuration.local_conf.storwize_svc_volpool_name[0]
         self.assertEqual(attributes['mdisk_grp_name'], pool)
 
         # Try to create the volume again (should fail)
@@ -3048,10 +3095,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
 
         rand_id = random.randint(10000, 99999)
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
         volume1 = {'name': u'unicode1_volume%s' % rand_id,
                    'size': 2,
                    'id': 1,
-                   'volume_type_id': None}
+                   'volume_type_id': None,
+                   'host': 'openstack@svc#%s' % pool}
         self.driver.create_volume(volume1)
         self._assert_vol_exists(volume1['name'], True)
 
@@ -3167,15 +3216,39 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_svc_get_volume_stats(self):
         self._set_flag('reserved_percentage', 25)
         stats = self.driver.get_volume_stats()
-        self.assertLessEqual(stats['free_capacity_gb'],
-                             stats['total_capacity_gb'])
-        self.assertEqual(25, stats['reserved_percentage'])
-        pool = self.driver.configuration.local_conf.storwize_svc_volpool_name
+        for each_pool in stats['pools']:
+            self.assertIn(each_pool['pool_name'],
+                          self._def_flags['storwize_svc_volpool_name'])
+            self.assertLessEqual(each_pool['free_capacity_gb'],
+                                 each_pool['total_capacity_gb'])
+            self.assertLessEqual(each_pool['allocated_capacity_gb'],
+                                 each_pool['total_capacity_gb'])
+            self.assertEqual(25, each_pool['reserved_percentage'])
         if self.USESIM:
-            expected = 'storwize-svc-sim_' + pool
+            expected = 'storwize-svc-sim'
             self.assertEqual(expected, stats['volume_backend_name'])
-            self.assertAlmostEqual(3328.0, stats['total_capacity_gb'])
-            self.assertAlmostEqual(3287.5, stats['free_capacity_gb'])
+            for each_pool in stats['pools']:
+                self.assertIn(each_pool['pool_name'],
+                              self._def_flags['storwize_svc_volpool_name'])
+                self.assertAlmostEqual(3328.0, each_pool['total_capacity_gb'])
+                self.assertAlmostEqual(3287.5, each_pool['free_capacity_gb'])
+                self.assertAlmostEqual(25.0,
+                                       each_pool['allocated_capacity_gb'])
+
+    def test_get_pool(self):
+        ctxt = testutils.get_test_admin_context()
+        type_ref = volume_types.create(ctxt, 'testtype', None)
+        volume = self._generate_vol_info(None, None)
+        type_id = type_ref['id']
+        type_ref = volume_types.get_volume_type(ctxt, type_id)
+        volume['volume_type_id'] = type_id
+        volume['volume_type'] = type_ref
+        self.driver.create_volume(volume)
+        self.assertEqual(volume['mdisk_grp_name'],
+                         self.driver.get_pool(volume))
+
+        self.driver.delete_volume(volume)
+        volume_types.destroy(ctxt, type_ref['id'])
 
     def test_storwize_svc_extend_volume(self):
         volume = self._create_volume()
@@ -3268,7 +3341,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         loc = ('StorwizeSVCDriver:' + self.driver._state['system_id'] +
                ':openstack2')
         cap = {'location_info': loc, 'extent_size': '256'}
-        host = {'host': 'foo', 'capabilities': cap}
+        host = {'host': 'openstack@svc#openstack2', 'capabilities': cap}
         ctxt = context.get_admin_context()
         volume = self._create_volume()
         volume['volume_type_id'] = None
@@ -3386,7 +3459,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                ':openstack')
         cap = {'location_info': loc, 'extent_size': '128'}
         self.driver._stats = {'location_info': loc}
-        host = {'host': 'foo', 'capabilities': cap}
+        host = {'host': 'openstack@svc#openstack', 'capabilities': cap}
         ctxt = context.get_admin_context()
 
         key_specs_old = {'easytier': False, 'warning': 2, 'autoexpand': True}
@@ -3400,7 +3473,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         volume = self._generate_vol_info(None, None)
         old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
         volume['volume_type'] = old_type
-        volume['host'] = host
+        volume['host'] = 'openstack@svc#openstack'
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
         self.driver.create_volume(volume)
@@ -3476,7 +3549,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                ':openstack')
         cap = {'location_info': loc, 'extent_size': '128'}
         self.driver._stats = {'location_info': loc}
-        host = {'host': 'foo', 'capabilities': cap}
+        host = {'host': 'openstack@svc#openstack', 'capabilities': cap}
         ctxt = context.get_admin_context()
 
         key_specs_old = {'iogrp': 0}
@@ -3490,7 +3563,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         volume = self._generate_vol_info(None, None)
         old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
         volume['volume_type'] = old_type
-        volume['host'] = host
+        volume['host'] = 'openstack@svc#openstack'
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
         self.driver.create_volume(volume)
@@ -3511,7 +3584,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                ':openstack')
         cap = {'location_info': loc, 'extent_size': '128'}
         self.driver._stats = {'location_info': loc}
-        host = {'host': 'foo', 'capabilities': cap}
+        host = {'host': 'openstack@svc#openstack', 'capabilities': cap}
         ctxt = context.get_admin_context()
 
         key_specs_old = {'compression': True, 'iogrp': 0}
@@ -3525,7 +3598,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         volume = self._generate_vol_info(None, None)
         old_type = volume_types.get_volume_type(ctxt, old_type_ref['id'])
         volume['volume_type'] = old_type
-        volume['host'] = host
+        volume['host'] = 'openstack@svc#openstack'
         new_type = volume_types.get_volume_type(ctxt, new_type_ref['id'])
 
         self.driver.create_volume(volume)
@@ -3630,7 +3703,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         ctxt = testutils.get_test_admin_context()
         volume = self._create_volume()
         driver = self.driver
-        dest_pool = self.driver.configuration.storwize_svc_volpool_name
+        dest_pool = volume_utils.extract_host(volume['host'], 'pool')
         new_ops = driver._helpers.add_vdisk_copy(volume['name'], dest_pool,
                                                  None, self.driver._state,
                                                  self.driver.configuration)
@@ -3806,7 +3879,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                ':openstack')
         cap = {'location_info': loc, 'extent_size': '128'}
         self.driver._stats = {'location_info': loc}
-        host = {'host': 'foo', 'capabilities': cap}
+        host = {'host': 'openstack@svc#openstack', 'capabilities': cap}
         ctxt = context.get_admin_context()
 
         disable_type = self._create_replication_volume_type(False)
@@ -3817,7 +3890,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                       enable_type['id'])
 
         volume = self._generate_vol_info(None, None)
-        volume['host'] = host
+        volume['host'] = 'openstack@svc#openstack'
         volume['volume_type_id'] = disable_type['id']
         volume['volume_type'] = disable_type
         volume['replication_status'] = None
@@ -3842,7 +3915,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                ':openstack')
         cap = {'location_info': loc, 'extent_size': '128'}
         self.driver._stats = {'location_info': loc}
-        host = {'host': 'foo', 'capabilities': cap}
+        host = {'host': 'openstack@svc#openstack', 'capabilities': cap}
         ctxt = context.get_admin_context()
 
         volume = self._generate_vol_info(None, None)
@@ -3850,6 +3923,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         volume['volume_type'] = None
         volume['replication_status'] = "disabled"
         volume['replication_extended_status'] = None
+        volume['host'] = 'openstack@svc#openstack'
 
         # Create volume which is not volume replication
         model_update = self.driver.create_volume(volume)
@@ -3990,14 +4064,16 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         cg_type = self._create_consistency_group_volume_type()
         self.ctxt.user_id = 'fake_user_id'
         self.ctxt.project_id = 'fake_project_id'
-
+        pool = self._def_flags['storwize_svc_volpool_name'][0]
         # Create cg in db
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
         # Create volumes in db
         testutils.create_volume(self.ctxt, volume_type_id=cg_type['id'],
-                                consistencygroup_id=cg['id'])
+                                consistencygroup_id=cg['id'],
+                                host='openstack@svc#%s' % pool)
         testutils.create_volume(self.ctxt, volume_type_id=cg_type['id'],
-                                consistencygroup_id=cg['id'])
+                                consistencygroup_id=cg['id'],
+                                host='openstack@svc#%s' % pool)
         volumes = (
             self.db.volume_get_all_by_group(self.ctxt.elevated(), cg['id']))
 
@@ -4015,6 +4091,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         cgsnapshot, snapshots = self._create_cgsnapshot(source_cg['id'])
 
         # Create cg from source cg
+
         model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(self.ctxt,
                                                          cg,
@@ -4278,7 +4355,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         new_volume['volume_type_id'] = type_thick_ref['id']
         no_exist_pool = 'i-dont-exist-%s' % random.randint(10000, 99999)
-        self._set_flag('storwize_svc_volpool_name', no_exist_pool)
+        new_volume['host'] = 'openstack@svc#%s' % no_exist_pool
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver.manage_existing, new_volume, ref)
 
@@ -4596,13 +4673,15 @@ class StorwizeSVCReplicationMirrorTestCase(test.TestCase):
             self.svc_driver.replication_factory(self.rep_type, fake_target))
         self.ctxt = context.get_admin_context()
         rand_id = six.text_type(uuid.uuid4())
+        pool = self.svc_driver.configuration.storwize_svc_volpool_name[0]
         self.volume = {'name': 'volume-%s' % rand_id,
                        'size': 10, 'id': '%s' % rand_id,
                        'volume_type_id': None,
                        'mdisk_grp_name': 'openstack',
                        'replication_status': 'disabled',
                        'replication_extended_status': None,
-                       'volume_metadata': None}
+                       'volume_metadata': None,
+                       'host': 'openstack@svc#%s' % pool}
         spec = {'replication_enabled': '<is> True',
                 'replication_type': extra_spec_rep_type}
         type_ref = volume_types.create(self.ctxt, "replication", spec)
@@ -4673,13 +4752,15 @@ class StorwizeSVCReplicationMirrorTestCase(test.TestCase):
         get_vdisk_params.return_value = {'replication': None,
                                          'qos': None}
         rand_id = six.text_type(random.randint(10000, 99999))
+        pool = self.svc_driver.configuration.storwize_svc_volpool_name[0]
         target_volume = {'name': 'test_volume%s' % rand_id,
                          'size': 10, 'id': '%s' % rand_id,
                          'volume_type_id': None,
                          'mdisk_grp_name': 'openstack',
                          'replication_status': 'disabled',
                          'replication_extended_status': None,
-                         'volume_metadata': None}
+                         'volume_metadata': None,
+                         'host': 'openstack@svc#%s' % pool}
         target_volume['volume_type_id'] = self.replication_type['id']
         target_volume['volume_type'] = self.replication_type
         model_update = self.svc_driver.create_cloned_volume(
