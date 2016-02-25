@@ -17,6 +17,7 @@
 
 """Starter script for Cinder Volume."""
 
+import logging as python_logging
 import os
 
 import eventlet
@@ -60,6 +61,7 @@ def main():
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup(CONF, "cinder")
+    python_logging.captureWarnings(True)
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version)
     launcher = service.get_launcher()

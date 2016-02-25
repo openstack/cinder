@@ -55,6 +55,7 @@
 from __future__ import print_function
 
 
+import logging as python_logging
 import os
 import sys
 
@@ -554,6 +555,7 @@ def main():
         CONF(sys.argv[1:], project='cinder',
              version=version.version_string())
         logging.setup(CONF, "cinder")
+        python_logging.captureWarnings(True)
     except cfg.ConfigDirNotFoundError as details:
         print(_("Invalid directory: %s") % details)
         sys.exit(2)

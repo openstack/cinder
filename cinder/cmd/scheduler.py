@@ -20,6 +20,7 @@
 import eventlet
 eventlet.monkey_patch()
 
+import logging as python_logging
 import sys
 
 from oslo_config import cfg
@@ -45,6 +46,7 @@ def main():
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup(CONF, "cinder")
+    python_logging.captureWarnings(True)
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version)
     server = service.Service.create(binary='cinder-scheduler')
