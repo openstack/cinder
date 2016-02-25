@@ -421,6 +421,7 @@ class API(base.Base):
         if filters:
             LOG.debug("Searching by: %s.", six.text_type(filters))
 
+       
         if context.is_admin and allTenants:
             # Need to remove all_tenants to pass the filtering below.
             del filters['all_tenants']
