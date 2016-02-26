@@ -24,6 +24,7 @@ import functools
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
@@ -223,7 +224,7 @@ class API(base.Base):
         # of the size value.  BUT there is a possibility that somebody
         # could call the API directly so the is_int_like check
         # handles both cases (string representation of true float or int).
-        if size and (not utils.is_int_like(size) or int(size) <= 0):
+        if size and (not strutils.is_int_like(size) or int(size) <= 0):
             msg = _('Invalid volume size provided for create request: %s '
                     '(size argument must be an integer (or string '
                     'representation of an integer) and greater '
