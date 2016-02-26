@@ -622,7 +622,7 @@ class TestProphetStorDPLDriver(test.TestCase):
         res = self.dpldriver.initialize_connection(DATA_IN_VOLUME,
                                                    DATA_IN_CONNECTOR)
         self.assertEqual('iscsi', res['driver_volume_type'])
-        self.assertEqual('101', res['data']['target_lun'])
+        self.assertEqual(101, res['data']['target_lun'])
         self.assertTrue(res['data']['target_discovered'])
         self.assertEqual('172.31.1.210:3260', res['data']['target_portal'])
         self.assertEqual(
