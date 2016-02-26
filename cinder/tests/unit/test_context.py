@@ -134,3 +134,15 @@ class ContextTestCase(test.TestCase):
         mock_conf.cinder_internal_tenant_user_id = user_id
         ctx = context.get_internal_tenant_context()
         self.assertIsNone(ctx)
+
+    def test_request_context_no_roles(self):
+        ctxt = context.RequestContext('111',
+                                      '222')
+        self.assertEqual([], ctxt.roles)
+
+    def test_request_context_with_roles(self):
+        roles = ['alpha', 'beta']
+        ctxt = context.RequestContext('111',
+                                      '222',
+                                      roles=roles)
+        self.assertEqual(roles, ctxt.roles)
