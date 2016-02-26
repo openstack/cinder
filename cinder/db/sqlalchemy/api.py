@@ -240,6 +240,18 @@ def _retry_on_deadlock(f):
     return wrapped
 
 
+def handle_db_data_error(f):
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except db_exc.DBDataError:
+            msg = _('Error writing field to database')
+            LOG.exception(msg)
+            raise exception.Invalid(msg)
+
+    return wrapper
+
+
 def model_query(context, *args, **kwargs):
     """Query helper that accounts for context's `read_deleted` field.
 
@@ -1146,6 +1158,7 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
         return volume_ref
 
 
+@handle_db_data_error
 @require_context
 def volume_create(context, values):
     values['volume_metadata'] = _metadata_refs(values.get('metadata'),
@@ -1163,11 +1176,8 @@ def volume_create(context, values):
     volume_ref.update(values)
 
     session = get_session()
-    try:
-        with session.begin():
-            session.add(volume_ref)
-    except db_exc.DBDataError:
-        raise exception.Invalid()
+    with session.begin():
+        session.add(volume_ref)
 
     return _volume_get(context, values['id'], session=session)
 
@@ -1762,6 +1772,7 @@ def process_sort_params(sort_keys, sort_dirs, default_keys=None,
     return result_keys, result_dirs
 
 
+@handle_db_data_error
 @require_context
 def volume_update(context, volume_id, values):
     session = get_session()
@@ -2060,6 +2071,7 @@ def volume_admin_metadata_update(context, volume_id, metadata, delete,
 ###################
 
 
+@handle_db_data_error
 @require_context
 def snapshot_create(context, values):
     values['snapshot_metadata'] = _metadata_refs(values.get('metadata'),
@@ -2299,6 +2311,7 @@ def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
     return query.all()
 
 
+@handle_db_data_error
 @require_context
 def snapshot_update(context, snapshot_id, values):
     session = get_session()
@@ -2399,6 +2412,7 @@ def snapshot_metadata_update(context, snapshot_id, metadata, delete):
 ###################
 
 
+@handle_db_data_error
 @require_admin_context
 def volume_type_create(context, values, projects=None):
     """Create a new volume type.
@@ -2498,6 +2512,7 @@ def _process_volume_types_filters(query, filters):
     return query
 
 
+@handle_db_data_error
 @require_admin_context
 def volume_type_update(context, volume_type_id, values):
     session = get_session()
@@ -3233,6 +3248,7 @@ def _qos_specs_get_item(context, qos_specs_id, key, session=None):
     return result
 
 
+@handle_db_data_error
 @require_admin_context
 def qos_specs_update(context, qos_specs_id, specs):
     """Make updates to an existing qos specs.
@@ -3290,6 +3306,7 @@ def volume_type_encryption_delete(context, volume_type_id):
                            'updated_at': literal_column('updated_at')})
 
 
+@handle_db_data_error
 @require_admin_context
 def volume_type_encryption_create(context, volume_type_id, values):
     session = get_session()
@@ -3308,6 +3325,7 @@ def volume_type_encryption_create(context, volume_type_id, values):
         return encryption
 
 
+@handle_db_data_error
 @require_admin_context
 def volume_type_encryption_update(context, volume_type_id, values):
     session = get_session()
@@ -3673,6 +3691,7 @@ def backup_get_all_by_volume(context, volume_id, filters=None):
     return _backup_get_all(context, filters)
 
 
+@handle_db_data_error
 @require_context
 def backup_create(context, values):
     backup = models.Backup()
@@ -3686,6 +3705,7 @@ def backup_create(context, values):
         return backup
 
 
+@handle_db_data_error
 @require_context
 def backup_update(context, backup_id, values):
     session = get_session()
@@ -3979,6 +3999,7 @@ def consistencygroup_get_all_by_project(context, project_id, filters=None,
                                      sort_keys, sort_dirs)
 
 
+@handle_db_data_error
 @require_context
 def consistencygroup_create(context, values):
     consistencygroup = models.ConsistencyGroup()
@@ -3993,6 +4014,7 @@ def consistencygroup_create(context, values):
         return _consistencygroup_get(context, values['id'], session=session)
 
 
+@handle_db_data_error
 @require_context
 def consistencygroup_update(context, consistencygroup_id, values):
     session = get_session()
@@ -4092,6 +4114,7 @@ def cgsnapshot_get_all_by_project(context, project_id, filters=None):
     return _cgsnapshot_get_all(context, project_id=project_id, filters=filters)
 
 
+@handle_db_data_error
 @require_context
 def cgsnapshot_create(context, values):
     cgsnapshot = models.Cgsnapshot()
@@ -4106,6 +4129,7 @@ def cgsnapshot_create(context, values):
         return _cgsnapshot_get(context, values['id'], session=session)
 
 
+@handle_db_data_error
 @require_context
 def cgsnapshot_update(context, cgsnapshot_id, values):
     session = get_session()
