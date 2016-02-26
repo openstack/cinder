@@ -369,8 +369,6 @@ class RestClient(object):
 
         msg = _('Find portgroup error.')
         self._assert_rest_result(result, msg)
-        msg = _('Can not find the portgroup on the array.')
-        self._assert_data_in_result(result, msg)
 
         return self._get_id_from_result(result, tgt_port_group, 'NAME')
 
