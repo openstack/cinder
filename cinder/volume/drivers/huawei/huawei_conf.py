@@ -197,8 +197,8 @@ class HuaweiConf(object):
                 raise exception.InvalidInput(reason=msg)
 
             prefetch_value = node.attrib['Value'].strip()
-            factor = {'1': 2, '2': 2}
-            factor = int(factor.get('prefetch_type', '1'))
+            factor = {'1': 2}
+            factor = int(factor.get(prefetch_type, '1'))
             prefetch_value = int(prefetch_value) * factor
             prefetch_value = six.text_type(prefetch_value)
 
