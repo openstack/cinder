@@ -151,9 +151,6 @@ class HPELeftHandBaseDriver(object):
     driver_startup_call_stack = [
         mock.call.login('foo1', 'bar2'),
         mock.call.getClusterByName('CloudCluster1'),
-    ]
-
-    driver_startup_ssh = [
         mock.call.setSSHOptions(
             HPELEFTHAND_SSH_IP,
             HPELEFTHAND_USERNAME,
@@ -2075,7 +2072,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 ctxt, cgsnapshot, expected_snaps)
             self.assertEqual('deleting', cgsnap['status'])
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_managed(self, _mock_get_volume_type):
         # set up driver with default config
@@ -2127,7 +2123,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             mock_client.assert_has_calls(
                 self.driver_startup_call_stack +
-                self.driver_startup_ssh +
                 expected)
             prov_location = '10.0.1.6:3260,1 iqn.1993-08.org.debian:01:222 0'
             rep_data = json.dumps({"location": HPELEFTHAND_API_URL})
@@ -2136,7 +2131,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               'provider_location': prov_location},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_replicated_unmanaged(self, _mock_get_volume_type):
         # set up driver with default config
@@ -2188,7 +2182,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             mock_client.assert_has_calls(
                 self.driver_startup_call_stack +
-                self.driver_startup_ssh +
                 expected)
             prov_location = '10.0.1.6:3260,1 iqn.1993-08.org.debian:01:222 0'
             rep_data = json.dumps({"location": HPELEFTHAND_API_URL})
@@ -2197,7 +2190,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               'provider_location': prov_location},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_delete_volume_replicated(self, _mock_get_volume_type):
         # set up driver with default config
@@ -2230,10 +2222,8 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 mock.call.deleteVolume(1)]
             mock_client.assert_has_calls(
                 self.driver_startup_call_stack +
-                self.driver_startup_ssh +
                 expected)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_enable_no_snapshot_schedule(self,
                                                      _mock_get_volume_type):
@@ -2278,13 +2268,11 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                     'bar2')]
             mock_client.assert_has_calls(
                 self.driver_startup_call_stack +
-                self.driver_startup_ssh +
                 expected)
 
             self.assertEqual({'replication_status': 'enabled'},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_enable_with_snapshot_schedule(self,
                                                        _mock_get_volume_type):
@@ -2319,13 +2307,11 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                     'fakevolume_replicated_SCHED_Pri')]
             mock_client.assert_has_calls(
                 self.driver_startup_call_stack +
-                self.driver_startup_ssh +
                 expected)
 
             self.assertEqual({'replication_status': 'enabled'},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_disable(self, _mock_get_volume_type):
         # set up driver with default config
@@ -2356,13 +2342,11 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                     'fakevolume_replicated_SCHED_Pri')]
             mock_client.assert_has_calls(
                 self.driver_startup_call_stack +
-                self.driver_startup_ssh +
                 expected)
 
             self.assertEqual({'replication_status': 'disabled'},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_disable_fail(self, _mock_get_volume_type):
         # set up driver with default config
@@ -2395,13 +2379,11 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                     'fakevolume_replicated_SCHED_Pri')]
             mock_client.assert_has_calls(
                 self.driver_startup_call_stack +
-                self.driver_startup_ssh +
                 expected)
 
             self.assertEqual({'replication_status': 'disable_failed'},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_list_replication_targets(self, _mock_get_volume_type):
         # set up driver with default config
@@ -2432,7 +2414,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               'targets': targets},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_failover_managed(self, _mock_get_volume_type):
         ctxt = context.get_admin_context()
@@ -2480,7 +2461,6 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               'host': FAKE_FAILOVER_HOST},
                              return_model)
 
-    @mock.patch('hpelefthandclient.version', "2.0.1")
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_replication_failover_unmanaged(self, _mock_get_volume_type):
         ctxt = context.get_admin_context()

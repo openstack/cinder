@@ -99,8 +99,7 @@ CONF = cfg.CONF
 CONF.register_opts(hpelefthand_opts)
 
 MIN_API_VERSION = "1.1"
-MIN_CLIENT_VERSION = '2.0.0'
-MIN_REP_CLIENT_VERSION = '2.0.1'
+MIN_CLIENT_VERSION = '2.1.0'
 
 # map the extra spec key to the REST client option key
 extra_specs_key_map = {
@@ -149,9 +148,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.2 - Adds v2 managed replication support
         2.0.3 - Adds v2 unmanaged replication support
         2.0.4 - Add manage/unmanage snapshot support
+        2.0.5 - Changed minimum client version to be 2.1.0
     """
 
-    VERSION = "2.0.4"
+    VERSION = "2.0.5"
 
     device_stats = {}
 
@@ -232,25 +232,22 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             virtual_ips = cluster_info['virtualIPAddresses']
             self.cluster_vip = virtual_ips[0]['ipV4Address']
 
-            # SSH is only available in the 2.0.1 release of the
-            # python-lefthandclient.
-            if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
-                # Extract IP address from API URL
-                ssh_ip = self._extract_ip_from_url(
-                    self._client_conf['hpelefthand_api_url'])
-                known_hosts_file = CONF.ssh_hosts_key_file
-                policy = "AutoAddPolicy"
-                if CONF.strict_ssh_host_key_policy:
-                    policy = "RejectPolicy"
-                client.setSSHOptions(
-                    ssh_ip,
-                    self._client_conf['hpelefthand_username'],
-                    self._client_conf['hpelefthand_password'],
-                    port=self._client_conf['hpelefthand_ssh_port'],
-                    conn_timeout=self._client_conf['ssh_conn_timeout'],
-                    privatekey=self._client_conf['san_private_key'],
-                    missing_key_policy=policy,
-                    known_hosts_file=known_hosts_file)
+            # Extract IP address from API URL
+            ssh_ip = self._extract_ip_from_url(
+                self._client_conf['hpelefthand_api_url'])
+            known_hosts_file = CONF.ssh_hosts_key_file
+            policy = "AutoAddPolicy"
+            if CONF.strict_ssh_host_key_policy:
+                policy = "RejectPolicy"
+            client.setSSHOptions(
+                ssh_ip,
+                self._client_conf['hpelefthand_username'],
+                self._client_conf['hpelefthand_password'],
+                port=self._client_conf['hpelefthand_ssh_port'],
+                conn_timeout=self._client_conf['ssh_conn_timeout'],
+                privatekey=self._client_conf['san_private_key'],
+                missing_key_policy=policy,
+                known_hosts_file=known_hosts_file)
 
             return client
         except hpeexceptions.HTTPNotFound:
@@ -267,11 +264,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         # Timeout is only supported in version 2.0.1 and greater of the
         # python-lefthandclient.
         hpelefthand_api_url = self._client_conf['hpelefthand_api_url']
-        if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
-            client = hpe_lh_client.HPELeftHandClient(
-                hpelefthand_api_url, timeout=timeout)
-        else:
-            client = hpe_lh_client.HPELeftHandClient(hpelefthand_api_url)
+        client = hpe_lh_client.HPELeftHandClient(
+            hpelefthand_api_url, timeout=timeout)
         return client
 
     def _create_replication_client(self, remote_array):
@@ -328,9 +322,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             LOG.error(ex_msg)
             raise exception.InvalidInput(reason=ex_msg)
 
-        # v2 replication check
-        if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
-            self._do_replication_setup()
+        self._do_replication_setup()
 
     def check_for_setup_error(self):
         """Checks for incorrect LeftHand API being used on backend."""
@@ -675,11 +667,9 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         data['filter_function'] = self.get_filter_function()
         data['goodness_function'] = self.get_goodness_function()
         data['consistencygroup_support'] = True
-
-        if hpelefthandclient.version >= MIN_REP_CLIENT_VERSION:
-            data['replication_enabled'] = self._replication_enabled
-            data['replication_type'] = ['periodic']
-            data['replication_count'] = len(self._replication_targets)
+        data['replication_enabled'] = self._replication_enabled
+        data['replication_type'] = ['periodic']
+        data['replication_count'] = len(self._replication_targets)
 
         self.device_stats = data
 
