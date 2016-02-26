@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -507,3 +508,54 @@ class NetAppBaseClientTestCase(test.TestCase):
                           self.client.get_performance_counter_info,
                           'wafl',
                           'invalid')
+
+    def test_delete_snapshot(self):
+        api_args = {
+            'volume': fake.SNAPSHOT['volume_id'],
+            'snapshot': fake.SNAPSHOT['name'],
+        }
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_snapshot(api_args['volume'],
+                                    api_args['snapshot'])
+
+        asserted_api_args = {
+            'volume': api_args['volume'],
+            'snapshot': api_args['snapshot'],
+        }
+        self.client.send_request.assert_called_once_with('snapshot-delete',
+                                                         asserted_api_args)
+
+    def test_create_cg_snapshot(self):
+        self.mock_object(self.client, '_start_cg_snapshot', mock.Mock(
+            return_value=fake.CONSISTENCY_GROUP_ID))
+        self.mock_object(self.client, '_commit_cg_snapshot')
+
+        self.client.create_cg_snapshot([fake.CG_VOLUME_NAME],
+                                       fake.CG_SNAPSHOT_NAME)
+
+        self.client._commit_cg_snapshot.assert_called_once_with(
+            fake.CONSISTENCY_GROUP_ID)
+
+    def test_start_cg_snapshot(self):
+        snapshot_init = {
+            'snapshot': fake.CG_SNAPSHOT_NAME,
+            'timeout': 'relaxed',
+            'volumes': [{'volume-name': fake.CG_VOLUME_NAME}],
+        }
+        self.mock_object(self.client, 'send_request')
+
+        self.client._start_cg_snapshot([fake.CG_VOLUME_NAME],
+                                       snapshot_init['snapshot'])
+
+        self.client.send_request.assert_called_once_with('cg-start',
+                                                         snapshot_init)
+
+    def test_commit_cg_snapshot(self):
+        snapshot_commit = {'cg-id': fake.CG_VOLUME_ID}
+        self.mock_object(self.client, 'send_request')
+
+        self.client._commit_cg_snapshot(snapshot_commit['cg-id'])
+
+        self.client.send_request.assert_called_once_with(
+            'cg-commit', {'cg-id': snapshot_commit['cg-id']})

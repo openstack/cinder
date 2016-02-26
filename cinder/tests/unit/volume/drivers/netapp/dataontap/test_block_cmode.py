@@ -1,6 +1,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -199,7 +200,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
-            dest_block=0, src_block=0, qos_policy_group_name=None)
+            dest_block=0, src_block=0, qos_policy_group_name=None,
+            source_snapshot=None)
 
     def test_clone_lun_blocks(self):
         """Test for when clone lun is passed block information."""
@@ -224,7 +226,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false',
             block_count=block_count, dest_block=dest_block,
-            src_block=src_block, qos_policy_group_name=None)
+            src_block=src_block, qos_policy_group_name=None,
+            source_snapshot=None)
 
     def test_clone_lun_no_space_reservation(self):
         """Test for when space_reservation is not passed."""
@@ -244,7 +247,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
-            dest_block=0, src_block=0, qos_policy_group_name=None)
+            dest_block=0, src_block=0, qos_policy_group_name=None,
+            source_snapshot=None)
 
     def test_get_fc_target_wwpns(self):
         ports = [fake.FC_FORMATTED_TARGET_WWPNS[0],
@@ -372,6 +376,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                                               goodness_function='goodness')
 
         expected = [{'pool_name': 'vola',
+                     'consistencygroup_support': True,
                      'netapp_unmirrored': 'true',
                      'QoS_support': True,
                      'thin_provisioning_support': not thick,

@@ -1,6 +1,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -396,3 +397,37 @@ class Client(object):
                 LOG.warning(_LW("Failed to invoke ems. Message : %s"), e)
             finally:
                 requester.last_ems = timeutils.utcnow()
+
+    def delete_snapshot(self, volume_name, snapshot_name):
+        """Deletes a volume snapshot."""
+        api_args = {'volume': volume_name, 'snapshot': snapshot_name}
+        self.send_request('snapshot-delete', api_args)
+
+    def create_cg_snapshot(self, volume_names, snapshot_name):
+        """Creates a consistency group snapshot out of one or more flexvols.
+
+        ONTAP requires an invocation of cg-start to first fence off the
+        flexvols to be included in the snapshot. If cg-start returns
+        success, a cg-commit must be executed to finalized the snapshot and
+        unfence the flexvols.
+        """
+        cg_id = self._start_cg_snapshot(volume_names, snapshot_name)
+        if not cg_id:
+            msg = _('Could not start consistency group snapshot %s.')
+            raise exception.VolumeBackendAPIException(data=msg % snapshot_name)
+        self._commit_cg_snapshot(cg_id)
+
+    def _start_cg_snapshot(self, volume_names, snapshot_name):
+        snapshot_init = {
+            'snapshot': snapshot_name,
+            'timeout': 'relaxed',
+            'volumes': [
+                {'volume-name': volume_name} for volume_name in volume_names
+            ],
+        }
+        result = self.send_request('cg-start', snapshot_init)
+        return result.get_child_content('cg-id')
+
+    def _commit_cg_snapshot(self, cg_id):
+        snapshot_commit = {'cg-id': cg_id}
+        self.send_request('cg-commit', snapshot_commit)

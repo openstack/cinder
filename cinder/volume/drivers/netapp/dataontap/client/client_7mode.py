@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -27,6 +28,7 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 
+from oslo_utils import strutils
 
 LOG = logging.getLogger(__name__)
 
@@ -228,7 +230,7 @@ class Client(client_base.Client):
 
     def clone_lun(self, path, clone_path, name, new_name,
                   space_reserved='true', src_block=0,
-                  dest_block=0, block_count=0):
+                  dest_block=0, block_count=0, source_snapshot=None):
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
         # zAPI can only handle 32 block ranges per call
@@ -244,10 +246,16 @@ class Client(client_base.Client):
                 zbc -= z_limit
             else:
                 block_count = zbc
+
+            zapi_args = {
+                'source-path': path,
+                'destination-path': clone_path,
+                'no-snap': 'true',
+            }
+            if source_snapshot:
+                zapi_args['snapshot-name'] = source_snapshot
             clone_start = netapp_api.NaElement.create_node_with_children(
-                'clone-start', **{'source-path': path,
-                                  'destination-path': clone_path,
-                                  'no-snap': 'true'})
+                'clone-start', **zapi_args)
             if block_count > 0:
                 block_ranges = netapp_api.NaElement("block-ranges")
                 # zAPI can only handle 2^24 block ranges
@@ -536,3 +544,42 @@ class Client(client_base.Client):
         system_info = result.get_child_by_name('system-info')
         system_name = system_info.get_child_content('system-name')
         return system_name
+
+    def get_snapshot(self, volume_name, snapshot_name):
+        """Gets a single snapshot."""
+        snapshot_list_info = netapp_api.NaElement('snapshot-list-info')
+        snapshot_list_info.add_new_child('volume', volume_name)
+        result = self.connection.invoke_successfully(snapshot_list_info,
+                                                     enable_tunneling=True)
+
+        snapshots = result.get_child_by_name('snapshots')
+        if not snapshots:
+            msg = _('No snapshots could be found on volume %s.')
+            raise exception.VolumeBackendAPIException(data=msg % volume_name)
+        snapshot_list = snapshots.get_children()
+        snapshot = None
+        for s in snapshot_list:
+            if (snapshot_name == s.get_child_content('name')) and (snapshot
+                                                                   is None):
+                snapshot = {
+                    'name': s.get_child_content('name'),
+                    'volume': s.get_child_content('volume'),
+                    'busy': strutils.bool_from_string(
+                        s.get_child_content('busy')),
+                }
+                snapshot_owners_list = s.get_child_by_name(
+                    'snapshot-owners-list') or netapp_api.NaElement('none')
+                snapshot_owners = set([snapshot_owner.get_child_content(
+                    'owner') for snapshot_owner in
+                    snapshot_owners_list.get_children()])
+                snapshot['owners'] = snapshot_owners
+            elif (snapshot_name == s.get_child_content('name')) and (
+                    snapshot is not None):
+                msg = _('Could not find unique snapshot %(snap)s on '
+                        'volume %(vol)s.')
+                msg_args = {'snap': snapshot_name, 'vol': volume_name}
+                raise exception.VolumeBackendAPIException(data=msg % msg_args)
+        if not snapshot:
+            raise exception.SnapshotNotFound(snapshot_id=snapshot_name)
+
+        return snapshot

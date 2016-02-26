@@ -1,4 +1,5 @@
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -25,6 +26,7 @@ LOG = logging.getLogger(__name__)
 
 
 class NetApp7modeISCSIDriver(driver.BaseVD,
+                             driver.ConsistencyGroupVD,
                              driver.ManageableVD,
                              driver.ExtendVD,
                              driver.TransferVD,
@@ -103,3 +105,27 @@ class NetApp7modeISCSIDriver(driver.BaseVD,
 
     def get_pool(self, volume):
         return self.library.get_pool(volume)
+
+    def create_consistencygroup(self, context, group):
+        return self.library.create_consistencygroup(group)
+
+    def delete_consistencygroup(self, context, group, volumes):
+        return self.library.delete_consistencygroup(group, volumes)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        return self.library.update_consistencygroup(group, add_volumes=None,
+                                                    remove_volumes=None)
+
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        return self.library.create_cgsnapshot(cgsnapshot, snapshots)
+
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        return self.library.delete_cgsnapshot(cgsnapshot, snapshots)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        return self.library.create_consistencygroup_from_src(
+            group, volumes, cgsnapshot=cgsnapshot, snapshots=snapshots,
+            source_cg=source_cg, source_vols=source_vols)

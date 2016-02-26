@@ -6,8 +6,9 @@
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
-# Copyright (c) 2015 Chuck Fouts.  All rights reserved.
 # Copyright (c) 2015 Dustin Schoenbrun. All rights reserved.
+# Copyright (c) 2016 Chuck Fouts. All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -452,7 +453,7 @@ class NetAppBlockStorageLibrary(object):
 
     def _clone_lun(self, name, new_name, space_reserved='true',
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0):
+                   block_count=0, source_snapshot=None):
         """Clone LUN with the given name to the new name."""
         raise NotImplementedError()
 
@@ -983,3 +984,143 @@ class NetAppBlockStorageLibrary(object):
                 init_targ_map[initiator] = target_wwpns
 
         return target_wwpns, init_targ_map, num_paths
+
+    def create_consistencygroup(self, group):
+        """Driver entry point for creating a consistency group.
+
+        ONTAP does not maintain an actual CG construct. As a result, no
+        communication to the backend is necessary for consistency group
+        creation.
+
+        :return: Hard-coded model update for consistency group model.
+        """
+        model_update = {'status': 'available'}
+        return model_update
+
+    def delete_consistencygroup(self, group, volumes):
+        """Driver entry point for deleting a consistency group.
+
+        :return: Updated consistency group model and list of volume models
+        for the volumes that were deleted.
+        """
+        model_update = {'status': 'deleted'}
+        volumes_model_update = []
+        for volume in volumes:
+            try:
+                self._delete_lun(volume['name'])
+                volumes_model_update.append(
+                    {'id': volume['id'], 'status': 'deleted'})
+            except Exception:
+                volumes_model_update.append(
+                    {'id': volume['id'], 'status': 'error_deleting'})
+                LOG.exception(_LE("Volume %(vol) in the consistency group "
+                                  "could not be deleted."), {'vol': volume})
+        return model_update, volumes_model_update
+
+    def update_consistencygroup(self, group, add_volumes=None,
+                                remove_volumes=None):
+        """Driver entry point for updating a consistency group.
+
+        Since no actual CG construct is ever created in ONTAP, it is not
+        necessary to update any metadata on the backend. Since this is a NO-OP,
+        there is guaranteed to be no change in any of the volumes' statuses.
+        """
+        return None, None, None
+
+    def create_cgsnapshot(self, cgsnapshot, snapshots):
+        """Creates a Cinder cgsnapshot object.
+
+        The Cinder cgsnapshot object is created by making use of an
+        ephemeral ONTAP CG in order to provide write-order consistency for a
+        set of flexvol snapshots. First, a list of the flexvols backing the
+        given Cinder CG must be gathered. An ONTAP cg-snapshot of these
+        flexvols will create a snapshot copy of all the Cinder volumes in the
+        CG group. For each Cinder volume in the CG, it is then necessary to
+        clone its backing LUN from the ONTAP cg-snapshot. The naming convention
+        used for the clones is what indicates the clone's role as a Cinder
+        snapshot and its inclusion in a Cinder CG. The ONTAP CG-snapshot of
+        the flexvols is no longer required after having cloned the LUNs
+        backing the Cinder volumes in the Cinder CG.
+
+        :return: An implicit update for cgsnapshot and snapshots models that
+        is interpreted by the manager to set their models to available.
+        """
+        flexvols = set()
+        for snapshot in snapshots:
+            flexvols.add(volume_utils.extract_host(snapshot['volume']['host'],
+                                                   level='pool'))
+
+        self.zapi_client.create_cg_snapshot(flexvols, cgsnapshot['id'])
+
+        for snapshot in snapshots:
+            self._clone_lun(snapshot['volume']['name'], snapshot['name'],
+                            source_snapshot=cgsnapshot['id'])
+
+        for flexvol in flexvols:
+            self._handle_busy_snapshot(flexvol, cgsnapshot['id'])
+            self.zapi_client.delete_snapshot(flexvol, cgsnapshot['id'])
+
+        return None, None
+
+    @utils.retry(exception.SnapshotIsBusy)
+    def _handle_busy_snapshot(self, flexvol, snapshot_name):
+        """Checks for and handles a busy snapshot.
+
+        If a snapshot is not busy, take no action.  If a snapshot is busy for
+        reasons other than a clone dependency, raise immediately.  Otherwise,
+        since we always start a clone split operation after cloning a share,
+        wait up to a minute for a clone dependency to clear before giving up.
+        """
+        snapshot = self.zapi_client.get_snapshot(flexvol, snapshot_name)
+        if not snapshot['busy']:
+            LOG.info(_LI("Backing consistency group snapshot %s "
+                         "available for deletion"), snapshot_name)
+            return
+        else:
+            LOG.debug('Snapshot %(snap)s for vol %(vol)s is busy, waiting '
+                      'for volume clone dependency to clear.',
+                      {'snap': snapshot_name, 'vol': flexvol})
+
+            raise exception.SnapshotIsBusy(snapshot_name=snapshot_name)
+
+    def delete_cgsnapshot(self, cgsnapshot, snapshots):
+        """Delete LUNs backing each snapshot in the cgsnapshot.
+
+        :return: An implicit update for snapshots models that is interpreted
+        by the manager to set their models to deleted.
+        """
+        for snapshot in snapshots:
+            self._delete_lun(snapshot['name'])
+            LOG.debug("Snapshot %s deletion successful", snapshot['name'])
+
+        return None, None
+
+    def create_consistencygroup_from_src(self, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        """Creates a CG from a either a cgsnapshot or group of cinder vols.
+
+        :return: An implicit update for the volumes model that is
+        interpreted by the manager as a successful operation.
+        """
+        LOG.debug("VOLUMES %s ", [dict(vol) for vol in volumes])
+
+        if cgsnapshot:
+            vols = zip(volumes, snapshots)
+
+            for volume, snapshot in vols:
+                source = {
+                    'name': snapshot['name'],
+                    'size': snapshot['volume_size'],
+                }
+                self._clone_source_to_destination(source, volume)
+
+        else:
+            vols = zip(volumes, source_vols)
+
+            for volume, old_src_vref in vols:
+                src_lun = self._get_lun_from_table(old_src_vref['name'])
+                source = {'name': src_lun.name, 'size': old_src_vref['size']}
+                self._clone_source_to_destination(source, volume)
+
+        return None, None

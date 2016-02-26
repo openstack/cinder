@@ -1,6 +1,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
 # Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -27,6 +28,8 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
+
+from oslo_utils import strutils
 
 
 LOG = logging.getLogger(__name__)
@@ -314,7 +317,7 @@ class Client(client_base.Client):
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
-                  block_count=0):
+                  block_count=0, source_snapshot=None):
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
         # zAPI can only handle 32 block ranges per call
@@ -330,11 +333,17 @@ class Client(client_base.Client):
                 zbc -= z_limit
             else:
                 block_count = zbc
+
+            zapi_args = {
+                'volume': volume,
+                'source-path': name,
+                'destination-path': new_name,
+                'space-reserve': space_reserved,
+            }
+            if source_snapshot:
+                zapi_args['snapshot-name'] = source_snapshot
             clone_create = netapp_api.NaElement.create_node_with_children(
-                'clone-create',
-                **{'volume': volume, 'source-path': name,
-                   'destination-path': new_name,
-                   'space-reserve': space_reserved})
+                'clone-create', **zapi_args)
             if qos_policy_group_name is not None:
                 clone_create.add_new_child('qos-policy-group-name',
                                            qos_policy_group_name)
@@ -860,3 +869,82 @@ class Client(client_base.Client):
                 })
 
         return counter_data
+
+    def get_snapshot(self, volume_name, snapshot_name):
+        """Gets a single snapshot."""
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': snapshot_name,
+                    'volume': volume_name,
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'volume': None,
+                    'busy': None,
+                    'snapshot-owners-list': {
+                        'snapshot-owner': None,
+                    }
+                },
+            },
+        }
+        result = self.send_request('snapshot-get-iter', api_args)
+
+        self._handle_get_snapshot_return_failure(result, snapshot_name)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        snapshot_info_list = attributes_list.get_children()
+
+        self._handle_snapshot_not_found(result, snapshot_info_list,
+                                        snapshot_name, volume_name)
+
+        snapshot_info = snapshot_info_list[0]
+        snapshot = {
+            'name': snapshot_info.get_child_content('name'),
+            'volume': snapshot_info.get_child_content('volume'),
+            'busy': strutils.bool_from_string(
+                snapshot_info.get_child_content('busy')),
+        }
+
+        snapshot_owners_list = snapshot_info.get_child_by_name(
+            'snapshot-owners-list') or netapp_api.NaElement('none')
+        snapshot_owners = set([
+            snapshot_owner.get_child_content('owner')
+            for snapshot_owner in snapshot_owners_list.get_children()])
+        snapshot['owners'] = snapshot_owners
+
+        return snapshot
+
+    def _handle_get_snapshot_return_failure(self, result, snapshot_name):
+        error_record_list = result.get_child_by_name(
+            'volume-errors') or netapp_api.NaElement('none')
+        errors = error_record_list.get_children()
+
+        if errors:
+            error = errors[0]
+            error_code = error.get_child_content('errno')
+            error_reason = error.get_child_content('reason')
+            msg = _('Could not read information for snapshot %(name)s. '
+                    'Code: %(code)s. Reason: %(reason)s')
+            msg_args = {
+                'name': snapshot_name,
+                'code': error_code,
+                'reason': error_reason,
+            }
+            if error_code == netapp_api.ESNAPSHOTNOTALLOWED:
+                raise exception.SnapshotUnavailable(msg % msg_args)
+            else:
+                raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+    def _handle_snapshot_not_found(self, result, snapshot_info_list,
+                                   snapshot_name, volume_name):
+        if not self._has_records(result):
+            raise exception.SnapshotNotFound(snapshot_id=snapshot_name)
+        elif len(snapshot_info_list) > 1:
+            msg = _('Could not find unique snapshot %(snap)s on '
+                    'volume %(vol)s.')
+            msg_args = {'snap': snapshot_name, 'vol': volume_name}
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)
