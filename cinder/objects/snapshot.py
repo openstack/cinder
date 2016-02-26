@@ -45,11 +45,11 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         'user_id': fields.UUIDField(nullable=True),
         'project_id': fields.UUIDField(nullable=True),
 
-        'volume_id': fields.UUIDField(),
+        'volume_id': fields.UUIDField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
         'status': fields.StringField(nullable=True),
         'progress': fields.StringField(nullable=True),
-        'volume_size': fields.IntegerField(),
+        'volume_size': fields.IntegerField(nullable=True),
 
         'display_name': fields.StringField(nullable=True),
         'display_description': fields.StringField(nullable=True),
