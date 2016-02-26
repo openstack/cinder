@@ -143,11 +143,21 @@ class APIVersionRequest(utils.ComparableMixin):
 
         if self.is_null():
             raise ValueError
-        if max_version.is_null() and min_version.is_null():
+
+        if isinstance(min_version, str):
+            min_version = APIVersionRequest(version_string=min_version)
+        if isinstance(max_version, str):
+            max_version = APIVersionRequest(version_string=max_version)
+
+        if not min_version and not max_version:
             return True
-        elif max_version.is_null():
+        elif ((min_version and max_version) and
+              max_version.is_null() and min_version.is_null()):
+            return True
+
+        elif not max_version or max_version.is_null():
             return min_version <= self
-        elif min_version.is_null():
+        elif not min_version or min_version.is_null():
             return self <= max_version
         else:
             return min_version <= self <= max_version
