@@ -1817,9 +1817,11 @@ class EMCVMAXMasking(object):
         """Steps if the volume is the last in a storage group.
 
         1. Check if the volume is in a masking view.
-        2. If it is in a masking view, delete the masking view,
-           remove the volume from the storage group, and delete
-           the storage group.
+        2. If it is in a masking view, delete the masking view, remove the
+           initiators from the initiator group and delete the initiator
+           group if there are no other masking views associated with the
+           initiator group, remove the volume from the storage group, and
+           delete the storage group.
         3. If it is not in a masking view, remove the volume from the
            storage group and delete the storage group.
 
@@ -1853,13 +1855,13 @@ class EMCVMAXMasking(object):
 
             @lockutils.synchronized(maskingViewName,
                                     "emc-mv-", True)
-            def do_delete_mv_and_sg():
-                return self._delete_mv_and_sg(
+            def do_delete_mv_ig_and_sg():
+                return self._delete_mv_ig_and_sg(
                     conn, controllerConfigService, mvInstanceName,
                     maskingViewName, storageGroupInstanceName,
                     storageGroupName, volumeInstance, volumeName,
                     extraSpecs)
-            do_delete_mv_and_sg()
+            do_delete_mv_ig_and_sg()
             status = True
         else:
             # Remove the volume from the storage group and delete the SG.
@@ -1925,11 +1927,11 @@ class EMCVMAXMasking(object):
             "End: number of volumes in masking storage group: %(numVol)d.",
             {'numVol': len(volumeInstanceNames)})
 
-    def _delete_mv_and_sg(self, conn, controllerConfigService, mvInstanceName,
-                          maskingViewName, storageGroupInstanceName,
-                          storageGroupName, volumeInstance, volumeName,
-                          extraSpecs):
-        """Delete the Masking view and the Storage Group.
+    def _delete_mv_ig_and_sg(
+            self, conn, controllerConfigService, mvInstanceName,
+            maskingViewName, storageGroupInstanceName, storageGroupName,
+            volumeInstance, volumeName, extraSpecs):
+        """Delete the Masking view, the storage Group and  the initiator group.
 
         Also does necessary cleanup like removing the policy from the
         storage group for V2 and returning the volume to the default
@@ -1950,10 +1952,15 @@ class EMCVMAXMasking(object):
 
         storageSystemInstanceName = self.utils.find_storage_system(
             conn, controllerConfigService)
-
+        initiatorGroupInstanceName = (
+            self.get_initiator_group_from_masking_view(conn, mvInstanceName))
         self._last_volume_delete_masking_view(
             conn, controllerConfigService, mvInstanceName,
             maskingViewName, extraSpecs)
+        self._last_volume_delete_initiator_group(
+            conn, controllerConfigService,
+            initiatorGroupInstanceName, extraSpecs)
+
         if not isV3:
             isTieringPolicySupported, tierPolicyServiceInstanceName = (
                 self._get_tiering_info(conn, storageSystemInstanceName,
@@ -2261,10 +2268,13 @@ class EMCVMAXMasking(object):
             self, conn, initiatorGroupInstanceName):
         """Given initiator group, retrieve the masking view instance name.
 
+           Retrieve the list of masking view instances associated with the
+           initiator group instance name.
+
         :param conn: the ecom connection
         :param initiatorGroupInstanceName: the instance name of the
                                            initiator group
-        :returns: masking view instance names
+        :returns: list of masking view instance names
         """
         mvInstanceNames = conn.AssociatorNames(
             initiatorGroupInstanceName, ResultClass='Symm_LunMaskingView')
@@ -2299,13 +2309,13 @@ class EMCVMAXMasking(object):
         initiatorGroupInstanceNames = conn.AssociatorNames(
             maskingViewInstanceName, ResultClass='SE_InitiatorMaskingGroup')
         if len(initiatorGroupInstanceNames) > 0:
-            LOG.debug("Found initiator group %(pg)s in masking view %(mv)s.",
-                      {'pg': initiatorGroupInstanceNames[0],
+            LOG.debug("Found initiator group %(ig)s in masking view %(mv)s.",
+                      {'ig': initiatorGroupInstanceNames[0],
                        'mv': maskingViewInstanceName})
             return initiatorGroupInstanceNames[0]
         else:
-            LOG.warning(_LW("No port group found in masking view %(mv)s."),
-                        {'mv': maskingViewInstanceName})
+            LOG.warning(_LW("No Initiator group found in masking view "
+                            "%(mv)s."), {'mv': maskingViewInstanceName})
 
     def _get_sg_or_mv_associated_with_initiator(
             self, conn, controllerConfigService, volumeInstanceName,
@@ -2436,13 +2446,153 @@ class EMCVMAXMasking(object):
             if rc != 0:
                 exceptionMessage = (_(
                     "Error Deleting Group: %(storageGroupName)s. "
-                    "Return code: %(rc)lu.  Error: %(error)s")
+                    "Return code: %(rc)lu. Error: %(error)s")
                     % {'storageGroupName': storageGroupName,
                        'rc': rc,
                        'error': errordesc})
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
+
+    def _delete_initiator_group(self, conn, controllerConfigService,
+                                initiatorGroupInstanceName, initiatorGroupName,
+                                extraSpecs):
+        """Delete an initiatorGroup.
+
+       :param conn - connection to the ecom server
+       :param controllerConfigService - controller config service
+       :param initiatorGroupInstanceName - the initiator group instance name
+       :param initiatorGroupName - initiator group name
+       :param extraSpecs: extra specifications
+       """
+
+        rc, job = conn.InvokeMethod(
+            'DeleteGroup',
+            controllerConfigService,
+            MaskingGroup=initiatorGroupInstanceName,
+            Force=True)
+
+        if rc != 0:
+            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                             extraSpecs)
+            if rc != 0:
+                exceptionMessage = (_(
+                    "Error Deleting Initiator Group: %(initiatorGroupName)s. "
+                    "Return code: %(rc)lu. Error: %(error)s")
+                    % {'initiatorGroupName': initiatorGroupName,
+                       'rc': rc,
+                       'error': errordesc})
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
+            else:
+                LOG.debug("Initiator group %(initiatorGroupName)s "
+                          "is successfully deleted.",
+                          {'initiatorGroupName': initiatorGroupName})
+        else:
+            LOG.debug("Initiator group %(initiatorGroupName)s "
+                      "is successfully deleted.",
+                      {'initiatorGroupName': initiatorGroupName})
+
+    def _delete_storage_hardware_id(self,
+                                    conn,
+                                    hardwareIdManagementService,
+                                    hardwareIdPath):
+        """Delete given initiator path
+
+        Delete the  initiator. Do not rise exception or failure if deletion
+        fails due to any reasons.
+
+        :param conn - connection to the ecom server
+        :param hardwareIdManagementService - hardware id management service
+        :param hardwareIdPath - The path of the initiator object
+        """
+        ret = conn.InvokeMethod('DeleteStorageHardwareID',
+                                hardwareIdManagementService,
+                                HardwareID = hardwareIdPath)
+        if ret == 0:
+            LOG.debug("Deletion of initiator path %(hardwareIdPath)s "
+                      "is successful.", {'hardwareIdPath': hardwareIdPath})
+        else:
+            LOG.warning(_LW("Deletion of initiator path %(hardwareIdPath)s "
+                            "is failed."), {'hardwareIdPath': hardwareIdPath})
+
+    def _delete_initiators_from_initiator_group(self, conn,
+                                                controllerConfigService,
+                                                initiatorGroupInstanceName,
+                                                initiatorGroupName):
+        """Delete initiators
+
+        Delete all initiators associated with the initiator group instance.
+        Cleanup whatever is possible. It will not return any failure or
+        rise exception if deletion fails due to any reasons.
+
+        :param conn - connection to the ecom server
+        :param controllerConfigService - controller config service
+        :param initiatorGroupInstanceName - the initiator group instance name
+        """
+        storageHardwareIdInstanceNames = (
+            conn.AssociatorNames(initiatorGroupInstanceName,
+                                 ResultClass='SE_StorageHardwareID'))
+        if len(storageHardwareIdInstanceNames) == 0:
+            LOG.debug("No initiators found in Initiator group "
+                      "%(initiatorGroupName)s.",
+                      {'initiatorGroupName': initiatorGroupName})
+            return
+        storageSystemName = controllerConfigService['SystemName']
+        hardwareIdManagementService = (
+            self.utils.find_storage_hardwareid_service(conn,
+                                                       storageSystemName))
+        for storageHardwareIdInstanceName in storageHardwareIdInstanceNames:
+            initiatorName = storageHardwareIdInstanceName['InstanceID']
+            hardwareIdPath = storageHardwareIdInstanceName
+            LOG.debug("Initiator %(initiatorName)s "
+                      "will be deleted from the Initiator group "
+                      "%(initiatorGroupName)s. HardwareIdPath is "
+                      "%(hardwareIdPath)s.",
+                      {'initiatorName': initiatorName,
+                       'initiatorGroupName': initiatorGroupName,
+                       'hardwareIdPath': hardwareIdPath})
+            self._delete_storage_hardware_id(conn,
+                                             hardwareIdManagementService,
+                                             hardwareIdPath)
+
+    def _last_volume_delete_initiator_group(
+            self, conn, controllerConfigService,
+            initiatorGroupInstanceName, extraSpecs):
+        """Delete the initiator group
+
+        Delete the Initiator group if there are no masking views associated
+        with the initiator group.
+
+        :param conn: the ecom connection
+        :param controllerConfigService: controller config service
+        :param igInstanceNames: initiator group instance name
+        :param extraSpecs: extra specifications
+        """
+        maskingViewInstanceNames = self.get_masking_views_by_initiator_group(
+            conn, initiatorGroupInstanceName)
+        initiatorGroupInstance = conn.GetInstance(initiatorGroupInstanceName)
+        initiatorGroupName = initiatorGroupInstance['ElementName']
+
+        if len(maskingViewInstanceNames) == 0:
+            LOG.debug(
+                "Last volume is associated with the initiator group, deleting "
+                "the associated initiator group %(initiatorGroupName)s.",
+                {'initiatorGroupName': initiatorGroupName})
+            self._delete_initiators_from_initiator_group(
+                conn, controllerConfigService, initiatorGroupInstanceName,
+                initiatorGroupName)
+            self._delete_initiator_group(conn, controllerConfigService,
+                                         initiatorGroupInstanceName,
+                                         initiatorGroupName, extraSpecs)
+        else:
+            LOG.warning(_LW("Initiator group %(initiatorGroupName)s is "
+                            "associated with masking views and can't be "
+                            "deleted. Number of associated masking view is: "
+                            "%(nmv)d."),
+                        {'initiatorGroupName': initiatorGroupName,
+                         'nmv': len(maskingViewInstanceNames)})
 
     def _create_hardware_ids(
             self, conn, initiatorNames, storageSystemName):
