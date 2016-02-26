@@ -379,15 +379,16 @@ def service_get_all(context, filters=None):
 
     query = model_query(context, models.Service)
 
-    try:
-        host = filters.pop('host')
-        host_attr = models.Service.host
-        conditions = or_(host_attr == host, host_attr.op('LIKE')(host + '@%'))
-        query = query.filter(conditions)
-    except KeyError:
-        pass
-
     if filters:
+        try:
+            host = filters.pop('host')
+            host_attr = models.Service.host
+            conditions = or_(host_attr ==
+                             host, host_attr.op('LIKE')(host + '@%'))
+            query = query.filter(conditions)
+        except KeyError:
+            pass
+
         query = query.filter_by(**filters)
 
     return query.all()
