@@ -3296,11 +3296,19 @@ class VolumeManager(manager.SchedulerDependentManager):
                  secondary_backend_id})
             return None
 
-        service.replication_status = fields.ReplicationStatus.FAILED_OVER
-        service.active_backend_id = active_backend_id
-        service.disabled = True
-        service.disabled_reason = "failed-over"
-        service.save()
+        if secondary_backend_id == "default":
+            service.replication_status = fields.ReplicationStatus.ENABLED
+            service.active_backend_id = ""
+            service.disabled = False
+            service.disabled_reason = ""
+            service.save()
+
+        else:
+            service.replication_status = fields.ReplicationStatus.FAILED_OVER
+            service.active_backend_id = active_backend_id
+            service.disabled = True
+            service.disabled_reason = "failed-over"
+            service.save()
 
         for update in volume_update_list:
             # Response must include an id key: {volume_id: <cinder-uuid>}
