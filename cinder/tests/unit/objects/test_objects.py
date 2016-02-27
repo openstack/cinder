@@ -28,7 +28,7 @@ object_data = {
     'CGSnapshotList': '1.0-e8c3f4078cd0ee23487b34d173eec776',
     'ConsistencyGroup': '1.2-ed7f90a6871991a19af716ade7337fc9',
     'ConsistencyGroupList': '1.1-73916823b697dfa0c7f02508d87e0f28',
-    'Service': '1.2-4d3dd6c9906da364739fbf3f90c80505',
+    'Service': '1.3-e8f82835bd43722d8d84c55072466eba',
     'ServiceList': '1.1-cb758b200f0a3a90efabfc5aa2ffb627',
     'Snapshot': '1.0-a6c33eefeadefb324d79f72f66c54e9a',
     'SnapshotList': '1.0-71661e7180ef6cc51501704a9bea4bf1',

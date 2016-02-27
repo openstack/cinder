@@ -34,6 +34,9 @@ class CapabilitiesController(wsgi.Controller):
     _view_builder_class = capabilities_view.ViewBuilder
 
     def __init__(self):
+        # FIXME(jdg):  Is it kosher that this just
+        # skips the volume.api and goes straight to RPC
+        # from here?
         self.volume_api = rpcapi.VolumeAPI()
         super(CapabilitiesController, self).__init__()
 

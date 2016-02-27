@@ -37,5 +37,6 @@ class ViewBuilder(common.ViewBuilder):
             'display_name': capabilities.get('display_name'),
             'description': capabilities.get('description'),
             'visibility': capabilities.get('visibility'),
+            'replication_targets': capabilities.get('replication_targets', []),
             'properties': capabilities.get('properties'),
         }

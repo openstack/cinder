@@ -50,7 +50,7 @@ CONF.register_opts(common_opts)
 
 
 class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
-                       driver.ExtendVD, driver.ReplicaV2VD,
+                       driver.ExtendVD,
                        driver.SnapshotVD, driver.BaseVD):
 
     def __init__(self, *args, **kwargs):

@@ -31,6 +31,7 @@ def rpcapi_get_capabilities(self, context, host, discover):
         display_name='Capabilities of Cinder LVM driver',
         description='These are volume type options provided by '
                     'Cinder LVM driver, blah, blah.',
+        replication_targets=[],
         visibility='public',
         properties = dict(
             compression = dict(
@@ -79,6 +80,7 @@ class CapabilitiesAPITest(test.TestCase):
             'description': 'These are volume type options provided by '
                            'Cinder LVM driver, blah, blah.',
             'visibility': 'public',
+            'replication_targets': [],
             'properties': {
                 'compression': {
                     'title': 'Compression',

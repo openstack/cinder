@@ -91,9 +91,10 @@ class VolumeAPI(rpc.RPCAPI):
                checks in the API.
         1.38 - Scaling backup service, add get_backup_device() and
                secure_file_operations_enabled()
+        1.39 - Update replication methods to reflect new backend rep strategy
     """
 
-    RPC_API_VERSION = '1.38'
+    RPC_API_VERSION = '1.39'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
 
@@ -303,27 +304,26 @@ class VolumeAPI(rpc.RPCAPI):
                    new_volume=new_volume,
                    volume_status=original_volume_status)
 
-    def enable_replication(self, ctxt, volume):
-        cctxt = self._get_cctxt(volume['host'], '1.27')
-        cctxt.cast(ctxt, 'enable_replication', volume=volume)
+    def freeze_host(self, ctxt, host):
+        """Set backend host to frozen."""
+        cctxt = self._get_cctxt(host, '1.39')
+        return cctxt.call(ctxt, 'freeze_host')
 
-    def disable_replication(self, ctxt, volume):
-        cctxt = self._get_cctxt(volume['host'], '1.27')
-        cctxt.cast(ctxt, 'disable_replication',
-                   volume=volume)
+    def thaw_host(self, ctxt, host):
+        """Clear the frozen setting on a backend host."""
+        cctxt = self._get_cctxt(host, '1.39')
+        return cctxt.call(ctxt, 'thaw_host')
 
-    def failover_replication(self,
-                             ctxt,
-                             volume,
-                             secondary=None):
-        cctxt = self._get_cctxt(volume['host'], '1.27')
-        cctxt.cast(ctxt, 'failover_replication',
-                   volume=volume,
-                   secondary=secondary)
+    def failover_host(self, ctxt, host,
+                      secondary_backend_id=None):
+        """Failover host to the specified backend_id (secondary). """
+        cctxt = self._get_cctxt(host, '1.39')
+        return cctxt.call(ctxt, 'failover_host',
+                          secondary_backend_id=secondary_backend_id)
 
-    def list_replication_targets(self, ctxt, volume):
-        cctxt = self._get_cctxt(volume['host'], '1.27')
-        return cctxt.call(ctxt, 'list_replication_targets', volume=volume)
+    def list_replication_targets(self, ctxt, host):
+        cctxt = self._get_cctxt(host, '1.39')
+        return cctxt.call(ctxt, 'list_replication_targets')
 
     def manage_existing_snapshot(self, ctxt, snapshot, ref, host):
         cctxt = self._get_cctxt(host, '1.28')

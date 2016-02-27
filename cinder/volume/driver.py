@@ -220,7 +220,6 @@ volume_opts = [
                       "replication target devices.  Each entry takes the "
                       "standard dict config form: replication_device = "
                       "target_device_id:<required>,"
-                      "managed_backend_name:<host@backend_name>,"
                       "key1:value1,key2:value2..."),
     cfg.BoolOpt('image_upload_use_cinder_backend',
                 default=False,
@@ -1629,6 +1628,75 @@ class BaseVD(object):
         msg = _("Unmanage volume not implemented.")
         raise NotImplementedError(msg)
 
+    def freeze_backend(self, context):
+        """Notify the backend that it's frozen.
+
+        We use set to prohibit the creation of any new resources
+        on the backend, or any modifications to existing items on
+        a backend.  We set/enforce this by not allowing scheduling
+        of new volumes to the specified backend, and checking at the
+        api for modifications to resources and failing.
+
+        In most cases the driver may not need to do anything, but
+        this provides a handle if they need it.
+
+        :param context: security context
+        :response: True|False
+        """
+        return True
+
+    def thaw_backend(self, context):
+        """Notify the backend that it's unfrozen/thawed.
+
+        Returns the backend to a normal state after a freeze
+        operation.
+
+        In most cases the driver may not need to do anything, but
+        this provides a handle if they need it.
+
+        :param context: security context
+        :response: True|False
+        """
+        return True
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover a backend to a secondary replication target.
+
+        Instructs a replication capable/configured backend to failover
+        to one of it's secondary replication targets. host=None is
+        an acceptable input, and leaves it to the driver to failover
+        to the only configured target, or to choose a target on it's
+        own. All of the hosts volumes will be passed on to the driver
+        in order for it to determine the replicated volumes on the host,
+        if needed.
+
+        Response is a tuple, including the new target backend_id
+        AND a lit of dictionaries with volume_id and updates.
+        *Key things to consider (attaching failed-over volumes):
+          provider_location
+          provider_auth
+          provider_id
+          replication_status
+
+        :param context: security context
+        :param volumes: list of volume objects, in case the driver needs
+                        to take action on them in some way
+        :param secondary_id: Specifies rep target backend to fail over to
+        :returns : ID of the backend that was failed-over to
+                   and model update for volumes
+        """
+
+        # Example volume_updates data structure:
+        # [{'volume_id': <cinder-uuid>,
+        #   'updates': {'provider_id': 8,
+        #               'replication_status': 'failed-over',
+        #               'replication_extended_status': 'whatever',...}},]
+        raise NotImplementedError()
+
+    def get_replication_updates(self, context):
+        """Old replication update method, deprecate."""
+        raise NotImplementedError()
+
 
 @six.add_metaclass(abc.ABCMeta)
 class LocalVD(object):
@@ -1812,171 +1880,6 @@ class ManageableVD(object):
 
 
 @six.add_metaclass(abc.ABCMeta)
-class ReplicaV2VD(object):
-    """Cinder replication functionality.
-
-    The Cinder replication functionality is set up primarily through
-    the use of volume-types in conjunction with the filter scheduler.
-    This requires:
-    1. The driver reports "replication = True" in it's capabilities
-    2. The cinder.conf file includes the valid_replication_devices section
-
-    The driver configuration is expected to take one of the following two
-    forms, see devref replication docs for details.
-
-    Note we provide cinder.volume.utils.convert_config_string_to_dict
-    to parse this out into a usable proper dictionary.
-
-    """
-
-    @abc.abstractmethod
-    def replication_enable(self, context, volume):
-        """Enable replication on a replication capable volume.
-
-        If the volume was created on a replication_enabled host this method
-        is used to re-enable replication for the volume.
-
-        Primarily we only want this for testing/admin purposes.  The idea
-        being that the bulk of the replication details are handled by the
-        type definition and the driver; however disable/enable(re-enable) is
-        provided for admins to test or do maintenance which is a
-        requirement by some cloud-providers.
-
-        NOTE: This is intended as an ADMIN only call and is not
-        intended to be used by end-user to enable replication.  We're
-        leaving that to volume-type info, this is for things like
-        maintenance or testing.
-
-
-        :param context: security context
-        :param volume: volume object returned by DB
-        :response: {replication_driver_data: vendor-data} DB update
-
-        The replication_driver_data response is vendor unique,
-        data returned/used by the driver.  It is expected that
-        the response from the driver is in the appropriate db update
-        format, in the form of a dict, where the vendor data is
-        stored under the key 'replication_driver_data'
-
-        """
-
-        # TODO(jdg): Put a check in at API layer to verify the host is
-        # replication capable before even issuing this call (can just
-        # check against the volume-type for said volume as well)
-
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def replication_disable(self, context, volume):
-        """Disable replication on the specified volume.
-
-        If the specified volume is currently replication enabled,
-        this method can be used to disable the replication process
-        on the backend.
-
-        Note that we still send this call to a driver whose volume
-        may report replication-disabled already.  We do this as a
-        safety mechanism to allow a driver to cleanup any mismatch
-        in state between Cinder and itself.
-
-        This is intended as an ADMIN only call to allow for
-        maintenance and testing.  If a driver receives this call
-        and the process fails for some reason the driver should
-        return a status update to "replication_status=disable_failed"
-
-        :param context: security context
-        :param volume: volume object returned by DB
-        :response: {replication_driver_data: vendor-data} DB update
-
-        The replication_driver_data response is vendor unique,
-        data returned/used by the driver.  It is expected that
-        the response from the driver is in the appropriate db update
-        format, in the form of a dict, where the vendor data is
-        stored under the key 'replication_driver_data'
-
-        """
-
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def replication_failover(self, context, volume, secondary):
-        """Force failover to a secondary replication target.
-
-        Forces the failover action of a replicated volume to one of its
-        secondary/target devices.  By default the choice of target devices
-        is left up to the driver.  In particular we expect one way
-        replication here, but are providing a mechanism for 'n' way
-        if supported/configured.
-
-        Currently we leave it up to the driver to figure out how/what
-        to do here.  Rather than doing things like ID swaps, we instead
-        just let the driver figure out how/where to route things.
-
-        In cases where we might want to drop a volume-service node and
-        the replication target is a configured cinder backend, we'll
-        just update the host column for the volume.
-
-        Very important point here is that in the case of a successful
-        failover, we want to update the replication_status of the
-        volume to "failed-over".  This way there's an indication that
-        things worked as expected, and that it's evident that the volume
-        may no longer be replicating to another backend (primary burst
-        in to flames).  This status will be set by the manager.
-
-        :param context: security context
-        :param volume: volume object returned by DB
-        :param secondary: Specifies rep target to fail over to
-        :response: dict of updates
-
-        So the response would take the form:
-            {host: <properly formatted host string for db update>,
-             model_update: {standard_model_update_KVs},
-             replication_driver_data: xxxxxxx}
-
-        It is expected that the format of these responses are in a consumable
-        format to be used in a db.update call directly.
-
-        Additionally we utilize exception catching to report back to the
-        manager when things went wrong and to inform the caller on how
-        to proceed.
-
-        """
-
-        raise NotImplementedError()
-
-    @abc.abstractmethod
-    def list_replication_targets(self, context, vref):
-        """Provide a means to obtain replication targets for a volume.
-
-        This method is used to query a backend to get the current
-        replication config info for the specified volume.
-
-        In the case of a volume that isn't being replicated,
-        the driver should return an empty list.
-
-
-        Example response for replicating to a managed backend:
-        {'volume_id': volume['id'],
-         'targets':[{'type': 'managed',
-                     'backend_name': 'backend_name'}...]
-
-        Example response for replicating to an unmanaged backend:
-        {'volume_id': volume['id'],
-         'targets':[{'type': 'unmanaged',
-                     'vendor-key-1': 'value-1'}...]
-
-        NOTE: It's the responsibility of the driver to mask out any
-        passwords or sensitive information.  Also the format of the
-        response allows mixed (managed/unmanaged) targets, even though
-        the first iteration does not support configuring the driver in
-        such a manner.
-
-        """
-
-        raise NotImplementedError()
-
-
-@six.add_metaclass(abc.ABCMeta)
 class ManageableSnapshotsVD(object):
     # NOTE: Can't use abstractmethod before all drivers implement it
     def manage_existing_snapshot(self, snapshot, existing_ref):
@@ -2026,6 +1929,7 @@ class ManageableSnapshotsVD(object):
         pass
 
 
+# TODO(jdg): Remove this after the V2.1 code merges
 @six.add_metaclass(abc.ABCMeta)
 class ReplicaVD(object):
     @abc.abstractmethod
