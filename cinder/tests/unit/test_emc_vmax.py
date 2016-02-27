@@ -494,6 +494,8 @@ class EMCVMAXCommonData(object):
                    'isV3': True,
                    'portgroupname': u'OS-portgroup-PG'}
     remainingSLOCapacity = '123456789'
+    SYNCHRONIZED = 4
+    UNSYNCHRONIZED = 3
 
 
 class FakeLookupService(object):
@@ -1174,6 +1176,12 @@ class FakeEcomConnection(object):
         svInstance['SyncedElement'] = 'SyncedElement'
         svInstance['SystemElement'] = 'SystemElement'
         svInstance['PercentSynced'] = 100
+        if 'PercentSynced' in objectpath and objectpath['PercentSynced'] < 100:
+            svInstance['PercentSynced'] = 50
+        svInstance['CopyState'] = self.data.SYNCHRONIZED
+        if 'CopyState' in objectpath and (
+                objectpath['CopyState'] != self.data.SYNCHRONIZED):
+            svInstance['CopyState'] = self.data.UNSYNCHRONIZED
         return svInstance
 
     def _getinstance_replicationServCapabilities(self, objectpath):
@@ -1623,6 +1631,7 @@ class FakeEcomConnection(object):
         svInstance['SystemElement'] = sourceInstanceName
         svInstance['CreationClassName'] = 'SE_StorageSynchronized_SV_SV'
         svInstance['PercentSynced'] = 100
+        svInstance['CopyState'] = self.data.UNSYNCHRONIZED
         svInstances.append(svInstance)
         return svInstances
 
@@ -2035,6 +2044,14 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             conn, controllerConfigService, storageGroupInstanceName,
             storageGroupName, volumeInstance, volumeName,
             storageSystemInstanceName, False, extraSpecs)
+
+    def test_is_sync_complete(self):
+        conn = self.fake_ecom_connection()
+        syncname = SE_ConcreteJob()
+        syncname.classname = 'SE_StorageSynchronized_SV_SV'
+        syncname['CopyState'] = self.data.UNSYNCHRONIZED
+        issynched = self.driver.common.utils._is_sync_complete(conn, syncname)
+        self.assertFalse(issynched)
 
     def test_generate_unique_trunc_pool(self):
         pool_under_16_chars = 'pool_under_16'

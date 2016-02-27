@@ -53,6 +53,7 @@ INTERVAL = 'storagetype:interval'
 RETRIES = 'storagetype:retries'
 CIM_ERR_NOT_FOUND = 6
 VOLUME_ELEMENT_NAME_PREFIX = 'OS-'
+SYNCHRONIZED = 4
 
 
 class EMCVMAXUtils(object):
@@ -439,15 +440,11 @@ class EMCVMAXUtils(object):
         """
         syncInstance = conn.GetInstance(syncName,
                                         LocalOnly=False)
-        percentSynced = syncInstance['PercentSynced']
+        copyState = syncInstance['CopyState']
+        LOG.debug("CopyState is %(copyState)lu.",
+                  {'copyState': copyState})
 
-        LOG.debug("Percent synced is %(percentSynced)lu.",
-                  {'percentSynced': percentSynced})
-
-        if percentSynced < 100:
-            return False
-        else:
-            return True
+        return copyState == SYNCHRONIZED
 
     def get_num(self, numStr, datatype):
         """Get the ecom int from the number.
