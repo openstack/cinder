@@ -1,4 +1,4 @@
-# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2016, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -20,6 +20,7 @@ import math
 from oslo_config import cfg
 from oslo_log import log
 from oslo_serialization import base64
+from oslo_utils import excutils
 from oslo_utils import units
 import six
 
@@ -84,8 +85,10 @@ ZFSSA_OPTS = [
     cfg.BoolOpt('zfssa_enable_local_cache', default=True,
                 help='Flag to enable local caching: True, False.'),
     cfg.StrOpt('zfssa_cache_project', default='os-cinder-cache',
-               help='Name of ZFSSA project where cache volumes are stored.')
-
+               help='Name of ZFSSA project where cache volumes are stored.'),
+    cfg.StrOpt('zfssa_manage_policy', default='loose',
+               choices=['loose', 'strict'],
+               help='Driver policy for volume manage.')
 ]
 
 CONF.register_opts(ZFSSA_OPTS)
@@ -109,8 +112,10 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
     1.0.1:
         Backend enabled volume migration.
         Local cache feature.
+    1.0.2:
+        Volume manage/unmanage support.
     """
-    VERSION = '1.0.1'
+    VERSION = '1.0.2'
     protocol = 'iSCSI'
 
     def __init__(self, *args, **kwargs):
@@ -144,19 +149,25 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                   compression=lcfg.zfssa_lun_compression,
                                   logbias=lcfg.zfssa_lun_logbias)
 
+        schemas = [
+            {'property': 'cinder_managed',
+             'description': 'Managed by Cinder',
+             'type': 'Boolean'}]
+
         if lcfg.zfssa_enable_local_cache:
             self.zfssa.create_project(lcfg.zfssa_pool,
                                       lcfg.zfssa_cache_project,
                                       compression=lcfg.zfssa_lun_compression,
                                       logbias=lcfg.zfssa_lun_logbias)
-            schemas = [
+            schemas.extend([
                 {'property': 'image_id',
                  'description': 'OpenStack image ID',
                  'type': 'String'},
                 {'property': 'updated_at',
                  'description': 'Most recent updated time of image',
-                 'type': 'String'}]
-            self.zfssa.create_schemas(schemas)
+                 'type': 'String'}])
+
+        self.zfssa.create_schemas(schemas)
 
         if (lcfg.zfssa_initiator_config != ''):
             initiator_config = ast.literal_eval(lcfg.zfssa_initiator_config)
@@ -224,6 +235,13 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
 
         self.zfssa.add_to_targetgroup(iqn, lcfg.zfssa_target_group)
 
+        if lcfg.zfssa_manage_policy not in ("loose", "strict"):
+            err_msg = (_("zfssa_manage_policy property needs to be set to"
+                         " 'strict' or 'loose'. Current value is: %s.") %
+                       lcfg.zfssa_manage_policy)
+            LOG.error(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
+
     def check_for_setup_error(self):
         """Check that driver can login.
 
@@ -286,6 +304,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         lcfg = self.configuration
         volsize = str(volume['size']) + 'g'
         specs = self._get_voltype_specs(volume)
+        specs.update({'custom:cinder_managed': True})
         self.zfssa.create_lun(lcfg.zfssa_pool,
                               lcfg.zfssa_project,
                               volume['name'],
@@ -994,6 +1013,103 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             except exception.VolumeBackendAPIException:
                 LOG.warning(_LW("Volume %s exists but can't be deleted"),
                             cache['share'])
+
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing volume in the ZFSSA backend.
+
+        :param volume: Reference to the new volume.
+        :param existing_ref: Reference to the existing volume to be managed.
+        """
+        lcfg = self.configuration
+
+        existing_vol = self._get_existing_vol(existing_ref)
+        self._verify_volume_to_manage(existing_vol)
+
+        new_vol_name = volume['name']
+
+        try:
+            self.zfssa.set_lun_props(lcfg.zfssa_pool,
+                                     lcfg.zfssa_project,
+                                     existing_vol['name'],
+                                     name=new_vol_name,
+                                     schema={"custom:cinder_managed": True})
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Failed to rename volume %(existing)s to "
+                              "%(new)s. Volume manage failed."),
+                          {'existing': existing_vol['name'],
+                           'new': new_vol_name})
+        return None
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of the volume to be managed by manage_existing."""
+        existing_vol = self._get_existing_vol(existing_ref)
+
+        size = existing_vol['size']
+        return int(math.ceil(float(size) / units.Gi))
+
+    def unmanage(self, volume):
+        """Remove an existing volume from cinder management.
+
+        :param volume: Reference to the volume to be unmanaged.
+        """
+        lcfg = self.configuration
+        new_name = 'unmanaged-' + volume['name']
+        try:
+            self.zfssa.set_lun_props(lcfg.zfssa_pool,
+                                     lcfg.zfssa_project,
+                                     volume['name'],
+                                     name=new_name,
+                                     schema={"custom:cinder_managed": False})
+        except exception.VolumeBackendAPIException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Failed to rename volume %(existing)s to"
+                              " %(new)s. Volume unmanage failed."),
+                          {'existing': volume['name'],
+                           'new': new_name})
+        return None
+
+    def _verify_volume_to_manage(self, volume):
+        lcfg = self.configuration
+        if lcfg.zfssa_manage_policy == 'loose':
+            return
+
+        vol_name = volume['name']
+
+        if 'cinder_managed' not in volume:
+            err_msg = (_("Unknown if the volume: %s to be managed is "
+                         "already being managed by Cinder. Aborting manage "
+                         "volume. Please add 'cinder_managed' custom schema "
+                         "property to the volume and set its value to False."
+                         " Alternatively, set the value of cinder config "
+                         "policy 'zfssa_manage_policy' to 'loose' to "
+                         "remove this restriction.") % vol_name)
+            LOG.error(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
+
+        if volume['cinder_managed'] is True:
+            msg = (_("Volume: %s is already being managed by Cinder.")
+                   % vol_name)
+            LOG.error(msg)
+            raise exception.ManageExistingAlreadyManaged(volume_ref=vol_name)
+
+    def _get_existing_vol(self, existing_ref):
+        lcfg = self.configuration
+        if 'source-name' not in existing_ref:
+            msg = (_("Reference to volume: %s to be managed must contain "
+                   "source-name.") % existing_ref)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=msg)
+        try:
+            existing_vol = self.zfssa.get_lun(lcfg.zfssa_pool,
+                                              lcfg.zfssa_project,
+                                              existing_ref['source-name'])
+        except exception.VolumeNotFound:
+            err_msg = (_("Volume %s doesn't exist on the ZFSSA "
+                         "backend.") % existing_vol['name'])
+            LOG.error(err_msg)
+            raise exception.InvalidInput(reason=err_msg)
+        return existing_vol
 
 
 class MigrateVolumeInit(task.Task):
