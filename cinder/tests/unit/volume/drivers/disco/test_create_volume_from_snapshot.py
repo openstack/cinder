@@ -16,9 +16,11 @@
 
 import copy
 import mock
+import time
 
 from cinder import exception
 from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import utils as utils
 from cinder.tests.unit.volume.drivers import disco
 
 
@@ -145,9 +147,12 @@ class CreateVolumeFromSnapshotTestCase(disco.TestDISCODriver):
         self.test_pending = True
         self.test_create_volume_from_snapshot()
 
-    def test_create_volume_from_snapshot_timeout(self):
+    @mock.patch.object(time, 'time')
+    def test_create_volume_from_snapshot_timeout(self, mock_time):
         """Create volume from snapshot task timeout."""
-        self.driver.configuration.restore_check_timeout = 3
+        timeout = 3
+        mock_time.side_effect = utils.generate_timeout_series(timeout)
+        self.driver.configuration.restore_check_timeout = timeout
         self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
         self.response_detail = (
             self.FAKE_SOAP_RESPONSE['restore_detail']['pending'])

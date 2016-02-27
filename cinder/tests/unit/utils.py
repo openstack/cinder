@@ -245,3 +245,18 @@ def get_file_spec():
                 set(dir(_io.BytesIO))))
         else:
             file_spec = file
+
+
+def generate_timeout_series(timeout):
+    """Generate a series of times that exceeds the given timeout.
+
+    Yields a series of fake time.time() floating point numbers
+    such that the difference between each pair in the series just
+    exceeds the timeout value that is passed in.  Useful for
+    mocking time.time() in methods that otherwise wait for timeout
+    seconds.
+    """
+    iteration = 0
+    while True:
+        iteration += 1
+        yield (iteration * timeout) + iteration
