@@ -571,6 +571,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             lambda a, b, c, synchronous: None)
         self.mock_object(utils, 'OpenStackInfo')
         self.mock_object(perf_7mode, 'Performance7modeLibrary')
+        self.mock_object(client_base.Client, '_init_ssh_client')
 
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
@@ -1270,6 +1271,7 @@ class NetAppDirect7modeISCSIDriverTestCase_NV(test.TestCase):
 
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(client_base.Client, '_init_ssh_client')
         self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirect7modeHTTPConnection)
         self.mock_object(driver.library, '_get_root_volume_name', mock.Mock(
@@ -1331,6 +1333,7 @@ class NetAppDirect7modeISCSIDriverTestCase_WV(
 
         configuration = self._set_config(create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
+        self.mock_object(client_base.Client, '_init_ssh_client')
         self.stubs.Set(http_client, 'HTTPConnection',
                        FakeDirect7modeHTTPConnection)
         self.mock_object(driver.library, '_get_root_volume_name',
