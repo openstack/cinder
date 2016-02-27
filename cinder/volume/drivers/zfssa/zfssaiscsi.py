@@ -570,7 +570,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
                                  'volume %(volume)s. Error: %(error)s.'),
                              {'volume': volume['name'],
                               'image': image_meta['id'],
-                              'error': exc.message})
+                              'error': exc.msg})
             LOG.error(exception_msg)
             return None, False
 
