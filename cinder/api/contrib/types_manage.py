@@ -121,7 +121,7 @@ class VolumeTypesManageController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         if name is None and description is None and is_public is None:
-            msg = _("Specify volume type name, description, is_public or"
+            msg = _("Specify volume type name, description, is_public or "
                     "a combination thereof.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
