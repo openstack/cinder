@@ -30,7 +30,6 @@ sys.path.insert(0, os.path.abspath('./'))
 extensions = ['sphinx.ext.autodoc',
               'ext.cinder_todo',
               'sphinx.ext.coverage',
-              'sphinx.ext.pngmath',
               'sphinx.ext.ifconfig',
               'sphinx.ext.graphviz',
               'oslosphinx',
