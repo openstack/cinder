@@ -22,6 +22,7 @@ import cinder.exception
 from cinder.objects import snapshot as obj_snap
 from cinder.objects import volume as obj_volume
 import cinder.test
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import block_device
 from cinder.volume import utils as volutils
@@ -46,7 +47,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                          provider_location='1 2 3 /dev/loop1',
                                          provider_auth='a b c',
                                          attached_mode='rw',
-                                         id='fake-uuid')
+                                         id=fake.volume_id)
         TEST_CONNECTOR = {'host': 'localhost1'}
 
         data = self.drv.initialize_connection(TEST_VOLUME1, TEST_CONNECTOR)
@@ -62,7 +63,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                          provider_location='1 2 3 /dev/loop2',
                                          provider_auth='d e f',
                                          attached_mode='rw',
-                                         id='fake-uuid-2')
+                                         id=fake.volume2_id)
         _init_conn.return_value = 'data'
 
         data = self.drv.initialize_connection(TEST_VOLUME2, TEST_CONNECTOR)
@@ -74,7 +75,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                                   'target_iqn': '2',
                                   'target_lun': 3,
                                   'target_portal': '1',
-                                  'volume_id': 'fake-uuid-2'}}
+                                  'volume_id': fake.volume2_id}}
 
         self.assertEqual(expected_data['data'], data['data'])
 
@@ -90,7 +91,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('cinder.volume.utils.clear_volume')
     def test_delete_volume_path_exist(self, _clear_volume, _exists):
-        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(name_id=fake.volume_name_id,
                                         size=1,
                                         provider_location='/dev/loop1',
                                         display_name='vol1',
@@ -119,7 +120,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
             lp_mocked.assert_called_once_with(TEST_VOLUME2)
 
     def test__update_provider_location(self):
-        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(name_id=fake.volume_name_id,
                                         size=1,
                                         display_name='vol1')
         with mock.patch.object(obj_volume.Volume, 'update') as update_mocked, \
@@ -129,7 +130,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
             save_mocked.assert_called_once_with()
 
     def test_create_volume(self):
-        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(name_id=fake.volume_name_id,
                                         size=1,
                                         display_name='vol1')
 
@@ -166,11 +167,11 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
     @mock.patch('cinder.volume.utils.copy_volume')
     def test_create_cloned_volume(self, _copy_volume):
-        TEST_SRC = obj_volume.Volume(id=1,
-                                     name_id='5678',
+        TEST_SRC = obj_volume.Volume(id=fake.volume_id,
+                                     name_id=fake.volume_name_id,
                                      size=1,
                                      provider_location='/dev/loop1')
-        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(name_id=fake.volume2_name_id,
                                         size=1,
                                         display_name='vol1')
 
@@ -197,7 +198,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
     @mock.patch.object(cinder.image.image_utils, 'fetch_to_raw')
     def test_copy_image_to_volume(self, _fetch_to_raw):
-        TEST_VOLUME = obj_volume.Volume(name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(name_id=fake.volume_name_id,
                                         size=1,
                                         provider_location='/dev/loop1')
         TEST_IMAGE_SERVICE = "image_service"
@@ -321,14 +322,14 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
     @mock.patch('cinder.volume.utils.copy_volume')
     def test_create_snapshot(self, _copy_volume):
-        TEST_VOLUME = obj_volume.Volume(id=1,
-                                        name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(id=fake.volume_id,
+                                        name_id=fake.volume_name_id,
                                         size=1,
                                         display_name='vol1',
                                         status='available',
                                         provider_location='/dev/loop1')
-        TEST_SNAP = obj_snap.Snapshot(id=1,
-                                      volume_id=1,
+        TEST_SNAP = obj_snap.Snapshot(id=fake.snapshot_id,
+                                      volume_id=fake.volume_id,
                                       volume_size=1024,
                                       provider_location='/dev/loop2',
                                       volume=TEST_VOLUME)
@@ -351,14 +352,14 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                         TEST_SNAP, '/dev/loop2')
 
     def test_create_snapshot_with_not_available_volume(self):
-        TEST_VOLUME = obj_volume.Volume(id=1,
-                                        name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(id=fake.volume_id,
+                                        name_id=fake.volume_name_id,
                                         size=1,
                                         display_name='vol1',
                                         status='in use',
                                         provider_location='/dev/loop1')
-        TEST_SNAP = obj_snap.Snapshot(id=1,
-                                      volume_id=1,
+        TEST_SNAP = obj_snap.Snapshot(id=fake.snapshot_id,
+                                      volume_id=fake.volume_id,
                                       volume_size=1024,
                                       provider_location='/dev/loop2',
                                       volume=TEST_VOLUME)
@@ -368,11 +369,11 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
 
     @mock.patch('cinder.volume.utils.copy_volume')
     def test_create_volume_from_snapshot(self, _copy_volume):
-        TEST_SNAP = obj_snap.Snapshot(volume_id=1,
+        TEST_SNAP = obj_snap.Snapshot(volume_id=fake.volume_id,
                                       volume_size=1024,
                                       provider_location='/dev/loop1')
-        TEST_VOLUME = obj_volume.Volume(id=1,
-                                        name_id='1234',
+        TEST_VOLUME = obj_volume.Volume(id=fake.volume_id,
+                                        name_id=fake.volume_name_id,
                                         size=1,
                                         display_name='vol1',
                                         provider_location='/dev/loop2')
@@ -399,7 +400,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
     @mock.patch('os.path.exists', return_value=True)
     @mock.patch('cinder.volume.utils.clear_volume')
     def test_delete_snapshot(self, _clear_volume, _exists):
-        TEST_SNAP = obj_snap.Snapshot(volume_id=1,
+        TEST_SNAP = obj_snap.Snapshot(volume_id=fake.volume_id,
                                       provider_location='/dev/loop1',
                                       status='available')
 
