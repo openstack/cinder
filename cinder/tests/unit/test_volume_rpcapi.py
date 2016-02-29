@@ -584,6 +584,20 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume,
                               version='1.17')
 
+    def test_freeze_host(self):
+        self._test_volume_api('freeze_host', rpc_method='call',
+                              host='fake_host', version='1.39')
+
+    def test_thaw_host(self):
+        self._test_volume_api('thaw_host', rpc_method='call', host='fake_host',
+                              version='1.39')
+
+    def test_failover_host(self):
+        self._test_volume_api('failover_host', rpc_method='call',
+                              host='fake_host',
+                              secondary_backend_id='fake_backend',
+                              version='1.39')
+
     def test_create_consistencygroup_from_src_cgsnapshot(self):
         self._test_volume_api('create_consistencygroup_from_src',
                               rpc_method='cast',
