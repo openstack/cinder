@@ -2323,6 +2323,20 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                           self.driver.create_volume, hyper_volume)
         mock_delete_lun.assert_called_with('1')
 
+    @mock.patch.object(rest_client.RestClient, 'get_all_pools',
+                       return_value=FAKE_STORAGE_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'get_pool_info',
+                       return_value={})
+    def test_create_hypermetro_remote_pool_none_fail(self,
+                                                     mock_pool_info,
+                                                     mock_all_pool_info):
+        param = {'TYPE': '11',
+                 'PARENTID': ''}
+        self.driver.client.login()
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.metro.create_hypermetro,
+                          '2', param)
+
     @mock.patch.object(rest_client.RestClient, 'check_lun_exist',
                        return_value=True)
     @mock.patch.object(rest_client.RestClient, 'check_hypermetro_exist',
