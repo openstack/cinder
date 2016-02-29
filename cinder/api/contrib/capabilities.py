@@ -14,10 +14,14 @@
 #    under the License.
 
 from oslo_log import log as logging
+import oslo_messaging
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import capabilities as capabilities_view
+from cinder import exception
+from cinder.i18n import _
+from cinder import objects
 from cinder.volume import rpcapi
 
 
@@ -44,7 +48,15 @@ class CapabilitiesController(wsgi.Controller):
         """Return capabilities list of given backend."""
         context = req.environ['cinder.context']
         authorize(context, 'capabilities')
-        capabilities = self.volume_api.get_capabilities(context, id, False)
+        filters = {'host': id, 'binary': 'cinder-volume'}
+        service = objects.ServiceList.get_all(context, filters)
+        if not service:
+            msg = (_("Can't find service: %s") % id)
+            raise exception.NotFound(msg)
+        try:
+            capabilities = self.volume_api.get_capabilities(context, id, False)
+        except oslo_messaging.MessagingTimeout:
+            raise exception.RPCTimeout(service=id)
         return self._view_builder.summary(req, capabilities, id)
 
 

@@ -15,8 +15,11 @@
 
 import mock
 
+import oslo_messaging
+
 from cinder.api.contrib import capabilities
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
 
@@ -55,8 +58,6 @@ def rpcapi_get_capabilities(self, context, host, discover):
     return capabilities
 
 
-@mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
-            rpcapi_get_capabilities)
 class CapabilitiesAPITest(test.TestCase):
     def setUp(self):
         super(CapabilitiesAPITest, self).setUp()
@@ -64,7 +65,11 @@ class CapabilitiesAPITest(test.TestCase):
         self.controller = capabilities.CapabilitiesController()
         self.ctxt = context.RequestContext('admin', 'fake', True)
 
-    def test_capabilities_summary(self):
+    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities',
+                rpcapi_get_capabilities)
+    def test_capabilities_summary(self, mock_services):
+        mock_services.return_value = [{'name': 'fake'}]
         req = fakes.HTTPRequest.blank('/fake/capabilities/fake')
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.show(req, 'fake')
@@ -102,3 +107,23 @@ class CapabilitiesAPITest(test.TestCase):
         }
 
         self.assertDictMatch(expected, res)
+
+    @mock.patch('cinder.db.service_get_all')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_capabilities')
+    def test_get_capabilities_rpc_timeout(self, mock_rpc, mock_services):
+        mock_rpc.side_effect = oslo_messaging.MessagingTimeout
+        mock_services.return_value = [{'name': 'fake'}]
+
+        req = fakes.HTTPRequest.blank('/fake/capabilities/fake')
+        req.environ['cinder.context'] = self.ctxt
+        self.assertRaises(exception.RPCTimeout,
+                          self.controller.show, req, 'fake')
+
+    @mock.patch('cinder.db.service_get_all')
+    def test_get_capabilities_service_not_found(self, mock_services):
+        mock_services.return_value = []
+
+        req = fakes.HTTPRequest.blank('/fake/capabilities/fake')
+        req.environ['cinder.context'] = self.ctxt
+        self.assertRaises(exception.NotFound,
+                          self.controller.show, req, 'fake')
