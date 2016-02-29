@@ -291,7 +291,12 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
                              "target map."))
                 # Build info data structure for zone removing
                 if 'wwpns' in connector and host_name:
-                    target_wwpns = self._helpers.get_conn_fc_wwpns(host_name)
+                    target_wwpns = []
+                    # Returning all target_wwpns in storage_nodes, since
+                    # we cannot determine which wwpns are logged in during
+                    # a VM deletion.
+                    for node in self._state['storage_nodes'].values():
+                        target_wwpns.extend(node['WWPN'])
                     init_targ_map = (self._make_initiator_target_map
                                      (connector['wwpns'],
                                       target_wwpns))
