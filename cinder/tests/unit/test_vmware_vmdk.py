@@ -2413,6 +2413,53 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                                existing_ref))
         get_existing.assert_called_once_with(existing_ref)
 
+    @mock.patch.object(VMDK_DRIVER, '_get_existing')
+    @mock.patch.object(VMDK_DRIVER, '_create_backing')
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_ds_name_folder_path')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_disk_type')
+    def test_manage_existing(
+            self, get_disk_type, get_ds_name_folder_path, vops,
+            create_backing, get_existing):
+
+        vm = mock.sentinel.vm
+        src_path = mock.sentinel.src_path
+        disk_backing = mock.Mock(fileName=src_path)
+        disk_device = mock.Mock(backing=disk_backing, capacityInKB=1048576)
+        get_existing.return_value = (vm, disk_device)
+
+        backing = mock.sentinel.backing
+        create_backing.return_value = backing
+
+        src_dc = mock.sentinel.src_dc
+        dest_dc = mock.sentinel.dest_dc
+        vops.get_dc.side_effect = [src_dc, dest_dc]
+
+        volume = self._create_volume_dict()
+        ds_name = "ds1"
+        folder_path = "%s/" % volume['name']
+        get_ds_name_folder_path.return_value = (ds_name, folder_path)
+
+        disk_type = mock.sentinel.disk_type
+        get_disk_type.return_value = disk_type
+
+        existing_ref = mock.sentinel.existing_ref
+        self._driver.manage_existing(volume, existing_ref)
+
+        get_existing.assert_called_once_with(existing_ref)
+        create_backing.assert_called_once_with(
+            volume, create_params={vmdk.CREATE_PARAM_DISK_LESS: True})
+        vops.detach_disk_from_backing.assert_called_once_with(vm, disk_device)
+        dest_path = "[%s] %s%s.vmdk" % (ds_name, folder_path, volume['name'])
+        vops.move_vmdk_file.assert_called_once_with(
+            src_dc, src_path, dest_path, dest_dc_ref=dest_dc)
+        vops.attach_disk_to_backing.assert_called_once_with(
+            backing, disk_device.capacityInKB, disk_type, 'lsiLogic',
+            dest_path)
+        vops.update_backing_disk_uuid.assert_called_once_with(backing,
+                                                              volume['id'])
+
     @mock.patch('oslo_vmware.api.VMwareAPISession')
     def test_session(self, apiSession):
         self._session = None

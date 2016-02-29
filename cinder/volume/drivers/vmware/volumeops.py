@@ -1228,6 +1228,26 @@ class VMwareVolumeOps(object):
         self._reconfigure_backing(backing, reconfig_spec)
         LOG.debug("Backing VM: %s reconfigured with new disk.", backing)
 
+    def _create_spec_for_disk_remove(self, disk_device):
+        cf = self._session.vim.client.factory
+        disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')
+        disk_spec.operation = 'remove'
+        disk_spec.device = disk_device
+        return disk_spec
+
+    def detach_disk_from_backing(self, backing, disk_device):
+        """Detach the given disk from backing."""
+
+        LOG.debug("Reconfiguring backing VM: %(backing)s to remove disk: "
+                  "%(disk_device)s.",
+                  {'backing': backing, 'disk_device': disk_device})
+
+        cf = self._session.vim.client.factory
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        spec = self._create_spec_for_disk_remove(disk_device)
+        reconfig_spec.deviceChange = [spec]
+        self._reconfigure_backing(backing, reconfig_spec)
+
     def rename_backing(self, backing, new_name):
         """Rename backing VM.
 
@@ -1494,6 +1514,32 @@ class VMwareVolumeOps(object):
         self._session.wait_for_task(task)
         LOG.info(_LI("Successfully copied disk at: %(src)s to: %(dest)s."),
                  {'src': src_vmdk_file_path, 'dest': dest_vmdk_file_path})
+
+    def move_vmdk_file(self, src_dc_ref, src_vmdk_file_path,
+                       dest_vmdk_file_path, dest_dc_ref=None):
+        """Move the given vmdk file to another datastore location.
+
+        :param src_dc_ref: Reference to datacenter containing src datastore
+        :param src_vmdk_file_path: Source vmdk file path
+        :param dest_vmdk_file_path: Destination vmdk file path
+        :param dest_dc_ref: Reference to datacenter of dest datastore.
+                            If unspecified, source datacenter is used.
+        """
+        LOG.debug('Moving disk: %(src)s to %(dest)s.',
+                  {'src': src_vmdk_file_path, 'dest': dest_vmdk_file_path})
+
+        dest_dc_ref = dest_dc_ref or src_dc_ref
+        diskMgr = self._session.vim.service_content.virtualDiskManager
+        task = self._session.invoke_api(self._session.vim,
+                                        'MoveVirtualDisk_Task',
+                                        diskMgr,
+                                        sourceName=src_vmdk_file_path,
+                                        sourceDatacenter=src_dc_ref,
+                                        destName=dest_vmdk_file_path,
+                                        destDatacenter=dest_dc_ref,
+                                        force=True)
+
+        self._session.wait_for_task(task)
 
     def delete_vmdk_file(self, vmdk_file_path, dc_ref):
         """Delete given vmdk files.
