@@ -25,12 +25,13 @@ from cinder import context
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_backup
+from cinder.tests.unit import fake_constants as fake
 
 
 class BackupRpcAPITestCase(test.TestCase):
     def setUp(self):
         super(BackupRpcAPITestCase, self).setUp()
-        self.context = context.RequestContext('fake_user', 'fake_project')
+        self.context = context.RequestContext(fake.user_id, fake.project_id)
         self.fake_backup_obj = fake_backup.fake_backup_obj(self.context)
 
     def _test_backup_api(self, method, rpc_method, server=None, fanout=False,
@@ -92,7 +93,7 @@ class BackupRpcAPITestCase(test.TestCase):
                               server='fake_volume_host',
                               volume_host='fake_volume_host',
                               backup=self.fake_backup_obj,
-                              volume_id='fake_volume_id',
+                              volume_id=fake.volume_id,
                               version='1.1')
 
     def test_delete_backup(self):

@@ -39,6 +39,7 @@ from cinder import objects
 from cinder import test
 from cinder.tests.unit.backup import fake_google_client
 from cinder.tests.unit.backup import fake_google_client2
+from cinder.tests.unit import fake_constants as fake
 
 
 class FakeMD5(object):
@@ -133,8 +134,8 @@ class GoogleBackupDriverTestCase(test.TestCase):
                   'container': container,
                   'volume_id': volume_id,
                   'parent_id': parent_id,
-                  'user_id': 'user-id',
-                  'project_id': 'project-id',
+                  'user_id': fake.user_id,
+                  'project_id': fake.project_id,
                   'service_metadata': service_metadata,
                   }
         backup = objects.Backup(context=self.ctxt, **kwargs)

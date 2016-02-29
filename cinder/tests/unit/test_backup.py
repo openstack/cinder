@@ -14,6 +14,7 @@
 #    under the License.
 """Tests for Backup code."""
 
+import copy
 import ddt
 import tempfile
 import uuid
@@ -51,6 +52,7 @@ class BaseBackupTest(test.TestCase):
         self.backup_mgr = importutils.import_object(CONF.backup_manager)
         self.backup_mgr.host = 'testhost'
         self.ctxt = context.get_admin_context()
+
         paths = ['cinder.volume.rpcapi.VolumeAPI.delete_snapshot',
                  'cinder.volume.rpcapi.VolumeAPI.delete_volume',
                  'cinder.volume.rpcapi.VolumeAPI.detach_volume',
@@ -64,14 +66,15 @@ class BaseBackupTest(test.TestCase):
             self.volume_mocks[name] = self.volume_patches[name].start()
             self.addCleanup(self.volume_patches[name].stop)
 
-    def _create_backup_db_entry(self, volume_id=1, restore_volume_id=None,
+    def _create_backup_db_entry(self, volume_id=str(uuid.uuid4()),
+                                restore_volume_id=None,
                                 display_name='test_backup',
                                 display_description='this is a test backup',
                                 container='volumebackups',
                                 status=fields.BackupStatus.CREATING,
                                 size=1,
                                 object_count=0,
-                                project_id='fake',
+                                project_id=str(uuid.uuid4()),
                                 service=None,
                                 temp_volume_id=None,
                                 temp_snapshot_id=None):
@@ -82,7 +85,7 @@ class BaseBackupTest(test.TestCase):
         kwargs = {}
         kwargs['volume_id'] = volume_id
         kwargs['restore_volume_id'] = restore_volume_id
-        kwargs['user_id'] = 'fake'
+        kwargs['user_id'] = str(uuid.uuid4())
         kwargs['project_id'] = project_id
         kwargs['host'] = 'testhost'
         kwargs['availability_zone'] = '1'
@@ -114,8 +117,8 @@ class BaseBackupTest(test.TestCase):
         vol = {}
         vol['size'] = size
         vol['host'] = 'testhost'
-        vol['user_id'] = 'fake'
-        vol['project_id'] = 'fake'
+        vol['user_id'] = str(uuid.uuid4())
+        vol['project_id'] = str(uuid.uuid4())
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description
@@ -130,7 +133,7 @@ class BaseBackupTest(test.TestCase):
                                   display_description='test snapshot',
                                   status='available',
                                   size=1,
-                                  volume_id='1',
+                                  volume_id=str(uuid.uuid4()),
                                   provider_location=None):
         """Create a snapshot entry in the DB.
 
@@ -139,8 +142,8 @@ class BaseBackupTest(test.TestCase):
         kwargs = {}
         kwargs['size'] = size
         kwargs['host'] = 'testhost'
-        kwargs['user_id'] = 'fake'
-        kwargs['project_id'] = 'fake'
+        kwargs['user_id'] = str(uuid.uuid4())
+        kwargs['project_id'] = str(uuid.uuid4())
         kwargs['status'] = status
         kwargs['display_name'] = display_name
         kwargs['display_description'] = display_description
@@ -174,9 +177,9 @@ class BaseBackupTest(test.TestCase):
         return export
 
     def _create_export_record_db_entry(self,
-                                       volume_id='0000',
+                                       volume_id=str(uuid.uuid4()),
                                        status=fields.BackupStatus.CREATING,
-                                       project_id='fake',
+                                       project_id=str(uuid.uuid4()),
                                        backup_id=None):
         """Create a backup entry in the DB.
 
@@ -184,7 +187,7 @@ class BaseBackupTest(test.TestCase):
         """
         kwargs = {}
         kwargs['volume_id'] = volume_id
-        kwargs['user_id'] = 'fake'
+        kwargs['user_id'] = str(uuid.uuid4())
         kwargs['project_id'] = project_id
         kwargs['status'] = status
         if backup_id:
@@ -320,7 +323,9 @@ class BackupTestCase(BaseBackupTest):
     def test_cleanup_incomplete_backup_operations_with_exceptions(self):
         """Test cleanup resilience in the face of exceptions."""
 
-        fake_backup_list = [{'id': 'bkup1'}, {'id': 'bkup2'}, {'id': 'bkup3'}]
+        fake_backup_list = [{'id': str(uuid.uuid4())},
+                            {'id': str(uuid.uuid4())},
+                            {'id': str(uuid.uuid4())}]
         mock_backup_get_by_host = self.mock_object(
             objects.BackupList, 'get_all_by_host')
         mock_backup_get_by_host.return_value = fake_backup_list
@@ -417,18 +422,18 @@ class BackupTestCase(BaseBackupTest):
 
         fake_attachments = [
             {
-                'id': 'attachment1',
+                'id': str(uuid.uuid4()),
                 'attached_host': 'testhost',
                 'instance_uuid': None,
             },
             {
-                'id': 'attachment2',
+                'id': str(uuid.uuid4()),
                 'attached_host': 'testhost',
                 'instance_uuid': None,
             }
         ]
         fake_volume = {
-            'id': 'fake_volume_id',
+            'id': str(uuid.uuid4()),
             'volume_attachment': fake_attachments
         }
 
@@ -459,9 +464,10 @@ class BackupTestCase(BaseBackupTest):
         vol1_id = self._create_volume_db_entry()
         self._create_volume_attach(vol1_id)
         db.volume_update(self.ctxt, vol1_id, {'status': 'backing-up'})
-        backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
-                                              volume_id=vol1_id,
-                                              temp_snapshot_id='fake')
+        backup = self._create_backup_db_entry(
+            status=fields.BackupStatus.ERROR,
+            volume_id=vol1_id,
+            temp_snapshot_id=str(uuid.uuid4()))
 
         self.assertIsNone(
             self.backup_mgr._cleanup_temp_volumes_snapshots_for_one_backup(
@@ -482,7 +488,7 @@ class BackupTestCase(BaseBackupTest):
         db.volume_update(self.ctxt, vol1_id, {'status': 'backing-up'})
         backup = self._create_backup_db_entry(status=fields.BackupStatus.ERROR,
                                               volume_id=vol1_id,
-                                              temp_volume_id='fake')
+                                              temp_volume_id=str(uuid.uuid4()))
 
         self.assertIsNone(
             self.backup_mgr._cleanup_temp_volumes_snapshots_for_one_backup(
@@ -520,7 +526,7 @@ class BackupTestCase(BaseBackupTest):
         backup = self._create_backup_db_entry(volume_id=vol_id)
 
         mock_run_backup = self.mock_object(self.backup_mgr, '_run_backup')
-        mock_run_backup.side_effect = FakeBackupException('fake')
+        mock_run_backup.side_effect = FakeBackupException(str(uuid.uuid4()))
         self.assertRaises(FakeBackupException,
                           self.backup_mgr.create_backup,
                           self.ctxt,
@@ -852,12 +858,13 @@ class BackupTestCase(BaseBackupTest):
         self.assertEqual(2, notify.call_count)
 
     def test_list_backup(self):
-        backups = db.backup_get_all_by_project(self.ctxt, 'project1')
+        project_id = str(uuid.uuid4())
+        backups = db.backup_get_all_by_project(self.ctxt, project_id)
         self.assertEqual(0, len(backups))
 
         self._create_backup_db_entry()
-        b2 = self._create_backup_db_entry(project_id='project1')
-        backups = db.backup_get_all_by_project(self.ctxt, 'project1')
+        b2 = self._create_backup_db_entry(project_id=project_id)
+        backups = db.backup_get_all_by_project(self.ctxt, project_id)
         self.assertEqual(1, len(backups))
         self.assertEqual(b2.id, backups[0].id)
 
@@ -867,19 +874,20 @@ class BackupTestCase(BaseBackupTest):
         Test deleted backups don't show up in backup_get_all_by_project.
         Unless context.read_deleted is 'yes'.
         """
-        backups = db.backup_get_all_by_project(self.ctxt, 'fake')
+        project_id = str(uuid.uuid4())
+        backups = db.backup_get_all_by_project(self.ctxt, project_id)
         self.assertEqual(0, len(backups))
 
-        backup_keep = self._create_backup_db_entry()
-        backup = self._create_backup_db_entry()
+        backup_keep = self._create_backup_db_entry(project_id=project_id)
+        backup = self._create_backup_db_entry(project_id=project_id)
         db.backup_destroy(self.ctxt, backup.id)
 
-        backups = db.backup_get_all_by_project(self.ctxt, 'fake')
+        backups = db.backup_get_all_by_project(self.ctxt, project_id)
         self.assertEqual(1, len(backups))
         self.assertEqual(backup_keep.id, backups[0].id)
 
         ctxt_read_deleted = context.get_admin_context('yes')
-        backups = db.backup_get_all_by_project(ctxt_read_deleted, 'fake')
+        backups = db.backup_get_all_by_project(ctxt_read_deleted, project_id)
         self.assertEqual(2, len(backups))
 
     def test_backup_get_all_by_host_with_deleted(self):
@@ -1293,7 +1301,7 @@ class BackupAPITestCase(BaseBackupTest):
 
     @mock.patch.object(objects, 'BackupList')
     def test_get_all_true_value_all_tenants_non_admin(self, mock_backuplist):
-        ctxt = context.RequestContext('fake', 'fake')
+        ctxt = context.RequestContext(uuid.uuid4(), uuid.uuid4())
         result = self.api.get_all(ctxt, {'all_tenants': '1',
                                          'key': 'value'})
         self.assertFalse(mock_backuplist.get_all.called)
@@ -1310,9 +1318,14 @@ class BackupAPITestCase(BaseBackupTest):
     def test_create_when_failed_to_create_backup_object(
             self, mock_create,
             mock_get_service):
+
+        # Create volume in admin context
         volume_id = utils.create_volume(self.ctxt)['id']
-        self.ctxt.user_id = 'user_id'
-        self.ctxt.project_id = 'project_id'
+
+        # Will try to backup from a different context
+        new_context = copy.copy(self.ctxt)
+        new_context.user_id = uuid.uuid4()
+        new_context.project_id = uuid.uuid4()
 
         # The opposite side of this test case is a "NotImplementedError:
         # Cannot load 'id' in the base class" being raised.
@@ -1321,7 +1334,7 @@ class BackupAPITestCase(BaseBackupTest):
         # in the except clause, backup.destroy() is invoked to do cleanup,
         # which internally tries to access backup.id.
         self.assertRaises(db_exc.DBError, self.api.create,
-                          context=self.ctxt,
+                          context=new_context,
                           name="test_backup",
                           description="test backup description",
                           volume_id=volume_id,
@@ -1335,8 +1348,6 @@ class BackupAPITestCase(BaseBackupTest):
     def test_create_when_failed_to_new_backup_object(self, mock_new,
                                                      mock_get_service):
         volume_id = utils.create_volume(self.ctxt)['id']
-        self.ctxt.user_id = 'user_id'
-        self.ctxt.project_id = 'project_id'
 
         # The opposite side of this test case is that a "UnboundLocalError:
         # local variable 'backup' referenced before assignment" is raised.
@@ -1355,12 +1366,11 @@ class BackupAPITestCase(BaseBackupTest):
     def test_restore_volume(self,
                             mock_rpcapi_restore,
                             mock_is_service_enabled):
-        ctxt = context.RequestContext('fake', 'fake')
         volume_id = self._create_volume_db_entry(status='available',
                                                  size=1)
         backup = self._create_backup_db_entry(size=1,
                                               status='available')
         mock_is_service_enabled.return_value = True
-        self.api.restore(ctxt, backup.id, volume_id)
-        backup = objects.Backup.get_by_id(ctxt, backup.id)
+        self.api.restore(self.ctxt, backup.id, volume_id)
+        backup = objects.Backup.get_by_id(self.ctxt, backup.id)
         self.assertEqual(volume_id, backup.restore_volume_id)
