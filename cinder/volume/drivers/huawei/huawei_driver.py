@@ -271,8 +271,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         if opts.get('hypermetro') == 'true':
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
-                                                self.configuration,
-                                                self.db)
+                                                self.configuration)
             try:
                 metro_info = metro.create_hypermetro(lun_id, lun_params)
                 model_update['metadata'].update(metro_info)
@@ -345,8 +344,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         if 'hypermetro_id' in metadata:
             metro = hypermetro.HuaweiHyperMetro(self.client,
                                                 self.rmt_client,
-                                                self.configuration,
-                                                self.db)
+                                                self.configuration)
             try:
                 metro.delete_hypermetro(volume)
             except exception.VolumeBackendAPIException as err:
@@ -1716,6 +1714,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         LOG.info(_LI("initialize_connection, metadata is: %s."), metadata)
         if 'hypermetro_id' in metadata:
             hyperm = hypermetro.HuaweiHyperMetro(self.client,
+                                                 self.rmt_client,
                                                  self.configuration)
             rmt_fc_info = hyperm.connect_volume_fc(volume, connector)
 
@@ -1877,6 +1876,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         if 'hypermetro_id' in metadata:
             hyperm = hypermetro.HuaweiHyperMetro(self.client,
+                                                 self.rmt_client,
                                                  self.configuration)
             hyperm.disconnect_volume_fc(volume, connector)
 
