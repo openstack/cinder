@@ -1831,6 +1831,15 @@ def volume_has_snapshots_filter():
              ~models.Snapshot.deleted))
 
 
+def volume_has_undeletable_snapshots_filter():
+    deletable_statuses = ['available', 'error']
+    return sql.exists().where(
+        and_(models.Volume.id == models.Snapshot.volume_id,
+             ~models.Snapshot.deleted,
+             or_(models.Snapshot.cgsnapshot_id != None,  # noqa: != None
+                 models.Snapshot.status.notin_(deletable_statuses))))
+
+
 def volume_has_attachments_filter():
     return sql.exists().where(
         and_(models.Volume.id == models.VolumeAttachment.volume_id,

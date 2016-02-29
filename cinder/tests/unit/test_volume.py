@@ -4298,6 +4298,49 @@ class VolumeTestCase(BaseVolumeTestCase):
                           None,
                           connector)
 
+    def test_cascade_delete_volume_with_snapshots(self):
+        """Test volume deletion with dependent snapshots."""
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        self.volume.create_volume(self.context, volume['id'])
+        snapshot = self._create_snapshot(volume['id'], size=volume['size'])
+        self.volume.create_snapshot(self.context, volume['id'], snapshot)
+        self.assertEqual(
+            snapshot.id, objects.Snapshot.get_by_id(self.context,
+                                                    snapshot.id).id)
+
+        volume['status'] = 'available'
+        volume['host'] = 'fakehost'
+
+        volume_api = cinder.volume.api.API()
+
+        volume_api.delete(self.context,
+                          volume,
+                          cascade=True)
+
+    def test_cascade_delete_volume_with_snapshots_error(self):
+        """Test volume deletion with dependent snapshots."""
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        self.volume.create_volume(self.context, volume['id'])
+        snapshot = self._create_snapshot(volume['id'], size=volume['size'])
+        self.volume.create_snapshot(self.context, volume['id'], snapshot)
+        self.assertEqual(
+            snapshot.id, objects.Snapshot.get_by_id(self.context,
+                                                    snapshot.id).id)
+
+        snapshot.update({'status': 'in-use'})
+        snapshot.save()
+
+        volume['status'] = 'available'
+        volume['host'] = 'fakehost'
+
+        volume_api = cinder.volume.api.API()
+
+        self.assertRaises(exception.InvalidVolume,
+                          volume_api.delete,
+                          self.context,
+                          volume,
+                          cascade=True)
+
 
 @ddt.ddt
 class VolumeMigrationTestCase(VolumeTestCase):

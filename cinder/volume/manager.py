@@ -204,7 +204,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.39'
+    RPC_API_VERSION = '1.40'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -636,8 +636,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         return vol_ref.id
 
     @locked_volume_operation
-    def delete_volume(self, context, volume_id, unmanage_only=False,
-                      volume=None):
+    def delete_volume(self, context, volume_id,
+                      unmanage_only=False,
+                      volume=None,
+                      cascade=False):
         """Deletes and unexports volume.
 
         1. Delete a volume(normal case)
@@ -675,6 +677,13 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.InvalidVolume(
                 reason=_("volume is not local to this node"))
 
+        if unmanage_only and cascade:
+            # This could be done, but is ruled out for now just
+            # for simplicity.
+            raise exception.Invalid(
+                reason=_("Unmanage and cascade delete options "
+                         "are mutually exclusive."))
+
         # The status 'deleting' is not included, because it only applies to
         # the source volume to be deleted after a migration. No quota
         # needs to be handled for it.
@@ -693,6 +702,25 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.driver.remove_export(context, volume)
             if unmanage_only:
                 self.driver.unmanage(volume)
+            elif cascade:
+                LOG.debug('Performing cascade delete.')
+                snapshots = objects.SnapshotList.get_all_for_volume(context,
+                                                                    volume.id)
+                for s in snapshots:
+                    if s.status != 'deleting':
+                        self._clear_db(context, is_migrating_dest, volume,
+                                       'error_deleting')
+
+                        msg = (_("Snapshot %(id)s was found in state "
+                                 "%(state)s rather than 'deleting' during "
+                                 "cascade delete.") % {'id': s.id,
+                                                       'state': s.status})
+                        raise exception.InvalidSnapshot(reason=msg)
+
+                    self.delete_snapshot(context, s)
+
+                LOG.debug('Snapshots deleted, issuing volume delete')
+                self.driver.delete_volume(volume)
             else:
                 self.driver.delete_volume(volume)
         except exception.VolumeIsBusy:

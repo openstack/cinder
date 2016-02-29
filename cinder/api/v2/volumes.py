@@ -186,11 +186,13 @@ class VolumeController(wsgi.Controller):
         """Delete a volume."""
         context = req.environ['cinder.context']
 
+        cascade = utils.get_bool_param('cascade', req.params)
+
         LOG.info(_LI("Delete volume with id: %s"), id, context=context)
 
         try:
             volume = self.volume_api.get(context, id)
-            self.volume_api.delete(context, volume)
+            self.volume_api.delete(context, volume, cascade=cascade)
         except exception.VolumeNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=202)

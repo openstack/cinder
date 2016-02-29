@@ -255,6 +255,10 @@ def volume_has_snapshots_filter():
     return IMPL.volume_has_snapshots_filter()
 
 
+def volume_has_undeletable_snapshots_filter():
+    return IMPL.volume_has_undeletable_snapshots_filter()
+
+
 def volume_has_attachments_filter():
     return IMPL.volume_has_attachments_filter()
 
