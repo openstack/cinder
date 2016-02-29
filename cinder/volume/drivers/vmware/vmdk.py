@@ -24,6 +24,7 @@ machine is never powered on and is often referred as the shadow VM.
 
 import contextlib
 import distutils.version as dist_version  # pylint: disable=E0611
+import math
 import os
 import tempfile
 
@@ -1649,6 +1650,49 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                       "%(name)s.",
                       {'backup_id': backup['id'],
                        'name': volume['name']})
+
+    def _get_disk_device(self, vmdk_path, vm_inv_path):
+        # Get the VM that corresponds to the given inventory path.
+        vm = self.volumeops.get_entity_by_inventory_path(vm_inv_path)
+        if vm:
+            # Get the disk device that corresponds to the given vmdk path.
+            disk_device = self.volumeops.get_disk_device(vm, vmdk_path)
+            if disk_device:
+                return (vm, disk_device)
+
+    def _get_existing(self, existing_ref):
+        src_name = existing_ref.get('source-name')
+        if not src_name:
+            raise exception.InvalidInput(
+                reason=_("source-name cannot be empty."))
+
+        # source-name format: vmdk_path@vm_inventory_path
+        parts = src_name.split('@')
+        if len(parts) != 2:
+            raise exception.InvalidInput(
+                reason=_("source-name format should be: "
+                         "'vmdk_path@vm_inventory_path'."))
+
+        (vmdk_path, vm_inv_path) = parts
+        existing = self._get_disk_device(vmdk_path, vm_inv_path)
+        if not existing:
+            reason = _("%s does not exist.") % src_name
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+
+        return existing
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of the volume to be managed by manage_existing.
+
+        When calculating the size, round up to the next GB.
+
+        :param volume: Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+        volume
+        """
+        (_vm, disk) = self._get_existing(existing_ref)
+        return int(math.ceil(disk.capacityInKB * units.Ki / float(units.Gi)))
 
     @property
     def session(self):
