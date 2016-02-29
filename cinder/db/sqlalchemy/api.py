@@ -689,6 +689,7 @@ def _quota_class_get_all_by_resource(context, resource, session):
     return result
 
 
+@handle_db_data_error
 @require_admin_context
 def quota_class_create(context, class_name, resource, limit):
     quota_class_ref = models.QuotaClass()
@@ -2946,6 +2947,7 @@ def _volume_type_extra_specs_get_item(context, volume_type_id, key,
     return result
 
 
+@handle_db_data_error
 @require_context
 def volume_type_extra_specs_update_or_create(context, volume_type_id,
                                              specs):
@@ -3010,6 +3012,10 @@ def qos_specs_create(context, values):
                 spec_entry = models.QualityOfServiceSpecs()
                 spec_entry.update(item)
                 spec_entry.save(session=session)
+        except db_exc.DBDataError:
+            msg = _('Error writing field to database')
+            LOG.exception(msg)
+            raise exception.Invalid(msg)
         except Exception as e:
             raise db_exc.DBError(e)
 
