@@ -61,45 +61,17 @@ class QuotaSetsController(wsgi.Controller):
         return dict(quota_set=quota_set)
 
     def _validate_existing_resource(self, key, value, quota_values):
-        if key == 'per_volume_gigabytes':
+        # -1 limit will always be greater than the existing value
+        if key == 'per_volume_gigabytes' or value == -1:
             return
         v = quota_values.get(key, {})
-        if value < (v.get('in_use', 0) + v.get('reserved', 0)):
+        used = (v.get('in_use', 0) + v.get('reserved', 0))
+        if QUOTAS.using_nested_quotas():
+            used += v.get('allocated', 0)
+        if value < used:
             msg = _("Quota %s limit must be equal or greater than existing "
                     "resources.") % key
             raise webob.exc.HTTPBadRequest(explanation=msg)
-
-    def _validate_quota_limit(self, quota, key, project_quotas=None,
-                              parent_project_quotas=None):
-        limit = self.validate_integer(quota[key], key, min_value=-1,
-                                      max_value=db.MAX_INT)
-
-        # If a parent quota is unlimited (-1) no validation needs to happen
-        # for the amount of existing free quota
-        # TODO(mc_nair): will need to recurse up for nested quotas once
-        # -1 child project values are enabled
-        if parent_project_quotas and parent_project_quotas[key]['limit'] != -1:
-            free_quota = (parent_project_quotas[key]['limit'] -
-                          parent_project_quotas[key]['in_use'] -
-                          parent_project_quotas[key]['reserved'] -
-                          parent_project_quotas[key].get('allocated', 0))
-
-            current = 0
-            if project_quotas.get(key):
-                current = project_quotas[key]['limit']
-                # -1 limit doesn't change free quota available in parent
-                if current == -1:
-                    current = 0
-
-            # Add back the existing quota limit (if any is set) from the
-            # current free quota since it will be getting reset and is part
-            # of the parent's allocated value
-            free_quota += current
-
-            if limit > free_quota:
-                msg = _("Free quota available is %s.") % free_quota
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-        return limit
 
     def _get_quotas(self, context, id, usages=False):
         values = QUOTAS.get_project_quotas(context, id, usages=usages)
@@ -272,7 +244,7 @@ class QuotaSetsController(wsgi.Controller):
             # Get the parent_id of the target project to verify whether we are
             # dealing with hierarchical namespace or non-hierarchical namespace
             target_project = quota_utils.get_project_hierarchy(
-                context, target_project_id)
+                context, target_project_id, parents_as_ids=True)
             parent_id = target_project.parent_id
 
             if parent_id:
@@ -283,8 +255,6 @@ class QuotaSetsController(wsgi.Controller):
                 self._authorize_update_or_delete(context_project,
                                                  target_project.id,
                                                  parent_id)
-                parent_project_quotas = QUOTAS.get_project_quotas(
-                    context, parent_id)
 
         # NOTE(ankit): Pass #2 - In this loop for body['quota_set'].keys(),
         # we validate the quota limits to ensure that we can bail out if
@@ -294,34 +264,29 @@ class QuotaSetsController(wsgi.Controller):
         quota_values = QUOTAS.get_project_quotas(context, target_project_id,
                                                  defaults=False)
         valid_quotas = {}
-        allocated_quotas = {}
+        reservations = []
         for key in body['quota_set'].keys():
             if key in NON_QUOTA_KEYS:
                 continue
 
-            if not skip_flag:
+            value = self.validate_integer(
+                body['quota_set'][key], key, min_value=-1,
+                max_value=db.MAX_INT)
+
+            # Can't skip the validation of nested quotas since it could mess up
+            # hierarchy if parent limit is less than childrens' current usage
+            if not skip_flag or use_nested_quotas:
                 self._validate_existing_resource(key, value, quota_values)
 
-            if use_nested_quotas and parent_id:
-                value = self._validate_quota_limit(body['quota_set'], key,
-                                                   quota_values,
-                                                   parent_project_quotas)
+            if use_nested_quotas:
+                try:
+                    reservations += self._update_nested_quota_allocated(
+                        context, target_project, quota_values, key, value)
+                except exception.OverQuota as e:
+                    if reservations:
+                        db.reservation_rollback(context, reservations)
+                    raise webob.exc.HTTPBadRequest(explanation=e.message)
 
-                if value < 0:
-                    # TODO(mc_nair): extend to handle -1 limits and recurse up
-                    # the hierarchy
-                    msg = _("Quota can't be set to -1 for child projects.")
-                    raise webob.exc.HTTPBadRequest(explanation=msg)
-
-                original_quota = 0
-                if quota_values.get(key):
-                    original_quota = quota_values[key]['limit']
-
-                allocated_quotas[key] = (
-                    parent_project_quotas[key].get('allocated', 0) + value -
-                    original_quota)
-            else:
-                value = self._validate_quota_limit(body['quota_set'], key)
             valid_quotas[key] = value
 
         # NOTE(ankit): Pass #3 - At this point we know that all the keys and
@@ -335,20 +300,40 @@ class QuotaSetsController(wsgi.Controller):
                 db.quota_create(context, target_project_id, key, value)
             except exception.AdminRequired:
                 raise webob.exc.HTTPForbidden()
-            # If hierarchical projects, update child's quota first
-            # and then parents quota. In future this needs to be an
-            # atomic operation.
-            if use_nested_quotas and parent_id:
-                if key in allocated_quotas.keys():
-                    try:
-                        db.quota_allocated_update(context, parent_id, key,
-                                                  allocated_quotas[key])
-                    except exception.ProjectQuotaNotFound:
-                        parent_limit = parent_project_quotas[key]['limit']
-                        db.quota_create(context, parent_id, key, parent_limit,
-                                        allocated=allocated_quotas[key])
 
+        if reservations:
+            db.reservation_commit(context, reservations)
         return {'quota_set': self._get_quotas(context, target_project_id)}
+
+    def _get_quota_usage(self, quota_obj):
+        return (quota_obj.get('in_use', 0) + quota_obj.get('allocated', 0) +
+                quota_obj.get('reserved', 0))
+
+    def _update_nested_quota_allocated(self, ctxt, target_project,
+                                       target_project_quotas, res, new_limit):
+        reservations = []
+        # per_volume_gigabytes doesn't make sense to nest
+        if res == "per_volume_gigabytes":
+            return reservations
+
+        quota_for_res = target_project_quotas.get(res, {})
+        orig_quota_from_target_proj = quota_for_res.get('limit', 0)
+        # If limit was -1, we were "taking" current child's usage from parent
+        if orig_quota_from_target_proj == -1:
+            orig_quota_from_target_proj = self._get_quota_usage(quota_for_res)
+
+        new_quota_from_target_proj = new_limit
+        # If we set limit to -1, we will "take" the current usage from parent
+        if new_limit == -1:
+            new_quota_from_target_proj = self._get_quota_usage(quota_for_res)
+
+        res_change = new_quota_from_target_proj - orig_quota_from_target_proj
+        if res_change != 0:
+            deltas = {res: res_change}
+            reservations += quota_utils.update_alloc_to_next_hard_limit(
+                ctxt, QUOTAS.resources, deltas, res, None, target_project.id)
+
+        return reservations
 
     @wsgi.serializers(xml=QuotaTemplate)
     def defaults(self, req, id):
@@ -396,9 +381,9 @@ class QuotaSetsController(wsgi.Controller):
         # If the project which is being deleted has allocated part of its
         # quota to its subprojects, then subprojects' quotas should be
         # deleted first.
-        for key, value in project_quotas.items():
-            if 'allocated' in project_quotas[key].keys():
-                if project_quotas[key]['allocated'] != 0:
+        for res, value in project_quotas.items():
+            if 'allocated' in project_quotas[res].keys():
+                if project_quotas[res]['allocated'] != 0:
                     msg = _("About to delete child projects having "
                             "non-zero quota. This should not be performed")
                     raise webob.exc.HTTPBadRequest(explanation=msg)
@@ -411,25 +396,17 @@ class QuotaSetsController(wsgi.Controller):
             self._authorize_update_or_delete(context_project,
                                              target_project.id,
                                              parent_id)
-            parent_project_quotas = QUOTAS.get_project_quotas(
-                ctxt, parent_id)
 
-            # Delete child quota first and later update parent's quota.
             try:
                 db.quota_destroy_by_project(ctxt, target_project.id)
             except exception.AdminRequired:
                 raise webob.exc.HTTPForbidden()
 
-            # The parent "gives" quota to its child using the "allocated" value
-            # and since the child project is getting deleted, we should restore
-            # the child projects quota to the parent quota, but lowering it's
-            # allocated value
-            for key, value in project_quotas.items():
-                project_hard_limit = project_quotas[key]['limit']
-                parent_allocated = parent_project_quotas[key]['allocated']
-                parent_allocated -= project_hard_limit
-                db.quota_allocated_update(ctxt, parent_id, key,
-                                          parent_allocated)
+            for res, limit in project_quotas.items():
+                # Update child limit to 0 so the parent hierarchy gets it's
+                # allocated values updated properly
+                self._update_nested_quota_allocated(
+                    ctxt, target_project, project_quotas, res, 0)
 
     def validate_setup_for_nested_quota_use(self, req):
         """Validates that the setup supports using nested quotas.

@@ -840,10 +840,12 @@ def quota_usage_get_all_by_project(context, project_id):
 
 
 def quota_reserve(context, resources, quotas, deltas, expire,
-                  until_refresh, max_age, project_id=None):
+                  until_refresh, max_age, project_id=None,
+                  is_allocated_reserve=False):
     """Check quotas and create appropriate reservations."""
     return IMPL.quota_reserve(context, resources, quotas, deltas, expire,
-                              until_refresh, max_age, project_id=project_id)
+                              until_refresh, max_age, project_id=project_id,
+                              is_allocated_reserve=is_allocated_reserve)
 
 
 def reservation_commit(context, reservations, project_id=None):

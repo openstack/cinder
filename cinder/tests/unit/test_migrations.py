@@ -739,6 +739,11 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(services.c.active_backend_id.type,
                               self.VARCHAR_TYPE)
 
+    def _check_066(self, engine, data):
+        reservations = db_utils.get_table(engine, 'reservations')
+        self.assertIsInstance(reservations.c.allocated_id.type,
+                              self.INTEGER_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 

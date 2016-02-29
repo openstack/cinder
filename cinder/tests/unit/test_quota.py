@@ -15,7 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 import datetime
 
 import mock
@@ -1387,8 +1386,10 @@ class NestedDbQuotaDriverBaseTestCase(DbQuotaDriverBaseTestCase):
         class FakeProject(object):
             def __init__(self, parent_id):
                 self.parent_id = parent_id
+                self.parents = {parent_id: None}
 
-        def fake_get_project(project_id, subtree_as_ids=False):
+        def fake_get_project(project_id, subtree_as_ids=False,
+                             parents_as_ids=False):
             # Enable imitation of projects with and without parents
             if project_id == self._child_proj_id:
                 return FakeProject('parent_id')
@@ -1572,27 +1573,62 @@ class NestedQuotaValidation(NestedDbQuotaDriverBaseTestCase):
                           self.resources, self.project_tree)
         self.proj_vals['D']['limit'] = 2
 
-    def test_validate_nested_quotas_negative_child_limit(self):
-        self.proj_vals['B']['limit'] = -1
-        self.assertRaises(
-            exception.InvalidNestedQuotaSetup,
-            self.driver.validate_nested_setup,
-            self.context, self.resources, self.project_tree)
-
     def test_validate_nested_quotas_usage_over_limit(self):
-
         self.proj_vals['D']['in_use'] = 5
         self.assertRaises(exception.InvalidNestedQuotaSetup,
                           self.driver.validate_nested_setup,
                           self.context, self.resources, self.project_tree)
 
     def test_validate_nested_quota_bad_allocated_quotas(self):
-
         self.proj_vals['A']['alloc'] = 5
         self.proj_vals['B']['alloc'] = 8
         self.assertRaises(exception.InvalidNestedQuotaSetup,
                           self.driver.validate_nested_setup,
                           self.context, self.resources, self.project_tree)
+
+    def test_validate_nested_quota_negative_child_limits(self):
+        # Redefining the project limits with -1, doing it all in this test
+        # for readability
+        self.proj_vals = {
+            'A': {'limit': 8, 'in_use': 1},
+            'B': {'limit': -1, 'in_use': 3},
+            'D': {'limit': 4, 'in_use': 0},
+            'C': {'limit': 2, 'in_use': 2},
+        }
+
+        # A's child usage is 3 (from B) + 4 (from D) + 2 (from C) = 9
+        self.assertRaises(exception.InvalidNestedQuotaSetup,
+                          self.driver.validate_nested_setup,
+                          self.context, self.resources, self.project_tree)
+
+        self.proj_vals['D']['limit'] = 2
+        self.driver.validate_nested_setup(
+            self.context, self.resources, self.project_tree,
+            fix_allocated_quotas=True)
+
+    def test_get_cur_project_allocated(self):
+        # Redefining the project limits with -1, doing it all in this test
+        # for readability
+        self.proj_vals = {
+            # Allocated are here to simulate a bad existing value
+            'A': {'limit': 8, 'in_use': 1, 'alloc': 6},
+            'B': {'limit': -1, 'in_use': 3, 'alloc': 2},
+            'D': {'limit': 1, 'in_use': 0},
+            'C': {'limit': 2, 'in_use': 2},
+        }
+
+        self.driver._allocated = {}
+        allocated_a = self.driver._get_cur_project_allocated(
+            self.context, self.resources['volumes'],
+            self.project_tree)
+
+        # A's allocated will be:
+        #   2 (from C's limit) + 3 (from B's in-use) + 1 (from D's limit) = 6
+        self.assertEqual(6, allocated_a)
+
+        # B's allocated value should also be calculated and cached as part
+        # of A's calculation
+        self.assertEqual(1, self.driver._allocated['B']['volumes'])
 
 
 class FakeSession(object):
@@ -1604,6 +1640,9 @@ class FakeSession(object):
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         return False
+
+    def query(self, *args, **kwargs):
+        pass
 
 
 class FakeUsage(sqa_models.QuotaUsage):
@@ -1665,15 +1704,22 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
             return quota_usage_ref
 
         def fake_reservation_create(context, uuid, usage_id, project_id,
-                                    resource, delta, expire, session=None):
+                                    resource, delta, expire, session=None,
+                                    allocated_id=None):
             reservation_ref = self._make_reservation(
                 uuid, usage_id, project_id, resource, delta, expire,
-                timeutils.utcnow(), timeutils.utcnow())
+                timeutils.utcnow(), timeutils.utcnow(), allocated_id)
 
             self.reservations_created[resource] = reservation_ref
 
             return reservation_ref
 
+        def fake_qagabp(context, project_id):
+            self.assertEqual('test_project', project_id)
+            return {'project_id': project_id}
+
+        self.stubs.Set(sqa_api, 'quota_allocated_get_all_by_project',
+                       fake_qagabp)
         self.stubs.Set(sqa_api, 'get_session', fake_get_session)
         self.stubs.Set(sqa_api, '_get_quota_usages', fake_get_quota_usages)
         self.stubs.Set(sqa_api, '_quota_usage_create', fake_quota_usage_create)
@@ -1723,7 +1769,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                                  (actual, value, resource))
 
     def _make_reservation(self, uuid, usage_id, project_id, resource,
-                          delta, expire, created_at, updated_at):
+                          delta, expire, created_at, updated_at, alloc_id):
         reservation_ref = sqa_models.Reservation()
         reservation_ref.id = len(self.reservations_created)
         reservation_ref.uuid = uuid
@@ -1736,6 +1782,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         reservation_ref.updated_at = updated_at
         reservation_ref.deleted_at = None
         reservation_ref.deleted = False
+        reservation_ref.allocated_id = alloc_id
 
         return reservation_ref
 

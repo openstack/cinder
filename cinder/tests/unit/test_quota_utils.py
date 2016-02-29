@@ -89,7 +89,7 @@ class QuotaUtilsTest(test.TestCase):
         project = quota_utils.get_project_hierarchy(
             self.context, self.context.project_id, subtree_as_ids=True)
         keystoneclient.projects.get.assert_called_once_with(
-            self.context.project_id, subtree_as_ids=True)
+            self.context.project_id, parents_as_ids=False, subtree_as_ids=True)
         self.assertEqual(expected_project.__dict__, project.__dict__)
 
     @mock.patch('cinder.quota_utils._keystone_client')
