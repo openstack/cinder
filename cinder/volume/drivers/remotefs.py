@@ -1287,6 +1287,10 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
         while True:
             s = db.snapshot_get(context, snapshot['id'])
 
+            LOG.debug('Status of snapshot %(id)s is now %(status)s',
+                      {'id': snapshot['id'],
+                       'status': s['status']})
+
             if s['status'] == 'creating':
                 if s['progress'] == '90%':
                     # Nova tasks completed successfully
@@ -1300,9 +1304,12 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
                         'while creating snapshot.')
                 raise exception.RemoteFSException(msg)
 
-            LOG.debug('Status of snapshot %(id)s is now %(status)s',
-                      {'id': snapshot['id'],
-                       'status': s['status']})
+            elif s['status'] == 'deleting' or s['status'] == 'error_deleting':
+                msg = _('Snapshot %(id)s has been asked to be deleted while '
+                        'waiting for it to become available. Perhaps a '
+                        'concurrent request was made.') % {'id':
+                                                           snapshot['id']}
+                raise exception.RemoteFSConcurrentRequest(msg)
 
             if 10 < seconds_elapsed <= 20:
                 increment = 2

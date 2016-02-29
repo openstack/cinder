@@ -799,6 +799,11 @@ class RemoteFSException(VolumeDriverException):
     message = _("Unknown RemoteFS exception")
 
 
+class RemoteFSConcurrentRequest(RemoteFSException):
+    message = _("A concurrent, possibly contradictory, request "
+                "has been made.")
+
+
 class RemoteFSNoSharesMounted(RemoteFSException):
     message = _("No mounted shares found")
 
