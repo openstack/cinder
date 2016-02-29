@@ -16,6 +16,7 @@
 import time
 
 import mock
+import six
 
 from cinder import exception
 from cinder import test
@@ -45,7 +46,7 @@ xms_data = {'xms': {1: {'version': '4.0.0'}},
                              "index": 1,
                              },
                          },
-            'target-groups': {'Default': {"index": 1, },
+            'target-groups': {'Default': {"index": 1, "name": "Default"},
                               },
             'iscsi-portals': {'10.205.68.5/16':
                               {"port-address":
@@ -75,6 +76,15 @@ xms_data = {'xms': {1: {'version': '4.0.0'}},
             'consistency-group-volumes': {},
             }
 
+xms_filters = {
+    'eq': lambda x, y: x == y,
+    'ne': lambda x, y: x != y,
+    'gt': lambda x, y: x > y,
+    'ge': lambda x, y: x >= y,
+    'lt': lambda x, y: x < y,
+    'le': lambda x, y: x <= y,
+}
+
 
 def get_xms_obj_by_name(typ, name):
     for item in xms_data[typ].values():
@@ -101,6 +111,14 @@ def fix_data(data, object_type):
 
     if object_type == 'lun-maps':
         d['lun'] = 1
+
+        vol_idx = get_xms_obj_by_name('volumes', data['vol-id'])['index']
+        ig_idx = get_xms_obj_by_name('initiator-groups',
+                                     data['ig-id'])['index']
+
+        d['name'] = '_'.join([six.text_type(vol_idx),
+                              six.text_type(ig_idx),
+                              '1'])
 
     d[typ2id[object_type]] = ["a91e8c81c2d14ae4865187ce4f866f8a",
                               d.get('name'),
@@ -138,7 +156,15 @@ def xms_request(object_type='volumes', method='GET', data=None,
             return get_obj(object_type, name, idx)
         else:
             if data and data.get('full') == 1:
-                return {object_type: list(res.values())}
+                filter_term = data.get('filter')
+                if not filter_term:
+                    entities = list(res.values())
+                else:
+                    field, oper, value = filter_term.split(':', 2)
+                    comp = xms_filters[oper]
+                    entities = [o for o in res.values()
+                                if comp(o.get(field), value)]
+                return {object_type: entities}
             else:
                 return {object_type: [{"href": "/%s/%d" % (object_type,
                                                            obj['index']),
@@ -423,6 +449,7 @@ class EMCXIODriverISCSITestCase(test.TestCase):
     def test_initialize_terminate_connection(self, req):
         req.side_effect = xms_request
         self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume2)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
         self.assertEqual(1, map_data['data']['target_lun'])
@@ -435,10 +462,34 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
 
+    def test_terminate_connection_fail_on_bad_volume(self, req):
+        req.side_effect = xms_request
+        self.assertRaises(exception.NotFound,
+                          self.driver.terminate_connection,
+                          self.data.test_volume,
+                          self.data.connector)
+
+    def test_get_ig_indexes_from_initiators_called_once(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        map_data = self.driver.initialize_connection(self.data.test_volume,
+                                                     self.data.connector)
+        i1 = xms_data['initiators'][1]
+        i1['ig-id'] = ['', i1['ig-id'], 1]
+        self.assertEqual(1, map_data['data']['target_lun'])
+
+        with mock.patch.object(self.driver,
+                               '_get_ig_indexes_from_initiators') as get_idx:
+            get_idx.return_value = [1]
+            self.driver.terminate_connection(self.data.test_volume,
+                                             self.data.connector)
+            get_idx.assert_called_once_with(self.data.connector)
+
     def test_initialize_chap_connection(self, req):
         req.side_effect = xms_request
         clean_xms_data()
         self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume2)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
         self.assertIsNone(map_data['data'].get('access_mode'))
@@ -454,6 +505,9 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.assertEqual('chap_password1', map_data['data']['auth_password'])
         self.assertEqual('chap_password2',
                          map_data['data']['discovery_auth_password'])
+
+        self.driver.terminate_connection(self.data.test_volume2,
+                                         self.data.connector)
         i1['chap-authentication-initiator-password'] = None
         i1['chap-discovery-initiator-password'] = None
         map_data = self.driver.initialize_connection(self.data.test_volume2,
@@ -662,6 +716,8 @@ class EMCXIODriverFibreChannelTestCase(test.TestCase):
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
         self.assertEqual(1, map_data['data']['target_lun'])
+        for i1 in xms_data['initiators'].values():
+            i1['ig-id'] = ['', i1['ig-id'], 1]
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
         self.driver.delete_volume(self.data.test_volume)
@@ -675,7 +731,7 @@ class EMCXIODriverFibreChannelTestCase(test.TestCase):
 
         pre_existing = 'pre_existing_host'
         self.driver._create_ig(pre_existing)
-        wwpns = self.driver._get_initiator_name(self.data.connector)
+        wwpns = self.driver._get_initiator_names(self.data.connector)
         for wwpn in wwpns:
             data = {'initiator-name': wwpn, 'ig-id': pre_existing,
                     'port-address': wwpn}

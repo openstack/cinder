@@ -561,19 +561,18 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector"""
-        try:
-            ig = self.client.req('initiator-groups',
-                                 name=self._get_ig_name(connector))['content']
-            tg = self.client.req('target-groups', name='Default')['content']
-            vol = self.client.req('volumes', name=volume['id'])['content']
+        tg = self.client.req('target-groups', name='Default')['content']
+        vol = self.client.req('volumes', name=volume['id'])['content']
 
+        for ig_idx in self._get_ig_indexes_from_initiators(connector):
             lm_name = '%s_%s_%s' % (six.text_type(vol['index']),
-                                    six.text_type(ig['index']),
+                                    six.text_type(ig_idx),
                                     six.text_type(tg['index']))
             LOG.debug('Removing lun map %s.', lm_name)
-            self.client.req('lun-maps', 'DELETE', name=lm_name)
-        except exception.NotFound:
-            LOG.warning(_LW("terminate_connection: lun map not found"))
+            try:
+                self.client.req('lun-maps', 'DELETE', name=lm_name)
+            except exception.NotFound:
+                LOG.warning(_LW("terminate_connection: lun map not found"))
 
     def _get_password(self):
         return ''.join(RANDOM.choice
@@ -596,6 +595,20 @@ class XtremIOVolumeDriver(san.SanDriver):
         return lunmap
 
     def _get_ig_name(self, connector):
+        raise NotImplementedError()
+
+    def _get_ig_indexes_from_initiators(self, connector):
+        initiator_names = self._get_initiator_names(connector)
+        ig_indexes = set()
+
+        for initiator_name in initiator_names:
+            initiator = self.client.get_initiator(initiator_name)
+
+            ig_indexes.add(initiator['ig-id'][XTREMIO_OID_INDEX])
+
+        return list(ig_indexes)
+
+    def _get_initiator_names(self, connector):
         raise NotImplementedError()
 
     def create_consistencygroup(self, context, group):
@@ -792,7 +805,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
         return login_passwd, discovery_passwd
 
     def _create_initiator(self, connector, login_chap, discovery_chap):
-        initiator = self._get_initiator_name(connector)
+        initiator = self._get_initiator_names(connector)[0]
         # create an initiator
         data = {'initiator-name': initiator,
                 'ig-id': initiator,
@@ -811,7 +824,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
                       'disabled')
         discovery_chap = (sys.get('chap-discovery-mode', 'disabled') !=
                           'disabled')
-        initiator_name = self._get_initiator_name(connector)
+        initiator_name = self._get_initiator_names(connector)[0]
         initiator = self.client.get_initiator(initiator_name)
         if initiator:
             login_passwd = initiator['chap-authentication-initiator-password']
@@ -895,8 +908,8 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
                       'target_luns': [lunmap['lun']] * len(portals)}
         return properties
 
-    def _get_initiator_name(self, connector):
-        return connector['initiator']
+    def _get_initiator_names(self, connector):
+        return [connector['initiator']]
 
     def _get_ig_name(self, connector):
         return connector['initiator']
@@ -940,7 +953,7 @@ class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
-        wwpns = self._get_initiator_name(connector)
+        wwpns = self._get_initiator_names(connector)
         ig_name = self._get_ig_name(connector)
         i_t_map = {}
         found = []
@@ -989,7 +1002,7 @@ class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
             data = {}
         else:
             i_t_map = {}
-            for initiator in self._get_initiator_name(connector):
+            for initiator in self._get_initiator_names(connector):
                 i_t_map[initiator.replace(':', '')] = self.get_targets()
             data = {'target_wwn': self.get_targets(),
                     'initiator_target_map': i_t_map}
@@ -997,7 +1010,7 @@ class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
         return {'driver_volume_type': 'fibre_channel',
                 'data': data}
 
-    def _get_initiator_name(self, connector):
+    def _get_initiator_names(self, connector):
         return [wwpn if ':' in wwpn else
                 ':'.join(wwpn[i:i + 2] for i in range(0, len(wwpn), 2))
                 for wwpn in connector['wwpns']]
