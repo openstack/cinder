@@ -733,7 +733,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         host = mock.sentinel.host
         rp = mock.sentinel.rp
         folder = mock.sentinel.folder
-        summary = mock.Mock(name=mock.sentinel.ds_name)
+        # NOTE(mriedem): The summary.name gets logged so it has to be a string
+        summary = mock.Mock(name=six.text_type(mock.sentinel.ds_name))
         select_ds_for_volume.return_value = (host, rp, folder, summary)
 
         profile_id = mock.sentinel.profile_id
