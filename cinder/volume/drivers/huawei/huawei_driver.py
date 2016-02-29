@@ -739,17 +739,11 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         if snapshot_id is None:
             snapshot_id = self.client.get_snapshot_id_by_name(snapshotname)
 
-        if snapshot_id is not None:
-            if self.client.check_snapshot_exist(snapshot_id):
-                self.client.stop_snapshot(snapshot_id)
-                self.client.delete_snapshot(snapshot_id)
-            else:
-                LOG.warning(_LW("Can't find snapshot on the array."))
+        if snapshot_id and self.client.check_snapshot_exist(snapshot_id):
+            self.client.stop_snapshot(snapshot_id)
+            self.client.delete_snapshot(snapshot_id)
         else:
             LOG.warning(_LW("Can't find snapshot on the array."))
-            return False
-
-        return True
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""

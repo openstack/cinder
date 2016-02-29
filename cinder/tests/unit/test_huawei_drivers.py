@@ -444,7 +444,8 @@ FAKE_LUN_COUNT_RESPONSE = """
 FAKE_SNAPSHOT_LIST_INFO_RESPONSE = """
 {
     "error": {
-        "code": 0
+        "code": 0,
+        "description": "0"
     },
     "data": [{
         "ID": 11,
@@ -478,7 +479,8 @@ FAKE_CREATE_SNAPSHOT_INFO_RESPONSE = """
 FAKE_GET_SNAPSHOT_INFO_RESPONSE = """
 {
     "error": {
-        "code": 0
+        "code": 0,
+        "description": "0"
     },
     "data": {
         "ID": 11,
@@ -2038,8 +2040,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual(11, lun_info['provider_location'])
 
     def test_delete_snapshot_success(self):
-        delete_flag = self.driver.delete_snapshot(test_snap)
-        self.assertTrue(delete_flag)
+        self.driver.delete_snapshot(test_snap)
 
     def test_create_volume_from_snapsuccess(self):
         self.mock_object(
@@ -2099,6 +2100,21 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
         self.driver.client.test_fail = True
         self.driver.delete_volume(test_snap)
+
+    def test_delete_snapshot_with_snapshot_nonexistent(self):
+        fake_snap = {
+            'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+            'size': 1,
+            'volume_name': 'vol1',
+            'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+            'volume_id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+            'provider_auth': None,
+            'project_id': 'project',
+            'display_name': 'vol1',
+            'display_description': 'test volume',
+            'volume_type_id': None,
+            'provider_location': None, }
+        self.driver.delete_snapshot(fake_snap)
 
     def test_initialize_connection_fail(self):
 
@@ -3127,8 +3143,7 @@ class HuaweiFCDriverTestCase(test.TestCase):
         self.assertEqual(11, lun_info['provider_location'])
 
     def test_delete_snapshot_success(self):
-        delete_flag = self.driver.delete_snapshot(test_snap)
-        self.assertTrue(delete_flag)
+        self.driver.delete_snapshot(test_snap)
 
     def test_create_volume_from_snapsuccess(self):
         lun_info = self.driver.create_volume_from_snapshot(test_volume,
