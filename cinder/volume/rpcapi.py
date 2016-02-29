@@ -331,10 +331,6 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'failover_host',
                           secondary_backend_id=secondary_backend_id)
 
-    def list_replication_targets(self, ctxt, host):
-        cctxt = self._get_cctxt(host, '1.39')
-        return cctxt.call(ctxt, 'list_replication_targets')
-
     def manage_existing_snapshot(self, ctxt, snapshot, ref, host):
         cctxt = self._get_cctxt(host, '1.28')
         cctxt.cast(ctxt, 'manage_existing_snapshot',
