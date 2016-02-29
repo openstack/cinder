@@ -1217,8 +1217,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         LOG.debug("Rename LUN %(old_name)s to %(new_name)s.",
                   {'old_name': lun_info.get('NAME'),
                    'new_name': new_name})
-        self.client.rename_lun(lun_id, new_name,  # pylint: disable=E1121
-                               description)
+        self.client.rename_lun(lun_id, new_name, description)
 
         model_update = {}
         model_update.update({'provider_location': lun_id})

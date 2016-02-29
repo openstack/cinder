@@ -1639,9 +1639,11 @@ class RestClient(object):
 
         return initiators
 
-    def rename_lun(self, lun_id, new_name):
+    def rename_lun(self, lun_id, new_name, description=None):
         url = "/lun/" + lun_id
         data = {"NAME": new_name}
+        if description:
+            data.update({"DESCRIPTION": description})
         result = self.call(url, data, "PUT")
         msg = _('Rename lun on array error.')
         self._assert_rest_result(result, msg)

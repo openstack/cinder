@@ -3541,6 +3541,17 @@ class HuaweiFCDriverTestCase(test.TestCase):
         wwns = self.driver.client.get_online_free_wwns()
         self.assertEqual(['1'], wwns)
 
+    @mock.patch.object(rest_client.RestClient, 'call',
+                       return_value={"data": {"ID": 1}, "error": {"code": 0}})
+    def test_rename_lun(self, mock_call):
+        des = 'This LUN is renamed.'
+        new_name = 'test_name'
+        self.driver.client.rename_lun('1', new_name, des)
+        self.assertEqual(1, mock_call.call_count)
+        url = "/lun/1"
+        data = {"NAME": new_name, "DESCRIPTION": des}
+        mock_call.assert_called_once_with(url, data, "PUT")
+
 
 class HuaweiConfTestCase(test.TestCase):
     def setUp(self):
