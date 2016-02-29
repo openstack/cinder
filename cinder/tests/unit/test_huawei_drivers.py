@@ -3043,6 +3043,45 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         portg = self.driver.client.get_tgt_port_group('test_portg')
         self.assertIsNone(portg)
 
+    def test_get_tgt_iqn_from_rest_match(self):
+        match_res = {
+            'data': [{
+                'TYPE': 249,
+                'ID': '0+iqn.2006-08.com: 210048cee9d: 111.111.111.19,t,0x01'
+            }, {
+                'TYPE': 249,
+                'ID': '0+iqn.2006-08.com: 210048cee9d: 111.111.111.191,t,0x01'
+            }],
+            'error': {
+                'code': 0
+            }
+        }
+        ip = '111.111.111.19'
+        expected_iqn = 'iqn.2006-08.com: 210048cee9d: 111.111.111.19'
+        self.mock_object(rest_client.RestClient, 'call',
+                         mock.Mock(return_value=match_res))
+        iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
+        self.assertEqual(expected_iqn, iqn)
+
+    def test_get_tgt_iqn_from_rest_mismatch(self):
+        match_res = {
+            'data': [{
+                'TYPE': 249,
+                'ID': '0+iqn.2006-08.com: 210048cee9d: 111.111.111.191,t,0x01'
+            }, {
+                'TYPE': 249,
+                'ID': '0+iqn.2006-08.com: 210048cee9d: 111.111.111.192,t,0x01'
+            }],
+            'error': {
+                'code': 0
+            }
+        }
+        ip = '111.111.111.19'
+        self.mock_object(rest_client.RestClient, 'call',
+                         mock.Mock(return_value=match_res))
+        iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
+        self.assertIsNone(iqn)
+
 
 class FCSanLookupService(object):
 
