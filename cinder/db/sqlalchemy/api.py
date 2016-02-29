@@ -426,7 +426,8 @@ def service_get_by_host_and_topic(context, host, topic):
         filter_by(topic=topic).\
         first()
     if not result:
-        raise exception.ServiceNotFound(service_id=None)
+        raise exception.ServiceNotFound(service_id=topic,
+                                        host=host)
     return result
 
 
@@ -441,7 +442,8 @@ def service_get_by_args(context, host, binary):
         if host == result['host']:
             return result
 
-    raise exception.HostBinaryNotFound(host=host, binary=binary)
+    raise exception.ServiceNotFound(service_id=binary,
+                                    host=host)
 
 
 @require_admin_context

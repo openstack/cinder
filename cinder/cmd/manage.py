@@ -450,7 +450,7 @@ class ServiceCommands(object):
         try:
             svc = objects.Service.get_by_args(ctxt, host_name, binary)
             svc.destroy()
-        except exception.HostBinaryNotFound as e:
+        except exception.ServiceNotFound as e:
             print(_("Host not found. Failed to remove %(service)s"
                     " on %(host)s.") %
                   {'service': binary, 'host': host_name})
