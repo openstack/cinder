@@ -52,9 +52,10 @@ DEFAULT_TIMEOUT = 15
 LOG = logging.getLogger(__name__)
 
 storwize_svc_opts = [
-    cfg.StrOpt('storwize_svc_volpool_name',
-               default='volpool',
-               help='Storage system storage pool for volumes'),
+    cfg.ListOpt('storwize_svc_volpool_name',
+                default=['volpool'],
+                help='Comma separated list of storage system storage '
+                     'pools for volumes.'),
     cfg.IntOpt('storwize_svc_vol_rsize',
                default=2,
                min=-1, max=100,
@@ -1293,11 +1294,12 @@ class StorwizeHelpers(object):
             for source, target in zip(sources, targets):
                 opts = self.get_vdisk_params(config, state,
                                              source['volume_type_id'])
+                pool = utils.extract_host(target['host'], 'pool')
                 self.create_flashcopy_to_consistgrp(source['name'],
                                                     target['name'],
                                                     fc_consistgrp,
                                                     config, opts,
-                                                    True)
+                                                    True, pool=pool)
             self.prepare_fc_consistgrp(fc_consistgrp, timeout)
             self.start_fc_consistgrp(fc_consistgrp)
             self.delete_fc_consistgrp(fc_consistgrp)
@@ -1367,7 +1369,7 @@ class StorwizeHelpers(object):
         src_size = src_attrs['capacity']
         # In case we need to use a specific pool
         if not pool:
-            pool = config.storwize_svc_volpool_name
+            pool = src_attrs['mdisk_grp_name']
         self.create_vdisk(target, src_size, 'b', pool, opts)
 
         self.ssh.mkfcmap(source, target, full_copy,
@@ -1554,7 +1556,7 @@ class StorwizeHelpers(object):
         src_size = src_attrs['capacity']
         # In case we need to use a specific pool
         if not pool:
-            pool = config.storwize_svc_volpool_name
+            pool = src_attrs['mdisk_grp_name']
         self.create_vdisk(tgt, src_size, 'b', pool, opts)
         timeout = config.storwize_svc_flashcopy_timeout
         try:
@@ -1898,12 +1900,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self.replication = storwize_rep.StorwizeSVCReplication.factory(self)
 
         # Validate that the pool exists
-        pool = self.configuration.storwize_svc_volpool_name
-        try:
-            self._helpers.get_pool_attrs(pool)
-        except exception.VolumeBackendAPIException:
-            msg = _('Failed getting details for pool %s.') % pool
-            raise exception.InvalidInput(reason=msg)
+        self._validate_pools_exist()
 
         # Check if compression is supported
         self._state['compression_enabled'] = (self._helpers.
@@ -1939,6 +1936,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         # v2 replication setup
         self._do_replication_setup()
+
+    def _validate_pools_exist(self):
+        # Validate that the pool exists
+        pools = self.configuration.storwize_svc_volpool_name
+        for pool in pools:
+            try:
+                self._helpers.get_pool_attrs(pool)
+            except exception.VolumeBackendAPIException:
+                msg = _('Failed getting details for pool %s.') % pool
+                raise exception.InvalidInput(reason=msg)
 
     def check_for_setup_error(self):
         """Ensure that the flags are set properly."""
@@ -2096,7 +2103,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         opts = self._get_vdisk_params(volume['volume_type_id'],
                                       volume_metadata=
                                       volume.get('volume_metadata'))
-        pool = self.configuration.storwize_svc_volpool_name
+        pool = utils.extract_host(volume['host'], 'pool')
         self._helpers.create_vdisk(volume['name'], str(volume['size']),
                                    'gb', pool, opts)
         if opts['qos']:
@@ -2142,10 +2149,11 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             msg = (_('create_snapshot: get source volume failed.'))
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
+        pool = utils.extract_host(source_vol['host'], 'pool')
         opts = self._get_vdisk_params(source_vol['volume_type_id'])
         self._helpers.create_copy(snapshot['volume_name'], snapshot['name'],
                                   snapshot['volume_id'], self.configuration,
-                                  opts, False)
+                                  opts, False, pool=pool)
 
     def delete_snapshot(self, snapshot):
         self._helpers.delete_vdisk(snapshot['name'], False)
@@ -2160,9 +2168,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         opts = self._get_vdisk_params(volume['volume_type_id'],
                                       volume_metadata=
                                       volume.get('volume_metadata'))
+        pool = utils.extract_host(volume['host'], 'pool')
         self._helpers.create_copy(snapshot['name'], volume['name'],
                                   snapshot['id'], self.configuration,
-                                  opts, True)
+                                  opts, True, pool=pool)
         if opts['qos']:
             self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
 
@@ -2190,9 +2199,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         opts = self._get_vdisk_params(tgt_volume['volume_type_id'],
                                       volume_metadata=
                                       tgt_volume.get('volume_metadata'))
+        pool = utils.extract_host(tgt_volume['host'], 'pool')
         self._helpers.create_copy(src_volume['name'], tgt_volume['name'],
                                   src_volume['id'], self.configuration,
-                                  opts, True)
+                                  opts, True, pool=pool)
         if opts['qos']:
             self._helpers.add_vdisk_qos(tgt_volume['name'], opts['qos'])
 
@@ -2626,8 +2636,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 elif key in no_copy_keys:
                     vdisk_changes.append(key)
 
-        dest_location = host['capabilities'].get('location_info')
-        if self._stats['location_info'] != dest_location:
+        if (utils.extract_host(volume['host'], 'pool') !=
+                utils.extract_host(host['host'], 'pool')):
             need_copy = True
 
         if need_copy:
@@ -2772,9 +2782,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                        {'vdisk_iogrp': vdisk['IO_group_name'],
                         'opt_iogrp': opts['iogrp']})
                 raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
-
-        if (vdisk['mdisk_grp_name'] !=
-                self.configuration.storwize_svc_volpool_name):
+        pool = utils.extract_host(volume['host'], 'pool')
+        if vdisk['mdisk_grp_name'] != pool:
             msg = (_("Failed to manage existing volume due to the "
                      "pool of the volume to be managed does not "
                      "match the backend pool. Pool of the "
@@ -2944,6 +2953,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
 
         return model_update, snapshots_model
 
+    def get_pool(self, volume):
+        attr = self._helpers.get_vdisk_attributes(volume['name'])
+
+        if attr is None:
+            msg = (_('get_pool: Failed to get attributes for volume '
+                     '%s') % volume['name'])
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        return attr['mdisk_grp_name']
+
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
 
@@ -2953,46 +2973,63 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         data['vendor_name'] = 'IBM'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = self.protocol
+        data['pools'] = []
 
-        data['total_capacity_gb'] = 0  # To be overwritten
-        data['free_capacity_gb'] = 0   # To be overwritten
-        data['reserved_percentage'] = self.configuration.reserved_percentage
         data['multiattach'] = (self.configuration.
                                storwize_svc_multihostmap_enabled)
-        data['QoS_support'] = True
-        data['consistencygroup_support'] = True
 
-        pool = self.configuration.storwize_svc_volpool_name
         backend_name = self.configuration.safe_get('volume_backend_name')
-        if not backend_name:
-            backend_name = '%s_%s' % (self._state['system_name'], pool)
-        data['volume_backend_name'] = backend_name
+        data['volume_backend_name'] = (backend_name or
+                                       self._state['system_name'])
 
-        attributes = self._helpers.get_pool_attrs(pool)
-        if not attributes:
-            LOG.error(_LE('Could not get pool data from the storage.'))
-            exception_message = (_('_update_volume_stats: '
-                                   'Could not get storage pool data.'))
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        data['total_capacity_gb'] = (float(attributes['capacity']) /
-                                     units.Gi)
-        data['free_capacity_gb'] = (float(attributes['free_capacity']) /
-                                    units.Gi)
-        data['easytier_support'] = attributes['easy_tier'] in ['on', 'auto']
-        data['compression_support'] = self._state['compression_enabled']
-        data['location_info'] = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
-                                 {'sys_id': self._state['system_id'],
-                                  'pool': pool})
-
-        if self._replication_enabled:
-            data['replication_enabled'] = self._replication_enabled
-            data['replication_type'] = self._supported_replication_types
-            data['replication_count'] = len(self._replication_targets)
-        elif self.replication:
-            data.update(self.replication.get_replication_info())
-
+        data['pools'] = [self._build_pool_stats(pool)
+                         for pool in
+                         self.configuration.storwize_svc_volpool_name]
         self._stats = data
+
+    def _build_pool_stats(self, pool):
+        """Build pool status"""
+        QoS_support = True
+        pool_stats = {}
+        try:
+            pool_data = self._helpers.get_pool_attrs(pool)
+            if pool_data:
+                easy_tier = pool_data['easy_tier'] in ['on', 'auto']
+                total_capacity_gb = float(pool_data['capacity']) / units.Gi
+                free_capacity_gb = float(pool_data['free_capacity']) / units.Gi
+                allocated_capacity_gb = (float(pool_data['used_capacity']) /
+                                         units.Gi)
+                location_info = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
+                                 {'sys_id': self._state['system_id'],
+                                  'pool': pool_data['name']})
+                pool_stats = {
+                    'pool_name': pool_data['name'],
+                    'total_capacity_gb': total_capacity_gb,
+                    'free_capacity_gb': free_capacity_gb,
+                    'allocated_capacity_gb': allocated_capacity_gb,
+                    'easytier_support': easy_tier,
+                    'compression_support': self._state['compression_enabled'],
+                    'reserved_percentage':
+                        self.configuration.reserved_percentage,
+                    'QoS_support': QoS_support,
+                    'consistencygroup_support': True,
+                    'location_info': location_info,
+                    'easytier_support': easy_tier
+                }
+            if self._replication_enabled:
+                pool_stats.update({
+                    'replication_enabled': self._replication_enabled,
+                    'replication_type': self._supported_replication_types,
+                    'replication_count': len(self._replication_targets)
+                })
+            elif self.replication:
+                pool_stats.update(self.replication.get_replication_info())
+
+        except exception.VolumeBackendAPIException:
+            msg = _('Failed getting details for pool %s.') % pool
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return pool_stats
 
     def _manage_input_check(self, ref):
         """Verify the input of manage function."""

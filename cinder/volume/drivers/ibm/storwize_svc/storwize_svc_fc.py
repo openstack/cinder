@@ -79,9 +79,10 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
     1.3.3 - Update driver to use ABC metaclasses
     2.0 - Code refactor, split init file and placed shared methods for
           FC and iSCSI within the StorwizeSVCCommonDriver class
+    2.0.1 - Added support for multiple pools with model update
     """
 
-    VERSION = "2.0"
+    VERSION = "2.0.1"
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCFCDriver, self).__init__(*args, **kwargs)
