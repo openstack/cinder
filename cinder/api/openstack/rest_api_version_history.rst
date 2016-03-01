@@ -16,7 +16,7 @@ user documentation.
 
   A user can specify a header in the API request::
 
-    OpenStack-Volume-microversion: <version>
+    OpenStack-API-Version: volume <version>
 
   where ``<version>`` is any valid api version for this API.
 

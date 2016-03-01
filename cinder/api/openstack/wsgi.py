@@ -68,7 +68,9 @@ VER_METHOD_ATTR = 'versioned_methods'
 
 # Name of header used by clients to request a specific version
 # of the REST API
-API_VERSION_REQUEST_HEADER = 'OpenStack-Volume-microversion'
+API_VERSION_REQUEST_HEADER = 'OpenStack-API-Version'
+
+VOLUME_SERVICE = 'volume'
 
 
 class Request(webob.Request):
@@ -298,11 +300,20 @@ class Request(webob.Request):
             hdr_string = self.headers[API_VERSION_REQUEST_HEADER]
             # 'latest' is a special keyword which is equivalent to requesting
             # the maximum version of the API supported
-            if hdr_string == 'latest':
+            hdr_string_list = hdr_string.split(",")
+            volume_version = None
+            for hdr in hdr_string_list:
+                if VOLUME_SERVICE in hdr:
+                    service, volume_version = hdr.split()
+                    break
+            if not volume_version:
+                raise exception.VersionNotFoundForAPIMethod(
+                    version=volume_version)
+            if volume_version == 'latest':
                 self.api_version_request = api_version.max_api_version()
             else:
                 self.api_version_request = api_version.APIVersionRequest(
-                    hdr_string)
+                    volume_version)
 
                 # Check that the version requested is within the global
                 # minimum/maximum of supported API versions
@@ -1159,6 +1170,7 @@ class Resource(wsgi.Application):
 
             if not request.api_version_request.is_null():
                 response.headers[API_VERSION_REQUEST_HEADER] = (
+                    VOLUME_SERVICE + ' ' +
                     request.api_version_request.get_string())
                 response.headers['Vary'] = API_VERSION_REQUEST_HEADER
 
