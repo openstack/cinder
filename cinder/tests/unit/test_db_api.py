@@ -972,6 +972,66 @@ class DBAPIVolumeTestCase(BaseTest):
 
         self.assertEqual(should_be, db_meta)
 
+    @mock.patch.object(db.sqlalchemy.api,
+                       '_volume_glance_metadata_key_to_id',
+                       return_value = '1')
+    def test_volume_glance_metadata_key_to_id_called(self,
+                                                     metadata_key_to_id_mock):
+        image_metadata = {'abc': '123'}
+
+        # create volume with metadata.
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'metadata': image_metadata})
+
+        # delete metadata associated with the volume.
+        db.volume_metadata_delete(self.ctxt,
+                                  1,
+                                  'abc',
+                                  meta_type=common.METADATA_TYPES.image)
+
+        # assert _volume_glance_metadata_key_to_id() was called exactly once
+        metadata_key_to_id_mock.assert_called_once_with(self.ctxt, 1, 'abc')
+
+    def test_case_sensitive_glance_metadata_delete(self):
+        user_metadata = {'a': '1', 'c': '2'}
+        image_metadata = {'abc': '123', 'ABC': '123'}
+
+        # create volume with metadata.
+        db.volume_create(self.ctxt, {'id': 1,
+                                     'metadata': user_metadata})
+
+        # delete user metadata associated with the volume.
+        db.volume_metadata_delete(self.ctxt, 1, 'c',
+                                  meta_type=common.METADATA_TYPES.user)
+        user_metadata.pop('c')
+
+        self.assertEqual(user_metadata,
+                         db.volume_metadata_get(self.ctxt, 1))
+
+        # create image metadata associated with the volume.
+        db.volume_metadata_update(
+            self.ctxt,
+            1,
+            image_metadata,
+            False,
+            meta_type=common.METADATA_TYPES.image)
+
+        # delete image metadata associated with the volume.
+        db.volume_metadata_delete(
+            self.ctxt,
+            1,
+            'abc',
+            meta_type=common.METADATA_TYPES.image)
+
+        image_metadata.pop('abc')
+
+        # parse the result to build the dict.
+        rows = db.volume_glance_metadata_get(self.ctxt, 1)
+        result = {}
+        for row in rows:
+            result[row['key']] = row['value']
+        self.assertEqual(image_metadata, result)
+
     def test_volume_metadata_update_with_metatype(self):
         user_metadata1 = {'a': '1', 'c': '2'}
         user_metadata2 = {'a': '3', 'd': '5'}

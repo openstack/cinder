@@ -2004,6 +2004,16 @@ def _volume_image_metadata_update(context, volume_id, metadata, delete,
 
 
 @require_context
+def _volume_glance_metadata_key_to_id(context, volume_id, key):
+    db_data = volume_glance_metadata_get(context, volume_id)
+    metadata = {meta_entry.key: meta_entry.id
+                for meta_entry in db_data
+                if meta_entry.key == key}
+    metadata_id = metadata[key]
+    return metadata_id
+
+
+@require_context
 @require_volume_exists
 def volume_metadata_get(context, volume_id):
     return _volume_user_metadata_get(context, volume_id)
@@ -2020,8 +2030,10 @@ def volume_metadata_delete(context, volume_id, key, meta_type):
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')}))
     elif meta_type == common.METADATA_TYPES.image:
+        metadata_id = _volume_glance_metadata_key_to_id(context,
+                                                        volume_id, key)
         (_volume_image_metadata_get_query(context, volume_id).
-            filter_by(key=key).
+            filter_by(id=metadata_id).
             update({'deleted': True,
                     'deleted_at': timeutils.utcnow(),
                     'updated_at': literal_column('updated_at')}))
