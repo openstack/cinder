@@ -1,0 +1,26 @@
+---
+issues:
+  - Cinder services are now automatically downgrading RPC
+    messages to be understood by the oldest version of a
+    service among all the deployment. Disabled and dead
+    services are also taken into account. It is important to
+    keep service list up to date, without old, unused
+    records. This can be done using ``cinder-manage service
+    remove`` command. Once situation is cleaned up services
+    should be either restarted or ``SIGHUP`` signal should
+    be issued to their processes to force them to reload
+    version pins.  Please note that cinder-api does not
+    support ``SIGHUP`` signal.
+upgrade:
+  - If during a *live* upgrade from Liberty a backup service
+    will be killed while processing a restore request it may
+    happen that such backup status won't be automatically
+    cleaned up on the service restart. Such orphaned backups
+    need to be cleaned up manually.
+  - When performing a *live* upgrade from Liberty it may
+    happen that retype calls will reserve additional quota.
+    As by default quota reservations are invalidated after
+    24 hours (config option ``reservation_expire=86400``),
+    we recommend either decreasing that time or watching for
+    unused quota reservations manually during the upgrade
+    process.
