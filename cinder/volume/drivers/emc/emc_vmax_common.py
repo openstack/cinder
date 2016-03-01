@@ -323,8 +323,7 @@ class EMCVMAXCommon(object):
                  {'volume': volumename})
 
         device_info = self.find_device_number(volume, connector['host'])
-        device_number = device_info['hostlunid']
-        if device_number is None:
+        if 'hostlunid' not in device_info:
             LOG.info(_LI("Volume %s is not mapped. No volume to unmap."),
                      volumename)
             return
@@ -370,13 +369,15 @@ class EMCVMAXCommon(object):
         :returns: dict -- deviceInfoDict - device information dict
         :raises: VolumeBackendAPIException
         """
+        portGroupName = None
         extraSpecs = self._initial_setup(volume)
 
         volumeName = volume['name']
         LOG.info(_LI("Initialize connection: %(volume)s."),
                  {'volume': volumeName})
         self.conn = self._get_ecom_connection()
-        deviceInfoDict = self.find_device_number(volume, connector['host'])
+        deviceInfoDict = self._wrap_find_device_number(
+            volume, connector['host'])
         maskingViewDict = self._populate_masking_dict(
             volume, connector, extraSpecs)
 
@@ -392,17 +393,23 @@ class EMCVMAXCommon(object):
                              "The device number is  %(deviceNumber)s."),
                          {'volume': volumeName,
                           'deviceNumber': deviceNumber})
+                # Special case, we still need to get the iscsi ip address.
+                portGroupName = (
+                    self._get_correct_port_group(
+                        deviceInfoDict, maskingViewDict['storageSystemName']))
+
             else:
-                deviceInfoDict = self._attach_volume(
+                deviceInfoDict, portGroupName = self._attach_volume(
                     volume, connector, extraSpecs, maskingViewDict, True)
         else:
-            deviceInfoDict = self._attach_volume(
-                volume, connector, extraSpecs, maskingViewDict)
+            deviceInfoDict, portGroupName = (
+                self._attach_volume(
+                    volume, connector, extraSpecs, maskingViewDict))
 
         if self.protocol.lower() == 'iscsi':
             return self._find_ip_protocol_endpoints(
                 self.conn, deviceInfoDict['storagesystem'],
-                maskingViewDict['pgGroupName'])
+                portGroupName)
         else:
             return deviceInfoDict
 
@@ -419,6 +426,7 @@ class EMCVMAXCommon(object):
         :param maskingViewDict: masking view information
         :param isLiveMigration: boolean, can be None
         :returns: dict -- deviceInfoDict
+                  String -- port group name
         :raises: VolumeBackendAPIException
         """
         volumeName = volume['name']
@@ -449,7 +457,7 @@ class EMCVMAXCommon(object):
             raise exception.VolumeBackendAPIException(
                 data=exception_message)
 
-        return deviceInfoDict
+        return deviceInfoDict, rollbackDict['pgGroupName']
 
     def _is_same_host(self, connector, deviceInfoDict):
         """Check if the host is the same.
@@ -469,6 +477,48 @@ class EMCVMAXCommon(object):
                 if currentHost in deviceInfoDict['maskingview']:
                     return True
         return False
+
+    def _get_correct_port_group(self, deviceInfoDict, storageSystemName):
+        """Get the portgroup name from the existing masking view.
+
+        :params deviceInfoDict: the device info dictionary
+        :params storageSystemName: storage system name
+        :returns: String port group name
+        """
+        if ('controller' in deviceInfoDict and
+                deviceInfoDict['controller'] is not None):
+            maskingViewInstanceName = deviceInfoDict['controller']
+            try:
+                maskingViewInstance = (
+                    self.conn.GetInstance(maskingViewInstanceName))
+            except Exception:
+                exception_message = (_("Unable to get the name of "
+                                       "the masking view."))
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+
+            # Get the portgroup from masking view
+            portGroupInstanceName = (
+                self.masking._get_port_group_from_masking_view(
+                    self.conn,
+                    maskingViewInstance['ElementName'],
+                    storageSystemName))
+            try:
+                portGroupInstance = (
+                    self.conn.GetInstance(portGroupInstanceName))
+                portGroupName = (
+                    portGroupInstance['ElementName'])
+            except Exception:
+                exception_message = (_("Unable to get the name of "
+                                       "the portgroup."))
+                raise exception.VolumeBackendAPIException(
+                    data=exception_message)
+        else:
+            exception_message = (_("Cannot get the portgroup from "
+                                   "the masking view."))
+            raise exception.VolumeBackendAPIException(
+                data=exception_message)
+        return portGroupName
 
     def terminate_connection(self, volume, connector):
         """Disallow connection from connector.
@@ -1426,6 +1476,9 @@ class EMCVMAXCommon(object):
                    'initiator': foundinitiatornames})
         return foundinitiatornames
 
+    def _wrap_find_device_number(self, volume, host):
+        return self.find_device_number(volume, host)
+
     def find_device_number(self, volume, host):
         """Given the volume dict find a device number.
 
@@ -1438,6 +1491,7 @@ class EMCVMAXCommon(object):
         """
         maskedvols = []
         data = {}
+        foundController = None
         foundNumDeviceNumber = None
         foundMaskingViewName = None
         volumeName = volume['name']
@@ -1455,9 +1509,9 @@ class EMCVMAXCommon(object):
             if index > -1:
                 unitinstance = self.conn.GetInstance(unitname,
                                                      LocalOnly=False)
-                numDeviceNumber = int(unitinstance['DeviceNumber'],
-                                      16)
+                numDeviceNumber = int(unitinstance['DeviceNumber'], 16)
                 foundNumDeviceNumber = numDeviceNumber
+                foundController = controller
                 controllerInstance = self.conn.GetInstance(controller,
                                                            LocalOnly=False)
                 propertiesList = controllerInstance.properties.items()
@@ -1468,7 +1522,8 @@ class EMCVMAXCommon(object):
 
                 devicedict = {'hostlunid': foundNumDeviceNumber,
                               'storagesystem': storageSystemName,
-                              'maskingview': foundMaskingViewName}
+                              'maskingview': foundMaskingViewName,
+                              'controller': foundController}
                 maskedvols.append(devicedict)
 
         if not maskedvols:
@@ -4350,12 +4405,14 @@ class EMCVMAXCommon(object):
 
     def _find_ip_protocol_endpoints(self, conn, storageSystemName,
                                     portgroupname):
-        """Find the IP protocol endpoint for ISCSI
+        """Find the IP protocol endpoint for ISCSI.
 
         :param storageSystemName: the system name
         :param portgroupname: the portgroup name
         :returns: foundIpAddresses
         """
+        LOG.debug("The portgroup name for iscsiadm is %(pg)s",
+                  {'pg': portgroupname})
         foundipaddresses = []
         configservice = (
             self.utils.find_controller_configuration_service(

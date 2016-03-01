@@ -64,6 +64,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                 for VMAX3 (bug #1520549)
               - necessary updates for CG changes (#1534616)
               - Changing PercentSynced to CopyState (bug #1517103)
+              - Getting iscsi ip from port in existing masking view
     """
 
     VERSION = "2.3.0"

@@ -243,8 +243,9 @@ class EMCVMAXCommonData(object):
     storage_system_v3 = 'SYMMETRIX-+-000197200056'
     port_group = 'OS-portgroup-PG'
     lunmaskctrl_id = (
-        'SYMMETRIX+000195900551+OS-fakehost-gold-MV')
-    lunmaskctrl_name = 'OS-fakehost-gold-MV'
+        'SYMMETRIX+000195900551+OS-fakehost-gold-I-MV')
+    lunmaskctrl_name = (
+        'OS-fakehost-gold-I-MV')
 
     initiatorgroup_id = (
         'SYMMETRIX+000195900551+OS-fakehost-IG')
@@ -850,6 +851,7 @@ class FakeEcomConnection(object):
         antecedent = SYMM_LunMasking()
         antecedent['CreationClassName'] = self.data.lunmask_creationclass2
         antecedent['SystemName'] = self.data.storage_system
+        antecedent['ElementName'] = mvname
 
         classcimproperty = Fake_CIMProperty()
         elementName = (
@@ -1195,6 +1197,9 @@ class FakeEcomConnection(object):
 
     def _getinstance_ipprotocolendpoint(self, objectpath):
         return self._enum_ipprotocolendpoint()[0]
+
+    def _getinstance_lunmaskingview(self, objectpath):
+        return self._enum_maskingView()[0]
 
     def _default_getinstance(self, objectpath):
         return objectpath
@@ -1601,9 +1606,15 @@ class FakeEcomConnection(object):
 
     def _enum_maskingView(self):
         maskingViews = []
-        maskingView = {}
+        maskingView = SYMM_LunMasking()
         maskingView['CreationClassName'] = 'Symm_LunMaskingView'
-        maskingView['ElementName'] = 'myMaskingView'
+        maskingView['ElementName'] = self.data.lunmaskctrl_name
+
+        cimproperty = Fake_CIMProperty()
+        cimproperty.value = self.data.lunmaskctrl_name
+        properties = {u'ElementName': cimproperty}
+        maskingView.properties = properties
+
         maskingViews.append(maskingView)
         return maskingViews
 
@@ -2053,6 +2064,16 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         issynched = self.driver.common.utils._is_sync_complete(conn, syncname)
         self.assertFalse(issynched)
 
+    def test_get_correct_port_group(self):
+        self.driver.common.conn = self.fake_ecom_connection()
+        maskingViewInstanceName = {'CreationClassName': 'Symm_LunMaskingView',
+                                   'ElementName': 'OS-fakehost-gold-I-MV',
+                                   'SystemName': 'SYMMETRIX+000195900551'}
+        deviceinfodict = {'controller': maskingViewInstanceName}
+        portgroupname = self.driver.common._get_correct_port_group(
+            deviceinfodict, self.data.storage_system)
+        self.assertEqual('OS-portgroup-PG', portgroupname)
+
     def test_generate_unique_trunc_pool(self):
         pool_under_16_chars = 'pool_under_16'
         pool1 = self.driver.utils.generate_unique_trunc_pool(
@@ -2089,11 +2110,11 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertEqual('10.10.10.10', foundIpAddresses[0])
 
     def test_find_device_number(self):
-        host = 'myhost'
+        host = 'fakehost'
         data = (
             self.driver.common.find_device_number(self.data.test_volume_v2,
                                                   host))
-        self.assertEqual('OS-myhost-MV', data['maskingview'])
+        self.assertEqual('OS-fakehost-MV', data['maskingview'])
         host = 'bogushost'
         data = (
             self.driver.common.find_device_number(self.data.test_volume_v2,
@@ -2762,7 +2783,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                 self.data.storage_system, self.data.connector))
         # The controller has been found.
         self.assertEqual(
-            'OS-fakehost-gold-MV',
+            'OS-fakehost-gold-I-MV',
             self.driver.common.conn.GetInstance(
                 foundControllerInstanceName)['ElementName'])
 
@@ -3087,6 +3108,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_already_mapped_no_fast_success(
             self, _mock_volume_type, mock_wrap_group, mock_wrap_device,
             mock_is_same_host):
+        self.driver.common._get_correct_port_group = mock.Mock(
+            return_value=self.data.port_group)
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -3109,6 +3132,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_map_new_masking_view_no_fast_success(
             self, _mock_volume_type, mock_wrap_group,
             mock_storage_group, mock_add_volume):
+        self.driver.common._wrap_find_device_number = mock.Mock(
+            return_value={})
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -4055,6 +4080,8 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     def test_already_mapped_fast_success(
             self, _mock_volume_type, mock_wrap_group, mock_wrap_device,
             mock_is_same_host):
+        self.driver.common._get_correct_port_group = mock.Mock(
+            return_value=self.data.port_group)
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -4646,6 +4673,8 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         common = self.driver.common
         common.get_target_wwns_from_masking_view = mock.Mock(
             return_value=EMCVMAXCommonData.target_wwns)
+        common._get_correct_port_group = mock.Mock(
+            return_value=self.data.port_group)
         lookup_service = self.driver.zonemanager_lookup_service
         lookup_service.get_device_mapping_from_network = mock.Mock(
             return_value=EMCVMAXCommonData.device_map)
@@ -5238,6 +5267,8 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         common = self.driver.common
         common.get_target_wwns = mock.Mock(
             return_value=EMCVMAXCommonData.target_wwns)
+        self.driver.common._get_correct_port_group = mock.Mock(
+            return_value=self.data.port_group)
         data = self.driver.initialize_connection(
             self.data.test_volume, self.data.connector)
         # Test the no lookup service, pre-zoned case.
@@ -6207,6 +6238,8 @@ class EMCV3DriverTestCase(test.TestCase):
             return_value=EMCVMAXCommonData.target_wwns)
         self.driver.common._initial_setup = mock.Mock(
             return_value=self.default_extraspec())
+        self.driver.common._get_correct_port_group = mock.Mock(
+            return_value=self.data.port_group)
         data = self.driver.initialize_connection(
             self.data.test_volume_v3, self.data.connector)
         # Test the no lookup service, pre-zoned case.
