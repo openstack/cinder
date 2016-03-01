@@ -59,6 +59,7 @@ def main():
     gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
+    config.set_middleware_defaults()
     logging.setup(CONF, "cinder")
     LOG = logging.getLogger('cinder.all')
 
