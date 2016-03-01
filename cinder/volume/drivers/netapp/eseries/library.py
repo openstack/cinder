@@ -638,12 +638,10 @@ class NetAppESeriesLibrary(object):
         size = volume['size']
 
         dst_vol = self._schedule_and_create_volume(label, size)
+        src_vol = None
         try:
-            src_vol = None
-            src_vol = self._client.create_snapshot_volume(
-                image['id'], utils.convert_uuid_to_es_fmt(
-                    uuid.uuid4()), image['baseVol'])
-            self._copy_volume_high_prior_readonly(src_vol, dst_vol)
+            src_vol = self._create_snapshot_volume(image)
+            self._copy_volume_high_priority_readonly(src_vol, dst_vol)
             LOG.info(_LI("Created volume with label %s."), label)
         except exception.NetAppDriverException:
             with excutils.save_and_reraise_exception():
@@ -656,7 +654,8 @@ class NetAppESeriesLibrary(object):
                     LOG.error(_LE("Failure restarting snap vol. Error: %s."),
                               e)
             else:
-                LOG.warning(_LW("Snapshot volume not found."))
+                LOG.warning(_LW("Snapshot volume creation failed for "
+                                "snapshot %s."), image['id'])
 
         return dst_vol
 
@@ -666,20 +665,19 @@ class NetAppESeriesLibrary(object):
         cinder_utils.synchronized(snapshot['id'])(
             self._create_volume_from_snapshot)(volume, es_snapshot)
 
-    def _copy_volume_high_prior_readonly(self, src_vol, dst_vol):
+    def _copy_volume_high_priority_readonly(self, src_vol, dst_vol):
         """Copies src volume to dest volume."""
         LOG.info(_LI("Copying src vol %(src)s to dest vol %(dst)s."),
                  {'src': src_vol['label'], 'dst': dst_vol['label']})
+        job = None
         try:
-            job = None
-            job = self._client.create_volume_copy_job(src_vol['id'],
-                                                      dst_vol['volumeRef'])
-            while True:
+            job = self._client.create_volume_copy_job(
+                src_vol['id'], dst_vol['volumeRef'])
+
+            def wait_for_copy():
                 j_st = self._client.list_vol_copy_job(job['volcopyRef'])
-                if (j_st['status'] == 'inProgress' or j_st['status'] ==
-                        'pending' or j_st['status'] == 'unknown'):
-                    time.sleep(self.SLEEP_SECS)
-                    continue
+                if (j_st['status'] in ['inProgress', 'pending', 'unknown']):
+                    return
                 if j_st['status'] == 'failed' or j_st['status'] == 'halted':
                     LOG.error(_LE("Vol copy job status %s."), j_st['status'])
                     raise exception.NetAppDriverException(
@@ -687,7 +685,12 @@ class NetAppESeriesLibrary(object):
                         dst_vol['label'])
                 LOG.info(_LI("Vol copy job completed for dest %s."),
                          dst_vol['label'])
-                break
+                raise loopingcall.LoopingCallDone()
+
+            checker = loopingcall.FixedIntervalLoopingCall(wait_for_copy)
+            checker.start(interval=self.SLEEP_SECS,
+                          initial_delay=self.SLEEP_SECS,
+                          stop_on_exception=True).wait()
         finally:
             if job:
                 try:
@@ -702,13 +705,9 @@ class NetAppESeriesLibrary(object):
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
-        snapshot = {'id': uuid.uuid4(), 'volume_id': src_vref['id'],
-                    'volume': src_vref}
-        group_name = (utils.convert_uuid_to_es_fmt(snapshot['id']) +
-                      self.SNAPSHOT_VOL_COPY_SUFFIX)
         es_vol = self._get_volume(src_vref['id'])
 
-        es_snapshot = self._create_es_snapshot(es_vol, group_name)
+        es_snapshot = self._create_es_snapshot_for_clone(es_vol)
 
         try:
             self._create_volume_from_snapshot(volume, es_snapshot)
@@ -717,7 +716,7 @@ class NetAppESeriesLibrary(object):
                 self._client.delete_snapshot_group(es_snapshot['pitGroupRef'])
             except exception.NetAppDriverException:
                 LOG.warning(_LW("Failure deleting temp snapshot %s."),
-                            snapshot['id'])
+                            es_snapshot['id'])
 
     def delete_volume(self, volume):
         """Deletes a volume."""
@@ -728,15 +727,27 @@ class NetAppESeriesLibrary(object):
             LOG.warning(_LW("Volume %s already deleted."), volume['id'])
             return
 
-    def _create_snapshot_volume(self, snapshot_id, label=None):
+    def _is_cgsnapshot(self, snapshot_image):
+        """Determine if an E-Series snapshot image is part of a cgsnapshot"""
+        cg_id = snapshot_image.get('consistencyGroupId')
+        # A snapshot that is not part of a consistency group may have a
+        # cg_id of either none or a string of all 0's, so we check for both
+        return not (cg_id is None or utils.NULL_REF == cg_id)
+
+    def _create_snapshot_volume(self, image):
         """Creates snapshot volume for given group with snapshot_id."""
-        image = self._get_snapshot(snapshot_id)
         group = self._get_snapshot_group(image['pitGroupRef'])
+
         LOG.debug("Creating snap vol for group %s", group['label'])
-        if label is None:
-            label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
-        return self._client.create_snapshot_volume(image['pitRef'], label,
-                                                   image['baseVol'])
+
+        label = utils.convert_uuid_to_es_fmt(uuid.uuid4())
+
+        if self._is_cgsnapshot(image):
+            return self._client.create_cg_snapshot_view(
+                image['consistencyGroupId'], label, image['id'])
+        else:
+            return self._client.create_snapshot_volume(
+                image['pitRef'], label, image['baseVol'])
 
     def _create_snapshot_group(self, label, volume, percentage_capacity=20.0):
         """Define a new snapshot group for a volume
@@ -802,6 +813,9 @@ class NetAppESeriesLibrary(object):
         groups = filter(lambda g: self.SNAPSHOT_VOL_COPY_SUFFIX not in g[
             'label'], groups_for_v)
 
+        # Filter out groups that are part of a consistency group
+        groups = filter(lambda g: not g['consistencyGroup'], groups)
+
         # Find all groups with free snapshot capacity
         groups = [group for group in groups if group.get('snapshotCount') <
                   self.MAX_SNAPSHOT_COUNT]
@@ -832,6 +846,11 @@ class NetAppESeriesLibrary(object):
             return groups[0]
         else:
             return None
+
+    def _create_es_snapshot_for_clone(self, vol):
+        group_name = (utils.convert_uuid_to_es_fmt(uuid.uuid4()) +
+                      self.SNAPSHOT_VOL_COPY_SUFFIX)
+        return self._create_es_snapshot(vol, group_name)
 
     def _create_es_snapshot(self, vol, group_name=None):
         snap_grp, snap_image = None, None
@@ -1520,6 +1539,8 @@ class NetAppESeriesLibrary(object):
 
             pool_ssc_info = ssc_stats[poolId]
 
+            pool_ssc_info['consistencygroup_support'] = True
+
             pool_ssc_info[self.ENCRYPTION_UQ_SPEC] = (
                 six.text_type(pool['encrypted']).lower())
 
@@ -1723,6 +1744,280 @@ class NetAppESeriesLibrary(object):
             checker.start(interval=self.SLEEP_SECS,
                           initial_delay=self.SLEEP_SECS,
                           stop_on_exception=True).wait()
+
+    def create_cgsnapshot(self, cgsnapshot, snapshots):
+        """Creates a cgsnapshot."""
+        cg_id = cgsnapshot['consistencygroup_id']
+        cg_name = utils.convert_uuid_to_es_fmt(cg_id)
+
+        # Retrieve the E-Series consistency group
+        es_cg = self._get_consistencygroup_by_name(cg_name)
+
+        # Define an E-Series CG Snapshot
+        es_snaphots = self._client.create_consistency_group_snapshot(
+            es_cg['id'])
+
+        # Build the snapshot updates
+        snapshot_updates = list()
+        for snap in snapshots:
+            es_vol = self._get_volume(snap['volume']['id'])
+            for es_snap in es_snaphots:
+                if es_snap['baseVol'] == es_vol['id']:
+                    snapshot_updates.append({
+                        'id': snap['id'],
+                        # Directly track the backend snapshot ID
+                        'provider_id': es_snap['id'],
+                        'status': 'available'
+                    })
+
+        return None, snapshot_updates
+
+    def delete_cgsnapshot(self, cgsnapshot, snapshots):
+        """Deletes a cgsnapshot."""
+
+        cg_id = cgsnapshot['consistencygroup_id']
+        cg_name = utils.convert_uuid_to_es_fmt(cg_id)
+
+        # Retrieve the E-Series consistency group
+        es_cg = self._get_consistencygroup_by_name(cg_name)
+
+        # Find the smallest sequence number defined on the group
+        min_seq_num = min(es_cg['uniqueSequenceNumber'])
+
+        es_snapshots = self._client.get_consistency_group_snapshots(
+            es_cg['id'])
+        es_snap_ids = set(snap.get('provider_id') for snap in snapshots)
+
+        # We need to find a single snapshot that is a part of the CG snap
+        seq_num = None
+        for snap in es_snapshots:
+            if snap['id'] in es_snap_ids:
+                seq_num = snap['pitSequenceNumber']
+                break
+
+        if seq_num is None:
+            raise exception.CgSnapshotNotFound(cgsnapshot_id=cg_id)
+
+        # Perform a full backend deletion of the cgsnapshot
+        if int(seq_num) <= int(min_seq_num):
+            self._client.delete_consistency_group_snapshot(
+                es_cg['id'], seq_num)
+            return None, None
+        else:
+            # Perform a soft-delete, removing this snapshot from cinder
+            # management, and marking it as available for deletion.
+            return cinder_utils.synchronized(cg_id)(
+                self._soft_delete_cgsnapshot)(
+                es_cg, seq_num)
+
+    def _soft_delete_cgsnapshot(self, es_cg, snap_seq_num):
+        """Mark a cgsnapshot as available for deletion from the backend.
+
+        E-Series snapshots cannot be deleted out of order, as older
+        snapshots in the snapshot group are dependent on the newer
+        snapshots. A "soft delete" results in the cgsnapshot being removed
+        from Cinder management, with the snapshot marked as available for
+        deletion once all snapshots dependent on it are also deleted.
+
+        :param es_cg: E-Series consistency group
+        :param snap_seq_num: unique sequence number of the cgsnapshot
+        :return an update to the snapshot index
+        """
+
+        index = self._get_soft_delete_map()
+        cg_ref = es_cg['id']
+        if cg_ref in index:
+            bitset = na_utils.BitSet(int((index[cg_ref])))
+        else:
+            bitset = na_utils.BitSet(0)
+
+        seq_nums = (
+            set([snap['pitSequenceNumber'] for snap in
+                 self._client.get_consistency_group_snapshots(cg_ref)]))
+
+        # Determine the relative index of the snapshot's sequence number
+        for i, seq_num in enumerate(sorted(seq_nums)):
+            if snap_seq_num == seq_num:
+                bitset.set(i)
+                break
+
+        index_update = (
+            self._cleanup_cg_snapshots(cg_ref, seq_nums, bitset))
+
+        self._merge_soft_delete_changes(index_update, None)
+
+        return None, None
+
+    def _cleanup_cg_snapshots(self, cg_ref, seq_nums, bitset):
+        """Delete cg snapshot images that are marked for removal
+
+        The snapshot index tracks all snapshots that have been removed from
+        Cinder, and are therefore available for deletion when this operation
+        is possible.
+
+        CG snapshots are tracked by unique sequence numbers that are
+        associated with 1 or more snapshot images. The sequence numbers are
+        tracked (relative to the 32 images allowed per group), within the
+        snapshot index.
+
+        This method will purge CG snapshots that have been marked as
+        available for deletion within the backend persistent store.
+
+        :param cg_ref: reference to an E-Series consistent group
+        :param seq_nums: set of unique sequence numbers associated with the
+        consistency group
+        :param bitset: the bitset representing which sequence numbers are
+        marked for deletion
+        :return update for the snapshot index
+        """
+        deleted = 0
+        # Order by their sequence number, from oldest to newest
+        for i, seq_num in enumerate(sorted(seq_nums)):
+            if bitset.is_set(i):
+                self._client.delete_consistency_group_snapshot(cg_ref,
+                                                               seq_num)
+                deleted += 1
+            else:
+                # Snapshots must be deleted in order, so if the current
+                # snapshot is not pending deletion, we don't want to
+                # process any more
+                break
+
+        if deleted:
+            # We need to update the bitset to reflect the fact that older
+            # snapshots have been deleted, so snapshot relative indexes
+            # have now been updated.
+            bitset >>= deleted
+
+            LOG.debug('Deleted %(count)s snapshot images from '
+                      'consistency group: %(grp)s.', {'count': deleted,
+                                                      'grp': cg_ref})
+        # Update the index
+        return {cg_ref: repr(bitset)}
+
+    def create_consistencygroup(self, cinder_cg):
+        """Define a consistency group."""
+        self._create_consistency_group(cinder_cg)
+
+        return {'status': 'available'}
+
+    def _create_consistency_group(self, cinder_cg):
+        """Define a new consistency group on the E-Series backend"""
+        name = utils.convert_uuid_to_es_fmt(cinder_cg['id'])
+        return self._client.create_consistency_group(name)
+
+    def _get_consistencygroup(self, cinder_cg):
+        """Retrieve an E-Series consistency group"""
+        name = utils.convert_uuid_to_es_fmt(cinder_cg['id'])
+        return self._get_consistencygroup_by_name(name)
+
+    def _get_consistencygroup_by_name(self, name):
+        """Retrieve an E-Series consistency group by name"""
+
+        for cg in self._client.list_consistency_groups():
+            if name == cg['name']:
+                return cg
+
+        raise exception.ConsistencyGroupNotFound(consistencygroup_id=name)
+
+    def delete_consistencygroup(self, group, volumes):
+        """Deletes a consistency group."""
+
+        volume_update = list()
+
+        for volume in volumes:
+            LOG.info(_LI('Deleting volume %s.'), volume['id'])
+            volume_update.append({
+                'status': 'deleted', 'id': volume['id'],
+            })
+            self.delete_volume(volume)
+
+        try:
+            cg = self._get_consistencygroup(group)
+        except exception.ConsistencyGroupNotFound:
+            LOG.warning(_LW('Consistency group already deleted.'))
+        else:
+            self._client.delete_consistency_group(cg['id'])
+            try:
+                self._merge_soft_delete_changes(None, [cg['id']])
+            except (exception.NetAppDriverException,
+                    eseries_exc.WebServiceException):
+                LOG.warning(_LW('Unable to remove CG from the deletion map.'))
+
+        model_update = {'status': 'deleted'}
+
+        return model_update, volume_update
+
+    def _update_consistency_group_members(self, es_cg,
+                                          add_volumes, remove_volumes):
+        """Add or remove consistency group members
+
+        :param es_cg: The E-Series consistency group
+        :param add_volumes: A list of Cinder volumes to add to the
+        consistency group
+        :param remove_volumes: A list of Cinder volumes to remove from the
+        consistency group
+        :return None
+        """
+        for volume in remove_volumes:
+            es_vol = self._get_volume(volume['id'])
+            LOG.info(
+                _LI('Removing volume %(v)s from consistency group %(''cg)s.'),
+                {'v': es_vol['label'], 'cg': es_cg['label']})
+            self._client.remove_consistency_group_member(es_vol['id'],
+                                                         es_cg['id'])
+
+        for volume in add_volumes:
+            es_vol = self._get_volume(volume['id'])
+            LOG.info(_LI('Adding volume %(v)s to consistency group %(cg)s.'),
+                     {'v': es_vol['label'], 'cg': es_cg['label']})
+            self._client.add_consistency_group_member(
+                es_vol['id'], es_cg['id'])
+
+    def update_consistencygroup(self, group,
+                                add_volumes, remove_volumes):
+        """Add or remove volumes from an existing consistency group"""
+        cg = self._get_consistencygroup(group)
+
+        self._update_consistency_group_members(
+            cg, add_volumes, remove_volumes)
+
+        return None, None, None
+
+    def create_consistencygroup_from_src(self, group, volumes,
+                                         cgsnapshot, snapshots,
+                                         source_cg, source_vols):
+        """Define a consistency group based on an existing group
+
+        Define a new consistency group from a source consistency group. If
+        only a source_cg is provided, then clone each base volume and add
+        it to a new consistency group. If a cgsnapshot is provided,
+        clone each snapshot image to a new volume and add it to the cg.
+
+        :param group: The new consistency group to define
+        :param volumes: The volumes to add to the consistency group
+        :param cgsnapshot: The cgsnapshot to base the group on
+        :param snapshots: The list of snapshots on the source cg
+        :param source_cg: The source consistency group
+        :param source_vols: The volumes added to the source cg
+        """
+        cg = self._create_consistency_group(group)
+        if cgsnapshot:
+            for vol, snap in zip(volumes, snapshots):
+                image = self._get_snapshot(snap)
+                self._create_volume_from_snapshot(vol, image)
+        else:
+            for vol, src in zip(volumes, source_vols):
+                es_vol = self._get_volume(src['id'])
+                es_snapshot = self._create_es_snapshot_for_clone(es_vol)
+                try:
+                    self._create_volume_from_snapshot(vol, es_snapshot)
+                finally:
+                    self._delete_es_snapshot(es_snapshot)
+
+        self._update_consistency_group_members(cg, volumes, [])
+
+        return None, None
 
     def _garbage_collect_tmp_vols(self):
         """Removes tmp vols with no snapshots."""

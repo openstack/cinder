@@ -30,7 +30,8 @@ class NetAppEseriesFibreChannelDriver(driver.BaseVD,
                                       driver.ManageableVD,
                                       driver.ExtendVD,
                                       driver.TransferVD,
-                                      driver.SnapshotVD):
+                                      driver.SnapshotVD,
+                                      driver.ConsistencyGroupVD):
     """NetApp E-Series FibreChannel volume driver."""
 
     DRIVER_NAME = 'NetApp_FibreChannel_ESeries'
@@ -100,3 +101,26 @@ class NetAppEseriesFibreChannelDriver(driver.BaseVD,
 
     def get_pool(self, volume):
         return self.library.get_pool(volume)
+
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        return self.library.create_cgsnapshot(cgsnapshot, snapshots)
+
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        return self.library.delete_cgsnapshot(cgsnapshot, snapshots)
+
+    def create_consistencygroup(self, context, group):
+        return self.library.create_consistencygroup(group)
+
+    def delete_consistencygroup(self, context, group, volumes):
+        return self.library.delete_consistencygroup(group, volumes)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        return self.library.update_consistencygroup(
+            group, add_volumes, remove_volumes)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        return self.library.create_consistencygroup_from_src(
+            group, volumes, cgsnapshot, snapshots, source_cg, source_vols)

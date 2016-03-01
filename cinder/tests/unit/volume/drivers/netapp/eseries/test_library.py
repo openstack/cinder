@@ -46,7 +46,7 @@ from cinder.zonemanager import utils as fczm_utils
 
 
 def get_fake_volume():
-    """Return a fake Cinder Volume that can be used a parameter"""
+    """Return a fake Cinder Volume that can be used as a parameter"""
     return {
         'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef', 'size': 1,
         'volume_name': 'lun1', 'host': 'hostname@backend#DDP',
@@ -326,6 +326,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             thin_provisioned = pool['thinProvisioningCapable']
 
             expected = {
+                'consistencygroup_support': True,
                 'netapp_disk_encryption':
                     six.text_type(pool['encrypted']).lower(),
                 'netapp_eseries_flash_read_cache':
@@ -1063,6 +1064,219 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             fake_volume["id"])
         self.assertEqual(2, library.LOG.error.call_count)
 
+    def test_create_consistencygroup(self):
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        expected = {'status': 'available'}
+        create_cg = self.mock_object(self.library,
+                                     '_create_consistency_group',
+                                     mock.Mock(return_value=expected))
+
+        actual = self.library.create_consistencygroup(fake_cg)
+
+        create_cg.assert_called_once_with(fake_cg)
+        self.assertEqual(expected, actual)
+
+    def test_create_consistency_group(self):
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        expected = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        create_cg = self.mock_object(self.library._client,
+                                     'create_consistency_group',
+                                     mock.Mock(return_value=expected))
+
+        result = self.library._create_consistency_group(fake_cg)
+
+        name = utils.convert_uuid_to_es_fmt(fake_cg['id'])
+        create_cg.assert_called_once_with(name)
+        self.assertEqual(expected, result)
+
+    def test_delete_consistencygroup(self):
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        volumes = [get_fake_volume()] * 3
+        model_update = {'status': 'deleted'}
+        volume_update = [{'status': 'deleted', 'id': vol['id']} for vol in
+                         volumes]
+        delete_cg = self.mock_object(self.library._client,
+                                     'delete_consistency_group')
+        updt_index = self.mock_object(
+            self.library, '_merge_soft_delete_changes')
+        delete_vol = self.mock_object(self.library, 'delete_volume')
+        self.mock_object(self.library, '_get_consistencygroup',
+                         mock.Mock(return_value=cg))
+
+        result = self.library.delete_consistencygroup(fake_cg, volumes)
+
+        self.assertEqual(len(volumes), delete_vol.call_count)
+        delete_cg.assert_called_once_with(cg['id'])
+        self.assertEqual((model_update, volume_update), result)
+        updt_index.assert_called_once_with(None, [cg['id']])
+
+    def test_delete_consistencygroup_index_update_failure(self):
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        volumes = [get_fake_volume()] * 3
+        model_update = {'status': 'deleted'}
+        volume_update = [{'status': 'deleted', 'id': vol['id']} for vol in
+                         volumes]
+        delete_cg = self.mock_object(self.library._client,
+                                     'delete_consistency_group')
+        delete_vol = self.mock_object(self.library, 'delete_volume')
+        self.mock_object(self.library, '_get_consistencygroup',
+                         mock.Mock(return_value=cg))
+
+        result = self.library.delete_consistencygroup(fake_cg, volumes)
+
+        self.assertEqual(len(volumes), delete_vol.call_count)
+        delete_cg.assert_called_once_with(cg['id'])
+        self.assertEqual((model_update, volume_update), result)
+
+    def test_delete_consistencygroup_not_found(self):
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        delete_cg = self.mock_object(self.library._client,
+                                     'delete_consistency_group')
+        updt_index = self.mock_object(
+            self.library, '_merge_soft_delete_changes')
+        delete_vol = self.mock_object(self.library, 'delete_volume')
+        exc = exception.ConsistencyGroupNotFound(consistencygroup_id='')
+        self.mock_object(self.library, '_get_consistencygroup',
+                         mock.Mock(side_effect=exc))
+
+        self.library.delete_consistencygroup(fake_cg, [])
+
+        delete_cg.assert_not_called()
+        delete_vol.assert_not_called()
+        updt_index.assert_not_called()
+
+    def test_get_consistencygroup(self):
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        name = utils.convert_uuid_to_es_fmt(fake_cg['id'])
+        cg['name'] = name
+        list_cgs = self.mock_object(self.library._client,
+                                    'list_consistency_groups',
+                                    mock.Mock(return_value=[cg]))
+
+        result = self.library._get_consistencygroup(fake_cg)
+
+        self.assertEqual(cg, result)
+        list_cgs.assert_called_once_with()
+
+    def test_get_consistencygroup_not_found(self):
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        list_cgs = self.mock_object(self.library._client,
+                                    'list_consistency_groups',
+                                    mock.Mock(return_value=[cg]))
+
+        self.assertRaises(exception.ConsistencyGroupNotFound,
+                          self.library._get_consistencygroup,
+                          copy.deepcopy(eseries_fake.FAKE_CINDER_CG))
+
+        list_cgs.assert_called_once_with()
+
+    def test_update_consistencygroup(self):
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        vol = copy.deepcopy(eseries_fake.VOLUME)
+        volumes = [get_fake_volume()] * 3
+        self.mock_object(
+            self.library, '_get_volume', mock.Mock(return_value=vol))
+        self.mock_object(self.library, '_get_consistencygroup',
+                         mock.Mock(return_value=cg))
+
+        self.library.update_consistencygroup(fake_cg, volumes, volumes)
+
+    def test_create_consistencygroup_from_src(self):
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        volumes = [cinder_utils.create_volume(self.ctxt) for i in range(3)]
+        src_volumes = [cinder_utils.create_volume(self.ctxt) for v in volumes]
+        update_cg = self.mock_object(
+            self.library, '_update_consistency_group_members')
+        create_cg = self.mock_object(
+            self.library, '_create_consistency_group',
+            mock.Mock(return_value=cg))
+        self.mock_object(
+            self.library, '_create_volume_from_snapshot')
+
+        self.mock_object(
+            self.library, '_get_snapshot', mock.Mock(return_value=snap))
+
+        self.library.create_consistencygroup_from_src(
+            fake_cg, volumes, None, None, None, src_volumes)
+
+        create_cg.assert_called_once_with(fake_cg)
+        update_cg.assert_called_once_with(cg, volumes, [])
+
+    def test_create_consistencygroup_from_src_cgsnapshot(self):
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        fake_cg = copy.deepcopy(eseries_fake.FAKE_CINDER_CG)
+        fake_vol = cinder_utils.create_volume(self.ctxt)
+        cgsnap = copy.deepcopy(eseries_fake.FAKE_CINDER_CG_SNAPSHOT)
+        volumes = [fake_vol]
+        snapshots = [cinder_utils.create_snapshot(self.ctxt, v['id']) for v
+                     in volumes]
+        update_cg = self.mock_object(
+            self.library, '_update_consistency_group_members')
+        create_cg = self.mock_object(
+            self.library, '_create_consistency_group',
+            mock.Mock(return_value=cg))
+        clone_vol = self.mock_object(
+            self.library, '_create_volume_from_snapshot')
+
+        self.library.create_consistencygroup_from_src(
+            fake_cg, volumes, cgsnap, snapshots, None, None)
+
+        create_cg.assert_called_once_with(fake_cg)
+        update_cg.assert_called_once_with(cg, volumes, [])
+        self.assertEqual(clone_vol.call_count, len(volumes))
+
+    @ddt.data({'consistencyGroupId': utils.NULL_REF},
+              {'consistencyGroupId': None}, {'consistencyGroupId': '1'}, {})
+    def test_is_cgsnapshot(self, snapshot_image):
+        if snapshot_image.get('consistencyGroupId'):
+            result = not (utils.NULL_REF == snapshot_image[
+                'consistencyGroupId'])
+        else:
+            result = False
+
+        actual = self.library._is_cgsnapshot(snapshot_image)
+
+        self.assertEqual(result, actual)
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_copy_volume_high_priority_readonly(self):
+        src_vol = copy.deepcopy(eseries_fake.VOLUME)
+        dst_vol = copy.deepcopy(eseries_fake.VOLUME)
+        vc = copy.deepcopy(eseries_fake.VOLUME_COPY_JOB)
+        self.mock_object(self.library._client, 'create_volume_copy_job',
+                         mock.Mock(return_value=vc))
+        self.mock_object(self.library._client, 'list_vol_copy_job',
+                         mock.Mock(return_value=vc))
+        delete_copy = self.mock_object(self.library._client,
+                                       'delete_vol_copy_job')
+
+        result = self.library._copy_volume_high_priority_readonly(
+            src_vol, dst_vol)
+
+        self.assertIsNone(result)
+        delete_copy.assert_called_once_with(vc['volcopyRef'])
+
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
+                cinder_utils.ZeroIntervalLoopingCall)
+    def test_copy_volume_high_priority_readonly_job_create_failure(self):
+        src_vol = copy.deepcopy(eseries_fake.VOLUME)
+        dst_vol = copy.deepcopy(eseries_fake.VOLUME)
+        self.mock_object(
+            self.library._client, 'create_volume_copy_job', mock.Mock(
+                side_effect=exception.NetAppDriverException))
+
+        self.assertRaises(
+            exception.NetAppDriverException,
+            self.library._copy_volume_high_priority_readonly, src_vol,
+            dst_vol)
+
 
 @ddt.ddt
 class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
@@ -1231,9 +1445,12 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             return_value = fake_created_volume)
         fake_cinder_volume = copy.deepcopy(eseries_fake.FAKE_CINDER_VOLUME)
         extend_vol = {'id': uuid.uuid4(), 'size': 10}
+        self.mock_object(self.library, '_create_volume_from_snapshot')
 
         self.library.create_cloned_volume(extend_vol, fake_cinder_volume)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new = cinder_utils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot(self):
         fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_snap = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
@@ -1273,6 +1490,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         self.library._client.delete_volume.assert_called_once_with(
             fake_dest_eseries_volume['volumeRef'])
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new = cinder_utils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_copy_job_fails(self):
         fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.mock_object(self.library, "_schedule_and_create_volume",
@@ -1305,6 +1524,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         self.library._client.delete_volume.assert_called_once_with(
             fake_dest_eseries_volume['volumeRef'])
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new = cinder_utils.ZeroIntervalLoopingCall)
     def test_create_volume_from_snapshot_fail_to_delete_snapshot_volume(self):
         fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_dest_eseries_volume['volumeRef'] = 'fake_volume_ref'
@@ -1333,6 +1554,42 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             1, self.library._client.delete_snapshot_volume.call_count)
         # Ensure the volume we created is not cleaned up
         self.assertEqual(0, self.library._client.delete_volume.call_count)
+
+    def test_create_snapshot_volume_cgsnap(self):
+        image = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        grp = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
+        self.mock_object(self.library, '_get_snapshot_group', mock.Mock(
+            return_value=grp))
+        expected = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
+        self.mock_object(self.library, '_is_cgsnapshot', mock.Mock(
+            return_value=True))
+        create_view = self.mock_object(
+            self.library._client, 'create_cg_snapshot_view',
+            mock.Mock(return_value=expected))
+
+        result = self.library._create_snapshot_volume(image)
+
+        self.assertEqual(expected, result)
+        create_view.assert_called_once_with(image['consistencyGroupId'],
+                                            mock.ANY, image['id'])
+
+    def test_create_snapshot_volume(self):
+        image = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        grp = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
+        self.mock_object(self.library, '_get_snapshot_group', mock.Mock(
+            return_value=grp))
+        expected = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
+        self.mock_object(self.library, '_is_cgsnapshot', mock.Mock(
+            return_value=False))
+        create_view = self.mock_object(
+            self.library._client, 'create_snapshot_volume',
+            mock.Mock(return_value=expected))
+
+        result = self.library._create_snapshot_volume(image)
+
+        self.assertEqual(expected, result)
+        create_view.assert_called_once_with(
+            image['pitRef'], mock.ANY, image['baseVol'])
 
     def test_create_snapshot_group(self):
         label = 'label'
@@ -1483,7 +1740,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         full_group = copy.deepcopy(snapshot_group)
         full_group['snapshotCount'] = self.library.MAX_SNAPSHOT_COUNT
 
-        snapshot_groups = [snapshot_group, reserved_group, full_group]
+        cgroup = copy.deepcopy(snapshot_group)
+        cgroup['consistencyGroup'] = True
+
+        snapshot_groups = [snapshot_group, reserved_group, full_group, cgroup]
         get_call = self.mock_object(
             self.library, '_get_snapshot_groups_for_volume', mock.Mock(
                 return_value=snapshot_groups))
@@ -1816,6 +2076,194 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         else:
             get_store.assert_not_called()
             save_store.assert_not_called()
+
+    def test_create_cgsnapshot(self):
+        fake_cgsnapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_CG_SNAPSHOT)
+        fake_vol = cinder_utils.create_volume(self.ctxt)
+        fake_snapshots = [cinder_utils.create_snapshot(self.ctxt,
+                                                       fake_vol['id'])]
+        vol = copy.deepcopy(eseries_fake.VOLUME)
+        image = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        image['baseVol'] = vol['id']
+        cg_snaps = [image]
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+
+        for snap in cg_snaps:
+            snap['baseVol'] = vol['id']
+        get_cg = self.mock_object(
+            self.library, '_get_consistencygroup_by_name',
+            mock.Mock(return_value=cg))
+        get_vol = self.mock_object(
+            self.library, '_get_volume',
+            mock.Mock(return_value=vol))
+        mk_snap = self.mock_object(
+            self.library._client, 'create_consistency_group_snapshot',
+            mock.Mock(return_value=cg_snaps))
+
+        model_update, snap_updt = self.library.create_cgsnapshot(
+            fake_cgsnapshot, fake_snapshots)
+
+        self.assertIsNone(model_update)
+        for snap in cg_snaps:
+            self.assertIn({'id': fake_snapshots[0]['id'],
+                           'provider_id': snap['id'],
+                           'status': 'available'}, snap_updt)
+        self.assertEqual(len(cg_snaps), len(snap_updt))
+
+        get_cg.assert_called_once_with(utils.convert_uuid_to_es_fmt(
+            fake_cgsnapshot['consistencygroup_id']))
+        self.assertEqual(get_vol.call_count, len(fake_snapshots))
+        mk_snap.assert_called_once_with(cg['id'])
+
+    def test_create_cgsnapshot_cg_fail(self):
+        fake_cgsnapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_CG_SNAPSHOT)
+        fake_snapshots = [copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)]
+        self.mock_object(
+            self.library, '_get_consistencygroup_by_name',
+            mock.Mock(side_effect=exception.NetAppDriverException))
+
+        self.assertRaises(
+            exception.NetAppDriverException,
+            self.library.create_cgsnapshot, fake_cgsnapshot, fake_snapshots)
+
+    def test_delete_cgsnapshot(self):
+        """Test the deletion of a cgsnapshot when a soft delete is required"""
+        fake_cgsnapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_CG_SNAPSHOT)
+        fake_vol = cinder_utils.create_volume(self.ctxt)
+        fake_snapshots = [cinder_utils.create_snapshot(
+            self.ctxt, fake_vol['id'])]
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        cg_snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        # Ensure that the snapshot to be deleted is not the oldest
+        cg_snap['pitSequenceNumber'] = str(max(cg['uniqueSequenceNumber']))
+        cg_snaps = [cg_snap]
+        for snap in fake_snapshots:
+            snap['provider_id'] = cg_snap['id']
+        vol = copy.deepcopy(eseries_fake.VOLUME)
+        for snap in cg_snaps:
+            snap['baseVol'] = vol['id']
+        get_cg = self.mock_object(
+            self.library, '_get_consistencygroup_by_name',
+            mock.Mock(return_value=cg))
+        self.mock_object(
+            self.library._client, 'delete_consistency_group_snapshot')
+        self.mock_object(
+            self.library._client, 'get_consistency_group_snapshots',
+            mock.Mock(return_value=cg_snaps))
+        soft_del = self.mock_object(
+            self.library, '_soft_delete_cgsnapshot',
+            mock.Mock(return_value=(None, None)))
+
+        # Mock the locking mechanism
+        model_update, snap_updt = self.library.delete_cgsnapshot(
+            fake_cgsnapshot, fake_snapshots)
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snap_updt)
+        get_cg.assert_called_once_with(utils.convert_uuid_to_es_fmt(
+            fake_cgsnapshot['consistencygroup_id']))
+        soft_del.assert_called_once_with(
+            cg, cg_snap['pitSequenceNumber'])
+
+    @ddt.data(True, False)
+    def test_soft_delete_cgsnapshot(self, bitset_exists):
+        """Test the soft deletion of a cgsnapshot"""
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        cg_snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        seq_num = 10
+        cg_snap['pitSequenceNumber'] = seq_num
+        cg_snaps = [cg_snap]
+        self.mock_object(
+            self.library._client, 'delete_consistency_group_snapshot')
+        self.mock_object(
+            self.library._client, 'get_consistency_group_snapshots',
+            mock.Mock(return_value=cg_snaps))
+        bitset = na_utils.BitSet(1)
+        index = {cg['id']: repr(bitset)} if bitset_exists else {}
+        bitset >>= len(cg_snaps)
+        updt = {cg['id']: repr(bitset)}
+        self.mock_object(self.library, '_get_soft_delete_map', mock.Mock(
+            return_value=index))
+        save_map = self.mock_object(
+            self.library, '_merge_soft_delete_changes')
+
+        model_update, snap_updt = self.library._soft_delete_cgsnapshot(
+            cg, seq_num)
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snap_updt)
+        save_map.assert_called_once_with(updt, None)
+
+    def test_delete_cgsnapshot_single(self):
+        """Test the backend deletion of the oldest cgsnapshot"""
+        fake_cgsnapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_CG_SNAPSHOT)
+        fake_vol = cinder_utils.create_volume(self.ctxt)
+        fake_snapshots = [cinder_utils.create_snapshot(self.ctxt,
+                                                       fake_vol['id'])]
+        cg_snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        cg_snaps = [cg_snap]
+        for snap in fake_snapshots:
+            snap['provider_id'] = cg_snap['id']
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        cg['uniqueSequenceNumber'] = [cg_snap['pitSequenceNumber']]
+        vol = copy.deepcopy(eseries_fake.VOLUME)
+        for snap in cg_snaps:
+            snap['baseVol'] = vol['id']
+        get_cg = self.mock_object(
+            self.library, '_get_consistencygroup_by_name',
+            mock.Mock(return_value=cg))
+        del_snap = self.mock_object(
+            self.library._client, 'delete_consistency_group_snapshot',
+            mock.Mock(return_value=cg_snaps))
+
+        model_update, snap_updt = self.library.delete_cgsnapshot(
+            fake_cgsnapshot, fake_snapshots)
+
+        self.assertIsNone(model_update)
+        self.assertIsNone(snap_updt)
+        get_cg.assert_called_once_with(utils.convert_uuid_to_es_fmt(
+            fake_cgsnapshot['consistencygroup_id']))
+        del_snap.assert_called_once_with(cg['id'], cg_snap[
+            'pitSequenceNumber'])
+
+    def test_delete_cgsnapshot_snap_not_found(self):
+        fake_cgsnapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_CG_SNAPSHOT)
+        fake_vol = cinder_utils.create_volume(self.ctxt)
+        fake_snapshots = [cinder_utils.create_snapshot(
+            self.ctxt, fake_vol['id'])]
+        cg_snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
+        cg_snaps = [cg_snap]
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        self.mock_object(self.library, '_get_consistencygroup_by_name',
+                         mock.Mock(return_value=cg))
+        self.mock_object(
+            self.library._client, 'delete_consistency_group_snapshot',
+            mock.Mock(return_value=cg_snaps))
+
+        self.assertRaises(
+            exception.CgSnapshotNotFound,
+            self.library.delete_cgsnapshot, fake_cgsnapshot, fake_snapshots)
+
+    @ddt.data(0, 1, 10, 32)
+    def test_cleanup_cg_snapshots(self, count):
+        # Set the soft delete bit for 'count' snapshot images
+        bitset = na_utils.BitSet()
+        for i in range(count):
+            bitset.set(i)
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        # Define 32 snapshots for the CG
+        cg['uniqueSequenceNumber'] = list(range(32))
+        cg_id = cg['id']
+        del_snap = self.mock_object(
+            self.library._client, 'delete_consistency_group_snapshot')
+        expected_bitset = copy.deepcopy(bitset) >> count
+        expected_updt = {cg_id: repr(expected_bitset)}
+
+        updt = self.library._cleanup_cg_snapshots(
+            cg_id, cg['uniqueSequenceNumber'], bitset)
+
+        self.assertEqual(count, del_snap.call_count)
+        self.assertEqual(expected_updt, updt)
 
     @ddt.data(False, True)
     def test_get_pool_operation_progress(self, expect_complete):

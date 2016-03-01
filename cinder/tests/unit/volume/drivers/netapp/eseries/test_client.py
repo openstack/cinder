@@ -906,6 +906,162 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
             'DELETE', self.my_client.RESOURCE_PATHS['snapshot_image'],
             **{'object-id': fake_ref})
 
+    def test_create_consistency_group(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        name = 'fake'
+
+        self.my_client.create_consistency_group(name)
+
+        invoke.assert_called_once_with(
+            'POST', self.my_client.RESOURCE_PATHS['cgroups'], mock.ANY)
+
+    def test_list_consistency_group(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        ref = 'fake'
+
+        self.my_client.get_consistency_group(ref)
+
+        invoke.assert_called_once_with(
+            'GET', self.my_client.RESOURCE_PATHS['cgroup'],
+            **{'object-id': ref})
+
+    def test_list_consistency_groups(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+
+        self.my_client.list_consistency_groups()
+
+        invoke.assert_called_once_with(
+            'GET', self.my_client.RESOURCE_PATHS['cgroups'])
+
+    def test_delete_consistency_group(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        ref = 'fake'
+
+        self.my_client.delete_consistency_group(ref)
+
+        invoke.assert_called_once_with(
+            'DELETE', self.my_client.RESOURCE_PATHS['cgroup'],
+            **{'object-id': ref})
+
+    def test_add_consistency_group_member(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        vol_id = eseries_fake.VOLUME['id']
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+
+        self.my_client.add_consistency_group_member(vol_id, cg_id)
+
+        invoke.assert_called_once_with(
+            'POST', self.my_client.RESOURCE_PATHS['cgroup_members'],
+            mock.ANY, **{'object-id': cg_id})
+
+    def test_remove_consistency_group_member(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        vol_id = eseries_fake.VOLUME['id']
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+
+        self.my_client.remove_consistency_group_member(vol_id, cg_id)
+
+        invoke.assert_called_once_with(
+            'DELETE', self.my_client.RESOURCE_PATHS['cgroup_member'],
+            **{'object-id': cg_id, 'vol-id': vol_id})
+
+    def test_create_consistency_group_snapshot(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        path = self.my_client.RESOURCE_PATHS.get('cgroup_snapshots')
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+
+        self.my_client.create_consistency_group_snapshot(cg_id)
+
+        invoke.assert_called_once_with('POST', path, **{'object-id': cg_id})
+
+    @ddt.data(0, 32)
+    def test_delete_consistency_group_snapshot(self, seq_num):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        path = self.my_client.RESOURCE_PATHS.get('cgroup_snapshot')
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+
+        self.my_client.delete_consistency_group_snapshot(cg_id, seq_num)
+
+        invoke.assert_called_once_with(
+            'DELETE', path, **{'object-id': cg_id, 'seq-num': seq_num})
+
+    def test_get_consistency_group_snapshots(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        path = self.my_client.RESOURCE_PATHS.get('cgroup_snapshots')
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+
+        self.my_client.get_consistency_group_snapshots(cg_id)
+
+        invoke.assert_called_once_with(
+            'GET', path, **{'object-id': cg_id})
+
+    def test_create_cg_snapshot_view(self):
+        cg_snap_view = copy.deepcopy(
+            eseries_fake.FAKE_CONSISTENCY_GROUP_SNAPSHOT_VOLUME)
+        view = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=cg_snap_view))
+        list_views = self.mock_object(
+            self.my_client, 'list_cg_snapshot_views',
+            mock.Mock(return_value=[view]))
+        name = view['name']
+        snap_id = view['basePIT']
+        path = self.my_client.RESOURCE_PATHS.get('cgroup_cgsnap_views')
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+
+        self.my_client.create_cg_snapshot_view(cg_id, name, snap_id)
+
+        invoke.assert_called_once_with(
+            'POST', path, mock.ANY, **{'object-id': cg_id})
+        list_views.assert_called_once_with(cg_id, cg_snap_view['cgViewRef'])
+
+    def test_create_cg_snapshot_view_not_found(self):
+        cg_snap_view = copy.deepcopy(
+            eseries_fake.FAKE_CONSISTENCY_GROUP_SNAPSHOT_VOLUME)
+        view = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
+        invoke = self.mock_object(self.my_client, '_invoke', mock.Mock(
+            return_value=cg_snap_view))
+        list_views = self.mock_object(
+            self.my_client, 'list_cg_snapshot_views',
+            mock.Mock(return_value=[view]))
+        del_view = self.mock_object(self.my_client, 'delete_cg_snapshot_view')
+        name = view['name']
+        # Ensure we don't get a match on the retrieved views
+        snap_id = None
+        path = self.my_client.RESOURCE_PATHS.get('cgroup_cgsnap_views')
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+
+        self.assertRaises(
+            exception.NetAppDriverException,
+            self.my_client.create_cg_snapshot_view, cg_id, name, snap_id)
+
+        invoke.assert_called_once_with(
+            'POST', path, mock.ANY, **{'object-id': cg_id})
+        list_views.assert_called_once_with(cg_id, cg_snap_view['cgViewRef'])
+        del_view.assert_called_once_with(cg_id, cg_snap_view['id'])
+
+    def test_list_cg_snapshot_views(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        path = self.my_client.RESOURCE_PATHS.get('cgroup_snapshot_views')
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+        view_id = 'id'
+
+        self.my_client.list_cg_snapshot_views(cg_id, view_id)
+
+        invoke.assert_called_once_with(
+            'GET', path, **{'object-id': cg_id, 'view-id': view_id})
+
+    def test_delete_cg_snapshot_view(self):
+        invoke = self.mock_object(self.my_client, '_invoke')
+        path = self.my_client.RESOURCE_PATHS.get('cgroup_snap_view')
+        cg_id = eseries_fake.FAKE_CONSISTENCY_GROUP['id']
+        view_id = 'id'
+
+        self.my_client.delete_cg_snapshot_view(cg_id, view_id)
+
+        invoke.assert_called_once_with(
+            'DELETE', path, **{'object-id': cg_id, 'view-id': view_id})
+
     @ddt.data('00.00.00.00', '01.52.9000.2', '01.52.9001.2', '01.51.9000.3',
               '01.51.9001.3', '01.51.9010.5', '0.53.9000.3', '0.53.9001.4')
     def test_api_version_not_support_asup(self, api_version):

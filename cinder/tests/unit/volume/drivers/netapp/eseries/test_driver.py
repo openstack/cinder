@@ -488,3 +488,70 @@ class NetAppESeriesDriverTestCase(object):
         self.driver.extend_volume(self.fake_ret_vol, capacity)
         self.library.extend_volume.assert_called_with(self.fake_ret_vol,
                                                       capacity)
+
+    @mock.patch.object(library.NetAppESeriesLibrary,
+                       'create_cgsnapshot', mock.Mock())
+    def test_create_cgsnapshot(self):
+        cgsnapshot = copy.deepcopy(fakes.FAKE_CINDER_CG_SNAPSHOT)
+        snapshots = copy.deepcopy([fakes.SNAPSHOT_IMAGE])
+
+        self.driver.create_cgsnapshot('ctx', cgsnapshot, snapshots)
+
+        self.library.create_cgsnapshot.assert_called_with(cgsnapshot,
+                                                          snapshots)
+
+    @mock.patch.object(library.NetAppESeriesLibrary,
+                       'delete_cgsnapshot', mock.Mock())
+    def test_delete_cgsnapshot(self):
+        cgsnapshot = copy.deepcopy(fakes.FAKE_CINDER_CG_SNAPSHOT)
+        snapshots = copy.deepcopy([fakes.SNAPSHOT_IMAGE])
+
+        self.driver.delete_cgsnapshot('ctx', cgsnapshot, snapshots)
+
+        self.library.delete_cgsnapshot.assert_called_with(cgsnapshot,
+                                                          snapshots)
+
+    @mock.patch.object(library.NetAppESeriesLibrary,
+                       'create_consistencygroup', mock.Mock())
+    def test_create_consistencygroup(self):
+        cg = copy.deepcopy(fakes.FAKE_CINDER_CG)
+
+        self.driver.create_consistencygroup('ctx', cg)
+
+        self.library.create_consistencygroup.assert_called_with(cg)
+
+    @mock.patch.object(library.NetAppESeriesLibrary,
+                       'delete_consistencygroup', mock.Mock())
+    def test_delete_consistencygroup(self):
+        cg = copy.deepcopy(fakes.FAKE_CINDER_CG)
+        volumes = copy.deepcopy([fakes.VOLUME])
+
+        self.driver.delete_consistencygroup('ctx', cg, volumes)
+
+        self.library.delete_consistencygroup.assert_called_with(cg, volumes)
+
+    @mock.patch.object(library.NetAppESeriesLibrary,
+                       'update_consistencygroup', mock.Mock())
+    def test_update_consistencygroup(self):
+        group = copy.deepcopy(fakes.FAKE_CINDER_CG)
+
+        self.driver.update_consistencygroup('ctx', group, {}, {})
+
+        self.library.update_consistencygroup.assert_called_with(group, {}, {})
+
+    @mock.patch.object(library.NetAppESeriesLibrary,
+                       'create_consistencygroup_from_src', mock.Mock())
+    def test_create_consistencygroup_from_src(self):
+        cg = copy.deepcopy(fakes.FAKE_CINDER_CG)
+        volumes = copy.deepcopy([fakes.VOLUME])
+        source_vols = copy.deepcopy([fakes.VOLUME])
+        cgsnapshot = copy.deepcopy(fakes.FAKE_CINDER_CG_SNAPSHOT)
+        source_cg = copy.deepcopy(fakes.FAKE_CINDER_CG_SNAPSHOT)
+        snapshots = copy.deepcopy([fakes.SNAPSHOT_IMAGE])
+
+        self.driver.create_consistencygroup_from_src(
+            'ctx', cg, volumes, cgsnapshot, snapshots, source_cg,
+            source_vols)
+
+        self.library.create_consistencygroup_from_src.assert_called_with(
+            cg, volumes, cgsnapshot, snapshots, source_cg, source_vols)
