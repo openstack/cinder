@@ -462,7 +462,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 volume_update['status'] = 'deleted'
             except Exception as ex:
                 LOG.error(_LE("There was an error deleting volume %(id)s: "
-                              "%(error)."),
+                              "%(error)s."),
                           {'id': volume.id,
                            'error': six.text_type(ex)})
                 volume_update['status'] = 'error'

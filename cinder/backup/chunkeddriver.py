@@ -352,7 +352,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
                       'compressed length: %(compressed_size_bytes)d. '
                       'Using original data for this chunk.',
                       {'data_size_bytes': data_size_bytes,
-                       'comp_size_bytes': comp_size_bytes,
+                       'compressed_size_bytes': comp_size_bytes,
                        })
             return 'none', data
         LOG.debug('Compressed %(data_size_bytes)d bytes of data '
