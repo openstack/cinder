@@ -250,9 +250,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                 CONF.volume_topic)
         except exception.ServiceNotFound:
             # NOTE(jdg): This is to solve problems with unit tests
-            LOG.warning(_LW("Service not found for updating "
-                            "active_backend_id, assuming default"
-                            "for driver init."))
+            LOG.info(_LI("Service not found for updating "
+                         "active_backend_id, assuming default "
+                         "for driver init."))
         else:
             curr_active_backend_id = service.active_backend_id
 
@@ -508,8 +508,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                 CONF.volume_topic)
         except exception.ServiceNotFound:
             # FIXME(jdg): no idea what we'd do if we hit this case
-            LOG.warning(_LW("Service not found for updating "
-                            "replication_status."))
+            LOG.info(_LI("Service not found for updating "
+                         "replication_status."))
         else:
             if service.replication_status == (
                     fields.ReplicationStatus.FAILED_OVER):
