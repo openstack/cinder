@@ -109,10 +109,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.6 - Adding manage/unmanage snapshot support
         3.0.7 - Optimize array ID retrieval
         3.0.8 - Update replication to version 2.1
+        3.0.9 - Use same LUN ID for each VLUN path #1551994
 
     """
 
-    VERSION = "3.0.8"
+    VERSION = "3.0.9"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -355,6 +356,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
                 # Cycle through each ready iSCSI port and determine if a new
                 # VLUN should be created or an existing one used.
+                lun_id = None
                 for port in ready_ports:
                     iscsi_ip = port['IPAddr']
                     if iscsi_ip in target_portal_ips:
@@ -370,7 +372,12 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                                 break
                         else:
                             vlun = common.create_vlun(
-                                volume, host, iscsi_ips[iscsi_ip]['nsp'])
+                                volume, host, iscsi_ips[iscsi_ip]['nsp'],
+                                lun_id=lun_id)
+
+                            # We want to use the same LUN ID for every port
+                            if lun_id is None:
+                                lun_id = vlun['lun']
                         iscsi_ip_port = "%s:%s" % (
                             iscsi_ip, iscsi_ips[iscsi_ip]['ip_port'])
                         target_portals.append(iscsi_ip_port)
