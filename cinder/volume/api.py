@@ -1593,9 +1593,10 @@ class API(base.Base):
         ctxt = context.get_admin_context()
         svc_host = volume_utils.extract_host(host, 'backend')
 
-        service = objects.Service.get_by_host_and_topic(
+        service = objects.Service.get_by_args(
             ctxt, svc_host, CONF.volume_topic)
-        expected = {'replication_status': fields.ReplicationStatus.ENABLED}
+        expected = {'replication_status': [fields.ReplicationStatus.ENABLED,
+                    fields.ReplicationStatus.FAILED_OVER]}
         result = service.conditional_update(
             {'replication_status': fields.ReplicationStatus.FAILING_OVER},
             expected)
