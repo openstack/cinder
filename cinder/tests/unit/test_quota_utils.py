@@ -35,6 +35,8 @@ class QuotaUtilsTest(test.TestCase):
             self.id = id
             self.parent_id = parent_id
             self.subtree = None
+            self.parents = None
+            self.domain_id = 'default'
 
     def setUp(self):
         super(QuotaUtilsTest, self).setUp()
@@ -91,6 +93,61 @@ class QuotaUtilsTest(test.TestCase):
         keystoneclient.projects.get.assert_called_once_with(
             self.context.project_id, parents_as_ids=False, subtree_as_ids=True)
         self.assertEqual(expected_project.__dict__, project.__dict__)
+
+    def _setup_mock_ksclient(self, mock_client, version='v3',
+                             subtree=None, parents=None):
+        keystoneclient = mock_client.return_value
+        keystoneclient.version = version
+        proj = self.FakeProject(self.context.project_id)
+        proj.subtree = subtree
+        if parents:
+            proj.parents = parents
+            proj.parent_id = next(iter(parents.keys()))
+        keystoneclient.projects.get.return_value = proj
+
+    @mock.patch('keystoneclient.client.Client')
+    def test__filter_domain_id_from_parents_domain_as_parent(
+            self, mock_client):
+        # Test with a top level project (domain is direct parent)
+        self._setup_mock_ksclient(mock_client, parents={'default': None})
+        project = quota_utils.get_project_hierarchy(
+            self.context, self.context.project_id, parents_as_ids=True)
+        self.assertIsNone(project.parent_id)
+        self.assertIsNone(project.parents)
+
+    @mock.patch('keystoneclient.client.Client')
+    def test__filter_domain_id_from_parents_domain_as_grandparent(
+            self, mock_client):
+        # Test with a child project (domain is more than a parent)
+        self._setup_mock_ksclient(mock_client,
+                                  parents={'bar': {'default': None}})
+        project = quota_utils.get_project_hierarchy(
+            self.context, self.context.project_id, parents_as_ids=True)
+        self.assertEqual('bar', project.parent_id)
+        self.assertEqual({'bar': None}, project.parents)
+
+    @mock.patch('keystoneclient.client.Client')
+    def test__filter_domain_id_from_parents_no_domain_in_parents(
+            self, mock_client):
+        # Test that if top most parent is not a domain (to simulate an older
+        # keystone version) nothing gets removed from the tree
+        parents = {'bar': {'foo': None}}
+        self._setup_mock_ksclient(mock_client, parents=parents)
+        project = quota_utils.get_project_hierarchy(
+            self.context, self.context.project_id, parents_as_ids=True)
+        self.assertEqual('bar', project.parent_id)
+        self.assertEqual(parents, project.parents)
+
+    @mock.patch('keystoneclient.client.Client')
+    def test__filter_domain_id_from_parents_no_parents(
+            self, mock_client):
+        # Test that if top no parents are present (to simulate an older
+        # keystone version) things don't blow up
+        self._setup_mock_ksclient(mock_client)
+        project = quota_utils.get_project_hierarchy(
+            self.context, self.context.project_id, parents_as_ids=True)
+        self.assertIsNone(project.parent_id)
+        self.assertIsNone(project.parents)
 
     @mock.patch('cinder.quota_utils._keystone_client')
     def test_validate_nested_projects_with_keystone_v2(self, _keystone_client):
