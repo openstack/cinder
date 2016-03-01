@@ -184,8 +184,6 @@ class HuaweiHyperMetro(object):
 
     def disconnect_volume_fc(self, volume, connector):
         """Delete map between a volume and a host for FC."""
-        # Login remote storage device.
-
         wwns = connector['wwpns']
         volume_name = huawei_utils.encode_name(volume['id'])
         metadata = huawei_utils.get_volume_metadata(volume)

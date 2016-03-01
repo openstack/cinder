@@ -68,13 +68,11 @@ OS_TYPE = {'Linux': '0',
            'Mac OS X': '6',
            'VMware ESX': '7'}
 
-CONTROLLER_LIST = ['A', 'B', 'C', 'D']
 HUAWEI_VALID_KEYS = ['maxIOPS', 'minIOPS', 'minBandWidth',
                      'maxBandWidth', 'latency', 'IOType']
 QOS_KEYS = ['MAXIOPS', 'MINIOPS', 'MINBANDWidth',
             'MAXBANDWidth', 'LATENCY', 'IOTYPE']
 MAX_LUN_NUM_IN_QOS = 64
-HYPERMETRO_CLASS = "cinder.volume.drivers.huawei.hypermetro.HuaweiHyperMetro"
 
 DEFAULT_REPLICA_WAIT_INTERVAL = 1
 DEFAULT_REPLICA_WAIT_TIMEOUT = 10

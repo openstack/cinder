@@ -1649,8 +1649,6 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
 
         if self.fcsan:
             # Use FC switch.
-            host_id = self.client.add_host_with_check(host_name,
-                                                      original_host_name)
             zone_helper = fc_zone_helper.FCZoneHelper(self.fcsan, self.client)
             (tgt_port_wwns, portg_id, init_targ_map) = (
                 zone_helper.build_ini_targ_map(wwns, host_id, lun_id))
@@ -1658,8 +1656,6 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 self.client.ensure_fc_initiator_added(ini, host_id)
         else:
             # Not use FC switch.
-            host_id = self.client.add_host_with_check(
-                host_name, original_host_name)
             online_wwns_in_host = (
                 self.client.get_host_online_fc_initiators(host_id))
             online_free_wwns = self.client.get_online_free_wwns()
@@ -1673,7 +1669,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                     if not wwns_in_host and not iqns_in_host:
                         self.client.remove_host(host_id)
 
-                    msg = _('Can not add FC initiator to host.')
+                    msg = _('No FC initiator can be added to host.')
                     LOG.error(msg)
                     raise exception.VolumeBackendAPIException(data=msg)
 
