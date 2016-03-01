@@ -1810,23 +1810,8 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             fc_info = {'driver_volume_type': 'fibre_channel',
                        'data': {}}
         else:
-            portg_id = None
-            if not self.fcsan:
-                self.fcsan = fczm_utils.create_lookup_service()
-
-            if self.fcsan:
-                zone_helper = fc_zone_helper.FCZoneHelper(self.fcsan,
-                                                          self.client)
-
-                (tgt_port_wwns, portg_id, init_targ_map) = (
-                    zone_helper.get_init_targ_map(wwns, host_id))
-            else:
-                (tgt_port_wwns, init_targ_map) = (
-                    self.client.get_init_targ_map(wwns))
-
-            for wwn in wwns:
-                if self.client.is_fc_initiator_associated_to_host(wwn):
-                    self.client.remove_fc_from_host(wwn)
+            fc_info, portg_id = self._delete_zone_and_remove_fc_initiators(
+                wwns, host_id)
             if lungroup_id:
                 if view_id and self.client.lungroup_associated(
                         view_id, lungroup_id):
@@ -1859,10 +1844,6 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             if view_id:
                 self.client.delete_mapping_view(view_id)
 
-            fc_info = {'driver_volume_type': 'fibre_channel',
-                       'data': {'target_wwn': tgt_port_wwns,
-                                'initiator_target_map': init_targ_map}}
-
         # Deal with hypermetro connection.
         metadata = huawei_utils.get_volume_metadata(volume)
         LOG.info(_LI("Detach Volume, metadata is: %s."), metadata)
@@ -1877,3 +1858,29 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                  fc_info)
 
         return fc_info
+
+    def _delete_zone_and_remove_fc_initiators(self, wwns, host_id):
+        # Get tgt_port_wwns and init_targ_map to remove zone.
+        portg_id = None
+        if not self.fcsan:
+            self.fcsan = fczm_utils.create_lookup_service()
+        if self.fcsan:
+            zone_helper = fc_zone_helper.FCZoneHelper(self.fcsan,
+                                                      self.client)
+            (tgt_port_wwns, portg_id, init_targ_map) = (
+                zone_helper.get_init_targ_map(wwns, host_id))
+        else:
+            (tgt_port_wwns, init_targ_map) = (
+                self.client.get_init_targ_map(wwns))
+
+        # Remove the initiators from host if need.
+        if host_id:
+            fc_initiators = self.client.get_host_fc_initiators(host_id)
+            for wwn in wwns:
+                if wwn in fc_initiators:
+                    self.client.remove_fc_from_host(wwn)
+
+        info = {'driver_volume_type': 'fibre_channel',
+                'data': {'target_wwn': tgt_port_wwns,
+                         'initiator_target_map': init_targ_map}}
+        return info, portg_id
