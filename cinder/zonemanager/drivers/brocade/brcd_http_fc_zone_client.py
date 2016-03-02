@@ -834,6 +834,37 @@ class BrcdHTTPFCZoneClient(object):
                 LOG.error(msg)
                 raise exception.BrocadeZoningHttpException(reason=msg)
 
+    def _disconnect(self):
+        """Disconnect from the switch using HTTP/HTTPS protocol.
+
+        :raises: BrocadeZoningHttpException
+        """
+        try:
+            headers = {zone_constant.AUTH_HEADER: self.auth_header}
+            response = self.connect(zone_constant.GET_METHOD,
+                                    zone_constant.LOGOUT_PAGE,
+                                    header=headers)
+            return response
+        except requests.exceptions.ConnectionError as e:
+            msg = (_("Error while connecting the switch %(switch_id)s "
+                     "with protocol %(protocol)s. Error: %(error)s.")
+                   % {'switch_id': self.switch_ip,
+                      'protocol': self.protocol,
+                      'error': six.text_type(e)})
+            LOG.error(msg)
+            raise exception.BrocadeZoningHttpException(reason=msg)
+        except exception.BrocadeZoningHttpException as ex:
+            msg = (_("Unexpected status code from the switch %(switch_id)s "
+                     "with protocol %(protocol)s for url %(page)s. "
+                     "Error: %(error)s")
+                   % {'switch_id': self.switch_ip,
+                      'protocol': self.protocol,
+                      'page': zone_constant.LOG_OUT_PAGE,
+                      'error': six.text_type(ex)})
+            LOG.error(msg)
+            raise exception.BrocadeZoningHttpException(reason=msg)
+
     def cleanup(self):
         """Close session."""
+        self._disconnect()
         self.session.close()
