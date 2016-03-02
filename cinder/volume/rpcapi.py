@@ -16,15 +16,14 @@
 Client side of the volume RPC API.
 """
 
-from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder.common import constants
 from cinder import quota
 from cinder import rpc
 from cinder.volume import utils
 
 
-CONF = cfg.CONF
 QUOTAS = quota.QUOTAS
 
 
@@ -108,7 +107,7 @@ class VolumeAPI(rpc.RPCAPI):
     """
 
     RPC_API_VERSION = '2.5'
-    TOPIC = CONF.volume_topic
+    TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
 
     def _compat_ver(self, current, *legacy):

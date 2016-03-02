@@ -18,15 +18,13 @@ Tests For Allocated Capacity Weigher.
 """
 
 import mock
-from oslo_config import cfg
 
+from cinder.common import constants
 from cinder import context
 from cinder.scheduler import weights
 from cinder import test
 from cinder.tests.unit.scheduler import fakes
 from cinder.volume import utils
-
-CONF = cfg.CONF
 
 
 class AllocatedCapacityWeigherTestCase(test.TestCase):
@@ -52,7 +50,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         _mock_service_get_all.assert_called_once_with(
             ctxt,
             None,  # backend_match_level
-            topic=CONF.volume_topic, disabled=disabled)
+            topic=constants.VOLUME_TOPIC, disabled=disabled)
         return host_states
 
     def test_default_of_spreading_first(self):

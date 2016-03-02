@@ -13,7 +13,6 @@
 import fixtures
 import mock
 from oslo_concurrency import lockutils
-from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 import oslo_messaging as messaging
 from oslo_serialization import jsonutils
@@ -22,6 +21,7 @@ import webob
 from webob import exc
 
 from cinder.api.contrib import admin_actions
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -37,8 +37,6 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.volume import api as volume_api
 from cinder.volume import rpcapi
-
-CONF = cfg.CONF
 
 
 def app():
@@ -475,11 +473,11 @@ class AdminActionsTest(BaseAdminTest):
         # create volume's current host and the destination host
         db.service_create(self.ctx,
                           {'host': 'test',
-                           'topic': CONF.volume_topic,
+                           'topic': constants.VOLUME_TOPIC,
                            'created_at': timeutils.utcnow()})
         db.service_create(self.ctx,
                           {'host': 'test2',
-                           'topic': CONF.volume_topic,
+                           'topic': constants.VOLUME_TOPIC,
                            'created_at': timeutils.utcnow()})
         # current status is available
         volume = self._create_volume(self.ctx)

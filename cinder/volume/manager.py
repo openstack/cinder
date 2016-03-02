@@ -24,7 +24,6 @@ intact.
 
 **Related Flags**
 
-:volume_topic:  What :mod:`rpc` topic to listen to (default: `cinder-volume`).
 :volume_manager:  The module name of a class derived from
                   :class:`manager.Manager` (default:
                   :class:`cinder.volume.manager.Manager`).
@@ -54,6 +53,7 @@ profiler = importutils.try_import('osprofiler.profiler')
 import six
 from taskflow import exceptions as tfe
 
+from cinder.common import constants
 from cinder import compute
 from cinder import context
 from cinder import coordination
@@ -212,7 +212,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             service = objects.Service.get_by_args(
                 context.get_admin_context(),
                 svc_host,
-                'cinder-volume')
+                constants.VOLUME_BINARY)
         except exception.ServiceNotFound:
             # NOTE(jdg): This is to solve problems with unit tests
             LOG.info(_LI("Service not found for updating "
@@ -522,7 +522,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             service = objects.Service.get_by_args(
                 context.get_admin_context(),
                 svc_host,
-                'cinder-volume')
+                constants.VOLUME_BINARY)
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Service not found for updating "
@@ -3632,7 +3632,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         service = objects.Service.get_by_args(
             context,
             svc_host,
-            'cinder-volume')
+            constants.VOLUME_BINARY)
         volumes = objects.VolumeList.get_all_by_host(context, self.host)
 
         exception_encountered = False
@@ -3741,7 +3741,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         service = objects.Service.get_by_args(
             context,
             svc_host,
-            'cinder-volume')
+            constants.VOLUME_BINARY)
         service.disabled = True
         service.disabled_reason = "frozen"
         service.save()
@@ -3774,7 +3774,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         service = objects.Service.get_by_args(
             context,
             svc_host,
-            'cinder-volume')
+            constants.VOLUME_BINARY)
         service.disabled = False
         service.disabled_reason = ""
         service.save()

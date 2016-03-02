@@ -11,12 +11,12 @@
 #    under the License.
 
 
-from oslo_config import cfg
 from oslo_log import log as logging
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
 
+from cinder.common import constants
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _LE
@@ -26,7 +26,6 @@ from cinder.volume.flows import common
 LOG = logging.getLogger(__name__)
 
 ACTION = 'volume:manage_existing'
-CONF = cfg.CONF
 
 
 class EntryCreateTask(flow_utils.CinderTask):
@@ -109,7 +108,7 @@ class ManageCastTask(flow_utils.CinderTask):
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
-        self.scheduler_rpcapi.manage_existing(context, CONF.volume_topic,
+        self.scheduler_rpcapi.manage_existing(context, constants.VOLUME_TOPIC,
                                               volume.id,
                                               request_spec=request_spec,
                                               volume=volume)

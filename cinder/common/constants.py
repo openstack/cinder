@@ -16,3 +16,11 @@
 
 # The maximum value a signed INT type may have
 DB_MAX_INT = 0x7FFFFFFF
+
+# The cinder services binaries and topics' names
+SCHEDULER_BINARY = "cinder-scheduler"
+VOLUME_BINARY = "cinder-volume"
+BACKUP_BINARY = "cinder-backup"
+SCHEDULER_TOPIC = SCHEDULER_BINARY
+VOLUME_TOPIC = VOLUME_BINARY
+BACKUP_TOPIC = BACKUP_BINARY

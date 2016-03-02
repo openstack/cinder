@@ -30,6 +30,7 @@ from oslo_utils import uuidutils
 import six
 
 from cinder.api import common
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db import base
@@ -149,7 +150,7 @@ class API(base.Base):
                 if cache_age >= CONF.az_cache_duration:
                     refresh_cache = True
         if refresh_cache or not enable_cache:
-            topic = CONF.volume_topic
+            topic = constants.VOLUME_TOPIC
             ctxt = context.get_admin_context()
             services = objects.ServiceList.get_all_by_topic(ctxt, topic)
             az_data = [(s.availability_zone, s.disabled)
@@ -177,9 +178,10 @@ class API(base.Base):
                             first_type=None, second_type=None):
         safe = False
         elevated = context.elevated()
-        services = objects.ServiceList.get_all_by_topic(elevated,
-                                                        'cinder-volume',
-                                                        disabled=True)
+        services = objects.ServiceList.get_all_by_topic(
+            elevated,
+            constants.VOLUME_TOPIC,
+            disabled=True)
         if len(services.objects) == 1:
             safe = True
         else:
@@ -1300,7 +1302,7 @@ class API(base.Base):
         """Migrate the volume to the specified host."""
         # Make sure the host is in the list of available hosts
         elevated = context.elevated()
-        topic = CONF.volume_topic
+        topic = constants.VOLUME_TOPIC
         services = objects.ServiceList.get_all_by_topic(
             elevated, topic, disabled=False)
         found = False
@@ -1358,7 +1360,7 @@ class API(base.Base):
                         'volume_type': volume_type,
                         'volume_id': volume.id}
         self.scheduler_rpcapi.migrate_volume_to_host(context,
-                                                     CONF.volume_topic,
+                                                     constants.VOLUME_TOPIC,
                                                      volume.id,
                                                      host,
                                                      force_host_copy,
@@ -1508,7 +1510,8 @@ class API(base.Base):
                         'quota_reservations': reservations,
                         'old_reservations': old_reservations}
 
-        self.scheduler_rpcapi.retype(context, CONF.volume_topic, volume.id,
+        self.scheduler_rpcapi.retype(context, constants.VOLUME_TOPIC,
+                                     volume.id,
                                      request_spec=request_spec,
                                      filter_properties={}, volume=volume)
         LOG.info(_LI("Retype volume request issued successfully."),
@@ -1524,7 +1527,7 @@ class API(base.Base):
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Unable to find service: %(service)s for '
                               'given host: %(host)s.'),
-                          {'service': CONF.volume_topic, 'host': host})
+                          {'service': constants.VOLUME_BINARY, 'host': host})
 
         if service.disabled:
             LOG.error(_LE('Unable to manage existing %s on a disabled '
@@ -1622,7 +1625,7 @@ class API(base.Base):
         svc_host = volume_utils.extract_host(host, 'backend')
 
         service = objects.Service.get_by_args(
-            ctxt, svc_host, 'cinder-volume')
+            ctxt, svc_host, constants.VOLUME_BINARY)
         expected = {'replication_status': [fields.ReplicationStatus.ENABLED,
                     fields.ReplicationStatus.FAILED_OVER]}
         result = service.conditional_update(
@@ -1644,7 +1647,7 @@ class API(base.Base):
         svc_host = volume_utils.extract_host(host, 'backend')
 
         service = objects.Service.get_by_args(
-            ctxt, svc_host, 'cinder-volume')
+            ctxt, svc_host, constants.VOLUME_BINARY)
         expected = {'frozen': False}
         result = service.conditional_update(
             {'frozen': True}, expected)
@@ -1665,7 +1668,7 @@ class API(base.Base):
         svc_host = volume_utils.extract_host(host, 'backend')
 
         service = objects.Service.get_by_args(
-            ctxt, svc_host, 'cinder-volume')
+            ctxt, svc_host, constants.VOLUME_BINARY)
         expected = {'frozen': True}
         result = service.conditional_update(
             {'frozen': False}, expected)

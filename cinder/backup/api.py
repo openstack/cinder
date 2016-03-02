@@ -29,6 +29,7 @@ from pytz import timezone
 import random
 
 from cinder.backup import rpcapi as backup_rpcapi
+from cinder.common import constants
 from cinder import context
 from cinder.db import base
 from cinder import exception
@@ -144,7 +145,7 @@ class API(base.Base):
 
     def _is_backup_service_enabled(self, availability_zone, host):
         """Check if there is a backup service available."""
-        topic = CONF.backup_topic
+        topic = constants.BACKUP_TOPIC
         ctxt = context.get_admin_context()
         services = objects.ServiceList.get_all_by_topic(
             ctxt, topic, disabled=False)
@@ -189,7 +190,7 @@ class API(base.Base):
 
         :returns: list -- hosts for services that are enabled for backup.
         """
-        topic = CONF.backup_topic
+        topic = constants.BACKUP_TOPIC
         ctxt = context.get_admin_context()
         services = objects.ServiceList.get_all_by_topic(
             ctxt, topic, disabled=False)

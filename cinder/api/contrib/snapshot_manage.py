@@ -12,7 +12,6 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from oslo_config import cfg
 from oslo_log import log as logging
 from webob import exc
 
@@ -25,7 +24,6 @@ from cinder.i18n import _
 from cinder import volume as cinder_volume
 
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
 authorize_manage = extensions.extension_authorizer('snapshot',
                                                    'snapshot_manage')
 authorize_list_manageable = extensions.extension_authorizer('snapshot',

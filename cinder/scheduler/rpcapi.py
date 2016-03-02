@@ -16,13 +16,10 @@
 Client side of the scheduler manager RPC API.
 """
 
-from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder.common import constants
 from cinder import rpc
-
-
-CONF = cfg.CONF
 
 
 class SchedulerAPI(rpc.RPCAPI):
@@ -58,7 +55,7 @@ class SchedulerAPI(rpc.RPCAPI):
     """
 
     RPC_API_VERSION = '2.3'
-    TOPIC = CONF.scheduler_topic
+    TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
 
     # FIXME(caosf): Remove unused argument 'topic' from functions

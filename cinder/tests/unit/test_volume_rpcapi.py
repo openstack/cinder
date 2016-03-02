@@ -22,6 +22,7 @@ import ddt
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder import objects
@@ -179,7 +180,7 @@ class VolumeRpcAPITestCase(test.TestCase):
             host = kwargs['cgsnapshot'].consistencygroup.host
 
         target['server'] = utils.extract_host(host)
-        target['topic'] = '%s.%s' % (CONF.volume_topic, host)
+        target['topic'] = '%s.%s' % (constants.VOLUME_TOPIC, host)
 
         self.fake_args = None
         self.fake_kwargs = None
@@ -259,7 +260,7 @@ class VolumeRpcAPITestCase(test.TestCase):
             host = kwargs['group']['host']
 
         target['server'] = utils.extract_host(host)
-        target['topic'] = '%s.%s' % (CONF.volume_topic, host)
+        target['topic'] = '%s.%s' % (constants.VOLUME_TOPIC, host)
 
         self.fake_args = None
         self.fake_kwargs = None
