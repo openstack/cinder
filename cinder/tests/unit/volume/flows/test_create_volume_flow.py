@@ -42,7 +42,6 @@ class CreateVolumeFlowTestCase(test.TestCase):
     def setUp(self):
         super(CreateVolumeFlowTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
-        self.counter = float(0)
 
         # Ensure that time.time() always returns more than the last time it was
         # called to avoid div by zero errors.
@@ -50,10 +49,11 @@ class CreateVolumeFlowTestCase(test.TestCase):
 
     @mock.patch('cinder.objects.Volume.get_by_id')
     @mock.patch('cinder.volume.utils.extract_host')
-    @mock.patch('time.time', side_effect=time_inc)
+    @mock.patch('time.time')
     @mock.patch('cinder.objects.ConsistencyGroup.get_by_id')
     def test_cast_create_volume(self, consistencygroup_get_by_id, mock_time,
                                 mock_extract_host, volume_get_by_id):
+        mock_time.side_effect = self.time_inc
         volume = fake_volume.fake_volume_obj(self.ctxt)
         volume_get_by_id.return_value = volume
         props = {}
