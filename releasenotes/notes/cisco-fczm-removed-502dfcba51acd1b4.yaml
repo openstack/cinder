@@ -1,4 +1,0 @@
----
-upgrade:
-  - The Cisco FC Zone Manager driver is no longer supported
-    and not included in-tree.
