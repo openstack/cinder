@@ -13,13 +13,13 @@ Getting Started
 
 If you'd like to run from the master branch, you can clone the git repo:
 
-    git clone https://github.com/openstack/cinder.git
+    git clone https://git.openstack.org/openstack/cinder.git
 
 For developer information please see
-`HACKING.rst <https://github.com/openstack/cinder/blob/master/HACKING.rst>`_
+`HACKING.rst <https://git.openstack.org/cgit/openstack/cinder/plain/HACKING.rst>`_
 
 You can raise bugs here http://bugs.launchpad.net/cinder
 
 Python client
 -------------
-https://github.com/openstack/python-cinderclient.git
+https://git.openstack.org/cgit/openstack/python-cinderclient
