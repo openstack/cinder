@@ -33,7 +33,6 @@ from cinder import test
 from cinder.tests.unit import test_db_api
 
 from keystoneclient import exceptions
-from keystonemiddleware import auth_token
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
 
@@ -97,7 +96,7 @@ class QuotaSetsControllerTest(test.TestCase):
         self._create_project_hierarchy()
 
         self.auth_url = 'http://localhost:5000'
-        self.fixture = self.useFixture(config_fixture.Config(auth_token.CONF))
+        self.fixture = self.useFixture(config_fixture.Config(CONF))
         self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
 
     def _create_project_hierarchy(self):

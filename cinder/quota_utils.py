@@ -13,12 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _LW
 from cinder import quota
 
+CONF = cfg.CONF
+CONF.import_opt('auth_uri', 'keystonemiddleware.auth_token.__init__',
+                'keystone_authtoken')
 
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
