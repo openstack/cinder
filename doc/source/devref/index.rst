@@ -43,6 +43,7 @@ Background Concepts for Cinder
    :maxdepth: 3
 
    architecture
+   attach_detach_conventions
    threading
    i18n
    rpc
