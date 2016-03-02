@@ -90,16 +90,6 @@ class GenericUtilsTestCase(test.TestCase):
                           obj,
                           quiet=False)
 
-    def test_is_int_like(self):
-        self.assertTrue(utils.is_int_like(1))
-        self.assertTrue(utils.is_int_like(-1))
-        self.assertTrue(utils.is_int_like(0b1))
-        self.assertTrue(utils.is_int_like(0o1))
-        self.assertTrue(utils.is_int_like(0x1))
-        self.assertTrue(utils.is_int_like('1'))
-        self.assertFalse(utils.is_int_like(1.0))
-        self.assertFalse(utils.is_int_like('abc'))
-
     def test_check_exclusive_options(self):
         utils.check_exclusive_options()
         utils.check_exclusive_options(something=None,
