@@ -68,7 +68,7 @@ class SnapshotManageTest(test.TestCase):
 
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
     @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
-    @mock.patch('cinder.db.service_get_by_host_and_topic')
+    @mock.patch('cinder.db.service_get_by_args')
     def test_manage_snapshot_ok(self, mock_db,
                                 mock_create_snapshot, mock_rpcapi):
         """Test successful manage volume execution.
@@ -79,7 +79,9 @@ class SnapshotManageTest(test.TestCase):
         code to the caller.
         """
         ctxt = context.RequestContext('admin', 'fake', True)
-        mock_db.return_value = fake_service.fake_service_obj(ctxt)
+        mock_db.return_value = fake_service.fake_service_obj(
+            ctxt,
+            binary='cinder-volume')
 
         body = {'snapshot': {'volume_id': 'fake_volume_id', 'ref': 'fake_ref'}}
         res = self._get_resp(body)

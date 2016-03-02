@@ -1524,13 +1524,18 @@ class API(base.Base):
             elevated = context.elevated()
             try:
                 svc_host = volume_utils.extract_host(host, 'backend')
-                service = objects.Service.get_by_host_and_topic(
-                    elevated, svc_host, CONF.volume_topic)
+                service = objects.Service.get_by_args(
+                    elevated, svc_host, 'cinder-volume')
             except exception.ServiceNotFound:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Unable to find service: %(service)s for '
                                   'given host: %(host)s.'),
                               {'service': CONF.volume_topic, 'host': host})
+            if service.disabled:
+                LOG.error(_LE('Unable to manage_existing volume on a disabled '
+                              'service.'))
+                raise exception.ServiceUnavailable()
+
             availability_zone = service.get('availability_zone')
 
         manage_what = {
@@ -1569,13 +1574,19 @@ class API(base.Base):
                                  metadata=None):
         host = volume_utils.extract_host(volume['host'])
         try:
-            objects.Service.get_by_host_and_topic(context.elevated(), host,
-                                                  CONF.volume_topic)
+            # NOTE(jdg): We don't use this, we just make sure it's valid
+            # and exists before sending off the call
+            service = objects.Service.get_by_args(
+                context.elevated(), host, 'cinder-volume')
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Unable to find service: %(service)s for '
                               'given host: %(host)s.'),
                           {'service': CONF.volume_topic, 'host': host})
+        if service.disabled:
+            LOG.error(_LE('Unable to manage_existing snapshot on a disabled '
+                          'service.'))
+            raise exception.ServiceUnavailable()
 
         snapshot_object = self.create_snapshot_in_db(context, volume, name,
                                                      description, False,
@@ -1595,7 +1606,7 @@ class API(base.Base):
         svc_host = volume_utils.extract_host(host, 'backend')
 
         service = objects.Service.get_by_args(
-            ctxt, svc_host, CONF.volume_topic)
+            ctxt, svc_host, 'cinder-volume')
         expected = {'replication_status': [fields.ReplicationStatus.ENABLED,
                     fields.ReplicationStatus.FAILED_OVER]}
         result = service.conditional_update(
@@ -1618,9 +1629,8 @@ class API(base.Base):
         ctxt = context.get_admin_context()
         svc_host = volume_utils.extract_host(host, 'backend')
 
-        # NOTE(jdg): get_by_host_and_topic filters out disabled
         service = objects.Service.get_by_args(
-            ctxt, svc_host, CONF.volume_topic)
+            ctxt, svc_host, 'cinder-volume')
         expected = {'frozen': False}
         result = service.conditional_update(
             {'frozen': True}, expected)
@@ -1639,9 +1649,8 @@ class API(base.Base):
         ctxt = context.get_admin_context()
         svc_host = volume_utils.extract_host(host, 'backend')
 
-        # NOTE(jdg): get_by_host_and_topic filters out disabled
         service = objects.Service.get_by_args(
-            ctxt, svc_host, CONF.volume_topic)
+            ctxt, svc_host, 'cinder-volume')
         expected = {'frozen': True}
         result = service.conditional_update(
             {'frozen': False}, expected)
