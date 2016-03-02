@@ -70,13 +70,14 @@ class Service(BASE, CinderBase):
     # periodic updates
     modified_at = Column(DateTime)
 
-    # Version columns to support rolling upgrade.
-    # Current version is what the service is running now (i.e. minimum).
-    # Available version is what the service can support (i.e. max).
+    # Version columns to support rolling upgrade. These report the max RPC API
+    # and objects versions that the manager of the service is able to support.
     rpc_current_version = Column(String(36))
-    rpc_available_version = Column(String(36))
     object_current_version = Column(String(36))
-    object_available_version = Column(String(36))
+
+    # FIXME(dulek): In M we've removed rpc_available_version and
+    # object_available_version from the model. We need to merge a DB migration
+    # that actually drops these columns from the DB in early Newton.
 
     # replication_status can be: enabled, disabled, not-capable, error,
     # failed-over or not-configured
