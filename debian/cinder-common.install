@@ -7,3 +7,4 @@ etc/cinder/rootwrap.conf etc/cinder
 usr/bin/cinder-manage
 usr/bin/cinder-rootwrap
 usr/bin/cinder-rtstool
+debian/migrate.cfg usr/lib/python2.7/dist-packages/cinder/db/sqlalchemy/migrate_repo
