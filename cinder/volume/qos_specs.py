@@ -79,6 +79,10 @@ def create(context, name, specs=None):
 
     try:
         qos_specs_ref = db.qos_specs_create(context, values)
+    except db_exc.DBDataError:
+        msg = _('Error writing field to database')
+        LOG.exception(msg)
+        raise exception.Invalid(msg)
     except db_exc.DBError:
         LOG.exception(_LE('DB error:'))
         raise exception.QoSSpecsCreateFailed(name=name,
