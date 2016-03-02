@@ -23,7 +23,12 @@ from cinder.volume.drivers import datera
 from cinder.volume import volume_types
 
 
+DEFAULT_STORAGE_NAME = datera.DEFAULT_STORAGE_NAME
+DEFAULT_VOLUME_NAME = datera.DEFAULT_VOLUME_NAME
+
+
 class DateraVolumeTestCase(test.TestCase):
+
     def setUp(self):
         super(DateraVolumeTestCase, self).setUp()
 
@@ -51,17 +56,7 @@ class DateraVolumeTestCase(test.TestCase):
         self.addCleanup(self.api_patcher.stop)
 
     def test_volume_create_success(self):
-        self.mock_api.return_value = {
-            u'status': u'available',
-            u'name': u'volume-00000001',
-            u'parent': u'00000000-0000-0000-0000-000000000000',
-            u'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
-            u'snapshots': {},
-            u'targets': {},
-            u'num_replicas': u'2',
-            u'sub_type': u'IS_ORIGINAL',
-            u'size': u'1073741824'
-        }
+        self.mock_api.return_value = stub_single_ai
         self.assertIsNone(self.driver.create_volume(self.volume))
 
     def test_volume_create_fails(self):
@@ -74,31 +69,14 @@ class DateraVolumeTestCase(test.TestCase):
 
         def _progress_api_return(mock_api):
             if mock_api.retry_count == 1:
-                return {
-                    u'status': u'unavailable',
-                    u'name': u'test',
-                    u'parent': u'00000000-0000-0000-0000-000000000000',
-                    u'uuid': u'9c1666fe-4f1a-4891-b33d-e710549527fe',
-                    u'snapshots': {},
-                    u'targets': {},
-                    u'num_replicas': u'2',
-                    u'sub_type': u'IS_ORIGINAL',
-                    u'size': u'1073741824'
-                }
+                _bad_vol_ai = stub_single_ai.copy()
+                _bad_vol_ai['storage_instances'][
+                    DEFAULT_STORAGE_NAME]['volumes'][DEFAULT_VOLUME_NAME][
+                        'op_status'] = 'unavailable'
+                return _bad_vol_ai
             else:
                 self.mock_api.retry_count += 1
-                return {
-                    u'status': u'available',
-                    u'name': u'test',
-                    u'parent': u'00000000-0000-0000-0000-000000000000',
-                    u'uuid': u'9c1666fe-4f1a-4891-b33d-e710549527fe',
-                    u'snapshots': {},
-                    u'targets': {},
-                    u'num_replicas': u'2',
-                    u'sub_type': u'IS_ORIGINAL',
-                    u'size': u'1073741824'
-                }
-
+                return stub_single_ai
         self.mock_api.retry_count = 0
         self.mock_api.return_value = _progress_api_return(self.mock_api)
         self.assertEqual(1, self.mock_api.retry_count)
@@ -106,18 +84,7 @@ class DateraVolumeTestCase(test.TestCase):
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_create_volume_with_extra_specs(self, mock_get_type):
-        self.mock_api.return_value = {
-            u'status': u'available',
-            u'name': u'volume-00000001',
-            u'parent': u'00000000-0000-0000-0000-000000000000',
-            u'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
-            u'snapshots': {},
-            u'targets': {},
-            u'num_replicas': u'2',
-            u'sub_type': u'IS_ORIGINAL',
-            u'size': u'1073741824'
-        }
-
+        self.mock_api.return_value = stub_single_ai
         mock_get_type.return_value = {
             'name': u'The Best',
             'qos_specs_id': None,
@@ -140,33 +107,10 @@ class DateraVolumeTestCase(test.TestCase):
             volume_type_id='dffb4a83-b8fb-4c19-9f8c-713bb75db3b1'
         )
 
-        assert_body = {
-            u'max_iops_read': u'2000',
-            'numReplicas': '2',
-            'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
-            'size': '1073741824',
-            u'max_iops_write': u'4000',
-            u'max_iops_total': u'4000',
-            'name': u'volume-00000001'
-        }
-
         self.assertIsNone(self.driver.create_volume(mock_volume))
-        self.mock_api.assert_called_once_with('volumes', 'post',
-                                              body=assert_body)
         self.assertTrue(mock_get_type.called)
 
     def test_create_cloned_volume_success(self):
-        self.mock_api.return_value = {
-            'status': 'available',
-            'uuid': 'c20aba21-6ef6-446b-b374-45733b4883ba',
-            'size': '1073741824',
-            'name': 'volume-00000001',
-            'parent': '7f91abfa-7964-41ed-88fc-207c3a290b4f',
-            'snapshots': {},
-            'targets': {},
-            'numReplicas': '2',
-            'subType': 'IS_CLONE'
-        }
         source_volume = _stub_volume(
             id='7f91abfa-7964-41ed-88fc-207c3a290b4f',
             display_name='foo'
@@ -185,15 +129,6 @@ class DateraVolumeTestCase(test.TestCase):
                           source_volume)
 
     def test_delete_volume_success(self):
-        self.mock_api.return_value = {
-            'uuid': 'c20aba21-6ef6-446b-b374-45733b4883ba',
-            'size': '1073741824',
-            'name': 'volume-00000001',
-            'parent': '00000000-0000-0000-0000-000000000000',
-            'numReplicas': '2',
-            'subType': 'IS_ORIGINAL',
-            'target': None
-        }
         self.assertIsNone(self.driver.delete_volume(self.volume))
 
     def test_delete_volume_not_found(self):
@@ -209,36 +144,38 @@ class DateraVolumeTestCase(test.TestCase):
         self.mock_api.side_effect = self._generate_fake_api_request()
         ctxt = context.get_admin_context()
         expected = {
-            'provider_location': '172.28.121.10:3260 iqn.2013-05.com.daterain'
-                                 'c::01:sn:fc372bc0490b2dbe 0'
-        }
+            'provider_location': '172.28.94.11:3260 iqn.2013-05.com.daterainc'
+                                 ':c20aba21-6ef6-446b-b374-45733b4883ba--ST'
+                                 '--storage-1:01:sn:34e5b20fbadd3abb 0'}
+
         self.assertEqual(expected, self.driver.ensure_export(ctxt,
-                                                             self.volume))
+                                                             self.volume,
+                                                             None))
 
     def test_ensure_export_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
         ctxt = context.get_admin_context()
         self.assertRaises(exception.DateraAPIException,
-                          self.driver.ensure_export, ctxt, self.volume)
+                          self.driver.ensure_export, ctxt, self.volume, None)
 
     def test_create_export_target_does_not_exist_success(self):
         self.mock_api.side_effect = self._generate_fake_api_request(
             targets_exist=False)
         ctxt = context.get_admin_context()
         expected = {
-            'provider_location': '172.28.121.10:3260 iqn.2013-05.com.daterainc'
-                                 '::01:sn:fc372bc0490b2dbe 0'
-        }
+            'provider_location': '172.28.94.11:3260 iqn.2013-05.com.daterainc'
+                                 ':c20aba21-6ef6-446b-b374-45733b4883ba--ST'
+                                 '--storage-1:01:sn:34e5b20fbadd3abb 0'}
 
         self.assertEqual(expected, self.driver.create_export(ctxt,
                                                              self.volume,
-                                                             {}))
+                                                             None))
 
     def test_create_export_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
         ctxt = context.get_admin_context()
         self.assertRaises(exception.DateraAPIException,
-                          self.driver.create_export, ctxt, self.volume, {})
+                          self.driver.create_export, ctxt, self.volume, None)
 
     def test_detach_volume_success(self):
         self.mock_api.return_value = {}
@@ -260,17 +197,6 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertIsNone(self.driver.detach_volume(ctxt, volume))
 
     def test_create_snapshot_success(self):
-        self.mock_api.return_value = {
-            u'status': u'available',
-            u'uuid': u'0bb34f0c-fea4-48e0-bf96-591120ac7e3c',
-            u'parent': u'c20aba21-6ef6-446b-b374-45733b4883ba',
-            u'subType': u'IS_SNAPSHOT',
-            u'snapshots': {},
-            u'targets': {},
-            u'numReplicas': 2,
-            u'size': u'1073741824',
-            u'name': u'snapshot-00000001'
-        }
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
         self.assertIsNone(self.driver.create_snapshot(snapshot))
 
@@ -281,19 +207,11 @@ class DateraVolumeTestCase(test.TestCase):
                           self.driver.create_snapshot, snapshot)
 
     def test_delete_snapshot_success(self):
-        self.mock_api.return_value = {
-            u'uuid': u'0bb34f0c-fea4-48e0-bf96-591120ac7e3c',
-            u'parent': u'c20aba21-6ef6-446b-b374-45733b4883ba',
-            u'subType': u'IS_SNAPSHOT',
-            u'numReplicas': 2,
-            u'size': u'1073741824',
-            u'name': u'snapshot-00000001'
-        }
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
         self.assertIsNone(self.driver.delete_snapshot(snapshot))
 
     def test_delete_snapshot_not_found(self):
-        self.mock_api.side_effect = exception.NotFound
+        self.mock_api.side_effect = [stub_return_snapshots, exception.NotFound]
         snapshot = _stub_snapshot(self.volume['id'])
         self.assertIsNone(self.driver.delete_snapshot(snapshot))
 
@@ -304,18 +222,8 @@ class DateraVolumeTestCase(test.TestCase):
                           self.driver.delete_snapshot, snapshot)
 
     def test_create_volume_from_snapshot_success(self):
-        self.mock_api.return_value = {
-            u'status': u'available',
-            u'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
-            u'parent': u'0bb34f0c-fea4-48e0-bf96-591120ac7e3c',
-            u'snapshots': {},
-            u'targets': {},
-            u'subType': u'IS_ORIGINAL',
-            u'numReplicas': 2,
-            u'size': u'1073741824',
-            u'name': u'volume-00000001'
-        }
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
+        self.mock_api.side_effect = [stub_return_snapshots, None]
         self.assertIsNone(
             self.driver.create_volume_from_snapshot(self.volume, snapshot))
 
@@ -327,14 +235,6 @@ class DateraVolumeTestCase(test.TestCase):
                           snapshot)
 
     def test_extend_volume_success(self):
-        self.mock_api.return_value = {
-            u'uuid': u'c20aba21-6ef6-446b-b374-45733b4883ba',
-            u'parent': u'00000000-0000-0000-0000-000000000000',
-            u'subType': u'IS_ORIGINAL',
-            u'numReplicas': 2,
-            u'size': u'2147483648',
-            u'name': u'volume-00000001'
-        }
         volume = _stub_volume(size=1)
         self.assertIsNone(self.driver.extend_volume(volume, 2))
 
@@ -357,89 +257,165 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertEqual(1, self.mock_api.call_count)
 
     def _generate_fake_api_request(self, targets_exist=True):
-        fake_volume = None
-        if not targets_exist:
-            fake_volume = _stub_datera_volume(targets={})
-        else:
-            fake_volume = _stub_datera_volume()
-
         def _fake_api_request(resource_type, method='get', resource=None,
                               body=None, action=None, sensitive=False):
-            if resource_type == 'volumes' and action is None:
-                return fake_volume
-            elif resource_type == 'volume' and action == 'export':
-                return stub_create_export
-            elif resource_type == 'export_configs':
+            if resource_type.split('/')[-1] == 'storage-1':
                 return stub_get_export
-
+            elif resource_type == 'app_instances':
+                return stub_single_ai
+            elif (resource_type.split('/')[-1] ==
+                    'c20aba21-6ef6-446b-b374-45733b4883ba'):
+                return stub_app_instance[
+                    'c20aba21-6ef6-446b-b374-45733b4883ba']
         return _fake_api_request
 
 
 stub_create_export = {
-    u'_ipColl': [u'172.28.121.10', u'172.28.120.10'],
-    u'active_initiators': [],
-    u'activeServers': [u'4594953e-f97f-e111-ad85-001e6738c0f0'],
-    u'admin_state': u'online',
-    u'atype': u'none',
-    u'creation_type': u'system_explicit',
-    u'endpoint_addrs': [u'172.30.128.2'],
-    u'endpoint_idents': [u'iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe'],
-    u'initiators': [],
-    u'name': u'OS-a8b4d666',
-    u'server_allocation': u'TS_ALLOC_COMPLETED',
-
-    u'servers': [u'4594953e-f97f-e111-ad85-001e6738c0f0'],
-    u'targetIds': {
-        u'4594953e-f97f-e111-ad85-001e6738c0f0': {
-            u'ids': [{
-                u'dev': None,
-                u'id': u'iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe'
+    "_ipColl": ["172.28.121.10", "172.28.120.10"],
+    "acls": {},
+    "activeServers": {"4594953e-f97f-e111-ad85-001e6738c0f0": "1"},
+    "ctype": "TC_BLOCK_ISCSI",
+    "endpointsExt1": {
+        "4594953e-f97f-e111-ad85-001e6738c0f0": {
+            "ipHigh": 0,
+            "ipLow": "192421036",
+            "ipStr": "172.28.120.11",
+            "ipV": 4,
+            "name": "",
+            "network": 24
+        }
+    },
+    "endpointsExt2": {
+        "4594953e-f97f-e111-ad85-001e6738c0f0": {
+            "ipHigh": 0,
+            "ipLow": "192486572",
+            "ipStr": "172.28.121.11",
+            "ipV": 4,
+            "name": "",
+            "network": 24
+        }
+    },
+    "inodes": {"c20aba21-6ef6-446b-b374-45733b4883ba": "1"},
+    "name": "",
+    "networkPort": 0,
+    "serverAllocation": "TS_ALLOC_COMPLETED",
+    "servers": {"4594953e-f97f-e111-ad85-001e6738c0f0": "1"},
+    "targetAllocation": "TS_ALLOC_COMPLETED",
+    "targetIds": {
+        "4594953e-f97f-e111-ad85-001e6738c0f0": {
+            "ids": [{
+                "dev": None,
+                "id": "iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe"
             }]
         }
     },
-
-    u'target_allocation': u'TS_ALLOC_COMPLETED',
-    u'type': u'iscsi',
-    u'uuid': u'7071efd7-9f22-4996-8f68-47e9ab19d0fd',
-    u'volumes': []
+    "typeName": "TargetIscsiConfig",
+    "uuid": "7071efd7-9f22-4996-8f68-47e9ab19d0fd"
 }
 
-stub_get_export = {
-    "uuid": "744e1bd8-d741-4919-86cd-806037d98c8a",
-    "active_initiators": [],
-    "active_servers": [
-        "472764aa-584b-4c1d-a7b7-e50cf7f5518f"
-    ],
-    "endpoint_addrs": [
-        "172.28.121.10",
-        "172.28.120.10"
-    ],
-    "endpoint_idents": [
-        "iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe"
-    ],
-    "initiators": [],
-    "servers": [
-        "472764aa-584b-4c1d-a7b7-e50cf7f5518f"
-    ],
-    "volumes": [
-        "10305aa4-1343-4363-86fe-f49eb421a48c"
-    ],
-    "type": "iscsi",
-    "creation_type": "system_explicit",
-    "server_allocation": "TS_ALLOC_COMPLETED",
-    "admin_state": "online",
-    "target_allocation": "TS_ALLOC_COMPLETED",
-    "atype": "none",
-    "name": "OS-10305aa4",
-    "targetIds": {
-        "472764aa-584b-4c1d-a7b7-e50cf7f5518f": {
-            "ids": [{
-                "dev": "",
-                "id": ("iqn.2013-05.com.daterainc::01:sn:fc372bc0490b2dbe")
-            }]
-        }
+
+stub_app_instance = {
+    "c20aba21-6ef6-446b-b374-45733b4883ba": {
+        "admin_state": "online",
+        "clone_src": {},
+        "create_mode": "openstack",
+        "descr": "",
+        "health": "ok",
+        "name": "c20aba21-6ef6-446b-b374-45733b4883ba",
+        "path": "/app_instances/c20aba21-6ef6-446b-b374-45733b4883ba",
+        "storage_instances": {
+            "storage-1": {
+                "access": {
+                    "ips": [
+                        "172.28.94.11"
+                    ],
+                    "iqn": "iqn.2013-05.com.daterainc:c20aba21-6ef6-446b-"
+                           "b374-45733b4883ba--ST--storage-1:01:sn:"
+                           "34e5b20fbadd3abb",
+                    "path": "/app_instances/c20aba21-6ef6-446b-b374"
+                            "-45733b4883ba/storage_instances/storage-1/access"
+                },
+                "access_control": {
+                    "initiator_groups": [],
+                    "initiators": [],
+                    "path": "/app_instances/c20aba21-6ef6-446b-b374-"
+                            "45733b4883ba/storage_instances/storage-1"
+                            "/access_control"
+                },
+                "access_control_mode": "allow_all",
+                "active_initiators": [],
+                "active_storage_nodes": [
+                    "/storage_nodes/1c4feac4-17c7-478b-8928-c76e8ec80b72"
+                ],
+                "admin_state": "online",
+                "auth": {
+                    "initiator_pswd": "",
+                    "initiator_user_name": "",
+                    "path": "/app_instances/c20aba21-6ef6-446b-b374-"
+                            "45733b4883ba/storage_instances/storage-1/auth",
+                    "target_pswd": "",
+                    "target_user_name": "",
+                    "type": "none"
+                },
+                "creation_type": "user",
+                "descr": "c20aba21-6ef6-446b-b374-45733b4883ba__ST__storage-1",
+                "name": "storage-1",
+                "path": "/app_instances/c20aba21-6ef6-446b-b374-"
+                        "45733b4883ba/storage_instances/storage-1",
+                "uuid": "b9897b84-149f-43c7-b19c-27d6af8fa815",
+                "volumes": {
+                    "volume-1": {
+                        "capacity_in_use": 0,
+                        "name": "volume-1",
+                        "op_state": "available",
+                        "path": "/app_instances/c20aba21-6ef6-446b-b374-"
+                                "45733b4883ba/storage_instances/storage-1"
+                                "/volumes/volume-1",
+                        "replica_count": 3,
+                        "size": 500,
+                        "snapshot_policies": {},
+                        "snapshots": {
+                            "1445384931.322468627": {
+                                "op_state": "available",
+                                "path": "/app_instances/c20aba21-6ef6-446b"
+                                        "-b374-45733b4883ba/storage_instances"
+                                        "/storage-1/volumes/volume-1/snapshots"
+                                        "/1445384931.322468627",
+                                "uuid": "0bb34f0c-fea4-48e0-bf96-591120ac7e3c"
+                            }
+                        },
+                        "uuid": "c20aba21-6ef6-446b-b374-45733b4883ba"
+                    }
+                }
+            }
+        },
+        "uuid": "c20aba21-6ef6-446b-b374-45733b4883ba"
     }
 }
+
+
+stub_get_export = stub_app_instance[
+    'c20aba21-6ef6-446b-b374-45733b4883ba']['storage_instances']['storage-1']
+
+stub_single_ai = stub_app_instance['c20aba21-6ef6-446b-b374-45733b4883ba']
+
+stub_return_snapshots = \
+    {
+        "1446076293.118600738": {
+            "op_state": "available",
+            "path": "/app_instances/c20aba21-6ef6-446b-b374-45733b4883ba"
+            "/storage_instances/storage-1/volumes/volume-1/snapshots/"
+            "1446076293.118600738",
+            "uuid": "0bb34f0c-fea4-48e0-bf96-591120ac7e3c"
+        },
+        "1446076384.00607846": {
+            "op_state": "available",
+            "path": "/app_instances/c20aba21-6ef6-446b-b374-45733b4883ba"
+            "/storage_instances/storage-1/volumes/volume-1/snapshots/"
+            "1446076384.00607846",
+            "uuid": "25b4b959-c30a-45f2-a90c-84a40f34f0a1"
+        }
+    }
 
 
 def _stub_datera_volume(*args, **kwargs):
