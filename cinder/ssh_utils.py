@@ -171,8 +171,7 @@ class SSHPool(pools.Pool):
     def remove(self, ssh):
         """Close an ssh client and remove it from free_items."""
         ssh.close()
-        ssh = None
         if ssh in self.free_items:
-            self.free_items.pop(ssh)
-        if self.current_size > 0:
-            self.current_size -= 1
+            self.free_items.remove(ssh)
+            if self.current_size > 0:
+                self.current_size -= 1
