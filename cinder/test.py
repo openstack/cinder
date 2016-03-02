@@ -188,6 +188,14 @@ class TestCase(testtools.TestCase):
         self.useFixture(self.messaging_conf)
         rpc.init(CONF)
 
+        # NOTE(geguileo): This is required because _determine_obj_version_cap
+        # and _determine_rpc_version_cap functions in cinder.rpc.RPCAPI cache
+        # versions in LAST_RPC_VERSIONS and LAST_OBJ_VERSIONS so we may have
+        # weird interactions between tests if we don't clear them before each
+        # test.
+        rpc.LAST_OBJ_VERSIONS = {}
+        rpc.LAST_RPC_VERSIONS = {}
+
         conf_fixture.set_defaults(CONF)
         CONF([], default_config_files=[])
 
