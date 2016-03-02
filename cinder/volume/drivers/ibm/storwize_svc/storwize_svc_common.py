@@ -1999,8 +1999,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                     'not configured.'))
                     raise
         try:
-            self._ssh_execute(self.sshpool.command,
-                              check_exit_code, attempts)
+            return self._ssh_execute(self.sshpool, command,
+                                     check_exit_code, attempts)
 
         except Exception:
             # Need to check if creating an SSHPool storwize_san_secondary_ip
@@ -2013,8 +2013,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                             self.configuration.storwize_san_secondary_ip)
                 self.sshpool = self._set_up_sshpool(
                     self.configuration.storwize_san_secondary_ip)
-                self._ssh_execute(self.sshpool.command,
-                                  check_exit_code, attempts)
+                return self._ssh_execute(self.sshpool, command,
+                                         check_exit_code, attempts)
             else:
                 LOG.warning(_LW('Unable to execute SSH command. '
                                 'Not able to use '
