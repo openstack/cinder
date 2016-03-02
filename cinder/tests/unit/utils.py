@@ -25,6 +25,7 @@ from cinder import context
 from cinder import db
 from cinder import objects
 from cinder.objects import fields
+from cinder.tests.unit import fake_constants as fake
 
 
 def get_test_admin_context():
@@ -103,8 +104,8 @@ def create_snapshot(ctxt,
     vol = db.volume_get(ctxt, volume_id)
     snap = objects.Snapshot(ctxt)
     snap.volume_id = volume_id
-    snap.user_id = ctxt.user_id or 'fake_user_id'
-    snap.project_id = ctxt.project_id or 'fake_project_id'
+    snap.user_id = ctxt.user_id or fake.user_id
+    snap.project_id = ctxt.project_id or fake.project_id
     snap.status = status
     snap.volume_size = vol['size']
     snap.display_name = display_name
@@ -128,8 +129,8 @@ def create_consistencygroup(ctxt,
 
     cg = objects.ConsistencyGroup(ctxt)
     cg.host = host
-    cg.user_id = ctxt.user_id or 'fake_user_id'
-    cg.project_id = ctxt.project_id or 'fake_project_id'
+    cg.user_id = ctxt.user_id or fake.user_id
+    cg.project_id = ctxt.project_id or fake.project_id
     cg.status = status
     cg.name = name
     cg.description = description
@@ -153,8 +154,8 @@ def create_cgsnapshot(ctxt,
                       **kwargs):
     """Create a cgsnapshot object in the DB."""
     cgsnap = objects.CGSnapshot(ctxt)
-    cgsnap.user_id = ctxt.user_id or 'fake_user_id'
-    cgsnap.project_id = ctxt.project_id or 'fake_project_id'
+    cgsnap.user_id = ctxt.user_id or fake.user_id
+    cgsnap.project_id = ctxt.project_id or fake.project_id
     cgsnap.status = status
     cgsnap.name = name
     cgsnap.description = description
