@@ -29,6 +29,7 @@ from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
 from cinder import test
 from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
 
@@ -287,7 +288,7 @@ class SchedulerManagerTestCase(test.TestCase):
 
             ex = exception.CinderException('test')
             mock_cg.side_effect = ex
-            group_id = '1'
+            group_id = fake.consistency_group_id
             self.assertRaises(exception.CinderException,
                               self.manager.create_consistencygroup,
                               self.context,
@@ -323,7 +324,7 @@ class SchedulerTestCase(test.TestCase):
     def setUp(self):
         super(SchedulerTestCase, self).setUp()
         self.driver = self.driver_cls()
-        self.context = context.RequestContext('fake_user', 'fake_project')
+        self.context = context.RequestContext(fake.user_id, fake.project_id)
         self.topic = 'fake_topic'
 
     @mock.patch('cinder.scheduler.driver.Scheduler.'
@@ -366,7 +367,7 @@ class SchedulerDriverModuleTestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerDriverModuleTestCase, self).setUp()
-        self.context = context.RequestContext('fake_user', 'fake_project')
+        self.context = context.RequestContext(fake.user_id, fake.project_id)
 
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')

@@ -25,6 +25,7 @@ from cinder import db
 from cinder import exception
 from cinder.scheduler import filters
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit import utils
 
@@ -34,7 +35,7 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext('fake', 'fake')
+        self.context = context.RequestContext(fake.user_id, fake.project_id)
         # This has a side effect of testing 'get_filter_classes'
         # when specifying a method (in this case, our standard filters)
         filter_handler = filters.HostFilterHandler('cinder.scheduler.filters')
