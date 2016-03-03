@@ -210,7 +210,7 @@ class VHDUtils(object):
                    {'func_name': func_name,
                     'error_code': ret_val,
                     'error_message': error_message})
-            LOG.exception(err)
+            LOG.error(err)
             raise exception.VolumeBackendAPIException(err)
 
     @staticmethod
