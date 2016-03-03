@@ -274,9 +274,11 @@ class BackupsController(wsgi.Controller):
                                                 volume_id, container,
                                                 incremental, None, force,
                                                 snapshot_id)
-        except exception.InvalidVolume as error:
+        except (exception.InvalidVolume,
+                exception.InvalidSnapshot) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.VolumeNotFound as error:
+        except (exception.VolumeNotFound,
+                exception.SnapshotNotFound) as error:
             raise exc.HTTPNotFound(explanation=error.msg)
         except exception.ServiceNotFound as error:
             raise exc.HTTPInternalServerError(explanation=error.msg)
