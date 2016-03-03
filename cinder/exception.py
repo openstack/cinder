@@ -368,7 +368,14 @@ class ImageNotFound(NotFound):
 
 
 class ServiceNotFound(NotFound):
-    message = _("Service %(service_id)s could not be found.")
+
+    def __init__(self, message=None, **kwargs):
+        if kwargs.get('host', None):
+            self.message = _("Service %(service_id)s could not be "
+                             "found on host %(host)s.")
+        else:
+            self.message = _("Service %(service_id)s could not be found.")
+        super(ServiceNotFound, self).__init__(None, **kwargs)
 
 
 class ServiceTooOld(Invalid):
@@ -385,10 +392,6 @@ class SchedulerHostFilterNotFound(NotFound):
 
 class SchedulerHostWeigherNotFound(NotFound):
     message = _("Scheduler Host Weigher %(weigher_name)s could not be found.")
-
-
-class HostBinaryNotFound(NotFound):
-    message = _("Could not find binary %(binary)s on host %(host)s.")
 
 
 class InvalidReservationExpiration(Invalid):

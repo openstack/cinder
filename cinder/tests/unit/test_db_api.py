@@ -240,7 +240,7 @@ class DBAPIServiceTestCase(BaseTest):
         self._assertEqualObjects(services[1], service2)
 
     def test_service_get_by_args_not_found_exception(self):
-        self.assertRaises(exception.HostBinaryNotFound,
+        self.assertRaises(exception.ServiceNotFound,
                           db.service_get_by_args,
                           self.ctxt, 'non-exists-host', 'a')
 
@@ -282,7 +282,7 @@ class DBAPIServiceTestCase(BaseTest):
         service2 = db.service_get_by_args(self.ctxt, 'HOST', 'a')
         self._assertEqualObjects(services[1], service2)
 
-        self.assertRaises(exception.HostBinaryNotFound,
+        self.assertRaises(exception.ServiceNotFound,
                           db.service_get_by_args,
                           self.ctxt, 'Host', 'a')
 
