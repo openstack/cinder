@@ -197,6 +197,7 @@ class BarbicanKeyManager(key_mgr.KeyManager):
                                                     payload_content_encoding,
                                                     algorithm,
                                                     bit_length,
+                                                    None,
                                                     mode,
                                                     expiration)
             secret_ref = secret.store()

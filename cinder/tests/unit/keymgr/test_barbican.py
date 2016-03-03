@@ -127,6 +127,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
             'base64',
             original_secret_metadata.algorithm,
             original_secret_metadata.bit_length,
+            None,
             original_secret_metadata.mode,
             original_secret_metadata.expiration)
         self.create.return_value.store.assert_called_once_with()
@@ -209,7 +210,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
                                             b'AQKgsw==',
                                             'application/octet-stream',
                                             'base64',
-                                            'AES', 32, 'CBC',
+                                            'AES', 32, None, 'CBC',
                                             None)
         self.assertEqual(self.key_id, returned_uuid)
 
@@ -226,7 +227,7 @@ class BarbicanKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
                                             secret_key_text,
                                             'text/plain',
                                             None,
-                                            'AES', 256, 'CBC',
+                                            'AES', 256, None, 'CBC',
                                             None)
         self.create.return_value.store.assert_called_once_with()
 
