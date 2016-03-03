@@ -84,7 +84,7 @@ def _create_facade_lazily():
             # which requires db.sqlalchemy.api, which requires service which
             # requires objects.base
             CONF.import_group("profiler", "cinder.service")
-            if CONF.profiler.profiler_enabled:
+            if CONF.profiler.enabled:
                 if CONF.profiler.trace_sqlalchemy:
                     osprofiler_sqlalchemy.add_tracing(sqlalchemy,
                                                       _FACADE.get_engine(),
