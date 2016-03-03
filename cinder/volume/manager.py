@@ -1743,7 +1743,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         try:
             attachments = volume.volume_attachment
             if not attachments:
+                # Pre- and post-copy driver-specific actions
+                self.driver.before_volume_copy(ctxt, volume, new_volume,
+                                               remote='dest')
                 self._copy_volume_data(ctxt, volume, new_volume, remote='dest')
+                self.driver.after_volume_copy(ctxt, volume, new_volume,
+                                              remote='dest')
+
                 # The above call is synchronous so we complete the migration
                 self.migrate_volume_completion(ctxt, volume.id,
                                                new_volume.id,

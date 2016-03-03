@@ -74,16 +74,6 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
         """Get volume stats."""
         return self.common.get_volume_stats(refresh)
 
-    def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
-        """Copy data from src_vol to dest_vol.
-
-        Call copy_volume_data() of super class and
-        carry out original postprocessing.
-        """
-        super(HPEXPFCDriver, self).copy_volume_data(
-            context, src_vol, dest_vol, remote)
-        self.common.copy_volume_data(context, src_vol, dest_vol, remote)
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume.
 
@@ -94,6 +84,14 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
             context, volume, image_service, image_id)
         self.common.copy_image_to_volume(
             context, volume, image_service, image_id)
+
+    def after_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions after copyvolume data.
+
+        This method will be called after _copy_volume_data during volume
+        migration
+        """
+        self.common.copy_volume_data(context, src_vol, dest_vol, remote)
 
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume.

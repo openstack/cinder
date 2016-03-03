@@ -482,12 +482,6 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
     def remove_export(self, context, volume):
         pass
 
-    def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
-        self.do_setup_status.wait()
-        super(HBSDFCDriver, self).copy_volume_data(context, src_vol,
-                                                   dest_vol, remote)
-        self.discard_zero_page(dest_vol)
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         self.do_setup_status.wait()
         super(HBSDFCDriver, self).copy_image_to_volume(context, volume,
@@ -504,6 +498,22 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         super(HBSDFCDriver, self).copy_volume_to_image(context, volume,
                                                        image_service,
                                                        image_meta)
+
+    def before_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions before copyvolume data.
+
+        This method will be called before _copy_volume_data during volume
+        migration
+        """
+        self.do_setup_status.wait()
+
+    def after_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions after copyvolume data.
+
+        This method will be called after _copy_volume_data during volume
+        migration
+        """
+        self.discard_zero_page(dest_vol)
 
     def restore_backup(self, context, backup, volume, backup_service):
         self.do_setup_status.wait()

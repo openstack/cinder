@@ -32,7 +32,6 @@ from cinder import objects
 from cinder import utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import throttling
-from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -736,77 +735,6 @@ class BaseVD(object):
             data["pools"].append(single_pool)
         self._stats = data
 
-    def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
-        """Copy data from src_vol to dest_vol."""
-        LOG.debug('copy_data_between_volumes %(src)s -> %(dest)s.', {
-            'src': src_vol['name'], 'dest': dest_vol['name']})
-
-        use_multipath = self.configuration.use_multipath_for_image_xfer
-        enforce_multipath = self.configuration.enforce_multipath_for_image_xfer
-        properties = utils.brick_get_connector_properties(use_multipath,
-                                                          enforce_multipath)
-        dest_remote = True if remote in ['dest', 'both'] else False
-        dest_orig_status = dest_vol['status']
-        try:
-            dest_attach_info, dest_vol = self._attach_volume(
-                context,
-                dest_vol,
-                properties,
-                remote=dest_remote)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to attach volume %(vol)s"),
-                          {'vol': dest_vol['id']})
-                self.db.volume_update(context, dest_vol['id'],
-                                      {'status': dest_orig_status})
-
-        src_remote = True if remote in ['src', 'both'] else False
-        src_orig_status = src_vol['status']
-        try:
-            src_attach_info, src_vol = self._attach_volume(context,
-                                                           src_vol,
-                                                           properties,
-                                                           remote=src_remote)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to attach volume %(vol)s"),
-                          {'vol': src_vol['id']})
-                self.db.volume_update(context, src_vol['id'],
-                                      {'status': src_orig_status})
-                self._detach_volume(context, dest_attach_info, dest_vol,
-                                    properties, force=True, remote=dest_remote)
-
-        # Check the backend capabilities of migration destination host.
-        rpcapi = volume_rpcapi.VolumeAPI()
-        capabilities = rpcapi.get_capabilities(context, dest_vol['host'],
-                                               False)
-        sparse_copy_volume = bool(capabilities and
-                                  capabilities.get('sparse_copy_volume',
-                                                   False))
-
-        copy_error = True
-        try:
-            size_in_mb = int(src_vol['size']) * 1024    # vol size is in GB
-            volume_utils.copy_volume(
-                src_attach_info['device']['path'],
-                dest_attach_info['device']['path'],
-                size_in_mb,
-                self.configuration.volume_dd_blocksize,
-                throttle=self._throttle,
-                sparse=sparse_copy_volume)
-            copy_error = False
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to copy volume %(src)s to %(dest)s."),
-                          {'src': src_vol['id'], 'dest': dest_vol['id']})
-        finally:
-            self._detach_volume(context, dest_attach_info, dest_vol,
-                                properties, force=copy_error,
-                                remote=dest_remote)
-            self._detach_volume(context, src_attach_info, src_vol,
-                                properties, force=copy_error,
-                                remote=src_remote)
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug('copy_image_to_volume %s.', volume['name'])
@@ -844,6 +772,22 @@ class BaseVD(object):
                                       attach_info['device']['path'])
         finally:
             self._detach_volume(context, attach_info, volume, properties)
+
+    def before_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions before copyvolume data.
+
+        This method will be called before _copy_volume_data during volume
+        migration
+        """
+        pass
+
+    def after_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions after copyvolume data.
+
+        This method will be called after _copy_volume_data during volume
+        migration
+        """
+        pass
 
     def get_filter_function(self):
         """Get filter_function string.

@@ -567,38 +567,6 @@ class HPEXPFCDriverTest(test.TestCase):
         rc = self.driver.get_volume_stats(True)
         self.assertEqual({}, rc)
 
-    @mock.patch.object(driver.FibreChannelDriver, 'copy_volume_data')
-    def test_copy_volume_data(self, arg1):
-        """Test copy_volume_data."""
-        volume = fake_volume.fake_db_volume(**self._VOLUME)
-        rc_vol = self.driver.create_volume(volume)
-        volume['provider_location'] = rc_vol['provider_location']
-
-        volume2 = fake_volume.fake_db_volume(**self._VOLUME2)
-        rc_vol2 = self.driver.create_volume(volume2)
-        volume2['provider_location'] = rc_vol2['provider_location']
-
-        self.driver.copy_volume_data(None, volume, volume2, None)
-
-        arg1.assert_called_with(None, volume, volume2, None)
-
-    @mock.patch.object(driver.FibreChannelDriver, 'copy_volume_data',
-                       side_effect=exception.CinderException)
-    def test_copy_volume_data_error(self, arg1):
-        """Test copy_volume_data is error."""
-        volume = fake_volume.fake_db_volume(**self._VOLUME)
-        rc_vol = self.driver.create_volume(volume)
-        volume['provider_location'] = rc_vol['provider_location']
-
-        volume2 = fake_volume.fake_db_volume(**self._VOLUME2)
-        volume2['provider_location'] = '2'
-
-        self.assertRaises(exception.CinderException,
-                          self.driver.copy_volume_data,
-                          None, volume, volume2, None)
-
-        arg1.assert_called_with(None, volume, volume2, None)
-
     @mock.patch.object(driver.FibreChannelDriver, 'copy_image_to_volume')
     def test_copy_image_to_volume(self, arg1):
         """Test copy_image_to_volume."""
