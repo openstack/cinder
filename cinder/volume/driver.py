@@ -1367,6 +1367,8 @@ class BaseVD(object):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': 'creating',
+            'attach_status': 'detached',
+            'availability_zone': volume.availability_zone,
         }
         temp_vol_ref = self.db.volume_create(context, temp_volume)
         try:
