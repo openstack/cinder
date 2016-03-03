@@ -62,7 +62,8 @@ class ChunkedBackupDriver(driver.BackupDriver):
        the backed up cinder volume exceeds the size of a backup repository
        "chunk."
 
-       Provides abstract methods to be implmented in concrete chunking drivers.
+       Provides abstract methods to be implemented in concrete chunking
+       drivers.
     """
 
     DRIVER_VERSION = '1.0.0'
