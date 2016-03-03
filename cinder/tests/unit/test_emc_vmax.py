@@ -786,6 +786,8 @@ class FakeEcomConnection(object):
             result = self._enum_repgroups()
         elif ResultClass == 'Symm_FCSCSIProtocolEndpoint':
             result = self._enum_fcscsiendpoint()
+        elif ResultClass == 'EMC_FCSCSIProtocolEndpoint':
+            result = self._enum_fcscsiendpoint()
         elif ResultClass == 'Symm_SRPStoragePool':
             result = self._enum_srpstoragepool()
         elif ResultClass == 'Symm_StoragePoolCapabilities':
@@ -7609,3 +7611,43 @@ class EMCVMAXFCTest(test.TestCase):
         mvInstances = self.driver._get_common_masking_views(
             portGroupInstanceName, initiatorGroupInstanceName)
         self.assertTrue(len(mvInstances) == 0)
+
+
+class EMCVMAXUtilsTest(test.TestCase):
+    def setUp(self):
+
+        self.data = EMCVMAXCommonData()
+        super(EMCVMAXUtilsTest, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'UtilsTests'
+        configuration.config_group = 'UtilsTests'
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+        self.driver.utils = emc_vmax_utils.EMCVMAXUtils(object)
+
+    def test_get_target_endpoints(self):
+        conn = FakeEcomConnection()
+        hardwareid = 123456789012345
+        result = self.driver.utils.get_target_endpoints(conn, hardwareid)
+        self.assertEqual(
+            ([{'Name': '5000090000000000'}]), result)
+
+    def test_get_protocol_controller(self):
+        conn = FakeEcomConnection()
+        hardwareid = 123456789012345
+        result = self.driver.utils.get_protocol_controller(conn, hardwareid)
+        self.assertEqual(
+            ({'CreationClassName': 'Symm_LunMaskingView',
+              'ElementName': 'OS-fakehost-gold-I-MV'}), result)
+
+    def test_get_protocol_controller_exception(self):
+        conn = FakeEcomConnection()
+        conn.AssociatorNames = mock.Mock(return_value=[])
+        hardwareid = 123456789012345
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            self.driver.utils.get_protocol_controller,
+            conn, hardwareid)

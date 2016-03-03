@@ -835,34 +835,6 @@ class EMCVMAXProvision(object):
 
         return rc, job
 
-    def get_target_endpoints(self, conn, storageHardwareService, hardwareId):
-        """Given the hardwareId get the target endpoints.
-
-        :param conn: the connection to the ecom server
-        :param storageHardwareService: the storage HardwareId Service
-        :param hardwareId: the hardware Id
-        :returns: int -- return code
-        :returns: targetEndpoints
-        :raises: VolumeBackendAPIException
-        """
-        startTime = time.time()
-
-        rc, targetEndpoints = conn.InvokeMethod(
-            'EMCGetTargetEndpoints', storageHardwareService,
-            HardwareId=hardwareId)
-
-        if rc != 0:
-            exceptionMessage = (_("Error finding Target WWNs."))
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
-
-        LOG.debug("InvokeMethod EMCGetTargetEndpoints "
-                  "took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(startTime,
-                                                      time.time())})
-
-        return rc, targetEndpoints
-
     def create_consistency_group(
             self, conn, replicationService, consistencyGroupName, extraSpecs):
         """Create a new consistency group.

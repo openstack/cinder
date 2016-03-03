@@ -65,6 +65,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - necessary updates for CG changes (#1534616)
               - Changing PercentSynced to CopyState (bug #1517103)
               - Getting iscsi ip from port in existing masking view
+              - Replacement of EMCGetTargetEndpoints api (bug #1512791)
     """
 
     VERSION = "2.3.0"
