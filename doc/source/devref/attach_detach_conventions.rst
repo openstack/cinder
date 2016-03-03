@@ -1,5 +1,4 @@
 ..
-
       Licensed under the Apache License, Version 2.0 (the "License"); you may
       not use this file except in compliance with the License. You may obtain
       a copy of the License at
@@ -12,6 +11,7 @@
       License for the specific language governing permissions and limitations
       under the License.
 
+=============================
 Volume Attach/Detach workflow
 =============================
 
@@ -25,6 +25,7 @@ Attach/Detach Operations are mulit-part commands
 ================================================
 
 There are three things that happen in the workflow for an attach or detach call.
+
 1. Update the status of the volume in the DB (ie attaching/detaching)
 - For Attach, this is the cinder.volume.api.reserve method
 - For Detach, the analagous call is cinder.volume.api.begin_detaching
