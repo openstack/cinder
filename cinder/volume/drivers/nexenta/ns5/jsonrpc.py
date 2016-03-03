@@ -19,6 +19,8 @@
 .. automodule:: nexenta.jsonrpc
 """
 
+import base64
+import json
 import time
 
 from oslo_log import log as logging
@@ -59,7 +61,8 @@ class NexentaJSONProxy(object):
         return 'NEF proxy: %s' % self.url
 
     def __call__(self, path, data=None):
-        auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
+        auth = base64.b64encode(
+            ('%s:%s' % (self.user, self.password)).encode('utf-8'))[:-1]
         headers = {
             'Content-Type': 'application/json',
             'Authorization': 'Basic %s' % auth
@@ -71,21 +74,15 @@ class NexentaJSONProxy(object):
 
         LOG.debug('Sending JSON to url: %s, data: %s, method: %s',
                   path, data, self.method)
-        if self.method == 'get':
-            resp = requests.get(url, headers=headers)
-        if self.method == 'post':
-            resp = requests.post(url, data=data, headers=headers)
-        if self.method == 'put':
-            resp = requests.put(url, data=data, headers=headers)
-        if self.method == 'delete':
-            resp = requests.delete(url, data=data, headers=headers)
+
+        resp = getattr(requests, self.method)(url, data=data, headers=headers)
 
         if resp.status_code == 201 or (
                 resp.status_code == 200 and not resp.content):
             LOG.debug('Got response: Success')
             return 'Success'
 
-        response = resp.json()
+        response = json.loads(resp.content)
         resp.close()
         if response and resp.status_code == 202:
             url = self.url + response['links'][0]['href']
@@ -97,7 +94,7 @@ class NexentaJSONProxy(object):
                     LOG.debug('Got response: Success')
                     return 'Success'
                 else:
-                    response = resp.json()
+                    response = json.loads(resp.content)
                 resp.close()
         if response.get('code'):
             raise exception.NexentaException(response)
