@@ -1669,6 +1669,13 @@ class API(base.Base):
                         filters[k] = True
                     else:
                         filters[k] = bool(v)
+                elif k == 'display_name':
+                    # Use the raw value of display name as is for the filter
+                    # without passing it through ast.literal_eval(). If the
+                    # display name is a properly quoted string (e.g. '"foo"')
+                    # then literal_eval() strips the quotes (i.e. 'foo'), so
+                    # the filter becomes different from the user input.
+                    continue
                 else:
                     filters[k] = ast.literal_eval(v)
             except (ValueError, SyntaxError):
