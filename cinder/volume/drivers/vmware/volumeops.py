@@ -1145,7 +1145,7 @@ class VMwareVolumeOps(object):
 
     def clone_backing(self, name, backing, snapshot, clone_type, datastore,
                       disk_type=None, host=None, resource_pool=None,
-                      extra_config=None):
+                      extra_config=None, folder=None):
         """Clone backing.
 
         If the clone_type is 'full', then a full clone of the source volume
@@ -1162,6 +1162,7 @@ class VMwareVolumeOps(object):
         :param resource_pool: Target resource pool
         :param extra_config: Key-value pairs to be written to backing's
                              extra-config
+        :param folder: The location of the clone
         """
         LOG.debug("Creating a clone of backing: %(back)s, named: %(name)s, "
                   "clone type: %(type)s from snapshot: %(snap)s on "
@@ -1170,7 +1171,11 @@ class VMwareVolumeOps(object):
                   {'back': backing, 'name': name, 'type': clone_type,
                    'snap': snapshot, 'ds': datastore, 'disk_type': disk_type,
                    'host': host, 'resource_pool': resource_pool})
-        folder = self._get_folder(backing)
+
+        if folder is None:
+            # Use source folder as the location of the clone.
+            folder = self._get_folder(backing)
+
         if clone_type == LINKED_CLONE_TYPE:
             disk_move_type = 'createNewChildDiskBacking'
         else:

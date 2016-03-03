@@ -492,7 +492,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             select_ds_for_volume.assert_called_once_with(volume)
             vops.clone_backing.assert_called_once_with(
                 volume['name'], backing, None, volumeops.FULL_CLONE_TYPE,
-                datastore, disk_type, host, rp)
+                datastore, disk_type=disk_type, host=host, resource_pool=rp,
+                folder=folder)
             delete_tmp_backing.assert_called_once_with(backing)
             vops.update_backing_disk_uuid(clone, volume['id'])
         else:
@@ -1031,7 +1032,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.rename_backing.assert_called_once_with(backing, uuid)
         vops.clone_backing.assert_called_once_with(
             vol['name'], backing, None, volumeops.FULL_CLONE_TYPE,
-            datastore, vmdk.THIN_VMDK_TYPE, host, rp)
+            datastore, disk_type=vmdk.THIN_VMDK_TYPE, host=host,
+            resource_pool=rp, folder=folder)
         vops.update_backing_disk_uuid.assert_called_once_with(clone, vol['id'])
         delete_temp_backing.assert_called_once_with(backing)
         vops.change_backing_profile.assert_called_once_with(clone,
@@ -1223,7 +1225,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         summary = mock.Mock()
         summary.datastore = mock.sentinel.datastore
         select_ds.return_value = (mock.sentinel.host, mock.sentinel.rp,
-                                  mock.ANY, summary)
+                                  mock.sentinel.folder, summary)
 
         disk_type = vmdk.THIN_VMDK_TYPE
         get_disk_type.return_value = disk_type
@@ -1244,7 +1246,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             context, src_uuid, volume, tmp_file_path, backup_size)
         vops.clone_backing.assert_called_once_with(
             volume['name'], src, None, volumeops.FULL_CLONE_TYPE,
-            summary.datastore, disk_type, mock.sentinel.host, mock.sentinel.rp)
+            summary.datastore, disk_type=disk_type, host=mock.sentinel.host,
+            resource_pool=mock.sentinel.rp, folder=mock.sentinel.folder)
         vops.update_backing_disk_uuid.assert_called_once_with(dest,
                                                               volume['id'])
         delete_temp_backing.assert_called_once_with(src)
@@ -1266,7 +1269,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             context, src_uuid, volume, tmp_file_path, backup_size)
         vops.clone_backing.assert_called_once_with(
             dest_uuid, src, None, volumeops.FULL_CLONE_TYPE,
-            summary.datastore, disk_type, mock.sentinel.host, mock.sentinel.rp)
+            summary.datastore, disk_type=disk_type, host=mock.sentinel.host,
+            resource_pool=mock.sentinel.rp, folder=mock.sentinel.folder)
         vops.update_backing_disk_uuid.assert_called_once_with(dest,
                                                               volume['id'])
         exp_rename_calls = [mock.call(backing, tmp_uuid),
@@ -1726,7 +1730,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                     None,
                                                     host=None,
                                                     resource_pool=None,
-                                                    extra_config=extra_config)
+                                                    extra_config=extra_config,
+                                                    folder=None)
         volume_ops.update_backing_disk_uuid.assert_called_once_with(
             clone, fake_volume['id'])
 
@@ -1776,15 +1781,16 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         _select_ds_for_volume.assert_called_with(fake_volume)
         extra_config = {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: fake_volume['id']}
-        volume_ops.clone_backing.assert_called_with(fake_volume['name'],
-                                                    fake_backing,
-                                                    fake_snapshot,
-                                                    volumeops.FULL_CLONE_TYPE,
-                                                    fake_datastore,
-                                                    host=fake_host,
-                                                    resource_pool=
-                                                    fake_resource_pool,
-                                                    extra_config=extra_config)
+        volume_ops.clone_backing.assert_called_with(
+            fake_volume['name'],
+            fake_backing,
+            fake_snapshot,
+            volumeops.FULL_CLONE_TYPE,
+            fake_datastore,
+            host=fake_host,
+            resource_pool=fake_resource_pool,
+            extra_config=extra_config,
+            folder=fake_folder)
         volume_ops.update_backing_disk_uuid.assert_called_once_with(
             clone, fake_volume['id'])
 

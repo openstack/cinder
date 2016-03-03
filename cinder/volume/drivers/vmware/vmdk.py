@@ -938,7 +938,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
             if disk_conversion:
                 # Clone the temporary backing for disk type conversion.
-                (host, rp, _folder, summary) = self._select_ds_for_volume(
+                (host, rp, folder, summary) = self._select_ds_for_volume(
                     volume)
                 datastore = summary.datastore
                 LOG.debug("Cloning temporary backing: %s for disk type "
@@ -948,9 +948,10 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                                      None,
                                                      volumeops.FULL_CLONE_TYPE,
                                                      datastore,
-                                                     disk_type,
-                                                     host,
-                                                     rp)
+                                                     disk_type=disk_type,
+                                                     host=host,
+                                                     resource_pool=rp,
+                                                     folder=folder)
                 self._delete_temp_backing(backing)
                 backing = clone
             self.volumeops.update_backing_disk_uuid(backing, volume['id'])
@@ -1287,6 +1288,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 return False
 
             (host, rp, summary) = best_candidate
+            dc = self.volumeops.get_dc(rp)
+            folder = self._get_volume_group_folder(dc, volume['project_id'])
             new_datastore = summary.datastore
             if datastore.value != new_datastore.value:
                 # Datastore changed; relocate the backing.
@@ -1294,10 +1297,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                           backing)
                 self.volumeops.relocate_backing(
                     backing, new_datastore, rp, host, new_disk_type)
-
-                dc = self.volumeops.get_dc(rp)
-                folder = self._get_volume_group_folder(dc,
-                                                       volume['project_id'])
                 self.volumeops.move_backing_to_folder(backing, folder)
             elif need_disk_type_conversion:
                 # Same datastore, but clone is needed for disk type conversion.
@@ -1313,8 +1312,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
                     new_backing = self.volumeops.clone_backing(
                         volume['name'], backing, None,
-                        volumeops.FULL_CLONE_TYPE, datastore, new_disk_type,
-                        host, rp)
+                        volumeops.FULL_CLONE_TYPE, datastore,
+                        disk_type=new_disk_type, host=host,
+                        resource_pool=rp, folder=folder)
                     self.volumeops.update_backing_disk_uuid(new_backing,
                                                             volume['id'])
                     self._delete_temp_backing(backing)
@@ -1554,13 +1554,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         renamed = False
         try:
             # Find datastore for clone.
-            (host, rp, _folder, summary) = self._select_ds_for_volume(volume)
+            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
 
             disk_type = VMwareVcVmdkDriver._get_disk_type(volume)
             dest = self.volumeops.clone_backing(dest_name, src, None,
                                                 volumeops.FULL_CLONE_TYPE,
-                                                datastore, disk_type, host, rp)
+                                                datastore, disk_type=disk_type,
+                                                host=host, resource_pool=rp,
+                                                folder=folder)
             self.volumeops.update_backing_disk_uuid(dest, volume['id'])
             if new_backing:
                 LOG.debug("Created new backing: %s for restoring backup.",
@@ -1926,15 +1928,17 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         datastore = None
         host = None
         rp = None
+        folder = None
         if not clone_type == volumeops.LINKED_CLONE_TYPE:
             # Pick a datastore where to create the full clone under any host
-            (host, rp, _folder, summary) = self._select_ds_for_volume(volume)
+            (host, rp, folder, summary) = self._select_ds_for_volume(volume)
             datastore = summary.datastore
         extra_config = self._get_extra_config(volume)
         clone = self.volumeops.clone_backing(volume['name'], backing,
                                              snapshot, clone_type, datastore,
                                              host=host, resource_pool=rp,
-                                             extra_config=extra_config)
+                                             extra_config=extra_config,
+                                             folder=folder)
         self.volumeops.update_backing_disk_uuid(clone, volume['id'])
         # If the volume size specified by the user is greater than
         # the size of the source volume, the newly created volume will
