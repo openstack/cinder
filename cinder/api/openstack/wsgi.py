@@ -1060,6 +1060,10 @@ class Resource(wsgi.Application):
         return self._process_stack(request, action, action_args,
                                    content_type, body, accept)
 
+    def _is_legacy_endpoint(self, request):
+        version_str = request.api_version_request.get_string()
+        return '1.0' in version_str or '2.0' in version_str
+
     def _process_stack(self, request, action, action_args,
                        content_type, body, accept):
         """Implement the processing stack."""
@@ -1168,7 +1172,8 @@ class Resource(wsgi.Application):
                     # python 3.x
                     response.headers[hdr] = six.text_type(val)
 
-            if not request.api_version_request.is_null():
+            if (not request.api_version_request.is_null() and
+               not self._is_legacy_endpoint(request)):
                 response.headers[API_VERSION_REQUEST_HEADER] = (
                     VOLUME_SERVICE + ' ' +
                     request.api_version_request.get_string())

@@ -108,8 +108,6 @@ class VersionsControllerTestCase(test.TestCase):
         ids = [v['id'] for v in version_list]
         self.assertEqual({'v1.0'}, set(ids))
 
-        self.check_response(response, version)
-
         self.assertEqual('', version_list[0].get('min_version'))
         self.assertEqual('', version_list[0].get('version'))
 
@@ -125,8 +123,6 @@ class VersionsControllerTestCase(test.TestCase):
 
         ids = [v['id'] for v in version_list]
         self.assertEqual({'v2.0'}, set(ids))
-
-        self.check_response(response, version)
 
         self.assertEqual('', version_list[0].get('min_version'))
         self.assertEqual('', version_list[0].get('version'))
