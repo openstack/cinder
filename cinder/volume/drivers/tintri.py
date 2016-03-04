@@ -57,6 +57,8 @@ tintri_opts = [
     cfg.IntOpt('tintri_image_cache_expiry_days',
                default=30,
                help='Delete unused image snapshots older than mentioned days'),
+    cfg.StrOpt('tintri_image_shares_config',
+               help='Path to image nfs shares file'),
 ]
 
 CONF = cfg.CONF
@@ -75,6 +77,7 @@ class TintriDriver(driver.ManageableVD,
         2.2.0.1 - Mitaka driver
                 -- Retype
                 -- Image cache clean up
+                -- Direct image clone fix
     """
 
     VENDOR = 'Tintri'
@@ -89,14 +92,16 @@ class TintriDriver(driver.ManageableVD,
         self._execute_as_root = True
         self.configuration.append_config_values(tintri_opts)
         self.cache_cleanup = False
+        self._mounted_image_shares = []
 
     def do_setup(self, context):
+        self._image_shares_config = getattr(self.configuration,
+                                            'tintri_image_shares_config')
         super(TintriDriver, self).do_setup(context)
         self._context = context
         self._check_ops(self.REQUIRED_OPTIONS, self.configuration)
         self._hostname = getattr(self.configuration, 'tintri_server_hostname')
-        self._username = getattr(self.configuration, 'tintri_server_username',
-                                 CONF.tintri_server_username)
+        self._username = getattr(self.configuration, 'tintri_server_username')
         self._password = getattr(self.configuration, 'tintri_server_password')
         self._api_version = getattr(self.configuration, 'tintri_api_version',
                                     CONF.tintri_api_version)
@@ -206,14 +211,19 @@ class TintriDriver(driver.ManageableVD,
 
     def _clone_volume_to_volume(self, volume_name, clone_name,
                                 volume_display_name, volume_id,
-                                share=None, image_id=None):
+                                share=None, dst=None, image_id=None):
         """Creates volume snapshot then clones volume."""
-        (host, path) = self._get_export_ip_path(volume_id, share)
+        (__, path) = self._get_export_ip_path(volume_id, share)
         volume_path = '%s/%s' % (path, volume_name)
-        clone_path = '%s/%s-d' % (path, clone_name)
+        if dst:
+            (___, dst_path) = self._get_export_ip_path(None, dst)
+            clone_path = '%s/%s-d' % (dst_path, clone_name)
+        else:
+            clone_path = '%s/%s-d' % (path, clone_name)
         with self._get_client() as c:
             if share and image_id:
-                snapshot_id = self._create_image_snapshot(volume_name, share,
+                snapshot_id = self._create_image_snapshot(volume_name,
+                                                          share,
                                                           image_id,
                                                           volume_display_name)
             else:
@@ -222,7 +232,7 @@ class TintriDriver(driver.ManageableVD,
                     deletion_policy='DELETE_ON_ZERO_CLONE_REFERENCES')
             c.clone_volume(snapshot_id, clone_path)
 
-        self._move_cloned_volume(clone_name, volume_id, share)
+        self._move_cloned_volume(clone_name, volume_id, dst or share)
 
     @utils.synchronized('cache_cleanup')
     def _initiate_image_cache_cleanup(self):
@@ -436,6 +446,11 @@ class TintriDriver(driver.ManageableVD,
         """
         image_name = image_meta['name']
         image_id = image_meta['id']
+        if 'properties' in image_meta:
+            provider_location = image_meta['properties'].get(
+                'provider_location')
+            if provider_location:
+                image_location = (provider_location, None)
         cloned = False
         post_clone = False
         try:
@@ -490,36 +505,45 @@ class TintriDriver(driver.ManageableVD,
         share = self._is_cloneable_share(image_location)
         run_as_root = self._execute_as_root
 
-        if share and self._is_share_vol_compatible(volume, share):
-            LOG.debug('Share is cloneable %s', share)
-            volume['provider_location'] = share
-            (__, ___, img_file) = image_location.rpartition('/')
-            dir_path = self._get_mount_point_for_share(share)
-            img_path = '%s/%s' % (dir_path, img_file)
-            img_info = image_utils.qemu_img_info(img_path,
-                                                 run_as_root=run_as_root)
-            if img_info.file_format == 'raw':
-                LOG.debug('Image is raw %s', image_id)
-                self._clone_volume_to_volume(
-                    img_file, volume['name'], image_name,
-                    volume_id=None, share=share, image_id=image_id)
-                cloned = True
+        dst_share = None
+        for dst in self._mounted_shares:
+            if dst and self._is_share_vol_compatible(volume, dst):
+                dst_share = dst
+                LOG.debug('Image dst share: %s', dst)
+                break
+        if not dst_share:
+            return cloned
+
+        LOG.debug('Share is cloneable %s', dst_share)
+        volume['provider_location'] = dst_share
+        (__, ___, img_file) = image_location.rpartition('/')
+        dir_path = self._get_mount_point_for_share(share)
+        dst_path = self._get_mount_point_for_share(dst_share)
+        img_path = '%s/%s' % (dir_path, img_file)
+        img_info = image_utils.qemu_img_info(img_path,
+                                             run_as_root=run_as_root)
+        if img_info.file_format == 'raw':
+            LOG.debug('Image is raw %s', image_id)
+            self._clone_volume_to_volume(
+                img_file, volume['name'], image_name,
+                volume_id=None, share=share, dst=dst_share, image_id=image_id)
+            cloned = True
+        else:
+            LOG.info(_LI('Image will locally be converted to raw %s'),
+                     image_id)
+            dst = '%s/%s' % (dst_path, volume['name'])
+            image_utils.convert_image(img_path, dst, 'raw',
+                                      run_as_root=run_as_root)
+            data = image_utils.qemu_img_info(dst, run_as_root=run_as_root)
+            if data.file_format != "raw":
+                raise exception.InvalidResults(
+                    _('Converted to raw, but '
+                      'format is now %s') % data.file_format)
             else:
-                LOG.info(_LI('Image will locally be converted to raw %s'),
-                         image_id)
-                dst = '%s/%s' % (dir_path, volume['name'])
-                image_utils.convert_image(img_path, dst, 'raw',
-                                          run_as_root=run_as_root)
-                data = image_utils.qemu_img_info(dst, run_as_root=run_as_root)
-                if data.file_format != "raw":
-                    raise exception.InvalidResults(
-                        _('Converted to raw, but '
-                          'format is now %s') % data.file_format)
-                else:
-                    cloned = True
-                    self._create_image_snapshot(
-                        volume['name'], volume['provider_location'],
-                        image_id, image_name)
+                cloned = True
+                self._create_image_snapshot(
+                    volume['name'], volume['provider_location'],
+                    image_id, image_name)
         return cloned
 
     def _post_clone_image(self, volume):
@@ -577,7 +601,7 @@ class TintriDriver(driver.ManageableVD,
             if conn:
                 host = conn.split(':')[0]
                 ip = self._resolve_hostname(host)
-                for sh in self._mounted_shares:
+                for sh in self._mounted_shares + self._mounted_image_shares:
                     sh_ip = self._resolve_hostname(sh.split(':')[0])
                     sh_exp = sh.split(':')[1]
                     if sh_ip == ip and sh_exp == dr:
@@ -768,6 +792,24 @@ class TintriDriver(driver.ManageableVD,
         volume types on the same array. This is a no-op for us.
         """
         return True, None
+
+    def _ensure_shares_mounted(self):
+        # Mount image shares, we do not need to store these mounts
+        # in _mounted_shares
+        mounted_image_shares = []
+        if self._image_shares_config:
+            self._load_shares_config(self._image_shares_config)
+            for share in self.shares.keys():
+                try:
+                    self._ensure_share_mounted(share)
+                    mounted_image_shares.append(share)
+                except Exception:
+                    LOG.exception(_LE(
+                        'Exception during mounting.'))
+        self._mounted_image_shares = mounted_image_shares
+
+        # Mount Cinder shares
+        super(TintriDriver, self)._ensure_shares_mounted()
 
 
 class TClient(object):
