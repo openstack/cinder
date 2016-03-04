@@ -41,12 +41,12 @@ LOG = logging.getLogger(__name__)
 
 hypermetro_devices = """{
     "remote_device": {
-        "RestURL": "http://100.115.10.69:8082/deviceManager/rest",
+        "RestURL": "http://192.0.2.69:8082/deviceManager/rest",
         "UserName": "admin",
         "UserPassword": "Admin@storage1",
         "StoragePool": "StoragePool001",
         "domain_name": "hypermetro-domain",
-        "remote_target_ip": "111.111.101.241"
+        "remote_target_ip": "192.0.2.241"
     }
 }
 """
@@ -204,7 +204,7 @@ test_new_replication_type = {
 hypermetro_devices = """
 {
     "remote_device": {
-        "RestURL": "http://100.115.10.69:8082/deviceManager/rest",
+        "RestURL": "http://192.0.2.69:8082/deviceManager/rest",
         "UserName":"admin",
         "UserPassword":"Admin@storage2",
         "StoragePool":"StoragePool001",
@@ -496,13 +496,13 @@ FAKE_GET_ISCSI_INFO_RESPONSE = """
 {
     "data": [{
         "ETHPORTID": "139267",
-        "ID": "iqn.oceanstor:21004846fb8ca15f::22003:111.111.101.244",
+        "ID": "iqn.oceanstor:21004846fb8ca15f::22003:192.0.2.244",
         "TPGT": "8196",
         "TYPE": 249
     },
     {
         "ETHPORTID": "139268",
-        "ID": "iqn.oceanstor:21004846fb8ca15f::22003:111.111.102.244",
+        "ID": "iqn.oceanstor:21004846fb8ca15f::22003:192.0.2.244",
         "TPGT": "8196",
         "TYPE": 249
     }
@@ -525,7 +525,7 @@ FAKE_GET_ETH_INFO_RESPONSE = """
         "MACADDRESS": "00:22:a1:0a:79:57",
         "ETHNEGOTIATE": "-1",
         "ERRORPACKETS": "0",
-        "IPV4ADDR": "192.168.1.2",
+        "IPV4ADDR": "192.0.2.2",
         "IPV6GATEWAY": "",
         "IPV6MASK": "0",
         "OVERFLOWEDPACKETS": "0",
@@ -555,7 +555,7 @@ FAKE_GET_ETH_INFO_RESPONSE = """
         "MACADDRESS": "00:22:a1:0a:79:57",
         "ETHNEGOTIATE": "-1",
         "ERRORPACKETS": "0",
-        "IPV4ADDR": "192.168.1.1",
+        "IPV4ADDR": "192.0.2.1",
         "IPV6GATEWAY": "",
         "IPV6MASK": "0",
         "OVERFLOWEDPACKETS": "0",
@@ -589,12 +589,12 @@ FAKE_GET_ETH_ASSOCIATE_RESPONSE = """
         "code":0
     },
     "data":[{
-        "IPV4ADDR": "192.168.1.1",
+        "IPV4ADDR": "192.0.2.1",
         "HEALTHSTATUS": "1",
         "RUNNINGSTATUS": "10"
     },
     {
-        "IPV4ADDR": "192.168.1.2",
+        "IPV4ADDR": "192.0.2.2",
         "HEALTHSTATUS": "1",
         "RUNNINGSTATUS": "10"
     }
@@ -1757,7 +1757,7 @@ class FakeHuaweiConf(object):
     def update_config_value(self):
         setattr(self.conf, 'volume_backend_name', 'huawei_storage')
         setattr(self.conf, 'san_address',
-                ['http://100.115.10.69:8082/deviceManager/rest/'])
+                ['http://192.0.2.69:8082/deviceManager/rest/'])
         setattr(self.conf, 'san_user', 'admin')
         setattr(self.conf, 'san_password', 'Admin@storage')
         setattr(self.conf, 'san_product', 'V3')
@@ -1774,16 +1774,16 @@ class FakeHuaweiConf(object):
         setattr(self.conf, 'lun_read_cache_policy', '2')
         setattr(self.conf, 'lun_write_cache_policy', '5')
         setattr(self.conf, 'storage_pools', ['OpenStack_Pool'])
-        setattr(self.conf, 'iscsi_default_target_ip', ['100.115.10.68'])
+        setattr(self.conf, 'iscsi_default_target_ip', ['192.0.2.68'])
         setattr(self.conf, 'metro_san_address',
-                ['https://100.97.50.240:8088/deviceManager/rest/'])
+                ['https://192.0.2.240:8088/deviceManager/rest/'])
         setattr(self.conf, 'metro_storage_pools', 'StoragePool001')
         setattr(self.conf, 'metro_san_user', 'admin')
         setattr(self.conf, 'metro_san_password', 'Admin@storage1')
         setattr(self.conf, 'metro_domain_name', 'hypermetro_test')
 
         iscsi_info = {'Name': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
-                      'TargetIP': '192.168.100.2',
+                      'TargetIP': '192.0.2.2',
                       'CHAPinfo': 'mm-user;mm-user@storage',
                       'ALUA': '1',
                       'TargetPortGroup': 'portgroup-test', }
@@ -1792,7 +1792,7 @@ class FakeHuaweiConf(object):
         targets = [{'target_device_id': 'huawei-replica-1',
                     'managed_backend_name': 'ubuntu@huawei2#OpenStack_Pool',
                     'san_address':
-                        'https://100.97.10.69:8088/deviceManager/rest/',
+                        'https://192.0.2.69:8088/deviceManager/rest/',
                     'san_user': 'admin',
                     'san_password': 'Admin@storage1'}]
         setattr(self.conf, 'replication_device', targets)
@@ -1835,7 +1835,7 @@ class FakeClient(rest_client.RestClient):
         pass
 
     def do_call(self, url=False, data=None, method=None, calltimeout=4):
-        url = url.replace('http://100.115.10.69:8082/deviceManager/rest', '')
+        url = url.replace('http://192.0.2.69:8082/deviceManager/rest', '')
         command = url.replace('/210235G7J20000000000/', '')
         data = json.dumps(data) if data else None
 
@@ -1913,11 +1913,11 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.driver.do_setup()
         self.portgroup = 'portgroup-test'
         self.iscsi_iqns = ['iqn.2006-08.com.huawei:oceanstor:21000022a:'
-                           ':20503:192.168.1.1',
+                           ':20503:192.0.2.1',
                            'iqn.2006-08.com.huawei:oceanstor:21000022a:'
-                           ':20500:192.168.1.2']
-        self.target_ips = ['192.168.1.1',
-                           '192.168.1.2']
+                           ':20500:192.0.2.2']
+        self.target_ips = ['192.0.2.1',
+                           '192.0.2.2']
         self.portgroup_id = 11
         self.driver.client.login()
 
@@ -3043,16 +3043,16 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         match_res = {
             'data': [{
                 'TYPE': 249,
-                'ID': '0+iqn.2006-08.com: 210048cee9d: 111.111.111.191,t,0x01'
+                'ID': '0+iqn.2006-08.com: 210048cee9d: 192.0.2.191,t,0x01'
             }, {
                 'TYPE': 249,
-                'ID': '0+iqn.2006-08.com: 210048cee9d: 111.111.111.192,t,0x01'
+                'ID': '0+iqn.2006-08.com: 210048cee9d: 192.0.2.192,t,0x01'
             }],
             'error': {
                 'code': 0
             }
         }
-        ip = '111.111.111.19'
+        ip = '192.0.2.19'
         self.mock_object(rest_client.RestClient, 'call',
                          mock.Mock(return_value=match_res))
         iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
@@ -3550,7 +3550,7 @@ class HuaweiConfTestCase(test.TestCase):
         storage = doc.createElement('Storage')
         config.appendChild(storage)
         url = doc.createElement('RestURL')
-        url_text = doc.createTextNode('http://100.115.10.69:8082/'
+        url_text = doc.createTextNode('http://192.0.2.69:8082/'
                                       'deviceManager/rest/')
         url.appendChild(url_text)
         storage.appendChild(url)
@@ -3609,12 +3609,12 @@ class HuaweiConfTestCase(test.TestCase):
         iscsi = doc.createElement('iSCSI')
         config.appendChild(iscsi)
         defaulttargetip = doc.createElement('DefaultTargetIP')
-        defaulttargetip_text = doc.createTextNode('100.115.10.68')
+        defaulttargetip_text = doc.createTextNode('192.0.2.68')
         defaulttargetip.appendChild(defaulttargetip_text)
         iscsi.appendChild(defaulttargetip)
         initiator = doc.createElement('Initiator')
         initiator.setAttribute('Name', 'iqn.1993-08.debian:01:ec2bff7ac3a3')
-        initiator.setAttribute('TargetIP', '192.168.100.2')
+        initiator.setAttribute('TargetIP', '192.0.2.2')
         initiator.setAttribute('CHAPinfo', 'mm-user;mm-user@storage')
         initiator.setAttribute('ALUA', '1')
         initiator.setAttribute('TargetPortGroup', 'PortGroup001')
