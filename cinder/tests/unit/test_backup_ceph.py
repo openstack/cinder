@@ -104,7 +104,8 @@ class BackupCephTestCase(test.TestCase):
         return db.volume_create(self.ctxt, vol)['id']
 
     def _create_backup_db_entry(self, backupid, volid, size,
-                                userid='user-id', projectid='project-id'):
+                                userid=str(uuid.uuid4()),
+                                projectid=str(uuid.uuid4())):
         backup = {'id': backupid, 'size': size, 'volume_id': volid,
                   'user_id': userid, 'project_id': projectid}
         return db.backup_create(self.ctxt, backup)['id']

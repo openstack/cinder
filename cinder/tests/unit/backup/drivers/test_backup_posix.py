@@ -25,6 +25,7 @@ from six.moves import builtins
 from cinder.backup.drivers import posix
 from cinder import context
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 
 
 FAKE_FILE_SIZE = 52428800
@@ -32,11 +33,10 @@ FAKE_SHA_BLOCK_SIZE_BYTES = 1024
 FAKE_BACKUP_ENABLE_PROGRESS_TIMER = True
 
 FAKE_CONTAINER = 'fake/container'
-FAKE_BACKUP_ID_PART1 = 'de'
-FAKE_BACKUP_ID_PART2 = 'ad'
-FAKE_BACKUP_ID_REST = 'beef-whatever'
-FAKE_BACKUP_ID = (FAKE_BACKUP_ID_PART1 + FAKE_BACKUP_ID_PART2 +
-                  FAKE_BACKUP_ID_REST)
+FAKE_BACKUP_ID = fake.backup_id
+FAKE_BACKUP_ID_PART1 = fake.backup_id[:2]
+FAKE_BACKUP_ID_PART2 = fake.backup_id[2:4]
+FAKE_BACKUP_ID_REST = fake.backup_id[4:]
 FAKE_BACKUP = {'id': FAKE_BACKUP_ID, 'container': None}
 
 UPDATED_CONTAINER_NAME = os.path.join(FAKE_BACKUP_ID_PART1,
