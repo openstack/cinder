@@ -1935,14 +1935,30 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertEqual(
             'OS-fakehost-gold_pool-I-MV', maskingViewDict['maskingViewName'])
 
+    def test_populate_masking_dict_fast_both_exceeding(self):
         # If the length of the FAST policy name is greater than 14 chars and
         # the length of the short host is more than 38 characters
+        extraSpecs = self.populate_masking_dict_setup()
         connector = {'host': 'SHORT_HOST_MORE_THEN THIRTY_EIGHT_CHARACTERS'}
         extraSpecs['storagetype:fastpolicy'] = (
             'GOLD_MORE_THAN_FOURTEEN_CHARACTERS')
         maskingViewDict = self.driver.common._populate_masking_dict(
             self.data.test_volume, connector, extraSpecs)
-        self.assertLessEqual(64, len(maskingViewDict['sgGroupName']))
+        self.assertLessEqual(len(maskingViewDict['sgGroupName']), 64)
+        self.assertLessEqual(len(maskingViewDict['maskingViewName']), 64)
+
+    def test_populate_masking_dict_no_fast_both_exceeding(self):
+        # If the length of the FAST policy name is greater than 14 chars and
+        # the length of the short host is more than 38 characters
+        extraSpecs = self.populate_masking_dict_setup()
+        connector = {'host': 'SHORT_HOST_MORE_THEN THIRTY_EIGHT_CHARACTERS'}
+        extraSpecs['storagetype:pool'] = (
+            'GOLD_POOL_MORE_THAN_SIXTEEN_CHARACTERS')
+        extraSpecs['storagetype:fastpolicy'] = None
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, connector, extraSpecs)
+        self.assertLessEqual(len(maskingViewDict['sgGroupName']), 64)
+        self.assertLessEqual(len(maskingViewDict['maskingViewName']), 64)
 
     def test_filter_list(self):
         portgroupnames = ['pg3', 'pg1', 'pg4', 'pg2']
