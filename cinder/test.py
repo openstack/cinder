@@ -31,6 +31,7 @@ import mock
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+from oslo_log.fixture import logging_error as log_fixture
 from oslo_log import log
 from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
@@ -45,6 +46,7 @@ from cinder import i18n
 from cinder import objects
 from cinder import rpc
 from cinder import service
+from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
 
@@ -174,15 +176,9 @@ class TestCase(testtools.TestCase):
         if environ_enabled('OS_STDERR_CAPTURE'):
             stderr = self.useFixture(fixtures.StringStream('stderr')).stream
             self.useFixture(fixtures.MonkeyPatch('sys.stderr', stderr))
-        if environ_enabled('OS_LOG_CAPTURE'):
-            log_format = '%(levelname)s [%(name)s] %(message)s'
-            if environ_enabled('OS_DEBUG'):
-                level = logging.DEBUG
-            else:
-                level = logging.INFO
-            self.useFixture(fixtures.LoggerFixture(nuke_handlers=False,
-                                                   format=log_format,
-                                                   level=level))
+
+        self.useFixture(log_fixture.get_logging_handle_error_fixture())
+        self.useFixture(cinder_fixtures.StandardLogging())
 
         rpc.add_extra_exmods("cinder.tests.unit")
         self.addCleanup(rpc.clear_extra_exmods)
@@ -290,11 +286,6 @@ class TestCase(testtools.TestCase):
         """Override CONF variables for a test."""
         for k, v in kw.items():
             self.override_config(k, v)
-
-    def log_level(self, level):
-        """Set logging level to the specified value."""
-        log_root = logging.getLogger(None).logger
-        log_root.setLevel(level)
 
     def start_service(self, name, host=None, **kwargs):
         host = host and host or uuid.uuid4().hex
