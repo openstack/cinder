@@ -110,14 +110,23 @@ REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL = 5  # 5 seconds
 REPL_SETTINGS_PROPAGATE_MAX_RETRIES = 36  # 36 * 5 = 180 seconds
 
 
-def log_debug_trace(f):
+def pure_driver_debug_trace(f):
+    """Log the method entrance and exit including active backend name.
+
+    This should only be used on VolumeDriver class methods. It depends on
+    having a 'self' argument that is a PureBaseVolumeDriver.
+    """
     def wrapper(*args, **kwargs):
-        cls_name = args[0].__class__.__name__
+        driver = args[0]  # self
+        cls_name = driver.__class__.__name__
         method_name = "%(cls_name)s.%(method)s" % {"cls_name": cls_name,
                                                    "method": f.__name__}
-        LOG.debug("Enter " + method_name)
+        backend_name = driver._get_current_array()._backend_id
+        LOG.debug("[%(backend_name)s] Enter %(method_name)s" %
+                  {"method_name": method_name, "backend_name": backend_name})
         result = f(*args, **kwargs)
-        LOG.debug("Leave " + method_name)
+        LOG.debug("[%(backend_name)s] Leave %(method_name)s" %
+                  {"method_name": method_name, "backend_name": backend_name})
         return result
 
     return wrapper
@@ -242,7 +251,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         # for san_password or san_private_key, not relevant to our driver.
         pass
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def create_volume(self, volume):
         """Creates a volume."""
         vol_name = self._get_vol_name(volume)
@@ -258,7 +267,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         self._enable_replication_if_needed(current_array, volume)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
         vol_name = self._get_vol_name(volume)
@@ -305,7 +314,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.warning(_LW("Adding Volume to Protection Group "
                                     "failed with message: %s"), err.text)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         vol_name = self._get_vol_name(volume)
@@ -333,7 +342,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             vol_size = vol_size * units.Gi
             array.extend_volume(vol_name, vol_size)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def delete_volume(self, volume):
         """Disconnect all hosts and delete the volume"""
         vol_name = self._get_vol_name(volume)
@@ -356,7 +365,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.warning(_LW("Volume deletion failed with message: %s"),
                                 err.text)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
 
@@ -365,7 +374,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         vol_name, snap_suff = self._get_snap_name(snapshot).split(".")
         current_array.create_snapshot(vol_name, suffix=snap_suff)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
 
@@ -420,14 +429,14 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return result
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
         # Get current array in case we have failed over via replication.
         current_array = self._get_current_array()
         self._disconnect(current_array, volume, connector, **kwargs)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def _disconnect_host(self, array, host_name, vol_name):
         """Return value indicates if host was deleted on array or not"""
         try:
@@ -457,7 +466,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return False
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def get_volume_stats(self, refresh=False):
         """Return the current state of the volume service.
 
@@ -569,7 +578,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return thin_provisioning
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def extend_volume(self, volume, new_size):
         """Extend volume to new_size."""
 
@@ -585,7 +594,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         current_array = self._get_current_array()
         current_array.set_pgroup(pgroup_name, addvollist=[vol_name])
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def create_consistencygroup(self, context, group):
         """Creates a consistencygroup."""
 
@@ -637,7 +646,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         finally:
             self._delete_pgsnapshot(tmp_pgsnap_name)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
@@ -655,7 +664,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         model_update = {'status': 'available'}
         return model_update, return_volumes
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
 
@@ -688,7 +697,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return model_update, volume_updates
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
 
@@ -709,7 +718,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return None, None, None
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
 
@@ -749,7 +758,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.warning(_LW("Unable to delete Protection Group "
                                     "Snapshot: %s"), err.text)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
 
@@ -810,7 +819,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             existing_ref=existing_ref,
             reason=_("Unable to find Purity ref with name=%s") % ref_vol_name)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def manage_existing(self, volume, existing_ref):
         """Brings an existing backend storage object under Cinder management.
 
@@ -838,7 +847,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                    raise_not_exist=True)
         return None
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing.
 
@@ -868,7 +877,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                 {"old_name": old_name, "error": err.text})
         return new_name
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.
 
@@ -1064,7 +1073,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return True, None
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def _disable_replication(self, volume):
         """Disable replication on the given volume."""
 
@@ -1087,7 +1096,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     LOG.error(_LE("Disable replication on volume failed with "
                                   "message: %s"), err.text)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def failover_host(self, context, volumes, secondary_id=None):
         """Failover backend to a secondary array
 
@@ -1192,7 +1201,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                     return False
             # Any unexpected exception to be handled by caller.
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     @utils.retry(exception.PureDriverException,
                  REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL,
                  REPL_SETTINGS_PROPAGATE_MAX_RETRIES)
@@ -1206,7 +1215,7 @@ class PureBaseVolumeDriver(san.SanDriver):
                                                 _('Protection Group not '
                                                   'ready.'))
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     @utils.retry(exception.PureDriverException,
                  REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL,
                  REPL_SETTINGS_PROPAGATE_MAX_RETRIES)
@@ -1221,7 +1230,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     def _get_pgroup_name_on_target(self, source_array_name, pgroup_name):
         return "%s:%s" % (source_array_name, pgroup_name)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def _setup_replicated_pgroups(self, primary, secondaries, pg_name,
                                   replication_interval, retention_policy):
             self._create_protection_group_if_not_exist(
@@ -1282,7 +1291,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             # Start replication on the PG.
             primary.set_pgroup(pg_name, replicate_enabled=True)
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def _generate_replication_retention(self):
         """Generates replication retention settings in Purity compatible format
 
@@ -1304,7 +1313,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         )
         return replication_retention
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def _get_latest_replicated_pg_snap(self,
                                        target_array,
                                        source_array_name,
@@ -1334,7 +1343,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
         return pg_snap
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def _create_protection_group_if_not_exist(self, source_array, pgname):
         try:
             source_array.create_pgroup(pgname)
@@ -1449,7 +1458,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                 return host
         return None
 
-    @log_debug_trace
+    @pure_driver_debug_trace
     def initialize_connection(self, volume, connector, initiator_data=None):
         """Allow connection to connector and return connection info."""
         connection = self._connect(volume, connector, initiator_data)
@@ -1619,7 +1628,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         return [port["wwn"] for port in ports if port["wwn"]]
 
     @fczm_utils.AddFCZone
-    @log_debug_trace
+    @pure_driver_debug_trace
     def initialize_connection(self, volume, connector, initiator_data=None):
         """Allow connection to connector and return connection info."""
         current_array = self._get_current_array()
@@ -1686,7 +1695,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         return init_targ_map
 
     @fczm_utils.RemoveFCZone
-    @log_debug_trace
+    @pure_driver_debug_trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate connection."""
         current_array = self._get_current_array()
