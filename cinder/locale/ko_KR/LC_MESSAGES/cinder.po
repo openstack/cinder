@@ -12,9 +12,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -721,9 +721,6 @@ msgstr "캐시 이름이 None입니다. 키에서 smartcache:cachename을 설정
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr "캐시 볼륨 %(cache_vol)s에 스냅샷 %(cache_snap)s이(가) 없습니다. "
 
-msgid "Can not add FC initiator to host."
-msgstr "호스트에 FC 개시자를 추가할 수 없습니다. "
-
 #, python-format
 msgid "Can not find cache id by cache name %(name)s."
 msgstr "캐시 이름 %(name)s을(를) 사용하여 캐시 id를 찾을 수 없습니다. "
@@ -731,9 +728,6 @@ msgstr "캐시 이름 %(name)s을(를) 사용하여 캐시 id를 찾을 수 없�
 #, python-format
 msgid "Can not find partition id by name %(name)s."
 msgstr "이름 %(name)s을(를) 사용하여 파티션 id를 찾을 수 없습니다. "
-
-msgid "Can not find the portgroup on the array."
-msgstr "배열에서 포트 그룹을 찾을 수 없습니다. "
 
 #, python-format
 msgid "Can not translate %s to integer."
@@ -1295,10 +1289,6 @@ msgid "Could not find a host for volume %(volume_id)s with type %(type_id)s."
 msgstr "유형이 %(type_id)s인 볼륨 %(volume_id)s의 호스트를 찾을 수 없습니다."
 
 #, python-format
-msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr "%(host)s 호스트에서 2진 %(binary)s을(를) 찾을 수 없습니다. "
-
-#, python-format
 msgid "Could not find config at %(path)s"
 msgstr "%(path)s에서 구성을 찾을 수 없음"
 
@@ -1401,6 +1391,12 @@ msgid ""
 "%(err)s)."
 msgstr ""
 "구역 세트 작성 및 활성화에 실패: (구역 세트=%(cfg_name)s 오류=%(err)s)."
+
+#, python-format
+msgid ""
+"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
+"%(err)s)."
+msgstr "구역 세트 작성 및 활성화에 실패: (구역 세트=%(zoneset)s 오류=%(err)s)."
 
 #, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
@@ -1554,9 +1550,6 @@ msgstr "구역 삭제 실패: (명령=%(cmd)s 오류=%(err)s)."
 msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr "일관성 그룹 지원을 위해서는 Dell API 2.1 이상이 필요함"
 
-msgid "Deploy v2 of the Cinder API."
-msgstr "Cinder API의 v2 배치"
-
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource 기능은 관리자만 사용가능"
 
@@ -1590,9 +1583,6 @@ msgstr "%(fun)s에서 예상 열을 찾을 수 없음: %(hdr)s."
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "%(fun)s에서 예상 키 %(key)s을(를) 찾을 수 없음: %(raw)s."
-
-msgid "Disable replication for volume failed."
-msgstr "볼륨에 대한 복제 사용 안함 설정에 실패했습니다. "
 
 msgid "Disabled reason contains invalid characters or is too long"
 msgstr "문자가 올바르지 않거나 너무 긴 이유로 사용되지 않습니다. "
@@ -1667,9 +1657,6 @@ msgstr "hitachi_serial_number 또는 hitachi_unit_name이 필요합니다."
 #, python-format
 msgid "Element Composition Service not found on %(storageSystemName)s."
 msgstr "%(storageSystemName)s에서 요소 컴포지션 서비스를 찾을 수 없습니다. "
-
-msgid "Enable replication for volume failed."
-msgstr "볼륨에 대한 복제 사용 설정에 실패했습니다. "
 
 msgid "Enables QoS."
 msgstr "QoS를 사용으로 설정합니다. "
@@ -1855,13 +1842,6 @@ msgstr "언바운드 볼륨을 작성하는 중 오류가 발생했습니다."
 msgid ""
 "Error Delete Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
 msgstr "볼륨 삭제 오류: %(volumeName)s.  리턴 코드: %(rc)lu.  오류: %(error)s."
-
-#, python-format
-msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s"
-msgstr ""
-"그룹 삭제 중 오류: %(storageGroupName)s. 리턴 코드: %(rc)lu. 오류:%(error)s"
 
 #, python-format
 msgid ""
@@ -2125,6 +2105,10 @@ msgid "Error executing EQL command"
 msgstr "EQL 명령 실행 중 오류 발생 "
 
 #, python-format
+msgid "Error executing command via ssh: %s"
+msgstr "ssh를 통해 명령 실행 중에 오류 발생: %s"
+
+#, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
 msgstr "볼륨 %(vol)s 확장 중 오류 발생: %(err)s."
 
@@ -2139,9 +2123,6 @@ msgstr "%(name)s을(를) 찾는 중에 오류가 발생했습니다. "
 #, python-format
 msgid "Error finding %s."
 msgstr "%s을(를) 찾는 중에 오류가 발생했습니다. "
-
-msgid "Error finding Target WWNs."
-msgstr "대상 WWN을 찾는 중 오류가 발생했습니다. "
 
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
@@ -2451,6 +2432,13 @@ msgstr "볼륨 %(volname)s을(를) 확장하지 못했습니다. "
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "%(err)s(으)로 인해 3PAR(%(url)s)로의 로그인 실패"
+
+msgid "Failed to access active zoning configuration."
+msgstr "활성 구역 지정 구성에 액세스하지 못했습니다. "
+
+#, python-format
+msgid "Failed to access zoneset status:%s"
+msgstr "구역 세트 상태 액세스 실패: %s"
 
 #, python-format
 msgid ""
@@ -2916,6 +2904,9 @@ msgstr "볼륨이 %(volume_id)s인 풀 id를 가져오지 못했습니다. "
 msgid "Failed to get replica info."
 msgstr "복제본 정보를 가져오지 못했습니다. "
 
+msgid "Failed to get show fcns database info."
+msgstr "표시 fcns 데이터베이스 정보를 가져오지 못했습니다. "
+
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "볼륨 %s의 크기 가져오기 실패"
@@ -3188,6 +3179,9 @@ msgstr "일관성 그룹 업데이트 실패: %(cgName)s."
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "볼륨에 대한 메타데이터를 업데이트하지 못함: %(reason)s"
+
+msgid "Failed to update or delete zoning configuration"
+msgstr "구역 지정 구성 업데이트 또는 삭제에 실패"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3479,10 +3473,6 @@ msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
 msgstr "Flexvisor 볼륨 %(id)s에서 그룹 %(vgid)s을(를) 결합하지 못했습니다."
 
 #, python-format
-msgid "Free quota available is %s."
-msgstr "사용 가능한 여유 할당량은 %s입니다. "
-
-#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS가 실행 중이 아닙니다. 상태: %s."
 
@@ -3546,9 +3536,6 @@ msgstr "이름별 파티션 가져오기 오류입니다. "
 
 msgid "Get partition by partition id error."
 msgstr "파티션 id별 파티션 가져오기 오류입니다. "
-
-msgid "Get replication targets failed."
-msgstr "복제 대상 가져오기에 실패했습니다. "
 
 msgid "Get smartcache by cache id error."
 msgstr "캐시 id별 스마트 캐시 가져오기 오류입니다. "
@@ -3667,12 +3654,6 @@ msgstr "ID"
 
 msgid "IP address/hostname of Blockbridge API."
 msgstr "Blockbridge API의 IP 주소/호스트 이름입니다. "
-
-msgid "If False doesn't trace SQL requests."
-msgstr "false인 경우 SQL 요청을 추적하지 않습니다."
-
-msgid "If False fully disable profiling feature."
-msgstr "false인 경우 프로파일링 기능을 전부 사용 안함으로 설정합니다."
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -3984,30 +3965,6 @@ msgid "Invalid snapshot: %(reason)s"
 msgstr "잘못된 스냅샷: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid status to disable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"복제를 사용 안함으로 설정하기 위한 상태가 올바르지 않습니다. 올바른 세부 상태"
-"는 %(valid_states)s입니다. 현재 복제 세부 상태는 %(curr_state)s입니다. "
-
-#, python-format
-msgid ""
-"Invalid status to enable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"복제를 사용으로 설정하기 위한 상태가 올바르지 않습니다. 올바른 세부 상태는 "
-"%(valid_states)s입니다. 현재 복제 세부 상태는 %(curr_state)s입니다. "
-
-#, python-format
-msgid ""
-"Invalid status to failover replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"복제를 장애 복구하기 위한 상태가 올바르지 않습니다. 올바른 세부 상태는 "
-"%(valid_states)s입니다. 현재 복제 세부 상태는 %(curr_state)s입니다. "
-
-#, python-format
 msgid "Invalid status: '%s'"
 msgstr "올바르지 않은 상태: '%s'"
 
@@ -4227,6 +4184,10 @@ msgid "Lun migration error."
 msgstr "Lun 마이그레이션 오류입니다. "
 
 #, python-format
+msgid "Malformed fcns output string: %s"
+msgstr "올바르지 않은 형식의 fcns 출력 문자열: %s"
+
+#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "잘못된 메시지 본문: %(reason)s"
 
@@ -4251,11 +4212,21 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "형식이 틀린 scheduler_hints 속성"
 
 #, python-format
+msgid "Malformed show fcns database string: %s"
+msgstr "올바르지 않은 형식의 표시 fcns 데이터베이스 문자열: %s"
+
+#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "올바르지 않은 형식의 구역 구성: (switch=%(switch)s zone_config="
+"%(zone_config)s)."
+
+#, python-format
+msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
+msgstr ""
+"올바르지 않은 형식의 구역 상태: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 
 msgid "Manage existing get size requires 'id'."
@@ -5172,9 +5143,6 @@ msgstr "%(storageSystemName)s에서 복제 서비스 기능을 찾을 수 없습
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "%(storageSystemName)s에서 복제 서비스를 찾을 수 없습니다. "
 
-msgid "Replication failover for volume failed."
-msgstr "볼륨에 대한 복제 장애 복구에 실패했습니다. "
-
 msgid "Replication is not enabled"
 msgstr "복제가 사용되지 않음"
 
@@ -5580,10 +5548,6 @@ msgstr ""
 
 msgid "Specified logical volume does not exist."
 msgstr "지정된 논리적 볼륨이 존재하지 않습니다. "
-
-#, python-format
-msgid "Specified snapshot group with label %s could not be found."
-msgstr "레이블이 %s인 지정된 스냅샷 그룹을 찾을 수 없습니다. "
 
 msgid "Specify a password or private_key"
 msgstr "비밀번호 또는 private_key 지정"
@@ -7119,6 +7083,10 @@ msgstr "ZeroDivisionError: %s"
 
 msgid "Zone"
 msgstr "영역"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "구역 지정 정책: %s, 인식되지 않음"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."

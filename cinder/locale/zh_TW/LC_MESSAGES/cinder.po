@@ -9,9 +9,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -688,9 +688,6 @@ msgstr "快取名稱為「無」，請在索引鍵中設定 smartcache:cachename
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr "快取磁區 %(cache_vol)s 沒有 Snapshot %(cache_snap)s。"
 
-msgid "Can not add FC initiator to host."
-msgstr "無法將 FC 起始器新增至主機。"
-
 #, python-format
 msgid "Can not find cache id by cache name %(name)s."
 msgstr "依快取名稱 %(name)s 找不到快取 ID。"
@@ -698,9 +695,6 @@ msgstr "依快取名稱 %(name)s 找不到快取 ID。"
 #, python-format
 msgid "Can not find partition id by name %(name)s."
 msgstr "依名稱 %(name)s 找不到分割區 ID。"
-
-msgid "Can not find the portgroup on the array."
-msgstr "找不到陣列上的埠群組。"
 
 #, python-format
 msgid "Can not translate %s to integer."
@@ -1243,10 +1237,6 @@ msgid "Could not find a host for volume %(volume_id)s with type %(type_id)s."
 msgstr "找不到類型為 %(type_id)s 之磁區 %(volume_id)s 的主機。"
 
 #, python-format
-msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr "在主機 %(host)s 上找不到二進位檔 %(binary)s。"
-
-#, python-format
 msgid "Could not find config at %(path)s"
 msgstr "在 %(path)s 處找不到配置"
 
@@ -1345,6 +1335,12 @@ msgid ""
 "Creating and activating zone set failed: (Zone set=%(cfg_name)s error="
 "%(err)s)."
 msgstr "建立及啟動區域集時失敗：（區域集 = %(cfg_name)s 錯誤 = %(err)s）。"
+
+#, python-format
+msgid ""
+"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
+"%(err)s)."
+msgstr "建立及啟動區域集時失敗：（區域集 = %(zoneset)s 錯誤 = %(err)s）。"
 
 #, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
@@ -1488,9 +1484,6 @@ msgstr "刪除區域時失敗：（指令 = %(cmd)s 錯誤 = %(err)s）。"
 msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr "一致性群組支援需要 Dell API 2.1 或更新版本"
 
-msgid "Deploy v2 of the Cinder API."
-msgstr "部署 Cinder API 的第 2 版。"
-
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource 是管理者專用功能"
 
@@ -1523,9 +1516,6 @@ msgstr "在 %(fun)s 中找不到預期的直欄：%(hdr)s。"
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "在 %(fun)s 中找不到預期的索引鍵 %(key)s：%(raw)s。"
-
-msgid "Disable replication for volume failed."
-msgstr "對磁區停用抄寫失敗。"
 
 msgid "Disabled reason contains invalid characters or is too long"
 msgstr "停用原因包含無效的字元，或者太長"
@@ -1599,9 +1589,6 @@ msgstr "需要 hitachi_serial_number 或 hitachi_unit_name。"
 #, python-format
 msgid "Element Composition Service not found on %(storageSystemName)s."
 msgstr "在 %(storageSystemName)s 上找不到「元素組合服務」。"
-
-msgid "Enable replication for volume failed."
-msgstr "對磁區啟用抄寫失敗。"
 
 msgid "Enables QoS."
 msgstr "啟用服務品質。"
@@ -1785,13 +1772,6 @@ msgstr "建立未連結的磁區時發生錯誤。"
 msgid ""
 "Error Delete Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
 msgstr "刪除磁區 %(volumeName)s 時發生錯誤。回覆碼：%(rc)lu。錯誤：%(error)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s"
-msgstr ""
-"刪除群組 %(storageGroupName)s 時發生錯誤。回覆碼：%(rc)lu。錯誤：%(error)s"
 
 #, python-format
 msgid ""
@@ -2044,6 +2024,10 @@ msgid "Error executing EQL command"
 msgstr "執行 EQL 指令時發生錯誤"
 
 #, python-format
+msgid "Error executing command via ssh: %s"
+msgstr "透過 SSH 來執行指令時發生錯誤：%s"
+
+#, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
 msgstr "延伸磁區 %(vol)s 時發生錯誤：%(err)s。"
 
@@ -2058,9 +2042,6 @@ msgstr "尋找 %(name)s 時發生錯誤。"
 #, python-format
 msgid "Error finding %s."
 msgstr "尋找 %s 時發生錯誤。"
-
-msgid "Error finding Target WWNs."
-msgstr "尋找「目標 WWN」時發生錯誤。"
 
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
@@ -2351,6 +2332,13 @@ msgstr "無法延伸磁區 %(volname)s"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "無法登入 3PAR (%(url)s)，原因：%(err)s"
+
+msgid "Failed to access active zoning configuration."
+msgstr "無法存取作用中的分區配置。"
+
+#, python-format
+msgid "Failed to access zoneset status:%s"
+msgstr "無法存取區域集狀態：%s"
 
 #, python-format
 msgid ""
@@ -2800,6 +2788,9 @@ msgstr "無法取得具有磁區 %(volume_id)s 的儲存區 ID。"
 msgid "Failed to get replica info."
 msgstr "無法取得抄本資訊。"
 
+msgid "Failed to get show fcns database info."
+msgstr "無法取得「顯示 fcns」資料庫資訊。"
+
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "無法取得磁區 %s 的大小"
@@ -3048,6 +3039,9 @@ msgstr "無法更新一致性群組：%(cgName)s。"
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "無法更新磁區的 meta 資料：%(reason)s"
+
+msgid "Failed to update or delete zoning configuration"
+msgstr "無法更新或刪除分區配置"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3323,10 +3317,6 @@ msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
 msgstr "Flexvisor 磁區 %(id)s 無法加入群組 %(vgid)s 中。"
 
 #, python-format
-msgid "Free quota available is %s."
-msgstr "可用的配額是 %s。"
-
-#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS 不在執行中，狀態：%s。"
 
@@ -3388,9 +3378,6 @@ msgstr "依名稱取得分割區時發生錯誤。"
 
 msgid "Get partition by partition id error."
 msgstr "依分割區 ID 取得分割區時發生錯誤。"
-
-msgid "Get replication targets failed."
-msgstr "取得抄寫目標失敗。"
 
 msgid "Get smartcache by cache id error."
 msgstr "依快取 ID 取得 smartcache 時發生錯誤。"
@@ -3501,12 +3488,6 @@ msgstr "識別號"
 
 msgid "IP address/hostname of Blockbridge API."
 msgstr "Blockbridge API 的 IP 位址/主機名稱。"
-
-msgid "If False doesn't trace SQL requests."
-msgstr "如果為 False，則將不追蹤 SQL 要求。"
-
-msgid "If False fully disable profiling feature."
-msgstr "如果為 False，則將完全停用側寫功能。"
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -3803,30 +3784,6 @@ msgid "Invalid snapshot: %(reason)s"
 msgstr "無效的 Snapshot：%(reason)s"
 
 #, python-format
-msgid ""
-"Invalid status to disable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"用於停用抄寫的狀態無效。有效的狀態為：%(valid_states)s，現行抄寫狀態為："
-"%(curr_state)s。"
-
-#, python-format
-msgid ""
-"Invalid status to enable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"用於啟用抄寫的狀態無效。有效的狀態為：%(valid_states)s，現行抄寫狀態為："
-"%(curr_state)s。"
-
-#, python-format
-msgid ""
-"Invalid status to failover replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"用於失效接手抄寫的狀態無效。有效的狀態為：%(valid_states)s，現行抄寫狀態為："
-"%(curr_state)s。"
-
-#, python-format
 msgid "Invalid status: '%s'"
 msgstr "無效的狀態：'%s'"
 
@@ -4038,6 +3995,10 @@ msgid "Lun migration error."
 msgstr "Lun 移轉錯誤。"
 
 #, python-format
+msgid "Malformed fcns output string: %s"
+msgstr "形態異常的 fcns 輸出字串：%s"
+
+#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "訊息內文的格式不正確：%(reason)s"
 
@@ -4062,11 +4023,20 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "scheduler_hints 屬性的格式不正確"
 
 #, python-format
+msgid "Malformed show fcns database string: %s"
+msgstr "形態異常的「顯示 fcns」資料庫字串：%s"
+
+#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "格式不正確的區域配置：（交換器 = %(switch)szone_config = %(zone_config)s）。"
+
+#, python-format
+msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
+msgstr ""
+"形態異常的區域狀態：（交換器 = %(switch)s，zone_config = %(zone_config)s）。"
 
 msgid "Manage existing get size requires 'id'."
 msgstr "管理現有取得大小需要 'id'。"
@@ -4934,9 +4904,6 @@ msgstr "在 %(storageSystemName)s 上找不到「抄寫服務功能」。"
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "在 %(storageSystemName)s 上找不到「抄寫服務」。"
 
-msgid "Replication failover for volume failed."
-msgstr "對磁區執行抄寫失效接手失敗。"
-
 msgid "Replication is not enabled"
 msgstr "未啟用抄寫"
 
@@ -5305,10 +5272,6 @@ msgstr "指定要對映至磁區 %(vol)s 的主機位於不受支援的主機群
 
 msgid "Specified logical volume does not exist."
 msgstr "指定的邏輯磁區不存在。"
-
-#, python-format
-msgid "Specified snapshot group with label %s could not be found."
-msgstr "找不到標籤為 %s 的指定 Snapshot 群組。"
 
 msgid "Specify a password or private_key"
 msgstr "指定密碼或 private_key"
@@ -6749,6 +6712,10 @@ msgstr "ZeroDivisionError：%s"
 
 msgid "Zone"
 msgstr "區域"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "分區原則：%s，無法辨識"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."

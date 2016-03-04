@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -125,15 +125,6 @@ msgid ""
 msgstr ""
 "Destekleyici: %(backing)s ismi %(new_name)s'den %(old_name)s'e değişme "
 "başarısız."
-
-msgid ""
-"Client cert verification and datera_api_token are deprecated in the Datera "
-"driver, and will be removed in the Liberty release. Please set the san_login "
-"and san_password in your cinder.conf instead."
-msgstr ""
-"İstemci sertifika doğrulama ve datera_api_token Datera sürücüsünde artık "
-"kullanılmıyor, ve Liberti sürümünde kaldırılacak. Bunun yerine lütfen cinder."
-"conf dosyanızda san_login ve san_password ayarlarını yapın."
 
 #, python-format
 msgid ""
@@ -942,9 +933,6 @@ msgstr "Geçici mantıksal sürücü temizleme işi hala çalıştığından dö
 msgid "See unavailable iSCSI target: %s"
 msgstr "Kullanılamaz iSCSI hedefine bak: %s"
 
-msgid "Service killed that has no database entry"
-msgstr "Servis, hiç veritabanı girdisi olmayanı sonlandırdı."
-
 msgid "Silent failure of target removal detected, retry...."
 msgstr "Hedef silmenin sessizce başarısız olduğu algılandı, tekrar dene..."
 
@@ -981,9 +969,6 @@ msgstr "Anlık görüntü %s zaten silinmiş."
 #, python-format
 msgid "Snapshot still %(status)s Cannot delete snapshot."
 msgstr "Anlık görüntü hala %(status)s Anlık görüntü silinemiyor."
-
-msgid "Snapshot volume not found."
-msgstr "Anlık görüntü mantıksal sürücüsü bulunamadı."
 
 #, python-format
 msgid "Start migration failed. Message: %s"
@@ -1088,14 +1073,6 @@ msgid ""
 msgstr ""
 "Kullanıcının tüm netapp API'lerini kullanmaya erişimi ya da yeterli izni "
 "yok. Şu ek_özellikler başarısız olacak ya da atlanacak: %s"
-
-msgid ""
-"The v1 api is deprecated and will be removed in the Liberty release. You "
-"should set enable_v1_api=false and enable_v2_api=true in your cinder.conf "
-"file."
-msgstr ""
-"v1 api'si artık kullanılmıyor ve Liberty sürümüyle kaldırılacak. cinder.conf "
-"dosyanızda enable_v1_api=false ve enable_v2_api=true ayarını yapmalısınız."
 
 #, python-format
 msgid ""

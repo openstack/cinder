@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1099,10 +1099,6 @@ msgstr ""
 "bulunamadı."
 
 #, python-format
-msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr "%(host)s sunucusunda %(binary)s ikilisi bulunamadı."
-
-#, python-format
 msgid "Could not find config at %(path)s"
 msgstr "%(path)s'deki yapılandırma bulunamadı"
 
@@ -1178,6 +1174,14 @@ msgid ""
 msgstr ""
 "Bölge kümesinin oluşturulması ve etkinleştirilmesi başarısız: (Bölge kümesi="
 "%(cfg_name)s hata=%(err)s)."
+
+#, python-format
+msgid ""
+"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
+"%(err)s)."
+msgstr ""
+"Bölge kümesinin oluşturulup etkinleştirilmesi başarısız: (Bölge kümesi="
+"%(zoneset)s hata=%(err)s)."
 
 #, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
@@ -1293,9 +1297,6 @@ msgstr "Veritabanından mantıksal sürücü siliniyor ve rpc atlanıyor."
 #, python-format
 msgid "Deleting zones failed: (command=%(cmd)s error=%(err)s)."
 msgstr "Bölgelerin silinmesi başarısız: (komut=%(cmd)s hata=%(err)s)."
-
-msgid "Deploy v2 of the Cinder API."
-msgstr "Cinder API v2 sürümünü dağıt."
 
 msgid "Describe-resource is admin only functionality"
 msgstr "Kaynak-tanımla sadece yönetici işlevidir"
@@ -1543,14 +1544,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s"
-msgstr ""
-"Grup Silinirken Hata: %(storageGroupName)s. Dönüş kodu: %(rc)lu.  Hata: "
-"%(error)s"
-
-#, python-format
-msgid ""
 "Error Deleting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
@@ -1762,6 +1755,10 @@ msgid "Error executing EQL command"
 msgstr "EQL komutu yürütülürken hata"
 
 #, python-format
+msgid "Error executing command via ssh: %s"
+msgstr "Ssh ile komut çalıştırmada hata: %s"
+
+#, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
 msgstr "%(vol)s mantıksal sürücüsünün büyütülmesinde hata: %(err)s."
 
@@ -1776,9 +1773,6 @@ msgstr "%(name)s bulunurken hata."
 #, python-format
 msgid "Error finding %s."
 msgstr "%s bulunurken hata."
-
-msgid "Error finding Target WWNs."
-msgstr "Hedef WWN'leri bulmada hata."
 
 #, python-format
 msgid "Error getting domain id from name %(name)s: %(err)s."
@@ -2007,6 +2001,13 @@ msgstr "Mantıksal Sürücü %(volname)s Genişletilemedi"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "3PAR'a giriş başarısız (%(url)s) çünkü %(err)s"
+
+msgid "Failed to access active zoning configuration."
+msgstr "Etkin bölgeleme yapılandırmasına erişim başarısız."
+
+#, python-format
+msgid "Failed to access zoneset status:%s"
+msgstr "Bölge kümesi durumuna erişim başarısız: %s"
 
 #, python-format
 msgid ""
@@ -2443,6 +2444,9 @@ msgstr "%(volume_id)s mantıksal sürücüsüne sahip havuz kimliği alınamadı
 msgid "Failed to get replica info."
 msgstr "Kopya bilgisi alma başarısız."
 
+msgid "Failed to get show fcns database info."
+msgstr "Fcns veri tabanı bilgisi göstermeyi alma başarısız."
+
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "%s mantıksal sürücü boyutu alınamadı"
@@ -2671,6 +2675,9 @@ msgstr ""
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "Mantıksal sürücü için metadata güncellenemedi: %(reason)s"
+
+msgid "Failed to update or delete zoning configuration"
+msgstr "Bölgeleme yapılandırması güncellemesi ya da silinmesi başarısız"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3066,12 +3073,6 @@ msgstr "KİMLİK"
 
 msgid "IP address/hostname of Blockbridge API."
 msgstr "Blockbridge API IP adresi/bilgisayar adı."
-
-msgid "If False doesn't trace SQL requests."
-msgstr "Eğer Yanlışsa SQL istekleri izlenmez."
-
-msgid "If False fully disable profiling feature."
-msgstr "False ise profilleme özelliğini tamamen kapat."
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -3550,6 +3551,10 @@ msgstr ""
 "seçeneğinin arama servisinin somut bir uygulamasını belirtmesi gerekir."
 
 #, python-format
+msgid "Malformed fcns output string: %s"
+msgstr "Bozuk fcns çıktı karakter dizisi: %s"
+
+#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "Hatalı biçimlendirilmiş mesaj gövdesi: %(reason)s"
 
@@ -3571,11 +3576,19 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "Bozuk scheduler_hints özelliği"
 
 #, python-format
+msgid "Malformed show fcns database string: %s"
+msgstr "Bozuk fcns veri tabanı gösterme karakter dizisi: %s"
+
+#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "Bozuk bölge yapılandırması: (anahtar=%(switch)s zone_config=%(zone_config)s)."
+
+#, python-format
+msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
+msgstr "Bozuk bölge durumu: (anahtar=%(switch)s zone_config=%(zone_config)s)."
 
 msgid "Manage existing get size requires 'id'."
 msgstr "Mevcut alma boyutunu yönetme 'id' gerektirir."
@@ -4739,10 +4752,6 @@ msgstr ""
 
 msgid "Specified logical volume does not exist."
 msgstr "Belirtilen mantıksal sürücü mevcut değil."
-
-#, python-format
-msgid "Specified snapshot group with label %s could not be found."
-msgstr "Belirtilen %s etiketine sahip anlık görüntü grubu bulunamadı."
 
 msgid "Specify a password or private_key"
 msgstr "Bir parola ya da private_key belirtin"
@@ -6130,6 +6139,10 @@ msgstr "ZeroDivisionError: %s"
 
 msgid "Zone"
 msgstr "Bölge"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "Bölgeleme İlkesi: %s, tanınmıyor"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."

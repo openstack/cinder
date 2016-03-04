@@ -17,9 +17,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -696,9 +696,6 @@ msgstr "高速缓存名称为 None，请在键中设置 smartcache:cachename。"
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr "高速缓存卷 %(cache_vol)s 没有快照 %(cache_snap)s。"
 
-msgid "Can not add FC initiator to host."
-msgstr "无法将 FC 启动程序添加至主机。"
-
 #, python-format
 msgid "Can not find cache id by cache name %(name)s."
 msgstr "按高速缓存名称 %(name)s 找不到高速缓存标识。"
@@ -706,9 +703,6 @@ msgstr "按高速缓存名称 %(name)s 找不到高速缓存标识。"
 #, python-format
 msgid "Can not find partition id by name %(name)s."
 msgstr "按名称 %(name)s 找不到分区标识。"
-
-msgid "Can not find the portgroup on the array."
-msgstr "在阵列上找不到端口组。"
 
 #, python-format
 msgid "Can not translate %s to integer."
@@ -1245,10 +1239,6 @@ msgid "Could not find a host for volume %(volume_id)s with type %(type_id)s."
 msgstr "对于类型为 %(type_id)s 的卷 %(volume_id)s，找不到主机。"
 
 #, python-format
-msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr "没有找到二进制 %(binary)s 在主机 %(host)s 上。"
-
-#, python-format
 msgid "Could not find config at %(path)s"
 msgstr "在 %(path)s 找不到配置文件。"
 
@@ -1349,6 +1339,12 @@ msgid ""
 "Creating and activating zone set failed: (Zone set=%(cfg_name)s error="
 "%(err)s)."
 msgstr "创建并激活区域集失败（区域集为 %(cfg_name)s，发生的错误为 %(err)s）。"
+
+#, python-format
+msgid ""
+"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
+"%(err)s)."
+msgstr "创建并激活区域集失败（区域集为 %(zoneset)s，发生的错误为 %(err)s）。"
 
 #, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
@@ -1492,9 +1488,6 @@ msgstr "删除区域失败：（命令为 %(cmd)s，发生的错误为 %(err)s�
 msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr "要提供“一致性组”支持，需要 Dell API 2.1 或更高版本"
 
-msgid "Deploy v2 of the Cinder API."
-msgstr "请部署 Cinder API V2。"
-
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource是只有管理员才能执行的功能。"
 
@@ -1527,9 +1520,6 @@ msgstr "%(fun)s 中找不到需要的列：%(hdr)s。"
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "在 %(fun)s 中找不到期望的键 %(key)s：%(raw)s。"
-
-msgid "Disable replication for volume failed."
-msgstr "禁用卷的复制失败。"
 
 msgid "Disabled reason contains invalid characters or is too long"
 msgstr "禁用的原因包含无效字符或太长"
@@ -1601,9 +1591,6 @@ msgstr "需要 hitachi_serial_number 或 hitachi_unit_name。"
 #, python-format
 msgid "Element Composition Service not found on %(storageSystemName)s."
 msgstr "在 %(storageSystemName)s 上找不到元素组合服务。"
-
-msgid "Enable replication for volume failed."
-msgstr "启用卷的复制失败。"
 
 msgid "Enables QoS."
 msgstr "启用 QoS。"
@@ -1782,12 +1769,6 @@ msgstr "创建未绑定卷时出错。"
 msgid ""
 "Error Delete Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
 msgstr "删除卷 %(volumeName)s 时出错。返回码：%(rc)lu。错误：%(error)s。"
-
-#, python-format
-msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s"
-msgstr "删除组 %(storageGroupName)s 时出错。返回码：%(rc)lu。错误：%(error)s"
 
 #, python-format
 msgid ""
@@ -2040,6 +2021,10 @@ msgid "Error executing EQL command"
 msgstr "执行 EQL 命令时出错"
 
 #, python-format
+msgid "Error executing command via ssh: %s"
+msgstr "通过 ssh 执行命令时发生错误：%s"
+
+#, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
 msgstr "扩展卷 %(vol)s 时出错：%(err)s。"
 
@@ -2054,9 +2039,6 @@ msgstr "查找 %(name)s 时出错。"
 #, python-format
 msgid "Error finding %s."
 msgstr "查找 %s 时出错。"
-
-msgid "Error finding Target WWNs."
-msgstr "查找目标 WWN 时出错。"
 
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
@@ -2348,6 +2330,13 @@ msgstr "未能扩展卷 %(volname)s"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "未能登录到 3PAR (%(url)s)，因为存在 %(err)s"
+
+msgid "Failed to access active zoning configuration."
+msgstr "未能访问活动分区配置。"
+
+#, python-format
+msgid "Failed to access zoneset status:%s"
+msgstr "未能访问区域集状态：%s"
 
 #, python-format
 msgid ""
@@ -2795,6 +2784,9 @@ msgstr "未能获取具有卷 %(volume_id)s 的池标识。"
 msgid "Failed to get replica info."
 msgstr "未能获取副本信息。"
 
+msgid "Failed to get show fcns database info."
+msgstr "未能获取显示 fcns 数据库信息。"
+
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "未能获取卷 %s 的大小"
@@ -3040,6 +3032,9 @@ msgstr "未能更新一致性组：%(cgName)s。"
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "未能更新卷的元数据：%(reason)s"
+
+msgid "Failed to update or delete zoning configuration"
+msgstr "未能更新或删除分区配置"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3311,10 +3306,6 @@ msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
 msgstr "Flexvisor 卷 %(id)s 未能加入组 %(vgid)s。"
 
 #, python-format
-msgid "Free quota available is %s."
-msgstr "可用的空闲配额为 %s。"
-
-#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS 没有在运行，状态：%s。"
 
@@ -3377,9 +3368,6 @@ msgstr "按名称获取分区时发生错误。"
 
 msgid "Get partition by partition id error."
 msgstr "按分区标识获取分区时发生错误。"
-
-msgid "Get replication targets failed."
-msgstr "获取复制目标失败。"
 
 msgid "Get smartcache by cache id error."
 msgstr "按高速缓存标识获取 smartcache 时发生错误。"
@@ -3490,12 +3478,6 @@ msgstr "ID"
 
 msgid "IP address/hostname of Blockbridge API."
 msgstr "Blockbridge API 的 IP 地址/主机名。"
-
-msgid "If False doesn't trace SQL requests."
-msgstr "如果为 false，那么不要跟踪 SQL 请求。"
-
-msgid "If False fully disable profiling feature."
-msgstr "如果为 false，那么完全禁用概要分析功能。"
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -3793,30 +3775,6 @@ msgid "Invalid snapshot: %(reason)s"
 msgstr "快照无效: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid status to disable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"状态无效，无法禁用复制。有效状态为 %(valid_states)s，而当前复制状态为 "
-"%(curr_state)s。"
-
-#, python-format
-msgid ""
-"Invalid status to enable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"状态无效，无法启用复制。有效状态为 %(valid_states)s，而当前复制状态为 "
-"%(curr_state)s。"
-
-#, python-format
-msgid ""
-"Invalid status to failover replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"状态无效，无法故障转移复制。有效状态为 %(valid_states)s，而当前复制状态为 "
-"%(curr_state)s。"
-
-#, python-format
 msgid "Invalid status: '%s'"
 msgstr "无效的状态：'%s'"
 
@@ -4027,6 +3985,10 @@ msgid "Lun migration error."
 msgstr "Lun 迁移错误。"
 
 #, python-format
+msgid "Malformed fcns output string: %s"
+msgstr "以下 fcns 输出字符串的格式不正确：%s"
+
+#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "错误格式的消息体： %(reason)s"
 
@@ -4051,11 +4013,21 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "错误格式的 scheduler_hints 属性"
 
 #, python-format
+msgid "Malformed show fcns database string: %s"
+msgstr "以下显示 fcns 数据库字符串的格式不正确：%s"
+
+#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "区域配置的格式不正确：(switch=%(switch)s zone_config=%(zone_config)s)。"
+
+#, python-format
+msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
+msgstr ""
+"区域状态的格式不正确：（交换机为 %(switch)s，zone_config 为 "
+"%(zone_config)s）。"
 
 msgid "Manage existing get size requires 'id'."
 msgstr "管理现有 get 大小需要“id”。"
@@ -4922,9 +4894,6 @@ msgstr "在 %(storageSystemName)s 上找不到复制服务功能。"
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "在 %(storageSystemName)s 上找不到复制服务。"
 
-msgid "Replication failover for volume failed."
-msgstr "卷的复制故障转移失败。"
-
 msgid "Replication is not enabled"
 msgstr "未启用复制"
 
@@ -5294,10 +5263,6 @@ msgstr ""
 
 msgid "Specified logical volume does not exist."
 msgstr "所指定的逻辑卷不存在。"
-
-#, python-format
-msgid "Specified snapshot group with label %s could not be found."
-msgstr "找不到标签为 %s 的所指定快照组。"
 
 msgid "Specify a password or private_key"
 msgstr "请指定密码或 private_key"
@@ -6729,6 +6694,10 @@ msgstr "ZeroDivisionError：%s"
 
 msgid "Zone"
 msgstr "域"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "分区策略：%s，无法识别"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."

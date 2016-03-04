@@ -10,13 +10,13 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-02-22 01:36+0000\n"
+"PO-Revision-Date: 2016-02-22 01:35+0000\n"
 "Last-Translator: Zbyněk Schwarz <zbynek.schwarz@gmail.com>\n"
 "Language: cs\n"
 "Plural-Forms: nplurals=3; plural=(n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2;\n"
@@ -754,9 +754,6 @@ msgstr "Svazek mezipaměti %(cache_vol)s nemá snímek %(cache_snap)s."
 msgid "Cache volume %s does not have required properties"
 msgstr "Svazek mezipaměti %s nemá požadované vlastnosti"
 
-msgid "Can not add FC initiator to host."
-msgstr "Nelze přidat zavaděče FC na hostitele."
-
 msgid "Can not add FC port to host."
 msgstr "Nelze přidat FC port k hostiteli."
 
@@ -767,9 +764,6 @@ msgstr "Nelze najít id mezipaměti podle jejího názvu %(name)s."
 #, python-format
 msgid "Can not find partition id by name %(name)s."
 msgstr "Nelze najít id oddílu podle názvu %(name)s."
-
-msgid "Can not find the portgroup on the array."
-msgstr "V poli nelze nalézt skupinu portu."
 
 #, python-format
 msgid "Can not translate %s to integer."
@@ -1410,10 +1404,6 @@ msgid "Could not find a host for volume %(volume_id)s with type %(type_id)s."
 msgstr "Nelze najít hostitele pro svazek %(volume_id)s s typem %(type_id)s."
 
 #, python-format
-msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr "Nelze najít binární soubor %(binary)s v hostiteli %(host)s."
-
-#, python-format
 msgid "Could not find config at %(path)s"
 msgstr "Nelze najít nastavení v %(path)s"
 
@@ -1528,6 +1518,14 @@ msgid ""
 "%(err)s)."
 msgstr ""
 "Vytvoření a aktivování sady zóny selhalo: (Sada zóny=%(cfg_name)s chyba="
+"%(err)s)."
+
+#, python-format
+msgid ""
+"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
+"%(err)s)."
+msgstr ""
+"Vytvoření a aktivování sady zóny selhalo: (Sada zóny=%(zoneset)s chyba="
 "%(err)s)."
 
 #, python-format
@@ -1686,9 +1684,6 @@ msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr ""
 "Pro podporu skupin jednotnosti je vyžadována API Dell verze 2.1 a vyšší."
 
-msgid "Deploy v2 of the Cinder API."
-msgstr "Nasazení Cinder API v2."
-
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource je funkce pouze pro správce"
 
@@ -1723,9 +1718,6 @@ msgstr "Nenalezen očekávaný sloupec v %(fun)s: %(hdr)s."
 #, python-format
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr "Očekávaný klíč %(key)s nenalezen v %(fun)s: %(raw)s."
-
-msgid "Disable replication for volume failed."
-msgstr "Zakázání replikace svazku selhalo."
 
 msgid "Disabled reason contains invalid characters or is too long"
 msgstr "Důvod zakázání obsahuje neplatné znaky nebo je příliš dlouhý."
@@ -1809,9 +1801,6 @@ msgstr "Je vyžadováno buď hitachi_serial_number nebo hitachi_unit_name."
 #, python-format
 msgid "Element Composition Service not found on %(storageSystemName)s."
 msgstr "Služba složení prvku nebyla nalezena v %(storageSystemName)s."
-
-msgid "Enable replication for volume failed."
-msgstr "Povolení replikace svazku selhalo."
 
 msgid "Enables QoS."
 msgstr "Povolí QoS."
@@ -2011,14 +2000,6 @@ msgid ""
 msgstr ""
 "Chyba při mazání svazku: %(volumeName)s. Návratový kód: %(rc)lu. Chyba: "
 "%(error)s."
-
-#, python-format
-msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s"
-msgstr ""
-"Chyba při mazání skupiny: %(storageGroupName)s. Návratový kód: %(rc)lu. "
-"Chyba: %(error)s."
 
 #, python-format
 msgid ""
@@ -2295,6 +2276,10 @@ msgid "Error executing EQL command"
 msgstr "Chyba při provádění příkazu EQL"
 
 #, python-format
+msgid "Error executing command via ssh: %s"
+msgstr "Chyba při provádění příkazu pomocí ssh: %s"
+
+#, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
 msgstr "Chyba při rozšiřování svazku %(vol)s: %(err)s."
 
@@ -2309,9 +2294,6 @@ msgstr "Chyba při hledání %(name)s."
 #, python-format
 msgid "Error finding %s."
 msgstr "Chyba při hledání %s."
-
-msgid "Error finding Target WWNs."
-msgstr "Chyba při hledání cílových WWN."
 
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
@@ -2651,6 +2633,13 @@ msgstr "Nelze rozšířit svazek %(volname)s"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "Nelze se přihlásit do 3PAR (%(url)s) kvůli %(err)s"
+
+msgid "Failed to access active zoning configuration."
+msgstr "Nelze získat přístup k aktivním nastavení zónování."
+
+#, python-format
+msgid "Failed to access zoneset status:%s"
+msgstr "Nelze získat přístup ke stavu sady zóny: %s"
 
 #, python-format
 msgid ""
@@ -3129,6 +3118,9 @@ msgstr "Nelze získat zásobu svazku s id %(volume_id)s."
 msgid "Failed to get replica info."
 msgstr "Nelze získat informace o replice."
 
+msgid "Failed to get show fcns database info."
+msgstr "Nelze získat zobrazení informací o databázi fcns."
+
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "Nelze získat velikost svazku %s"
@@ -3413,6 +3405,9 @@ msgstr "Nelze aktualizovat skupinu jednotnosti: %(cgName)s."
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "Nelze aktualizovat popisná data svazku: %(reason)s"
+
+msgid "Failed to update or delete zoning configuration"
+msgstr "Nelze aktualizovat nebo smazat nastavení zónování"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3703,10 +3698,6 @@ msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
 msgstr "Svazek Flexvisor %(id)s nemohl být připojen ke skupině %(vgid)s."
 
 #, python-format
-msgid "Free quota available is %s."
-msgstr "Dostupná volná kvóta je %s."
-
-#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS neběží, stav: %s."
 
@@ -3770,9 +3761,6 @@ msgstr "Chyba při získávání oddílu podle názvu."
 
 msgid "Get partition by partition id error."
 msgstr "Chyba při získávání oddílu pomocí id oddílu."
-
-msgid "Get replication targets failed."
-msgstr "Získání cílů replikace selhalo."
 
 msgid "Get smartcache by cache id error."
 msgstr "Chyba při získávání chytré mezipaměti pomocí id mezipaměti."
@@ -3904,12 +3892,6 @@ msgstr "ID"
 
 msgid "IP address/hostname of Blockbridge API."
 msgstr "IP adresa/název hostitele API Blockbridge."
-
-msgid "If False doesn't trace SQL requests."
-msgstr "Pokud je False, žádosti SQL nebudou stopovány."
-
-msgid "If False fully disable profiling feature."
-msgstr "Pokud je False, funkce profilování bude zcela zakázána."
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -4288,30 +4270,6 @@ msgid "Invalid snapshot: %(reason)s"
 msgstr "Neplatný snímek: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid status to disable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"Neplatný stav pro zakázání replikace. Platné stavy jsou: %(valid_states)s, "
-"současný stav replikace je: %(curr_state)s."
-
-#, python-format
-msgid ""
-"Invalid status to enable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"Neplatný stav pro povolení replikace. Platné stavy jsou: %(valid_states)s, "
-"současný stav replikace je: %(curr_state)s."
-
-#, python-format
-msgid ""
-"Invalid status to failover replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"Neplatný stav pro přepnutí při selhání replikace. Platné stavy jsou: "
-"%(valid_states)s, současný stav replikace je: %(curr_state)s."
-
-#, python-format
 msgid "Invalid status: '%s'"
 msgstr "Neplatný stav: '%s'"
 
@@ -4569,6 +4527,10 @@ msgid "MSG_DENIED: RPC_MISMATCH: %r"
 msgstr "Zpráva zamítnuta: Neshoda vzdáleného volání procedur: %r"
 
 #, python-format
+msgid "Malformed fcns output string: %s"
+msgstr "Poškozený řetězec výstupu fcns: %s"
+
+#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "Poškozené tělo zprávy: %(reason)s"
 
@@ -4593,12 +4555,21 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "Poškozená vlastnost scheduler_hints"
 
 #, python-format
+msgid "Malformed show fcns database string: %s"
+msgstr "Poškozené zobrazení řetězce databáze fcns: %s"
+
+#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "Poškozené nastavení zóny: (rozbočovač=%(switch)s nastavení zóny="
 "%(zone_config)s)."
+
+#, python-format
+msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
+msgstr ""
+"Poškozený stav zóny: (rozbočovač=%(switch)s nastavení zóny=%(zone_config)s)."
 
 msgid "Manage existing get size requires 'id'."
 msgstr "Správa existujícího získání velikosti vyžaduje 'id'."
@@ -5465,10 +5436,6 @@ msgstr ""
 "%(limit)d je menší než použitá hodnota %(used)d"
 
 #, python-format
-msgid "Quota limit is -1 for child project '%(proj)s' for resource '%(res)s'"
-msgstr "Limit kvóty je -1 pro zdroj '%(res)s' podřazeného projektu '%(proj)s'"
-
-#, python-format
 msgid "Quota reservation %(uuid)s could not be found."
 msgstr "Rezervace kvóty %(uuid)s nemohla být nalezena."
 
@@ -5584,9 +5551,6 @@ msgstr "Schopnost služby replikace nebyla nalezena v %(storageSystemName)s."
 #, python-format
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "Služba replikace nebyla nalezena v %(storageSystemName)s."
-
-msgid "Replication failover for volume failed."
-msgstr "Přepnutí při selhání replikace se nezdařilo."
 
 msgid "Replication is not enabled"
 msgstr "Replikace není povolena"
@@ -5816,9 +5780,6 @@ msgstr ""
 "Stav druhé kopie: %(status)s a synchronizováný: %(sync)s, postup "
 "synchronizace je: %(progress)s%%."
 
-msgid "Secret key to use to sign tracing messages."
-msgstr "Tajný klíč určený pro podpis zpráv o trasování"
-
 #, python-format
 msgid "SerialNumber must be in the file %(fileName)s."
 msgstr "Sériové číslo musí být v souboru %(fileName)s."
@@ -6019,21 +5980,11 @@ msgstr ""
 msgid "Specified logical volume does not exist."
 msgstr "Zadaný logický svazek neexistuje."
 
-#, python-format
-msgid "Specified snapshot group with label %s could not be found."
-msgstr "Nelze najít zadanou skupinu snímku se jmenovkou %s."
-
 msgid "Specify a password or private_key"
 msgstr "Zadejte heslo nebo soukromý klíč"
 
 msgid "Specify san_password or san_private_key"
 msgstr "Zadejte san_password nebo san_private_key"
-
-msgid ""
-"Specify volume type name, description, is_public ora combination thereof."
-msgstr ""
-"Zadejte název typ svazku, jeho popis, zveřejnění, nebo jakoukoli jejich "
-"kombinaci."
 
 msgid "Start LUNcopy error."
 msgstr "Chyba při spuštění kopírování LUN."
@@ -6109,16 +6060,6 @@ msgstr "Systém úložiště %(array)s nebyl nalezen."
 #, python-format
 msgid "String with params: %s"
 msgstr "Řetězec s parametry: %s"
-
-#, python-format
-msgid ""
-"Sum of child limits '%(sum)s' is greater than free quota of '%(free)s' for "
-"project '%(proj)s' for resource '%(res)s'. Please lower the limit for one or "
-"more of the following projects: '%(child_ids)s'"
-msgstr ""
-"Součet podřazených limitů '%(sum)s' je větší než dostupná kvóta '%(free)s' "
-"zdroje '%(res)s' v projektu '%(proj)s'. Prosím snižte limit v jednom z "
-"následujících projektů: '%(child_ids)s'"
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr "Synchronizace druhotného svazku na hlavní selhala."
@@ -6255,9 +6196,6 @@ msgstr "Dodatečná specifikace: %(extraspec)s není platná."
 #, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "Záložní svazek nelze smazat: %s."
-
-msgid "The failover array cannot be the primary array."
-msgstr "Záložní pole nemůže být hlavní."
 
 #, python-format
 msgid "The following elements are required: %s"
@@ -6568,11 +6506,6 @@ msgid "There is no virtual disk device."
 msgstr "Neexistuje žádné zařízení virtuálního disku."
 
 #, python-format
-msgid "There was a problem with the failover (%s) and it was unsuccessful."
-msgstr ""
-"Při zavádění záložního systému (%s) se vyskytl problém a bylo neúspěšné."
-
-#, python-format
 msgid "There was an error adding the volume to the remote copy group: %s."
 msgstr "Při přidávání svazku do skupiny vzdálené kopie se vyskytla chyba: %s."
 
@@ -6790,18 +6723,6 @@ msgstr "Nelze zjistit název systému."
 
 #, python-format
 msgid ""
-"Unable to disable replication due to invalid replication status: %(status)s."
-msgstr "Nelze zakázat replikaci kvůli neplatnému stavu replikace: %(status)s."
-
-msgid ""
-"Unable to disable volume replication because volume is not of replicated "
-"type."
-msgstr ""
-"Nelze zakázat replikaci svazku protože svazek není typu pocházející z "
-"replikace."
-
-#, python-format
-msgid ""
 "Unable to do manage snapshot operations with Purity REST API version "
 "%(api_version)s, requires %(required_versions)s."
 msgstr ""
@@ -6809,23 +6730,8 @@ msgstr ""
 "%(api_version)s, vyžaduje %(required_versions)s."
 
 #, python-format
-msgid ""
-"Unable to enable replication due to invalid replication status: %(status)s."
-msgstr "Nelze povolit replikaci kvůli neplatnému stavu replikace: %(status)s."
-
-msgid ""
-"Unable to enable volume replication because volume is not of replicated type."
-msgstr ""
-"Nelze povolit replikaci svazku protože svazek není typu pocházející z "
-"replikace."
-
-#, python-format
 msgid "Unable to extend volume %s"
 msgstr "Nelze rozšířit svazek %s"
-
-msgid "Unable to failover because volume is not of replicated type."
-msgstr ""
-"Nelze zavést záložní systém protože svazek není typu pocházející z replikace."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "Nelze získat informace o připojení z podpůrné vrstvy."
@@ -7519,13 +7425,6 @@ msgstr "Svazek je připojen k serveru. (%s)"
 msgid "Volume is in-use."
 msgstr "Svazek se používá."
 
-msgid ""
-"Volume is not a replication enabled volume, replication operations can only "
-"be performed on volumes that are of type replication_enabled."
-msgstr ""
-"Svazek nemá povolenou replikaci, tyto operace mohou být provedeny u svazků, "
-"jejichž typ má replikaci povolenou."
-
 msgid "Volume is not available."
 msgstr "Svazek není dostupný."
 
@@ -7811,6 +7710,10 @@ msgstr "Chyba dělení nulou: %s"
 
 msgid "Zone"
 msgstr "Zóna"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "Zásada zónování: %s nebylo rozpoznáno"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."

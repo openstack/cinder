@@ -7,9 +7,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -152,14 +152,6 @@ msgstr "Přidávání svazků do skupiny jednotnosti %s."
 
 msgid "Attach volume completed successfully."
 msgstr "Připojení svazku úspěšně dokončeno."
-
-#, python-format
-msgid "Attempting to promote secondary replica to primary for volume %s."
-msgstr "Pokus o povýšení druhotné repliky na hlavní pro svazek %s."
-
-#, python-format
-msgid "Attempting to sync secondary replica with primary for volume %s."
-msgstr "Pokus o synchronizaci druhotné repliky s hlavní pro svazek %s."
 
 msgid "Availability Zones retrieved successfully."
 msgstr "Zóny dostupnosti úspěšně získány."
@@ -323,6 +315,14 @@ msgid "Cinder secure environment indicator file exists."
 msgstr "Soubor indikující bezpečné prostředí Cinder existuje."
 
 #, python-format
+msgid "CiscoFCZoneDriver - Add connection for I-T map: %s"
+msgstr "CiscoFCZoneDriver - Přidáno připojení pro mapu I-T: %s"
+
+#, python-format
+msgid "CiscoFCZoneDriver - Delete connection for I-T map: %s"
+msgstr "CiscoFCZoneDriver - Smazáno připojení pro mapu I-T: %s"
+
+#, python-format
 msgid "Cleaning cache for share %s."
 msgstr "Čištění mezipaměti pro sídlení %s."
 
@@ -410,6 +410,10 @@ msgstr "Připojování k hostiteli %s."
 msgid "Connecting to target host: %s for backend enabled migration."
 msgstr ""
 "Připojování k cílovému hostiteli %s pro přesun za pomoci podpůrné vrstvy."
+
+#, python-format
+msgid "Connector returning fcnsinfo-%s"
+msgstr "Konektor vrací fcnsinfo-%s"
 
 #, python-format
 msgid "Consistency group %(cg)s is created successfully."
@@ -1120,6 +1124,10 @@ msgstr "Získaná verze serveru vCenter: %s"
 #, python-format
 msgid "Filter %(cls_name)s returned %(obj_len)d host(s)"
 msgstr "Filtr %(cls_name)s vrátil %(obj_len)d hostitelů"
+
+#, python-format
+msgid "Filtered targets for SAN is: %s"
+msgstr "Filtrované cíle pro SAN jsou: %s"
 
 #, python-format
 msgid "Fixing previous mount %s which was not unmounted correctly."
@@ -2421,14 +2429,6 @@ msgid "Transfer volume completed successfully."
 msgstr "Přenos svazku úspěšně dokončen."
 
 #, python-format
-msgid ""
-"Tried to delete export for volume %s, but it was not found in the Datera "
-"cluster. Continuing with volume detach"
-msgstr ""
-"Pokus o smazání exportu svazku %s, který ale nebyl nalezen v clusteru "
-"Datera. Pokračuje se v odpojení svazku."
-
-#, python-format
 msgid "Tried to delete non-existent vdisk %s."
 msgstr "Pokus o smazání neexistujícího virtuálního disku %s."
 
@@ -2821,6 +2821,26 @@ msgstr "Verze softwaru XtremIO: %s"
 #, python-format
 msgid "ZFSSA version: %s"
 msgstr "Verze ZFSSA: %s"
+
+#, python-format
+msgid "Zone exists in I-T mode. Skipping zone creation %s"
+msgstr "Zóna existuje v režimu I-T. Vytváření zóny %s přeskočeno"
+
+#, python-format
+msgid "Zone map to add: %s"
+msgstr "Mapa zóny pro přidání: %s"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "Zásada zónování: %s nebylo rozpoznáno"
+
+#, python-format
+msgid "Zoning policy for Fabric %s"
+msgstr "Zásady zónování pro Fabric %s"
+
+#, python-format
+msgid "Zoning policy for fabric %s"
+msgstr "Zásady zónování pro Fabric %s"
 
 #, python-format
 msgid ""

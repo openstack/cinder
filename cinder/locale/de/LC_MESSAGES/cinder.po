@@ -11,9 +11,9 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -752,9 +752,6 @@ msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr ""
 "Cachedatenträger %(cache_vol)s enthält Momentaufnahme %(cache_snap)s nicht."
 
-msgid "Can not add FC initiator to host."
-msgstr "FC-Initiator kann nicht zu Host hinzugefügt werden."
-
 #, python-format
 msgid "Can not find cache id by cache name %(name)s."
 msgstr "Cache-ID nach Cachename %(name)s wurde nicht gefunden."
@@ -762,9 +759,6 @@ msgstr "Cache-ID nach Cachename %(name)s wurde nicht gefunden."
 #, python-format
 msgid "Can not find partition id by name %(name)s."
 msgstr "Partitions-ID nach Name %(name)s wurde nicht gefunden."
-
-msgid "Can not find the portgroup on the array."
-msgstr "Die Portgruppe wurde auf dem Array nicht gefunden."
 
 #, python-format
 msgid "Can not translate %s to integer."
@@ -1389,11 +1383,6 @@ msgstr ""
 "gefunden werden."
 
 #, python-format
-msgid "Could not find binary %(binary)s on host %(host)s."
-msgstr ""
-"Binärprogramm %(binary)s auf Host %(host)s konnte nicht gefunden werden."
-
-#, python-format
 msgid "Could not find config at %(path)s"
 msgstr "Konfiguration konnte unter %(path)s nicht gefunden werden"
 
@@ -1501,6 +1490,14 @@ msgid ""
 msgstr ""
 "Fehler beim Erstellen und Aktivieren der Zonengruppe: (Zonengruppe="
 "%(cfg_name)s Fehler=%(err)s)."
+
+#, python-format
+msgid ""
+"Creating and activating zone set failed: (Zone set=%(zoneset)s error="
+"%(err)s)."
+msgstr ""
+"Fehler beim Erstellen und Aktivieren der Zonengruppe: (Zonengruppe="
+"%(zoneset)s Fehler=%(err)s)."
 
 #, python-format
 msgid "Creating usages for %(begin_period)s until %(end_period)s"
@@ -1658,9 +1655,6 @@ msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr ""
 "Dell API 2.1 oder höher für Konsistenzgruppenunterstützung erforderlich"
 
-msgid "Deploy v2 of the Cinder API."
-msgstr "Version 2 von Cinder-API implementieren."
-
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "Ziel hat migration_status %(stat)s, erwartet %(exp)s."
@@ -1695,9 +1689,6 @@ msgstr "Erwarteter Spaltenname nicht in %(fun)s gefunden: %(hdr)s."
 msgid "Did not find the expected key %(key)s in %(fun)s: %(raw)s."
 msgstr ""
 "Der erwartete Schlüssel %(key)s wurde in %(fun)s nicht gefunden: %(raw)s."
-
-msgid "Disable replication for volume failed."
-msgstr "Inaktivieren der Replikation für Datenträger fehlgeschlagen."
 
 msgid "Disabled reason contains invalid characters or is too long"
 msgstr "Ursache für Inaktivierung: enthält ungültige Zeichen oder ist zu lang"
@@ -1777,9 +1768,6 @@ msgstr ""
 #, python-format
 msgid "Element Composition Service not found on %(storageSystemName)s."
 msgstr "Elementkompositionsservice nicht gefunden auf %(storageSystemName)s. "
-
-msgid "Enable replication for volume failed."
-msgstr "Aktivieren der Replikation für Datenträger fehlgeschlagen."
 
 msgid "Enables QoS."
 msgstr "Aktiviert QoS."
@@ -1982,14 +1970,6 @@ msgid ""
 msgstr ""
 "Fehler bei Löschen von Datenträger: %(volumeName)s. Rückgabecode: %(rc)lu. "
 "Fehler: %(error)s."
-
-#, python-format
-msgid ""
-"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu.  Error: "
-"%(error)s"
-msgstr ""
-"Fehler beim Löschen der Gruppe: %(storageGroupName)s. Rückgabecode: %(rc)lu. "
-"Fehler: %(error)s"
 
 #, python-format
 msgid ""
@@ -2274,6 +2254,10 @@ msgid "Error executing EQL command"
 msgstr "Fehler beim Ausführen des EQL-Befehls"
 
 #, python-format
+msgid "Error executing command via ssh: %s"
+msgstr "Fehler beim Ausführen eines Befehls über SSH: %s"
+
+#, python-format
 msgid "Error extending volume %(vol)s: %(err)s."
 msgstr "Fehler beim Erweitern des Datenträgers %(vol)s: %(err)s."
 
@@ -2288,9 +2272,6 @@ msgstr "Fehler bei der Suche nach %(name)s."
 #, python-format
 msgid "Error finding %s."
 msgstr "Fehler bei der Suche nach %s."
-
-msgid "Error finding Target WWNs."
-msgstr "Fehler bei der Suche nach Ziel-WWNs."
 
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
@@ -2615,6 +2596,13 @@ msgstr "Fehler beim Erweitern von Datenträger %(volname)s"
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "Anmeldung an 3PAR (%(url)s) nicht möglich. Ursache: %(err)s"
+
+msgid "Failed to access active zoning configuration."
+msgstr "Auf die Zoningkonfiguration konnte nicht zugegriffen werden."
+
+#, python-format
+msgid "Failed to access zoneset status:%s"
+msgstr "Auf den Zonengruppenstatus konnte nicht zugegriffen werden: %s"
 
 #, python-format
 msgid ""
@@ -3126,6 +3114,9 @@ msgstr "Fehler beim Abrufen der Pool-ID mit Datenträger %(volume_id)s."
 msgid "Failed to get replica info."
 msgstr "Fehler beim Abrufen der Informationen zum Replikat."
 
+msgid "Failed to get show fcns database info."
+msgstr "Fehler beim Abrufen der Anzeige-FCNS-Datenbankinformationen."
+
 #, python-format
 msgid "Failed to get size of volume %s"
 msgstr "Fehler beim Abrufen der Größe von Datenträger %s"
@@ -3416,6 +3407,9 @@ msgstr "Fehler beim Aktualisieren der Konsistenzgruppe: %(cgName)s."
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "Aktualisieren von Metadaten für Datenträger fehlgeschlagen: %(reason)s"
+
+msgid "Failed to update or delete zoning configuration"
+msgstr "Fehler beim Aktualisieren oder Löschen der Zoningkonfiguration"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3741,10 +3735,6 @@ msgstr ""
 "werden."
 
 #, python-format
-msgid "Free quota available is %s."
-msgstr "Verfügbare freie Quote: %s."
-
-#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS läuft nicht, Status: %s."
 
@@ -3808,9 +3798,6 @@ msgstr "Fehler beim Abrufen der Partition nach Name."
 
 msgid "Get partition by partition id error."
 msgstr "Fehler beim Abrufen der Partition nach Partitions-ID."
-
-msgid "Get replication targets failed."
-msgstr "Abrufen der Replikationsziele fehlgeschlagen."
 
 msgid "Get smartcache by cache id error."
 msgstr "Fehler beim Abrufen des Smart Cache nach Cache-ID."
@@ -3930,12 +3917,6 @@ msgstr "ID"
 
 msgid "IP address/hostname of Blockbridge API."
 msgstr "IP-Adresse/Hostname der Blockbridge-API."
-
-msgid "If False doesn't trace SQL requests."
-msgstr "Bei 'False' erfolgt keine Traceerstellung für SQL-Anforderungen."
-
-msgid "If False fully disable profiling feature."
-msgstr "Bei 'False' die Profilerstellungsfunktion vollständig inaktivieren."
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -4256,30 +4237,6 @@ msgid "Invalid snapshot: %(reason)s"
 msgstr "Ungültige Momentaufnahme: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid status to disable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"Ungültiger Status zum Inaktivieren der Replikation. Gültige Statusangaben: "
-"%(valid_states)s, aktueller Replikationsstatus: %(curr_state)s."
-
-#, python-format
-msgid ""
-"Invalid status to enable replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"Ungültiger Status zum Aktivieren der Replikation. Gültige Statusangaben: "
-"%(valid_states)s, aktueller Replikationsstatus: %(curr_state)s."
-
-#, python-format
-msgid ""
-"Invalid status to failover replication. valid states are: %(valid_states)s, "
-"current replication-state is: %(curr_state)s."
-msgstr ""
-"Ungültiger Status für Failover-Replikation. Gültige Statusangaben: "
-"%(valid_states)s, aktueller Replikationsstatus: %(curr_state)s."
-
-#, python-format
 msgid "Invalid status: '%s'"
 msgstr "Ungültiger Status: '%s'"
 
@@ -4509,6 +4466,10 @@ msgid "Lun migration error."
 msgstr "Fehler bei LUN-Migration."
 
 #, python-format
+msgid "Malformed fcns output string: %s"
+msgstr "Fehlerhafte FCNS-Ausgabezeichenfolge: %s"
+
+#, python-format
 msgid "Malformed message body: %(reason)s"
 msgstr "Fehlerhafter Nachrichtentext: %(reason)s"
 
@@ -4533,12 +4494,21 @@ msgid "Malformed scheduler_hints attribute"
 msgstr "Attribut 'scheduler_hints' fehlerhaft"
 
 #, python-format
+msgid "Malformed show fcns database string: %s"
+msgstr "Fehlerhafte Anzeigen-FCNS-Datenbankzeichenfolge: %s"
+
+#, python-format
 msgid ""
 "Malformed zone configuration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
 msgstr ""
 "Fehlerhafte Zonenkonfiguration: (switch=%(switch)s zone_config="
 "%(zone_config)s)."
+
+#, python-format
+msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
+msgstr ""
+"Fehlerhafter Zonenstatus: (switch=%(switch)s zone_config=%(zone_config)s)."
 
 msgid "Manage existing get size requires 'id'."
 msgstr "Verwaltung eines vorhandenen Abrufs der Größe erfordert 'id'."
@@ -5516,9 +5486,6 @@ msgstr "Replizierungsservicefunktion nicht gefunden auf %(storageSystemName)s."
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "Replizierungsservice nicht gefunden auf %(storageSystemName)s."
 
-msgid "Replication failover for volume failed."
-msgstr "Failover-Replikation für Datenträger fehlgeschlagen."
-
 msgid "Replication is not enabled"
 msgstr "Replizierung ist nicht aktiviert"
 
@@ -5940,11 +5907,6 @@ msgstr ""
 
 msgid "Specified logical volume does not exist."
 msgstr "Der angegebene logische Datenträger ist nicht vorhanden."
-
-#, python-format
-msgid "Specified snapshot group with label %s could not be found."
-msgstr ""
-"Angegebene Momentaufnahmegruppe mit Bezeichnung %s wurde nicht gefunden."
 
 msgid "Specify a password or private_key"
 msgstr "Geben Sie einen Wert für 'password' oder 'private_key' an"
@@ -7604,6 +7566,10 @@ msgstr "ZeroDivisionError: %s"
 
 msgid "Zone"
 msgstr "Zone"
+
+#, python-format
+msgid "Zoning Policy: %s, not recognized"
+msgstr "Zoning-Richtlinie: %s, nicht erkannt"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."

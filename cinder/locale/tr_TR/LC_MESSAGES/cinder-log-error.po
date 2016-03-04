@@ -8,9 +8,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -283,9 +283,6 @@ msgstr ""
 "Bağlantı noktası grubu bulunamadı : %(portGroupName)s. EMC yapılandırma "
 "dosyasının doğru bağlantı grup adına sahip olup olmadığını kontrol edin."
 
-msgid "Could not get pool data from the storage."
-msgstr "Depolamadan havuz verisi alınamadı."
-
 #, python-format
 msgid "Could not stat scheduler options file %(filename)s."
 msgstr "%(filename)s zamanlayıcı seçenek dosyalarının bilgileri gösterilemedi."
@@ -498,6 +495,9 @@ msgstr "Sürücü init'inde yeniden dışa aktarma sırasında hata."
 msgid "Error executing SSH command."
 msgstr "SSH komutu yürütülürken hata."
 
+msgid "Error executing command via ssh."
+msgstr "ssh yoluyla komut yürütürken hata."
+
 #, python-format
 msgid "Error executing command via ssh: %s"
 msgstr "ssh üzerinden komut yürütülürken hata: %s"
@@ -547,6 +547,9 @@ msgstr "Gizli veri alırken hata."
 
 msgid "Error getting secret metadata."
 msgstr "Gizli metadata alınırken hata."
+
+msgid "Error getting show fcns database info."
+msgstr "fcns veritabanı bilgisini göster sonucu alınırken hata."
 
 msgid "Error getting target pool name and array."
 msgstr "Hedef havuz adı ve dizisi alınırken hata."
@@ -834,6 +837,10 @@ msgid "FAST is not supported on this array."
 msgstr "Bu dizide FAST desteklenmiyor."
 
 #, python-format
+msgid "Failed collecting fcns database info for fabric %s"
+msgstr "Fabric %s için fcns veritabanı bilgisi toplanamadı"
+
+#, python-format
 msgid "Failed collecting name server info from fabric %s"
 msgstr "Fabric %s'den ad sunucu bilgisi toplanamadı"
 
@@ -846,6 +853,9 @@ msgstr "Fabric için nsshow bilgisi toplanamadı"
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
 msgstr "Fabric %s için nsshow bilgisi toplanamadı"
+
+msgid "Failed collecting show fcns database for fabric"
+msgstr "Fabric için show fcns veritabanı toplanamadı"
 
 #, python-format
 msgid "Failed destroying volume entry %s"
@@ -863,6 +873,10 @@ msgstr ""
 #, python-format
 msgid "Failed getting active zone set from fabric %s"
 msgstr "Fabric %s'den etkin bölge ayarı alınamadı"
+
+#, python-format
+msgid "Failed getting zone status from fabric %s"
+msgstr "Fabric %s'den bölge durumu alınamadı"
 
 #, python-format
 msgid "Failed image conversion during cache creation: %s"
@@ -951,10 +965,6 @@ msgstr ""
 #, python-format
 msgid "Failed to add target(port: %s)"
 msgstr "Hedef eklenemedi(bağlantı noktası: %s)"
-
-#, python-format
-msgid "Failed to attach volume %(vol)s"
-msgstr "Disk bölümü %(vol)s ekleme başarısız"
 
 msgid "Failed to authenticate user."
 msgstr "Kullanıcı kimlik doğrulaması yapılamadı."
@@ -1548,14 +1558,6 @@ msgstr "LUN %(path)s geometrisi başarısız oldu. İleti - %(msg)s"
 
 msgid "LUN extend failed!"
 msgstr "LUN genişletme işlemi başarısız oldu!"
-
-msgid ""
-"Logging into the Datera cluster failed. Please check your username and "
-"password set in the cinder.conf and start the cinder-volumeservice again."
-msgstr ""
-"Datera kümesine giriş başarısız oldu. Lütfen kullanıcı adı ve parolanın "
-"cinder.conf dosyasındaki ayarını kontrol edin ve cinder-volumeservice "
-"servisini tekrar başlatın."
 
 #, python-format
 msgid "Looks like masking view: %(maskingViewName)s has recently been deleted."

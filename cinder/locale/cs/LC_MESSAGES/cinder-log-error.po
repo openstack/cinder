@@ -8,9 +8,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -191,12 +191,6 @@ msgstr "Nelze umístit nové LUN %(luns)s do skupiny jednotnosti %(cg_name)s."
 #, python-format
 msgid "Can not remove LUNs %(luns)s in consistency group %(cg_name)s."
 msgstr "Nelze odebrat lun %(luns)s ze skupiny jednotnosti %(cg_name)s."
-
-msgid "Can't disable replication because the driver isn't initialized"
-msgstr "Nelze zakázat replikaci protože ovladač není zaveden"
-
-msgid "Can't enable replication because the driver isn't initialized"
-msgstr "Nelze povolit replikaci protože ovladač není zaveden."
 
 #, python-format
 msgid "Can't find volume to map %(key)s, %(msg)s"
@@ -436,9 +430,6 @@ msgstr ""
 msgid "Could not find volume with name %(name)s. Error: %(error)s"
 msgstr "Nelze najít svazek s názvem %(name)s. Chyba: %(error)s"
 
-msgid "Could not get pool data from the storage."
-msgstr "Nelze získat data zásoby z úložiště."
-
 #, python-format
 msgid "Could not log in to 3PAR array (%s) with the provided credentials."
 msgstr ""
@@ -608,16 +599,9 @@ msgstr "Nenalezen očekávaný sloupec v lsvdisku: %s."
 msgid "Differential restore failed, trying full restore"
 msgstr "Rozdílová obnova selhala, pokus o celkovou obnovu"
 
-msgid ""
-"Disabling replication failed because replication is not properly configured."
-msgstr "Zakázání replikace selhalo, protože replikace není správně nastavena."
-
 #, python-format
 msgid "Disconnection failed with message: %(msg)s."
 msgstr "Odpojení selhalo se zprávou: %(msg)s."
-
-msgid "Driver replication data update failed."
-msgstr "Aktualizace dat replikace ovladače selhala."
 
 #, python-format
 msgid ""
@@ -626,10 +610,6 @@ msgid ""
 msgstr ""
 "Přesun svazku %(vol)s za pomocí ovladače selhal. Přesun z %(src)s do %(dst)s "
 "selhal s chybou: %(error)s."
-
-msgid ""
-"Enabling replication failed because replication is not properly configured."
-msgstr "Povolení replikace selhalo, protože replikace není správně nastavena."
 
 #, python-format
 msgid "Error Attaching volume %(vol)s."
@@ -759,6 +739,9 @@ msgstr "Chyba při znovu exportování během zavádění ovladače."
 msgid "Error executing SSH command."
 msgstr "Chyba při provádění příkazu SSH."
 
+msgid "Error executing command via ssh."
+msgstr "Chyba při provádění příkazu pomocí ssh."
+
 #, python-format
 msgid "Error executing command via ssh: %s"
 msgstr "Chyba při provádění příkazu pomocí ssh: %s"
@@ -815,6 +798,9 @@ msgstr "Chyba při získávání tajných dat."
 
 msgid "Error getting secret metadata."
 msgstr "Chyba při získávání tajných popisných dat."
+
+msgid "Error getting show fcns database info."
+msgstr "Při získávání informací o zobrazení databáze fcns nastala chyba."
 
 msgid "Error getting target pool name and array."
 msgstr "Chyba při získávání názvu cílového pole a zásoby."
@@ -1158,6 +1144,10 @@ msgid "FAST is not supported on this array."
 msgstr "FAST není podporován v tomto poli."
 
 #, python-format
+msgid "Failed collecting fcns database info for fabric %s"
+msgstr "Shromažďování informací databáze fcns pro fabric %s selhalo"
+
+#, python-format
 msgid "Failed collecting name server info from fabric %s"
 msgstr "Shromáždění informací o jmenném serveru z fabric %s selhalo"
 
@@ -1170,6 +1160,9 @@ msgstr "Shromáždění informací nsshow pro fabric selhalo"
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
 msgstr "Shromáždění informací nsshow pro fabric %s selhalo"
+
+msgid "Failed collecting show fcns database for fabric"
+msgstr "Shromažďování zobrazení databáze fcns pro fabric selhalo"
 
 #, python-format
 msgid "Failed destroying volume entry %s"
@@ -1190,6 +1183,10 @@ msgstr ""
 #, python-format
 msgid "Failed getting active zone set from fabric %s"
 msgstr "Získání aktivní zóny nastavené z fabric %s selhalo"
+
+#, python-format
+msgid "Failed getting zone status from fabric %s"
+msgstr "Získání stavu zóny z fabric %s selhalo"
 
 #, python-format
 msgid "Failed image conversion during cache creation: %s"
@@ -1299,10 +1296,6 @@ msgstr "Nelze přidat cíl (port: %s)"
 
 msgid "Failed to attach source volume for copy."
 msgstr "Nelze připojit zdrojový svazek pro kopírování."
-
-#, python-format
-msgid "Failed to attach volume %(vol)s"
-msgstr "Nelze připojit svazek %(vol)s"
 
 #, python-format
 msgid "Failed to attach volume %(vol)s."
@@ -1978,10 +1971,6 @@ msgid "Failed updating volume %(volume_id)s with %(updates)s"
 msgstr "Aktualizace svazku %(volume_id)s pomocí %(updates)s selhala"
 
 #, python-format
-msgid "Failure deleting snap vol. Error: %s."
-msgstr "Mazání svazku snímku selhalo. Chyba: %s."
-
-#, python-format
 msgid "Failure deleting staged tmp LUN %s."
 msgstr "Smazání zařazeného dočasného LUN %s selhalo."
 
@@ -2115,17 +2104,6 @@ msgid ""
 msgstr ""
 "Informace o umístění potřebné pro přesun svazku za pomocí podpůrné vrstvy "
 "nejsou ve správném formátu: %s. Bude použita obecná metoda přesunutí svazku."
-
-msgid ""
-"Logging into the Datera cluster failed. Please check your username and "
-"password set in the cinder.conf and start the cinder-volumeservice again."
-msgstr ""
-"Přihlášení do clusteru Datera selhalo. Prosí zkontrolujte uživatelské jméno "
-"a heslo nastavené v cinder.conf a znovu spusťte službu cinder-volumeservice."
-
-#, python-format
-msgid "Login error, reason is: %s."
-msgstr "Chyba přihlášení, důvod: %s."
 
 #, python-format
 msgid "Looks like masking view: %(maskingViewName)s has recently been deleted."
@@ -2593,12 +2571,6 @@ msgstr "Žádné platné datové úložiště splňující požadavky: %s."
 
 msgid "There must be at least one valid replication device configured."
 msgstr "Musí být zadáno alespoň jedno platné replikační zařízení."
-
-#, python-format
-msgid ""
-"There was a problem disabling replication on volume '%(name)s': %(error)s"
-msgstr ""
-"Při zakazování replikace ve svazku '%(name)s' se vyskytl problém: %(error)s"
 
 #, python-format
 msgid "There was an error deleting snapshot %(id)s: %(error)."

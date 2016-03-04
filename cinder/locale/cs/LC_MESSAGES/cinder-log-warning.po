@@ -7,9 +7,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b3.dev248\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-02-22 23:21+0000\n"
+"POT-Creation-Date: 2016-03-04 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -36,19 +36,6 @@ msgstr "%s již je připojeno"
 #, python-format
 msgid "%s not found!"
 msgstr "%s nenalezeno!"
-
-#, python-format
-msgid ""
-"'%s' is not a valid replication array. In order to be valid, "
-"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
-"hpe3par_password, cpg_map, san_ip, san_login, and san_password must be "
-"specified. If the target is managed, managed_backend_name must be set as "
-"well."
-msgstr ""
-"'%s' není platné pole replikace. Aby bylo platné, je třeba zadat "
-"target_device_id, replication_mode, hpe3par_api_url, hpe3par_username, "
-"hpe3par_password, cpg_map, san_ip, san_login, a san_password. Pokud cíl je "
-"spravován, musí být také zadáno managed_backend_name."
 
 msgid ""
 "'hpe3par:cpg' is not supported as an extra spec in a volume type.  CPG's are "
@@ -168,15 +155,6 @@ msgstr "Změna využití se sníží na méně než 0 pro následující zdroje:
 msgid ""
 "Changing backing: %(backing)s name from %(new_name)s to %(old_name)s failed."
 msgstr "Změna názvu zálohy %(backing)s z %(new_name)s na %(old_name)s selhala."
-
-msgid ""
-"Client cert verification and datera_api_token are deprecated in the Datera "
-"driver, and will be removed in the Liberty release. Please set the san_login "
-"and san_password in your cinder.conf instead."
-msgstr ""
-"Ověření certifikátu klienta a datera_api_token jsou u ovladače Datera "
-"zastaralé a budou odstraněny ve verzi Liberty. Místo toho prosím nastavte "
-"san_login a san_password ve svém souboru cinder.conf."
 
 #, python-format
 msgid ""
@@ -377,6 +355,10 @@ msgstr "Chyba při zpracování názvu cílové zásoby a pole."
 #, python-format
 msgid "Error refreshing volume info. Message: %s"
 msgstr "Chyba při obnovování informaci o svazku. Zpráva: %s"
+
+#, python-format
+msgid "Error running SSH command: %s"
+msgstr "Chyba při provádění příkazu SSH: %s"
 
 #, python-format
 msgid "Error unmapping LUN. Code :%(code)s, Message: %(message)s"
@@ -1150,9 +1132,6 @@ msgstr ""
 msgid "See unavailable iSCSI target: %s"
 msgstr "Prohlédněte si nedostupný cíl iSCSI: %s"
 
-msgid "Service killed that has no database entry"
-msgstr "Ukončena služba nemající záznam v databázi"
-
 msgid "Silent failure of target removal detected, retry...."
 msgstr "Zjištěno tiché selhání odstranění cíle, bude provede nový pokus..."
 
@@ -1192,9 +1171,6 @@ msgstr "Snímek %s již je smazán."
 #, python-format
 msgid "Snapshot still %(status)s Cannot delete snapshot."
 msgstr "Snímek je stále ve stavu %(status)s. Nelze ho smazat."
-
-msgid "Snapshot volume not found."
-msgstr "Svazek snímku nenalezen."
 
 #, python-format
 msgid "Start migration failed. Message: %s"
@@ -1332,16 +1308,6 @@ msgstr ""
 "verzích. Místo toho prosím použijte 'netapp_pool_name_search_pattern'."
 
 msgid ""
-"The primary array is currently unreachable. All targets returned from "
-"list_replication_targets are pulled directly from cinder.conf and are not "
-"guarenteed to be available because they could not be verified with the "
-"primary array."
-msgstr ""
-"Hlavní pole je nyní nedostupné. Všechny cíle vrácené ze seznamu replikací "
-"jsou získávány přímo z cinder.conf a neexistuje záruka, že budou dostupné, "
-"protože nemohly být v hlavním poli ověřeny."
-
-msgid ""
 "The primary array is not reachable at this time. Since replication is "
 "enabled, listing replication targets and failing over a volume can still be "
 "performed."
@@ -1372,14 +1338,6 @@ msgid ""
 msgstr ""
 "Uživatel nemá přístup nebo dostatečná oprávnění k použití všech API netapp. "
 "Následující dodatečné specifikace selžou nebo budou ignorovány: %s"
-
-msgid ""
-"The v1 api is deprecated and will be removed in the Liberty release. You "
-"should set enable_v1_api=false and enable_v2_api=true in your cinder.conf "
-"file."
-msgstr ""
-"API v1 je zastaralé a bude ve verzi Liberty odstraněno. Měli byste ve vašem "
-"souboru cinder.conf nastavit enable_v1_api=false a enable_v2_api=true."
 
 #, python-format
 msgid ""
