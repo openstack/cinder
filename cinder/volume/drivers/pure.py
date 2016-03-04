@@ -89,6 +89,7 @@ REPLICATION_CG_NAME = "cinder-group"
 CHAP_SECRET_KEY = "PURE_TARGET_CHAP_SECRET"
 
 ERR_MSG_NOT_EXIST = "does not exist"
+ERR_MSG_NO_SUCH_SNAPSHOT = "No such volume or snapshot"
 ERR_MSG_PENDING_ERADICATION = "has been destroyed"
 ERR_MSG_ALREADY_EXISTS = "already exists"
 ERR_MSG_COULD_NOT_BE_FOUND = "could not be found"
@@ -380,11 +381,12 @@ class PureBaseVolumeDriver(san.SanDriver):
         except purestorage.PureHTTPError as err:
             with excutils.save_and_reraise_exception() as ctxt:
                 if err.code == 400 and (
-                        ERR_MSG_NOT_EXIST in err.text):
+                        ERR_MSG_NOT_EXIST in err.text or
+                        ERR_MSG_NO_SUCH_SNAPSHOT in err.text):
                     # Happens if the snapshot does not exist.
                     ctxt.reraise = False
-                    LOG.warning(_LW("Snapshot deletion failed with "
-                                    "message: %s"), err.text)
+                    LOG.warning(_LW("Unable to delete snapshot, assuming "
+                                    "already deleted. Error: %s"), err.text)
 
     def ensure_export(self, context, volume):
         pass
