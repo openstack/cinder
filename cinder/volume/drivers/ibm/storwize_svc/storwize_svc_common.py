@@ -2007,14 +2007,25 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             # before raising an error.
 
             if self.configuration.storwize_san_secondary_ip is not None:
-
-                LOG.warning(_LW("Unable to execute SSH command. "
-                                "Attempting to switch IP to %s."),
-                            self.configuration.storwize_san_secondary_ip)
-                self.sshpool = self._set_up_sshpool(
-                    self.configuration.storwize_san_secondary_ip)
-                return self._ssh_execute(self.sshpool, command,
-                                         check_exit_code, attempts)
+                if (self.sshpool.ip ==
+                        self.configuration.storwize_san_secondary_ip):
+                    LOG.warning(_LW("Unable to execute SSH command with "
+                                    "storwize_san_secondary_ip. "
+                                    "Attempting to switch IP back "
+                                    "to san_ip %s."),
+                                self.configuration.san_ip)
+                    self.sshpool = self._set_up_sshpool(
+                        self.configuration.san_ip)
+                    return self._ssh_execute(self.sshpool, command,
+                                             check_exit_code, attempts)
+                else:
+                    LOG.warning(_LW("Unable to execute SSH command. "
+                                    "Attempting to switch IP to %s."),
+                                self.configuration.storwize_san_secondary_ip)
+                    self.sshpool = self._set_up_sshpool(
+                        self.configuration.storwize_san_secondary_ip)
+                    return self._ssh_execute(self.sshpool, command,
+                                             check_exit_code, attempts)
             else:
                 LOG.warning(_LW('Unable to execute SSH command. '
                                 'Not able to use '

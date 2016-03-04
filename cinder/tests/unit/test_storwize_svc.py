@@ -2742,6 +2742,30 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             min_size=self._driver.configuration.ssh_min_pool_conn,
             max_size=self._driver.configuration.ssh_max_pool_conn)
 
+    @mock.patch.object(ssh_utils, 'SSHPool')
+    @mock.patch.object(processutils, 'ssh_execute')
+    def test_run_secondary_ip_ssh_fail_to_san_ip(self, mock_ssh_execute,
+                                                 mock_ssh_pool):
+        mock_ssh_pool.side_effect = [
+            paramiko.SSHException,
+            mock.MagicMock(
+                ip = self._driver.configuration.storwize_san_secondary_ip),
+            mock.MagicMock()]
+        mock_ssh_execute.side_effect = [processutils.ProcessExecutionError,
+                                        mock.MagicMock()]
+        ssh_cmd = ['svcinfo']
+        self._driver._run_ssh(ssh_cmd)
+
+        mock_ssh_pool.assert_called_with(
+            self._driver.configuration.san_ip,
+            self._driver.configuration.san_ssh_port,
+            self._driver.configuration.ssh_conn_timeout,
+            self._driver.configuration.san_login,
+            password=self._driver.configuration.san_password,
+            privatekey=self._driver.configuration.san_private_key,
+            min_size=self._driver.configuration.ssh_min_pool_conn,
+            max_size=self._driver.configuration.ssh_max_pool_conn)
+
     def _generate_vol_info(self, vol_name, vol_id):
         pool = _get_test_pool()
         rand_id = six.text_type(random.randint(10000, 99999))
