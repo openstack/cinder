@@ -1402,7 +1402,8 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
                                                       session=session)
 
         volume_attachment_ref['mountpoint'] = mountpoint
-        volume_attachment_ref['attach_status'] = 'attached'
+        volume_attachment_ref['attach_status'] = (fields.VolumeAttachStatus.
+                                                  ATTACHED)
         volume_attachment_ref['instance_uuid'] = instance_uuid
         volume_attachment_ref['attached_host'] = host_name
         volume_attachment_ref['attach_time'] = timeutils.utcnow()
@@ -1413,7 +1414,7 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
         volume_attachment_ref.save(session=session)
 
         volume_ref['status'] = 'in-use'
-        volume_ref['attach_status'] = 'attached'
+        volume_ref['attach_status'] = fields.VolumeAttachStatus.ATTACHED
         volume_ref.save(session=session)
         return volume_ref
 
@@ -1616,7 +1617,7 @@ def volume_detached(context, volume_id, attachment_id):
         # If this is already detached, attachment will be None
         if attachment:
             now = timeutils.utcnow()
-            attachment['attach_status'] = 'detached'
+            attachment['attach_status'] = fields.VolumeAttachStatus.DETACHED
             attachment['detach_time'] = now
             attachment['deleted'] = True
             attachment['deleted_at'] = now
@@ -1637,12 +1638,12 @@ def volume_detached(context, volume_id, attachment_id):
                     volume_ref['migration_status'] in ('success', 'error')):
                 volume_ref['status'] = 'available'
 
-            volume_ref['attach_status'] = 'detached'
+            volume_ref['attach_status'] = fields.VolumeAttachStatus.DETACHED
             volume_ref.save(session=session)
         else:
             # Volume is still attached
             volume_ref['status'] = 'in-use'
-            volume_ref['attach_status'] = 'attached'
+            volume_ref['attach_status'] = fields.VolumeAttachStatus.ATTACHED
             volume_ref.save(session=session)
 
 
@@ -1715,7 +1716,8 @@ def volume_attachment_get_all_by_volume_id(context, volume_id, session=None):
     result = model_query(context, models.VolumeAttachment,
                          session=session).\
         filter_by(volume_id=volume_id).\
-        filter(models.VolumeAttachment.attach_status != 'detached').\
+        filter(models.VolumeAttachment.attach_status !=
+               fields.VolumeAttachStatus.DETACHED).\
         all()
     return result
 
@@ -1727,7 +1729,8 @@ def volume_attachment_get_all_by_host(context, host):
         result = model_query(context, models.VolumeAttachment,
                              session=session).\
             filter_by(attached_host=host).\
-            filter(models.VolumeAttachment.attach_status != 'detached').\
+            filter(models.VolumeAttachment.attach_status !=
+                   fields.VolumeAttachStatus.DETACHED).\
             all()
         return result
 
@@ -1740,7 +1743,8 @@ def volume_attachment_get_all_by_instance_uuid(context,
         result = model_query(context, models.VolumeAttachment,
                              session=session).\
             filter_by(instance_uuid=instance_uuid).\
-            filter(models.VolumeAttachment.attach_status != 'detached').\
+            filter(models.VolumeAttachment.attach_status !=
+                   fields.VolumeAttachStatus.DETACHED).\
             all()
         return result
 
@@ -2267,7 +2271,8 @@ def volume_has_undeletable_snapshots_filter():
 def volume_has_attachments_filter():
     return sql.exists().where(
         and_(models.Volume.id == models.VolumeAttachment.volume_id,
-             models.VolumeAttachment.attach_status != 'detached',
+             models.VolumeAttachment.attach_status !=
+             fields.VolumeAttachStatus.DETACHED,
              ~models.VolumeAttachment.deleted))
 
 

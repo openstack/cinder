@@ -17,6 +17,7 @@ from oslo_versionedobjects import fields
 from cinder import db
 from cinder import objects
 from cinder.objects import base
+from cinder.objects import fields as c_fields
 
 
 @base.CinderObjectRegistry.register
@@ -36,7 +37,7 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         'attach_time': fields.DateTimeField(nullable=True),
         'detach_time': fields.DateTimeField(nullable=True),
 
-        'attach_status': fields.StringField(nullable=True),
+        'attach_status': c_fields.VolumeAttachStatusField(nullable=True),
         'attach_mode': fields.StringField(nullable=True),
     }
 

@@ -26,6 +26,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE
+from cinder.objects import fields
 from cinder.volume.drivers.dothill import dothill_client as dothill
 
 LOG = logging.getLogger(__name__)
@@ -200,7 +201,7 @@ class DotHillCommon(object):
         Make sure that the volume is not in use when trying to copy it.
         """
         if (volume['status'] != "available" or
-                volume['attach_status'] == "attached"):
+                volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED):
             LOG.error(_LE("Volume must be detached for clone operation."))
             raise exception.VolumeAttached(volume_id=volume['id'])
 
@@ -451,7 +452,7 @@ class DotHillCommon(object):
 
         """
         false_ret = (False, None)
-        if volume['attach_status'] == "attached":
+        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             return false_ret
         if 'location_info' not in host['capabilities']:
             return false_ret

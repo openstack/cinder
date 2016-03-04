@@ -22,7 +22,7 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import cleanable
-
+from cinder.objects import fields as c_fields
 
 CONF = cfg.CONF
 
@@ -82,7 +82,7 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         'size': fields.IntegerField(nullable=True),
         'availability_zone': fields.StringField(nullable=True),
         'status': fields.StringField(nullable=True),
-        'attach_status': fields.StringField(nullable=True),
+        'attach_status': c_fields.VolumeAttachStatusField(nullable=True),
         'migration_status': fields.StringField(nullable=True),
 
         'scheduled_at': fields.DateTimeField(nullable=True),

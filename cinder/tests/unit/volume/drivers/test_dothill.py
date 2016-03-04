@@ -21,6 +21,7 @@ import mock
 import requests
 
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.volume.drivers.dothill import dothill_client as dothill
 from cinder.volume.drivers.dothill import dothill_common
@@ -100,9 +101,10 @@ stats_large_space = {'free_capacity_gb': 90, 'total_capacity_gb': 100}
 vol_id = 'fceec30e-98bc-4ce5-85ff-d7309cc17cc2'
 test_volume = {'id': vol_id, 'name_id': None,
                'display_name': 'test volume', 'name': 'volume', 'size': 10}
-test_retype_volume = {'attach_status': 'available', 'id': vol_id,
-                      'name_id': None, 'display_name': 'test volume',
-                      'name': 'volume', 'size': 10}
+test_retype_volume = {'attach_status': fields.VolumeAttachStatus.DETACHED,
+                      'id': vol_id, 'name_id': None,
+                      'display_name': 'test volume', 'name': 'volume',
+                      'size': 10}
 test_host = {'capabilities': {'location_info':
                               'DotHillVolumeDriver:xxxxx:dg02:A'}}
 test_snap = {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -117,11 +119,11 @@ dest_volume = {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
 attached_volume = {'id': vol_id,
                    'display_name': 'test volume', 'name': 'volume',
                    'size': 10, 'status': 'in-use',
-                   'attach_status': 'attached'}
+                   'attach_status': fields.VolumeAttachStatus.ATTACHED}
 attaching_volume = {'id': vol_id,
                     'display_name': 'test volume', 'name': 'volume',
                     'size': 10, 'status': 'attaching',
-                    'attach_status': 'attached'}
+                    'attach_status': fields.VolumeAttachStatus.ATTACHED}
 detached_volume = {'id': vol_id, 'name_id': None,
                    'display_name': 'test volume', 'name': 'volume',
                    'size': 10, 'status': 'available',

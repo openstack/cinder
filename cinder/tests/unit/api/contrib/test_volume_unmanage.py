@@ -19,6 +19,7 @@ import webob
 from cinder import context
 from cinder import db
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -78,8 +79,9 @@ class VolumeUnmanageTest(test.TestCase):
 
     def test_unmanage_volume_attached(self):
         """Return 400 if the volume exists but is attached."""
-        vol = utils.create_volume(self.ctxt, status='in-use',
-                                  attach_status='attached')
+        vol = utils.create_volume(
+            self.ctxt, status='in-use',
+            attach_status=fields.VolumeAttachStatus.ATTACHED)
         res = self._get_resp(vol.id)
         self.assertEqual(400, res.status_int, res)
         db.volume_destroy(self.ctxt, vol.id)

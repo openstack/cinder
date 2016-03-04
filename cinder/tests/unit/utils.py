@@ -62,7 +62,7 @@ def create_volume(ctxt,
         vol['migration_status'] = migration_status
     vol['display_name'] = display_name
     vol['display_description'] = display_description
-    vol['attach_status'] = 'detached'
+    vol['attach_status'] = fields.VolumeAttachStatus.DETACHED
     vol['availability_zone'] = availability_zone
     if consistencygroup_id:
         vol['consistencygroup_id'] = consistencygroup_id

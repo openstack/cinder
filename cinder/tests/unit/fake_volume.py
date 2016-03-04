@@ -15,6 +15,7 @@
 from oslo_versionedobjects import fields
 
 from cinder import objects
+from cinder.objects import fields as c_fields
 from cinder.tests.unit import fake_constants as fake
 
 
@@ -25,7 +26,7 @@ def fake_db_volume(**updates):
         'name': 'volume-%s' % fake.VOLUME_ID,
         'availability_zone': 'fake_availability_zone',
         'status': 'available',
-        'attach_status': 'detached',
+        'attach_status': c_fields.VolumeAttachStatus.DETACHED,
         'previous_status': None,
         'volume_attachment': [],
         'volume_metadata': [],

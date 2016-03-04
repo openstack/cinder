@@ -47,7 +47,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         vol['host'] = 'fake_host'
         vol['availability_zone'] = CONF.storage_availability_zone
         vol['status'] = "available"
-        vol['attach_status'] = "detached"
+        vol['attach_status'] = fields.VolumeAttachStatus.DETACHED
         vol['metadata'] = {"test_key": "test_val"}
         vol['size'] = 1
         volume = db.volume_create(self.context, vol)

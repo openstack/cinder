@@ -394,10 +394,11 @@ class API(base.Base):
             return
 
         # Build required conditions for conditional update
-        expected = {'attach_status': db.Not('attached'),
-                    'migration_status': self.AVAILABLE_MIGRATION_STATUS,
-                    'consistencygroup_id': None,
-                    'group_id': None}
+        expected = {
+            'attach_status': db.Not(fields.VolumeAttachStatus.ATTACHED),
+            'migration_status': self.AVAILABLE_MIGRATION_STATUS,
+            'consistencygroup_id': None,
+            'group_id': None}
 
         # If not force deleting we have status conditions
         if not force:
@@ -647,7 +648,7 @@ class API(base.Base):
         # user to see that the volume is 'detaching'. Having
         # 'migration_status' set will have the same effect internally.
         expected = {'status': 'in-use',
-                    'attach_status': 'attached',
+                    'attach_status': fields.VolumeAttachStatus.ATTACHED,
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS}
 
         result = volume.conditional_update({'status': 'detaching'}, expected)

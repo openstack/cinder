@@ -16,6 +16,7 @@
 import six
 
 from cinder.api import common
+from cinder.objects import fields
 
 
 class ViewBuilder(common.ViewBuilder):
@@ -101,10 +102,11 @@ class ViewBuilder(common.ViewBuilder):
         """Retrieve the attachments of the volume object."""
         attachments = []
 
-        if volume['attach_status'] == 'attached':
+        if volume['attach_status'] == fields.VolumeAttachStatus.ATTACHED:
             attaches = volume.volume_attachment
             for attachment in attaches:
-                if attachment.get('attach_status') == 'attached':
+                if (attachment.get('attach_status') ==
+                        fields.VolumeAttachStatus.ATTACHED):
                     a = {'id': attachment.get('volume_id'),
                          'attachment_id': attachment.get('id'),
                          'volume_id': attachment.get('volume_id'),

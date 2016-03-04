@@ -37,7 +37,7 @@ def stub_volume(id, **kwargs):
         'attached_mode': 'rw',
         'status': 'fakestatus',
         'migration_status': None,
-        'attach_status': 'attached',
+        'attach_status': fields.VolumeAttachStatus.ATTACHED,
         'bootable': False,
         'name': 'vol name',
         'display_name': 'displayname',

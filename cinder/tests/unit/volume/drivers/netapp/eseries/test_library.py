@@ -30,6 +30,7 @@ from six.moves import reduce
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 
 from cinder.tests.unit import fake_snapshot
@@ -56,7 +57,7 @@ def get_fake_volume():
         'provider_auth': 'provider a b', 'project_id': 'project',
         'display_name': None, 'display_description': 'lun1',
         'volume_type_id': None, 'migration_status': None, 'attach_status':
-        "detached"
+        fields.VolumeAttachStatus.DETACHED
     }
 
 

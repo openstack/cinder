@@ -26,6 +26,7 @@ from cinder.api.v1 import volumes
 from cinder import context
 from cinder import db
 from cinder import exception as exc
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v1 import stubs
@@ -588,7 +589,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_show_no_attachments(self):
         def stub_volume_get(self, context, volume_id, **kwargs):
-            vol = stubs.stub_volume(volume_id, attach_status='detached')
+            vol = stubs.stub_volume(
+                volume_id,
+                attach_status = fields.VolumeAttachStatus.DETACHED)
             return fake_volume.fake_volume_obj(context, **vol)
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)

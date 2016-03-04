@@ -26,6 +26,7 @@ import webob
 from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -115,7 +116,7 @@ def api_manage(*args, **kwargs):
         'snapshot_id': None,
         'user_id': fake.USER_ID,
         'size': 0,
-        'attach_status': 'detached',
+        'attach_status': fields.VolumeAttachStatus.DETACHED,
         'volume_type_id': None}
     return fake_volume.fake_volume_obj(ctx, **vol)
 

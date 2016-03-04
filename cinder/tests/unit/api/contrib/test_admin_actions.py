@@ -61,7 +61,7 @@ class BaseAdminTest(test.TestCase):
         db_volume = {'status': 'available',
                      'host': 'test',
                      'availability_zone': 'fake_zone',
-                     'attach_status': 'detached'}
+                     'attach_status': fields.VolumeAttachStatus.DETACHED}
         if updates:
             db_volume.update(updates)
 
@@ -146,8 +146,10 @@ class AdminActionsTest(BaseAdminTest):
         vac.validate_update({'status': 'error'})
         vac.validate_update({'status': 'error_deleting'})
 
-        vac.validate_update({'attach_status': 'detached'})
-        vac.validate_update({'attach_status': 'attached'})
+        vac.validate_update({'attach_status':
+                             fields.VolumeAttachStatus.DETACHED})
+        vac.validate_update({'attach_status':
+                             fields.VolumeAttachStatus.ATTACHED})
 
         vac.validate_update({'migration_status': 'migrating'})
         vac.validate_update({'migration_status': 'error'})
@@ -156,18 +158,24 @@ class AdminActionsTest(BaseAdminTest):
         vac.validate_update({'migration_status': 'starting'})
 
     def test_reset_attach_status(self):
-        volume = db.volume_create(self.ctx, {'attach_status': 'detached'})
+        volume = db.volume_create(self.ctx,
+                                  {'attach_status':
+                                   fields.VolumeAttachStatus.DETACHED})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
-                                        {'attach_status': 'attached'})
+                                        {'attach_status':
+                                         fields.VolumeAttachStatus.ATTACHED})
 
         self.assertEqual(202, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
-        self.assertEqual('attached', volume['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         volume['attach_status'])
 
     def test_reset_attach_invalid_status(self):
-        volume = db.volume_create(self.ctx, {'attach_status': 'detached'})
+        volume = db.volume_create(self.ctx,
+                                  {'attach_status':
+                                   fields.VolumeAttachStatus.DETACHED})
 
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
@@ -175,7 +183,8 @@ class AdminActionsTest(BaseAdminTest):
 
         self.assertEqual(400, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
-        self.assertEqual('detached', volume['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.DETACHED,
+                         volume['attach_status'])
 
     def test_reset_migration_invalid_status(self):
         volume = db.volume_create(self.ctx, {'migration_status': None})
@@ -348,7 +357,8 @@ class AdminActionsTest(BaseAdminTest):
         attachment = db.volume_attachment_get(self.ctx, attachment['id'])
 
         self.assertEqual('in-use', volume['status'])
-        self.assertEqual('attached', volume['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         volume['attach_status'])
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
@@ -360,10 +370,11 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('rw', admin_metadata[1]['value'])
 
         # Reset attach_status
-        resp = self._issue_volume_reset(self.ctx,
-                                        volume,
-                                        {'status': 'available',
-                                         'attach_status': 'detached'})
+        resp = self._issue_volume_reset(
+            self.ctx,
+            volume,
+            {'status': 'available',
+             'attach_status': fields.VolumeAttachStatus.DETACHED})
         # request is accepted
         self.assertEqual(202, resp.status_int)
 
@@ -383,22 +394,26 @@ class AdminActionsTest(BaseAdminTest):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1,
-                                   'attach_status': 'detached'})
-        resp = self._issue_volume_reset(self.ctx,
-                                        volume,
-                                        {'status': 'available',
-                                         'attach_status': 'invalid'})
+                                   'attach_status':
+                                       fields.VolumeAttachStatus.DETACHED})
+        resp = self._issue_volume_reset(
+            self.ctx,
+            volume,
+            {'status': 'available',
+             'attach_status': fields.VolumeAttachStatus.ERROR_DETACHING})
         self.assertEqual(400, resp.status_int)
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('available', volume['status'])
-        self.assertEqual('detached', volume['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.DETACHED,
+                         volume['attach_status'])
 
     def test_snapshot_reset_status(self):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1,
                                    'availability_zone': 'test',
-                                   'attach_status': 'detached'})
+                                   'attach_status':
+                                       fields.VolumeAttachStatus.DETACHED})
         kwargs = {
             'volume_id': volume['id'],
             'cgsnapshot_id': None,
@@ -524,7 +539,7 @@ class AdminActionsTest(BaseAdminTest):
         # current status is available
         volume = self._create_volume(self.ctx,
                                      {'provider_location': '',
-                                      'attach_status': '',
+                                      'attach_status': None,
                                       'replication_status': 'active'})
         volume = self._migrate_volume_exec(self.ctx, volume, host,
                                            expected_status)
@@ -653,10 +668,14 @@ class AdminActionsTest(BaseAdminTest):
     def test_migrate_volume_comp_from_nova(self):
         volume = self._create_volume(self.ctx, {'status': 'in-use',
                                                 'migration_status': None,
-                                                'attach_status': 'attached'})
+                                                'attach_status':
+                                                    fields.VolumeAttachStatus.
+                                                    ATTACHED})
         new_volume = self._create_volume(self.ctx,
                                          {'migration_status': None,
-                                          'attach_status': 'detached'})
+                                          'attach_status':
+                                              fields.VolumeAttachStatus.
+                                              DETACHED})
         expected_status = 200
         expected_id = new_volume.id
         self._migrate_volume_comp_exec(self.ctx, volume, new_volume, False,
@@ -758,7 +777,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         self.assertEqual('in-use', volume.status)
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
-        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
         admin_metadata = volume.admin_metadata
         self.assertEqual(2, len(admin_metadata))
         self.assertEqual('False', admin_metadata['readonly'])
@@ -810,7 +830,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         self.assertIsNone(attachment['instance_uuid'])
         self.assertEqual(host_name, attachment['attached_host'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
-        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
         admin_metadata = volume.admin_metadata
         self.assertEqual(2, len(admin_metadata))
         self.assertEqual('False', admin_metadata['readonly'])
@@ -858,7 +879,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         self.assertEqual('in-use', volume.status)
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
-        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
         admin_metadata = volume.admin_metadata
         self.assertEqual(2, len(admin_metadata))
         self.assertEqual('False', admin_metadata['readonly'])
@@ -938,8 +960,10 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         self.assertEqual('in-use', volume.status)
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
-        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
         admin_metadata = volume.admin_metadata
+
         self.assertEqual(2, len(admin_metadata))
         self.assertEqual('False', admin_metadata['readonly'])
         self.assertEqual('rw', admin_metadata['attached_mode'])
@@ -1028,7 +1052,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.volume_api.reserve_volume(self.ctx, volume)
         values = {'volume_id': volume['id'],
-                  'attach_status': 'attaching',
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING,
                   'attach_time': timeutils.utcnow(),
                   'instance_uuid': 'abc123',
                   }
@@ -1042,7 +1066,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(volume['id'], attachment['volume_id'], volume['id'])
-        self.assertEqual('attached', attachment['attach_status'])
+        self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
+                         attachment['attach_status'])
 
     def test_attach_attaching_volume_with_different_mode(self):
         """Test that attaching volume reserved for another mode fails."""

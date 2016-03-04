@@ -131,3 +131,28 @@ class TestSnapshotStatus(TestField):
 
     def test_stringify_invalid(self):
         self.assertRaises(ValueError, self.field.stringify, 'not_a_status')
+
+
+class TestVolumeAttachStatus(TestField):
+    def setUp(self):
+        super(TestVolumeAttachStatus, self).setUp()
+        self.field = fields.VolumeAttachStatusField()
+        self.coerce_good_values = [('attaching',
+                                    fields.VolumeAttachStatus.ATTACHING),
+                                   ('attached',
+                                    fields.VolumeAttachStatus.ATTACHED),
+                                   ('detached',
+                                    fields.VolumeAttachStatus.DETACHED),
+                                   ('error_attaching',
+                                    fields.VolumeAttachStatus.ERROR_ATTACHING),
+                                   ('error_detaching',
+                                    fields.VolumeAttachStatus.ERROR_DETACHING)]
+        self.coerce_bad_values = ['acme']
+        self.to_primitive_values = self.coerce_good_values[0:1]
+        self.from_primitive_values = self.coerce_good_values[0:1]
+
+    def test_stringify(self):
+        self.assertEqual("'attaching'", self.field.stringify('attaching'))
+
+    def test_stringify_invalid(self):
+        self.assertRaises(ValueError, self.field.stringify, 'not_a_status')

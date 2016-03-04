@@ -148,8 +148,8 @@ class VolumeAdminController(AdminController):
     # parent class?
     valid_status = AdminController.valid_status.union(
         ('attaching', 'in-use', 'detaching', 'maintenance'))
-
-    valid_attach_status = ('detached', 'attached',)
+    valid_attach_status = (fields.VolumeAttachStatus.ATTACHED,
+                           fields.VolumeAttachStatus.DETACHED,)
     valid_migration_status = ('migrating', 'error',
                               'success', 'completing',
                               'none', 'starting',)

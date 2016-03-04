@@ -19,6 +19,7 @@ import webob
 from cinder.api.contrib import volume_encryption_metadata
 from cinder import context
 from cinder import db
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -57,7 +58,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
             'status': status,
             'display_name': display_name,
             'display_description': display_description,
-            'attach_status': 'detached',
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
             'availability_zone': availability_zone,
             'host': host,
             'encryption_key_id': encryption_key_id,

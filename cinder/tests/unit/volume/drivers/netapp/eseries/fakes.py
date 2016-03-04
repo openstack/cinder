@@ -21,6 +21,7 @@ import json
 
 import mock
 
+from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp.eseries import utils
@@ -41,7 +42,7 @@ FAKE_CINDER_VOLUME = {
     'display_description': 'lun1',
     'volume_type_id': None,
     'migration_status': None,
-    'attach_status': "detached"
+    'attach_status': fields.VolumeAttachStatus.DETACHED
 }
 
 FAKE_CINDER_SNAPSHOT = {

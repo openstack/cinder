@@ -1408,7 +1408,7 @@ class BaseVD(object):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': 'creating',
-            'attach_status': 'detached',
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
             'availability_zone': volume.availability_zone,
             'volume_type_id': volume.volume_type_id,
         }

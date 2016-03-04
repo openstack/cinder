@@ -26,6 +26,7 @@ from cinder.api.contrib import volume_transfer
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -54,7 +55,8 @@ class VolumeTransferAPITestCase(test.TestCase):
                        display_description='this is a test volume',
                        status='available',
                        size=1,
-                       project_id=fake.PROJECT_ID):
+                       project_id=fake.PROJECT_ID,
+                       attach_status=fields.VolumeAttachStatus.DETACHED):
         """Create a volume object."""
         vol = {}
         vol['host'] = 'fake_host'
@@ -64,7 +66,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         vol['status'] = status
         vol['display_name'] = display_name
         vol['display_description'] = display_description
-        vol['attach_status'] = status
+        vol['attach_status'] = attach_status
         vol['availability_zone'] = 'fake_zone'
         return db.volume_create(context.get_admin_context(), vol)['id']
 

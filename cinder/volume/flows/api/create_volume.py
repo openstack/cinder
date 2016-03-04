@@ -512,7 +512,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'user_id': context.user_id,
             'project_id': context.project_id,
             'status': 'creating',
-            'attach_status': 'detached',
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
             'encryption_key_id': kwargs.pop('encryption_key_id'),
             # Rename these to the internal name.
             'display_description': kwargs.pop('description'),
