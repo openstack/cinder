@@ -519,32 +519,51 @@ class EMCVMAXMasking(object):
         if self._is_volume_in_storage_group(
                 conn, storageGroupInstanceName,
                 volumeInstance, sgGroupName):
-            LOG.debug(
+            LOG.warning(_LW(
                 "Volume: %(volumeName)s is already part "
-                "of storage group %(sgGroupName)s.",
+                "of storage group %(sgGroupName)s."),
                 {'volumeName': volumeName,
                  'sgGroupName': sgGroupName})
         else:
-            self.add_volume_to_storage_group(
-                conn, controllerConfigService,
-                storageGroupInstanceName, volumeInstance, volumeName,
-                sgGroupName, maskingViewDict['extraSpecs'])
-            if not self._is_volume_in_storage_group(
-                    conn, storageGroupInstanceName,
-                    volumeInstance, sgGroupName):
-                # This may be used in exception hence _ instead of _LE.
-                msg = (_(
-                    "Volume: %(volumeName)s was not added "
-                    "to storage group %(sgGroupName)s. ") %
-                    {'volumeName': volumeName,
-                     'sgGroupName': sgGroupName})
-                LOG.error(msg)
-            else:
-                LOG.info(_LI(
-                    "Successfully added %(volumeName)s to %(sgGroupName)s."),
-                    {'volumeName': volumeName,
-                     'sgGroupName': sgGroupName})
+            msg = self._add_volume_to_sg_and_verify(
+                conn, controllerConfigService, storageGroupInstanceName,
+                volumeInstance, volumeName, sgGroupName,
+                maskingViewDict['extraSpecs'])
 
+        return msg
+
+    def _add_volume_to_sg_and_verify(
+            self, conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, volumeName, sgGroupName, extraSpecs):
+        """Add the volume to the storage group and double check it is there.
+
+        :param conn: the ecom connection
+        :param controllerConfigService: controller service
+        :param storageGroupInstanceName: storage group instance name
+        :param volumeInstance: the volume instance
+        :param volumeName: the volume name
+        :param sgGroupName: the storage group name
+        :param extraSpecs: the extra specifications
+        :returns: string -- the error message
+        """
+        msg = None
+        self.add_volume_to_storage_group(
+            conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, volumeName, sgGroupName, extraSpecs)
+        if not self._is_volume_in_storage_group(
+                conn, storageGroupInstanceName, volumeInstance, sgGroupName):
+            # This may be used in exception hence _ instead of _LE.
+            msg = (_(
+                "Volume: %(volumeName)s was not added "
+                "to storage group %(sgGroupName)s.") %
+                {'volumeName': volumeName,
+                 'sgGroupName': sgGroupName})
+            LOG.error(msg)
+        else:
+            LOG.info(_LI("Successfully added %(volumeName)s to "
+                         "%(sgGroupName)s."),
+                     {'volumeName': volumeName,
+                      'sgGroupName': sgGroupName})
         return msg
 
     def _get_and_remove_from_storage_group_v2(
@@ -1747,14 +1766,11 @@ class EMCVMAXMasking(object):
 
     def remove_and_reset_members(
             self, conn, controllerConfigService, volumeInstance,
-            volumeName, extraSpecs, connector=None, noReset=None):
-        """Part of unmap device or rollback.
+            volumeName, extraSpecs, connector=None, reset=True):
+        """This is called on a delete, unmap device or rollback.
 
-        Removes volume from the Device Masking Group that belongs to a
-        Masking View. Check if fast policy is in the extra specs, if it isn't
-        we do not need to do any thing for FAST. Assume that
-        isTieringPolicySupported is False unless the FAST policy is in
-        the extra specs and tiering is enabled on the array.
+        If the connector is not None get the associated SG and remove volume
+        from the storage group, otherwise it is a VMAX3 deletion.
 
         :param conn: connection the the ecom server
         :param controllerConfigService: the controller configuration service
@@ -1762,33 +1778,72 @@ class EMCVMAXMasking(object):
         :param volumeName: the volume name
         :param extraSpecs: additional info
         :param connector: optional
-        :param noReset: optional, if none, then reset
+        :param reset: reset, return to original SG (optional)
         :returns: storageGroupInstanceName
         """
-        fastPolicyName = extraSpecs.get(FASTPOLICY, None)
-        isV3 = extraSpecs[ISV3]
         storageGroupInstanceName = None
         if connector is not None:
             storageGroupInstanceName = self._get_sg_associated_with_connector(
                 conn, controllerConfigService, volumeInstance.path,
                 volumeName, connector)
-            if storageGroupInstanceName is None:
-                return None
+            if storageGroupInstanceName:
+                self._remove_volume_from_sg(
+                    conn, controllerConfigService, storageGroupInstanceName,
+                    volumeInstance, extraSpecs)
         else:  # Connector is None in V3 volume deletion case.
-            storageGroupInstanceNames = (
-                self.get_associated_masking_groups_from_device(
-                    conn, volumeInstance.path))
-            if storageGroupInstanceNames:
-                storageGroupInstanceName = storageGroupInstanceNames[0]
-            else:
-                return None
+            self._cleanup_deletion_v3(
+                conn, controllerConfigService, volumeInstance, extraSpecs)
+        if reset:
+            self._return_back_to_default_sg(
+                conn, controllerConfigService, volumeInstance, volumeName,
+                extraSpecs)
+
+        return storageGroupInstanceName
+
+    def _cleanup_deletion_v3(
+            self, conn, controllerConfigService, volumeInstance, extraSpecs):
+        """Pre cleanup before VMAX3 deletion operation
+
+        :param conn: the ecom connection
+        :param controllerConfigService: storage system instance name
+        :param volumeInstance: the volume instance
+        :param extraSpecs: the extra specifications
+        """
+        storageGroupInstanceNames = (
+            self.get_associated_masking_groups_from_device(
+                conn, volumeInstance.path))
+
+        if storageGroupInstanceNames:
+            sgNum = len(storageGroupInstanceNames)
+            if len(storageGroupInstanceNames) > 1:
+                LOG.warning(_LW("Volume %(volumeName)s is belong to "
+                                "%(sgNum)s storage groups."),
+                            {'volumeName': volumeInstance['ElementName'],
+                             'sgNum': sgNum})
+            for storageGroupInstanceName in storageGroupInstanceNames:
+                self._remove_volume_from_sg(
+                    conn, controllerConfigService,
+                    storageGroupInstanceName,
+                    volumeInstance,
+                    extraSpecs)
+
+    def _remove_volume_from_sg(
+            self, conn, controllerConfigService, storageGroupInstanceName,
+            volumeInstance, extraSpecs):
+
+        """Remove volume from storage group
+
+        :param conn: the ecom connection
+        :param controllerConfigService: storage system instance name
+        :param storageGroupInstanceName: the SG instance name
+        :param volumeInstance: the volume instance
+        :param extraSpecs: the extra specifications
+        """
         instance = conn.GetInstance(storageGroupInstanceName, LocalOnly=False)
         storageGroupName = instance['ElementName']
 
         volumeInstanceNames = self.get_devices_from_storage_group(
             conn, storageGroupInstanceName)
-        storageSystemInstanceName = self.utils.find_storage_system(
-            conn, controllerConfigService)
 
         numVolInStorageGroup = len(volumeInstanceNames)
         LOG.debug(
@@ -1797,25 +1852,18 @@ class EMCVMAXMasking(object):
             {'numVol': numVolInStorageGroup,
              'maskingGroup': storageGroupInstanceName})
 
-        if not isV3:
-            isTieringPolicySupported, __ = (
-                self._get_tiering_info(conn, storageSystemInstanceName,
-                                       fastPolicyName))
-
         if numVolInStorageGroup == 1:
             # Last volume in the storage group.
             self._last_vol_in_SG(
                 conn, controllerConfigService, storageGroupInstanceName,
-                storageGroupName, volumeInstance, volumeName, extraSpecs)
+                storageGroupName, volumeInstance,
+                volumeInstance['ElementName'], extraSpecs)
         else:
-            # Not the last volume so remove it from storage group in
-            # the masking view.
+            # Not the last volume so remove it from storage group
             self._multiple_vols_in_SG(
                 conn, controllerConfigService, storageGroupInstanceName,
-                storageGroupName, volumeInstance, volumeName,
-                numVolInStorageGroup, fastPolicyName, extraSpecs)
-
-        return storageGroupInstanceName
+                volumeInstance, volumeInstance['ElementName'],
+                numVolInStorageGroup, extraSpecs)
 
     def _last_vol_in_SG(
             self, conn, controllerConfigService, storageGroupInstanceName,
@@ -1881,29 +1929,20 @@ class EMCVMAXMasking(object):
 
     def _multiple_vols_in_SG(
             self, conn, controllerConfigService, storageGroupInstanceName,
-            storageGroupName, volumeInstance, volumeName, numVolsInSG,
-            fastPolicyName, extraSpecs):
-        """Necessary steps if the volume is not the last in the SG.
+            volumeInstance, volumeName, numVolsInSG, extraSpecs):
+        """If the volume is not the last in the storage group
 
-        1. Remove the volume from the SG.
-        2. Return the volume to default SG if necessary.
+        Remove the volume from the SG.
 
         :param conn: the ecom connection
         :param controllerConfigService: storage system instance name
         :param storageGroupInstanceName: the SG instance name
-        :param storageGroupName: the Storage group name (String)
         :param volumeInstance: the volume instance
         :param volumeName: the volume name
         :param numVolsInSG: the number of volumes in the SG
-        :param fastPolicyName: the FAST policy name
         :param extraSpecs: the extra specifications
         """
-        storageSystemInstanceName = self.utils.find_storage_system(
-            conn, controllerConfigService)
-        if not extraSpecs[ISV3]:
-            isTieringPolicySupported, __ = (
-                self._get_tiering_info(conn, storageSystemInstanceName,
-                                       fastPolicyName))
+
         LOG.debug("Start: number of volumes in masking storage group: "
                   "%(numVol)d", {'numVol': numVolsInSG})
         self.provision.remove_device_from_storage_group(
@@ -1913,19 +1952,6 @@ class EMCVMAXMasking(object):
         LOG.debug(
             "RemoveMembers for volume %(volumeName)s completed "
             "successfully.", {'volumeName': volumeName})
-
-        # Add it back to the default storage group.
-        if extraSpecs[ISV3]:
-            self._return_volume_to_default_storage_group_v3(
-                conn, controllerConfigService, storageGroupName,
-                volumeInstance, volumeName, storageSystemInstanceName,
-                extraSpecs)
-        else:
-            # V2 if FAST POLICY enabled, move the volume to the default SG.
-            if fastPolicyName is not None and isTieringPolicySupported:
-                self._cleanup_tiering(
-                    conn, controllerConfigService, fastPolicyName,
-                    volumeInstance, volumeName, extraSpecs)
 
         volumeInstanceNames = self.get_devices_from_storage_group(
             conn, storageGroupInstanceName)
@@ -1938,10 +1964,6 @@ class EMCVMAXMasking(object):
             maskingViewName, storageGroupInstanceName, storageGroupName,
             volumeInstance, volumeName, extraSpecs):
         """Delete the Masking view, the storage Group and  the initiator group.
-
-        Also does necessary cleanup like removing the policy from the
-        storage group for V2 and returning the volume to the default
-        storage group.
 
         :param conn: connection the the ecom server
         :param controllerConfigService: the controller configuration service
@@ -1978,56 +2000,49 @@ class EMCVMAXMasking(object):
                 storageSystemInstanceName['Name'],
                 storageGroupInstanceName, extraSpecs)
 
-        self._cleanup_last_vol(
-            conn, controllerConfigService, storageGroupInstanceName,
-            storageGroupName, volumeInstance, volumeName,
-            storageSystemInstanceName, isTieringPolicySupported, extraSpecs)
-
-    def _cleanup_last_vol(
-            self, conn, controllerConfigService, storageGroupInstanceName,
-            storageGroupName, volumeInstance, volumeName,
-            storageSystemInstanceName, isTieringPolicySupported, extraSpecs):
-        """Do necessary cleanup when the volume is the last in the SG.
-
-        This includes removing the last volume from the SG and deleting the
-        SG.  It also means moving the volume to the default SG for VMAX3 and
-        FAST for VMAX2.
-
-        :param conn: connection the the ecom server
-        :param controllerConfigService: the controller configuration service
-        :param storageGroupInstanceName: storage group instance name
-        :param storageGroupName: the storage group name
-        :param volumeInstance: the volume Instance
-        :param volumeName: the volume name
-        :param storageSystemInstanceName: the storage system instance name
-        :param isTieringPolicySupported: tiering policy supported flag
-        :param extraSpecs: extra specs
-        """
-        # Remove the last volume and delete the storage group.
         self._remove_last_vol_and_delete_sg(
             conn, controllerConfigService, storageGroupInstanceName,
             storageGroupName, volumeInstance.path, volumeName,
             extraSpecs)
+
+        LOG.debug(
+            "Volume %(volumeName)s successfully removed from SG and "
+            "Storage Group %(storageGroupName)s successfully deleted. ",
+            {'volumeName': volumeName,
+             'storageGroupName': storageGroupName})
+
+    def _return_back_to_default_sg(
+            self, conn, controllerConfigService, volumeInstance, volumeName,
+            extraSpecs):
+        """Return volume to default storage group
+
+        Moving the volume to the default SG for VMAX3 and
+        FAST for VMAX2.
+
+        :param conn: connection the the ecom server
+        :param controllerConfigService: the controller configuration service
+        :param volumeInstance: the volume Instance
+        :param volumeName: the volume name
+        :param extraSpecs: extra specs
+        """
         # Add it back to the default storage group.
         if extraSpecs[ISV3]:
-            self._return_volume_to_default_storage_group_v3(
-                conn, controllerConfigService, storageGroupName,
-                volumeInstance, volumeName, storageSystemInstanceName,
-                extraSpecs)
+            self.return_volume_to_default_storage_group_v3(
+                conn, controllerConfigService,
+                volumeInstance, volumeName, extraSpecs)
         else:
             # V2 if FAST POLICY enabled, move the volume to the default
             # SG.
             fastPolicyName = extraSpecs.get(FASTPOLICY, None)
+            storageSystemInstanceName = self.utils.find_storage_system(
+                conn, controllerConfigService)
+            isTieringPolicySupported, __ = (
+                self._get_tiering_info(conn, storageSystemInstanceName,
+                                       fastPolicyName))
             if fastPolicyName is not None and isTieringPolicySupported:
                 self._cleanup_tiering(
                     conn, controllerConfigService, fastPolicyName,
                     volumeInstance, volumeName, extraSpecs)
-        LOG.debug(
-            "Volume %(volumeName)s successfully removed from SG and "
-            "returned to default storage group where applicable. "
-            "Storage Group %(storageGroupName)s successfully deleted. ",
-            {'volumeName': volumeName,
-             'storageGroupName': storageGroupName})
 
     def _get_sg_associated_with_connector(
             self, conn, controllerConfigService, volumeInstanceName,
@@ -2141,51 +2156,41 @@ class EMCVMAXMasking(object):
                 conn, tierPolicyServiceInstanceName,
                 storageGroupInstanceName, tierPolicyInstanceName, extraSpecs)
 
-    def _return_volume_to_default_storage_group_v3(
-            self, conn, controllerConfigService, storageGroupName,
-            volumeInstance, volumeName, storageSystemInstanceName,
-            extraSpecs):
+    def return_volume_to_default_storage_group_v3(
+            self, conn, controllerConfigurationService,
+            volumeInstance, volumeName, extraSpecs):
         """Return volume to the default storage group in v3.
 
         :param conn: the ecom connection
         :param controllerConfigService: controller config service
-        :param storageGroupName: storage group name
         :param volumeInstance: volumeInstance
         :param volumeName: the volume name
-        :param storageSystemInstanceName: the storage system instance name
         :param extraSpecs: additional info
         :raises: VolumeBackendAPIException
         """
-        # First strip the shortHostname from the storage group name.
-        defaultStorageGroupName, shorthostName = (
-            self.utils.strip_short_host_name(storageGroupName))
+        storageGroupName = self.utils.get_v3_storage_group_name(
+            extraSpecs[self.utils.POOL], extraSpecs[self.utils.SLO],
+            extraSpecs[self.utils.WORKLOAD])
+        storageGroupInstanceName = self.utils.find_storage_masking_group(
+            conn, controllerConfigurationService, storageGroupName)
 
-        # Check if host name exists which signifies detach operation.
-        if shorthostName is not None:
-            # Populate maskingViewDict and storageGroupInstanceName.
-            maskingViewDict = {}
-            maskingViewDict['sgGroupName'] = defaultStorageGroupName
-            maskingViewDict['volumeInstance'] = volumeInstance
-            maskingViewDict['volumeName'] = volumeName
-            maskingViewDict['controllerConfigService'] = (
-                controllerConfigService)
-            maskingViewDict['storageSystemName'] = (
-                storageSystemInstanceName)
-            sgInstanceName = self.utils.find_storage_masking_group(
-                conn, controllerConfigService, defaultStorageGroupName)
-            if sgInstanceName is not None:
-                errorMessage = (
-                    self._check_adding_volume_to_storage_group(
-                        conn, maskingViewDict,
-                        sgInstanceName))
-            else:
-                errorMessage = (_(
-                    "Storage group %(sgGroupName)s "
-                    "does not exist.")
-                    % {'sgGroupName': defaultStorageGroupName})
+        if not storageGroupInstanceName:
+            storageGroupInstanceName = (
+                self.provisionv3.create_storage_group_v3(
+                    conn, controllerConfigurationService, storageGroupName,
+                    extraSpecs[self.utils.POOL], extraSpecs[self.utils.SLO],
+                    extraSpecs[self.utils.WORKLOAD], extraSpecs))
+            if not storageGroupInstanceName:
+                errorMessage = (_("Failed to create storage group "
+                                  "%(storageGroupName)s.") %
+                                {'storageGroupName': storageGroupName})
                 LOG.error(errorMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=errorMessage)
+                raise exception.VolumeBackendAPIException(data=errorMessage)
+
+        self._add_volume_to_sg_and_verify(
+            conn, controllerConfigurationService,
+            storageGroupInstanceName, volumeInstance, volumeName,
+            storageGroupName, extraSpecs)
 
     def _cleanup_tiering(
             self, conn, controllerConfigService, fastPolicyName,
