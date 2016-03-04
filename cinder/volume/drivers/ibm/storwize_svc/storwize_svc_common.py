@@ -3007,7 +3007,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'allocated_capacity_gb': allocated_capacity_gb,
-                    'easytier_support': easy_tier,
                     'compression_support': self._state['compression_enabled'],
                     'reserved_percentage':
                         self.configuration.reserved_percentage,
