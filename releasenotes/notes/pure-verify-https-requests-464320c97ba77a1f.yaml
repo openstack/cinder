@@ -1,0 +1,5 @@
+---
+security:
+  - Pure Storage Volume Drivers can now utilize driver_ssl_cert_verify and
+    driver_ssl_cert_path config options to allow for secure https requests to
+    the FlashArray.

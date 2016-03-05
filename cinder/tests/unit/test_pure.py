@@ -343,6 +343,8 @@ class PureDriverTestCase(test.TestCase):
         self.mock_config.volume_backend_name = VOLUME_BACKEND_NAME
         self.mock_config.safe_get.return_value = None
         self.mock_config.pure_eradicate_on_delete = False
+        self.mock_config.driver_ssl_cert_verify = False
+        self.mock_config.driver_ssl_cert_path = None
         self.array = mock.Mock()
         self.array.get.return_value = GET_ARRAY_PRIMARY
         self.array.array_name = GET_ARRAY_PRIMARY["array_name"]
@@ -352,6 +354,7 @@ class PureDriverTestCase(test.TestCase):
         self.array2.array_id = GET_ARRAY_SECONDARY["id"]
         self.array2.get.return_value = GET_ARRAY_SECONDARY
         self.purestorage_module = pure.purestorage
+        self.purestorage_module.VERSION = '1.4.0'
         self.purestorage_module.PureHTTPError = FakePureStorageHTTPError
 
     def fake_get_array(*args, **kwargs):
@@ -392,6 +395,7 @@ class PureBaseSharedDriverTestCase(PureDriverTestCase):
         super(PureBaseSharedDriverTestCase, self).tearDown()
 
 
+@ddt.ddt
 class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def setUp(self):
         super(PureBaseVolumeDriverTestCase, self).setUp()
@@ -1883,6 +1887,58 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.array.set_pgroup.assert_called_with(
             self.driver._replication_pg_name,
             remvollist=[VOLUME_PURITY_NAME]
+        )
+
+    @ddt.data(dict(version='1.5.0'), dict(version='2.0.0'))
+    @ddt.unpack
+    def test_get_flasharray_verify_https(self, version):
+        self.purestorage_module.VERSION = version
+        san_ip = '1.2.3.4'
+        api_token = 'abcdef'
+        cert_path = '/my/ssl/certs'
+        self.purestorage_module.FlashArray.return_value = mock.MagicMock()
+
+        self.driver._get_flasharray(san_ip,
+                                    api_token,
+                                    verify_https=True,
+                                    ssl_cert_path=cert_path)
+        self.purestorage_module.FlashArray.assert_called_with(
+            san_ip,
+            api_token=api_token,
+            rest_version=None,
+            verify_https=True,
+            ssl_cert=cert_path
+        )
+
+    def test_get_flasharray_dont_verify_https_version_too_old(self):
+        self.purestorage_module.VERSION = '1.4.0'
+        san_ip = '1.2.3.4'
+        api_token = 'abcdef'
+        self.purestorage_module.FlashArray.return_value = mock.MagicMock()
+
+        self.driver._get_flasharray(san_ip,
+                                    api_token,
+                                    verify_https=False,
+                                    ssl_cert_path=None)
+        self.purestorage_module.FlashArray.assert_called_with(
+            san_ip,
+            api_token=api_token,
+            rest_version=None
+        )
+
+    def test_get_flasharray_verify_https_version_too_old(self):
+        self.purestorage_module.VERSION = '1.4.0'
+        san_ip = '1.2.3.4'
+        api_token = 'abcdef'
+        self.purestorage_module.FlashArray.return_value = mock.MagicMock()
+
+        self.assertRaises(
+            exception.PureDriverException,
+            self.driver._get_flasharray,
+            san_ip,
+            api_token,
+            verify_https=True,
+            ssl_cert_path='/my/ssl/certs'
         )
 
 

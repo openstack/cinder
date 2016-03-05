@@ -178,7 +178,14 @@ class PureBaseVolumeDriver(san.SanDriver):
                 backend_id = replication_device["backend_id"]
                 san_ip = replication_device["san_ip"]
                 api_token = replication_device["api_token"]
-                target_array = self._get_flasharray(san_ip, api_token)
+                verify_https = replication_device.get("ssl_cert_verify", False)
+                ssl_cert_path = replication_device.get("ssl_cert_path", None)
+                target_array = self._get_flasharray(
+                    san_ip,
+                    api_token,
+                    verify_https=verify_https,
+                    ssl_cert_path=ssl_cert_path
+                )
                 target_array._backend_id = backend_id
                 LOG.debug("Adding san_ip %(san_ip)s to replication_targets.",
                           {"san_ip": san_ip})
@@ -220,8 +227,10 @@ class PureBaseVolumeDriver(san.SanDriver):
             self.SUPPORTED_REST_API_VERSIONS
         self._array = self._get_flasharray(
             self.configuration.san_ip,
-            api_token=self.configuration.pure_api_token)
-
+            api_token=self.configuration.pure_api_token,
+            verify_https=self.configuration.driver_ssl_cert_verify,
+            ssl_cert_path=self.configuration.driver_ssl_cert_path
+        )
         self._array._backend_id = self._backend_name
         LOG.debug("Primary array backend_id: %s",
                   self.configuration.config_group)
@@ -953,10 +962,31 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._rename_volume_object(snap_name, unmanaged_snap_name)
 
     @staticmethod
-    def _get_flasharray(san_ip, api_token, rest_version=None):
-        array = purestorage.FlashArray(san_ip,
-                                       api_token=api_token,
-                                       rest_version=rest_version)
+    def _get_flasharray(san_ip, api_token, rest_version=None,
+                        verify_https=None, ssl_cert_path=None):
+        # Older versions of the module (1.4.0) do not support setting ssl certs
+        # TODO(patrickeast): In future releases drop support for 1.4.0
+        module_version = purestorage.VERSION.split('.')
+        major_version = int(module_version[0])
+        minor_version = int(module_version[1])
+        if major_version > 1 or (major_version == 1 and minor_version > 4):
+            array = purestorage.FlashArray(san_ip,
+                                           api_token=api_token,
+                                           rest_version=rest_version,
+                                           verify_https=verify_https,
+                                           ssl_cert=ssl_cert_path)
+        else:
+            if verify_https or ssl_cert_path is not None:
+                msg = _('HTTPS certificate verification was requested '
+                        'but cannot be enabled with purestorage '
+                        'module version %(version)s. Upgrade to a '
+                        'newer version to enable this feature.') % {
+                    'version': purestorage.VERSION
+                }
+                raise exception.PureDriverException(reason=msg)
+            array = purestorage.FlashArray(san_ip,
+                                           api_token=api_token,
+                                           rest_version=rest_version)
         array_info = array.get()
         array.array_name = array_info["array_name"]
         array.array_id = array_info["id"]
@@ -1146,7 +1176,9 @@ class PureBaseVolumeDriver(san.SanDriver):
             target_array = self._get_flasharray(
                 secondary_array._target,
                 api_token=secondary_array._api_token,
-                rest_version='1.3'
+                rest_version='1.3',
+                verify_https=secondary_array._verify_https,
+                ssl_cert_path=secondary_array._ssl_cert
             )
         else:
             target_array = secondary_array
