@@ -9,9 +9,11 @@ to the API while preserving backward compatibility. The basic idea is
 that a user has to explicitly ask for their request to be treated with
 a particular version of the API. So breaking changes can be added to
 the API without breaking users who don't specifically ask for it. This
-is done with an HTTP header ``OpenStack-Volume-microversion`` which
+is done with an HTTP header ``OpenStack-API-Version`` which
 is a monotonically increasing semantic version number starting from
-``3.0``.
+``3.0``. Each service that uses microversions will share this header, so
+the Volume service will need to specifiy ``volume``:
+    ``OpenStack-API-Version: volume 3.0``
 
 If a user makes a request without specifying a version, they will get
 the ``DEFAULT_API_VERSION`` as defined in
@@ -157,7 +159,7 @@ In the controller class::
         ....
 
 This method would only be available if the caller had specified an
-``OpenStack-Volume-microversion`` of >= ``3.4``. If they had specified a
+``OpenStack-API-Version`` of >= ``3.4``. If they had specified a
 lower version (or not specified it and received the default of ``3.1``)
 the server would respond with ``HTTP/404``.
 
@@ -171,7 +173,7 @@ In the controller class::
         ....
 
 This method would only be available if the caller had specified an
-``OpenStack-Volume-microversion`` of <= ``3.4``. If ``3.5`` or later
+``OpenStack-API-Version`` of <= ``3.4``. If ``3.5`` or later
 is specified the server will respond with ``HTTP/404``.
 
 Changing a method's behaviour
@@ -294,11 +296,11 @@ these unit tests are not replicated in .../v3, and only new functionality
 needs to be place in the .../v3/directory.
 
 Testing a microversioned API method is very similar to a normal controller
-method test, you just need to add the ``OpenStack-Volume-microversion``
+method test, you just need to add the ``OpenStack-API-Version``
 header, for example::
 
     req = fakes.HTTPRequest.blank('/testable/url/endpoint')
-    req.headers = {'OpenStack-Volume-microversion': '3.2'}
+    req.headers = {'OpenStack-API-Version': 'volume 3.2'}
     req.api_version_request = api_version.APIVersionRequest('3.6')
 
     controller = controller.TestableController()
