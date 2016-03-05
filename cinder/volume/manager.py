@@ -36,7 +36,7 @@ intact.
 
 """
 
-
+import requests
 import time
 
 from oslo_config import cfg
@@ -113,6 +113,9 @@ volume_manager_opts = [
                     'location of a backend, then creating a volume type to '
                     'allow the user to select by these different '
                     'properties.'),
+    cfg.BoolOpt('suppress_requests_ssl_warnings',
+                default=False,
+                help='Suppress requests library SSL certificate warnings.'),
 ]
 
 CONF = cfg.CONF
@@ -262,6 +265,13 @@ class VolumeManager(manager.SchedulerDependentManager):
                          "for driver init."))
         else:
             curr_active_backend_id = service.active_backend_id
+
+        if self.configuration.suppress_requests_ssl_warnings:
+            LOG.warning(_LW("Suppressing requests library SSL Warnings"))
+            requests.packages.urllib3.disable_warnings(
+                requests.packages.urllib3.exceptions.InsecureRequestWarning)
+            requests.packages.urllib3.disable_warnings(
+                requests.packages.urllib3.exceptions.InsecurePlatformWarning)
 
         self.driver = importutils.import_object(
             volume_driver,
