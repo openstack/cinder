@@ -1675,6 +1675,8 @@ class DellSCSanAPITestCase(test.TestCase):
         self.scapi.ssn = self.configuration.dell_sc_ssn
         self.scapi.sfname = self.configuration.dell_sc_server_folder
         self.scapi.vfname = self.configuration.dell_sc_volume_folder
+        # Note that we set this to True (or not) on the replication tests.
+        self.scapi.failed_over = False
 
         self.volid = str(uuid.uuid4())
         self.volume_name = "volume" + self.volid
@@ -2305,7 +2307,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_open_connection,
                                    mock_init):
         # Test calling find_volume with result of no volume found
-        mock_get_volume_list.side_effect = [[], [], []]
+        mock_get_volume_list.side_effect = [[], []]
         res = self.scapi.find_volume(self.volume_name)
         self.assertIsNone(res, 'None expected')
 
@@ -2320,9 +2322,11 @@ class DellSCSanAPITestCase(test.TestCase):
                                               mock_close_connection,
                                               mock_open_connection,
                                               mock_init):
+        self.scapi.failed_over = True
         mock_get_volume_list.side_effect = [[], [], self.VOLUME_LIST]
         res = self.scapi.find_volume(self.volume_name)
         self.assertEqual(self.VOLUME, res, 'Unexpected volume')
+        self.scapi.failed_over = False
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_import_one',
@@ -2335,9 +2339,11 @@ class DellSCSanAPITestCase(test.TestCase):
                                                    mock_close_connection,
                                                    mock_open_connection,
                                                    mock_init):
+        self.scapi.failed_over = True
         mock_get_volume_list.side_effect = [[], [], self.VOLUME_LIST]
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.scapi.find_volume, self.volume_name)
+        self.scapi.failed_over = False
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_volume_list')
@@ -2350,8 +2356,10 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_get_volume_list.side_effect = [[],
                                             [],
                                             self.VOLUME_LIST_MULTI_VOLS]
+        self.scapi.failed_over = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.scapi.find_volume, self.volume_name)
+        self.scapi.failed_over = False
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_volume_list',
@@ -5472,13 +5480,13 @@ class DellSCSanAPITestCase(test.TestCase):
                         mock_close_connection,
                         mock_open_connection,
                         mock_init):
-        gb, rem = self.scapi._size_to_gb('1.073741824E9 Byte')
+        gb, rem = self.scapi.size_to_gb('1.073741824E9 Byte')
         self.assertEqual(1, gb)
         self.assertEqual(0, rem)
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.scapi._size_to_gb,
+                          self.scapi.size_to_gb,
                           'banana')
-        gb, rem = self.scapi._size_to_gb('1.073741924E9 Byte')
+        gb, rem = self.scapi.size_to_gb('1.073741924E9 Byte')
         self.assertEqual(1, gb)
         self.assertEqual(100, rem)
 
@@ -5514,7 +5522,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=[{'configuredSize':
                                       '1.073741824E9 Bytes'}])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_size_to_gb',
+                       'size_to_gb',
                        return_value=(1, 0))
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
@@ -5585,7 +5593,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=[{'configuredSize':
                                       '1.073741924E9 Bytes'}])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_size_to_gb',
+                       'size_to_gb',
                        return_value=(1, 100))
     def test_manage_existing_bad_size(self,
                                       mock_size_to_gb,
@@ -5612,7 +5620,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=[{'configuredSize':
                                       '1.073741824E9 Bytes'}])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_size_to_gb',
+                       'size_to_gb',
                        return_value=(1, 0))
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
@@ -5643,7 +5651,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=[{'configuredSize':
                                       '1.073741824E9 Bytes'}])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_size_to_gb',
+                       'size_to_gb',
                        return_value=(1, 0))
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_find_mappings',
@@ -5678,7 +5686,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=[{'configuredSize':
                                       '1.073741824E9 Bytes'}])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_size_to_gb',
+                       'size_to_gb',
                        return_value=(1, 0))
     def test_get_unmanaged_volume_size(self,
                                        mock_size_to_gb,
@@ -5734,7 +5742,7 @@ class DellSCSanAPITestCase(test.TestCase):
                        return_value=[{'configuredSize':
                                       '1.073741924E9 Bytes'}])
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_size_to_gb',
+                       'size_to_gb',
                        return_value=(1, 100))
     def test_get_unmanaged_volume_size_bad_size(self,
                                                 mock_size_to_gb,
@@ -6077,94 +6085,6 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_post.assert_any_call('StorageCenter/ScReplication', payload)
         self.assertIsNone(ret)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'get_screplication',
-                       return_value=SCREPL)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'post',
-                       return_value=RESPONSE_200)
-    def test_pause_replication(self,
-                               mock_post,
-                               mock_get_screplication,
-                               mock_close_connection,
-                               mock_open_connection,
-                               mock_init):
-        # Not much to test here without an SC.
-        ret = self.scapi.pause_replication(self.VOLUME, 65495)
-        self.assertTrue(ret)
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'get_screplication',
-                       return_value=SCREPL)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'post',
-                       return_value=RESPONSE_400)
-    def test_pause_replication_error(self,
-                                     mock_post,
-                                     mock_get_screplication,
-                                     mock_close_connection,
-                                     mock_open_connection,
-                                     mock_init):
-        # Not much to test here without an SC.
-        ret = self.scapi.pause_replication(self.VOLUME, 65495)
-        self.assertFalse(ret)
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'get_screplication',
-                       return_value=None)
-    def test_pause_replication_not_found(self,
-                                         mock_get_screplication,
-                                         mock_close_connection,
-                                         mock_open_connection,
-                                         mock_init):
-        # Not much to test here without an SC.
-        ret = self.scapi.pause_replication(self.VOLUME, 65495)
-        self.assertFalse(ret)
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'get_screplication',
-                       return_value=SCREPL)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'post',
-                       return_value=RESPONSE_200)
-    def test_resume_replication(self,
-                                mock_post,
-                                mock_get_screplication,
-                                mock_close_connection,
-                                mock_open_connection,
-                                mock_init):
-        # Not much to test here without an SC.
-        ret = self.scapi.resume_replication(self.VOLUME, 65495)
-        self.assertTrue(ret)
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'get_screplication',
-                       return_value=SCREPL)
-    @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'post',
-                       return_value=RESPONSE_400)
-    def test_resume_replication_error(self,
-                                      mock_post,
-                                      mock_get_screplication,
-                                      mock_close_connection,
-                                      mock_open_connection,
-                                      mock_init):
-        # Not much to test here without an SC.
-        ret = self.scapi.resume_replication(self.VOLUME, 65495)
-        self.assertFalse(ret)
-
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'get_screplication',
-                       return_value=None)
-    def test_resume_replication_not_found(self,
-                                          mock_get_screplication,
-                                          mock_close_connection,
-                                          mock_open_connection,
-                                          mock_init):
-        # Not much to test here without an SC.
-        ret = self.scapi.resume_replication(self.VOLUME, 65495)
-        self.assertFalse(ret)
-
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_200)
@@ -6224,18 +6144,15 @@ class DellSCSanAPITestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'get_screplication')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'rename_volume')
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_repl_volume')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       '_remove_mappings')
+                       'remove_mappings')
     def test_break_replication(self,
                                mock_remove_mappings,
                                mock_find_volume,
                                mock_find_repl_volume,
-                               mock_rename_volume,
                                mock_get_screplication,
                                mock_close_connection,
                                mock_open_connection,
@@ -6245,54 +6162,37 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_find_volume.side_effect = [self.VOLUME,    # 1
                                         self.VOLUME,    # 2
                                         None,           # 3
-                                        None,           # 4
-                                        None]           # 5
+                                        None]           # 4
         # Much like find volume we do not gate on this.
         mock_get_screplication.side_effect = [self.SCREPL[0],  # 1
                                               None,            # 2
                                               None,            # 3
-                                              None,            # 4
-                                              None]            # 5
+                                              None]            # 4
         # This
         mock_find_repl_volume.side_effect = [self.VOLUME,   # 1
                                              self.VOLUME,   # 2
                                              self.VOLUME,   # 3
-                                             self.VOLUME,   # 4
-                                             None]          # 5
+                                             self.VOLUME]   # 4
         mock_remove_mappings.side_effect = [True,   # 1
                                             True,
                                             True,   # 2
                                             False,
                                             True,   # 3
                                             True,
-                                            True,   # 4
-                                            True,
-                                            False]  # 5
+                                            False]  # 4
 
-        mock_rename_volume.side_effect = [True,     # 1
-                                          True,     # 2
-                                          True,     # 3
-                                          False]    # 4
         # Good path.
         ret = self.scapi.break_replication('name', 65495)
         self.assertTrue(ret)
-        self.assertEqual(1, mock_rename_volume.call_count)
         # Source found, screpl not found.
         ret = self.scapi.break_replication('name', 65495)
         self.assertTrue(ret)
-        self.assertEqual(2, mock_rename_volume.call_count)
         # No source vol good path.
         ret = self.scapi.break_replication('name', 65495)
         self.assertTrue(ret)
-        self.assertEqual(3, mock_rename_volume.call_count)
-        # rename fail
-        ret = self.scapi.break_replication('name', 65495)
-        self.assertFalse(ret)
-        self.assertEqual(4, mock_rename_volume.call_count)
         # fail remove mappings
         ret = self.scapi.break_replication('name', 65495)
         self.assertFalse(ret)
-        self.assertEqual(4, mock_rename_volume.call_count)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        '_get_user_preferences')
@@ -6439,6 +6339,43 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.update_replay_profiles,
                           scvol,
                           'a,b')
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put')
+    def test_manage_replay(self,
+                           mock_put,
+                           mock_close_connection,
+                           mock_open_connection,
+                           mock_init):
+        screplay = {'description': 'notguid',
+                    'instanceId': 1}
+        payload = {'description': 'guid',
+                   'expireTime': 0}
+        mock_put.return_value = self.RESPONSE_200
+        ret = self.scapi.manage_replay(screplay, 'guid')
+        self.assertTrue(ret)
+        mock_put.assert_called_once_with('StorageCenter/ScReplay/1', payload)
+        mock_put.return_value = self.RESPONSE_400
+        ret = self.scapi.manage_replay(screplay, 'guid')
+        self.assertFalse(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'put')
+    def test_unmanage_replay(self,
+                             mock_put,
+                             mock_close_connection,
+                             mock_open_connection,
+                             mock_init):
+        screplay = {'description': 'guid',
+                    'instanceId': 1}
+        payload = {'expireTime': 1440}
+        mock_put.return_value = self.RESPONSE_200
+        ret = self.scapi.unmanage_replay(screplay)
+        self.assertTrue(ret)
+        mock_put.assert_called_once_with('StorageCenter/ScReplay/1', payload)
+        mock_put.return_value = self.RESPONSE_400
+        ret = self.scapi.unmanage_replay(screplay)
+        self.assertFalse(ret)
 
 
 class DellSCSanAPIConnectionTestCase(test.TestCase):
