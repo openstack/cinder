@@ -2216,14 +2216,6 @@ class HPE3PARBaseDriver(object):
 
             mock_client.assert_has_calls(expected)
 
-            # test the exception
-            mock_client.removeVolumeMetaData.side_effect = Exception(
-                'Custom ex')
-            self.assertRaises(exception.CinderException,
-                              self.driver.detach_volume,
-                              context.get_admin_context(),
-                              self.volume, None)
-
     def test_create_snapshot(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -2619,13 +2611,6 @@ class HPE3PARBaseDriver(object):
                 mock.call.removeVolumeMetaData(self.VOLUME_3PAR_NAME, key)]
 
             mock_client.assert_has_calls(expected)
-
-            # check the exception
-            mock_client.removeVolumeMetaData.side_effect = Exception('fake')
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              common.clear_volume_key_value_pair,
-                              self.volume,
-                              None)
 
     def test_extend_volume(self):
         # setup_mock_client drive with default configuration

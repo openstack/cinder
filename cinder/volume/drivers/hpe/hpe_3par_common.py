@@ -1,4 +1,4 @@
-#    (c) Copyright 2012-2015 Hewlett Packard Enterprise Development LP
+#    (c) Copyright 2012-2016 Hewlett Packard Enterprise Development LP
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -229,10 +229,11 @@ class HPE3PARCommon(object):
         3.0.14 - Comparison of WWNs now handles case difference. bug #1546453
         3.0.15 - Update replication to version 2.1
         3.0.16 - Use same LUN ID for each VLUN path #1551994
+        3.0.17 - Don't fail on clearing 3PAR object volume key. bug #1546392
 
     """
 
-    VERSION = "3.0.16"
+    VERSION = "3.0.17"
 
     stats = {}
 
@@ -2279,10 +2280,8 @@ class HPE3PARCommon(object):
             volume_name = self._get_3par_vol_name(volume['id'])
             self.client.removeVolumeMetaData(volume_name, key)
         except Exception as ex:
-            msg = _('Failure in clear_volume_key_value_pair: '
-                    '%s') % six.text_type(ex)
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            LOG.warning(_LW('Issue occurred in clear_volume_key_value_pair: '
+                            '%s'), six.text_type(ex))
 
     def attach_volume(self, volume, instance_uuid):
         """Save the instance UUID in the volume.
