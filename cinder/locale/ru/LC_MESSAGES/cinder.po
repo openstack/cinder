@@ -10,9 +10,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-04 03:39+0000\n"
+"POT-Creation-Date: 2016-03-05 05:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3350,10 +3350,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "Сбой получения информации LUN для %s."
 
 #, python-format
-msgid "Failure in clear_volume_key_value_pair: %s"
-msgstr "Сбой в clear_volume_key_value_pair:%s"
-
-#, python-format
 msgid "Failure in update_volume_key_value_pair:%s"
 msgstr "Сбой в update_volume_key_value_pair:%s"
 
@@ -5776,10 +5772,6 @@ msgid "Storage family %s is not supported."
 msgstr "Семейство памяти %s не поддерживается."
 
 #, python-format
-msgid "Storage group %(sgGroupName)s does not exist."
-msgstr "Группа носителей %(sgGroupName)sне существует."
-
-#, python-format
 msgid "Storage group %(storageGroupName)s was not deleted successfully"
 msgstr "Группа носителей %(storageGroupName)s не была удалена успешно"
 
@@ -7247,11 +7239,6 @@ msgid ""
 msgstr ""
 "Том: %(volumeName)s не является объединенным томом. Выполнить Extend можно "
 "только над объединенным томом. Выполняется выход..."
-
-#, python-format
-msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s. "
-msgstr ""
-"Том %(volumeName)s не был добавлен в группу носителей %(sgGroupName)s. "
 
 #, python-format
 msgid "Volume: %s could not be found."

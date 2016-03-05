@@ -17,9 +17,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-04 03:39+0000\n"
+"POT-Creation-Date: 2016-03-05 05:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3059,10 +3059,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "针对 %s 获取 LUN 信息时发生故障。"
 
 #, python-format
-msgid "Failure in clear_volume_key_value_pair: %s"
-msgstr "clear_volume_key_value_pair 中发生故障：%s"
-
-#, python-format
 msgid "Failure in update_volume_key_value_pair:%s"
 msgstr "update_volume_key_value_pair 中发生故障：%s"
 
@@ -5307,10 +5303,6 @@ msgid "Storage family %s is not supported."
 msgstr "不支持存储器系列 %s。"
 
 #, python-format
-msgid "Storage group %(sgGroupName)s does not exist."
-msgstr "存储器组 %(sgGroupName)s 不存在。"
-
-#, python-format
 msgid "Storage group %(storageGroupName)s was not deleted successfully"
 msgstr "未成功删除存储器组 %(storageGroupName)s"
 
@@ -6636,10 +6628,6 @@ msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
 msgstr "卷 %(volumeName)s 不是并置卷。只能对并置卷执行扩展。正在退出..."
-
-#, python-format
-msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s. "
-msgstr "卷 %(volumeName)s 未添加至存储器组 %(sgGroupName)s。"
 
 #, python-format
 msgid "Volume: %s could not be found."

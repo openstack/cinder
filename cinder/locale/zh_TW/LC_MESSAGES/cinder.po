@@ -9,9 +9,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev42\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-04 03:39+0000\n"
+"POT-Creation-Date: 2016-03-05 05:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3068,10 +3068,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "取得 %s 的 LUN 資訊時失敗。"
 
 #, python-format
-msgid "Failure in clear_volume_key_value_pair: %s"
-msgstr "clear_volume_key_value_pair 失敗：%s"
-
-#, python-format
 msgid "Failure in update_volume_key_value_pair:%s"
 msgstr "update_volume_key_value_pair 失敗：%s"
 
@@ -5316,10 +5312,6 @@ msgid "Storage family %s is not supported."
 msgstr "儲存體系列 %s 不受支援。"
 
 #, python-format
-msgid "Storage group %(sgGroupName)s does not exist."
-msgstr "儲存體群組 %(sgGroupName)s 不存在。"
-
-#, python-format
 msgid "Storage group %(storageGroupName)s was not deleted successfully"
 msgstr "未順利刪除儲存體群組 %(storageGroupName)s"
 
@@ -6654,10 +6646,6 @@ msgid ""
 msgstr ""
 "磁區 %(volumeName)s 不是所連結的磁區。您只能對所連結的磁區執行「延伸」作業。"
 "正在結束..."
-
-#, python-format
-msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s. "
-msgstr "磁區 %(volumeName)s 未新增至儲存體群組 %(sgGroupName)s。"
 
 #, python-format
 msgid "Volume: %s could not be found."
