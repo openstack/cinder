@@ -500,23 +500,18 @@ class SolidFireDriver(san.SanISCSIDriver):
             raise exception.SolidFireAPIException(msg)
 
         sf_volume_id = data['result']['volumeID']
-        qos = self._retrieve_qos_setting(vref)
 
         # NOTE(jdg): all attributes are copied via clone, need to do an update
         # to set any that were provided
-        qos_params = {'volumeID': sf_volume_id}
+        params = {'volumeID': sf_volume_id}
         create_time = vref['created_at'].isoformat()
         attributes = {'uuid': vref['id'],
                       'is_clone': 'True',
                       'src_uuid': src_uuid,
                       'created_at': create_time}
-        if qos:
-            qos_params['qos'] = qos
-            for k, v in qos.items():
-                attributes[k] = str(v)
 
-        qos_params['attributes'] = attributes
-        data = self._issue_api_request('ModifyVolume', qos_params)
+        params['attributes'] = attributes
+        data = self._issue_api_request('ModifyVolume', params)
 
         model_update = self._get_model_info(sf_account, sf_volume_id)
         if model_update is None:
@@ -1070,9 +1065,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         attributes = {'uuid': volume['id'],
                       'is_clone': 'False',
                       'created_at': create_time}
-        if qos:
-            for k, v in qos.items():
-                attributes[k] = str(v)
 
         vname = '%s%s' % (self.configuration.sf_volume_prefix, volume['id'])
         params = {'name': vname,
@@ -1540,9 +1532,6 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         if qos:
             params['qos'] = qos
-            for k, v in qos.items():
-                attributes[k] = str(v)
-            params['attributes'] = attributes
 
         self._issue_api_request('ModifyVolume', params)
         return True
@@ -1577,9 +1566,6 @@ class SolidFireDriver(san.SanISCSIDriver):
                       'is_clone': 'False',
                       'os_imported_at': import_time,
                       'old_name': sfname}
-        if qos:
-            for k, v in qos.items():
-                attributes[k] = str(v)
 
         params = {'name': volume['name'],
                   'volumeID': sf_ref['volumeID'],
