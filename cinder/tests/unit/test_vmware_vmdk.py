@@ -809,8 +809,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     def test_copy_image_to_volume_stream_optimized_with_download_error(self):
         self._test_copy_image_to_volume_stream_optimized(download_error=True)
 
-    def test_copy_volume_to_image_when_attached(self):
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=True)
+    def test_copy_volume_to_image_when_attached(self, in_use):
         volume = self._create_volume_dict(
+            status="uploading",
             attachment=[mock.sentinel.attachment_1])
         self.assertRaises(
             cinder_exceptions.InvalidVolume,
@@ -819,6 +821,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             volume,
             mock.sentinel.image_service,
             mock.sentinel.image_meta)
+        in_use.assert_called_once_with(volume)
 
     @mock.patch.object(VMDK_DRIVER, '_validate_disk_format')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')

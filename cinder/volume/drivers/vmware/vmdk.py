@@ -1157,8 +1157,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
 
         # if volume is attached raise exception
-        if (volume['volume_attachment'] and
-                len(volume['volume_attachment']) > 0):
+        if self._in_use(volume):
             msg = _("Upload to glance of attached volume is not supported.")
             LOG.error(msg)
             raise exception.InvalidVolume(msg)
