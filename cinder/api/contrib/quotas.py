@@ -395,7 +395,7 @@ class QuotaSetsController(wsgi.Controller):
         # deleted first.
         for res, value in project_quotas.items():
             if 'allocated' in project_quotas[res].keys():
-                if project_quotas[res]['allocated'] != 0:
+                if project_quotas[res]['allocated'] > 0:
                     msg = _("About to delete child projects having "
                             "non-zero quota. This should not be performed")
                     raise webob.exc.HTTPBadRequest(explanation=msg)
