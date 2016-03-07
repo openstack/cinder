@@ -826,6 +826,7 @@ def _get_quota_usages(context, session, project_id):
                        read_deleted="no",
                        session=session).\
         filter_by(project_id=project_id).\
+        order_by(models.QuotaUsage.id.asc()).\
         with_lockmode('update').\
         all()
     return {row.resource: row for row in rows}
@@ -836,6 +837,7 @@ def _get_quota_usages_by_resource(context, session, resource):
                        deleted="no",
                        session=session).\
         filter_by(resource=resource).\
+        order_by(models.QuotaUsage.id.asc()).\
         with_lockmode('update').\
         all()
     return rows
