@@ -37,7 +37,7 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
         'id': fields.UUIDField(),
         'name': fields.StringField(nullable=True),
         'description': fields.StringField(nullable=True),
-        'is_public': fields.BooleanField(default=True),
+        'is_public': fields.BooleanField(default=True, nullable=True),
         'projects': fields.ListOfStringsField(nullable=True),
         'extra_specs': fields.DictOfStringsField(nullable=True),
     }

@@ -74,10 +74,10 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'snapshot_id': fields.UUIDField(nullable=True),
 
         'host': fields.StringField(nullable=True),
-        'size': fields.IntegerField(),
-        'availability_zone': fields.StringField(),
-        'status': fields.StringField(),
-        'attach_status': fields.StringField(),
+        'size': fields.IntegerField(nullable=True),
+        'availability_zone': fields.StringField(nullable=True),
+        'status': fields.StringField(nullable=True),
+        'attach_status': fields.StringField(nullable=True),
         'migration_status': fields.StringField(nullable=True),
 
         'scheduled_at': fields.DateTimeField(nullable=True),
@@ -98,9 +98,9 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
 
         'consistencygroup_id': fields.UUIDField(nullable=True),
 
-        'deleted': fields.BooleanField(default=False),
-        'bootable': fields.BooleanField(default=False),
-        'multiattach': fields.BooleanField(default=False),
+        'deleted': fields.BooleanField(default=False, nullable=True),
+        'bootable': fields.BooleanField(default=False, nullable=True),
+        'multiattach': fields.BooleanField(default=False, nullable=True),
 
         'replication_status': fields.StringField(nullable=True),
         'replication_extended_status': fields.StringField(nullable=True),

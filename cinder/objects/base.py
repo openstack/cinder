@@ -351,7 +351,8 @@ class CinderPersistentObject(object):
         'created_at': fields.DateTimeField(nullable=True),
         'updated_at': fields.DateTimeField(nullable=True),
         'deleted_at': fields.DateTimeField(nullable=True),
-        'deleted': fields.BooleanField(default=False),
+        'deleted': fields.BooleanField(default=False,
+                                       nullable=True),
     }
 
     @contextlib.contextmanager
