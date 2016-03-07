@@ -36,6 +36,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit import utils
 # needed for stubs to work
 import cinder.volume
@@ -714,6 +715,59 @@ class BackupsAPITestCase(test.TestCase):
         self.assertTrue(mock_validate.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
+
+    def test_create_backup_with_invalid_snapshot(self):
+        volume_id = utils.create_volume(self.context, size=5,
+                                        status='available')['id']
+        snapshot_id = utils.create_snapshot(self.context, volume_id,
+                                            status='error')['id']
+        body = {"backup": {"display_name": "nightly001",
+                           "display_description":
+                           "Nightly Backup 03-Sep-2012",
+                           "snapshot_id": snapshot_id,
+                           "volume_id": volume_id,
+                           }
+                }
+        self.addCleanup(db.volume_destroy,
+                        self.context.elevated(),
+                        volume_id)
+        self.addCleanup(db.snapshot_destroy,
+                        self.context.elevated(),
+                        snapshot_id)
+        req = webob.Request.blank('/v2/fake/backups')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app())
+
+        res_dict = jsonutils.loads(res.body)
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertIsNotNone(res_dict['badRequest']['message'])
+
+    def test_create_backup_with_non_existent_snapshot(self):
+        volume_id = utils.create_volume(self.context, size=5,
+                                        status='restoring')['id']
+        body = {"backup": {"display_name": "nightly001",
+                           "display_description":
+                           "Nightly Backup 03-Sep-2012",
+                           "snapshot_id": fake_constants.snapshot_id,
+                           "volume_id": volume_id,
+                           }
+                }
+        self.addCleanup(db.volume_destroy,
+                        self.context.elevated(),
+                        volume_id)
+        req = webob.Request.blank('/v2/fake/backups')
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app())
+
+        res_dict = jsonutils.loads(res.body)
+        self.assertEqual(404, res.status_int)
+        self.assertEqual(404, res_dict['itemNotFound']['code'])
+        self.assertIsNotNone(res_dict['itemNotFound']['message'])
 
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch(
