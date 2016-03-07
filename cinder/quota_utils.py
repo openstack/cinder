@@ -27,7 +27,8 @@ from cinder import exception
 from cinder.i18n import _, _LW
 
 CONF = cfg.CONF
-
+CONF.import_opt('auth_uri', 'keystonemiddleware.auth_token.__init__',
+                'keystone_authtoken')
 
 LOG = logging.getLogger(__name__)
 
