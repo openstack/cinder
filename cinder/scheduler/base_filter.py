@@ -16,7 +16,7 @@
 """
 Filter support
 """
-import logging
+from oslo_log import log as logging
 
 from cinder.openstack.common._i18n import _LI
 from cinder.scheduler import base_handler

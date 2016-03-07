@@ -13,10 +13,10 @@
 #   under the License.
 
 """The Volume Image Metadata API extension."""
-import logging
-
 import six
 import webob
+
+from oslo_log import log as logging
 
 from cinder.api import common
 from cinder.api import extensions
