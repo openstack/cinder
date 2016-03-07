@@ -467,7 +467,7 @@ class VolumeSizeExceedsLimit(QuotaError):
 
 
 class VolumeBackupSizeExceedsAvailableQuota(QuotaError):
-    message = _("Requested backup exceeds allowed Backup gigabytes "
+    message = _("Requested Snapshot exceeds allowed Snapshot gigabytes "
                 "quota. Requested %(requested)sG, quota is %(quota)sG and "
                 "%(consumed)sG has been consumed.")
 
@@ -481,7 +481,7 @@ class SnapshotLimitExceeded(QuotaError):
 
 
 class BackupLimitExceeded(QuotaError):
-    message = _("Maximum number of backups allowed (%(allowed)d) exceeded")
+    message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
 
 
 class DuplicateSfVolumeNames(Duplicate):
@@ -551,7 +551,7 @@ class BackupInvalidCephArgs(BackupDriverException):
 
 
 class BackupOperationError(Invalid):
-    message = _("An error has occurred during backup operation")
+    message = _("An error has occurred during snapshot operation")
 
 
 class BackupMetadataUnsupportedVersion(BackupDriverException):
@@ -575,7 +575,7 @@ class EncryptedBackupOperationFailed(BackupDriverException):
 
 
 class BackupNotFound(NotFound):
-    message = _("Backup %(backup_id)s could not be found.")
+    message = _("Snapshot %(backup_id)s could not be found.")
 
 
 class BackupFailedToGetVolumeBackend(NotFound):
@@ -583,7 +583,7 @@ class BackupFailedToGetVolumeBackend(NotFound):
 
 
 class InvalidBackup(Invalid):
-    message = _("Invalid backup: %(reason)s")
+    message = _("Invalid snapshot: %(reason)s")
 
 
 class SwiftConnectionFailed(BackupDriverException):
