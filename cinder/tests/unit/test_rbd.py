@@ -144,6 +144,8 @@ class RBDTestCase(test.TestCase):
         self.cfg.rbd_user = None
         self.cfg.volume_dd_blocksize = '1M'
         self.cfg.rbd_store_chunk_size = 4
+        self.cfg.rados_connection_retries = 3
+        self.cfg.rados_connection_interval = 5
 
         mock_exec = mock.Mock()
         mock_exec.return_value = ('', '')
