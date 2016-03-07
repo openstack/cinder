@@ -3126,6 +3126,15 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 free_capacity_gb = float(pool_data['free_capacity']) / units.Gi
                 allocated_capacity_gb = (float(pool_data['used_capacity']) /
                                          units.Gi)
+                provisioned_capacity_gb = float(
+                    pool_data['virtual_capacity']) / units.Gi
+
+                rsize = self.configuration.safe_get(
+                    'storwize_svc_vol_rsize')
+                # rsize of -1 or 100 means fully allocate the mdisk
+                use_thick_provisioning = rsize == -1 or rsize == 100
+                over_sub_ratio = self.configuration.safe_get(
+                    'max_over_subscription_ratio')
                 location_info = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
                                  {'sys_id': self._state['system_id'],
                                   'pool': pool_data['name']})
@@ -3136,6 +3145,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'allocated_capacity_gb': allocated_capacity_gb,
+                    'provisioned_capacity_gb': provisioned_capacity_gb,
                     'compression_support': self._state['compression_enabled'],
                     'reserved_percentage':
                         self.configuration.reserved_percentage,
@@ -3143,7 +3153,10 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     'consistencygroup_support': True,
                     'location_info': location_info,
                     'easytier_support': easy_tier,
-                    'multiattach': multiattach
+                    'multiattach': multiattach,
+                    'thin_provisioning_support': not use_thick_provisioning,
+                    'thick_provisioning_support': use_thick_provisioning,
+                    'max_over_subscription_ratio': over_sub_ratio,
                 }
             if self._replication_enabled:
                 pool_stats.update({

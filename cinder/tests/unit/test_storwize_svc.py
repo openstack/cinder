@@ -18,6 +18,7 @@
 Tests for the IBM Storwize family and SVC volume driver.
 """
 
+import ddt
 import paramiko
 import random
 import re
@@ -2578,6 +2579,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.fc_driver.add_vdisk_copy(volume['name'], 'fake-pool', None)
 
 
+@ddt.ddt
 class StorwizeSVCCommonDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
@@ -3332,9 +3334,13 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(clone)
         self._assert_vol_exists(clone['name'], False)
 
-    def test_storwize_svc_get_volume_stats(self):
+    @ddt.data((True, None), (True, 5), (False, -1), (False, 100))
+    @ddt.unpack
+    def test_storwize_svc_get_volume_stats(
+            self, is_thin_provisioning_enabled, rsize):
         self._set_flag('reserved_percentage', 25)
         self._set_flag('storwize_svc_multihostmap_enabled', True)
+        self._set_flag('storwize_svc_vol_rsize', rsize)
         stats = self.driver.get_volume_stats()
         for each_pool in stats['pools']:
             self.assertIn(each_pool['pool_name'],
@@ -3345,6 +3351,10 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertLessEqual(each_pool['allocated_capacity_gb'],
                                  each_pool['total_capacity_gb'])
             self.assertEqual(25, each_pool['reserved_percentage'])
+            self.assertEqual(is_thin_provisioning_enabled,
+                             each_pool['thin_provisioning_support'])
+            self.assertEqual(not is_thin_provisioning_enabled,
+                             each_pool['thick_provisioning_support'])
         if self.USESIM:
             expected = 'storwize-svc-sim'
             self.assertEqual(expected, stats['volume_backend_name'])
@@ -3355,6 +3365,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                 self.assertAlmostEqual(3287.5, each_pool['free_capacity_gb'])
                 self.assertAlmostEqual(25.0,
                                        each_pool['allocated_capacity_gb'])
+                if is_thin_provisioning_enabled:
+                    self.assertAlmostEqual(
+                        1576.96, each_pool['provisioned_capacity_gb'])
 
     def test_get_pool(self):
         ctxt = testutils.get_test_admin_context()
