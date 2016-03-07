@@ -1387,6 +1387,7 @@ class NestedDbQuotaDriverBaseTestCase(DbQuotaDriverBaseTestCase):
             def __init__(self, parent_id):
                 self.parent_id = parent_id
                 self.parents = {parent_id: None}
+                self.domain_id = 'default'
 
         def fake_get_project(project_id, subtree_as_ids=False,
                              parents_as_ids=False):

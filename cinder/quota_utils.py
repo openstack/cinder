@@ -104,6 +104,19 @@ def get_volume_type_reservation(ctxt, volume, type_id,
     return reservations
 
 
+def _filter_domain_id_from_parents(domain_id, tree):
+    """Removes the domain_id from the tree if present"""
+    new_tree = None
+    if tree:
+        parent, children = next(iter(tree.items()))
+        # Don't add the domain id to the parents hierarchy
+        if parent != domain_id:
+            new_tree = {parent: _filter_domain_id_from_parents(domain_id,
+                                                               children)}
+
+    return new_tree
+
+
 def get_project_hierarchy(context, project_id, subtree_as_ids=False,
                           parents_as_ids=False):
     """A Helper method to get the project hierarchy.
@@ -111,6 +124,8 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
     Along with hierarchical multitenancy in keystone API v3, projects can be
     hierarchically organized. Therefore, we need to know the project
     hierarchy, if any, in order to do nested quota operations properly.
+    If the domain is being used as the top most parent, it is filtered out from
+    the parent tree and parent_id.
     """
     try:
         keystone = _keystone_client(context)
@@ -119,11 +134,18 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
             project = keystone.projects.get(project_id,
                                             subtree_as_ids=subtree_as_ids,
                                             parents_as_ids=parents_as_ids)
-            generic_project.parent_id = project.parent_id
+
+            generic_project.parent_id = None
+            if project.parent_id != project.domain_id:
+                generic_project.parent_id = project.parent_id
+
             generic_project.subtree = (
                 project.subtree if subtree_as_ids else None)
-            generic_project.parents = (
-                project.parents if parents_as_ids else None)
+
+            generic_project.parents = None
+            if parents_as_ids:
+                generic_project.parents = _filter_domain_id_from_parents(
+                    project.domain_id, project.parents)
     except exceptions.NotFound:
         msg = (_("Tenant ID: %s does not exist.") % project_id)
         raise webob.exc.HTTPNotFound(explanation=msg)
