@@ -10,11 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from sqlalchemy import MetaData, Table
-
 
 def upgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    table = Table('iscsi_targets', meta, autoload=True)
-    table.drop()
+    # This used to drop iscsi_targets, but since dropping it before L release
+    # stops using it breaks rolling upgrades we postpone the dropping until N.
+    pass
