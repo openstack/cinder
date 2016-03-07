@@ -14,8 +14,10 @@
 #    under the License.
 
 import collections
+import eventlet
 import six
 import sys
+import time
 
 import mock
 from oslo_utils import importutils
@@ -60,18 +62,22 @@ class mock_dm_consts(object):
     FLAG_UPD_CONFIG = "upd_config"
     FLAG_STANDBY = "standby"
     FLAG_QIGNORE = "qignore"
+    FLAG_REMOVE = "remove"
 
     AUX_PROP_PREFIX = "aux:"
 
     BOOL_TRUE = "true"
-    BOOL_FALSE = "true"
+    BOOL_FALSE = "false"
+
+    VOL_ID = "vol_id"
 
 
 class mock_dm_exc(object):
 
     DM_SUCCESS = 0
-    DM_EEXIST = 1
-    DM_ENOENT = 2
+    DM_INFO = 1
+    DM_EEXIST = 101
+    DM_ENOENT = 102
     DM_ERROR = 1000
 
 
@@ -138,6 +144,33 @@ class DrbdManageFakeDriver(object):
     def __init__(self):
         self.calls = []
 
+    def run_external_plugin(self, name, props):
+        self.calls.append(["run_external_plugin", name, props])
+
+        call_okay = [[mock_dm_exc.DM_SUCCESS, "ACK", []]]
+        not_done_yet = (call_okay,
+                        dict(timeout=mock_dm_consts.BOOL_FALSE,
+                             result=mock_dm_consts.BOOL_FALSE))
+        success = (call_okay,
+                   dict(timeout=mock_dm_consts.BOOL_FALSE,
+                        result=mock_dm_consts.BOOL_TRUE))
+        got_timeout = (call_okay,
+                       dict(timeout=mock_dm_consts.BOOL_TRUE,
+                            result=mock_dm_consts.BOOL_FALSE))
+
+        if "retry" not in props:
+            # Fake success, to not slow tests down
+            return success
+
+        if props["retry"] > 1:
+            props["retry"] -= 1
+            return not_done_yet
+
+        if props.get("run-into-timeout"):
+            return got_timeout
+
+        return success
+
     def list_resources(self, res, serial, prop, req):
         self.calls.append(["list_resources", res, prop, req])
         if ('aux:cinder-id' in prop and
@@ -154,7 +187,10 @@ class DrbdManageFakeDriver(object):
 
     def create_volume(self, res, size, props):
         self.calls.append(["create_volume", res, size, props])
-        return [[mock_dm_exc.DM_SUCCESS, "ack", []]]
+        return [[mock_dm_exc.DM_SUCCESS, "ack", []],
+                [mock_dm_exc.DM_INFO,
+                 "create_volume",
+                 [(mock_dm_consts.VOL_ID, '2')]]]
 
     def auto_deploy(self, res, red, delta, site_clients):
         self.calls.append(["auto_deploy", res, red, delta, site_clients])
@@ -233,6 +269,19 @@ class DrbdManageFakeDriver(object):
 
 class DrbdManageIscsiTestCase(test.TestCase):
 
+    def _fake_safe_get(self, key):
+        if key == 'iscsi_helper':
+            return 'fake'
+
+        if key.endswith('_policy'):
+            return '{}'
+
+        return None
+
+    @staticmethod
+    def _fake_sleep(amount):
+        pass
+
     def setUp(self):
         self.ctxt = context.get_admin_context()
         self._mock = mock.Mock()
@@ -254,7 +303,9 @@ class DrbdManageIscsiTestCase(test.TestCase):
                        '_wait_for_node_assignment',
                        self.fake_wait_node_assignment)
 
-        self.configuration.safe_get = lambda x: 'fake'
+        self.configuration.safe_get = self._fake_safe_get
+
+        self.stubs.Set(eventlet, 'sleep', self._fake_sleep)
 
     # Infrastructure
     def fake_import_object(self, what, configuration, db, executor):
@@ -294,7 +345,7 @@ class DrbdManageIscsiTestCase(test.TestCase):
         self.assertEqual("create_volume", dmd.odm.calls[2][0])
         self.assertEqual(1048576, dmd.odm.calls[2][2])
         self.assertEqual("auto_deploy", dmd.odm.calls[3][0])
-        self.assertEqual(len(dmd.odm.calls), 4)
+        self.assertEqual(5, len(dmd.odm.calls))
 
     def test_create_volume_controller_all_vols(self):
         testvol = {'project_id': 'testprjid',
@@ -308,13 +359,14 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd.drbdmanage_devs_on_controller = True
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
+        self.assertEqual(6, len(dmd.odm.calls))
         self.assertEqual("create_resource", dmd.odm.calls[0][0])
         self.assertEqual("list_volumes", dmd.odm.calls[1][0])
         self.assertEqual("create_volume", dmd.odm.calls[2][0])
         self.assertEqual(1048576, dmd.odm.calls[2][2])
         self.assertEqual("auto_deploy", dmd.odm.calls[3][0])
-        self.assertEqual("assign", dmd.odm.calls[4][0])
-        self.assertEqual(len(dmd.odm.calls), 5)
+        self.assertEqual("run_external_plugin", dmd.odm.calls[4][0])
+        self.assertEqual("assign", dmd.odm.calls[5][0])
 
     def test_delete_volume(self):
         testvol = {'project_id': 'testprjid',
@@ -400,11 +452,12 @@ class DrbdManageIscsiTestCase(test.TestCase):
         self.assertEqual("list_volumes", dmd.odm.calls[0][0])
         self.assertEqual("list_assignments", dmd.odm.calls[1][0])
         self.assertEqual("create_snapshot", dmd.odm.calls[2][0])
-        self.assertEqual("list_snapshots", dmd.odm.calls[3][0])
-        self.assertEqual("restore_snapshot", dmd.odm.calls[4][0])
-        self.assertEqual("list_snapshots", dmd.odm.calls[5][0])
-        self.assertEqual("remove_snapshot", dmd.odm.calls[6][0])
-        self.assertEqual("remove_snapshot", dmd.odm.calls[6][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
+        self.assertEqual("list_snapshots", dmd.odm.calls[4][0])
+        self.assertEqual("restore_snapshot", dmd.odm.calls[5][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[6][0])
+        self.assertEqual("list_snapshots", dmd.odm.calls[7][0])
+        self.assertEqual("remove_snapshot", dmd.odm.calls[8][0])
 
 
 class DrbdManageDrbdTestCase(DrbdManageIscsiTestCase):
@@ -438,3 +491,58 @@ class DrbdManageDrbdTestCase(DrbdManageIscsiTestCase):
         self.assertEqual("list_volumes", dmd.odm.calls[3][0])
         self.assertEqual("text_query", dmd.odm.calls[4][0])
         self.assertEqual("local", x["driver_volume_type"])
+
+
+class DrbdManageCommonTestCase(DrbdManageIscsiTestCase):
+    def setUp(self):
+        super(DrbdManageCommonTestCase, self).setUp()
+
+    def test_drbd_policy_loop_timeout(self):
+        dmd = drv.DrbdManageDrbdDriver(configuration=self.configuration)
+        dmd.odm = DrbdManageFakeDriver()
+
+        res = dmd._call_policy_plugin('void', {},
+                                      {'retry': 4,
+                                       'run-into-timeout': True})
+        self.assertFalse(res)
+        self.assertEqual(4, len(dmd.odm.calls))
+        self.assertEqual("run_external_plugin", dmd.odm.calls[0][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[1][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[2][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
+
+    def test_drbd_policy_loop_success(self):
+        dmd = drv.DrbdManageDrbdDriver(configuration=self.configuration)
+        dmd.odm = DrbdManageFakeDriver()
+
+        res = dmd._call_policy_plugin('void',
+                                      {'base': 'data',
+                                       'retry': 4},
+                                      {'override': 'xyz'})
+        self.assertTrue(res)
+        self.assertEqual(4, len(dmd.odm.calls))
+        self.assertEqual("run_external_plugin", dmd.odm.calls[0][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[1][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[2][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
+
+    def test_drbd_policy_loop_simple(self):
+        dmd = drv.DrbdManageDrbdDriver(configuration=self.configuration)
+        dmd.odm = DrbdManageFakeDriver()
+
+        res = dmd._call_policy_plugin('policy-name',
+                                      {'base': "value",
+                                       'over': "ignore"},
+                                      {'over': "ride",
+                                       'starttime': 0})
+        self.assertTrue(res)
+
+        self.assertEqual(1, len(dmd.odm.calls))
+        self.assertEqual("run_external_plugin", dmd.odm.calls[0][0])
+        self.assertEqual('policy-name', dmd.odm.calls[0][1])
+
+        incoming = dmd.odm.calls[0][2]
+        self.assertGreaterEqual(4, abs(float(incoming['starttime']) -
+                                       time.time()))
+        self.assertEqual('value', incoming['base'])
+        self.assertEqual('ride', incoming['over'])

@@ -24,6 +24,7 @@ for more details.
 
 
 import eventlet
+import json
 import six
 import socket
 import time
@@ -58,6 +59,24 @@ drbd_opts = [
     cfg.IntOpt('drbdmanage_redundancy',
                default=1,
                help='Number of nodes that should replicate the data.'),
+    cfg.StrOpt('drbdmanage_resource_policy',
+               default='{"ratio": "0.51", "timeout": "60"}',
+               help='Resource deployment completion wait policy.'),
+    cfg.StrOpt('drbdmanage_snapshot_policy',
+               default='{"count": "1", "timeout": "60"}',
+               help='Snapshot completion wait policy.'),
+    cfg.StrOpt('drbdmanage_resize_policy',
+               default='{"timeout": "60"}',
+               help='Volume resize completion wait policy.'),
+    cfg.StrOpt('drbdmanage_resource_plugin',
+               default="drbdmanage.plugins.plugins.wait_for.WaitForResource",
+               help='Resource deployment completion wait plugin.'),
+    cfg.StrOpt('drbdmanage_snapshot_plugin',
+               default="drbdmanage.plugins.plugins.wait_for.WaitForSnapshot",
+               help='Snapshot completion wait plugin.'),
+    cfg.StrOpt('drbdmanage_resize_plugin',
+               default="drbdmanage.plugins.plugins.wait_for.WaitForVolumeSize",
+               help='Volume resize completion wait plugin.'),
     cfg.BoolOpt('drbdmanage_devs_on_controller',
                 default=True,
                 help='''If set, the c-vol node will receive a useable
@@ -115,6 +134,21 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         self.backend_name = self.configuration.safe_get(
             'volume_backend_name') or 'drbdmanage'
 
+        js_decoder = json.JSONDecoder()
+        self.policy_resource = js_decoder.decode(
+            self.configuration.safe_get('drbdmanage_resource_policy'))
+        self.policy_snapshot = js_decoder.decode(
+            self.configuration.safe_get('drbdmanage_snapshot_policy'))
+        self.policy_resize = js_decoder.decode(
+            self.configuration.safe_get('drbdmanage_resize_policy'))
+
+        self.plugin_resource = self.configuration.safe_get(
+            'drbdmanage_resource_plugin')
+        self.plugin_snapshot = self.configuration.safe_get(
+            'drbdmanage_snapshot_plugin')
+        self.plugin_resize = self.configuration.safe_get(
+            'drbdmanage_resize_plugin')
+
         # needed as per pep8:
         #   F841 local variable 'CS_DEPLOYED' is assigned to but never used
         global CS_DEPLOYED, CS_DISKLESS, CS_UPD_CON
@@ -136,6 +170,32 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
             self.dbus_connect()
             # Old function object is invalid, get new one.
             return getattr(self.odm, fn._method_name)(*args)
+
+    def _fetch_answer_data(self, res, key, level=None, req=True):
+        for code, fmt, data in res:
+            if code == dm_exc.DM_INFO:
+                if level and level != fmt:
+                    continue
+
+                value = [v for k, v in data if k == key]
+                if value:
+                    if len(value) == 1:
+                        return value[0]
+                    else:
+                        return value
+
+        if req:
+            if level:
+                l = level + ":" + key
+            else:
+                l = key
+
+            msg = _('DRBDmanage driver error: expected key "%s" '
+                    'not in answer, wrong DRBDmanage version?') % l
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        return None
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -176,9 +236,8 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
             if code == dm_exc.DM_SUCCESS:
                 seen_success = True
                 continue
-            if hasattr(dm_exc, 'DM_INFO'):
-                if code == dm_exc.DM_INFO:
-                    continue
+            if code == dm_exc.DM_INFO:
+                continue
             seen_error = _("Received error string: %s") % (fmt % arg)
 
         if seen_error:
@@ -209,10 +268,36 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         except ValueError:
             return None
 
+    def _call_policy_plugin(self, plugin, pol_base, pol_this):
+        """Returns True for done, False for timeout."""
+
+        pol_inp_data = dict(pol_base)
+        pol_inp_data.update(pol_this,
+                            starttime=str(time.time()))
+
+        retry = 0
+        while True:
+            res, pol_result = self.call_or_reconnect(
+                self.odm.run_external_plugin,
+                plugin,
+                pol_inp_data)
+            self._check_result(res)
+
+            if pol_result['result'] == dm_const.BOOL_TRUE:
+                return True
+
+            if pol_result['timeout'] == dm_const.BOOL_TRUE:
+                return False
+
+            eventlet.sleep(min(0.5 + retry / 5, 2))
+            retry += 1
+
     def _wait_for_node_assignment(self, res_name, vol_nr, nodenames,
                                   filter_props=None, timeout=90,
                                   check_vol_deployed=True):
         """Return True as soon as one assignment matches the filter."""
+
+        # TODO(LINBIT): unify with policy plugins
 
         if not filter_props:
             filter_props = self.empty_dict
@@ -394,6 +479,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                          self._vol_size_to_dm(volume['size']),
                                          props)
             self._check_result(res)
+            drbd_vol = self._fetch_answer_data(res, dm_const.VOL_ID)
 
         # If we crashed between create_volume and the deploy call,
         # the volume might be defined but not exist on any server. Oh my.
@@ -402,15 +488,23 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                      0, True)
         self._check_result(res)
 
-        # TODO(pm): CG
-        self._wait_for_node_assignment(d_res_name, 0, self.empty_list)
+        okay = self._call_policy_plugin(self.plugin_resource,
+                                        self.policy_resource,
+                                        dict(resource=d_res_name,
+                                             volnr=str(drbd_vol)))
+        if not okay:
+            message = (_('DRBDmanage timeout waiting for volume creation; '
+                         'resource "%(res)s", volume "%(vol)s"') %
+                       {'res': d_res_name, 'vol': volume['id']})
+            raise exception.VolumeBackendAPIException(data=message)
 
         if self.drbdmanage_devs_on_controller:
             # TODO(pm): CG
             res = self.call_or_reconnect(self.odm.assign,
                                          socket.gethostname(),
                                          d_res_name,
-                                         self.empty_dict)
+                                         [(dm_const.FLAG_DISKLESS,
+                                           dm_const.BOOL_TRUE)])
             self._check_result(res, ignore=[dm_exc.DM_EEXIST])
 
         return {}
@@ -430,10 +524,13 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                      d_res_name, d_vol_nr, False)
         self._check_result(res, ignore=[dm_exc.DM_ENOENT])
 
+        # Ask for volumes in that resource that are not scheduled for deletion.
         res, rl = self.call_or_reconnect(self.odm.list_volumes,
                                          [d_res_name],
                                          0,
-                                         self.empty_dict,
+                                         [(dm_const.TSTATE_PREFIX +
+                                           dm_const.FLAG_REMOVE,
+                                           dm_const.BOOL_FALSE)],
                                          self.empty_list)
         self._check_result(res)
 
@@ -465,7 +562,8 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
         r_props = self.empty_dict
         # TODO(PM): consistency groups => different volume number possible
-        v_props = [(0, self._priv_hash_from_volume(volume))]
+        new_vol_nr = 0
+        v_props = [(new_vol_nr, self._priv_hash_from_volume(volume))]
 
         res = self.call_or_reconnect(self.odm.restore_snapshot,
                                      new_res,
@@ -473,7 +571,19 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                      sname,
                                      r_props,
                                      v_props)
-        return self._check_result(res, ignore=[dm_exc.DM_ENOENT])
+        self._check_result(res, ignore=[dm_exc.DM_ENOENT])
+
+        # TODO(PM): CG
+        okay = self._call_policy_plugin(self.plugin_resource,
+                                        self.policy_resource,
+                                        dict(resource=new_res,
+                                             volnr=str(new_vol_nr)))
+        if not okay:
+            message = (_('DRBDmanage timeout waiting for new volume '
+                         'after snapshot restore; '
+                         'resource "%(res)s", volume "%(vol)s"') %
+                       {'res': new_res, 'vol': volume['id']})
+            raise exception.VolumeBackendAPIException(data=message)
 
     def create_cloned_volume(self, volume, src_vref):
         temp_id = self._clean_uuid()
@@ -540,7 +650,18 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                      self._vol_size_to_dm(new_size),
                                      0)
         self._check_result(res)
-        return 0
+
+        okay = self._call_policy_plugin(self.plugin_resize,
+                                        self.policy_resize,
+                                        dict(resource=d_res_name,
+                                             volnr=str(d_vol_nr),
+                                             req_size=str(new_size)))
+        if not okay:
+            message = (_('DRBDmanage timeout waiting for volume size; '
+                         'volume ID "%(id)s" (res "%(res)s", vnr %(vnr)d)') %
+                       {'id': volume['id'],
+                        'res': d_res_name, 'vnr': d_vol_nr})
+            raise exception.VolumeBackendAPIException(data=message)
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
@@ -553,7 +674,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
                                            self.empty_dict,
                                            [d_res_name],
                                            0,
-                                           self.empty_dict,
+                                           {CS_DISKLESS: dm_const.BOOL_FALSE},
                                            self.empty_list)
         self._check_result(res)
 
@@ -567,6 +688,16 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
         res = self.call_or_reconnect(self.odm.create_snapshot,
                                      d_res_name, sn_name, nodes, props)
         self._check_result(res)
+
+        okay = self._call_policy_plugin(self.plugin_snapshot,
+                                        self.policy_snapshot,
+                                        dict(resource=d_res_name,
+                                             snapshot=sn_name))
+        if not okay:
+            message = (_('DRBDmanage timeout waiting for snapshot creation; '
+                         'resource "%(res)s", snapshot "%(sn)s"') %
+                       {'res': d_res_name, 'sn': sn_name})
+            raise exception.VolumeBackendAPIException(data=message)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
