@@ -36,6 +36,7 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder import ssh_utils
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils as testutils
 from cinder import utils
 from cinder.volume import configuration as conf
@@ -2723,6 +2724,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             min_size=self._driver.configuration.ssh_min_pool_conn,
             max_size=self._driver.configuration.ssh_max_pool_conn)
 
+    @mock.patch.object(random, 'randint', mock.Mock(return_value=0))
     @mock.patch.object(ssh_utils, 'SSHPool')
     @mock.patch.object(processutils, 'ssh_execute')
     def test_run_ssh_fail_to_secondary_ip(self, mock_ssh_execute,
@@ -4009,10 +4011,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertIs('copying', model_update['replication_status'])
         self.driver.delete_volume(volume)
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_storwize_consistency_group_snapshot(self):
         cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = 'fake_user_id'
-        self.ctxt.project_id = 'fake_project_id'
+        self.ctxt.user_id = fake.user_id
+        self.ctxt.project_id = fake.project_id
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
 
         model_update = self.driver.create_consistencygroup(self.ctxt, cg)
@@ -4045,11 +4049,13 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_storwize_consistency_group_from_src_invalid(self):
         # Invalid input case for create cg from src
         cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = 'fake_user_id'
-        self.ctxt.project_id = 'fake_project_id'
+        self.ctxt.user_id = fake.user_id
+        self.ctxt.project_id = fake.project_id
         # create cg in db
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
 
@@ -4123,11 +4129,13 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for volume in model_update[1]:
             self.assertEqual('deleted', volume['status'])
 
+    @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
+                new=testutils.ZeroIntervalLoopingCall)
     def test_storwize_consistency_group_from_src(self):
         # Valid case for create cg from src
         cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = 'fake_user_id'
-        self.ctxt.project_id = 'fake_project_id'
+        self.ctxt.user_id = fake.user_id
+        self.ctxt.project_id = fake.project_id
         pool = _get_test_pool()
         # Create cg in db
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
