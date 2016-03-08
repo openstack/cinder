@@ -2201,9 +2201,16 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 return replica_status
 
     def create_cloned_volume(self, tgt_volume, src_volume):
-        if src_volume['size'] != tgt_volume['size']:
-            msg = (_('create_cloned_volume: Source and destination '
-                     'size differ.'))
+        """Creates a clone of the specified volume."""
+
+        if src_volume['size'] > tgt_volume['size']:
+            msg = (_("create_cloned_volume: source volume %(src_vol)s "
+                     "size is %(src_size)dGB and doesn't fit in target "
+                     "volume %(tgt_vol)s of size %(tgt_size)dGB.") %
+                   {'src_vol': src_volume['name'],
+                    'src_size': src_volume['size'],
+                    'tgt_vol': tgt_volume['name'],
+                    'tgt_size': tgt_volume['size']})
             LOG.error(msg)
             raise exception.InvalidInput(message=msg)
 
@@ -2214,6 +2221,19 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._helpers.create_copy(src_volume['name'], tgt_volume['name'],
                                   src_volume['id'], self.configuration,
                                   opts, True, pool=pool)
+
+        # The source volume size is equal to target volume size
+        # in most of the cases. But in some scenario, the target
+        # volume size may be bigger than the source volume size.
+        # SVC does not support flashcopy between two volumes
+        # with two different size. So use source volume size to
+        # create target volume first and then extend target
+        # volume to orginal size.
+        if tgt_volume['size'] > src_volume['size']:
+            # extend the new created target volume to expected size.
+            self._extend_volume_op(tgt_volume, tgt_volume['size'],
+                                   src_volume['size'])
+
         if opts['qos']:
             self._helpers.add_vdisk_qos(tgt_volume['name'], opts['qos'])
 
@@ -2232,16 +2252,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 return replica_status
 
     def extend_volume(self, volume, new_size):
-        LOG.debug('enter: extend_volume: volume %s', volume['id'])
+        self._extend_volume_op(volume, new_size)
+
+    def _extend_volume_op(self, volume, new_size, old_size=None):
+        LOG.debug('enter: _extend_volume_op: volume %s', volume['id'])
         ret = self._helpers.ensure_vdisk_no_fc_mappings(volume['name'],
                                                         allow_snaps=False)
         if not ret:
-            msg = (_('extend_volume: Extending a volume with snapshots is not '
-                     'supported.'))
+            msg = (_('_extend_volume_op: Extending a volume with snapshots is '
+                     'not supported.'))
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        extend_amt = int(new_size) - volume['size']
+        if old_size is None:
+            old_size = volume['size']
+        extend_amt = int(new_size) - old_size
         ctxt = context.get_admin_context()
         rep_mirror_type = self._get_volume_replicated_type_mirror(ctxt,
                                                                   volume)
@@ -2268,7 +2293,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         if rep_mirror_type and rep_status != "failed-over":
             self.replications.get(rep_mirror_type).create_relationship(
                 volume, target_vol_name)
-        LOG.debug('leave: extend_volume: volume %s', volume['id'])
+        LOG.debug('leave: _extend_volume_op: volume %s', volume['id'])
 
     def add_vdisk_copy(self, volume, dest_pool, vol_type):
         return self._helpers.add_vdisk_copy(volume, dest_pool,
