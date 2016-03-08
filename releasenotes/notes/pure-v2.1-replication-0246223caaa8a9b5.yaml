@@ -1,0 +1,4 @@
+---
+features:
+  - Added Cheesecake (v2.1) replication support to the Pure Storage Volume
+    drivers.
