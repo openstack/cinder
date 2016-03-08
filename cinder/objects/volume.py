@@ -182,6 +182,13 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         super(Volume, self).obj_reset_changes(fields)
         self._reset_metadata_tracking(fields=fields)
 
+    @classmethod
+    def _obj_from_primitive(cls, context, objver, primitive):
+        obj = super(Volume, Volume)._obj_from_primitive(context, objver,
+                                                        primitive)
+        obj._reset_metadata_tracking()
+        return obj
+
     def _reset_metadata_tracking(self, fields=None):
         if fields is None or 'metadata' in fields:
             self._orig_metadata = (dict(self.metadata)
