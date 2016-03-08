@@ -1187,8 +1187,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                   mock_close_connection,
                                   mock_open_connection,
                                   mock_init):
-        volume = {'id': self.volume_name + '_clone'}
-        src_vref = {'id': self.volume_name}
+        volume = {'id': self.volume_name + '_clone', 'size': 1}
+        src_vref = {'id': self.volume_name, 'size': 1}
         ret = self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
             self.volume_name + '_clone',
@@ -1196,6 +1196,41 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             None)
         self.assertTrue(mock_find_volume.called)
         self.assertEqual({}, ret)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value={})
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_cloned_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'expand_volume',
+                       return_value=VOLUME)
+    def test_create_cloned_volume_expand(self,
+                                         mock_expand_volume,
+                                         mock_create_cloned_volume,
+                                         mock_find_volume,
+                                         mock_find_sc,
+                                         mock_create_replications,
+                                         mock_close_connection,
+                                         mock_open_connection,
+                                         mock_init):
+        volume = {'id': self.volume_name + '_clone', 'size': 2}
+        src_vref = {'id': self.volume_name, 'size': 1}
+        ret = self.driver.create_cloned_volume(volume, src_vref)
+        mock_create_cloned_volume.assert_called_once_with(
+            self.volume_name + '_clone',
+            self.VOLUME,
+            None)
+        self.assertTrue(mock_find_volume.called)
+        self.assertEqual({}, ret)
+        self.assertTrue(mock_expand_volume.called)
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        '_create_replications',
@@ -1227,6 +1262,41 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           volume, src_vref)
         self.assertTrue(mock_delete_volume.called)
 
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications',
+                       return_value={})
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_cloned_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'expand_volume')
+    def test_create_cloned_volume_expand_failed(self,
+                                                mock_expand_volume,
+                                                mock_delete_volume,
+                                                mock_create_cloned_volume,
+                                                mock_find_volume,
+                                                mock_find_sc,
+                                                mock_create_replications,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        volume = {'id': self.volume_name + '_clone', 'size': 2}
+        src_vref = {'id': self.volume_name, 'size': 1}
+        mock_create_replications.side_effect = (
+            exception.VolumeBackendAPIException(data='abc'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cloned_volume,
+                          volume, src_vref)
+        self.assertTrue(mock_delete_volume.called)
+
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'delete_volume')
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
@@ -1251,8 +1321,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                    mock_init):
         mock_create_replications.side_effect = (
             exception.VolumeBackendAPIException(data='abc'))
-        volume = {'id': self.volume_name + '_clone'}
-        src_vref = {'id': self.volume_name}
+        volume = {'id': self.volume_name + '_clone', 'size': 1}
+        src_vref = {'id': self.volume_name, 'size': 1}
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cloned_volume,
                           volume, src_vref)
@@ -1282,8 +1352,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                     mock_open_connection,
                                                     mock_init):
         volume = {'id': self.volume_name + '_clone',
-                  'consistencygroup_id': 'guid'}
-        src_vref = {'id': self.volume_name}
+                  'consistencygroup_id': 'guid',
+                  'size': 1}
+        src_vref = {'id': self.volume_name, 'size': 1}
         self.driver.create_cloned_volume(volume, src_vref)
         mock_create_cloned_volume.assert_called_once_with(
             self.volume_name + '_clone',
