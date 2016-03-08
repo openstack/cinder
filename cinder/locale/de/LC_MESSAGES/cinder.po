@@ -8,17 +8,18 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
+# Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev82\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-05 05:24+0000\n"
+"POT-Creation-Date: 2016-03-08 05:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2015-09-08 03:14+0000\n"
-"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
+"PO-Revision-Date: 2016-03-07 05:30+0000\n"
+"Last-Translator: Monika Wolf <vcomas3@de.ibm.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -334,12 +335,24 @@ msgstr "Ein Datenträgerstatus ist ungültig. (Status: %(status)s)"
 msgid "API %(name)s failed with error string %(err)s"
 msgstr "API %(name)s fehlgeschlagen mit Fehlerzeichenkette %(err)s"
 
+#, python-format
+msgid ""
+"API Version String %(version)s is of invalid format. Must be of format "
+"MajorNum.MinorNum."
+msgstr ""
+"API-Versionszeichenkette %(version)s ist im falschen Format. Muss im Format "
+"sein MajorNum.MinorNum."
+
 msgid "API key is missing for CloudByte driver."
 msgstr "API-Schlüssel für CloudByte-Treiber fehlt."
 
 #, python-format
 msgid "API response: %s"
 msgstr "API-Antwort: %s"
+
+#, python-format
+msgid "API version %(version)s is not supported on this method."
+msgstr "API Version %(version)s ist nicht unterstützt für diese Methode."
 
 msgid "API version could not be determined."
 msgstr "API-Version konnte nicht bestimmt werden."
@@ -1355,6 +1368,9 @@ msgstr "In unformatierten Zustand konvertiert, Format ist nun jedoch %s"
 #, python-format
 msgid "Converted to raw, but format is now %s."
 msgstr "In unformatierten Status konvertiert, Format ist nun jedoch %s."
+
+msgid "Coordinator uninitialized."
+msgstr "Koordinator wurde nicht initialisiert."
 
 #, python-format
 msgid ""
@@ -4066,6 +4082,10 @@ msgstr ""
 "%s gefunden"
 
 #, python-format
+msgid "Invalid Replication Target: %(reason)s"
+msgstr "Ungültiges Replikationsziel: %(reason)s"
+
+#, python-format
 msgid "Invalid VNX authentication type: %s"
 msgstr "Ungültiger VNX-Authentifizierungstyp: %s"
 
@@ -5056,6 +5076,10 @@ msgstr "Keine Datenträger in CloudByte-Speicher gefunden."
 
 msgid "No weighed hosts available"
 msgstr "Keine gewichteten Hosts verfügbar"
+
+#, python-format
+msgid "Not a valid string: %s"
+msgstr "Keine gültige Zeichenfolge: %s"
 
 #, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
@@ -6600,6 +6624,10 @@ msgstr ""
 msgid "Unable to extend volume %s"
 msgstr "Datenträger %s kann nicht erweitert werden"
 
+#, python-format
+msgid "Unable to failover to replication target:%(reason)s)."
+msgstr "Failover für Replikationsziel fehlgeschlagen: %(reason)s)."
+
 msgid "Unable to fetch connection information from backend."
 msgstr "Verbindungsinformationen können nicht vom Back-End abgerufen werden."
 
@@ -7042,6 +7070,14 @@ msgstr "ValueError: %s"
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."
 msgstr ""
 "Virtuelle Platte %(name)s nicht in Zuordnung %(src)s -> %(tgt)s enthalten."
+
+#, python-format
+msgid ""
+"Version %(req_ver)s is not supported by the API. Minimum is %(min_ver)s and "
+"maximum is %(max_ver)s."
+msgstr ""
+"Version %(req_ver)s wird von der API nicht unterstützt. Minimum ist "
+"%(min_ver)s und Maximum ist %(max_ver)s."
 
 #, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
