@@ -6,17 +6,18 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # Lucas Palm <lapalm@us.ibm.com>, 2015. #zanata
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
+# Jennifer <cristxu@tw.ibm.com>, 2016. #zanata
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev82\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-05 05:24+0000\n"
+"POT-Creation-Date: 2016-03-08 05:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-02-03 05:52+0000\n"
-"Last-Translator: Lucas Palm <lapalm@us.ibm.com>\n"
+"PO-Revision-Date: 2016-03-08 03:52+0000\n"
+"Last-Translator: Jennifer <cristxu@tw.ibm.com>\n"
 "Language: zh-TW\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -257,6 +258,9 @@ msgstr ""
 msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
 msgstr "找不到 LUN (HLUN)。（LDEV：%(ldev)s）"
 
+msgid "A concurrent, possibly contradictory, request has been made."
+msgstr "已發出並行（可能矛盾）的要求。"
+
 #, python-format
 msgid ""
 "A free LUN (HLUN) was not found. Add a different host group. (LDEV: %(ldev)s)"
@@ -315,12 +319,22 @@ msgstr "磁區狀態無效。（狀態：%(status)s）"
 msgid "API %(name)s failed with error string %(err)s"
 msgstr "API %(name)s 失敗，錯誤字串為 %(err)s"
 
+#, python-format
+msgid ""
+"API Version String %(version)s is of invalid format. Must be of format "
+"MajorNum.MinorNum."
+msgstr "API 版本字串 %(version)s 的格式無效。格式必須是 MajorNum.MinorNum。"
+
 msgid "API key is missing for CloudByte driver."
 msgstr "CloudByte 驅動程式遺漏 API 索引鍵。"
 
 #, python-format
 msgid "API response: %s"
 msgstr "API 回應：%s"
+
+#, python-format
+msgid "API version %(version)s is not supported on this method."
+msgstr "此方法不支援 API %(version)s 版。"
 
 msgid "API version could not be determined."
 msgstr "無法判定 API 版本。"
@@ -638,6 +652,14 @@ msgstr "未配置 Blockbridge 記號（鑑別方法「記號」所需的項目�
 
 msgid "Blockbridge user not configured (required for auth scheme 'password')"
 msgstr "未配置 Blockbridge 使用者（鑑別方法「密碼」所需的項目）"
+
+#, python-format
+msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
+msgstr "Brocade 光纖通道分區 CLI 錯誤：%(reason)s"
+
+#, python-format
+msgid "Brocade Fibre Channel Zoning HTTP error: %(reason)s"
+msgstr "Brocade 光纖通道分區 HTTP 錯誤：%(reason)s"
 
 msgid "CHAP secret should be 12-16 bytes."
 msgstr "CHAP 密碼應該是 12-16 位元組。"
@@ -1085,12 +1107,20 @@ msgid "Chunk size is not multiple of block size for creating hash."
 msgstr "片段大小不是用於建立雜湊之區塊大小的倍數。"
 
 #, python-format
+msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
+msgstr "Cisco 光纖通道分區 CLI 錯誤：%(reason)s"
+
+#, python-format
 msgid "Clone feature is not licensed on %(storageSystem)s."
 msgstr "複製功能未在 %(storageSystem)s 上獲得授權。"
 
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr "叢集未格式化。您可能應該執行 \"dog cluster format\"。"
+
+#, python-format
+msgid "Coho Data Cinder driver failure: %(message)s"
+msgstr "Coho Data Cinder  驅動程式失敗：%(message)s"
 
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
@@ -1212,6 +1242,9 @@ msgstr "已轉換為原始，但格式現在為 %s"
 #, python-format
 msgid "Converted to raw, but format is now %s."
 msgstr "已轉換為原始，但格式現在為 %s。"
+
+msgid "Coordinator uninitialized."
+msgstr "協調者未起始設定。"
 
 #, python-format
 msgid ""
@@ -2221,6 +2254,9 @@ msgstr "執行分區 CLI 時發生錯誤：（指令 = %(cmd)s 錯誤 = %(err)s�
 msgid ""
 "Exceeded max scheduling attempts %(max_attempts)d for volume %(volume_id)s"
 msgstr "已超出磁區 %(volume_id)s 的排程嘗試次數上限 %(max_attempts)d"
+
+msgid "Exceeded the limit of snapshots per volume"
+msgstr "已超過每個磁區的 Snapshot 數目限制"
 
 #, python-format
 msgid "Exception appending meta volume to target volume %(volumename)s."
@@ -3405,6 +3441,18 @@ msgid "Gluster config file at %(config)s doesn't exist"
 msgstr "%(config)s 處不存在 Gluster 配置檔"
 
 #, python-format
+msgid "Google Cloud Storage api failure: %(reason)s"
+msgstr "Google Cloud Storage API 失敗：%(reason)s"
+
+#, python-format
+msgid "Google Cloud Storage connection failure: %(reason)s"
+msgstr "Google Cloud Storage 連線失敗：%(reason)s"
+
+#, python-format
+msgid "Google Cloud Storage oauth2 failure: %(reason)s"
+msgstr "Google Cloud Storage oauth2 失敗：%(reason)s"
+
+#, python-format
 msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr "從 DRBDmanage 取得不正確的路徑資訊！(%s)"
 
@@ -3621,6 +3669,10 @@ msgid ""
 msgstr "取得磁區 %s 的服務品質原則時，偵測到無效的服務品質規格"
 
 #, python-format
+msgid "Invalid Replication Target: %(reason)s"
+msgstr "無效的抄寫目標：%(reason)s"
+
+#, python-format
 msgid "Invalid VNX authentication type: %s"
 msgstr "無效的 VNX 鑑別類型：%s"
 
@@ -3635,6 +3687,10 @@ msgstr ""
 #, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr "XtremIO %(cur)s 版無效，需要 %(min)s 版或更高版本"
+
+#, python-format
+msgid "Invalid allocated quotas defined for the following project quotas: %s"
+msgstr "為下列專案配額定義的已配置配額無效：%s"
 
 msgid "Invalid argument"
 msgstr "無效的引數"
@@ -3980,6 +4036,9 @@ msgstr "鏈結路徑已經存在，並且該鏈結路徑不是符號鏈結"
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "狀態 %s 不支援來源磁區的鏈結複本。"
+
+msgid "Lock acquisition failed."
+msgstr "鎖定獲得失敗。"
 
 msgid ""
 "Lookup service not configured. Config option for fc_san_lookup_service needs "
@@ -4532,6 +4591,10 @@ msgid "No weighed hosts available"
 msgstr "沒有加權主機可用"
 
 #, python-format
+msgid "Not a valid string: %s"
+msgstr "不是有效的字串：%s"
+
+#, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
 msgstr "找不到適合磁區 %s 的資料儲存庫。"
 
@@ -4723,6 +4786,10 @@ msgstr "主要副本狀態：%(status)s，已同步：%(sync)s。"
 
 msgid "Project ID"
 msgstr "專案識別號"
+
+#, python-format
+msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
+msgstr "未針對巢狀配額正確設定專案配額：%(reason)s。"
 
 #, python-format
 msgid ""
@@ -5108,12 +5175,19 @@ msgid "Service %(service)s on host %(host)s removed."
 msgstr "已移除主機 %(host)s 上的服務 %(service)s。"
 
 #, python-format
+msgid "Service %(service_id)s could not be found on host %(host)s."
+msgstr "在主機 %(host)s 上找不到服務 %(service_id)s。"
+
+#, python-format
 msgid "Service %(service_id)s could not be found."
 msgstr "找不到服務 %(service_id)s。"
 
 #, python-format
 msgid "Service %s not found."
 msgstr "找不到服務 %s。"
+
+msgid "Service is too old to fulfil this request."
+msgstr "服務太舊，無法滿足此要求。"
 
 msgid "Service is unavailable at this time."
 msgstr "此時無法使用服務。"
@@ -5340,6 +5414,15 @@ msgstr "找不到儲存體系統 %(array)s。"
 #, python-format
 msgid "String with params: %s"
 msgstr "帶參數的字串：%s"
+
+#, python-format
+msgid ""
+"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
+"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
+"for one or more of the following projects: '%(child_ids)s'"
+msgstr ""
+"針對資源 '%(res)s'，子項總用量 '%(sum)s' 大於專案 '%(proj)s' 的可用配額 "
+"'%(free)s'。請降低下列一個以上專案的限制或用量：'%(child_ids)s'"
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr "將次要磁碟區同步至主要磁碟區失敗。"
@@ -5758,6 +5841,10 @@ msgid "Timeout while requesting %(service)s API."
 msgstr "要求 %(service)s API 時發生逾時。"
 
 #, python-format
+msgid "Timeout while requesting capabilities from backend %(service)s."
+msgstr "要求後端 %(service)s 中的功能時逾時。"
+
+#, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "找不到傳送 %(transfer_id)s。"
 
@@ -5820,6 +5907,9 @@ msgstr "無法建立不含 project_id 的 Barbican 用戶端。"
 msgid "Unable to create consistency group %s"
 msgstr "無法建立一致性群組 %s"
 
+msgid "Unable to create lock. Coordination backend not started."
+msgstr "無法建立鎖定。協調後端未啟動。"
+
 #, python-format
 msgid ""
 "Unable to create or get default storage group for FAST policy: "
@@ -5863,6 +5953,10 @@ msgstr ""
 #, python-format
 msgid "Unable to extend volume %s"
 msgstr "無法延伸磁區 %s"
+
+#, python-format
+msgid "Unable to failover to replication target:%(reason)s)."
+msgstr "無法失效接手至抄寫目標：%(reason)s。"
 
 msgid "Unable to fetch connection information from backend."
 msgstr "無法從後端提取連線資訊。"
@@ -6084,6 +6178,9 @@ msgstr "對映 %(id)s 的對映狀態 %(status)s 不符合預期。屬性：%(at
 msgid "Unexpected response from Nimble API"
 msgstr "來自 Nimble API 的非預期回應"
 
+msgid "Unexpected response from Tegile IntelliFlash API"
+msgstr "來自 Tegile IntelliFlash API 的非預期回應"
+
 msgid "Unexpected status code"
 msgstr "非預期的狀態碼"
 
@@ -6253,6 +6350,12 @@ msgstr "ValueError：%s"
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."
 msgstr "從 %(src)s 到 %(tgt)s 的對映未涉及到 vdisk %(name)s。"
+
+#, python-format
+msgid ""
+"Version %(req_ver)s is not supported by the API. Minimum is %(min_ver)s and "
+"maximum is %(max_ver)s."
+msgstr "API 不支援 %(req_ver)s 版。下限為 %(min_ver)s，上限為 %(max_ver)s。"
 
 #, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
