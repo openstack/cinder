@@ -255,9 +255,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         curr_active_backend_id = None
         svc_host = vol_utils.extract_host(self.host, 'backend')
         try:
-            service = objects.Service.get_by_host_and_topic(
-                context.get_admin_context(), svc_host,
-                CONF.volume_topic)
+            service = objects.Service.get_by_args(
+                context.get_admin_context(),
+                svc_host,
+                'cinder-volume')
         except exception.ServiceNotFound:
             # NOTE(jdg): This is to solve problems with unit tests
             LOG.info(_LI("Service not found for updating "
@@ -520,9 +521,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         try:
             # NOTE(jdg): may be some things to think about here in failover
             # scenarios
-            service = objects.Service.get_by_host_and_topic(
-                context.get_admin_context(), svc_host,
-                CONF.volume_topic)
+            service = objects.Service.get_by_args(
+                context.get_admin_context(),
+                svc_host,
+                'cinder-volume')
         except exception.ServiceNotFound:
             # FIXME(jdg): no idea what we'd do if we hit this case
             LOG.info(_LI("Service not found for updating "
@@ -3284,10 +3286,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         svc_host = vol_utils.extract_host(self.host, 'backend')
 
-        # NOTE(jdg): get_by_host_and_topic filters out disabled
         service = objects.Service.get_by_args(
-            context, svc_host,
-            CONF.volume_topic)
+            context,
+            svc_host,
+            'cinder-volume')
         volumes = objects.VolumeList.get_all_by_host(context, self.host)
 
         exception_encountered = False
@@ -3383,10 +3385,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                             'notification to driver has failed.'))
         svc_host = vol_utils.extract_host(self.host, 'backend')
 
-        # NOTE(jdg): get_by_host_and_topic filters out disabled
         service = objects.Service.get_by_args(
-            context, svc_host,
-            CONF.volume_topic)
+            context,
+            svc_host,
+            'cinder-volume')
         service.disabled = True
         service.disabled_reason = "frozen"
         service.save()
@@ -3416,10 +3418,10 @@ class VolumeManager(manager.SchedulerDependentManager):
             return False
         svc_host = vol_utils.extract_host(self.host, 'backend')
 
-        # NOTE(jdg): get_by_host_and_topic filters out disabled
         service = objects.Service.get_by_args(
-            context, svc_host,
-            CONF.volume_topic)
+            context,
+            svc_host,
+            'cinder-volume')
         service.disabled = False
         service.disabled_reason = ""
         service.save()
