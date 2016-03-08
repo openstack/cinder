@@ -34,12 +34,12 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
+from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
-from cinder.openstack.common import imageutils
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils

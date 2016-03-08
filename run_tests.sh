@@ -160,7 +160,7 @@ function run_tests {
     echo "Generating coverage report in covhtml/"
     # Don't compute coverage for common code, which is tested elsewhere
     ${wrapper} coverage combine
-    ${wrapper} coverage html --include='cinder/*' --omit='cinder/openstack/common/*' -d covhtml -i
+    ${wrapper} coverage html --include='cinder/*' -d covhtml -i
   fi
 
   return $RESULT
