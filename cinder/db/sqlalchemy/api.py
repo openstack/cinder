@@ -3666,7 +3666,9 @@ def volume_glance_metadata_delete_by_snapshot(context, snapshot_id):
 
 @require_context
 def backup_get(context, backup_id, read_deleted=None, project_only=True):
-    return _backup_get(context, backup_id)
+    return _backup_get(context, backup_id,
+                       read_deleted=read_deleted,
+                       project_only=project_only)
 
 
 def _backup_get(context, backup_id, session=None, read_deleted=None,
