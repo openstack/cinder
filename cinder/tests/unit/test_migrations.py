@@ -744,6 +744,11 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(reservations.c.allocated_id.type,
                               self.INTEGER_TYPE)
 
+    def _check_067(self, engine, data):
+        iscsi_targets = db_utils.get_table(engine, 'iscsi_targets')
+        fkey, = iscsi_targets.c.volume_id.foreign_keys
+        self.assertIsNotNone(fkey)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 

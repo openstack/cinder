@@ -17,6 +17,7 @@ from sqlalchemy import Integer, MetaData, String, Table
 def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
+    Table('volumes', meta, autoload=True)
 
     table = Table(
         'iscsi_targets', meta,
