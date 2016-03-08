@@ -556,6 +556,10 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
         LOG.debug('cloning %(pool)s/%(img)s@%(snap)s to %(dst)s',
                   dict(pool=src_pool, img=src_image, snap=src_snap,
                        dst=volume.name))
+
+        chunk_size = self.configuration.rbd_store_chunk_size * units.Mi
+        order = int(math.log(chunk_size, 2))
+
         with RADOSClient(self, src_pool) as src_client:
             with RADOSClient(self) as dest_client:
                 self.RBDProxy().clone(src_client.ioctx,
@@ -563,7 +567,8 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                                       utils.convert_str(src_snap),
                                       dest_client.ioctx,
                                       utils.convert_str(volume.name),
-                                      features=src_client.features)
+                                      features=src_client.features,
+                                      order=order)
 
     def _resize(self, volume, **kwargs):
         size = kwargs.get('size', None)

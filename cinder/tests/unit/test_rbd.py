@@ -861,9 +861,46 @@ class RBDTestCase(test.TestCase):
 
         self.driver._clone(self.volume_a, src_pool, src_image, src_snap)
 
+        chunk_size = self.cfg.rbd_store_chunk_size * units.Mi
+        order = int(math.log(chunk_size, 2))
+
         args = [client_stack[0].ioctx, str(src_image), str(src_snap),
                 client_stack[1].ioctx, str(self.volume_a.name)]
-        kwargs = {'features': client.features}
+        kwargs = {'features': client.features,
+                  'order': order}
+        self.mock_rbd.RBD.return_value.clone.assert_called_once_with(
+            *args, **kwargs)
+        self.assertEqual(2, client.__enter__.call_count)
+
+    @ddt.data({'rbd_chunk_size': 1, 'order': 20},
+              {'rbd_chunk_size': 8, 'order': 23},
+              {'rbd_chunk_size': 32, 'order': 25})
+    @ddt.unpack
+    @common_mocks
+    def test_clone_different_rbd_store_chunk_size(self, rbd_chunk_size, order):
+        self.cfg.rbd_store_chunk_size = rbd_chunk_size
+        src_pool = u'images'
+        src_image = u'image-name'
+        src_snap = u'snapshot-name'
+
+        client_stack = []
+
+        def mock__enter__(inst):
+            def _inner():
+                client_stack.append(inst)
+                return inst
+            return _inner
+
+        client = self.mock_client.return_value
+        # capture both rados client used to perform the clone
+        client.__enter__.side_effect = mock__enter__(client)
+
+        self.driver._clone(self.volume_a, src_pool, src_image, src_snap)
+
+        args = [client_stack[0].ioctx, str(src_image), str(src_snap),
+                client_stack[1].ioctx, str(self.volume_a.name)]
+        kwargs = {'features': client.features,
+                  'order': order}
         self.mock_rbd.RBD.return_value.clone.assert_called_once_with(
             *args, **kwargs)
         self.assertEqual(2, client.__enter__.call_count)
