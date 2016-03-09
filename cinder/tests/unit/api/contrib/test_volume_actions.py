@@ -619,7 +619,8 @@ class VolumeImageActionsTest(test.TestCase):
                      'status': 'uploading',
                      'display_description': 'displaydesc',
                      'size': 1,
-                     'volume_type': {'name': 'vol_type_name'},
+                     'volume_type': fake_volume.fake_db_volume_type(
+                         name='vol_type_name'),
                      'image_id': 1,
                      'container_format': 'bare',
                      'disk_format': 'raw',
@@ -803,7 +804,8 @@ class VolumeImageActionsTest(test.TestCase):
                                 'status': 'uploading',
                                 'display_description': 'displaydesc',
                                 'size': 1,
-                                'volume_type': {'name': 'vol_type_name'},
+                                'volume_type': fake_volume.fake_db_volume_type(
+                                    name='vol_type_name'),
                                 'image_id': 1,
                                 'container_format': 'bare',
                                 'disk_format': 'raw',
@@ -860,7 +862,8 @@ class VolumeImageActionsTest(test.TestCase):
                                 'status': 'uploading',
                                 'display_description': 'displaydesc',
                                 'size': 1,
-                                'volume_type': {'name': 'vol_type_name'},
+                                'volume_type': fake_volume.fake_db_volume_type(
+                                    name='vol_type_name'),
                                 'image_id': 1,
                                 'container_format': 'bare',
                                 'disk_format': 'raw',
@@ -914,7 +917,8 @@ class VolumeImageActionsTest(test.TestCase):
                                 'status': 'uploading',
                                 'display_description': 'displaydesc',
                                 'size': 1,
-                                'volume_type': {'name': 'vol_type_name'},
+                                'volume_type': fake_volume.fake_db_volume_type(
+                                    name='vol_type_name'),
                                 'image_id': 1,
                                 'container_format': 'bare',
                                 'disk_format': 'raw',
@@ -961,7 +965,8 @@ class VolumeImageActionsTest(test.TestCase):
                             'status': 'uploading',
                             'display_description': 'displaydesc',
                             'size': 1,
-                            'volume_type': {'name': 'vol_type_name'},
+                            'volume_type': fake_volume.fake_db_volume_type(
+                                name='vol_type_name'),
                             'image_id': 1,
                             'container_format': 'bare',
                             'disk_format': 'raw',

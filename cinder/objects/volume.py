@@ -62,8 +62,6 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
                        'volume_type', 'volume_attachment', 'consistencygroup',
                        'snapshots')
 
-    DEFAULT_EXPECTED_ATTR = ('admin_metadata', 'metadata')
-
     fields = {
         'id': fields.UUIDField(),
         '_name_id': fields.UUIDField(nullable=True),
@@ -123,6 +121,14 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     # usually part of the model
     obj_extra_fields = ['name', 'name_id', 'volume_metadata',
                         'volume_admin_metadata', 'volume_glance_metadata']
+
+    @classmethod
+    def _get_expected_attrs(cls, context):
+        expected_attrs = ['metadata', 'volume_type', 'volume_type.extra_specs']
+        if context.is_admin:
+            expected_attrs.append('admin_metadata')
+
+        return expected_attrs
 
     @property
     def name_id(self):
@@ -248,9 +254,12 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         if 'volume_type' in expected_attrs:
             db_volume_type = db_volume.get('volume_type')
             if db_volume_type:
+                vt_expected_attrs = []
+                if 'volume_type.extra_specs' in expected_attrs:
+                    vt_expected_attrs.append('extra_specs')
                 volume.volume_type = objects.VolumeType._from_db_object(
                     context, objects.VolumeType(), db_volume_type,
-                    expected_attrs='extra_specs')
+                    expected_attrs=vt_expected_attrs)
         if 'volume_attachment' in expected_attrs:
             attachments = base.obj_make_list(
                 context, objects.VolumeAttachmentList(context),
@@ -430,27 +439,35 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         '1.1': '1.1',
     }
 
+    @classmethod
+    def _get_expected_attrs(cls, context):
+        expected_attrs = ['metadata', 'volume_type']
+        if context.is_admin:
+            expected_attrs.append('admin_metadata')
+
+        return expected_attrs
+
     @base.remotable_classmethod
     def get_all(cls, context, marker, limit, sort_keys=None, sort_dirs=None,
                 filters=None, offset=None):
         volumes = db.volume_get_all(context, marker, limit,
                                     sort_keys=sort_keys, sort_dirs=sort_dirs,
                                     filters=filters, offset=offset)
-        expected_attrs = ['admin_metadata', 'metadata']
+        expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
 
     @base.remotable_classmethod
     def get_all_by_host(cls, context, host, filters=None):
         volumes = db.volume_get_all_by_host(context, host, filters)
-        expected_attrs = ['admin_metadata', 'metadata']
+        expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
 
     @base.remotable_classmethod
     def get_all_by_group(cls, context, group_id, filters=None):
         volumes = db.volume_get_all_by_group(context, group_id, filters)
-        expected_attrs = ['admin_metadata', 'metadata']
+        expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
 
@@ -462,6 +479,6 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
                                                limit, sort_keys=sort_keys,
                                                sort_dirs=sort_dirs,
                                                filters=filters, offset=offset)
-        expected_attrs = ['admin_metadata', 'metadata']
+        expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)

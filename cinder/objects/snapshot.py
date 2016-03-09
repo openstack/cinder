@@ -37,8 +37,6 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
     # are typically the relationship in the sqlalchemy object.
     OPTIONAL_FIELDS = ('volume', 'metadata', 'cgsnapshot')
 
-    DEFAULT_EXPECTED_ATTR = ('metadata',)
-
     fields = {
         'id': fields.UUIDField(),
 
@@ -65,6 +63,10 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         'volume': fields.ObjectField('Volume', nullable=True),
         'cgsnapshot': fields.ObjectField('CGSnapshot', nullable=True),
     }
+
+    @classmethod
+    def _get_expected_attrs(cls, context):
+        return 'metadata',
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
     # usually part of the model
@@ -232,14 +234,16 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
                 sort_keys=None, sort_dirs=None, offset=None):
         snapshots = db.snapshot_get_all(context, search_opts, marker, limit,
                                         sort_keys, sort_dirs, offset)
-        return base.obj_make_list(context, cls(), objects.Snapshot,
-                                  snapshots, expected_attrs=['metadata'])
+        expected_attrs = Snapshot._get_expected_attrs(context)
+        return base.obj_make_list(context, cls(context), objects.Snapshot,
+                                  snapshots, expected_attrs=expected_attrs)
 
     @base.remotable_classmethod
     def get_by_host(cls, context, host, filters=None):
         snapshots = db.snapshot_get_by_host(context, host, filters)
+        expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
-                                  snapshots, expected_attrs=['metadata'])
+                                  snapshots, expected_attrs=expected_attrs)
 
     @base.remotable_classmethod
     def get_all_by_project(cls, context, project_id, search_opts, marker=None,
@@ -248,23 +252,27 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         snapshots = db.snapshot_get_all_by_project(
             context, project_id, search_opts, marker, limit, sort_keys,
             sort_dirs, offset)
+        expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
-                                  snapshots, expected_attrs=['metadata'])
+                                  snapshots, expected_attrs=expected_attrs)
 
     @base.remotable_classmethod
     def get_all_for_volume(cls, context, volume_id):
         snapshots = db.snapshot_get_all_for_volume(context, volume_id)
+        expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
-                                  snapshots, expected_attrs=['metadata'])
+                                  snapshots, expected_attrs=expected_attrs)
 
     @base.remotable_classmethod
     def get_active_by_window(cls, context, begin, end):
         snapshots = db.snapshot_get_active_by_window(context, begin, end)
+        expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
-                                  snapshots, expected_attrs=['metadata'])
+                                  snapshots, expected_attrs=expected_attrs)
 
     @base.remotable_classmethod
     def get_all_for_cgsnapshot(cls, context, cgsnapshot_id):
         snapshots = db.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
+        expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
-                                  snapshots, expected_attrs=['metadata'])
+                                  snapshots, expected_attrs=expected_attrs)

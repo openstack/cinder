@@ -149,6 +149,10 @@ class CinderObject(base.VersionedObject):
         # Return modified dict
         return changes
 
+    @classmethod
+    def _get_expected_attrs(cls, context):
+        return None
+
     @base.remotable_classmethod
     def get_by_id(cls, context, id, *args, **kwargs):
         # To get by id we need to have a model and for the model to
@@ -160,9 +164,10 @@ class CinderObject(base.VersionedObject):
 
         model = db.get_model_for_versioned_object(cls)
         orm_obj = db.get_by_id(context, model, id, *args, **kwargs)
+        expected_attrs = cls._get_expected_attrs(context)
         kargs = {}
-        if hasattr(cls, 'DEFAULT_EXPECTED_ATTR'):
-            kargs = {'expected_attrs': getattr(cls, 'DEFAULT_EXPECTED_ATTR')}
+        if expected_attrs:
+            kargs = {'expected_attrs': expected_attrs}
         return cls._from_db_object(context, cls(context), orm_obj, **kargs)
 
     def conditional_update(self, values, expected_values=None, filters=(),
