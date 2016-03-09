@@ -29,6 +29,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
 from cinder import objects
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver_utils
 from cinder.volume import rpcapi as volume_rpcapi
@@ -1326,7 +1327,7 @@ class BaseVD(object):
             'cgsnapshot_id': None,
             'user_id': context.user_id,
             'project_id': context.project_id,
-            'status': 'creating',
+            'status': fields.SnapshotStatus.CREATING,
             'progress': '0%',
             'volume_size': volume['size'],
             'display_name': 'backup-snap-%s' % volume['id'],
@@ -1346,7 +1347,7 @@ class BaseVD(object):
                         context, temp_snap_ref.id)
                     temp_snap_ref.destroy()
 
-        temp_snap_ref.status = 'available'
+        temp_snap_ref.status = fields.SnapshotStatus.AVAILABLE
         temp_snap_ref.save()
         return temp_snap_ref
 

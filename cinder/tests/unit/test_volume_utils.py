@@ -26,6 +26,7 @@ from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_backup
 from cinder.tests.unit import fake_constants as fake
@@ -134,7 +135,7 @@ class NotifyUsageTestCase(test.TestCase):
             'id': fake.SNAPSHOT_ID,
             'display_name': '11',
             'created_at': '2014-12-11T10:10:00',
-            'status': 'pause',
+            'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
             'snapshot_metadata': [{'key': 'fake_snap_meta_key',
                                    'value': 'fake_snap_meta_value'}],
@@ -152,7 +153,7 @@ class NotifyUsageTestCase(test.TestCase):
             'snapshot_id': fake.SNAPSHOT_ID,
             'display_name': '11',
             'created_at': 'DONTCARE',
-            'status': 'pause',
+            'status': fields.SnapshotStatus.ERROR,
             'deleted': '',
             'metadata': six.text_type({'fake_snap_meta_key':
                                       u'fake_snap_meta_value'}),

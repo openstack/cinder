@@ -231,7 +231,7 @@ class HPE3PARBaseDriver(object):
                 'project_id': PROJECT_ID,
                 'volume_id': VOLUME_ID_SNAP,
                 'volume_name': VOLUME_NAME,
-                'status': 'creating',
+                'status': fields.SnapshotStatus.CREATING,
                 'progress': '0%',
                 'volume_size': 2,
                 'display_name': 'fakesnap',

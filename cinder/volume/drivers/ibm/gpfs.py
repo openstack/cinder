@@ -1209,7 +1209,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
         for snapshot in snapshots:
             self.create_snapshot(snapshot)
-            snapshot['status'] = 'available'
+            snapshot['status'] = fields.SnapshotStatus.AVAILABLE
 
         model_update = {'status': 'available'}
 
@@ -1222,7 +1222,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
         for snapshot in snapshots:
             self.delete_snapshot(snapshot)
-            snapshot['status'] = 'deleted'
+            snapshot['status'] = fields.SnapshotStatus.DELETED
 
         model_update = {'status': cgsnapshot['status']}
 

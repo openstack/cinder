@@ -18,6 +18,7 @@ import webob
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -49,7 +50,7 @@ def api_snapshot_get(self, context, snp_id):
                 'progress': '100%',
                 'volume_id': fake.VOLUME_ID,
                 'project_id': fake.PROJECT_ID,
-                'status': 'available'}
+                'status': fields.SnapshotStatus.AVAILABLE}
     if snp_id == snapshot_id:
         snapshot_objct = fake_snapshot.fake_snapshot_obj(context, **snapshot)
         return snapshot_objct

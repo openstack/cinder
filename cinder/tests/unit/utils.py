@@ -99,7 +99,7 @@ def create_snapshot(ctxt,
                     display_name='test_snapshot',
                     display_description='this is a test snapshot',
                     cgsnapshot_id = None,
-                    status='creating',
+                    status=fields.SnapshotStatus.CREATING,
                     **kwargs):
     vol = db.volume_get(ctxt, volume_id)
     snap = objects.Snapshot(ctxt)

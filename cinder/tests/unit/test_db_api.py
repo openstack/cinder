@@ -27,6 +27,7 @@ from cinder import db
 from cinder.db.sqlalchemy import api as sqlalchemy_api
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder import quota
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
@@ -1238,15 +1239,21 @@ class DBAPISnapshotTestCase(BaseTest):
     def test_snapshot_get_all_by_filter(self):
         db.volume_create(self.ctxt, {'id': 1})
         db.volume_create(self.ctxt, {'id': 2})
-        snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
-                                                   'display_name': 'one',
-                                                   'status': 'available'})
-        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 1,
-                                                   'display_name': 'two',
-                                                   'status': 'creating'})
-        snapshot3 = db.snapshot_create(self.ctxt, {'id': 3, 'volume_id': 2,
-                                                   'display_name': 'three',
-                                                   'status': 'available'})
+        snapshot1 = db.snapshot_create(self.ctxt,
+                                       {'id': 1, 'volume_id': 1,
+                                        'display_name': 'one',
+                                        'status':
+                                            fields.SnapshotStatus.AVAILABLE})
+        snapshot2 = db.snapshot_create(self.ctxt,
+                                       {'id': 2, 'volume_id': 1,
+                                        'display_name': 'two',
+                                        'status':
+                                            fields.SnapshotStatus.CREATING})
+        snapshot3 = db.snapshot_create(self.ctxt,
+                                       {'id': 3, 'volume_id': 2,
+                                        'display_name': 'three',
+                                        'status':
+                                            fields.SnapshotStatus.AVAILABLE})
         # no filter
         filters = {}
         snapshots = db.snapshot_get_all(self.ctxt, filters=filters)
@@ -1271,7 +1278,7 @@ class DBAPISnapshotTestCase(BaseTest):
                                             self.ctxt,
                                             filters),
                                         ignored_keys=['metadata', 'volume'])
-        filters = {'status': 'error'}
+        filters = {'status': fields.SnapshotStatus.ERROR}
         self._assertEqualListsOfObjects([],
                                         db.snapshot_get_all(
                                             self.ctxt,
@@ -1284,13 +1291,13 @@ class DBAPISnapshotTestCase(BaseTest):
                                             self.ctxt,
                                             filters),
                                         ignored_keys=['metadata', 'volume'])
-        filters = {'status': 'available'}
+        filters = {'status': fields.SnapshotStatus.AVAILABLE}
         self._assertEqualListsOfObjects([snapshot1, snapshot3],
                                         db.snapshot_get_all(
                                             self.ctxt,
                                             filters),
                                         ignored_keys=['metadata', 'volume'])
-        filters = {'volume_id': 1, 'status': 'available'}
+        filters = {'volume_id': 1, 'status': fields.SnapshotStatus.AVAILABLE}
         self._assertEqualListsOfObjects([snapshot1],
                                         db.snapshot_get_all(
                                             self.ctxt,
@@ -1307,8 +1314,11 @@ class DBAPISnapshotTestCase(BaseTest):
         db.volume_create(self.ctxt, {'id': 1, 'host': 'host1'})
         db.volume_create(self.ctxt, {'id': 2, 'host': 'host2'})
         snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1})
-        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 2,
-                                                   'status': 'error'})
+        snapshot2 = db.snapshot_create(self.ctxt,
+                                       {'id': 2,
+                                        'volume_id': 2,
+                                        'status':
+                                            fields.SnapshotStatus.ERROR})
 
         self._assertEqualListsOfObjects([snapshot1],
                                         db.snapshot_get_by_host(
@@ -1320,16 +1330,14 @@ class DBAPISnapshotTestCase(BaseTest):
                                             self.ctxt,
                                             'host2'),
                                         ignored_keys='volume')
-        self._assertEqualListsOfObjects([],
-                                        db.snapshot_get_by_host(
-                                            self.ctxt,
-                                            'host2', {'status': 'available'}),
-                                        ignored_keys='volume')
-        self._assertEqualListsOfObjects([snapshot2],
-                                        db.snapshot_get_by_host(
-                                            self.ctxt,
-                                            'host2', {'status': 'error'}),
-                                        ignored_keys='volume')
+        self._assertEqualListsOfObjects(
+            [], db.snapshot_get_by_host(self.ctxt, 'host2', {
+                'status': fields.SnapshotStatus.AVAILABLE}),
+            ignored_keys='volume')
+        self._assertEqualListsOfObjects(
+            [snapshot2], db.snapshot_get_by_host(self.ctxt, 'host2', {
+                'status': fields.SnapshotStatus.ERROR}),
+            ignored_keys='volume')
         self._assertEqualListsOfObjects([],
                                         db.snapshot_get_by_host(
                                             self.ctxt,
@@ -1368,9 +1376,9 @@ class DBAPISnapshotTestCase(BaseTest):
         db.volume_create(self.ctxt, {'id': 2})
         snapshot1 = db.snapshot_create(self.ctxt, {'id': 1, 'volume_id': 1,
                                                    'project_id': 'project1'})
-        snapshot2 = db.snapshot_create(self.ctxt, {'id': 2, 'volume_id': 2,
-                                                   'status': 'error',
-                                                   'project_id': 'project2'})
+        snapshot2 = db.snapshot_create(
+            self.ctxt, {'id': 2, 'volume_id': 2, 'status':
+                        fields.SnapshotStatus.ERROR, 'project_id': 'project2'})
 
         self._assertEqualListsOfObjects([snapshot1],
                                         db.snapshot_get_all_by_project(
@@ -1382,18 +1390,17 @@ class DBAPISnapshotTestCase(BaseTest):
                                             self.ctxt,
                                             'project2'),
                                         ignored_keys='volume')
-        self._assertEqualListsOfObjects([],
-                                        db.snapshot_get_all_by_project(
-                                            self.ctxt,
-                                            'project2',
-                                            {'status': 'available'}),
-                                        ignored_keys='volume')
-        self._assertEqualListsOfObjects([snapshot2],
-                                        db.snapshot_get_all_by_project(
-                                            self.ctxt,
-                                            'project2',
-                                            {'status': 'error'}),
-                                        ignored_keys='volume')
+        self._assertEqualListsOfObjects(
+            [], db.snapshot_get_all_by_project(
+                self.ctxt,
+                'project2',
+                {'status': fields.SnapshotStatus.AVAILABLE}),
+            ignored_keys='volume')
+        self._assertEqualListsOfObjects(
+            [snapshot2], db.snapshot_get_all_by_project(
+                self.ctxt, 'project2', {
+                    'status': fields.SnapshotStatus.ERROR}),
+            ignored_keys='volume')
         self._assertEqualListsOfObjects([],
                                         db.snapshot_get_all_by_project(
                                             self.ctxt,

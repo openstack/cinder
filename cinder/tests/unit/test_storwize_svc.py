@@ -3001,7 +3001,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                 cg_snapshot.id,
                 cg_snapshot.name,
                 cg_snapshot.id,
-                "creating"))
+                fields.SnapshotStatus.CREATING))
 
         return cg_snapshot, snapshots
 
@@ -3015,8 +3015,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                          "CGSnapshot created failed")
 
         for snapshot in snapshots_model:
-            self.assertEqual('available', snapshot['status'])
-
+            self.assertEqual(fields.SnapshotStatus.AVAILABLE,
+                             snapshot['status'])
         return cg_snapshot, snapshots
 
     def _create_test_vol(self, opts):
@@ -4261,7 +4261,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                          "CGSnapshot created failed")
 
         for snapshot in model_update[1]:
-            self.assertEqual('available', snapshot['status'])
+            self.assertEqual(fields.SnapshotStatus.AVAILABLE,
+                             snapshot['status'])
 
         model_update = self.driver.delete_consistencygroup(self.ctxt,
                                                            cg, volumes)

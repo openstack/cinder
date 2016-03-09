@@ -872,7 +872,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot.id,
-            status='available')
+            status=fields.SnapshotStatus.AVAILABLE)
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -948,7 +948,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot_id,
-            status='available')
+            status=fields.SnapshotStatus.AVAILABLE)
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1023,7 +1023,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot.id,
-            status='available')
+            status=fields.SnapshotStatus.AVAILABLE)
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,
@@ -1165,7 +1165,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
             self.ctxt,
             volume_id,
             cgsnapshot_id=cgsnapshot.id,
-            status='available')
+            status=fields.SnapshotStatus.AVAILABLE)
 
         test_cg_name = 'test cg'
         body = {"consistencygroup-from-src": {"name": test_cg_name,

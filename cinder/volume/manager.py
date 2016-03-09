@@ -89,7 +89,7 @@ VALID_REMOVE_VOL_FROM_CG_STATUS = (
 VALID_ADD_VOL_TO_CG_STATUS = (
     'available',
     'in-use')
-VALID_CREATE_CG_SRC_SNAP_STATUS = ('available',)
+VALID_CREATE_CG_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
 VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
 
 volume_manager_opts = [
@@ -480,11 +480,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                 else:
                     pass
             snapshots = objects.SnapshotList.get_by_host(
-                ctxt, self.host, {'status': 'creating'})
+                ctxt, self.host, {'status': fields.SnapshotStatus.CREATING})
             for snapshot in snapshots:
                 LOG.warning(_LW("Detected snapshot stuck in creating "
                             "status, setting to ERROR."), resource=snapshot)
-                snapshot.status = 'error'
+                snapshot.status = fields.SnapshotStatus.ERROR
                 snapshot.save()
         except Exception:
             LOG.exception(_LE("Error during re-export on driver init."),
@@ -848,7 +848,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                snapshot.status = 'error'
+                snapshot.status = fields.SnapshotStatus.ERROR
                 snapshot.save()
 
         vol_ref = self.db.volume_get(context, volume_id)
@@ -866,11 +866,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                                   " metadata using the provided volumes"
                                   " %(volume_id)s metadata"),
                               {'volume_id': volume_id}, resource=snapshot)
-                snapshot.status = 'error'
+                snapshot.status = fields.SnapshotStatus.ERROR
                 snapshot.save()
                 raise exception.MetadataCopyFailure(reason=six.text_type(ex))
 
-        snapshot.status = 'available'
+        snapshot.status = fields.SnapshotStatus.AVAILABLE
         snapshot.progress = '100%'
         snapshot.save()
 
@@ -907,12 +907,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.SnapshotIsBusy:
             LOG.error(_LE("Delete snapshot failed, due to snapshot busy."),
                       resource=snapshot)
-            snapshot.status = 'available'
+            snapshot.status = fields.SnapshotStatus.AVAILABLE
             snapshot.save()
             return
         except Exception:
             with excutils.save_and_reraise_exception():
-                snapshot.status = 'error_deleting'
+                snapshot.status = fields.SnapshotStatus.ERROR_DELETING
                 snapshot.save()
 
         # Get reservations
@@ -3005,7 +3005,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                                             snap_model['id'],
                                             snap_model)
 
-                    if (snap_model['status'] in ['error_deleting', 'error'] and
+                    if (snap_model['status'] in [
+                        fields.SnapshotStatus.ERROR_DELETING,
+                        fields.SnapshotStatus.ERROR] and
                             model_update['status'] not in
                             ['error_deleting', 'error']):
                         model_update['status'] = snap_model['status']
@@ -3028,7 +3030,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # None for snapshots_model_update.
                 if not snapshots_model_update:
                     for snapshot in snapshots:
-                        snapshot.status = 'error'
+                        snapshot.status = fields.SnapshotStatus.ERROR
                         snapshot.save()
 
         for snapshot in snapshots:
@@ -3048,14 +3050,16 @@ class VolumeManager(manager.SchedulerDependentManager):
 
                     # TODO(thangp): Switch over to use snapshot.update()
                     # after cgsnapshot-objects bugs are fixed
-                    self.db.snapshot_update(context, snapshot_id,
-                                            {'status': 'error'})
+                    self.db.snapshot_update(
+                        context, snapshot_id, {
+                            'status': fields.SnapshotStatus.ERROR})
                     raise exception.MetadataCopyFailure(
                         reason=six.text_type(ex))
 
             self.db.snapshot_update(context,
-                                    snapshot['id'], {'status': 'available',
-                                                     'progress': '100%'})
+                                    snapshot['id'],
+                                    {'status': fields.SnapshotStatus.AVAILABLE,
+                                     'progress': '100%'})
 
         cgsnapshot.status = 'available'
         cgsnapshot.save()
@@ -3108,7 +3112,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                         snap.status = snap_model['status']
                         snap.save()
 
-                    if (snap_model['status'] in ['error_deleting', 'error'] and
+                    if (snap_model['status'] in
+                            [fields.SnapshotStatus.ERROR_DELETING,
+                             fields.SnapshotStatus.ERROR] and
                             model_update['status'] not in
                             ['error_deleting', 'error']):
                         model_update['status'] = snap_model['status']
@@ -3131,7 +3137,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # None for snapshots_model_update.
                 if not snapshots_model_update:
                     for snapshot in snapshots:
-                        snapshot.status = 'error'
+                        snapshot.status = fields.SnapshotStatus.ERROR
                         snapshot.save()
 
         for snapshot in snapshots:

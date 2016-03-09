@@ -50,6 +50,7 @@ from cinder import keymgr
 from cinder.message import defined_messages
 from cinder.message import resource_types
 from cinder import objects
+from cinder.objects import fields
 import cinder.policy
 from cinder import quota
 from cinder import test
@@ -578,15 +579,16 @@ class VolumeTestCase(BaseVolumeTestCase):
         """
         volume = tests_utils.create_volume(self.context,
                                            **self.volume_params)
-        snapshot = tests_utils.create_snapshot(self.context,
-                                               volume['id'],
-                                               status='creating')
+        snapshot = tests_utils.create_snapshot(
+            self.context,
+            volume['id'],
+            status=fields.SnapshotStatus.CREATING)
         snap_id = snapshot['id']
         self.volume.init_host()
 
         snapshot_obj = objects.Snapshot.get_by_id(self.context, snap_id)
 
-        self.assertEqual('error', snapshot_obj.status)
+        self.assertEqual(fields.SnapshotStatus.ERROR, snapshot_obj.status)
 
         self.volume.delete_snapshot(self.context, snapshot_obj)
         self.volume.delete_volume(self.context, volume.id, volume=volume)
@@ -1316,7 +1318,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                               'biz')
 
         snapshot = {'id': fake.SNAPSHOT_ID,
-                    'status': 'available',
+                    'status': fields.SnapshotStatus.AVAILABLE,
                     'volume_size': 10,
                     'volume_type_id': biz_type['id']}
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
@@ -1499,7 +1501,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                       'volume_type_id': biz_type['id']}
 
         snapshot = {'id': fake.SNAPSHOT_ID,
-                    'status': 'available',
+                    'status': fields.SnapshotStatus.AVAILABLE,
                     'volume_size': 10,
                     'volume_type_id': biz_type['id']}
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
@@ -1541,7 +1543,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context, volume_src['id'], snapshot_obj)
 
         # NOTE(flaper87): The volume status should be error.
-        self.assertEqual("error", snapshot_obj.status)
+        self.assertEqual(fields.SnapshotStatus.ERROR, snapshot_obj.status)
 
         # lets cleanup the mess
         self.volume.driver._initialized = True
@@ -1821,7 +1823,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_snapshot(self.context, src_vol['id'], snapshot_obj)
 
         # ensure that status of snapshot is 'available'
-        self.assertEqual('available', snapshot_obj.status)
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot_obj.status)
 
         dst_vol = tests_utils.create_volume(self.context,
                                             snapshot_id=snapshot_id,
@@ -1880,7 +1882,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_snapshot(self.context, volume['id'], snapshot_obj)
 
         # ensure that status of snapshot is 'available'
-        self.assertEqual('available', snapshot_obj.status)
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot_obj.status)
 
         # create volume from snapshot
         dst_vol = tests_utils.create_volume(self.context,
@@ -2021,7 +2023,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                         volume_src,
                                                         'name',
                                                         'description')
-        snapshot_ref['status'] = 'available'  # status must be available
+        snapshot_ref['status'] = fields.SnapshotStatus.AVAILABLE
+        # status must be available
         volume_dst = volume_api.create(self.context,
                                        1,
                                        'name',
@@ -2109,8 +2112,9 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_create_volume_from_snapshot_fail_bad_size(self):
         """Test volume can't be created from snapshot with bad volume size."""
         volume_api = cinder.volume.api.API()
+
         snapshot = {'id': fake.SNAPSHOT_ID,
-                    'status': 'available',
+                    'status': fields.SnapshotStatus.AVAILABLE,
                     'volume_size': 10}
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.context,
                                                        **snapshot)
@@ -3102,7 +3106,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertDictMatch(expected, msg['payload'])
         msg = self.notifier.notifications[3]
         self.assertEqual('snapshot.create.end', msg['event_type'])
-        expected['status'] = 'available'
+        expected['status'] = fields.SnapshotStatus.AVAILABLE
         self.assertDictMatch(expected, msg['payload'])
 
         if len(self.notifier.notifications) > 4:
@@ -3117,7 +3121,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot)
         msg = self.notifier.notifications[4]
         self.assertEqual('snapshot.delete.start', msg['event_type'])
-        expected['status'] = 'available'
+        expected['status'] = fields.SnapshotStatus.AVAILABLE
         self.assertDictMatch(expected, msg['payload'])
         msg = self.notifier.notifications[5]
         self.assertEqual('snapshot.delete.end', msg['event_type'])
@@ -3134,7 +3138,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         snap = objects.Snapshot.get_by_id(context.get_admin_context(
             read_deleted='yes'), snapshot_id)
-        self.assertEqual('deleted', snap.status)
+        self.assertEqual(fields.SnapshotStatus.DELETED, snap.status)
         self.assertRaises(exception.NotFound,
                           db.snapshot_get,
                           self.context,
@@ -3297,19 +3301,32 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_can_delete_errored_snapshot(self):
         """Test snapshot can be created and deleted."""
         volume = tests_utils.create_volume(self.context, CONF.host)
+
         snapshot = create_snapshot(volume.id, size=volume['size'],
-                                   ctxt=self.context, status='bad')
+                                   ctxt=self.context,
+                                   status=fields.SnapshotStatus.ERROR)
+
+        self.volume_api.delete_snapshot(self.context, snapshot)
+
+        self.assertEqual(fields.SnapshotStatus.DELETING, snapshot.status)
+        self.volume.delete_volume(self.context, volume.id)
+
+    def test_cannot_delete_snapshot_with_bad_status(self):
+        volume = tests_utils.create_volume(self.context, CONF.host)
+        snapshot = create_snapshot(volume.id, size=volume['size'],
+                                   ctxt=self.context,
+                                   status=fields.SnapshotStatus.CREATING)
         self.assertRaises(exception.InvalidSnapshot,
                           self.volume_api.delete_snapshot,
                           self.context,
                           snapshot)
 
-        snapshot.status = 'error'
+        snapshot.status = fields.SnapshotStatus.ERROR
         snapshot.save()
         self.volume_api.delete_snapshot(self.context, snapshot)
 
-        self.assertEqual('deleting', snapshot.status)
-        self.volume.delete_volume(self.context, volume.id, volume=volume)
+        self.assertEqual(fields.SnapshotStatus.DELETING, snapshot.status)
+        self.volume.delete_volume(self.context, volume.id)
 
     def test_create_snapshot_force(self):
         """Test snapshot in use can be created forcibly."""
@@ -3391,7 +3408,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertDictMatch(vol_glance_dict, snap_glance_dict)
 
         # ensure that snapshot's status is changed to 'available'
-        self.assertEqual('available', snap.status)
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snap.status)
 
         # cleanup resource
         snap.destroy()
@@ -3436,7 +3453,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           ctxt, snap.id)
 
         # ensure that status of snapshot is 'error'
-        self.assertEqual('error', snap.status)
+        self.assertEqual(fields.SnapshotStatus.ERROR, snap.status)
 
         # cleanup resource
         snap.destroy()
@@ -3458,7 +3475,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context, snapshot.id)
 
         # ensure that status of snapshot is 'available'
-        self.assertEqual('available', snapshot.status)
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot.status)
 
         # cleanup resource
         snapshot.destroy()
@@ -3488,7 +3505,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot)
         snapshot_ref = objects.Snapshot.get_by_id(self.context, snapshot_id)
         self.assertEqual(snapshot_id, snapshot_ref.id)
-        self.assertEqual("available", snapshot_ref.status)
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot_ref.status)
 
     @test.testtools.skipIf(sys.platform == "darwin", "SKIP on OSX")
     def test_delete_no_dev_fails(self):
@@ -3515,7 +3532,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot)
         snapshot_ref = objects.Snapshot.get_by_id(self.context, snapshot_id)
         self.assertEqual(snapshot_id, snapshot_ref.id)
-        self.assertEqual("available", snapshot_ref.status)
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot_ref.status)
 
         self.mox.UnsetStubs()
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -4384,7 +4401,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             snapshot.id, objects.Snapshot.get_by_id(self.context,
                                                     snapshot.id).id)
 
-        snapshot.update({'status': 'in-use'})
+        snapshot.update({'status': fields.SnapshotStatus.CREATING})
         snapshot.save()
 
         volume['status'] = 'available'
@@ -5700,7 +5717,7 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
     def setUp(self):
         super(GetActiveByWindowTestCase, self).setUp()
         self.ctx = context.get_admin_context(read_deleted="yes")
-        self.db_attrs = [
+        self.db_vol_attrs = [
             {
                 'id': fake.VOLUME_ID,
                 'host': 'devstack',
@@ -5740,23 +5757,71 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             }
         ]
 
+        self.db_snap_attrs = [
+            {
+                'id': fake.SNAPSHOT_ID,
+                'host': 'devstack',
+                'project_id': 'p1',
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'deleted': True,
+                'status': fields.SnapshotStatus.DELETED,
+                'deleted_at': datetime.datetime(1, 2, 1, 1, 1, 1),
+                'volume_id': fake.VOLUME_ID,
+            },
+
+            {
+                'id': fake.SNAPSHOT2_ID,
+                'host': 'devstack',
+                'project_id': 'p1',
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'deleted': True,
+                'status': fields.SnapshotStatus.DELETED,
+                'deleted_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+                'volume_id': fake.VOLUME_ID,
+            },
+            {
+                'id': fake.SNAPSHOT3_ID,
+                'host': 'devstack',
+                'project_id': 'p1',
+                'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+                'deleted': True,
+                'status': fields.SnapshotStatus.DELETED,
+                'deleted_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+                'volume_id': fake.VOLUME_ID,
+            },
+            {
+                'id': fake.SNAPSHOT_ID,
+                'host': 'devstack',
+                'project_id': 'p1',
+                'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
+                'volume_id': fake.VOLUME_ID,
+            },
+            {
+                'id': fake.SNAPSHOT2_ID,
+                'host': 'devstack',
+                'project_id': 'p1',
+                'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
+                'volume_id': fake.VOLUME_ID
+            }
+        ]
+
     def test_volume_get_active_by_window(self):
         # Find all all volumes valid within a timeframe window.
 
         # Not in window
-        db.volume_create(self.ctx, self.db_attrs[0])
+        db.volume_create(self.ctx, self.db_vol_attrs[0])
 
         # In - deleted in window
-        db.volume_create(self.ctx, self.db_attrs[1])
+        db.volume_create(self.ctx, self.db_vol_attrs[1])
 
         # In - deleted after window
-        db.volume_create(self.ctx, self.db_attrs[2])
+        db.volume_create(self.ctx, self.db_vol_attrs[2])
 
         # In - created in window
-        db.volume_create(self.context, self.db_attrs[3])
+        db.volume_create(self.context, self.db_vol_attrs[3])
 
         # Not of window.
-        db.volume_create(self.context, self.db_attrs[4])
+        db.volume_create(self.context, self.db_vol_attrs[4])
 
         volumes = db.volume_get_active_by_window(
             self.context,
@@ -5772,31 +5837,31 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
         # Find all all snapshots valid within a timeframe window.
         db.volume_create(self.context, {'id': fake.VOLUME_ID})
         for i in range(5):
-            self.db_attrs[i]['volume_id'] = fake.VOLUME_ID
+            self.db_vol_attrs[i]['volume_id'] = fake.VOLUME_ID
 
         # Not in window
-        del self.db_attrs[0]['id']
-        snap1 = objects.Snapshot(self.ctx, **self.db_attrs[0])
+        del self.db_snap_attrs[0]['id']
+        snap1 = objects.Snapshot(self.ctx, **self.db_snap_attrs[0])
         snap1.create()
 
         # In - deleted in window
-        del self.db_attrs[1]['id']
-        snap2 = objects.Snapshot(self.ctx, **self.db_attrs[1])
+        del self.db_snap_attrs[1]['id']
+        snap2 = objects.Snapshot(self.ctx, **self.db_snap_attrs[1])
         snap2.create()
 
         # In - deleted after window
-        del self.db_attrs[2]['id']
-        snap3 = objects.Snapshot(self.ctx, **self.db_attrs[2])
+        del self.db_snap_attrs[2]['id']
+        snap3 = objects.Snapshot(self.ctx, **self.db_snap_attrs[2])
         snap3.create()
 
         # In - created in window
-        del self.db_attrs[3]['id']
-        snap4 = objects.Snapshot(self.ctx, **self.db_attrs[3])
+        del self.db_snap_attrs[3]['id']
+        snap4 = objects.Snapshot(self.ctx, **self.db_snap_attrs[3])
         snap4.create()
 
         # Not of window.
-        del self.db_attrs[4]['id']
-        snap5 = objects.Snapshot(self.ctx, **self.db_attrs[4])
+        del self.db_snap_attrs[4]['id']
+        snap5 = objects.Snapshot(self.ctx, **self.db_snap_attrs[4])
         snap5.create()
 
         snapshots = objects.SnapshotList.get_active_by_window(

@@ -30,6 +30,7 @@ import six
 from cinder import compute
 from cinder import db
 from cinder import exception
+from cinder.objects import fields
 from cinder import utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
@@ -1301,20 +1302,21 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
                       {'id': snapshot['id'],
                        'status': s['status']})
 
-            if s['status'] == 'creating':
+            if s['status'] == fields.SnapshotStatus.CREATING:
                 if s['progress'] == '90%':
                     # Nova tasks completed successfully
                     break
 
                 time.sleep(increment)
                 seconds_elapsed += increment
-            elif s['status'] == 'error':
+            elif s['status'] == fields.SnapshotStatus.ERROR:
 
                 msg = _('Nova returned "error" status '
                         'while creating snapshot.')
                 raise exception.RemoteFSException(msg)
 
-            elif s['status'] == 'deleting' or s['status'] == 'error_deleting':
+            elif (s['status'] == fields.SnapshotStatus.DELETING or
+                  s['status'] == fields.SnapshotStatus.ERROR_DELETING):
                 msg = _('Snapshot %(id)s has been asked to be deleted while '
                         'waiting for it to become available. Perhaps a '
                         'concurrent request was made.') % {'id':
@@ -1389,7 +1391,7 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
         while True:
             s = db.snapshot_get(context, snapshot['id'])
 
-            if s['status'] == 'deleting':
+            if s['status'] == fields.SnapshotStatus.DELETING:
                 if s['progress'] == '90%':
                     # Nova tasks completed successfully
                     break

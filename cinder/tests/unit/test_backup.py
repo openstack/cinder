@@ -131,7 +131,7 @@ class BaseBackupTest(test.TestCase):
 
     def _create_snapshot_db_entry(self, display_name='test_snapshot',
                                   display_description='test snapshot',
-                                  status='available',
+                                  status=fields.SnapshotStatus.AVAILABLE,
                                   size=1,
                                   volume_id=str(uuid.uuid4()),
                                   provider_location=None):
@@ -228,7 +228,7 @@ class BackupTestCase(BaseBackupTest):
         vol5_id = self._create_volume_db_entry()
         db.volume_update(self.ctxt, vol5_id, {'status': 'backing-up'})
         temp_snap = self._create_snapshot_db_entry()
-        temp_snap.status = 'available'
+        temp_snap.status = fields.SnapshotStatus.AVAILABLE
         temp_snap.save()
 
         backup1 = self._create_backup_db_entry(

@@ -19,6 +19,7 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.i18n import _, _LI
 from cinder import objects
+from cinder.objects import fields
 
 LOG = logging.getLogger(__name__)
 
@@ -53,8 +54,13 @@ class SnapshotActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         # Allowed state transitions
-        status_map = {'creating': ['creating', 'available', 'error'],
-                      'deleting': ['deleting', 'error_deleting']}
+        status_map = {fields.SnapshotStatus.CREATING:
+                      [fields.SnapshotStatus.CREATING,
+                       fields.SnapshotStatus.AVAILABLE,
+                       fields.SnapshotStatus.ERROR],
+                      fields.SnapshotStatus.DELETING:
+                      [fields.SnapshotStatus.DELETING,
+                       fields.SnapshotStatus.ERROR_DELETING]}
 
         current_snapshot = objects.Snapshot.get_by_id(context, id)
 

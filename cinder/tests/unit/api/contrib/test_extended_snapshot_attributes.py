@@ -19,6 +19,7 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder import context
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -33,7 +34,7 @@ UUID2 = fake.SNAPSHOT2_ID
 def _get_default_snapshot_param():
     return {'id': UUID1,
             'volume_id': fake.VOLUME_ID,
-            'status': 'available',
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'created_at': None,
             'display_name': 'Default name',

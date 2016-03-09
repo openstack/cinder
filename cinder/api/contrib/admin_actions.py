@@ -24,6 +24,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
+from cinder.objects import fields
 from cinder import rpc
 from cinder import utils
 from cinder import volume
@@ -275,6 +276,7 @@ class SnapshotAdminController(AdminController):
     """AdminController for Snapshots."""
 
     collection = 'snapshots'
+    valid_status = fields.SnapshotStatus.ALL
 
     def _update(self, *args, **kwargs):
         context = args[0]

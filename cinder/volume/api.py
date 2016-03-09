@@ -790,7 +790,7 @@ class API(base.Base):
                 'cgsnapshot_id': cgsnapshot_id,
                 'user_id': context.user_id,
                 'project_id': context.project_id,
-                'status': 'creating',
+                'status': fields.SnapshotStatus.CREATING,
                 'progress': '0%',
                 'volume_size': volume['size'],
                 'display_name': name,
@@ -909,7 +909,7 @@ class API(base.Base):
                    'cgsnapshot_id': cgsnapshot_id,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
-                   'status': "creating",
+                   'status': fields.SnapshotStatus.CREATING,
                    'progress': '0%',
                    'volume_size': volume['size'],
                    'display_name': name,
@@ -943,9 +943,11 @@ class API(base.Base):
         expected = {'cgsnapshot_id': None}
         # If not force deleting we have status conditions
         if not force:
-            expected['status'] = ('available', 'error')
+            expected['status'] = (fields.SnapshotStatus.AVAILABLE,
+                                  fields.SnapshotStatus.ERROR)
 
-        result = snapshot.conditional_update({'status': 'deleting'}, expected)
+        result = snapshot.conditional_update(
+            {'status': fields.SnapshotStatus.DELETING}, expected)
         if not result:
             status = utils.build_or_str(expected.get('status'),
                                         _('status must be %s and'))
