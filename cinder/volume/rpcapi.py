@@ -328,8 +328,8 @@ class VolumeAPI(rpc.RPCAPI):
                       secondary_backend_id=None):
         """Failover host to the specified backend_id (secondary). """
         cctxt = self._get_cctxt(host, '1.39')
-        return cctxt.call(ctxt, 'failover_host',
-                          secondary_backend_id=secondary_backend_id)
+        cctxt.cast(ctxt, 'failover_host',
+                   secondary_backend_id=secondary_backend_id)
 
     def manage_existing_snapshot(self, ctxt, snapshot, ref, host):
         cctxt = self._get_cctxt(host, '1.28')

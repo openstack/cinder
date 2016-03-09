@@ -593,7 +593,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               version='1.39')
 
     def test_failover_host(self):
-        self._test_volume_api('failover_host', rpc_method='call',
+        self._test_volume_api('failover_host', rpc_method='cast',
                               host='fake_host',
                               secondary_backend_id='fake_backend',
                               version='1.39')
