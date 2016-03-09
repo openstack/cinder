@@ -22,6 +22,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as cinder_utils
@@ -87,7 +88,7 @@ class TintriDriverTestCase(test.TestCase):
         pass
 
     def fake_get_snapshot(self, volume_id):
-        return 'snapshot-id'
+        return fake.SNAPSHOT_ID
 
     def fake_get_image_snapshots_to_date(self, date):
         return [{'uuid': {'uuid': 'image_snapshot-id'}}]
@@ -111,14 +112,14 @@ class TintriDriverTestCase(test.TestCase):
         return True
 
     @mock.patch.object(TClient, 'create_snapshot',
-                       mock.Mock(return_value='12345'))
+                       mock.Mock(return_value=fake.PROVIDER_ID))
     def test_create_snapshot(self):
         snapshot = fake_snapshot.fake_snapshot_obj(self.context)
         volume = fake_volume.fake_volume_obj(self.context)
-        provider_id = '12345'
+        provider_id = fake.PROVIDER_ID
         snapshot.volume = volume
         with mock.patch('cinder.objects.snapshot.Snapshot.save'):
-            self.assertEqual({'provider_id': '12345'},
+            self.assertEqual({'provider_id': fake.PROVIDER_ID},
                              self._driver.create_snapshot(snapshot))
             self.assertEqual(provider_id, snapshot.provider_id)
 
@@ -155,14 +156,14 @@ class TintriDriverTestCase(test.TestCase):
     @mock.patch.object(TClient, 'delete_snapshot', mock.Mock())
     def test_delete_snapshot(self):
         snapshot = fake_snapshot.fake_snapshot_obj(self.context)
-        snapshot.provider_id = 'snapshot-id'
+        snapshot.provider_id = fake.PROVIDER_ID
         self.assertIsNone(self._driver.delete_snapshot(snapshot))
 
     @mock.patch.object(TClient, 'delete_snapshot', mock.Mock(
                        side_effect=exception.VolumeDriverException))
     def test_delete_snapshot_failure(self):
         snapshot = fake_snapshot.fake_snapshot_obj(self.context)
-        snapshot.provider_id = 'snapshot-id'
+        snapshot.provider_id = fake.PROVIDER_ID
         self.assertRaises(exception.VolumeDriverException,
                           self._driver.delete_snapshot, snapshot)
 
