@@ -56,7 +56,6 @@ from cinder.scheduler.weights import volume_number as \
     cinder_scheduler_weights_volumenumber
 from cinder import service as cinder_service
 from cinder import ssh_utils as cinder_sshutils
-from cinder import test as cinder_test
 from cinder.transfer import api as cinder_transfer_api
 from cinder.volume import api as cinder_volume_api
 from cinder.volume import driver as cinder_volume_driver
@@ -218,7 +217,6 @@ def list_opts():
                 cinder_backup_drivers_tsm.tsm_opts,
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
-                cinder_test.test_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
                 cinder_volume_drivers_violin_v7000common.violin_opts,
                 cinder_volume_drivers_nexenta_options.NEXENTA_CONNECTION_OPTS,
