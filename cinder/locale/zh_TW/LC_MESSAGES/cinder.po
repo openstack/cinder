@@ -10,13 +10,13 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev82\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-08 05:04+0000\n"
+"POT-Creation-Date: 2016-03-08 22:56+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-08 03:52+0000\n"
+"PO-Revision-Date: 2016-03-09 03:57+0000\n"
 "Last-Translator: Jennifer <cristxu@tw.ibm.com>\n"
 "Language: zh-TW\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -43,6 +43,9 @@ msgstr "但大小現在為 %d"
 #, python-format
 msgid " but size is now %d."
 msgstr "但是，大小現在卻是 %d。"
+
+msgid " or "
+msgstr "或者"
 
 #, python-format
 msgid ""
@@ -379,6 +382,9 @@ msgid ""
 "All the specified storage pools to be managed do not exist. Please check "
 "your configuration. Non-existent pools: %s"
 msgstr "要管理的所有指定儲存區都不存在。請檢查配置。不存在的儲存區：%s"
+
+msgid "An API version request must be compared to a VersionedMethod object."
+msgstr "API 版本要求必須與 VersionedMethod 物件進行比較。"
 
 #, python-format
 msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
@@ -736,6 +742,10 @@ msgstr "在陣列上找不到快取名稱，快取名稱為：%(name)s。"
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
 msgstr "在陣列上找不到分割區名稱，分割區名稱為：%(name)s。"
+
+#, python-format
+msgid "Can't find service: %s"
+msgstr "找不到服務：%s"
 
 #, python-format
 msgid "Can't open config file: %s"
@@ -3997,6 +4007,9 @@ msgstr "索引鍵名稱只能包含英數字元、底線、句點、冒號及連
 msgid "KeyError: %s"
 msgstr "KeyError：%s"
 
+msgid "Keystone version 3 or greater must be used to get nested quota support."
+msgstr "Keystone 第 3 版或更高版本必須用於取得巢狀配額支援。"
+
 msgid "LUN export failed!"
 msgstr "LUN 匯出失敗！"
 
@@ -4270,6 +4283,13 @@ msgstr "必須實作 schedule_get_pools"
 
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "必須將 WWPN 或主機傳遞給 lsfabric。"
+
+msgid ""
+"Must run this command as cloud admin using a Keystone policy.json which "
+"allows cloud admin to list and get any project."
+msgstr ""
+"必須以雲端管理者身分使用 Keystone policy.json 來執行此指令，此 policy.json 容"
+"許雲端管理者列出和取得任何專案。"
 
 msgid "Must specify 'connector'"
 msgstr "必須指定 'connector'"
@@ -4862,6 +4882,14 @@ msgid "Quota for project %(project_id)s could not be found."
 msgstr "找不到專案 %(project_id)s 的配額。"
 
 #, python-format
+msgid ""
+"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
+"%(limit)d is less than in-use value of %(used)d"
+msgstr ""
+"針對資源 '%(res)s'，專案 '%(proj)s' 的配額限制無效：限制 %(limit)d 小於使用中"
+"的值 %(used)d"
+
+#, python-format
 msgid "Quota reservation %(uuid)s could not be found."
 msgstr "找不到配額預約 %(uuid)s。"
 
@@ -5292,6 +5320,11 @@ msgstr "Snapshot 狀態必須為「可用」才能複製。"
 
 #, python-format
 msgid ""
+"Snapshot to be backed up must be available, but the current status is \"%s\"."
+msgstr "要備份的 Snapshot 必須可用，但現行狀態卻是 \"%s\"。"
+
+#, python-format
+msgid ""
 "Snapshot='%(snap)s' does not exist in base image='%(base)s' - aborting "
 "incremental backup"
 msgstr ""
@@ -5348,6 +5381,10 @@ msgstr "指定密碼或 private_key"
 
 msgid "Specify san_password or san_private_key"
 msgstr "指定 san_password 或 san_private_key"
+
+msgid ""
+"Specify volume type name, description, is_public or a combination thereof."
+msgstr "指定磁區類型名稱、說明、is_public 或這些的組合。"
 
 msgid "Start LUNcopy error."
 msgstr "啟動 LUNcopy 時發生錯誤。"
@@ -6777,6 +6814,9 @@ msgstr "正在等待所有節點結合叢集。請確保所有 sheep 常駐程�
 msgid "X-IO Volume Driver exception!"
 msgstr "X-IO 磁區驅動程式異常狀況！"
 
+msgid "XML support has been deprecated and will be removed in the N release."
+msgstr "XML 支援已遭到淘汰，且將在 N 版本中予以移除。"
+
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "未正確地配置 XtremIO，找不到 iSCSI 入口網站"
 
@@ -7090,9 +7130,6 @@ msgid ""
 msgstr ""
 "將物件寫入 Swift 時發生錯誤，Swift 中物件的 MD5 %(etag)s，與傳送至 Swift 的物"
 "件 MD5 %(md5)s 不同"
-
-msgid "extend_volume: Extending a volume with snapshots is not supported."
-msgstr "extend_volume：不支援延伸具有 Snapshot 的磁區。"
 
 msgid "failed to create new_volume on destination host"
 msgstr "無法在目的地主機上建立 new_volume"

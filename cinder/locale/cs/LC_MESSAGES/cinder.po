@@ -10,9 +10,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-05 05:24+0000\n"
+"POT-Creation-Date: 2016-03-08 22:56+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -8057,9 +8057,6 @@ msgid ""
 msgstr ""
 "chyba při zápisu objektu do swift, MD5 objektu ve swift %(etag)s se liší od "
 "MD5 objektu odeslaného do swift %(md5)s"
-
-msgid "extend_volume: Extending a volume with snapshots is not supported."
-msgstr "Rozšíření svazku: Rozšíření svazku mající snímky není podporováno."
 
 msgid "failed to create new_volume on destination host"
 msgstr "nelze vytvořit nový svazek na cílovém hostiteli"
