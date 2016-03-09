@@ -691,8 +691,26 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        old_size = huawei_utils.get_volume_size(volume)
+        lun_info = self.client.get_lun_info(lun_id)
+        old_size = int(lun_info.get('CAPACITY'))
+
         new_size = int(new_size) * units.Gi / 512
+
+        if new_size == old_size:
+            LOG.info(_LI("New size is equal to the real size from backend"
+                         " storage, no need to extend."
+                         " realsize: %(oldsize)s, newsize: %(newsize)s."),
+                     {'oldsize': old_size,
+                      'newsize': new_size})
+            return
+        if new_size < old_size:
+            msg = (_("New size should be bigger than the real size from "
+                     "backend storage."
+                     " realsize: %(oldsize)s, newsize: %(newsize)s."),
+                   {'oldsize': old_size,
+                    'newsize': new_size})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
         volume_name = huawei_utils.encode_name(volume['id'])
 
         LOG.info(_LI(
