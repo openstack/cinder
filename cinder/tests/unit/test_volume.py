@@ -3502,7 +3502,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         # unnecessary attributes should be removed from image volume
         vol.consistencygroup = None
         result = self.volume._clone_image_volume(self.context, vol,
-                                                 {'id': 'fake'})
+                                                 {'id': fake.volume_id})
 
         self.assertNotEqual(False, result)
         mock_reserve.assert_called_once_with(self.context, volumes=1,
@@ -3517,8 +3517,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                  mock_commit, mock_rollback):
         vol = tests_utils.create_volume(self.context, **self.volume_params)
         with mock.patch.object(objects, 'Volume', side_effect=ValueError):
-            self.assertFalse(self.volume._clone_image_volume(self.context, vol,
-                                                             {'id': 'fake'}))
+            self.assertFalse(self.volume._clone_image_volume(
+                self.context, vol, {'id': fake.volume_id}))
 
         mock_reserve.assert_called_once_with(self.context, volumes=1,
                                              gigabytes=vol.size)
@@ -4533,7 +4533,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
         with mock.patch.object(self.volume.driver,
                                'migrate_volume') as mock_migrate_volume:
             mock_migrate_volume.side_effect = (
-                lambda x, y, z, new_type_id=None: (True, {'user_id': 'foo'}))
+                lambda x, y, z, new_type_id=None: (
+                    True, {'user_id': fake.user_id}))
             self.volume.migrate_volume(self.context, volume.id, host_obj,
                                        False, volume=volume)
         self.assertEqual('newhost', volume.host)
@@ -4546,7 +4547,7 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
         fake_new_host = 'fake_new_host'
         fake_update = {'_name_id': fake.volume2_name_id,
                        'provider_location': 'updated_location'}
-        fake_elevated = context.RequestContext('fake', self.project_id,
+        fake_elevated = context.RequestContext(fake.user_id, self.project_id,
                                                is_admin=True)
         volume = tests_utils.create_volume(self.context, size=1,
                                            status='available',
@@ -6550,7 +6551,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             self.assertEqual(temp_vol.id, backup_obj.temp_volume_id)
 
     def test__create_temp_volume_from_snapshot(self):
-        volume_dict = {'id': 'fake',
+        volume_dict = {'id': fake.snapshot_id,
                        'host': 'fakehost',
                        'availability_zone': 'fakezone',
                        'size': 1}
@@ -6776,7 +6777,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
 
     def test_retype_volume(self):
         vol = tests_utils.create_volume(self.context)
-        new_type = 'fake'
+        new_type = fake.volume_type_id
         diff = {}
         host = 'fake_host'
         retyped = self.volume.driver.retype(self.context, vol, new_type,

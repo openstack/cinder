@@ -28,6 +28,7 @@ from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_backup
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
@@ -554,8 +555,8 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_manage_existing_snapshot(self):
         volume_update = {'host': 'fake_host'}
         snpshot = {
-            'id': 1,
-            'volume_id': 'fake_id',
+            'id': fake.snapshot_id,
+            'volume_id': fake.volume_id,
             'status': "creating",
             'progress': '0%',
             'volume_size': 0,
