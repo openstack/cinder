@@ -116,7 +116,10 @@ class HPELeftHandBaseDriver(object):
         'volume': volume}
 
     cloned_volume_name = "clone_volume"
-    cloned_volume = {'name': cloned_volume_name}
+    cloned_volume = {'name': cloned_volume_name,
+                     'size': 1}
+    cloned_volume_extend = {'name': cloned_volume_name,
+                            'size': 5}
 
     cloned_snapshot_name = "clonedshapshot"
     cloned_snapshot_id = 5
@@ -800,6 +803,52 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             expected = self.driver_startup_call_stack + [
                 mock.call.getVolumeByName('fakevolume'),
                 mock.call.cloneVolume('clone_volume', 1),
+                mock.call.logout()]
+
+            # validate call chain
+            mock_client.assert_has_calls(expected)
+
+    def test_create_cloned_volume_extend(self):
+
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        mock_client.getVolumeByName.return_value = {'id': self.volume_id}
+        mock_client.cloneVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+        mock_client.getVolumes.return_value = {'total': 1, 'members': []}
+
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # execute create_cloned_volume with extend
+            model_update = self.driver.create_cloned_volume(
+                self.cloned_volume_extend, self.volume)
+
+            expected_iqn = 'iqn.1993-08.org.debian:01:222 0'
+            expected_location = "10.0.1.6:3260,1 %s" % expected_iqn
+            self.assertEqual(expected_location,
+                             model_update['provider_location'])
+
+            expected = self.driver_startup_call_stack + [
+                mock.call.getVolumeByName('fakevolume'),
+                mock.call.cloneVolume('clone_volume', 1),
+                mock.call.login('foo1', 'bar2'),
+                mock.call.getClusterByName('CloudCluster1'),
+                mock.call.setSSHOptions(
+                    HPELEFTHAND_SSH_IP,
+                    HPELEFTHAND_USERNAME,
+                    HPELEFTHAND_PASSWORD,
+                    missing_key_policy='AutoAddPolicy',
+                    privatekey=HPELEFTHAND_SAN_SSH_PRIVATE,
+                    known_hosts_file=mock.ANY,
+                    port=HPELEFTHAND_SSH_PORT,
+                    conn_timeout=HPELEFTHAND_SAN_SSH_CON_TIMEOUT),
+                mock.call.getVolumeByName('clone_volume'),
+                mock.call.modifyVolume(self.volume_id, {'size': 5 * units.Gi}),
+                mock.call.logout(),
                 mock.call.logout()]
 
             # validate call chain
