@@ -3540,6 +3540,24 @@ class HuaweiFCDriverTestCase(test.TestCase):
         data = {"NAME": new_name, "DESCRIPTION": des}
         mock_call.assert_called_once_with(url, data, "PUT")
 
+    @mock.patch.object(rest_client.RestClient, 'call',
+                       return_value={"data": {}})
+    def test_is_host_associated_to_hostgroup_no_data(self, mock_call):
+        res = self.driver.client.is_host_associated_to_hostgroup('1')
+        self.assertFalse(res)
+
+    @mock.patch.object(rest_client.RestClient, 'call',
+                       return_value={"data": {'ISADD2HOSTGROUP': 'true'}})
+    def test_is_host_associated_to_hostgroup_true(self, mock_call):
+        res = self.driver.client.is_host_associated_to_hostgroup('1')
+        self.assertTrue(res)
+
+    @mock.patch.object(rest_client.RestClient, 'call',
+                       return_value={"data": {'ISADD2HOSTGROUP': 'false'}})
+    def test_is_host_associated_to_hostgroup_false(self, mock_call):
+        res = self.driver.client.is_host_associated_to_hostgroup('1')
+        self.assertFalse(res)
+
 
 class HuaweiConfTestCase(test.TestCase):
     def setUp(self):
