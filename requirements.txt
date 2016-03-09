@@ -8,11 +8,11 @@ decorator>=3.4.0 # BSD
 enum34;python_version=='2.7' or python_version=='2.6' or python_version=='3.3' # BSD
 eventlet!=0.18.3,>=0.18.2 # MIT
 greenlet>=0.3.2 # MIT
-httplib2>=0.7.5  # MIT
+httplib2>=0.7.5 # MIT
 iso8601>=0.1.9 # MIT
 keystonemiddleware!=4.1.0,>=4.0.0 # Apache-2.0
 lxml>=2.3 # BSD
-oauth2client>=1.5.0  # Apache-2.0
+oauth2client>=1.5.0 # Apache-2.0
 oslo.config>=3.7.0 # Apache-2.0
 oslo.concurrency>=3.5.0 # Apache-2.0
 oslo.context>=0.2.0 # Apache-2.0
@@ -34,7 +34,7 @@ PasteDeploy>=1.5.0 # MIT
 pycrypto>=2.6 # Public Domain
 pyparsing>=2.0.1 # MIT
 python-barbicanclient>=3.3.0 # Apache-2.0
-python-glanceclient>=1.2.0 # Apache-2.0
+python-glanceclient>=2.0.0 # Apache-2.0
 python-keystoneclient!=1.8.0,!=2.1.0,>=1.6.0 # Apache-2.0
 python-novaclient!=2.33.0,>=2.29.0 # Apache-2.0
 python-swiftclient>=2.2.0 # Apache-2.0
@@ -55,6 +55,6 @@ WebOb>=1.2.3 # MIT
 oslo.i18n>=2.1.0 # Apache-2.0
 oslo.vmware>=1.16.0 # Apache-2.0
 os-brick>=1.0.0 # Apache-2.0
-os-win>=0.2.1 # Apache-2.0
+os-win>=0.2.3 # Apache-2.0
 tooz>=1.28.0 # Apache-2.0
 google-api-python-client>=1.4.2 # Apache-2.0
