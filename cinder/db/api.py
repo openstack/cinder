@@ -666,6 +666,11 @@ def volume_glance_metadata_get(context, volume_id):
     return IMPL.volume_glance_metadata_get(context, volume_id)
 
 
+def volume_glance_metadata_list_get(context, volume_id_list):
+    """Return the glance metadata for a volume list."""
+    return IMPL.volume_glance_metadata_list_get(context, volume_id_list)
+
+
 def volume_snapshot_glance_metadata_get(context, snapshot_id):
     """Return the Glance metadata for the specified snapshot."""
     return IMPL.volume_snapshot_glance_metadata_get(context, snapshot_id)

@@ -3868,6 +3868,26 @@ class VolumeTestCase(BaseVolumeTestCase):
                                           snapshot_id)
         self.assertEqual('test update name', snap.display_name)
 
+    def test_volume_api_get_list_volumes_image_metadata(self):
+        """Test get_list_volumes_image_metadata in volume API."""
+        ctxt = context.get_admin_context()
+        db.volume_create(ctxt, {'id': 'fake1', 'status': 'available',
+                                'host': 'test', 'provider_location': '',
+                                'size': 1})
+        db.volume_glance_metadata_create(ctxt, 'fake1', 'key1', 'value1')
+        db.volume_glance_metadata_create(ctxt, 'fake1', 'key2', 'value2')
+        db.volume_create(ctxt, {'id': 'fake2', 'status': 'available',
+                                'host': 'test', 'provider_location': '',
+                                'size': 1})
+        db.volume_glance_metadata_create(ctxt, 'fake2', 'key3', 'value3')
+        db.volume_glance_metadata_create(ctxt, 'fake2', 'key4', 'value4')
+        volume_api = cinder.volume.api.API()
+        results = volume_api.get_list_volumes_image_metadata(ctxt, ['fake1',
+                                                                    'fake2'])
+        expect_results = {'fake1': {'key1': 'value1', 'key2': 'value2'},
+                          'fake2': {'key3': 'value3', 'key4': 'value4'}}
+        self.assertEqual(expect_results, results)
+
     @mock.patch.object(QUOTAS, 'reserve')
     def test_extend_volume(self, reserve):
         """Test volume can be extended at API level."""

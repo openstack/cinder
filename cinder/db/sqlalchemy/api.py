@@ -3268,6 +3268,17 @@ def volume_glance_metadata_get_all(context):
 
 
 @require_context
+def volume_glance_metadata_list_get(context, volume_id_list):
+    """Return the glance metadata for a volume list."""
+    query = model_query(context,
+                        models.VolumeGlanceMetadata,
+                        session=None)
+    query = query.filter(
+        models.VolumeGlanceMetadata.volume_id.in_(volume_id_list))
+    return query.all()
+
+
+@require_context
 @require_volume_exists
 def _volume_glance_metadata_get(context, volume_id, session=None):
     rows = model_query(context, models.VolumeGlanceMetadata, session=session).\

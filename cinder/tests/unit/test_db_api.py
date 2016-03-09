@@ -1031,6 +1031,37 @@ class DBAPIVolumeTestCase(BaseTest):
                 image_name = meta_entry.value
         self.assertEqual(u'\xe4\xbd\xa0\xe5\xa5\xbd', image_name)
 
+    def test_volume_glance_metadata_list_get(self):
+        """Test volume_glance_metadata_list_get in DB API."""
+        db.volume_create(self.ctxt, {'id': 'fake1', 'status': 'available',
+                                     'host': 'test', 'provider_location': '',
+                                     'size': 1})
+        db.volume_glance_metadata_create(self.ctxt, 'fake1', 'key1', 'value1')
+        db.volume_glance_metadata_create(self.ctxt, 'fake1', 'key2', 'value2')
+
+        db.volume_create(self.ctxt, {'id': 'fake2', 'status': 'available',
+                                     'host': 'test', 'provider_location': '',
+                                     'size': 1})
+        db.volume_glance_metadata_create(self.ctxt, 'fake2', 'key3', 'value3')
+        db.volume_glance_metadata_create(self.ctxt, 'fake2', 'key4', 'value4')
+
+        expect_result = [{'volume_id': 'fake1', 'key': 'key1',
+                          'value': 'value1'},
+                         {'volume_id': 'fake1', 'key': 'key2',
+                          'value': 'value2'},
+                         {'volume_id': 'fake2', 'key': 'key3',
+                          'value': 'value3'},
+                         {'volume_id': 'fake2', 'key': 'key4',
+                          'value': 'value4'}]
+        self._assertEqualListsOfObjects(expect_result,
+                                        db.volume_glance_metadata_list_get(
+                                            self.ctxt, ['fake1', 'fake2']),
+                                        ignored_keys=['id',
+                                                      'snapshot_id',
+                                                      'created_at',
+                                                      'deleted', 'deleted_at',
+                                                      'updated_at'])
+
 
 class DBAPISnapshotTestCase(BaseTest):
 
