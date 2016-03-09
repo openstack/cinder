@@ -440,6 +440,15 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                         # Create our volume
                         scvolume = api.create_cloned_volume(
                             volume_name, srcvol, replay_profile_string)
+
+                        # Extend Volume
+                        if scvolume and volume['size'] > src_vref['size']:
+                            LOG.debug("Resize the new volume to %s.",
+                                      volume['size'])
+                            scvolume = api.expand_volume(scvolume,
+                                                         volume['size'])
+
+                        # If either of those didn't work we bail.
                         if scvolume is None:
                             raise exception.VolumeBackendAPIException(
                                 message=_('Unable to create volume '
