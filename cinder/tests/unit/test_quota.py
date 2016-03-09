@@ -34,6 +34,7 @@ from cinder.objects import fields
 from cinder import quota
 from cinder import quota_utils
 from cinder import test
+from cinder.tests.unit import fake_constants as fakes
 import cinder.tests.unit.image.fake
 from cinder import volume
 
@@ -61,8 +62,8 @@ class QuotaIntegrationTestCase(test.TestCase):
                    quota_backups=2,
                    quota_backup_gigabytes=20)
 
-        self.user_id = 'admin'
-        self.project_id = 'admin'
+        self.user_id = fakes.user_id
+        self.project_id = fakes.project_id
         self.context = context.RequestContext(self.user_id,
                                               self.project_id,
                                               is_admin=True)
@@ -90,8 +91,8 @@ class QuotaIntegrationTestCase(test.TestCase):
 
     def _create_snapshot(self, volume):
         snapshot = objects.Snapshot(self.context)
-        snapshot.user_id = self.user_id or 'fake_user_id'
-        snapshot.project_id = self.project_id or 'fake_project_id'
+        snapshot.user_id = self.user_id or fakes.user_id
+        snapshot.project_id = self.project_id or fakes.project_id
         snapshot.volume_id = volume['id']
         snapshot.volume_size = volume['size']
         snapshot.host = volume['host']
