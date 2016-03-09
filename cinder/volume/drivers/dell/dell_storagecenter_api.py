@@ -189,7 +189,8 @@ class StorageCenterApiHelper(object):
             connection.sfname = self.config.dell_sc_server_folder
             # Set appropriate ssn and failover state.
             if self.active_backend_id:
-                connection.ssn = self.active_backend_id
+                # active_backend_id is a string.  Convert to int.
+                connection.ssn = int(self.active_backend_id)
                 connection.failed_over = True
             else:
 
