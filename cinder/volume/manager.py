@@ -682,7 +682,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # be deleted when resuming deletes from init_host().
             LOG.debug("Attempted delete of non-existent volume: %s",
                       volume_id)
-            return True
+            return
 
         if context.project_id != volume.project_id:
             project_id = volume.project_id
@@ -749,7 +749,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # record to avoid user confusion.
             self._clear_db(context, is_migrating_dest, volume,
                            'available')
-            return True
+            return
         except Exception:
             with excutils.save_and_reraise_exception():
                 # If this is a destination volume, we have to clear the
@@ -806,7 +806,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.publish_service_capabilities(context)
 
         LOG.info(_LI("Deleted volume successfully."), resource=volume)
-        return True
 
     def _clear_db(self, context, is_migrating_dest, volume_ref, status):
         # This method is called when driver.unmanage() or
@@ -906,7 +905,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                       resource=snapshot)
             snapshot.status = 'available'
             snapshot.save()
-            return True
+            return
         except Exception:
             with excutils.save_and_reraise_exception():
                 snapshot.status = 'error_deleting'
@@ -941,7 +940,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, reservations, project_id=project_id)
         LOG.info(_LI("Delete snapshot completed successfully"),
                  resource=snapshot)
-        return True
 
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
                       mountpoint, mode):
@@ -2860,8 +2858,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'consistency_group',
                            'id': group.id})
 
-        return True
-
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
         """Updates consistency group.
@@ -3005,8 +3001,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                      "completed successfully."),
                  resource={'type': 'consistency_group',
                            'id': group.id})
-
-        return True
 
     def create_cgsnapshot(self, context, cgsnapshot):
         """Creates the cgsnapshot."""
@@ -3214,8 +3208,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("cgsnapshot %s: deleted successfully"), cgsnapshot.id)
         self._notify_about_cgsnapshot_usage(context, cgsnapshot, "delete.end",
                                             snapshots)
-
-        return True
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                volume_status):
