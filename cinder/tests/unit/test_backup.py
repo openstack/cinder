@@ -1361,16 +1361,16 @@ class BackupAPITestCase(BaseBackupTest):
                           volume_id=volume_id,
                           container='volumebackups')
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')
     def test_restore_volume(self,
                             mock_rpcapi_restore,
-                            mock_is_service_enabled):
+                            mock_get_backup_host):
         volume_id = self._create_volume_db_entry(status='available',
                                                  size=1)
         backup = self._create_backup_db_entry(size=1,
                                               status='available')
-        mock_is_service_enabled.return_value = True
+        mock_get_backup_host.return_value = 'testhost'
         self.api.restore(self.ctxt, backup.id, volume_id)
         backup = objects.Backup.get_by_id(self.ctxt, backup.id)
         self.assertEqual(volume_id, backup.restore_volume_id)

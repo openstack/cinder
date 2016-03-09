@@ -106,9 +106,9 @@ class AdminActionsTest(BaseAdminTest):
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
         req.environ['cinder.context'] = ctx
-        with mock.patch('cinder.backup.api.API._is_backup_service_enabled') \
-                as mock_is_service_available:
-            mock_is_service_available.return_value = True
+        with mock.patch('cinder.backup.api.API._get_available_backup_service_host') \
+                as mock_get_backup_host:
+            mock_get_backup_host.return_value = 'testhost'
             resp = req.get_response(app())
             return resp
 
