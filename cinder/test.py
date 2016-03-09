@@ -51,13 +51,8 @@ from cinder.tests import fixtures as cinder_fixtures
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_notifier
 
-test_opts = [
-    cfg.StrOpt('sqlite_clean_db',
-               default='clean.sqlite',
-               help='File name of clean sqlite db'), ]
 
 CONF = cfg.CONF
-CONF.register_opts(test_opts)
 
 LOG = log.getLogger(__name__)
 
@@ -212,7 +207,7 @@ class TestCase(testtools.TestCase):
             _DB_CACHE = Database(sqla_api, migration,
                                  sql_connection=CONF.database.connection,
                                  sqlite_db=CONF.database.sqlite_db,
-                                 sqlite_clean_db=CONF.sqlite_clean_db)
+                                 sqlite_clean_db='clean.sqlite')
         self.useFixture(_DB_CACHE)
 
         # NOTE(danms): Make sure to reset us back to non-remote objects
