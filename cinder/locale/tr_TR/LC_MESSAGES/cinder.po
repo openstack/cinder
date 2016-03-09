@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-05 05:24+0000\n"
+"POT-Creation-Date: 2016-03-08 22:56+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6413,11 +6413,6 @@ msgid ""
 msgstr ""
 "swift'e nesne yazarken hata, swift içindeki nesnenin MD5 değeri %(etag)s "
 "swift'e gönderilen nesnenin MD5 %(md5)s değeri ile aynı değildir"
-
-msgid "extend_volume: Extending a volume with snapshots is not supported."
-msgstr ""
-"extend_volume: Bir mantıksal sürücünün anlık görüntülerle büyütülmesi "
-"desteklenmiyor."
 
 msgid "failed to create new_volume on destination host"
 msgstr "Hedef istemci üzerinde yeni mantıksal sürücü oluşturulamadı"

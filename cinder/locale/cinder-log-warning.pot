@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev61\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-05 06:33+0000\n"
+"POT-Creation-Date: 2016-03-09 06:35+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -26,14 +26,14 @@ msgstr ""
 msgid "Reconnect attempt %(attempt)s failed. Next try in %(backoff).2fs."
 msgstr ""
 
-#: cinder/quota_utils.py:85
+#: cinder/quota_utils.py:86
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create %(s_size)sG volume - "
 "(%(d_consumed)dG of %(d_quota)dG already consumed)"
 msgstr ""
 
-#: cinder/quota_utils.py:96 cinder/transfer/api.py:201
+#: cinder/quota_utils.py:97 cinder/transfer/api.py:201
 #, python-format
 msgid ""
 "Quota exceeded for %(s_pid)s, tried to create volume (%(d_consumed)d "
@@ -158,7 +158,7 @@ msgstr ""
 msgid "Deadlock detected when running '%(func_name)s': Retrying..."
 msgstr ""
 
-#: cinder/db/sqlalchemy/api.py:1007
+#: cinder/db/sqlalchemy/api.py:1009
 #, python-format
 msgid "Change will make usage less than 0 for the following resources: %s"
 msgstr ""
@@ -323,65 +323,65 @@ msgstr ""
 msgid "Driver path %s is deprecated, update your configuration to the new path."
 msgstr ""
 
-#: cinder/volume/manager.py:270
+#: cinder/volume/manager.py:271
 msgid "Suppressing requests library SSL Warnings"
 msgstr ""
 
-#: cinder/volume/manager.py:460
+#: cinder/volume/manager.py:461
 #, python-format
 msgid "Detected volume stuck in %(curr_status)s status, setting to ERROR."
 msgstr ""
 
-#: cinder/volume/manager.py:479
+#: cinder/volume/manager.py:480
 msgid "Detected snapshot stuck in creating status, setting to ERROR."
 msgstr ""
 
-#: cinder/volume/manager.py:1146
+#: cinder/volume/manager.py:1148
 #, python-format
 msgid ""
 "Unable to ensure space for image-volume in cache. Will skip creating "
 "entry for image %(image)s on host %(host)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1156
+#: cinder/volume/manager.py:1158
 #, python-format
 msgid ""
 "Unable to clone image_volume for image %(image_id)s will not create cache"
 " entry."
 msgstr ""
 
-#: cinder/volume/manager.py:1168
+#: cinder/volume/manager.py:1170
 #, python-format
 msgid "Failed to create new image-volume cache entry. Error: %(exception)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1258
+#: cinder/volume/manager.py:1260
 #, python-format
 msgid "Registration of image volume URI %(uri)s to image %(image_id)s failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1331
+#: cinder/volume/manager.py:1333
 #, python-format
 msgid "Deleting image in unexpected status: %(image_status)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1337
+#: cinder/volume/manager.py:1339
 msgid "Image delete encountered an error."
 msgstr ""
 
-#: cinder/volume/manager.py:1824
+#: cinder/volume/manager.py:1826
 #, python-format
 msgid ""
 "Failed to migrate volume. The destination volume %(vol)s is not deleted "
 "since the source volume may have been deleted."
 msgstr ""
 
-#: cinder/volume/manager.py:1993
+#: cinder/volume/manager.py:1995
 #, python-format
 msgid "Update driver status failed: %(config_group)s is uninitialized."
 msgstr ""
 
-#: cinder/volume/manager.py:3381
+#: cinder/volume/manager.py:3383
 msgid ""
 "Error encountered on Cinder backend during freeze operation, service is "
 "frozen, however notification to driver has failed."
@@ -1811,18 +1811,25 @@ msgid ""
 "storwize_san_secondary_ip since it is not configured."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2011
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2012
+#, python-format
+msgid ""
+"Unable to execute SSH command with storwize_san_secondary_ip. Attempting "
+"to switch IP back to san_ip %s."
+msgstr ""
+
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2022
 #, python-format
 msgid "Unable to execute SSH command. Attempting to switch IP to %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2019
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2030
 msgid ""
 "Unable to execute SSH command. Not able to use storwize_san_secondary_ip "
 "since it is not configured."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2370
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2406
 #, python-format
 msgid "Volume %s does not exist."
 msgstr ""
@@ -2388,11 +2395,11 @@ msgstr ""
 msgid "Silent failure of target removal detected, retry...."
 msgstr ""
 
-#: cinder/zonemanager/utils.py:80
+#: cinder/zonemanager/utils.py:77
 msgid "Driver didn't return connection info, can't add zone."
 msgstr ""
 
-#: cinder/zonemanager/utils.py:104
+#: cinder/zonemanager/utils.py:101
 msgid "Driver didn't return connection info from terminate_connection call."
 msgstr ""
 
