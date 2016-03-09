@@ -14,6 +14,7 @@ import datetime
 import six
 import sys
 
+from cinder import rpc
 try:
     from unittest import mock
 except ImportError:
@@ -674,19 +675,29 @@ class TestCinderManageCmd(test.TestCase):
         service_get_all.return_value = [service]
         service_is_up.return_value = True
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
-            format = "%-16s %-36s %-16s %-10s %-5s %-10s"
+            format = "%-16s %-36s %-16s %-10s %-5s %-20s %-12s %-15s"
             print_format = format % ('Binary',
                                      'Host',
                                      'Zone',
                                      'Status',
                                      'State',
-                                     'Updated At')
+                                     'Updated At',
+                                     'RPC Version',
+                                     'Object Version')
+            rpc_version = service['rpc_current_version']
+            if not rpc_version:
+                rpc_version = rpc.LIBERTY_RPC_VERSIONS[service['binary']]
+            object_version = service['object_current_version']
+            if not object_version:
+                object_version = 'liberty'
             service_format = format % (service['binary'],
                                        service['host'].partition('.')[0],
                                        service['availability_zone'],
                                        'enabled',
                                        ':-)',
-                                       service['updated_at'])
+                                       service['updated_at'],
+                                       rpc_version,
+                                       object_version)
             expected_out = print_format + '\n' + service_format + '\n'
 
             service_cmds = cinder_manage.ServiceCommands()
@@ -701,16 +712,24 @@ class TestCinderManageCmd(test.TestCase):
                    'host': 'fake-host.fake-domain',
                    'availability_zone': 'fake-zone',
                    'updated_at': '2014-06-30 11:22:33',
-                   'disabled': False}
-        self._test_service_commands_list(service)
+                   'disabled': False,
+                   'rpc_current_version': '1.1',
+                   'object_current_version': '1.1'}
+        for binary in ('volume', 'scheduler', 'backup'):
+            service['binary'] = 'cinder-%s' % binary
+            self._test_service_commands_list(service)
 
     def test_service_commands_list_no_updated_at(self):
         service = {'binary': 'cinder-binary',
                    'host': 'fake-host.fake-domain',
                    'availability_zone': 'fake-zone',
                    'updated_at': None,
-                   'disabled': False}
-        self._test_service_commands_list(service)
+                   'disabled': False,
+                   'rpc_current_version': None,
+                   'object_current_version': None}
+        for binary in ('volume', 'scheduler', 'backup'):
+            service['binary'] = 'cinder-%s' % binary
+            self._test_service_commands_list(service)
 
     def test_get_arg_string(self):
         args1 = "foobar"

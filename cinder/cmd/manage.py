@@ -421,13 +421,15 @@ class ServiceCommands(object):
         """Show a list of all cinder services."""
         ctxt = context.get_admin_context()
         services = objects.ServiceList.get_all(ctxt)
-        print_format = "%-16s %-36s %-16s %-10s %-5s %-10s"
+        print_format = "%-16s %-36s %-16s %-10s %-5s %-20s %-12s %-15s"
         print(print_format % (_('Binary'),
                               _('Host'),
                               _('Zone'),
                               _('Status'),
                               _('State'),
-                              _('Updated At')))
+                              _('Updated At'),
+                              _('RPC Version'),
+                              _('Object Version')))
         for svc in services:
             alive = utils.service_is_up(svc)
             art = ":-)" if alive else "XXX"
@@ -437,9 +439,13 @@ class ServiceCommands(object):
             updated_at = svc.updated_at
             if updated_at:
                 updated_at = timeutils.normalize_time(updated_at)
+            rpc_version = (svc.rpc_current_version or
+                           rpc.LIBERTY_RPC_VERSIONS.get(svc.binary, ''))
+            object_version = (svc.object_current_version or 'liberty')
             print(print_format % (svc.binary, svc.host.partition('.')[0],
                                   svc.availability_zone, status, art,
-                                  updated_at))
+                                  updated_at, rpc_version,
+                                  object_version))
 
     @args('binary', type=str,
           help='Service to delete from the host.')
