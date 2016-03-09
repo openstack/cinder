@@ -75,7 +75,8 @@ if __name__ == "__main__":
 
         if atree in ["cinder/config/generate_cinder_opts.py",
                      "cinder/hacking/checks.py",
-                     "cinder/volume/configuration.py", ]:
+                     "cinder/volume/configuration.py",
+                     "cinder/test.py"]:
             continue
 
         dirs_list = atree.split('/')
