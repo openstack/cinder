@@ -702,7 +702,9 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             finally:
                 rbd_image.close()
 
-            @utils.retry(self.rbd.ImageBusy, retries=3)
+            @utils.retry(self.rbd.ImageBusy,
+                         self.configuration.rados_connection_interval,
+                         self.configuration.rados_connection_retries)
             def _try_remove_volume(client, volume_name):
                 self.RBDProxy().remove(client.ioctx, volume_name)
 
