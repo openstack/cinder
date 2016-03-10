@@ -28,7 +28,7 @@ from cinder import i18n
 i18n.enable_lazy()
 
 # Need to register global_opts
-from cinder.common import config  # noqa
+from cinder.common import config
 from cinder import rpc
 from cinder import version
 
@@ -40,6 +40,7 @@ def initialize_application():
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
     logging.setup(CONF, "cinder")
+    config.set_middleware_defaults()
 
     rpc.init(CONF)
     return wsgi.Loader(CONF).load_app(name='osapi_volume')

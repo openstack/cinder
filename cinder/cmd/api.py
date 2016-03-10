@@ -34,7 +34,7 @@ from cinder import i18n
 i18n.enable_lazy()
 
 # Need to register global_opts
-from cinder.common import config  # noqa
+from cinder.common import config
 from cinder import rpc
 from cinder import service
 from cinder import utils
@@ -49,6 +49,7 @@ def main():
     gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
+    config.set_middleware_defaults()
     logging.setup(CONF, "cinder")
     python_logging.captureWarnings(True)
     utils.monkey_patch()
