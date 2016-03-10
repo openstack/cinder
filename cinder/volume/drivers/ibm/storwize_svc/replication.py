@@ -374,29 +374,19 @@ class StorwizeSVCReplicationGlobalMirror(
                 LOG.error(msg)
                 raise exception.VolumeDriverException(message=msg)
 
-    # #### Implementing V2 replication methods #### #
-    def replication_enable(self, context, vref):
+    def get_relationship_status(self, volume):
+        rel_info = {}
         try:
-            rel_info = self.driver._helpers.get_relationship_info(vref)
-        except Exception as e:
-            msg = (_('Failed to get remote copy information for %(volume)s '
-                     'due to %(err)s'), {'volume': vref['id'], 'err': e})
+            rel_info = self.target_helpers.get_relationship_info(volume)
+        except Exception:
+            msg = (_LE('Unable to access the Storwize back-end '
+                       'for volume %s.'), volume['id'])
             LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
 
-        if not rel_info or not rel_info.get('aux_vdisk_name', None):
-            self.volume_replication_setup(context, vref)
+        return rel_info.get('state') if rel_info else None
 
-        model_update = {'replication_status': 'enabled'}
-        return model_update
-
-    def replication_disable(self, context, vref):
-        self.delete_target_volume(vref)
-        model_update = {'replication_status': 'disabled'}
-        return model_update
-
-    def replication_failover(self, context, vref, secondary):
-        if not self.target or self.target.get('target_device_id') != secondary:
+    def failover_volume_host(self, context, vref, secondary):
+        if not self.target or self.target.get('backend_id') != secondary:
             msg = _LE("A valid secondary target MUST be specified in order "
                       "to failover.")
             LOG.error(msg)
@@ -405,29 +395,42 @@ class StorwizeSVCReplicationGlobalMirror(
             # The admin can still issue another failover request. That is
             # why we tentatively put return None instead of raising an
             # exception.
-            return None
+            return
 
         try:
-            rel_info = self.driver._helpers.get_relationship_info(vref)
-            target_vol_name = rel_info.get('aux_vdisk_name')
-            target_vol_id = target_vol_name[-self.UUID_LEN:]
-            if rel_info:
-                self.driver._helpers.delete_relationship(vref['name'])
-            if target_vol_id == vref['id']:
-                target_vol_id = None
+            rel_info = self.target_helpers.get_relationship_info(vref)
         except Exception:
-            msg = (_('Unable to failover the replication for volume %s.'),
+            msg = (_('Unable to access the Storwize back-end for volume %s.'),
                    vref['id'])
             LOG.error(msg)
             raise exception.VolumeDriverException(message=msg)
 
-        model_update = {'host': self.target.get('managed_backend_name'),
-                        '_name_id': target_vol_id}
-        return model_update
+        if not rel_info:
+            msg = (_('Unable to get the replication relationship for volume '
+                     '%s.'),
+                   vref['id'])
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+        else:
+            try:
+                # Reverse the role of the primary and secondary volumes,
+                # because the secondary volume becomes the primary in the
+                # fail-over status.
+                self.target_helpers.switch_relationship(
+                    rel_info.get('name'))
+            except Exception as e:
+                msg = (_('Unable to fail-over the volume %(id)s to the '
+                         'secondary back-end, because the replication '
+                         'relationship is unable to switch: %(error)s'),
+                       {"id": vref['id'], "error": e})
+                LOG.error(msg)
+                raise exception.VolumeDriverException(message=msg)
 
-    def list_replication_targets(self, context, vref):
-        # For the mode of global mirror, there is only one replication target.
-        return [{'target_device_id': self.target.get('target_device_id')}]
+    def replication_failback(self, volume):
+        rel_info = self.target_helpers.get_relationship_info(volume)
+        if rel_info:
+            self.target_helpers.switch_relationship(rel_info.get('name'),
+                                                    aux=False)
 
 
 class StorwizeSVCReplicationMetroMirror(

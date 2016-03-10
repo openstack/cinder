@@ -80,9 +80,12 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
     2.0 - Code refactor, split init file and placed shared methods for
           FC and iSCSI within the StorwizeSVCCommonDriver class
     2.0.1 - Added support for multiple pools with model update
+    2.1 - Added replication V2 support to the global/metro mirror
+          mode
+    2.1.1 - Update replication to version 2.1
     """
 
-    VERSION = "2.0.1"
+    VERSION = "2.1.1"
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCFCDriver, self).__init__(*args, **kwargs)
