@@ -150,9 +150,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.4 - Add manage/unmanage snapshot support
         2.0.5 - Changed minimum client version to be 2.1.0
         2.0.6 - Update replication to version 2.1
+        2.0.7 - Fixed bug #1554746, Create clone volume with new size.
     """
 
-    VERSION = "2.0.6"
+    VERSION = "2.0.7"
 
     device_stats = {}
 
@@ -773,6 +774,11 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         try:
             volume_info = client.getVolumeByName(src_vref['name'])
             clone_info = client.cloneVolume(volume['name'], volume_info['id'])
+
+            # Extend volume
+            if volume['size'] > src_vref['size']:
+                LOG.debug("Resize the new volume to %s.", volume['size'])
+                self.extend_volume(volume, volume['size'])
 
             model_update = self._update_provider(clone_info)
 
