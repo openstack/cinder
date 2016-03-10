@@ -49,6 +49,8 @@
     "volume_extension:volume_actions:upload_image": "",
     "volume_extension:types_manage": "",
     "volume_extension:types_extra_specs": "",
+    "volume_extension:access_types_qos_specs_id": "rule:admin_api",
+    "volume_extension:access_types_extra_specs": "rule:admin_api",
     "volume_extension:volume_type_access": "",
     "volume_extension:volume_type_access:addProjectAccess": "rule:admin_api",
     "volume_extension:volume_type_access:removeProjectAccess": "rule:admin_api",
