@@ -752,6 +752,35 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update, self.req, self.A.id, body)
 
+    def test_project_delete_with_default_quota_less_than_in_use(self):
+        quota = {'volumes': 11}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.A.id, body)
+        quotas.QUOTAS._driver.reserve(
+            self.req.environ['cinder.context'], quotas.QUOTAS.resources,
+            quota, project_id=self.A.id)
+        # Should not be able to delete if it will cause the used values to go
+        # over quota when nested quotas are used
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.delete,
+                          self.req,
+                          self.A.id)
+
+    def test_subproject_delete_with_default_quota_less_than_in_use(self):
+        quota = {'volumes': 1}
+        body = {'quota_set': quota}
+        self.controller.update(self.req, self.B.id, body)
+        quotas.QUOTAS._driver.reserve(
+            self.req.environ['cinder.context'], quotas.QUOTAS.resources,
+            quota, project_id=self.B.id)
+
+        # Should not be able to delete if it will cause the used values to go
+        # over quota when nested quotas are used
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.delete,
+                          self.req,
+                          self.B.id)
+
     def test_subproject_delete(self):
         self.req.environ['cinder.context'].project_id = self.A.id
 
@@ -814,14 +843,6 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
                           self.req, self.A.id)
 
     def test_subproject_delete_with_child_updates_parent_allocated(self):
-        def _assert_delete_updates_allocated():
-            res = 'volumes'
-            self._assert_quota_show(self.A.id, res, allocated=2, limit=5)
-            self._assert_quota_show(self.B.id, res, allocated=2, limit=-1)
-            self.controller.delete(self.req, self.D.id)
-            self._assert_quota_show(self.A.id, res, allocated=0, limit=5)
-            self._assert_quota_show(self.B.id, res, allocated=0, limit=-1)
-
         quota = {'volumes': 5}
         body = {'quota_set': quota}
         self.controller.update(self.req, self.A.id, body)
@@ -832,17 +853,12 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         quota['volumes'] = 2
         self.controller.update(self.req, self.D.id, body)
 
-        _assert_delete_updates_allocated()
-
-        # Allocate some of that quota to a child project by using volumes
-        quota['volumes'] = -1
-        self.controller.update(self.req, self.D.id, body)
-        for x in range(2):
-            quotas.QUOTAS._driver.reserve(
-                self.req.environ['cinder.context'], quotas.QUOTAS.resources,
-                {'volumes': 1}, project_id=self.D.id)
-
-        _assert_delete_updates_allocated()
+        res = 'volumes'
+        self._assert_quota_show(self.A.id, res, allocated=2, limit=5)
+        self._assert_quota_show(self.B.id, res, allocated=2, limit=-1)
+        self.controller.delete(self.req, self.D.id)
+        self._assert_quota_show(self.A.id, res, allocated=0, limit=5)
+        self._assert_quota_show(self.B.id, res, allocated=0, limit=-1)
 
     def test_negative_child_limit_not_affecting_parents_free_quota(self):
         quota = {'volumes': -1}
