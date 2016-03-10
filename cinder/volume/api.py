@@ -1619,10 +1619,7 @@ class API(base.Base):
                    % expected_status)
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
-        active_backend_id = self.volume_rpcapi.failover_host(
-            ctxt, host,
-            secondary_id)
-        return active_backend_id
+        self.volume_rpcapi.failover_host(ctxt, host, secondary_id)
 
     def freeze_host(self, ctxt, host):
 

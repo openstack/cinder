@@ -182,10 +182,12 @@ class ServiceController(wsgi.Controller):
         elif id == "thaw":
             return self._thaw(context, body['host'])
         elif id == "failover_host":
-            return self._failover(context,
-                                  body['host'],
-                                  body.get('backend_id',
-                                           None))
+            self._failover(
+                context,
+                body['host'],
+                body.get('backend_id', None)
+            )
+            return webob.Response(status_int=202)
         else:
             raise webob.exc.HTTPNotFound(explanation=_("Unknown action"))
 

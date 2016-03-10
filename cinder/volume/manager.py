@@ -3274,7 +3274,6 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         :param context: security context
         :param secondary_backend_id: Specifies backend_id to fail over to
-        :returns : ID of the backend that was failed-over to
         """
         svc_host = vol_utils.extract_host(self.host, 'backend')
 
@@ -3320,7 +3319,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     "%(host)s invalid target ID %(backend_id)"),
                 {'host': self.host, 'backend_id':
                  secondary_backend_id})
-            return None
+            return
 
         if secondary_backend_id == "default":
             service.replication_status = fields.ReplicationStatus.ENABLED
@@ -3351,7 +3350,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             vobj.save()
 
         LOG.info(_LI("Failed over to replication target successfully."))
-        return active_backend_id
 
     def freeze_host(self, context):
         """Freeze management plane on this backend.
