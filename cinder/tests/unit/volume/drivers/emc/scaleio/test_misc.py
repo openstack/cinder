@@ -39,10 +39,10 @@ class TestMisc(scaleio.TestScaleIODriver):
         self.ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
         self.volume = fake_volume.fake_volume_obj(
-            self.ctx, **{'name': 'vol1', 'provider_id': '0123456789abcdef'}
+            self.ctx, **{'name': 'vol1', 'provider_id': fake.PROVIDER_ID}
         )
         self.new_volume = fake_volume.fake_volume_obj(
-            self.ctx, **{'name': 'vol2', 'provider_id': 'fedcba9876543210'}
+            self.ctx, **{'name': 'vol2', 'provider_id': fake.PROVIDER2_ID}
         )
 
         self.HTTPS_MOCK_RESPONSES = {
@@ -157,7 +157,7 @@ class TestMisc(scaleio.TestScaleIODriver):
         test_vol = self.driver.update_migrated_volume(
             self.ctx, self.volume, self.new_volume, 'unavailable')
         self.assertFalse(mock_rename.called)
-        self.assertEqual({'_name_id': fake.volume_id,
+        self.assertEqual({'_name_id': fake.VOLUME_ID,
                           'provider_location': None},
                          test_vol)
 
