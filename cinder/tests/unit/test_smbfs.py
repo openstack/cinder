@@ -16,12 +16,17 @@ import copy
 import functools
 import os
 
+import ddt
 import mock
 from oslo_utils import fileutils
 
+from cinder import context
+from cinder import db
 from cinder import exception
 from cinder.image import image_utils
+from cinder import objects
 from cinder import test
+from cinder.tests.unit import fake_volume
 from cinder.volume.drivers import remotefs
 from cinder.volume.drivers import smbfs
 
@@ -40,6 +45,7 @@ def requires_allocation_data_update(expected_size):
     return wrapper
 
 
+@ddt.ddt
 class SmbFsTestCase(test.TestCase):
 
     _FAKE_SHARE = '//1.2.3.4/share1'
@@ -69,15 +75,15 @@ class SmbFsTestCase(test.TestCase):
     _FAKE_ALLOCATION_DATA_PATH = os.path.join('fake_dir',
                                               'fake_allocation_data')
 
-    _FAKE_SMBFS_CONFIG = mock.MagicMock()
-    _FAKE_SMBFS_CONFIG.smbfs_oversub_ratio = 2
-    _FAKE_SMBFS_CONFIG.smbfs_used_ratio = 0.5
-    _FAKE_SMBFS_CONFIG.smbfs_shares_config = '/fake/config/path'
-    _FAKE_SMBFS_CONFIG.smbfs_default_volume_format = 'raw'
-    _FAKE_SMBFS_CONFIG.smbfs_sparsed_volumes = False
-
     def setUp(self):
         super(SmbFsTestCase, self).setUp()
+
+        self._FAKE_SMBFS_CONFIG = mock.MagicMock(
+            smbfs_oversub_ratio = 2,
+            smbfs_used_ratio = 0.5,
+            smbfs_shares_config = '/fake/config/path',
+            smbfs_default_volume_format = 'raw',
+            smbfs_sparsed_volumes = False)
 
         self._smbfs_driver = smbfs.SmbfsDriver(configuration=mock.Mock())
         self._smbfs_driver._remotefsclient = mock.Mock()
@@ -734,3 +740,52 @@ class SmbFsTestCase(test.TestCase):
                     fake_block_size * fake_avail_blocks,
                     self._FAKE_TOTAL_ALLOCATED)
         self.assertEqual(expected, ret_val)
+
+    @ddt.data([True, False, False],
+              [False, False, False],
+              [True, True, True],
+              [False, True, True],
+              [False, False, True],
+              [True, False, True])
+    @ddt.unpack
+    def test_get_volume_format_spec(self, volume_versioned_object,
+                                    volume_meta_contains_fmt,
+                                    volume_type_contains_fmt):
+        fake_vol_meta_fmt = 'vhd'
+        fake_vol_type_fmt = 'vhdx'
+
+        volume_metadata = {}
+        volume_type_extra_specs = {}
+
+        fake_vol_dict = fake_volume.fake_db_volume()
+        del fake_vol_dict['name']
+
+        if volume_meta_contains_fmt:
+            volume_metadata['volume_format'] = fake_vol_meta_fmt
+        elif volume_type_contains_fmt:
+            volume_type_extra_specs['smbfs:volume_format'] = fake_vol_type_fmt
+
+        ctxt = context.get_admin_context()
+        volume_type = db.volume_type_create(
+            ctxt, {'extra_specs': volume_type_extra_specs,
+                   'name': 'fake_vol_type'})
+        fake_vol_dict.update(metadata=volume_metadata,
+                             volume_type_id=volume_type.id)
+        # We want to get a 'real' SqlA model object, not just a dict.
+        volume = db.volume_create(ctxt, fake_vol_dict)
+        volume = db.volume_get(ctxt, volume.id)
+
+        if volume_versioned_object:
+            volume = objects.Volume._from_db_object(ctxt, objects.Volume(),
+                                                    volume)
+
+        resulted_fmt = self._smbfs_driver._get_volume_format_spec(volume)
+
+        if volume_meta_contains_fmt:
+            expected_fmt = fake_vol_meta_fmt
+        elif volume_type_contains_fmt:
+            expected_fmt = fake_vol_type_fmt
+        else:
+            expected_fmt = None
+
+        self.assertEqual(expected_fmt, resulted_fmt)
