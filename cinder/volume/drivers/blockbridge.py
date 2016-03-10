@@ -349,6 +349,7 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
 
         create_params = {
             'name': self._get_dbref_name(volume),
+            'capacity': int(volume['size'] * units.Gi),
             'src': {
                 'volume_id': src_vref['id'],
             },
@@ -401,6 +402,7 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
 
         create_params = {
             'name': self._get_dbref_name(volume),
+            'capacity': int(volume['size'] * units.Gi),
             'src': {
                 'volume_id': snapshot['volume_id'],
                 'snapshot_id': snapshot['id'],
