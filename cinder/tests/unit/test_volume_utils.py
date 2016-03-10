@@ -27,6 +27,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
@@ -117,19 +118,19 @@ class NotifyUsageTestCase(test.TestCase):
     @mock.patch('cinder.objects.Volume.get_by_id')
     def test_usage_from_snapshot(self, volume_get_by_id):
         raw_volume = {
-            'id': '55614621',
+            'id': fake.volume_id,
             'availability_zone': 'nova'
         }
         ctxt = context.get_admin_context()
         volume_obj = fake_volume.fake_volume_obj(ctxt, **raw_volume)
         volume_get_by_id.return_value = volume_obj
         raw_snapshot = {
-            'project_id': '12b0330ec2584a',
-            'user_id': '158cba1b8c2bb6008e',
+            'project_id': fake.project_id,
+            'user_id': fake.user_id,
             'volume': volume_obj,
-            'volume_id': '55614621',
+            'volume_id': fake.volume_id,
             'volume_size': 1,
-            'id': '343434a2',
+            'id': fake.snapshot_id,
             'display_name': '11',
             'created_at': '2014-12-11T10:10:00',
             'status': 'pause',
@@ -142,12 +143,12 @@ class NotifyUsageTestCase(test.TestCase):
         snapshot_obj = fake_snapshot.fake_snapshot_obj(ctxt, **raw_snapshot)
         usage_info = volume_utils._usage_from_snapshot(snapshot_obj)
         expected_snapshot = {
-            'tenant_id': '12b0330ec2584a',
-            'user_id': '158cba1b8c2bb6008e',
+            'tenant_id': fake.project_id,
+            'user_id': fake.user_id,
             'availability_zone': 'nova',
-            'volume_id': '55614621',
+            'volume_id': fake.volume_id,
             'volume_size': 1,
-            'snapshot_id': '343434a2',
+            'snapshot_id': fake.snapshot_id,
             'display_name': '11',
             'created_at': 'DONTCARE',
             'status': 'pause',

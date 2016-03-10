@@ -22,6 +22,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 
 
@@ -284,30 +285,30 @@ REPLICATED_PGSNAPS = [
         "data_transferred": 318
     }]
 REPLICATED_VOLUME_OBJS = [
-    fake_volume.fake_volume_obj(None, id='repl-1'),
-    fake_volume.fake_volume_obj(None, id='repl-2'),
-    fake_volume.fake_volume_obj(None, id='repl-3'),
+    fake_volume.fake_volume_obj(None, id=fake.volume_id),
+    fake_volume.fake_volume_obj(None, id=fake.volume2_id),
+    fake_volume.fake_volume_obj(None, id=fake.volume3_id),
 ]
 REPLICATED_VOLUME_SNAPS = [
     {
-        "source": "array1:volume-repl-1-cinder",
+        "source": "array1:volume-%s-cinder" % fake.volume_id,
         "serial": "BBA481C01639104E0001D5F7",
         "created": "2014-12-04T22:59:38Z",
-        "name": "array1:cinder-repl-pg.2.volume-repl-1-cinder",
+        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.volume_id,
         "size": 1048576
     },
     {
-        "source": "array1:volume-repl-2-cinder",
+        "source": "array1:volume-%s-cinder" % fake.volume2_id,
         "serial": "BBA481C01639104E0001D5F8",
         "created": "2014-12-04T22:59:38Z",
-        "name": "array1:cinder-repl-pg.2.volume-repl-2-cinder",
+        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.volume2_id,
         "size": 1048576
     },
     {
-        "source": "array1:volume-repl-3-cinder",
+        "source": "array1:volume-%s-cinder" % fake.volume3_id,
         "serial": "BBA481C01639104E0001D5F9",
         "created": "2014-12-04T22:59:38Z",
-        "name": "array1:cinder-repl-pg.2.volume-repl-3-cinder",
+        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.volume3_id,
         "size": 1048576
     }
 ]
