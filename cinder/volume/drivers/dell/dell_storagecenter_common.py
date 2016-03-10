@@ -1021,6 +1021,11 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                  {'ssn': destssn})
         return destssn
 
+    def _update_backend(self, active_backend_id):
+        # Update our backend id. On the next open_connection it will use this.
+        self.active_backend_id = str(active_backend_id)
+        self._client.active_backend_id = self.active_backend_id
+
     def failover_host(self, context, volumes, secondary_id=None):
         """Failover to secondary.
 
@@ -1072,6 +1077,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                                'updates': model_update})
 
                     # this is it.
+                    self._update_backend(destssn)
                     return destssn, volume_updates
                 else:
                     raise exception.InvalidInput(message=(
