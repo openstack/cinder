@@ -164,8 +164,7 @@ volume_opts = [
                       'means provisioned capacity can be 10.5 times of the '
                       'total physical capacity. A ratio of 1.0 means '
                       'provisioned capacity cannot exceed the total physical '
-                      'capacity. A ratio lower than 1.0 will be ignored and '
-                      'the default value will be used instead.'),
+                      'capacity. The ratio has to be a minimum of 1.0.'),
     cfg.StrOpt('scst_target_iqn_name',
                help='Certain ISCSI targets have predefined target names, '
                     'SCST target driver uses this name.'),
