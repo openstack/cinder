@@ -6,17 +6,18 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
+# Alessandra <alessandra@translated.net>, 2016. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev120\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-08 22:56+0000\n"
+"POT-Creation-Date: 2016-03-10 00:04+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2015-09-08 03:14+0000\n"
-"Last-Translator: openstackjenkins <jenkins@openstack.org>\n"
+"PO-Revision-Date: 2016-03-09 09:55+0000\n"
+"Last-Translator: Alessandra <alessandra@translated.net>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -332,12 +333,24 @@ msgstr "Lo stato del volume non è valido. (stato: %(status)s)"
 msgid "API %(name)s failed with error string %(err)s"
 msgstr "API %(name)s non riuscita con stringa di errore %(err)s"
 
+#, python-format
+msgid ""
+"API Version String %(version)s is of invalid format. Must be of format "
+"MajorNum.MinorNum."
+msgstr ""
+"Stringa della versione API %(version)s in formato non valido. Deve essere in "
+"formato MajorNum.MinorNum."
+
 msgid "API key is missing for CloudByte driver."
 msgstr "Chiave API mancante per il driver CloudByte."
 
 #, python-format
 msgid "API response: %s"
 msgstr "Risposta dell'API: %s"
+
+#, python-format
+msgid "API version %(version)s is not supported on this method."
+msgstr "Versione API %(version)s non supportata in questo metodo."
 
 msgid "API version could not be determined."
 msgstr "Impossibile determinare la versione API."
@@ -1325,6 +1338,9 @@ msgstr "Convertito in non elaborato, ma il formato ora è %s"
 #, python-format
 msgid "Converted to raw, but format is now %s."
 msgstr "Convertito su grezzo, ma il formato è ora %s."
+
+msgid "Coordinator uninitialized."
+msgstr "Coordinatore non inizializzato."
 
 #, python-format
 msgid ""
@@ -5025,6 +5041,10 @@ msgid "No weighed hosts available"
 msgstr "Nessun host pesato disponibile "
 
 #, python-format
+msgid "Not a valid string: %s"
+msgstr "Stringa non valida: %s"
+
+#, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
 msgstr "Impossibile trovare un datastore adeguato per il volume: %s."
 
@@ -6955,6 +6975,14 @@ msgstr "ValueError: %s"
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."
 msgstr "Vdisk %(name)s non coinvolto nell'associazione %(src)s -> %(tgt)s."
+
+#, python-format
+msgid ""
+"Version %(req_ver)s is not supported by the API. Minimum is %(min_ver)s and "
+"maximum is %(max_ver)s."
+msgstr ""
+"La versione %(req_ver)s non è supportata dall'API. Il valore minimo è "
+"%(min_ver)s ed il massimo è %(max_ver)s."
 
 #, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
