@@ -65,7 +65,7 @@ def stub_volume(id, **kwargs):
         'bootable': False,
         'launched_at': datetime.datetime(1900, 1, 1, 1, 1, 1,
                                          tzinfo=iso8601.iso8601.Utc()),
-        'volume_type': {'name': DEFAULT_VOL_TYPE},
+        'volume_type': fake_volume.fake_db_volume_type(name=DEFAULT_VOL_TYPE),
         'replication_status': 'disabled',
         'replication_extended_status': None,
         'replication_driver_data': None,
