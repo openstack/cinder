@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev120\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-09 06:35+0000\n"
+"POT-Creation-Date: 2016-03-10 06:28+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -336,52 +336,52 @@ msgstr ""
 msgid "Detected snapshot stuck in creating status, setting to ERROR."
 msgstr ""
 
-#: cinder/volume/manager.py:1148
+#: cinder/volume/manager.py:1146
 #, python-format
 msgid ""
 "Unable to ensure space for image-volume in cache. Will skip creating "
 "entry for image %(image)s on host %(host)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1158
+#: cinder/volume/manager.py:1156
 #, python-format
 msgid ""
 "Unable to clone image_volume for image %(image_id)s will not create cache"
 " entry."
 msgstr ""
 
-#: cinder/volume/manager.py:1170
+#: cinder/volume/manager.py:1168
 #, python-format
 msgid "Failed to create new image-volume cache entry. Error: %(exception)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1260
+#: cinder/volume/manager.py:1258
 #, python-format
 msgid "Registration of image volume URI %(uri)s to image %(image_id)s failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1333
+#: cinder/volume/manager.py:1331
 #, python-format
 msgid "Deleting image in unexpected status: %(image_status)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1339
+#: cinder/volume/manager.py:1337
 msgid "Image delete encountered an error."
 msgstr ""
 
-#: cinder/volume/manager.py:1826
+#: cinder/volume/manager.py:1824
 #, python-format
 msgid ""
 "Failed to migrate volume. The destination volume %(vol)s is not deleted "
 "since the source volume may have been deleted."
 msgstr ""
 
-#: cinder/volume/manager.py:1995
+#: cinder/volume/manager.py:1993
 #, python-format
 msgid "Update driver status failed: %(config_group)s is uninitialized."
 msgstr ""
 
-#: cinder/volume/manager.py:3383
+#: cinder/volume/manager.py:3375
 msgid ""
 "Error encountered on Cinder backend during freeze operation, service is "
 "frozen, however notification to driver has failed."
@@ -625,7 +625,7 @@ msgstr ""
 msgid "Unable to get rados pool stats."
 msgstr ""
 
-#: cinder/volume/drivers/rbd.py:901
+#: cinder/volume/drivers/rbd.py:908
 msgid "volume_tmp_dir is now deprecated, please use image_conversion_dir."
 msgstr ""
 
@@ -796,7 +796,7 @@ msgstr ""
 msgid "Unable to locate volume:%s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1010
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1019
 #, python-format
 msgid "SSN %s appears to be down."
 msgstr ""
@@ -1209,7 +1209,7 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vnx_cli.py:2685
-#: cinder/volume/drivers/huawei/huawei_driver.py:779
+#: cinder/volume/drivers/huawei/huawei_driver.py:797
 msgid "Storage-assisted migration failed during retype."
 msgstr ""
 
@@ -1654,46 +1654,46 @@ msgstr ""
 msgid "Failure deleting the snapshot %(snapshot_id)s of volume %(volume_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:746
+#: cinder/volume/drivers/huawei/huawei_driver.py:764
 msgid "Can't find snapshot on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1102
+#: cinder/volume/drivers/huawei/huawei_driver.py:1120
 msgid "No license for SplitMirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1128
+#: cinder/volume/drivers/huawei/huawei_driver.py:1146
 msgid "No license for migration."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1267
+#: cinder/volume/drivers/huawei/huawei_driver.py:1285
 #, python-format
 msgid "Rename lun %(lun_id)s fails when unmanaging volume %(volume)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1362
+#: cinder/volume/drivers/huawei/huawei_driver.py:1380
 #, python-format
 msgid "Can't find snapshot on the array: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1373
+#: cinder/volume/drivers/huawei/huawei_driver.py:1391
 #, python-format
 msgid ""
 "Failed to rename snapshot %(snapshot_id)s, snapshot name on array is "
 "%(snapshot_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1551
+#: cinder/volume/drivers/huawei/huawei_driver.py:1569
 #, python-format
 msgid "Lun is not in lungroup. Lun id: %(lun_id)s. lungroup id: %(lungroup_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1557
-#: cinder/volume/drivers/huawei/huawei_driver.py:1801
+#: cinder/volume/drivers/huawei/huawei_driver.py:1575
+#: cinder/volume/drivers/huawei/huawei_driver.py:1820
 msgid "Can't find lun on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1794
+#: cinder/volume/drivers/huawei/huawei_driver.py:1813
 #, python-format
 msgid "Lun is not in lungroup. Lun id: %(lun_id)s. Lungroup id: %(lungroup_id)s."
 msgstr ""
@@ -1742,35 +1742,40 @@ msgstr ""
 msgid "Can't find target iqn from rest."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/flashsystem_common.py:315
+#: cinder/volume/drivers/ibm/flashsystem_common.py:317
 #, python-format
 msgid "warning: Tried to delete vdisk %s but it does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/flashsystem_common.py:352
+#: cinder/volume/drivers/ibm/flashsystem_common.py:354
 #, python-format
 msgid "Failed to run command: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/flashsystem_common.py:756
+#: cinder/volume/drivers/ibm/flashsystem_common.py:758
 msgid "_remove_device: invalid properties or device."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/flashsystem_common.py:809
+#: cinder/volume/drivers/ibm/flashsystem_common.py:811
 #, python-format
 msgid ""
 "_unmap_vdisk_from_host: No mapping of volume %(vol_name)s to any host "
 "found."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/flashsystem_common.py:815
+#: cinder/volume/drivers/ibm/flashsystem_common.py:817
 #, python-format
 msgid ""
 "_unmap_vdisk_from_host: Multiple mappings of volume %(vdisk_name)s found,"
 " no host specified."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/flashsystem_iscsi.py:186
+#: cinder/volume/drivers/ibm/flashsystem_fc.py:157
+#, python-format
+msgid "Host %(host)s was not found on backend storage."
+msgstr ""
+
+#: cinder/volume/drivers/ibm/flashsystem_iscsi.py:188
 #, python-format
 msgid "_get_vdisk_map_properties: Did not find a preferred node for vdisk %s."
 msgstr ""
