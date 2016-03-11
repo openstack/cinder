@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev120\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev154\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-10 06:28+0000\n"
+"POT-Creation-Date: 2016-03-11 06:47+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -214,7 +214,14 @@ msgid ""
 "maximum over subscription ratio %(oversub_ratio).2f on host %(host)s."
 msgstr ""
 
-#: cinder/scheduler/filters/capacity_filter.py:115
+#: cinder/scheduler/filters/capacity_filter.py:114
+#, python-format
+msgid ""
+"Filtering out host %(host)s with an invalid maximum over subscription "
+"ratio of %(oversub_ratio).2f. The ratio should be a minimum of 1.0."
+msgstr ""
+
+#: cinder/scheduler/filters/capacity_filter.py:124
 #, python-format
 msgid ""
 "Insufficient free space for volume creation on host %(host)s (requested /"
@@ -287,19 +294,19 @@ msgid ""
 "snapshots already consumed)."
 msgstr ""
 
-#: cinder/volume/driver.py:472
+#: cinder/volume/driver.py:471
 #, python-format
 msgid "Failed to activate volume copy throttling: %(err)s"
 msgstr ""
 
-#: cinder/volume/driver.py:673
+#: cinder/volume/driver.py:672
 #, python-format
 msgid ""
 "The colon in vendor name was replaced by underscore. Updated vendor name "
 "is %(name)s\"."
 msgstr ""
 
-#: cinder/volume/driver.py:687
+#: cinder/volume/driver.py:686
 #, python-format
 msgid ""
 "Vendor unique property \"%(property)s\" must start with vendor prefix "
@@ -307,14 +314,14 @@ msgid ""
 "capabilities list."
 msgstr ""
 
-#: cinder/volume/driver.py:865
+#: cinder/volume/driver.py:864
 #, python-format
 msgid ""
 "Failed terminating the connection of volume %(volume_id)s, but it is "
 "acceptable."
 msgstr ""
 
-#: cinder/volume/driver.py:2329 cinder/volume/targets/iscsi.py:154
+#: cinder/volume/driver.py:2328 cinder/volume/targets/iscsi.py:154
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr ""
 
@@ -336,52 +343,52 @@ msgstr ""
 msgid "Detected snapshot stuck in creating status, setting to ERROR."
 msgstr ""
 
-#: cinder/volume/manager.py:1146
+#: cinder/volume/manager.py:1147
 #, python-format
 msgid ""
 "Unable to ensure space for image-volume in cache. Will skip creating "
 "entry for image %(image)s on host %(host)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1156
+#: cinder/volume/manager.py:1157
 #, python-format
 msgid ""
 "Unable to clone image_volume for image %(image_id)s will not create cache"
 " entry."
 msgstr ""
 
-#: cinder/volume/manager.py:1168
+#: cinder/volume/manager.py:1169
 #, python-format
 msgid "Failed to create new image-volume cache entry. Error: %(exception)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1258
+#: cinder/volume/manager.py:1259
 #, python-format
 msgid "Registration of image volume URI %(uri)s to image %(image_id)s failed."
 msgstr ""
 
-#: cinder/volume/manager.py:1331
+#: cinder/volume/manager.py:1332
 #, python-format
 msgid "Deleting image in unexpected status: %(image_status)s."
 msgstr ""
 
-#: cinder/volume/manager.py:1337
+#: cinder/volume/manager.py:1338
 msgid "Image delete encountered an error."
 msgstr ""
 
-#: cinder/volume/manager.py:1824
+#: cinder/volume/manager.py:1825
 #, python-format
 msgid ""
 "Failed to migrate volume. The destination volume %(vol)s is not deleted "
 "since the source volume may have been deleted."
 msgstr ""
 
-#: cinder/volume/manager.py:1993
+#: cinder/volume/manager.py:1994
 #, python-format
 msgid "Update driver status failed: %(config_group)s is uninitialized."
 msgstr ""
 
-#: cinder/volume/manager.py:3375
+#: cinder/volume/manager.py:3381
 msgid ""
 "Error encountered on Cinder backend during freeze operation, service is "
 "frozen, however notification to driver has failed."
@@ -424,19 +431,19 @@ msgstr ""
 msgid "The device %s won't be cleared."
 msgstr ""
 
-#: cinder/volume/drivers/drbdmanagedrv.py:135
+#: cinder/volume/drivers/drbdmanagedrv.py:169
 #, python-format
 msgid "Got disconnected; trying to reconnect. (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/drbdmanagedrv.py:244
+#: cinder/volume/drivers/drbdmanagedrv.py:329
 #, python-format
 msgid ""
 "Try #%(try)d: Volume \"%(res)s\"/%(vol)d not yet deployed on "
 "\"%(host)s\", waiting."
 msgstr ""
 
-#: cinder/volume/drivers/drbdmanagedrv.py:579
+#: cinder/volume/drivers/drbdmanagedrv.py:710
 #, python-format
 msgid "snapshot: %s not found, skipping delete operation"
 msgstr ""
@@ -746,42 +753,42 @@ msgstr ""
 msgid "DELETE call failed for %s!"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:635
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:636
 #, python-format
 msgid "Volume initialization failure. (%s)"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:806
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2347
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:807
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2348
 #, python-format
 msgid "Unable to create folder %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:973
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:974
 #, python-format
 msgid "delete_volume: unable to find volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1048
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1049
 #, python-format
 msgid "Unable to find appropriate OS %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1336
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1337
 msgid "Inconsistent Luns."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1705
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1706
 #, python-format
 msgid "Unable to create snapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1743
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1744
 #, python-format
 msgid "Unable to find snapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2534
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2535
 #, python-format
 msgid "Unable to locate replication %(vol)s to %(ssn)s"
 msgstr ""
@@ -1488,7 +1495,7 @@ msgid "Delete Snapshot id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:778
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1135
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1141
 #, python-format
 msgid "Failed to manage virtual volume %(disp)s due to error during retype."
 msgstr ""
@@ -1516,7 +1523,7 @@ msgid "Issue occurred in clear_volume_key_value_pair: %s"
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:3044
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1527
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1533
 #, python-format
 msgid ""
 "The secondary array must have an API version of %(min_ver)s or higher. "
@@ -1586,39 +1593,39 @@ msgstr ""
 msgid "No VLUN contained CHAP credentials. Generating new CHAP key."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:339
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:340
 #, python-format
 msgid ""
 "HPELeftHand API is version %(current)s. A minimum version of %(min)s is "
 "needed for manage/unmanage support."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:809
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:815
 msgid "The 'hplh' prefix is deprecated. Use 'hpelh' instead."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:849
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:855
 #, python-format
 msgid "CHAP secret exists for host %s but CHAP is disabled"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:852
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:858
 #, python-format
 msgid "CHAP is enabled, but server secret not configured on server %s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:926
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:932
 #, python-format
 msgid "%s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1427
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1433
 msgid ""
 "The primary array is currently offline, remote copy has been "
 "automatically paused."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1537
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1543
 #, python-format
 msgid ""
 "'%s' is not a valid replication array. In order to be valid, backend_id, "
@@ -1627,16 +1634,16 @@ msgid ""
 "managed_backend_name must be set as well."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1650
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1656
 #, python-format
 msgid ""
 "There was a problem when trying to determine if the volume can be failed-"
 "back: %s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1755
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1776
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1798
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1761
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1782
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1804
 #, python-format
 msgid ""
 "There was no extra_spec value for %(spec_name)s, so the default value of "
@@ -1780,72 +1787,72 @@ msgstr ""
 msgid "_get_vdisk_map_properties: Did not find a preferred node for vdisk %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:564
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:570
 #, python-format
 msgid "Failed to run lsguicapability. Exception: %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:852
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:858
 #, python-format
 msgid "unmap_vol_from_host: No mapping of volume %(vol_name)s to any host found."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:858
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:864
 #, python-format
 msgid ""
 "unmap_vol_from_host: Multiple mappings of volume %(vol_name)s found, no "
 "host specified."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:870
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:876
 #, python-format
 msgid ""
 "unmap_vol_from_host: No mapping of volume %(vol_name)s to host %(host)s "
 "found."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1989
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2002
 msgid ""
 "Unable to use san_ip to create SSHPool. Now attempting to use "
 "storwize_san_secondary_ip to create SSHPool."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1996
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2009
 msgid ""
 "Unable to create SSHPool using san_ip and not able to use "
 "storwize_san_secondary_ip since it is not configured."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2012
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2025
 #, python-format
 msgid ""
 "Unable to execute SSH command with storwize_san_secondary_ip. Attempting "
 "to switch IP back to san_ip %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2022
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2035
 #, python-format
 msgid "Unable to execute SSH command. Attempting to switch IP to %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2030
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2043
 msgid ""
 "Unable to execute SSH command. Not able to use storwize_san_secondary_ip "
 "since it is not configured."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2406
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2419
 #, python-format
 msgid "Volume %s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_fc.py:198
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_iscsi.py:211
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_fc.py:201
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_iscsi.py:214
 #, python-format
 msgid "initialize_connection: Did not find a preferred node for volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_iscsi.py:166
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_iscsi.py:169
 msgid "CHAP secret exists for host but CHAP is disabled."
 msgstr ""
 

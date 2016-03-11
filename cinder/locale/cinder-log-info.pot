@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev120\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev154\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-10 06:28+0000\n"
+"POT-Creation-Date: 2016-03-11 06:47+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -490,7 +490,7 @@ msgstr ""
 msgid "Unable to attach volume, because it is in maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:642 cinder/volume/manager.py:1035
+#: cinder/volume/api.py:642 cinder/volume/manager.py:1036
 msgid "Attach volume completed successfully."
 msgstr ""
 
@@ -498,7 +498,7 @@ msgstr ""
 msgid "Unable to detach volume, because it is in maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:655 cinder/volume/manager.py:1131
+#: cinder/volume/api.py:655 cinder/volume/manager.py:1132
 msgid "Detach volume completed successfully."
 msgstr ""
 
@@ -508,11 +508,11 @@ msgid ""
 "maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:671 cinder/volume/manager.py:1517
+#: cinder/volume/api.py:671 cinder/volume/manager.py:1518
 msgid "Initialize volume connection completed successfully."
 msgstr ""
 
-#: cinder/volume/api.py:681 cinder/volume/manager.py:1540
+#: cinder/volume/api.py:681 cinder/volume/manager.py:1541
 msgid "Terminate volume connection completed successfully."
 msgstr ""
 
@@ -520,7 +520,7 @@ msgstr ""
 msgid "Unable to accept transfer for volume, because it is in maintenance."
 msgstr ""
 
-#: cinder/volume/api.py:696 cinder/volume/manager.py:1589
+#: cinder/volume/api.py:696 cinder/volume/manager.py:1590
 msgid "Transfer volume completed successfully."
 msgstr ""
 
@@ -592,7 +592,7 @@ msgstr ""
 msgid "Force upload to image is disabled, Force option will be ignored."
 msgstr ""
 
-#: cinder/volume/api.py:1190 cinder/volume/manager.py:1322
+#: cinder/volume/api.py:1190 cinder/volume/manager.py:1323
 msgid "Copy volume to image completed successfully."
 msgstr ""
 
@@ -649,148 +649,155 @@ msgstr ""
 msgid "Starting volume driver %(driver_name)s (%(version)s)"
 msgstr ""
 
-#: cinder/volume/manager.py:505
+#: cinder/volume/manager.py:507
 msgid "Resume volume delete completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:530
-msgid "Service not found for updating replication_status."
-msgstr ""
-
-#: cinder/volume/manager.py:542
+#: cinder/volume/manager.py:512
 msgid "Driver initialization completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:654
+#: cinder/volume/manager.py:517
+#, python-format
+msgid ""
+"Initializing RPC dependent components of volume driver %(driver_name)s "
+"(%(version)s)"
+msgstr ""
+
+#: cinder/volume/manager.py:543
+msgid "Driver post RPC initialization completed successfully."
+msgstr ""
+
+#: cinder/volume/manager.py:655
 msgid "Created volume successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:808
+#: cinder/volume/manager.py:809
 msgid "Deleted volume successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:874
+#: cinder/volume/manager.py:875
 msgid "Create snapshot completed successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:941
+#: cinder/volume/manager.py:942
 msgid "Delete snapshot completed successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:1051 cinder/volume/manager.py:1076
+#: cinder/volume/manager.py:1052 cinder/volume/manager.py:1077
 msgid "Volume detach called, but volume not attached."
 msgstr ""
 
-#: cinder/volume/manager.py:1555
+#: cinder/volume/manager.py:1556
 msgid "Remove volume export completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:1805
+#: cinder/volume/manager.py:1806
 #, python-format
 msgid ""
 "Couldn't find the temporary volume %(vol)s in the database. There is no "
 "need to clean up this volume."
 msgstr ""
 
-#: cinder/volume/manager.py:1818
+#: cinder/volume/manager.py:1819
 #, python-format
 msgid ""
 "Couldn't find destination volume %(vol)s in the database. The entry might"
 " be successfully deleted during migration completion phase."
 msgstr ""
 
-#: cinder/volume/manager.py:1856
+#: cinder/volume/manager.py:1857
 #, python-format
 msgid ""
 "migrate_volume_completion is cleaning up an error for volume %(vol1)s "
 "(temporary volume %(vol2)s"
 msgstr ""
 
-#: cinder/volume/manager.py:1915
+#: cinder/volume/manager.py:1916
 msgid "Complete-Migrate volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:1981
+#: cinder/volume/manager.py:1982
 msgid "Migrate volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2156
+#: cinder/volume/manager.py:2157
 msgid "Extend volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2264
+#: cinder/volume/manager.py:2265
 #, python-format
 msgid "Volume %s: retyped successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:2322
+#: cinder/volume/manager.py:2323
 msgid "Retype volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2359
+#: cinder/volume/manager.py:2360
 msgid "Manage existing volume completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2393
+#: cinder/volume/manager.py:2394
 msgid "Promote volume replica completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2457
+#: cinder/volume/manager.py:2458
 #, python-format
 msgid "Consistency group %s: creating"
 msgstr ""
 
-#: cinder/volume/manager.py:2482
+#: cinder/volume/manager.py:2483
 #, python-format
 msgid "Consistency group %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:2488
+#: cinder/volume/manager.py:2489
 msgid "Create consistency group completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2621
+#: cinder/volume/manager.py:2622
 #, python-format
 msgid "Create consistency group from source-%(source)s completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:2856
+#: cinder/volume/manager.py:2857
 msgid "Delete consistency group completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:3000
+#: cinder/volume/manager.py:3001
 msgid "Update consistency group completed successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:3010
+#: cinder/volume/manager.py:3011
 #, python-format
 msgid "Cgsnapshot %s: creating."
 msgstr ""
 
-#: cinder/volume/manager.py:3100
+#: cinder/volume/manager.py:3101
 #, python-format
 msgid "cgsnapshot %s: created successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:3112
+#: cinder/volume/manager.py:3113
 #, python-format
 msgid "cgsnapshot %s: deleting"
 msgstr ""
 
-#: cinder/volume/manager.py:3208
+#: cinder/volume/manager.py:3209
 #, python-format
 msgid "cgsnapshot %s: deleted successfully"
 msgstr ""
 
-#: cinder/volume/manager.py:3353
+#: cinder/volume/manager.py:3360
 msgid "Failed over to replication target successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:3387
+#: cinder/volume/manager.py:3393
 msgid "Set backend status to frozen successfully."
 msgstr ""
 
-#: cinder/volume/manager.py:3420
+#: cinder/volume/manager.py:3426
 msgid "Thawed backend successfully."
 msgstr ""
 
@@ -855,12 +862,12 @@ msgid ""
 "Continuing with delete."
 msgstr ""
 
-#: cinder/volume/drivers/drbdmanagedrv.py:581 cinder/volume/drivers/lvm.py:437
+#: cinder/volume/drivers/drbdmanagedrv.py:712 cinder/volume/drivers/lvm.py:437
 #, python-format
 msgid "Successfully deleted snapshot: %s"
 msgstr ""
 
-#: cinder/volume/drivers/drbdmanagedrv.py:840
+#: cinder/volume/drivers/drbdmanagedrv.py:971
 #, python-format
 msgid "DRBD connection for %s already removed"
 msgstr ""
@@ -1385,81 +1392,81 @@ msgstr ""
 msgid "open_connection to %(ssn)s at %(ip)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:840
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:841
 #, python-format
 msgid "Created volume %(instanceId)s: %(name)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:929
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:930
 msgid "Found failover volume. Competing failover."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:933
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:934
 #, python-format
 msgid "Imported %(fail)s to %(guid)s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1086
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1087
 #, python-format
 msgid "Creating server %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1115
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1116
 #, python-format
 msgid "SC server created %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1252
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1253
 #, python-format
 msgid "Volume mappings for %(name)s: %(mappings)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1954
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:1955
 #, python-format
 msgid "Switching volume %(vol)s to profile %(prof)s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2068
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2069
 #, python-format
 msgid "Profile %s has been deleted."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2142
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2143
 #, python-format
 msgid "Added %s to cg."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2160
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2161
 #, python-format
 msgid "Removed %s from cg."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2183
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2184
 #, python-format
 msgid "Adding volumes to cg %s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2186
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2187
 #, python-format
 msgid "Removing volumes from cg %s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2230
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2231
 #, python-format
 msgid "CreateReplay success %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2453
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2454
 #, python-format
 msgid "Volume %s unmanaged."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2553
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2554
 #, python-format
 msgid "Replication %(vol)s to %(dest)s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2626
+#: cinder/volume/drivers/dell/dell_storagecenter_api.py:2627
 #, python-format
 msgid "Replication created for %(volname)s to %(destsc)s"
 msgstr ""
@@ -1493,17 +1500,17 @@ msgstr ""
 msgid "replication failover secondary is %(ssn)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1044
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1049
 #, python-format
 msgid "Failing backend to %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1058
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1063
 #, python-format
 msgid "Failing over volume %(id)s replication: %(res)s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1153
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1159
 #, python-format
 msgid ""
 "manage_existing_snapshot: snapshot %(exist)s on volume %(volume)s has "
@@ -1828,13 +1835,13 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vmax_utils.py:2274
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1326
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1332
 #, python-format
 msgid "Updating status for CG: %(id)s."
 msgstr ""
 
 #: cinder/volume/drivers/emc/emc_vmax_utils.py:2282
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1334
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1340
 #, python-format
 msgid "No volume found for CG: %(cg)s."
 msgstr ""
@@ -2603,43 +2610,43 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:759
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1111
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1117
 #, python-format
 msgid "Virtual volume '%(ref)s' renamed to '%(new)s'."
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:765
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1119
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1125
 #, python-format
 msgid "Virtual volume %(disp)s '%(new)s' is being retyped."
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:772
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1129
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1135
 #, python-format
 msgid "Virtual volume %(disp)s successfully retyped to %(new_type)s."
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:791
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1149
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1155
 #, python-format
 msgid "Virtual volume %(disp)s '%(new)s' is now being managed."
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:864
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1231
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1237
 #, python-format
 msgid "Snapshot '%(ref)s' renamed to '%(new)s'."
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:869
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1240
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1246
 #, python-format
 msgid "Snapshot %(disp)s '%(new)s' is now being managed."
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:936
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1328
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1334
 #, python-format
 msgid ""
 "Virtual volume %(disp)s '%(vol)s' is no longer managed. Volume renamed to"
@@ -2647,7 +2654,7 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_common.py:962
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1358
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1364
 #, python-format
 msgid ""
 "Snapshot %(disp)s '%(vol)s' is no longer managed. Snapshot renamed to "
@@ -2748,52 +2755,52 @@ msgid ""
 msgstr ""
 
 #: cinder/volume/drivers/hpe/hpe_3par_fc.py:316
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:938
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:935
 msgid "Need to remove FC Zone, building initiator target map"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:336
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:337
 #, python-format
 msgid "HPELeftHand API version %s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:972
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:978
 #, python-format
 msgid ""
 "Cannot provide backend assisted migration for volume: %s because volume "
 "is from a different backend."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:977
 #: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:983
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:989
 #, python-format
 msgid ""
 "Cannot provide backend assisted migration for volume: %s because cluster "
 "exists in different management group."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:997
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1003
 #, python-format
 msgid ""
 "Cannot provide backend assisted migration for volume: %s because the "
 "volume has been exported."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1008
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1014
 #, python-format
 msgid ""
 "Cannot provide backend assisted migration for volume: %s because the "
 "volume has snapshots."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1016
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1022
 #, python-format
 msgid ""
 "Cannot provide backend assisted migration for volume: %s because volume "
 "does not exist in this management group."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1049
+#: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1055
 #, python-format
 msgid "Volume name changed from %(tmp)s to %(orig)s."
 msgstr ""
@@ -3053,7 +3060,7 @@ msgid "Volume %s is mapping to multiple hosts."
 msgstr ""
 
 #: cinder/volume/drivers/ibm/flashsystem_fc.py:190
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:663
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:669
 #, python-format
 msgid "WWPN on node %(node)s: %(wwpn)s."
 msgstr ""
@@ -3076,34 +3083,34 @@ msgstr ""
 msgid "Could not find replica to delete of volume %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1506
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1512
 #, python-format
 msgid "Unable to get remote copy information for volume %s"
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1537
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:1546
 #, python-format
 msgid "Tried to delete non-existent vdisk %s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2418
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2431
 #, python-format
 msgid ""
 "_check_volume_copy_ops: Volume %(vol)s does not have the specified vdisk "
 "copy operation: orig=%(orig)s new=%(new)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_fc.py:110
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_fc.py:113
 #, python-format
 msgid "%(node)s will be removed since it is not supported by the FC driver."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_fc.py:291
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_fc.py:294
 #: cinder/volume/drivers/netapp/eseries/library.py:1213
 msgid "Need to remove FC Zone, building initiator target map."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_iscsi.py:114
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_iscsi.py:117
 #, python-format
 msgid "%(node)s will be removed since it is not supported by the iSCSI driver."
 msgstr ""
@@ -3247,34 +3254,34 @@ msgstr ""
 msgid "No need to extend volume %s as it is already the requested new size."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:566
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:564
 #, python-format
-msgid "Resizing LUN %s to new size using clone operation."
+msgid "Resizing LUN %s using clone operation."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:601
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:598
 #, python-format
 msgid "Post clone resize LUN %s"
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:668
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:665
 #, python-format
 msgid "LUN with given ref %s need not be renamed during manage operation."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:680
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:677
 #, python-format
 msgid ""
 "Manage operation completed for LUN with new path %(path)s and uuid "
 "%(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:733
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:730
 #, python-format
 msgid "Unmanaged LUN with current path %(path)s and uuid %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/netapp/dataontap/block_base.py:1076
+#: cinder/volume/drivers/netapp/dataontap/block_base.py:1073
 #, python-format
 msgid "Backing consistency group snapshot %s available for deletion"
 msgstr ""
