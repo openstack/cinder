@@ -44,8 +44,9 @@ def create(context,
     """Creates volume types."""
     extra_specs = extra_specs or {}
     projects = projects or []
+    elevated = context if context.is_admin else context.elevated()
     try:
-        type_ref = db.volume_type_create(context,
+        type_ref = db.volume_type_create(elevated,
                                          dict(name=name,
                                               extra_specs=extra_specs,
                                               is_public=is_public,
@@ -63,9 +64,10 @@ def update(context, id, name, description, is_public=None):
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    old_volume_type = get_volume_type(context, id)
+    elevated = context if context.is_admin else context.elevated()
+    old_volume_type = get_volume_type(elevated, id)
     try:
-        type_updated = db.volume_type_update(context,
+        type_updated = db.volume_type_update(elevated,
                                              id,
                                              dict(name=name,
                                                   description=description,
@@ -74,7 +76,7 @@ def update(context, id, name, description, is_public=None):
         if name:
             old_type_name = old_volume_type.get('name')
             if old_type_name != name:
-                QUOTAS.update_quota_resource(context,
+                QUOTAS.update_quota_resource(elevated,
                                              old_type_name,
                                              name)
     except db_exc.DBError:
@@ -89,7 +91,8 @@ def destroy(context, id):
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
     else:
-        db.volume_type_destroy(context, id)
+        elevated = context if context.is_admin else context.elevated()
+        db.volume_type_destroy(elevated, id)
 
 
 def get_all_types(context, inactive=0, filters=None, marker=None,
@@ -172,11 +175,12 @@ def add_volume_type_access(context, volume_type_id, project_id):
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    if is_public_volume_type(context, volume_type_id):
+    elevated = context if context.is_admin else context.elevated()
+    if is_public_volume_type(elevated, volume_type_id):
         msg = _("Type access modification is not applicable to public volume "
                 "type.")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_add(context, volume_type_id, project_id)
+    return db.volume_type_access_add(elevated, volume_type_id, project_id)
 
 
 def remove_volume_type_access(context, volume_type_id, project_id):
@@ -184,11 +188,12 @@ def remove_volume_type_access(context, volume_type_id, project_id):
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    if is_public_volume_type(context, volume_type_id):
+    elevated = context if context.is_admin else context.elevated()
+    if is_public_volume_type(elevated, volume_type_id):
         msg = _("Type access modification is not applicable to public volume "
                 "type.")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_remove(context, volume_type_id, project_id)
+    return db.volume_type_access_remove(elevated, volume_type_id, project_id)
 
 
 def is_encrypted(context, volume_type_id):
