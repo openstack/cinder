@@ -71,7 +71,7 @@ from taskflow.patterns import linear_flow
 
 LOG = logging.getLogger(__name__)
 
-MIN_CLIENT_VERSION = '4.1.0'
+MIN_CLIENT_VERSION = '4.2.0'
 DEDUP_API_VERSION = 30201120
 FLASH_CACHE_API_VERSION = 30201200
 SRSTATLD_API_VERSION = 30201200
@@ -230,10 +230,11 @@ class HPE3PARCommon(object):
         3.0.15 - Update replication to version 2.1
         3.0.16 - Use same LUN ID for each VLUN path #1551994
         3.0.17 - Don't fail on clearing 3PAR object volume key. bug #1546392
+        3.0.18 - create_cloned_volume account for larger size.  bug #1554740
 
     """
 
-    VERSION = "3.0.17"
+    VERSION = "3.0.18"
 
     stats = {}
 
@@ -1971,28 +1972,62 @@ class HPE3PARCommon(object):
     def create_cloned_volume(self, volume, src_vref):
         try:
             vol_name = self._get_3par_vol_name(volume['id'])
-            # create a temporary snapshot
-            snapshot = self._create_temp_snapshot(src_vref)
+            src_vol_name = self._get_3par_vol_name(src_vref['id'])
 
-            type_info = self.get_volume_settings_from_type(volume)
+            # if the sizes of the 2 volumes are the same
+            # we can do an online copy, which is a background process
+            # on the 3PAR that makes the volume instantly available.
+            # We can't resize a volume, while it's being copied.
+            if volume['size'] == src_vref['size']:
+                LOG.debug("Creating a clone of same size, using online copy.")
+                # create a temporary snapshot
+                snapshot = self._create_temp_snapshot(src_vref)
 
-            # make the 3PAR copy the contents.
-            # can't delete the original until the copy is done.
-            cpg = type_info['cpg']
-            self._copy_volume(snapshot['name'], vol_name, cpg=cpg,
-                              snap_cpg=type_info['snap_cpg'],
-                              tpvv=type_info['tpvv'],
-                              tdvv=type_info['tdvv'])
+                type_info = self.get_volume_settings_from_type(volume)
+                cpg = type_info['cpg']
 
-            # v2 replication check
-            replication_flag = False
-            if self._volume_of_replicated_type(volume) and (
-               self._do_volume_replication_setup(volume)):
-                replication_flag = True
+                # make the 3PAR copy the contents.
+                # can't delete the original until the copy is done.
+                self._copy_volume(snapshot['name'], vol_name, cpg=cpg,
+                                  snap_cpg=type_info['snap_cpg'],
+                                  tpvv=type_info['tpvv'],
+                                  tdvv=type_info['tdvv'])
 
-            return self._get_model_update(volume['host'], cpg,
-                                          replication=replication_flag,
-                                          provider_location=self.client.id)
+                # v2 replication check
+                replication_flag = False
+                if self._volume_of_replicated_type(volume) and (
+                   self._do_volume_replication_setup(volume)):
+                    replication_flag = True
+
+                return self._get_model_update(volume['host'], cpg,
+                                              replication=replication_flag,
+                                              provider_location=self.client.id)
+            else:
+                # The size of the new volume is different, so we have to
+                # copy the volume and wait.  Do the resize after the copy
+                # is complete.
+                LOG.debug("Clone a volume with a different target size. "
+                          "Using non-online copy.")
+
+                # we first have to create the destination volume
+                model_update = self.create_volume(volume)
+
+                optional = {'priority': 1}
+                body = self.client.copyVolume(src_vol_name, vol_name, None,
+                                              optional=optional)
+                task_id = body['taskid']
+
+                task_status = self._wait_for_task_completion(task_id)
+                if task_status['status'] is not self.client.TASK_DONE:
+                    dbg = {'status': task_status, 'id': volume['id']}
+                    msg = _('Copy volume task failed: create_cloned_volume '
+                            'id=%(id)s, status=%(status)s.') % dbg
+                    raise exception.CinderException(msg)
+                else:
+                    LOG.debug('Copy volume completed: create_cloned_volume: '
+                              'id=%s.', volume['id'])
+
+                return model_update
 
         except hpeexceptions.HTTPForbidden:
             raise exception.NotAuthorized()
@@ -2384,6 +2419,28 @@ class HPE3PARCommon(object):
 
         return {'_name_id': name_id, 'provider_location': provider_location}
 
+    def _wait_for_task_completion(self, task_id):
+        """This waits for a 3PAR background task complete or fail.
+
+        This looks for a task to get out of the 'active' state.
+        """
+        # Wait for the physical copy task to complete
+        def _wait_for_task(task_id):
+            status = self.client.getTask(task_id)
+            LOG.debug("3PAR Task id %(id)s status = %(status)s",
+                      {'id': task_id,
+                       'status': status['status']})
+            if status['status'] is not self.client.TASK_ACTIVE:
+                self._task_status = status
+                raise loopingcall.LoopingCallDone()
+
+        self._task_status = None
+        timer = loopingcall.FixedIntervalLoopingCall(
+            _wait_for_task, task_id)
+        timer.start(interval=1).wait()
+
+        return self._task_status
+
     def _convert_to_base_volume(self, volume, new_cpg=None):
         try:
             type_info = self.get_volume_settings_from_type(volume)
@@ -2405,23 +2462,10 @@ class HPE3PARCommon(object):
             LOG.debug('Copy volume scheduled: convert_to_base_volume: '
                       'id=%s.', volume['id'])
 
-            # Wait for the physical copy task to complete
-            def _wait_for_task(task_id):
-                status = self.client.getTask(task_id)
-                LOG.debug("3PAR Task id %(id)s status = %(status)s",
-                          {'id': task_id,
-                           'status': status['status']})
-                if status['status'] is not self.client.TASK_ACTIVE:
-                    self._task_status = status
-                    raise loopingcall.LoopingCallDone()
+            task_status = self._wait_for_task_completion(task_id)
 
-            self._task_status = None
-            timer = loopingcall.FixedIntervalLoopingCall(
-                _wait_for_task, task_id)
-            timer.start(interval=1).wait()
-
-            if self._task_status['status'] is not self.client.TASK_DONE:
-                dbg = {'status': self._task_status, 'id': volume['id']}
+            if task_status['status'] is not self.client.TASK_DONE:
+                dbg = {'status': task_status, 'id': volume['id']}
                 msg = _('Copy volume task failed: convert_to_base_volume: '
                         'id=%(id)s, status=%(status)s.') % dbg
                 raise exception.CinderException(msg)
