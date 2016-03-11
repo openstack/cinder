@@ -259,7 +259,7 @@ class volumeMetaDataTest(test.TestCase):
         fake_context = mock.Mock()
         metadata_get.side_effect = return_empty_volume_metadata
         metadata_update.side_effect = return_create_volume_metadata
-        req = fakes.HTTPRequest.blank('/v2/volume_metadata')
+        req = fakes.HTTPRequest.blank('/v1/volume_metadata')
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key1": "value1",
@@ -285,7 +285,7 @@ class volumeMetaDataTest(test.TestCase):
         metadata_get.side_effect = return_empty_volume_metadata
         metadata_update.side_effect = return_create_volume_metadata_insensitive
 
-        req = fakes.HTTPRequest.blank('/v2/volume_metadata')
+        req = fakes.HTTPRequest.blank('/v1/volume_metadata')
         req.method = 'POST'
         req.content_type = "application/json"
         body = {"metadata": {"key1": "value1",

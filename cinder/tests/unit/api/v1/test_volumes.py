@@ -29,7 +29,7 @@ from cinder import db
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v1 import stubs
 from cinder.tests.unit import fake_notifier
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
@@ -155,7 +155,7 @@ class VolumeApiTest(test.TestCase):
                "description": "Volume Test Desc",
                "availability_zone": "zonen:hostn"}
         body = {"volume": vol}
-        req = fakes.HTTPRequest.blank('/v2/volumes')
+        req = fakes.HTTPRequest.blank('/v1/volumes')
         self.assertRaises(exception.InvalidInput,
                           self.controller.create,
                           req, body)
@@ -1159,7 +1159,7 @@ class VolumesUnprocessableEntityTestCase(test.TestCase):
         self.controller = volumes.VolumeController(self.ext_mgr)
 
     def _unprocessable_volume_create(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req = fakes.HTTPRequest.blank('/v1/fake/volumes')
         req.method = 'POST'
 
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
