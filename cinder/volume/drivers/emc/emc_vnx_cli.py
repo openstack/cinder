@@ -2124,7 +2124,7 @@ class EMCVnxCliBase(object):
     tmp_smp_for_backup_prefix = 'tmp-smp-'
     snap_as_vol_prefix = 'snap-as-vol-'
 
-    def __init__(self, prtcl, configuration=None):
+    def __init__(self, prtcl, configuration=None, active_backend_id=None):
         self.protocol = prtcl
         self.configuration = configuration
         self.max_luns_per_sg = self.configuration.max_luns_per_storage_group
@@ -2151,7 +2151,8 @@ class EMCVnxCliBase(object):
                          "Initiator auto registration is not enabled. "
                          "Please register initiator manually."))
         self.hlu_set = set(range(1, self.max_luns_per_sg + 1))
-        self._client = CommandLineHelper(self.configuration)
+        self._client = self._build_client(active_backend_id)
+        self._active_backend_id = active_backend_id
         # Create connection to the secondary storage device
         self._mirror = self._build_mirror_view()
         self.update_enabler_in_volume_stats()
@@ -2817,12 +2818,16 @@ class EMCVnxCliBase(object):
         pool_stats['max_over_subscription_ratio'] = (
             self.max_over_subscription_ratio)
         # Add replication V2 support
+        targets = []
         if self._mirror:
             pool_stats['replication_enabled'] = True
             pool_stats['replication_count'] = 1
             pool_stats['replication_type'] = ['sync']
+            for device in self.configuration.replication_device:
+                targets.append(device['backend_id'])
         else:
             pool_stats['replication_enabled'] = False
+        pool_stats['replication_targets'] = targets
         return pool_stats
 
     def update_enabler_in_volume_stats(self):
@@ -3947,82 +3952,72 @@ class EMCVnxCliBase(object):
 
         return specs
 
-    def replication_enable(self, context, volume):
-        """Enables replication for the volume."""
-        mirror_name = self._construct_mirror_name(volume)
-        mirror_view = self._get_mirror_view(volume)
-        mirror_view.sync_image(mirror_name)
-
-    def replication_disable(self, context, volume):
-        """Disables replication for the volume."""
-        mirror_name = self._construct_mirror_name(volume)
-        mirror_view = self._get_mirror_view(volume)
-        mirror_view.fracture_image(mirror_name)
-
-    def replication_failover(self, context, volume, secondary):
+    def failover_host(self, context, volumes, secondary_backend_id):
         """Fails over the volume back and forth.
 
         Driver needs to update following info for this volume:
-        1. host: to point to the new host
         2. provider_location: update serial number and lun id
         """
-        rep_data = json.loads(volume['replication_driver_data'])
-        is_primary = rep_data['is_primary']
-        if is_primary:
-            remote_device_id = (
-                self.configuration.replication_device[0]['target_device_id'])
+        volume_update_list = []
+
+        if secondary_backend_id != 'default':
+            rep_status = 'failed-over'
+            backend_id = (
+                self.configuration.replication_device[0]['backend_id'])
+            if secondary_backend_id != backend_id:
+                msg = (_('Invalid secondary_backend_id specified. '
+                         'Valid backend id is %s.') % backend_id)
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
         else:
-            remote_device_id = self._get_volume_metadata(volume)['system']
-        if secondary != remote_device_id:
-            msg = (_('Invalid secondary specified, choose from %s.')
-                   % [remote_device_id])
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            rep_status = 'enabled'
 
-        mirror_name = self._construct_mirror_name(volume)
-        mirror_view = self._get_mirror_view(volume)
-        remote_client = mirror_view._secondary_client
-        if is_primary:
-            new_host = (
-                self.configuration.replication_device[0][
-                    'managed_backend_name'])
-        else:
-            new_host = self._get_volume_metadata(volume)['host']
+        def failover_one(volume, new_status):
+            rep_data = json.loads(volume['replication_driver_data'])
+            is_primary = rep_data['is_primary']
+            mirror_name = self._construct_mirror_name(volume)
+            mirror_view = self._get_mirror_view(volume)
+            remote_client = mirror_view._secondary_client
 
-        rep_data.update({'is_primary': not is_primary})
-        # Transfer ownership to secondary and
-        # update provider_location field
-        provider_location = volume['provider_location']
-        provider_location = self._update_provider_location(
-            provider_location,
-            'system', remote_client.get_array_serial()['array_serial'])
-        self.get_array_serial()
-        provider_location = self._update_provider_location(
-            provider_location,
-            'id',
-            six.text_type(remote_client.get_lun_by_name(volume.name)['lun_id'])
-        )
-
-        mirror_view.promote_image(mirror_name)
-        model_update = {'host': new_host,
-                        'replication_driver_data': json.dumps(rep_data),
-                        'provider_location': provider_location}
-        return model_update
-
-    def list_replication_targets(self, context, volume):
-        """Provides replication target(s) for a volume."""
-        targets = {'volume_id': volume.id, 'targets': []}
-        rep_data = json.loads(volume['replication_driver_data'])
-        is_primary = rep_data['is_primary']
-        if is_primary:
-            remote_device_id = (
-                self.configuration.replication_device[0]['target_device_id'])
-        else:
-            remote_device_id = self._get_volume_metadata(volume)['system']
-
-        targets['targets'] = [{'type': 'managed',
-                               'target_device_id': remote_device_id}]
-        return targets
+            provider_location = volume['provider_location']
+            try:
+                mirror_view.promote_image(mirror_name)
+            except exception.EMCVnxCLICmdError as ex:
+                msg = _LE(
+                    'Failed to failover volume %(volume_id)s '
+                    'to %(target)s: %(error)s.')
+                LOG.error(msg, {'volume_id': volume.id,
+                                'target': secondary_backend_id,
+                                'error': ex},)
+                new_status = 'error'
+            else:
+                rep_data.update({'is_primary': not is_primary})
+                # Transfer ownership to secondary_backend_id and
+                # update provider_location field
+                provider_location = self._update_provider_location(
+                    provider_location,
+                    'system', remote_client.get_array_serial()['array_serial'])
+                provider_location = self._update_provider_location(
+                    provider_location,
+                    'id',
+                    six.text_type(
+                        remote_client.get_lun_by_name(volume.name)['lun_id'])
+                )
+            model_update = {'volume_id': volume.id,
+                            'updates':
+                                {'replication_driver_data':
+                                    json.dumps(rep_data),
+                                 'replication_status': new_status,
+                                 'provider_location': provider_location}}
+            volume_update_list.append(model_update)
+        for volume in volumes:
+            if self._is_replication_enabled(volume):
+                failover_one(volume, rep_status)
+            else:
+                volume_update_list.append({
+                    'volume_id': volume.id,
+                    'updates': {'status': 'error'}})
+        return secondary_backend_id, volume_update_list
 
     def _is_replication_enabled(self, volume):
         """Return True if replication extra specs is specified.
@@ -4045,8 +4040,10 @@ class EMCVnxCliBase(object):
                       'for volume: %s.', volume.id)
             lun_size = volume['size']
             mirror_name = self._construct_mirror_name(volume)
+            pool_name = vol_utils.extract_host(volume.host, 'pool')
             self._mirror.create_mirror_workflow(
-                mirror_name, primary_lun_id, volume.name, lun_size,
+                mirror_name, primary_lun_id, pool_name,
+                volume.name, lun_size,
                 provisioning, tiering)
 
             LOG.info(_LI('Successfully setup replication for %s.'), volume.id)
@@ -4055,7 +4052,6 @@ class EMCVnxCliBase(object):
                                   self.configuration),
                                'replication_status': 'enabled'})
             metadata_update = {
-                'host': volume.host,
                 'system': self.get_array_serial()}
         return rep_update, metadata_update
 
@@ -4103,6 +4099,35 @@ class EMCVnxCliBase(object):
         driver_data['is_primary'] = True
         return json.dumps(driver_data)
 
+    def _build_client(self, active_backend_id=None):
+        """Builds a client pointing to the right VNX."""
+        if not active_backend_id:
+            return CommandLineHelper(self.configuration)
+        else:
+            configuration = self.configuration
+            if not configuration.replication_device:
+                err_msg = (
+                    _('replication_device should be configured '
+                      'on backend: %s.') % configuration.config_group)
+                LOG.error(err_msg)
+                raise exception.VolumeBackendAPIException(data=err_msg)
+            current_target = None
+            for target in configuration.replication_device:
+                if target['backend_id'] == active_backend_id:
+                    current_target = target
+                    break
+            if not current_target:
+                err_msg = (
+                    _('replication_device with backend_id [%s] is missing.')
+                    % active_backend_id)
+                LOG.error(err_msg)
+                raise exception.VolumeBackendAPIException(data=err_msg)
+            target_conf = copy.copy(configuration)
+            for key in self.REPLICATION_KEYS:
+                if key in current_target:
+                    setattr(target_conf, key, current_target[key])
+            return CommandLineHelper(target_conf)
+
     def _build_mirror_view(self, volume=None):
         """Builds a client for remote storage device.
 
@@ -4126,19 +4151,13 @@ class EMCVnxCliBase(object):
                          configuration.config_group)
                 return None
             remote_info = configuration.replication_device[0]
-
-        pool_name = None
-        managed_backend_name = remote_info.get('managed_backend_name')
-        if managed_backend_name:
-            pool_name = vol_utils.extract_host(managed_backend_name, 'pool')
         # Copy info to replica configuration for remote client
         replica_conf = copy.copy(configuration)
         for key in self.REPLICATION_KEYS:
             if key in remote_info:
-                config.Configuration.__setattr__(replica_conf,
-                                                 key, remote_info[key])
+                setattr(replica_conf, key, remote_info[key])
         _remote_client = CommandLineHelper(replica_conf)
-        _mirror = MirrorView(self._client, _remote_client, pool_name)
+        _mirror = MirrorView(self._client, _remote_client)
         return _mirror
 
     def get_pool(self, volume):
@@ -4359,9 +4378,10 @@ class EMCVnxCliBase(object):
         return self.stats
 
 
-def getEMCVnxCli(prtcl, configuration=None):
+def getEMCVnxCli(prtcl, configuration=None, active_backend_id=None):
     configuration.append_config_values(loc_opts)
-    return EMCVnxCliBase(prtcl, configuration=configuration)
+    return EMCVnxCliBase(prtcl, configuration=configuration,
+                         active_backend_id=active_backend_id)
 
 
 class CreateSMPTask(task.Task):
@@ -4598,7 +4618,7 @@ class MirrorView(object):
     SYNCHRONIZED_STATE = 'Synchronized'
     CONSISTENT_STATE = 'Consistent'
 
-    def __init__(self, client, secondary_client, pool_name, mode='sync'):
+    def __init__(self, client, secondary_client, mode='sync'):
         """Caller needs to initialize MirrorView via this method.
 
         :param client: client connecting to primary system
@@ -4607,7 +4627,6 @@ class MirrorView(object):
         """
         self._client = client
         self._secondary_client = secondary_client
-        self.pool_name = pool_name
         if mode not in self.SYNCHRONIZE_MODE:
             msg = _('Invalid synchronize mode specified, allowed '
                     'mode is %s.') % self.SYNCHRONIZE_MODE
@@ -4615,12 +4634,13 @@ class MirrorView(object):
                 data=msg)
         self.mode = '-sync'
 
-    def create_mirror_workflow(self, mirror_name, lun_id,
+    def create_mirror_workflow(self, mirror_name, lun_id, pool_name,
                                lun_name, lun_size, provisioning, tiering):
         """Creates mirror view for LUN."""
         store_spec = {'mirror': self}
         work_flow = self._get_create_mirror_flow(
-            mirror_name, lun_id, lun_name, lun_size, provisioning, tiering)
+            mirror_name, lun_id, pool_name,
+            lun_name, lun_size, provisioning, tiering)
         flow_engine = taskflow.engines.load(work_flow, store=store_spec)
         flow_engine.run()
 
@@ -4630,13 +4650,13 @@ class MirrorView(object):
         self.destroy_mirror(mirror_name)
         self.delete_secondary_lun(lun_name)
 
-    def _get_create_mirror_flow(self, mirror_name, lun_id,
+    def _get_create_mirror_flow(self, mirror_name, lun_id, pool_name,
                                 lun_name, lun_size, provisioning, tiering):
         """Gets mirror create flow."""
         flow_name = 'create_mirror_view'
         work_flow = linear_flow.Flow(flow_name)
         work_flow.add(MirrorCreateTask(mirror_name, lun_id),
-                      MirrorSecLunCreateTask(lun_name, lun_size,
+                      MirrorSecLunCreateTask(pool_name, lun_name, lun_size,
                                              provisioning, tiering),
                       MirrorAddImageTask(mirror_name))
         return work_flow
@@ -4657,11 +4677,12 @@ class MirrorView(object):
                                               out=out)
         return rc
 
-    def create_secondary_lun(self, lun_name, lun_size, provisioning,
+    def create_secondary_lun(self, pool_name, lun_name, lun_size,
+                             provisioning,
                              tiering, poll=False):
         """Creates secondary LUN in remote device."""
         data = self._secondary_client.create_lun_with_advance_feature(
-            pool=self.pool_name,
+            pool=pool_name,
             name=lun_name,
             size=lun_size,
             provisioning=provisioning,
@@ -4886,8 +4907,9 @@ class MirrorSecLunCreateTask(task.Task):
 
     Reversion strategy: Delete secondary LUN.
     """
-    def __init__(self, lun_name, lun_size, provisioning, tiering):
+    def __init__(self, pool_name, lun_name, lun_size, provisioning, tiering):
         super(MirrorSecLunCreateTask, self).__init__(provides='sec_lun_id')
+        self.pool_name = pool_name
         self.lun_name = lun_name
         self.lun_size = lun_size
         self.provisioning = provisioning
@@ -4896,7 +4918,8 @@ class MirrorSecLunCreateTask(task.Task):
     def execute(self, mirror, *args, **kwargs):
         LOG.debug('%s.execute', self.__class__.__name__)
         sec_lun_id = mirror.create_secondary_lun(
-            self.lun_name, self.lun_size, self.provisioning, self.tiering)
+            self.pool_name, self.lun_name, self.lun_size,
+            self.provisioning, self.tiering)
         return sec_lun_id
 
     def revert(self, result, mirror, *args, **kwargs):
