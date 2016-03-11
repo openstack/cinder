@@ -31,6 +31,7 @@ from cinder.api.v2 import limits
 from cinder.api.v2 import router
 from cinder.api import versions
 from cinder import context
+from cinder.tests.unit import fake_constants as fake
 
 
 FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'
@@ -113,14 +114,21 @@ class HTTPRequest(webob.Request):
                 kwargs['base_url'] = 'http://localhost/v2'
             if 'v3' in args[0]:
                 kwargs['base_url'] = 'http://localhost/v3'
-
         use_admin_context = kwargs.pop('use_admin_context', False)
         version = kwargs.pop('version', api_version._MIN_API_VERSION)
         out = os_wsgi.Request.blank(*args, **kwargs)
-        out.environ['cinder.context'] = FakeRequestContext(
-            'fake_user',
-            'fakeproject',
-            is_admin=use_admin_context)
+        # TODO(tbarron): move v2+ to use fake.user_id and fake.project_id
+        # instead of 'fake_user' and 'fake_project'.
+        if 'v1' in args[0]:
+            out.environ['cinder.context'] = FakeRequestContext(
+                fake.user_id,
+                fake.project_id,
+                is_admin=use_admin_context)
+        else:
+            out.environ['cinder.context'] = FakeRequestContext(
+                'fake_user',
+                'fakeproject',
+                is_admin=use_admin_context)
         out.api_version_request = api_version.APIVersionRequest(version)
         return out
 

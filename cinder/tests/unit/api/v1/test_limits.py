@@ -31,6 +31,7 @@ from cinder.api import views
 from cinder.api import xmlutil
 import cinder.context
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 
 
 TEST_LIMITS = [
@@ -82,7 +83,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
             "action": "index",
             "controller": "",
         })
-        context = cinder.context.RequestContext('testuser', 'testproject')
+        context = cinder.context.RequestContext(fake.user_id, fake.project_id)
         request.environ["cinder.context"] = context
         return request
 
