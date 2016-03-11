@@ -401,6 +401,13 @@ class SnapshotApiTest(test.TestCase):
                           self.controller.index,
                           req)
 
+        # Test that we get an exception HTTPBadRequest(400) with an offset
+        # greater than the maximum offset value.
+        url = '/v2/snapshots?limit=1&offset=323245324356534235'
+        req = fakes.HTTPRequest.blank(url)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index, req)
+
     def _assert_list_next(self, expected_query=None, project='fakeproject',
                           **kwargs):
         """Check a page of snapshots list."""

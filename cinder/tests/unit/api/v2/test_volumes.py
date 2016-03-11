@@ -914,6 +914,14 @@ class VolumeApiTest(test.TestCase):
                           self.controller.index,
                           req)
 
+        # Test that we get an exception HTTPBadRequest(400) with an offset
+        # greater than the maximum offset value.
+        url = '/v2/volumes?limit=2&offset=43543564546567575'
+        req = fakes.HTTPRequest.blank(url)
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.index,
+                          req)
+
     def test_volume_detail_with_marker(self):
         def stub_volume_get_all_by_project(context, project_id, marker, limit,
                                            sort_keys=None, sort_dirs=None,
@@ -1001,6 +1009,12 @@ class VolumeApiTest(test.TestCase):
                           req)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=a&offset=1')
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.detail,
+                          req)
+
+        url = '/v2/volumes/detail?limit=2&offset=4536546546546467'
+        req = fakes.HTTPRequest.blank(url)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.detail,
                           req)

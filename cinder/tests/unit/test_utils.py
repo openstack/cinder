@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 import six
 from six.moves import range
+import webob.exc
 
 import cinder
 from cinder import exception
@@ -1401,3 +1402,24 @@ class TestComparableMixin(test.TestCase):
     def test_compare(self):
         self.assertEqual(NotImplemented,
                          self.one._compare(1, self.one._cmpkey))
+
+
+class TestValidateInteger(test.TestCase):
+
+    def test_validate_integer_greater_than_max_int_limit(self):
+        value = (2 ** 31) + 1
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          utils.validate_integer,
+                          value, 'limit', min_value=-1, max_value=(2 ** 31))
+
+    def test_validate_integer_less_than_min_int_limit(self):
+        value = -12
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          utils.validate_integer,
+                          value, 'limit', min_value=-1, max_value=(2 ** 31))
+
+    def test_validate_integer_invalid_limit(self):
+        value = "should_be_int"
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          utils.validate_integer,
+                          value, 'limit', min_value=-1, max_value=(2 ** 31))

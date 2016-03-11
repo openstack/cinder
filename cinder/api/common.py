@@ -25,6 +25,7 @@ import webob
 
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
+import cinder.db
 from cinder import exception
 from cinder.i18n import _
 import cinder.policy
@@ -137,17 +138,8 @@ def _get_marker_param(params):
 
 def _get_offset_param(params):
     """Extract offset id from request's dictionary (defaults to 0) or fail."""
-    try:
-        offset = int(params.pop('offset', 0))
-    except ValueError:
-        msg = _('offset param must be an integer')
-        raise webob.exc.HTTPBadRequest(explanation=msg)
-
-    if offset < 0:
-        msg = _('offset param must be positive')
-        raise webob.exc.HTTPBadRequest(explanation=msg)
-
-    return offset
+    offset = params.pop('offset', 0)
+    return utils.validate_integer(offset, 'offset', 0, cinder.db.MAX_INT)
 
 
 def limited(items, request, max_limit=None):

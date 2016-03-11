@@ -1060,21 +1060,3 @@ class ValidBodyTest(test.TestCase):
         body = {'name': 'a' * 255 + "  "}
         self.controller.validate_name_and_description(body)
         self.assertEqual('a' * 255, body['name'])
-
-    def test_validate_integer_greater_than_max_int_limit(self):
-        value = (2 ** 31) + 1
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.validate_integer,
-                          value, 'limit', min_value=-1, max_value=(2 ** 31))
-
-    def test_validate_integer_less_than_min_int_limit(self):
-        value = -12
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.validate_integer,
-                          value, 'limit', min_value=-1, max_value=(2 ** 31))
-
-    def test_validate_integer_invalid_limit(self):
-        value = "should_be_int"
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.controller.validate_integer,
-                          value, 'limit', min_value=-1, max_value=(2 ** 31))

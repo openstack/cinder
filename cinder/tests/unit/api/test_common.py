@@ -80,6 +80,12 @@ class LimiterTest(test.TestCase):
         self.assertRaises(
             webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
 
+    def test_limiter_offset_out_of_range(self):
+        """Test offset key works with a offset out of range."""
+        req = webob.Request.blank('/?offset=123456789012346456')
+        self.assertRaises(
+            webob.exc.HTTPBadRequest, common.limited, self.tiny, req)
+
     def test_limiter_offset_bad(self):
         """Test offset key works with a BAD offset."""
         req = webob.Request.blank(u'/?offset=\u0020aa')
@@ -135,6 +141,9 @@ class LimiterTest(test.TestCase):
         self.assertEqual(items[3:1003], common.limited(items, req))
         req = webob.Request.blank('/?offset=3000&limit=10')
         self.assertEqual([], common.limited(items, req))
+        req = webob.Request.blank('/?offset=30034522235674530&limit=10')
+        self.assertRaises(
+            webob.exc.HTTPBadRequest, common.limited, items, req)
 
     def test_limiter_custom_max_limit(self):
         """Test a max_limit other than 1000."""

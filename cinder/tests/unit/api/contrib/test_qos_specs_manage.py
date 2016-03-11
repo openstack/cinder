@@ -227,6 +227,12 @@ class QoSSpecManageApiTest(test.TestCase):
 
         self.assertEqual(3, len(res['qos_specs']))
 
+    def test_index_with_offset_out_of_range(self):
+        url = '/v2/fake/qos-specs?offset=356576877698707'
+        req = fakes.HTTPRequest.blank(url, use_admin_context=True)
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.index,
+                          req)
+
     def test_index_with_limit_and_offset(self):
         url = '/v2/fake/qos-specs?limit=2&offset=1'
         req = fakes.HTTPRequest.blank(url, use_admin_context=True)
