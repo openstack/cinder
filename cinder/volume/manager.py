@@ -3297,11 +3297,18 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Failed to perform replication failover"))
             service.replication_status = (
                 fields.ReplicationStatus.FAILOVER_ERROR)
+            service.save()
             exception_encountered = True
         except exception.InvalidReplicationTarget:
             LOG.exception(_LE("Invalid replication target specified "
                               "for failover"))
-            service.replication_status = fields.ReplicationStatus.ENABLED
+            # Preserve the replication_status
+            if secondary_backend_id == "default":
+                service.replication_status = (
+                    fields.ReplicationStatus.FAILED_OVER)
+            else:
+                service.replication_status = fields.ReplicationStatus.ENABLED
+            service.save()
             exception_encountered = True
         except exception.VolumeDriverException:
             # NOTE(jdg): Drivers need to be aware if they fail during
