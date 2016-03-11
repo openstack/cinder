@@ -489,6 +489,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self.driver.set_throttle()
 
         # at this point the driver is considered initialized.
+        # NOTE(jdg): Careful though because that doesn't mean
+        # that an entry exists in the service table
         self.driver.set_initialized()
 
         for volume in volumes:
@@ -507,39 +509,38 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
+        LOG.info(_LI("Driver initialization completed successfully."),
+                 resource={'type': 'driver',
+                           'id': self.driver.__class__.__name__})
+
+    def init_host_with_rpc(self):
+        LOG.info(_LI("Initializing RPC dependent components of volume "
+                     "driver %(driver_name)s (%(version)s)"),
+                 {'driver_name': self.driver.__class__.__name__,
+                  'version': self.driver.get_version()})
 
         stats = self.driver.get_volume_stats(refresh=True)
-        if stats and stats.get('replication', False):
-
-            @periodic_task.periodic_task
-            def run_replication_task(self, ctxt):
-                self._update_replication_relationship_status(ctxt)
-
-            self.add_periodic_task(run_replication_task)
-
         svc_host = vol_utils.extract_host(self.host, 'backend')
         try:
-            # NOTE(jdg): may be some things to think about here in failover
-            # scenarios
-            service = objects.Service.get_by_args(
-                context.get_admin_context(),
-                svc_host,
-                'cinder-volume')
+            service = objects.Service.get_by_host_and_topic(
+                context.get_admin_context(), svc_host,
+                CONF.volume_topic)
         except exception.ServiceNotFound:
-            # FIXME(jdg): no idea what we'd do if we hit this case
-            LOG.info(_LI("Service not found for updating "
-                         "replication_status."))
-        else:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Service not found for updating "
+                              "replication_status."))
+
+        if stats and stats.get('replication', False):
             if service.replication_status == (
                     fields.ReplicationStatus.FAILED_OVER):
                 pass
             elif stats and stats.get('replication_enabled', False):
                 service.replication_status = fields.ReplicationStatus.ENABLED
-            else:
-                service.replication_status = fields.ReplicationStatus.DISABLED
-            service.save()
+        else:
+            service.replication_status = fields.ReplicationStatus.DISABLED
 
-        LOG.info(_LI("Driver initialization completed successfully."),
+        service.save()
+        LOG.info(_LI("Driver post RPC initialization completed successfully."),
                  resource={'type': 'driver',
                            'id': self.driver.__class__.__name__})
 
