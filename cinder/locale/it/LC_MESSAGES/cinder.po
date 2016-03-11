@@ -10,13 +10,13 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev120\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev154\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-10 00:04+0000\n"
+"POT-Creation-Date: 2016-03-11 05:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-09 09:55+0000\n"
+"PO-Revision-Date: 2016-03-10 09:44+0000\n"
 "Last-Translator: Alessandra <alessandra@translated.net>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -43,6 +43,17 @@ msgstr " ma la dimensione ora è %d"
 #, python-format
 msgid " but size is now %d."
 msgstr " ma la dimensione ora è %d."
+
+msgid " or "
+msgstr "oppure"
+
+#, python-format
+msgid " status must be %s and "
+msgstr " lo stato deve essere %s e "
+
+#, python-format
+msgid "%(attr)s is not set."
+msgstr "%(attr)s non è impostato."
 
 #, python-format
 msgid ""
@@ -167,6 +178,10 @@ msgid "%s"
 msgstr "%s"
 
 #, python-format
+msgid "%s \"data\" is not in result."
+msgstr "\"data\" %s  non presente nel risultato."
+
+#, python-format
 msgid ""
 "%s cannot be accessed. Verify that GPFS is active and file system is mounted."
 msgstr ""
@@ -192,6 +207,10 @@ msgid "%s configuration option is not set."
 msgstr "L'opzione di configurazione %s non è impostata. "
 
 #, python-format
+msgid "%s does not exist."
+msgstr "%s non esiste."
+
+#, python-format
 msgid "%s is not a directory."
 msgstr "%s non è una directory."
 
@@ -210,6 +229,12 @@ msgstr "%s non installato."
 #, python-format
 msgid "%s is not set"
 msgstr "%s non è impostato"
+
+#, python-format
+msgid "%s is not set and is required for the replication device to be valid."
+msgstr ""
+"%s non è impostato ed è richiesto affinché il dispositivo di replica sia "
+"valido."
 
 #, python-format
 msgid "%s is not set."
@@ -258,6 +283,9 @@ msgstr "È necessario specificare 'status'."
 msgid "'volume_id' must be specified"
 msgstr "È necessario specificare 'volume_id'"
 
+msgid "'{}' object has no attribute '{}'"
+msgstr "L'oggetto '{}'non ha l'attributo '{}'"
+
 #, python-format
 msgid ""
 "(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
@@ -269,6 +297,11 @@ msgstr ""
 #, python-format
 msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
 msgstr "Un LUN (HLUN) non è stato trovato. (LDEV: %(ldev)s)"
+
+msgid "A concurrent, possibly contradictory, request has been made."
+msgstr ""
+"È stata effettuata una richiesta contemporanea, probabilmente "
+"contraddittoria."
 
 #, python-format
 msgid ""
@@ -322,6 +355,11 @@ msgstr "Impossibile trovare un pool. (id pool: %(pool_id)s)"
 msgid "A snapshot status is invalid. (status: %(status)s)"
 msgstr "Lo stato dell'istantanea non è valido. (stato: %(status)s)"
 
+msgid "A valid secondary target MUST be specified in order to failover."
+msgstr ""
+"Una destinazione secondaria valida DEVE essere specificata per poter "
+"eseguire il failover."
+
 msgid "A volume ID or share was not specified."
 msgstr "ID volume o condivisione non specificati. "
 
@@ -343,6 +381,10 @@ msgstr ""
 
 msgid "API key is missing for CloudByte driver."
 msgstr "Chiave API mancante per il driver CloudByte."
+
+#, python-format
+msgid "API response: %(response)s"
+msgstr "Risposta dell'API: %(response)s"
 
 #, python-format
 msgid "API response: %s"
@@ -392,6 +434,9 @@ msgstr "Errore di aggiunta vista associazione. "
 msgid "Add new host error."
 msgstr "Errore di aggiunta nuovo host. "
 
+msgid "Add port to port group error."
+msgstr "Errore di aggiunta porta a gruppo di porte."
+
 #, python-format
 msgid ""
 "All the specified storage pools to be managed do not exist. Please check "
@@ -400,12 +445,23 @@ msgstr ""
 "Tutti i pool di memoria specificati per essere gestiti non esistono. "
 "Controllare la configurazione. Pool non esistenti: %s "
 
+msgid "An API version request must be compared to a VersionedMethod object."
+msgstr ""
+"La richiesta di una versione API deve essere confrontata a un oggetto  "
+"VersionedMethod."
+
 #, python-format
 msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "Si è verificato un errore in SheepdogDriver. (Motivo: %(reason)s) "
 
 msgid "An error has occurred during backup operation"
 msgstr "Si è verificato un errore durante l'operazione di backup"
+
+#, python-format
+msgid "An error occured while attempting to modifySnapshot '%s'."
+msgstr ""
+"Si è verificato un errore durante il tentativo di modificare l'istantanea "
+"\"%s\". "
 
 #, python-format
 msgid "An error occured while seeking for volume \"%s\"."
@@ -463,6 +519,17 @@ msgstr ""
 "A un utente con un token nell'ambito di un sottoprogetto non è consentito "
 "visualizzare la quota dei relativi parent."
 
+msgid "Append port group description error."
+msgstr "Errore di aggiunta descrizione gruppo di porte."
+
+#, python-format
+msgid ""
+"Applying the zones and cfgs to the switch failed (error code=%(err_code)s "
+"error msg=%(err_msg)s."
+msgstr ""
+"Applicazione di zone e cfgs allo switch non riuscita (codice di errore="
+"%(err_code)s messaggio di errore=%(err_msg)s."
+
 #, python-format
 msgid "Array does not exist or is offline. Current status of array is %s."
 msgstr "L'array non esiste o è offline. Lo stato corrente dell'array è %s. "
@@ -475,6 +542,9 @@ msgstr "Errore di associazione host alla vista  associazione."
 
 msgid "Associate initiator to host error."
 msgstr "Errore di associazione iniziatore all'host. "
+
+msgid "Associate lun to QoS error."
+msgstr "Errore di associazione lun a QoS. "
 
 msgid "Associate lun to lungroup error."
 msgstr "Errore di associazione lun al gruppo lun."
@@ -503,6 +573,12 @@ msgstr "Dettagli utente aut non trovati nella memoria CloudByte."
 msgid "Authentication error"
 msgstr "Errore di autenticazione"
 
+#, python-format
+msgid "Authentication failed, verify the switch credentials, error code %s."
+msgstr ""
+"Autenticazione non riuscita, verificare le credenziali dello switch, codice "
+"di errore %s."
+
 msgid "Authorization error"
 msgstr "Errore di autorizzazione"
 
@@ -523,6 +599,10 @@ msgstr ""
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "Il backend non esiste (%(backend)s)"
+
+msgid "Backend has already been failed over. Unable to fail back."
+msgstr ""
+"Failover del backend già eseguito. Impossibile eseguire di nuovo il failover."
 
 #, python-format
 msgid "Backend reports: %(message)s"
@@ -700,6 +780,14 @@ msgid "Blockbridge user not configured (required for auth scheme 'password')"
 msgstr ""
 "Utente Blockbridge non configurato (richiesto per lo schema aut 'password')"
 
+#, python-format
+msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
+msgstr "Errore CLI di divisione in zone di Brocade Fibre Channel: %(reason)s"
+
+#, python-format
+msgid "Brocade Fibre Channel Zoning HTTP error: %(reason)s"
+msgstr "Errore HTTP di divisione in zone di Brocade Fibre Channel: %(reason)s"
+
 msgid "CHAP secret should be 12-16 bytes."
 msgstr "Il segreto CHAP deve essere 12-16 byte. "
 
@@ -752,12 +840,26 @@ msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr "Volume cache %(cache_vol)s non ha istantanea %(cache_snap)s."
 
 #, python-format
+msgid "Cache volume %s does not have required properties"
+msgstr "Il volume della cache %s non presenta le proprietà richieste"
+
+msgid "Call returned a None object"
+msgstr "La chiamata ha restituito un oggetto None"
+
+msgid "Can not add FC port to host."
+msgstr "Impossibile aggiungere la porta FC all'host."
+
+#, python-format
 msgid "Can not find cache id by cache name %(name)s."
 msgstr "Impossibile trovare l'ID cache per nome cache %(name)s."
 
 #, python-format
 msgid "Can not find partition id by name %(name)s."
 msgstr "Impossibile trovare l'ID partizione per nome %(name)s."
+
+#, python-format
+msgid "Can not get pool info. pool: %s"
+msgstr "Impossibile ottenere le informazioni sul pool. pool: %s"
 
 #, python-format
 msgid "Can not translate %s to integer."
@@ -767,18 +869,129 @@ msgstr "Impossibile convertire %s in un numero intero."
 msgid "Can't access 'scality_sofs_config': %s"
 msgstr "Impossibile accedere a 'scality_sofs_config': %s"
 
+msgid "Can't attach snapshot."
+msgstr "Impossibile collegare l'istantanea."
+
 msgid "Can't decode backup record."
 msgstr "Impossibile decodificare il record di backup. "
+
+#, python-format
+msgid "Can't extend replication volume, volume: %(id)s"
+msgstr "Impossibile estendere il volume di replica, volume: %(id)s"
+
+msgid "Can't find LUN on the array, please check the source-name or source-id."
+msgstr ""
+"Impossibile trovare la LUN sull'array, controllare il nome origine o l'id "
+"origine."
 
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "Impossibile trovare il nome cache nell'array, nome cache: %(name)s."
 
 #, python-format
+msgid "Can't find lun id from db, volume: %(id)s"
+msgstr "Impossibile trovare l'id lun da db, volume: %(id)s"
+
+#, python-format
+msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
+msgstr ""
+"Impossibile trovare informazioni sulla lun nell'array. volume: %(id)s, nome "
+"lun: %(name)s."
+
+#, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
 msgstr ""
 "Impossibile trovare il nome partizione nell'array, il nome partizione è: "
 "%(name)s."
+
+#, python-format
+msgid "Can't find service: %s"
+msgstr "Impossibile trovare il servizio: %s"
+
+msgid ""
+"Can't find snapshot on array, please check the source-name or source-id."
+msgstr ""
+"Impossibile trovare l'istantanea sull'array, controllare il nome origine o "
+"l'id origine."
+
+msgid "Can't find the same host id from arrays."
+msgstr "Impossibile trovare lo stesso id host dagli array."
+
+#, python-format
+msgid "Can't get volume id from snapshot, snapshot: %(id)s"
+msgstr "Impossibile ottenere l'id volume dall'istantanea, istantanea: %(id)s"
+
+#, python-format
+msgid "Can't get volume id. Volume name: %s."
+msgstr "Impossibile ottenere l'id volume. Nome volume: %s"
+
+#, python-format
+msgid "Can't import LUN %(lun_id)s to Cinder. LUN type mismatched."
+msgstr ""
+"Impossibile importare la LUN %(lun_id)s in Cinder. Tipo di LUN non "
+"corrispondente."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a HyperMetroPair."
+msgstr ""
+"Impossibile importare LUN %s in Cinder. Esiste già in un HyperMetroPair."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a LUN copy task."
+msgstr ""
+"Impossibile importare la LUN %s in Cinder. Esiste già in un'attività di "
+"copia LUN."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a LUN group."
+msgstr "Impossibile importare LUN %s in Cinder. Esiste già in un gruppo LUN."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a LUN mirror."
+msgstr ""
+"Impossibile importare la LUN %s in Cinder. Esiste già in un mirror LUN."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a SplitMirror."
+msgstr ""
+"Impossibile importare la LUN %s in Cinder. Esiste già in uno SplitMirror."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a migration task."
+msgstr ""
+"Impossibile importare la LUN %s in Cinder. Esiste già in un'attività di "
+"migrazione."
+
+#, python-format
+msgid ""
+"Can't import LUN %s to Cinder. Already exists in a remote replication task."
+msgstr ""
+"Impossibile importare la LUN %s in Cinder. Esiste già in un'attività di "
+"replica remota."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. LUN status is not normal."
+msgstr "Impossibile importare LUN %s in Cinder. Lo stato LUN non è normal."
+
+#, python-format
+msgid "Can't import snapshot %s to Cinder. Snapshot doesn't belong to volume."
+msgstr ""
+"Impossibile importare l'istantanea %s in Cinder. L'istantanea non appartiene "
+"al volume."
+
+#, python-format
+msgid "Can't import snapshot %s to Cinder. Snapshot is exposed to initiator."
+msgstr ""
+"Impossibile importare l'istantanea %s in Cinder. L'istantanea è esposta "
+"all'iniziatore."
+
+#, python-format
+msgid ""
+"Can't import snapshot %s to Cinder. Snapshot status is not normal or running "
+"status is not online."
+msgstr ""
+"Impossibile importare l'istantanea %s in Cinder. Lo stato dell'istantanea "
+"non è normal o lo stato di esecuzione non è online."
 
 #, python-format
 msgid "Can't open config file: %s"
@@ -844,6 +1057,17 @@ msgid ""
 msgstr ""
 "Impossibile collegare il volume già collegato %s; multicollegamento "
 "disabilitato tramitel'opzione di configurazione 'netapp_enable_multiattach'. "
+
+msgid "Cannot change VF context in the session."
+msgstr "Impossibile modificare il contesto VF nella sessione."
+
+#, python-format
+msgid ""
+"Cannot change VF context, specified VF is not available in the manageable VF "
+"list %(vf_list)s."
+msgstr ""
+"Impossibile modificare il contesto VF, il contesto VF specificato non è "
+"disponibile nell'elenco di VF gestibili %(vf_list)s."
 
 msgid "Cannot connect to ECOM server."
 msgstr "Impossibile effettuare la connessione al server ECOM."
@@ -943,6 +1167,9 @@ msgstr ""
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr ""
 "Impossibile eliminare le specifiche di codifica. Tipo di volume in uso."
+
+msgid "Cannot determine storage pool settings."
+msgstr "Impossibile determinare le impostazioni del pool di archiviazione."
 
 msgid "Cannot execute /sbin/mount.sofs"
 msgstr "Impossibile eseguire /sbin/mount.sofs"
@@ -1048,6 +1275,9 @@ msgstr ""
 "Impossibile ottenere il gruppo di archiviazione predefinito per la politica "
 "FAST: %(fastPolicyName)s."
 
+msgid "Cannot get the portgroup from the masking view."
+msgstr "Impossibile ottenere il gruppo di porte dalla vista di mascheramento."
+
 msgid "Cannot mount Scality SOFS, check syslog for errors"
 msgstr "Impossibile montare Scality SOFS, controllare il syslog per gli errori"
 
@@ -1089,6 +1319,10 @@ msgstr ""
 "Impossibile rimuovere il volume %(volume_id)s dal gruppo di coerenza "
 "%(group_id)s perché il volume si trova in uno stato non valido: %(status)s. "
 "Gli stati validi sono: %(valid)s."
+
+#, python-format
+msgid "Cannot retype from HPE3PARDriver to %s."
+msgstr "Impossibile riscrivere da HPE3PARDriver a %s."
 
 msgid "Cannot retype from one 3PAR array to another."
 msgstr "Impossibile riscrivere da un array 3PAR ad un altro."
@@ -1140,6 +1374,9 @@ msgstr "Impossibile aggiornare volume_type %(id)s"
 msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr "Impossibile verificare l'esistenza dell'oggetto:%(instanceName)s."
 
+msgid "Cascade option is not supported."
+msgstr "L'opzione a catena non è supportata."
+
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "Impossibile trovare CgSnapshot %(cgsnapshot_id)s."
@@ -1149,6 +1386,9 @@ msgstr "Cgsnahost vuoto. Non verrà creato alcun gruppo di coerenza."
 
 msgid "Cgsnapshot status must be available or error"
 msgstr "Lo stato di Cgsnapshot deve essere available o error"
+
+msgid "Change hostlun id error."
+msgstr "Errore di modifica id hostlun."
 
 msgid "Change lun priority error."
 msgstr "Errore di modifica della priorità lun. "
@@ -1196,16 +1436,35 @@ msgstr ""
 "per la creazione dell'hash."
 
 #, python-format
+msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
+msgstr "Errore CLI di divisione in zone di Cisco Fibre Channel: %(reason)s"
+
+#, python-format
 msgid "Clone feature is not licensed on %(storageSystem)s."
 msgstr ""
 "La funzione di creazione del clone non dispone di licenza in "
 "%(storageSystem)s."
+
+#, python-format
+msgid ""
+"Clone type '%(clone_type)s' is invalid; valid values are: '%(full_clone)s' "
+"and '%(linked_clone)s'."
+msgstr ""
+"Il tipo di clone '%(clone_type)s' non è valido; i valori validi sono: "
+"'%(full_clone)s' e '%(linked_clone)s'."
 
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr ""
 "Il cluster non è formattato. È probabilmente necessario eseguire \"dog "
 "cluster format\"."
+
+#, python-format
+msgid "Coho Data Cinder driver failure: %(message)s"
+msgstr "Errore driver Coho Data Cinder: %(message)s"
+
+msgid "Coho rpc port is not configured"
+msgstr "La porta RPC Coho non è configurata"
 
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
@@ -1227,9 +1486,23 @@ msgstr ""
 msgid "Compute cluster: %(cluster)s not found."
 msgstr "Cluster di calcolo: %(cluster)s non trovato. "
 
+msgid "Condition has no field."
+msgstr "La condizione non ha campi."
+
+#, python-format
+msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
+msgstr ""
+"Configurazione 'max_over_subscription_ratio' non valida. Deve essere > 0: %s"
+
+msgid "Configuration error: dell_sc_ssn not set."
+msgstr "Errore di configurazione: dell_sc_ssn non impostato."
+
 #, python-format
 msgid "Configuration file %(configurationFile)s does not exist."
 msgstr "Il file di configurazione %(configurationFile)s non esiste."
+
+msgid "Configuration is not found."
+msgstr "Configurazione non trovata."
 
 #, python-format
 msgid "Configuration value %s is not set."
@@ -1354,6 +1627,26 @@ msgstr ""
 msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr "Copia dei metadati da %(src_type)s %(src_id)s a %(vol_id)s."
 
+msgid ""
+"Could not determine which Keystone endpoint to use. This can either be set "
+"in the service catalog or with the cinder.conf config option "
+"'backup_swift_auth_url'."
+msgstr ""
+"Impossibile determinare quale endpoint Keystone utilizzare. Può essere "
+"impostato sia nel catalogo del servizio che utilizzando l'opzione di "
+"configurazione cinder.conf 'backup_swift_auth_url'."
+
+msgid ""
+"Could not determine which Swift endpoint to use. This can either be set in "
+"the service catalog or with the cinder.conf config option 'backup_swift_url'."
+msgstr ""
+"Impossibile determinare quale endpoint Swift utilizzare. Può essere "
+"impostato sia nel catalogo del servizio che utilizzando l'opzione di "
+"configurazione cinder.conf 'backup_swift_url'."
+
+msgid "Could not find DISCO wsdl file."
+msgstr "Impossibile trovare il file wsdl DISCO"
+
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
 msgstr "Impossibile trovare l'id cluster GPFS: %s."
@@ -1397,6 +1690,14 @@ msgstr "Impossibile trovare il parametro %(param)s"
 msgid "Could not find target %s"
 msgstr "Impossibile trovare la destinazione %s"
 
+#, python-format
+msgid "Could not find the parent volume for Snapshot '%s' on array."
+msgstr "Impossibile trovare il volume parent per l'istantanea '%s' sull'array."
+
+#, python-format
+msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
+msgstr "Impossibile trovare l'istantanea univoca %(snap)s sul volume %(vol)s."
+
 msgid "Could not get system name."
 msgstr "Impossibile ottenere il nome sistema."
 
@@ -1409,9 +1710,31 @@ msgid "Could not read %s. Re-running with sudo"
 msgstr "Impossibile leggere %s. Eseguire di nuovo con sudo"
 
 #, python-format
+msgid ""
+"Could not read information for snapshot %(name)s. Code: %(code)s. Reason: "
+"%(reason)s"
+msgstr ""
+"Impossibile leggere le informazioni per l'istantanea %(name)s. Codice: "
+"%(code)s. Motivo: %(reason)s"
+
+#, python-format
+msgid "Could not restore configuration file %(file_path)s: %(exc)s"
+msgstr ""
+"Non è stato possibile ripristinare il file di configurazione file "
+"%(file_path)s:%(exc)s"
+
+#, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
 msgstr ""
 "Non è stato possibile salvare la configurazione in %(file_path)s:%(exc)s"
+
+#, python-format
+msgid "Could not start consistency group snapshot %s."
+msgstr "Impossibile avviare l'istantanea del gruppo di coerenza %s."
+
+#, python-format
+msgid "Counter %s not found"
+msgstr "Contatore %s non trovato"
 
 msgid "Create QoS policy error."
 msgstr "Errore di creazione della politica QoS."
@@ -1432,6 +1755,9 @@ msgstr ""
 "Creazione del backup interrotta, lo stato del volume previsto è "
 "%(expected_status)s ma è stato ricevuto %(actual_status)s."
 
+msgid "Create consistency group failed."
+msgstr "Creazione del gruppo di coerenza non riuscita."
+
 #, python-format
 msgid ""
 "Create encrypted volumes with type %(type)s from image %(image)s is not "
@@ -1446,6 +1772,13 @@ msgstr "Creazione esportazione per il volume non riuscita."
 msgid "Create hostgroup error."
 msgstr "Errore durante la creazione del gruppo host."
 
+#, python-format
+msgid "Create hypermetro error. %s."
+msgstr "Errore di creazione hypermetro. %s."
+
+msgid "Create lun error."
+msgstr "Errore di creazione lun. "
+
 msgid "Create lun migration error."
 msgstr "Errore di creazione migrazione lun. "
 
@@ -1458,6 +1791,16 @@ msgstr "Errore durante la creazione del gruppo lun."
 msgid "Create manager volume flow failed."
 msgstr "Creazione flusso del volume del gestore non riuscita. "
 
+msgid "Create port group error."
+msgstr "Errore di creazione gruppo di porte."
+
+msgid "Create replication error."
+msgstr "Errore di creazione replica."
+
+#, python-format
+msgid "Create replication pair failed. Error: %s."
+msgstr "Creazione coppia di replica non riuscita. Errore: %s."
+
 msgid "Create snapshot error."
 msgstr "Errore durante la creazione dell'istantanea."
 
@@ -1467,6 +1810,11 @@ msgstr "Errore di creazione del volume. Perché %s. "
 
 msgid "Create volume failed."
 msgstr "Creazione del volume non riuscita."
+
+msgid "Creating a consistency group from a source is not currently supported."
+msgstr ""
+"La creazione di un gruppo di coerenza da un'origine non è attualmente "
+"supportata."
 
 #, python-format
 msgid ""
@@ -1510,6 +1858,17 @@ msgstr ""
 msgid "DEPRECATED: Deploy v1 of the Cinder API."
 msgstr "OBSOLETO: distribuire v1 dell'API Cinder."
 
+msgid "DEPRECATED: Deploy v2 of the Cinder API."
+msgstr "OBSOLETO: distribuire v2 dell'API Cinder."
+
+#, python-format
+msgid ""
+"DRBDmanage driver error: expected key \"%s\" not in answer, wrong DRBDmanage "
+"version?"
+msgstr ""
+"Errore driver DRBDmanage: prevista chiave \"%s\" non presente nella "
+"risposta, versione DRBDmanage errata?"
+
 msgid ""
 "DRBDmanage driver setup error: some required libraries (dbus, drbdmanage.*) "
 "not found."
@@ -1521,6 +1880,38 @@ msgstr ""
 msgid "DRBDmanage expected one resource (\"%(res)s\"), got %(n)d"
 msgstr "DRBDmanage prevedeva una risorsa (\"%(res)s\"), ottenute %(n)d"
 
+#, python-format
+msgid ""
+"DRBDmanage timeout waiting for new volume after snapshot restore; resource "
+"\"%(res)s\", volume \"%(vol)s\""
+msgstr ""
+"Timeout DRBDmanage in attesa di un nuovo volume dopo il ripristino "
+"dell'istantanea; risorsa \"%(res)s\", volume \"%(vol)s\""
+
+#, python-format
+msgid ""
+"DRBDmanage timeout waiting for snapshot creation; resource \"%(res)s\", "
+"snapshot \"%(sn)s\""
+msgstr ""
+"Timeout DRBDmanage in attesa della creazione dell'istantanea; risorsa "
+"\"%(res)s\", istantanea \"%(sn)s\""
+
+#, python-format
+msgid ""
+"DRBDmanage timeout waiting for volume creation; resource \"%(res)s\", volume "
+"\"%(vol)s\""
+msgstr ""
+"Timeout DRBDmanage in attesa della creazione del volume; risorsa \"%(res)s"
+"\", volume \"%(vol)s\""
+
+#, python-format
+msgid ""
+"DRBDmanage timeout waiting for volume size; volume ID \"%(id)s\" (res "
+"\"%(res)s\", vnr %(vnr)d)"
+msgstr ""
+"Timeout DRBDmanage in attesa della dimensione del volume; ID volume \"%(id)s"
+"\" (res \"%(res)s\", vnr %(vnr)d)"
+
 msgid "Data ONTAP API version could not be determined."
 msgstr "Impossibile determinare la versione API di Data ONTAP."
 
@@ -1528,6 +1919,17 @@ msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
 msgstr ""
 "I dati ONTAP che operano in modalità 7 non supportano i gruppi di politiche "
 "QoS. "
+
+msgid "Database schema downgrade is not allowed."
+msgstr "La riduzione dello schema di database non è consentita."
+
+#, python-format
+msgid "Dataset %s is not shared in Nexenta Store appliance"
+msgstr "Il dataset %s non è condiviso nell'applicazione Nexenta Store"
+
+#, python-format
+msgid "Dataset group %s not found at Nexenta SA"
+msgstr "Gruppo di dataset %s non trovato su Nexenta SA"
 
 #, python-format
 msgid ""
@@ -1611,6 +2013,9 @@ msgstr "Errore di eliminazione gruppo lun dalla vista associazione."
 msgid "Delete mapping view error."
 msgstr "Errore di eliminazione vista associazione."
 
+msgid "Delete port group error."
+msgstr "Errore di eliminazione gruppo di porte."
+
 msgid "Delete portgroup from mapping view error."
 msgstr "Errore di eliminazione gruppo porte dalla vista associazione."
 
@@ -1640,6 +2045,22 @@ msgstr "Eliminazione zone non riuscita: (comando=%(cmd)s errore=%(err)s)."
 msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr ""
 "Dell API 2.1 o successiva richiesta per il supporto del gruppo di coerenza"
+
+msgid ""
+"Dell Cinder driver configuration error replication not supported with direct "
+"connect."
+msgstr ""
+"Replica dell'errore di configurazione del driver Dell Cinder non supportata "
+"con la connessione diretta."
+
+#, python-format
+msgid "Dell Cinder driver configuration error replication_device %s not found"
+msgstr ""
+"Dispositivo di replica dell'errore di configurazione del driver Dell Cinder "
+"%s non trovato"
+
+msgid "Deploy v3 of the Cinder API."
+msgstr "Distribuire v3 dell'API Cinder."
 
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource è una funzionalità solo di admin"
@@ -1696,6 +2117,13 @@ msgstr ""
 msgid "Driver initialize connection failed (error: %(err)s)."
 msgstr ""
 "Inizializzazione connessione del driver non riuscita (errore: %(err)s)."
+
+msgid ""
+"Driver is not able to do retype because the volume (LUN {}) has snapshot "
+"which is forbidden to migrate."
+msgstr ""
+"Il driver non è in grado di eseguire la riscrittura perché il volume (LUN "
+"{}) presenta un'istantanea per cui è proibita la migrazione."
 
 msgid "Driver must implement initialize_connection"
 msgstr "Il driver deve implementare initialize_connection"
@@ -1960,6 +2388,22 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu. Error: "
+"%(error)s"
+msgstr ""
+"Errore durante l'eliminazione del gruppo: %(storageGroupName)s. Codice di "
+"ritorno: %(rc)lu. Errore: %(error)s"
+
+#, python-format
+msgid ""
+"Error Deleting Initiator Group: %(initiatorGroupName)s. Return code: "
+"%(rc)lu. Error: %(error)s"
+msgstr ""
+"Errore durante l'eliminazione del gruppo di inizializzazione: "
+"%(initiatorGroupName)s. Codice di ritorno: %(rc)lu. Errore: %(error)s"
+
+#, python-format
+msgid ""
 "Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
 "Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
@@ -2003,11 +2447,26 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Error Extend Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
+msgstr ""
+"Errore estensione volume: %(volumeName)s.  Codice di ritorno: %(rc)lu. "
+"Errore: %(error)s."
+
+#, python-format
+msgid ""
 "Error Getting Initiators: InitiatorGroup: %(initiatorgroup)s Return code: "
 "%(ret.status)d Message: %(ret.data)s ."
 msgstr ""
 "Errore durante l'acquisizione degli iniziatori: InitiatorGroup:"
 "%(initiatorgroup)s Codice di ritorno: %(ret.status)d Messaggio: %(ret.data)s."
+
+#, python-format
+msgid ""
+"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
+"%(data)s."
+msgstr ""
+"Errore durante il richiamo delle statistiche del pool: Pool: %(pool)s Codice "
+"di ritorno: %(status)d Messaggio: %(data)s."
 
 #, python-format
 msgid ""
@@ -2068,6 +2527,12 @@ msgid ""
 msgstr ""
 "Errore durante la modifica della vista di mascheramento: %(groupName)s. "
 "Codice di ritorno: %(rc)lu.  Errore: %(error)s."
+
+#, python-format
+msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
+msgstr ""
+"Proprietà del pool degli errori: Il pool %(pool)s non è di proprietà di "
+"%(host)s."
 
 #, python-format
 msgid ""
@@ -2208,6 +2673,10 @@ msgid "Error deleting replay profile."
 msgstr "Errore durante l'eliminazione del profilo di risposta. "
 
 #, python-format
+msgid "Error deleting volume %(ssn)s: %(volume)s"
+msgstr "Errore durante l'eliminazione del volume %(ssn)s: %(volume)s"
+
+#, python-format
 msgid "Error deleting volume %(vol)s: %(err)s."
 msgstr "Errore durante l'eliminazione del volume %(vol)s: %(err)s."
 
@@ -2321,6 +2790,14 @@ msgstr ""
 "ritorno: %(ret.status)d Messaggio: %(ret.data)s."
 
 #, python-format
+msgid ""
+"Error in Operation [%(operation)s] for volume [%(cb_volume)s] in CloudByte "
+"storage: [%(cb_error)s], error code: [%(error_code)s]."
+msgstr ""
+"Errore nell'operazione [%(operation)s] per il volume [%(cb_volume)s] nella "
+"memoria CloudByte: [%(cb_error)s], codice di errore: [%(error_code)s]."
+
+#, python-format
 msgid "Error in SolidFire API response: data=%(data)s"
 msgstr "Errore nella risposta dell'API SolidFire: data=%(data)s"
 
@@ -2332,6 +2809,10 @@ msgstr "Errore in space-create per %(space)s di dimensione %(size)d GB"
 msgid "Error in space-extend for volume %(space)s with %(size)d additional GB"
 msgstr ""
 "Errore in space-extend per il volume %(space)s con %(size)d GB aggiuntivi"
+
+#, python-format
+msgid "Error managing volume: %s."
+msgstr "Errore durante la gestione del volume: %s. "
 
 #, python-format
 msgid "Error mapping volume %(vol)s. %(error)s."
@@ -2362,6 +2843,12 @@ msgstr ""
 "%(src)s al progetto di destinazione: %(tgt)s Codice di ritorno: "
 "%(ret.status)d Messaggio: %(ret.data)s ."
 
+msgid "Error not a KeyError."
+msgstr "L'errore non è un KeyError."
+
+msgid "Error not a TypeError."
+msgstr "L'errore non è un TypeError."
+
 #, python-format
 msgid "Error occurred when creating cgsnapshot %s."
 msgstr "Si è verificato un errore durante la creazione di cgsnapshot %s."
@@ -2385,6 +2872,14 @@ msgstr "Errore quando si promuove il volume secondario in primario"
 #, python-format
 msgid "Error removing volume %(vol)s. %(error)s."
 msgstr "Errore durante la rimozione del volume %(vol)s. %(error)s."
+
+#, python-format
+msgid "Error renaming volume %(vol)s: %(err)s."
+msgstr "Errore durante la ridenominazione del volume %(vol)s: %(err)s."
+
+#, python-format
+msgid "Error response: %s"
+msgstr "Risposta errore: %s"
 
 msgid "Error retrieving volume size"
 msgstr "Errore durante il richiamo della dimensione del volume "
@@ -2435,14 +2930,106 @@ msgstr ""
 "%(clone)s Dimensione: %(size)d sull'istantanea: %(snapshot)s"
 
 #, python-format
+msgid "Error while authenticating with switch: %s."
+msgstr "Errore durante l'autenticazione con lo switch: %s."
+
+#, python-format
+msgid "Error while changing VF context %s."
+msgstr "Errore durante la modifica del contesto VF %s."
+
+#, python-format
+msgid "Error while checking the firmware version %s."
+msgstr "Errore durante il controllo della versione firmware %s."
+
+#, python-format
 msgid "Error while checking transaction status: %s"
 msgstr "Errore durante il controllo dello stato della transazione: %s"
+
+#, python-format
+msgid "Error while checking whether VF is available for management %s."
+msgstr ""
+"Errore durante il controllo per verificare se VF è disponibile per la "
+"gestione di %s."
+
+#, python-format
+msgid ""
+"Error while connecting the switch %(switch_id)s with protocol %(protocol)s. "
+"Error: %(error)s."
+msgstr ""
+"Errore durante la connessione dello switch %(switch_id)s con protocollo "
+"%(protocol)s. Errore: %(error)s."
+
+#, python-format
+msgid "Error while creating authentication token: %s"
+msgstr "Errore durante la creazione del token di autenticazione: %s"
+
+#, python-format
+msgid "Error while creating snapshot [status] %(stat)s - [result] %(res)s."
+msgstr ""
+"Errore durante la creazione dell'istantanea [status] %(stat)s - [result] "
+"%(res)s."
+
+#, python-format
+msgid "Error while creating volume [status] %(stat)s - [result] %(res)s."
+msgstr ""
+"Errore durante la creazione del volume [status] %(stat)s - [result] %(res)s."
+
+#, python-format
+msgid "Error while deleting snapshot [status] %(stat)s - [result] %(res)s"
+msgstr ""
+"Errore durante l'eliminazione dell'istantanea [status] %(stat)s - [result] "
+"%(res)s"
+
+#, python-format
+msgid "Error while deleting volume [status] %(stat)s - [result] %(res)s."
+msgstr ""
+"Errore durante l'eliminazione del volume [status] %(stat)s - [result] "
+"%(res)s."
+
+#, python-format
+msgid "Error while extending volume [status] %(stat)s - [result] %(res)s."
+msgstr ""
+"Errore durante l'estensione del volume [status] %(stat)s - [result] %(res)s."
+
+#, python-format
+msgid "Error while getting %(op)s details, returned code: %(status)s."
+msgstr ""
+"Errore durante il richiamo dei dettagli %(op)s, codice restituito: "
+"%(status)s."
 
 #, python-format
 msgid "Error while getting data via ssh: (command=%(cmd)s error=%(err)s)."
 msgstr ""
 "Errore durante il ricevimento dei dati tramite ssh: (comando=%(cmd)s errore="
 "%(err)s)."
+
+#, python-format
+msgid "Error while getting disco information [%s]."
+msgstr "Errore durante il richiamo delle informazioni disco [%s]."
+
+#, python-format
+msgid "Error while getting nvp value: %s."
+msgstr "Errore durante il richiamo del valore nvp: %s."
+
+#, python-format
+msgid "Error while getting session information %s."
+msgstr "Errore durante il richiamo delle informazioni sulla sessione %s."
+
+#, python-format
+msgid "Error while parsing the data: %s."
+msgstr "Errore durante l'analisi dei dati: %s."
+
+#, python-format
+msgid "Error while querying page %(url)s on the switch, reason %(error)s."
+msgstr ""
+"Errore durante la query della pagina %(url)s sullo switch, motivo %(error)s."
+
+#, python-format
+msgid ""
+"Error while removing the zones and cfgs in the zone string: %(description)s."
+msgstr ""
+"Errore durante la rimozione di zone e cfgs nella stringa di zona. "
+"%(description)s."
 
 #, python-format
 msgid "Error while requesting %(service)s API."
@@ -2455,10 +3042,42 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Error while updating the new zones and cfgs in the zone string. Error "
+"%(description)s."
+msgstr ""
+"Errore durante l'aggiornamento di nuove zone e cfgs nella stringa di zona. "
+"Errore %(description)s."
+
+msgid "Error writing field to database"
+msgstr "Errore durante la scrittura del campo nel database"
+
+#, python-format
+msgid "Error[%(stat)s - %(res)s] while getting volume id."
+msgstr "Errore [%(stat)s - %(res)s] durante il richiamo dell'id volume."
+
+#, python-format
+msgid ""
+"Error[%(stat)s - %(res)s] while restoring snapshot [%(snap_id)s] into volume "
+"[%(vol)s]."
+msgstr ""
+"Errore [%(stat)s - %(res)s] durante il ripristino dell'istantanea "
+"[%(snap_id)s] nel volume [%(vol)s]."
+
+#, python-format
+msgid "Error[status] %(stat)s - [result] %(res)s] while getting volume id."
+msgstr ""
+"Errore [status] %(stat)s - [result] %(res)s] durante il richiamo dell'id "
+"volume."
+
+#, python-format
+msgid ""
 "Exceeded max scheduling attempts %(max_attempts)d for volume %(volume_id)s"
 msgstr ""
 "Superamento numero max tentativi di pianificazione %(max_attempts)d per il "
 "volume %(volume_id)s"
+
+msgid "Exceeded the limit of snapshots per volume"
+msgstr "Superato il limite di istantanee per volume"
 
 #, python-format
 msgid "Exception appending meta volume to target volume %(volumename)s."
@@ -2480,12 +3099,20 @@ msgid "Exception in _select_ds_for_volume: %s."
 msgstr "Eccezione in _select_ds_for_volume: %s."
 
 #, python-format
+msgid "Exception while forming the zone string: %s."
+msgstr "Eccezione durante la formazione della stringa di zona: %s."
+
+#, python-format
 msgid "Exception: %s"
 msgstr "Eccezione: %s"
 
 #, python-format
 msgid "Expected a uuid but received %(uuid)s."
 msgstr "Era previsto un uuid ma è stato ricevuto %(uuid)s."
+
+#, python-format
+msgid "Expected exactly one node called \"%s\""
+msgstr "Previsto esattamente un solo nodo chiamato \"%s\""
 
 #, python-format
 msgid "Expected integer for node_count, svcinfo lsiogrp returned: %(node)s."
@@ -2549,6 +3176,9 @@ msgstr ""
 msgid "FAST is not supported on this array."
 msgstr "FAST non supportato su questo array."
 
+msgid "FC is the protocol but wwpns are not supplied by OpenStack."
+msgstr "FC è il protocollo ma i wwpn non sono forniti da OpenStack."
+
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "Impossibile annullare l'assegnazione %(volume)s"
@@ -2566,9 +3196,17 @@ msgid "Failed cgsnapshot"
 msgstr "cgsnapshot non riuscito"
 
 #, python-format
+msgid "Failed creating snapshot for group: %(response)s."
+msgstr "Impossibile creare l'istantanea per il gruppo: %(response)s."
+
+#, python-format
 msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
 msgstr ""
 "Impossibile creare l'istantanea per il volume %(volname)s: %(response)s."
+
+#, python-format
+msgid "Failed getting active zone set from fabric %s."
+msgstr "Impossibile ottenere la zona attiva impostata da fabric %s."
 
 #, python-format
 msgid "Failed getting details for pool %s."
@@ -2655,6 +3293,9 @@ msgstr "Impossibile clonare il volume dall'istantanea %s."
 #, python-format
 msgid "Failed to connect to %(vendor_name)s Array %(host)s: %(err)s"
 msgstr "Impossibile connettersi a %(vendor_name)s Array %(host)s: %(err)s"
+
+msgid "Failed to connect to Dell REST API"
+msgstr "Impossibile collegarsi all'API Dell REST"
 
 msgid "Failed to connect to array"
 msgstr "Impossibile stabilire una connessione all'array"
@@ -2837,6 +3478,14 @@ msgstr ""
 "volume CloudByte per il volume OpenStack [%s]."
 
 #, python-format
+msgid "Failed to create south bound connector for %s."
+msgstr "Impossibile creare il connettore south bound per %s."
+
+#, python-format
+msgid "Failed to create storage group %(storageGroupName)s."
+msgstr "Impossibile creare il gruppo di archiviazione %(storageGroupName)s."
+
+#, python-format
 msgid "Failed to create thin pool, error message was: %s"
 msgstr "Creazione del thin pool non riuscita, messaggio di errore: %s"
 
@@ -2876,6 +3525,9 @@ msgid ""
 msgstr ""
 "Impossibile eliminare il gruppo di coerenza: %(consistencyGroupName)s Codice "
 "di ritorno: %(rc)lu. Errore: %(error)s."
+
+msgid "Failed to delete device."
+msgstr "Impossibile eliminare il dispositivo."
 
 #, python-format
 msgid ""
@@ -2949,6 +3601,9 @@ msgstr ""
 msgid "Failed to establish SSC connection."
 msgstr "Impossibile stabilire la connessione SSC. "
 
+msgid "Failed to establish connection with Coho cluster"
+msgstr "Impossibile stabilire la connessione con il cluster Coho"
+
 #, python-format
 msgid ""
 "Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
@@ -2963,6 +3618,14 @@ msgstr "Impossibile eseguire il comando comune. "
 #, python-format
 msgid "Failed to export for volume: %(reason)s"
 msgstr "Impossibile eseguire l'esportazione per il volume: %(reason)s"
+
+#, python-format
+msgid "Failed to extend volume %(name)s, Error msg: %(msg)s."
+msgstr ""
+"Impossibile estendere il volume %(name)s, Messaggio di errore: %(msg)s. "
+
+msgid "Failed to find QoSnode"
+msgstr "Impossibile trovare QoSnode"
 
 msgid "Failed to find Storage Center"
 msgstr "Storage Center non trovato"
@@ -2980,8 +3643,17 @@ msgstr ""
 "comando: %(cmdout)s."
 
 #, python-format
+msgid "Failed to find group snapshot named: %s"
+msgstr "Impossibile trovare l'istantanea del gruppo denominata: %s"
+
+#, python-format
 msgid "Failed to find host %s."
 msgstr "Impossibile trovare l'host %s."
+
+#, python-format
+msgid "Failed to find iSCSI initiator group containing %(initiator)s."
+msgstr ""
+"Impossibile trovare il gruppo di iniziatori iSCSI contenente %(initiator)s."
 
 #, python-format
 msgid "Failed to find storage pool for source volume %s."
@@ -3018,6 +3690,9 @@ msgid "Failed to get Raid Snapshot ID from snapshot: %(snapshot_id)s."
 msgstr ""
 "Impossibile ottenere l'ID istantanea raid dall'istantanea %(snapshot_id)s. "
 
+msgid "Failed to get SplitMirror."
+msgstr "Impossibile ottenere SplitMirror."
+
 #, python-format
 msgid ""
 "Failed to get a storage resource. The system will attempt to get the storage "
@@ -3045,6 +3720,9 @@ msgstr "Impossibile ottenere le informazioni dispositivo. "
 msgid "Failed to get domain because CPG (%s) doesn't exist on array."
 msgstr "Impossibile ottenere il dominio poiché CPG (%s) non esiste nell'array."
 
+msgid "Failed to get image snapshots."
+msgstr "Impossibile ottenere le istantanee dell'immagine."
+
 #, python-format
 msgid "Failed to get ip on Channel %(channel_id)s with volume: %(volume_id)s."
 msgstr ""
@@ -3062,6 +3740,9 @@ msgstr "Impossibile ottenere le informazioni lv. "
 
 msgid "Failed to get map info."
 msgstr "Impossibile ottenere le informazioni mappa. "
+
+msgid "Failed to get migration task."
+msgstr "Impossibile ottenere l'attività di migrazione."
 
 msgid "Failed to get model update from clone"
 msgstr "Impossibile ottenere l'aggiornamento del modello dal clone"
@@ -3083,11 +3764,29 @@ msgstr "Impossibile ottenere le informazioni partizione. "
 msgid "Failed to get pool id with volume %(volume_id)s."
 msgstr "Impossibile ottenere l'id pool con il volume %(volume_id)s."
 
+#, python-format
+msgid "Failed to get remote copy information for %(volume)s due to %(err)s."
+msgstr ""
+"Impossibile ottenere le informazioni di copia remota per %(volume)s a causa "
+"di %(err)s."
+
+#, python-format
+msgid ""
+"Failed to get remote copy information for %(volume)s. Exception: %(err)s."
+msgstr ""
+"Impossibile ottenere le informazioni di copia remota per %(volume)s. "
+"Eccezione: %(err)s."
+
 msgid "Failed to get replica info."
 msgstr "Impossibile ottenere le informazioni replica. "
 
 msgid "Failed to get show fcns database info."
 msgstr "Impossibile visualizzare le informazioni sul database fcns. "
+
+msgid "Failed to get size of existing volume: %(vol). Volume Manage failed."
+msgstr ""
+"Impossibile ottenere la dimensione del volume esistente: %(vol). Gestione "
+"volume non riuscita."
 
 #, python-format
 msgid "Failed to get size of volume %s"
@@ -3103,6 +3802,9 @@ msgstr "Impossibile ottenere le informazioni istantanea. "
 #, python-format
 msgid "Failed to get target IQN for the LUN %s"
 msgstr "Impossibile ottenere IQN di destinazione per LUN %s"
+
+msgid "Failed to get target LUN of SplitMirror."
+msgstr "Impossibile ottenere la LUN di destinazione di SplitMirror."
 
 #, python-format
 msgid "Failed to get target portal for the LUN %s"
@@ -3209,6 +3911,61 @@ msgstr ""
 "scelto non corrisponde al pool dell'host. "
 
 #, python-format
+msgid ""
+"Failed to manage existing volume due to I/O group mismatch. The I/O group of "
+"the volume to be managed is %(vdisk_iogrp)s. I/O groupof the chosen type is "
+"%(opt_iogrp)s."
+msgstr ""
+"Impossibile gestire il volume esistente a causa di una mancata "
+"corrispondenza del gruppo I/O. Il gruppo I/O del volume da gestire è "
+"%(vdisk_iogrp)s. Il gruppo I/O del tipo scelto è %(opt_iogrp)s."
+
+#, python-format
+msgid ""
+"Failed to manage existing volume due to the pool of the volume to be managed "
+"does not match the backend pool. Pool of the volume to be managed is "
+"%(vdisk_pool)s. Pool of the backend is %(backend_pool)s."
+msgstr ""
+"Impossibile gestire il volume esistente in quanto il pool del volume da "
+"gestire non corrisponde al pool del backend. Il pool del volume da gestire è "
+"%(vdisk_pool)s. Il pool del backend è %(backend_pool)s."
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is "
+"compress, but the volume type chosen is not compress."
+msgstr ""
+"Impossibile gestire il volume esistente in quanto il volume da gestire è "
+"compress, ma il tipo di volume scelto non è compress."
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is not "
+"compress, but the volume type chosen is compress."
+msgstr ""
+"Impossibile gestire il volume esistente in quanto il volume da gestire non è "
+"compress, ma il tipo di volume scelto è compress."
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is not in a "
+"valid I/O group."
+msgstr ""
+"Impossibile gestire il volume esistente in quanto il volume da gestire non "
+"si trova in un gruppo I/O valido."
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is thick, "
+"but the volume type chosen is thin."
+msgstr ""
+"Impossibile gestire il volume esistente in quanto il volume da gestire è "
+"thick ma il tipo di volume scelto è thin."
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is thin, "
+"but the volume type chosen is thick."
+msgstr ""
+"Impossibile gestire il volume esistente in quanto il volume da gestire è "
+"thin, ma il tipo di volume scelto è thick."
+
+#, python-format
 msgid "Failed to manage volume %s."
 msgstr "Impossibile gestire il volume %s."
 
@@ -3250,6 +4007,13 @@ msgstr ""
 " comando: %(cmd)s\n"
 " stdout: %(out)s\n"
 " stderr: %(err)s."
+
+msgid ""
+"Failed to parse the configuration option 'keystone_catalog_info', must be in "
+"the form <service_type>:<service_name>:<endpoint_type>"
+msgstr ""
+"Impossibile analizzare l'opzione di configurazione 'keystone_catalog_info', "
+"deve avere il formato <service_type>:<service_name>:<endpoint_type>"
 
 msgid ""
 "Failed to parse the configuration option 'swift_catalog_info', must be in "
@@ -3312,6 +4076,13 @@ msgstr ""
 #, python-format
 msgid "Failed to retrieve active zoning configuration %s"
 msgstr "Impossibile ripristinare la configurazione di zona attiva %s"
+
+#, python-format
+msgid ""
+"Failed to set CHAP authentication for target IQN %(iqn)s. Details: %(ex)s"
+msgstr ""
+"Impossibile impostare l'autenticazione CHAP per la destinazione IQN %(iqn)s. "
+"Dettagli: %(ex)s"
 
 #, python-format
 msgid "Failed to set QoS for existing volume %(name)s, Error msg: %(msg)s."
@@ -3382,11 +4153,22 @@ msgstr "Impossibile aggiornare i metadati per il volume: %(reason)s"
 msgid "Failed to update or delete zoning configuration"
 msgstr "Impossibile aggiornare o eliminare la configurazione di zona"
 
+msgid "Failed to update or delete zoning configuration."
+msgstr "Impossibile aggiornare o eliminare la configurazione di zona."
+
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
 msgstr ""
 "Impossibile aggiornare qos_specs: %(specs_id)s con le specifiche "
 "%(qos_specs)s."
+
+msgid "Failed to update quota usage while retyping volume."
+msgstr ""
+"Impossibile aggiornare l'utilizzo della quota durante la riscrittura del "
+"volume."
+
+msgid "Failed to update snapshot."
+msgstr "Impossibile aggiornare l'istantanea."
 
 #, python-format
 msgid "Failed updating model with driver provided model %(model)s"
@@ -3704,17 +4486,30 @@ msgstr ""
 "Il volume Flexvisor %(id)s non è riuscito ad unirsi al gruppo %(vgid)s."
 
 #, python-format
+msgid "Folder %s does not exist in Nexenta Store appliance"
+msgstr "La cartella %s non esiste nell'applicazione Nexenta Store"
+
+#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS non in esecuzione, stato: %s."
 
 msgid "Gateway VIP is not set"
 msgstr "VIP Gateway non impostato "
 
+msgid "Get FC ports by port group error."
+msgstr "Errore di richiamo porte FC per gruppo di porte."
+
 msgid "Get FC ports from array error."
 msgstr "Errore di richiamo porte FC dall'array. "
 
 msgid "Get FC target wwpn error."
 msgstr "Errore di richiamo wwpn di destinazione FC."
+
+msgid "Get HyperMetroPair error."
+msgstr "Errore di richiamo HyperMetroPair."
+
+msgid "Get LUN group by view error."
+msgstr "Errore di richiamo gruppo LUN per vista."
 
 msgid "Get LUNcopy information error."
 msgstr "Errore di richiamo delle informazioni LUNcopy. "
@@ -3728,11 +4523,20 @@ msgstr "Errore di richiamo delle informazioni QoS. "
 msgid "Get QoS policy error."
 msgstr "Errore di richiamo della politica QoS."
 
+msgid "Get SplitMirror error."
+msgstr "Errore di richiamo SplitMirror."
+
+msgid "Get array info error."
+msgstr "Errore di richiamo informazioni sull'array."
+
 msgid "Get cache by name error."
 msgstr "Errore di richiamo cache per nome. "
 
 msgid "Get connected free FC wwn error."
 msgstr "Errore di acquisizione wwn FC libero connesso. "
+
+msgid "Get engines error."
+msgstr "Errore di richiamo motori. "
 
 msgid "Get host initiators info failed."
 msgstr "Richiamo info iniziatori host non riuscito. "
@@ -3753,6 +4557,9 @@ msgstr "Errore di richiamo informazioni porta iscsi."
 msgid "Get iSCSI target port error."
 msgstr "Errore di richiamo porta di destinazione iscsi."
 
+msgid "Get lun id by name error."
+msgstr "Errore di richiamo dell'id lun per nome. "
+
 msgid "Get lun migration task error."
 msgstr "Errore di richiamo attività di migrazione lun. "
 
@@ -3762,20 +4569,53 @@ msgstr "Errore di richiamo id gruppo lun tramite id lun. "
 msgid "Get lungroup information error."
 msgstr "Errore di richiamo delle informazioni gruppo lun. "
 
+msgid "Get migration task error."
+msgstr "Errore di richiamo attività di migrazione. "
+
+msgid "Get pair failed."
+msgstr "Richiamo coppia non riuscito."
+
 msgid "Get partition by name error."
 msgstr "Errore di richiamo partizione per nome. "
 
 msgid "Get partition by partition id error."
 msgstr "Errore di richiamo partizione per id partizione. "
 
+msgid "Get port group by view error."
+msgstr "Errore di richiamo gruppo di porte per vista."
+
+msgid "Get port group error."
+msgstr "Errore di richiamo gruppo di porte."
+
+msgid "Get port groups by port error."
+msgstr "Errore di richiamo gruppi di porte per porta."
+
+msgid "Get ports by port group error."
+msgstr "Errore di richiamo porte per gruppo di porte."
+
+msgid "Get remote device info failed."
+msgstr "Richiamo informazioni sul dispositivo remoto non riuscito."
+
+msgid "Get remote devices error."
+msgstr "Errore di richiamo dispositivi remoti. "
+
 msgid "Get smartcache by cache id error."
 msgstr "Errore di richiamo smartcache per id cache. "
+
+msgid "Get snapshot error."
+msgstr "Errore di richiamo istantanea."
 
 msgid "Get snapshot id error."
 msgstr "Errore di richiamo id istantanea."
 
 msgid "Get target IP error."
 msgstr "Errore di richiamo IP di destinazione. "
+
+msgid "Get target LUN of SplitMirror error."
+msgstr "Errore di richiamo LUN di destinazione di SplitMirror."
+
+msgid "Get views by port group error."
+msgstr "Errore di richiamo viste per gruppo di porte."
 
 msgid "Get volume by name error."
 msgstr "Errore di richiamo volume per nome. "
@@ -3801,12 +4641,40 @@ msgid "Gluster config file at %(config)s doesn't exist"
 msgstr "Il file di configurazione Gluster in %(config)s non esiste"
 
 #, python-format
+msgid "Google Cloud Storage api failure: %(reason)s"
+msgstr "Errore api di Google Cloud Storage: %(reason)s"
+
+#, python-format
+msgid "Google Cloud Storage connection failure: %(reason)s"
+msgstr "Errore di connessione di Google Cloud Storage: %(reason)s"
+
+#, python-format
+msgid "Google Cloud Storage oauth2 failure: %(reason)s"
+msgstr "Errore oauth2 di Google Cloud Storage: %(reason)s"
+
+#, python-format
 msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr ""
 "Ricevute informazioni relative al percorso non corrette da DRBDmanage! (%s)"
 
 msgid "HBSD error occurs."
 msgstr "Si è verificato un errore HBSD."
+
+msgid "HNAS has disconnected SSC"
+msgstr "HNAS ha disconnesso SSC"
+
+msgid "HPELeftHand url not found"
+msgstr "URL HPELeftHand non trovato"
+
+#, python-format
+msgid ""
+"HTTPS certificate verification was requested but cannot be enabled with "
+"purestorage module version %(version)s. Upgrade to a newer version to enable "
+"this feature."
+msgstr ""
+"La verifica del certificato HTTPS è stata richiesta ma non può essere "
+"abilitata con la versione del modulo purestorage %(version)s. Eseguire "
+"l'aggiornamento a una versione più recente per abilitare questa funzione."
 
 #, python-format
 msgid ""
@@ -3860,6 +4728,12 @@ msgstr "Gruppo host con nome %s non trovato"
 msgid "Host group with ref %s not found"
 msgstr "Gruppo host con riferimento %s non trovato"
 
+msgid "Host is NOT Frozen."
+msgstr "L'host NON è bloccato."
+
+msgid "Host is already Frozen."
+msgstr "L'host è già bloccato."
+
 msgid "Host not found"
 msgstr "Host non trovato"
 
@@ -3868,12 +4742,21 @@ msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr "Host non trovato. Impossibile rimuovere %(service)s su %(host)s."
 
 #, python-format
+msgid "Host replication_status must be %s to failover."
+msgstr "L'host replication_status deve essere %s per eseguire il failover."
+
+#, python-format
 msgid "Host type %s not supported."
 msgstr "Tipo host %s non supportato."
 
 #, python-format
 msgid "Host with ports %(ports)s not found."
 msgstr "L'host con porte %(ports)s non trovato."
+
+msgid "Hypermetro and Replication can not be used in the same volume_type."
+msgstr ""
+"Hypermetro e Replica non possono essere utilizzati nello stesso tipo di "
+"volume."
 
 #, python-format
 msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s."
@@ -3893,6 +4776,10 @@ msgstr ""
 "Se la compressione è impostata su True, anche rsize deve essere impostato "
 "(non uguale a -1)."
 
+msgid "If nofmtdisk is set to True, rsize must also be set to -1."
+msgstr ""
+"Se nofmtdisk è impostato su True, anche rsize deve essere impostato su -1."
+
 #, python-format
 msgid ""
 "Illegal value '%(prot)s' specified for flashsystem_connection_protocol: "
@@ -3900,6 +4787,9 @@ msgid ""
 msgstr ""
 "Specificato valore non valido '%(prot)s' per "
 "flashsystem_connection_protocol: i valori validi sono %(enabled)s."
+
+msgid "Illegal value specified for IOTYPE: 0, 1, or 2."
+msgstr "Valore non consentito specificato per IOTYPE: 0, 1 o 2."
 
 msgid "Illegal value specified for smarttier: set to either 0, 1, 2, or 3."
 msgstr ""
@@ -3978,6 +4868,12 @@ msgstr ""
 "Eccezione CLI Infortrend: %(err)s Param: %(param)s (Codice di ritorno: "
 "%(rc)s) (Output: %(out)s)"
 
+msgid "Initial tier: {}, policy: {} is not valid."
+msgstr "Livello iniziale: {}, politica: {} non valido."
+
+msgid "Input type {} is not supported."
+msgstr "Tipo di input {} non supportato."
+
 msgid "Input volumes or snapshots are invalid."
 msgstr "Istantanee o volumi di input non validi."
 
@@ -3987,6 +4883,9 @@ msgstr "Volumi di input o di origine non validi."
 #, python-format
 msgid "Instance %(uuid)s could not be found."
 msgstr "Impossibile trovare l'istanza %(uuid)s."
+
+msgid "Insufficient free space available to extend volume."
+msgstr "Spazio libero disponibile insufficiente per estendere il volume."
 
 msgid "Insufficient privileges"
 msgstr "Privilegi insufficienti"
@@ -4020,6 +4919,13 @@ msgstr "CgSnapshot non valido: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "ConsistencyGroup non valido: %(reason)s"
 
+msgid ""
+"Invalid ConsistencyGroup: Consistency group status must be available or "
+"error, but current status is: in-use"
+msgstr ""
+"ConsistencyGroup non valido: Lo stato del gruppo di coerenza deve essere "
+"available o error ma lo stato corrente è: in-use"
+
 #, python-format
 msgid ""
 "Invalid ConsistencyGroup: Consistency group status must be available, but "
@@ -4034,6 +4940,15 @@ msgstr ""
 "coerenza"
 
 #, python-format
+msgid ""
+"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
+"greater required for manage/unmanage support."
+msgstr ""
+"Trovata versione API HPEeftHand non valida: %(found)s. È richiesta la "
+"versione %(minimum)s o superiore per gestire/annullare la gestione del "
+"supporto."
+
+#, python-format
 msgid "Invalid IP address format: '%s'"
 msgstr "Formato indirizzo IP non valido: '%s'"
 
@@ -4043,6 +4958,10 @@ msgid ""
 msgstr ""
 "Specifica QoS non valida rilevata durante il richiamo della politica QoS per "
 "il volume %s "
+
+#, python-format
+msgid "Invalid Replication Target: %(reason)s"
+msgstr "Destinazione di replica non valida: %(reason)s"
 
 #, python-format
 msgid "Invalid VNX authentication type: %s"
@@ -4061,6 +4980,11 @@ msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr ""
 "Versione XtremIO non valida %(cur)s, è richiesta la versione %(min)s o "
 "successiva"
+
+#, python-format
+msgid "Invalid allocated quotas defined for the following project quotas: %s"
+msgstr ""
+"Quote allocate non valide definite per le seguenti quote del progetto: %s"
 
 msgid "Invalid argument"
 msgstr "Argomento non valido"
@@ -4088,6 +5012,14 @@ msgstr "Chiave di autenticazione non valida: %(reason)s"
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "Backup non valido: %(reason)s"
+
+#, python-format
+msgid ""
+"Invalid barbican api url: version is required, e.g. 'http[s]://<ipaddr>|"
+"<fqdn>[:port]/<version>' url specified is: %s"
+msgstr ""
+"URL API Barbican non valido: è richiesta la versione, ad esempio 'http[s]://"
+"<ipaddr>|<fqdn>[:port]/<version>', l'url specificato è: %s"
 
 msgid "Invalid cgsnapshot"
 msgstr "cgsnapshot  non valido"
@@ -4139,6 +5071,26 @@ msgid "Invalid host: %(reason)s"
 msgstr "Host non valido: %(reason)s"
 
 #, python-format
+msgid ""
+"Invalid hpe3parclient version found (%(found)s). Version %(minimum)s or "
+"greater required. Run \"pip install --upgrade python-3parclient\" to upgrade "
+"the hpe3parclient."
+msgstr ""
+"Trovata versione di hpe3parclient non valida (%(found)s). È richiesta la "
+"versione  %(minimum)s o versioni successive. Eseguire \"pip install --"
+"upgrade python-3parclient\" per aggiornare hpe3parclient."
+
+#, python-format
+msgid ""
+"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
+"greater required. Run 'pip install --upgrade python-lefthandclient' to "
+"upgrade the hpelefthandclient."
+msgstr ""
+"Trovata versione di hpelefthandclient non valida (%(found)s). È richiesta la "
+"versione  %(minimum)s o versioni successive. Eseguire \"pip install --"
+"upgrade python-lefthandclient\" per aggiornare hpelefthandclient."
+
+#, python-format
 msgid "Invalid image href %(image_href)s."
 msgstr "href immagine %(image_href)s non valido."
 
@@ -4149,6 +5101,9 @@ msgstr ""
 
 msgid "Invalid imageRef provided."
 msgstr "imageRef specificato non è valido."
+
+msgid "Invalid initiator value received"
+msgstr "Ricevuto valore di inizializzazione non valido"
 
 msgid "Invalid input"
 msgstr "Input non valido"
@@ -4164,6 +5119,10 @@ msgstr "Valore di input \"%s\" non valido."
 #, python-format
 msgid "Invalid is_public filter [%s]"
 msgstr "Filtro is_public non valido [%s]"
+
+#, python-format
+msgid "Invalid lun type %s is configured."
+msgstr "Configurato tipo di lun non valido %s."
 
 #, python-format
 msgid "Invalid metadata size: %(reason)s"
@@ -4186,6 +5145,17 @@ msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
 msgstr "Nuovo nome snapCPG non valido per la riscrittura  new_snap_cpg='%s'."
 
 #, python-format
+msgid "Invalid port number %(config)s for Coho rpc port"
+msgstr "Numero di porta non valido %(config)s per la porta RPC Coho"
+
+#, python-format
+msgid ""
+"Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
+msgstr ""
+"Configurato tipo di prefetch non valido '%s'. PrefetchType deve essere "
+"0,1,2,3."
+
+#, python-format
 msgid "Invalid qos specs: %(reason)s"
 msgstr "Specifiche qos non valide: %(reason)s"
 
@@ -4203,6 +5173,13 @@ msgstr ""
 #, python-format
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "Scadenza prenotazione non valida %(expire)s."
+
+msgid "Invalid response header from RPC server"
+msgstr "Intestazione di risposta non valida dal server RPC"
+
+#, python-format
+msgid "Invalid secondary specified, choose from %s."
+msgstr "Specificato valore secondario non valido, scegliere da %s."
 
 msgid "Invalid service catalog json."
 msgstr "json del catalogo del servizio non è valido."
@@ -4227,9 +5204,29 @@ msgstr ""
 msgid "Invalid storage pool %s specificed."
 msgstr "Specificato un pool dell'archivio %s non valido."
 
+msgid "Invalid storage pool is configured."
+msgstr "Configurato pool di archiviazione non valido."
+
+#, python-format
+msgid "Invalid synchronize mode specified, allowed mode is %s."
+msgstr ""
+"Specificata modalità di sincronizzazione non valida, la modalità consentita "
+"è %s."
+
+msgid "Invalid transport type."
+msgstr "Tipo di trasporto non valido."
+
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "Impostazione di aggiornamento non valida: '%s'"
+
+#, python-format
+msgid ""
+"Invalid url: must be in the form 'http[s]://<ipaddr>|<fqdn>[:port]/"
+"<version>', url specified is: %s"
+msgstr ""
+"URL non valido: deve essere nel formato 'http[s]://<ipaddr>|<fqdn>[:port]/"
+"<version>', l'url specificato è: %s"
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -4273,6 +5270,10 @@ msgstr ""
 #, python-format
 msgid "Invalid value for age, %(age)s"
 msgstr "Valore non valido per l'età, %(age)s"
+
+#, python-format
+msgid "Invalid value: \"%s\""
+msgstr "Valore non valido: \"%s\""
 
 #, python-format
 msgid ""
@@ -4359,11 +5360,20 @@ msgstr ""
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "Formato wwpn non valido %(wwpns)s"
 
+msgid "Invoking web service failed."
+msgstr "Richiamo del servizio Web non riuscito."
+
 msgid "Issue encountered waiting for job."
 msgstr "Si è verificato un problema in attesa del job."
 
 msgid "Issue encountered waiting for synchronization."
 msgstr "Si è verificato un problema in attesa della sincronizzazione."
+
+msgid ""
+"Issuing a fail-over failed because replication is not properly configured."
+msgstr ""
+"Esecuzione del failover non riuscita perché la replica non è configurata "
+"correttamente."
 
 msgid "Item not found"
 msgstr "Elemento non trovato"
@@ -4390,8 +5400,20 @@ msgstr ""
 msgid "KeyError: %s"
 msgstr "KeyError: %s"
 
+msgid "Keystone version 3 or greater must be used to get nested quota support."
+msgstr ""
+"Keystone versione 3 o successiva deve essere utilizzato per ottenere il "
+"supporto delle quote nidificate."
+
+#, python-format
+msgid "LU does not exist for volume: %s"
+msgstr "LU non esiste per il volume: %s"
+
 msgid "LUN export failed!"
 msgstr "Esportazione LUN non riuscita. "
+
+msgid "LUN id({}) is not valid."
+msgstr "ID LUN ({}) non valido."
 
 msgid "LUN map overflow on every channel."
 msgstr "Eccedenza mappa LUN su ogni canale. "
@@ -4399,6 +5421,9 @@ msgstr "Eccedenza mappa LUN su ogni canale. "
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "LUN non trovata con il riferimento fornito %s."
+
+msgid "LUN number ({}) is not an integer."
+msgstr "Il numero LUN ({}) non è un numero intero."
 
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
@@ -4419,6 +5444,9 @@ msgstr "Ultime %s voci del syslog cinder:-"
 msgid "LeftHand cluster not found"
 msgstr "Cluster LeftHand non trovato"
 
+msgid "License is unavailable."
+msgstr "La licenza non è disponibile."
+
 #, python-format
 msgid "Line %(dis)d : %(line)s"
 msgstr "Riga %(dis)d : %(line)s"
@@ -4430,6 +5458,12 @@ msgstr "Il percorso di collegamento già esiste e non è un symlink"
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "Clone collegato del volume di origine non supportato nello stato: %s."
 
+msgid "Lock acquisition failed."
+msgstr "Acquisizione blocco non riuscita."
+
+msgid "Logout session error."
+msgstr "Errore della sessione di logout."
+
 msgid ""
 "Lookup service not configured. Config option for fc_san_lookup_service needs "
 "to specify a concrete implementation of the lookup service."
@@ -4440,6 +5474,26 @@ msgstr ""
 
 msgid "Lun migration error."
 msgstr "Errore di migrazione Lun."
+
+#, python-format
+msgid ""
+"MD5 of object: %(object_name)s before: %(md5)s and after: %(etag)s is not "
+"same."
+msgstr ""
+"MD5 dell'oggetto: %(object_name)s prima: %(md5)s e dopo: %(etag)s non è lo "
+"stesso."
+
+#, python-format
+msgid "MSG_DENIED: %r"
+msgstr "MSG_DENIED: %r"
+
+#, python-format
+msgid "MSG_DENIED: AUTH_ERROR: %r"
+msgstr "MSG_DENIED: AUTH_ERROR: %r"
+
+#, python-format
+msgid "MSG_DENIED: RPC_MISMATCH: %r"
+msgstr "MSG_DENIED: RPC_MISMATCH: %r"
 
 #, python-format
 msgid "Malformed fcns output string: %s"
@@ -4520,6 +5574,10 @@ msgid ""
 msgstr ""
 "Gestione del volume non supportata se è abilitato FAST. Politica FAST: "
 "%(fastPolicyName)s."
+
+msgid "Managing of snapshots to failed-over volumes is not allowed."
+msgstr ""
+"La gestione di istantanee su volumi sottoposti a failover non è consentita."
 
 #, python-format
 msgid ""
@@ -4610,6 +5668,9 @@ msgstr ""
 msgid "Migration of LUN %s has been stopped or faulted."
 msgstr "La migrazione di LUN %s è stata arrestata o è in errore."
 
+msgid "MirrorView/S enabler is not installed."
+msgstr "L'abilitatore MirrorView/S non è installato."
+
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
 "available."
@@ -4690,6 +5751,13 @@ msgstr "È necessario implementare schedule_get_pools"
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "È necessario passare wwpn o host a lsfabric."
 
+msgid ""
+"Must run this command as cloud admin using a Keystone policy.json which "
+"allows cloud admin to list and get any project."
+msgstr ""
+"Eseguire questo comando come admin cloud utilizzando un Keystone policy.json "
+"che consenta all'admin cloud di visualizzare e ottenere qualsiasi progetto."
+
 msgid "Must specify 'connector'"
 msgstr "È necessario  specificare 'connector'"
 
@@ -4748,8 +5816,18 @@ msgstr ""
 msgid "Must specify readonly in request."
 msgstr "È necessario specificare readonly nella richiesta."
 
+msgid "Must specify snapshot source-name or source-id."
+msgstr "È necessario specificare nome origine o id origine dell'istantanea."
+
+msgid "Must specify source-name or source-id."
+msgstr "È necessario specificare source-name or source-id."
+
 msgid "Must specify storage pool name or id."
 msgstr "È necessario specificare il nome o l'ID del pool di memoria. "
+
+msgid "Must specify storage pools. Option: sio_storage_pools."
+msgstr ""
+"È necessario specificare i pool di archiviazione. Opzione: sio_storage_pools."
 
 msgid "Must supply a positive value for age"
 msgstr "È necessario fornire un valore positivo per l'età"
@@ -4775,6 +5853,9 @@ msgstr "File NFS %s non rilevato."
 msgid "NFS file could not be discovered."
 msgstr "Impossibile rilevare il file NFS."
 
+msgid "NaElement name cannot be null."
+msgstr "Il nome NaElement non può essere null."
+
 msgid "Name"
 msgstr "Nome"
 
@@ -4788,6 +5869,10 @@ msgstr ""
 msgid "Need non-zero volume size"
 msgstr "Necessaria dimensione volume diversa da zero"
 
+#, python-format
+msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
+msgstr "Né MSG_DENIED né MSG_ACCEPTED: %r"
+
 msgid "NetApp Cinder Driver exception."
 msgstr "Eccezione del driver Cinder di NetApp."
 
@@ -4798,6 +5883,15 @@ msgid ""
 msgstr ""
 "La nuova dimensione per l'estensione deve essere superiore alla dimensione "
 "corrente. (corrente: %(size)s, esteso: %(new_size)s)."
+
+#, python-format
+msgid ""
+"New size should be bigger than the real size from backend storage. realsize: "
+"%(oldsize)s, newsize: %(newsize)s."
+msgstr ""
+"La nuova dimensione deve essere maggiore della dimensione reale "
+"dell'archiviazione di backend. dimensione reale: %(oldsize)s, nuova "
+"dimensione: %(newsize)s."
 
 msgid "New volume size must be specified as an integer."
 msgstr ""
@@ -4816,8 +5910,21 @@ msgstr "Nuovo volume_type uguale all'originale: %s."
 msgid "Nimble Cinder Driver exception"
 msgstr "Eccezione driver Nimble Cinder"
 
+msgid "No FC initiator can be added to host."
+msgstr "Nessun iniziatore FC può essere aggiunto all'host."
+
+msgid "No FC port connected to fabric."
+msgstr "Nessuna porta FC collegata a fabric."
+
 msgid "No FCP targets found"
 msgstr "Nessuna destinazione FCP trovata"
+
+msgid "No Port Group elements found in config file."
+msgstr ""
+"Nessun elemento del gruppo di porte trovato nel file di configurazione."
+
+msgid "No VF ID is defined in the configuration file."
+msgstr "Nessun ID VF definito nel file di configurazione."
 
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "Nessun portale iSCSI attivo con gli IP iSCSI forniti "
@@ -4854,6 +5961,10 @@ msgstr "Nessun nodo config trovato. "
 msgid "No consistency group with id %s"
 msgstr "Nessun gruppo di coerenza con id %s"
 
+#, python-format
+msgid "No element by given name %s."
+msgstr "Nessun elemento dal nome specificato %s."
+
 msgid "No errors in logfiles!"
 msgstr "Nessun errore nei file di log!"
 
@@ -4889,6 +6000,9 @@ msgstr "Nessuna porta abilitata a iSCSI nell'array di destinazione."
 
 msgid "No image_name was specified in request."
 msgstr "Nessun image_name specificato nella richiesta."
+
+msgid "No initiator connected to fabric."
+msgstr "Nessun iniziatore collegato a fabric."
 
 #, python-format
 msgid "No initiator group found for initiator %s"
@@ -4942,6 +6056,9 @@ msgstr "Non è stata trovata nessuna condivisione montata"
 msgid "No node found in I/O group %(gid)s for volume %(vol)s."
 msgstr "Nessun nodo trovato nel gruppo I/O %(gid)s per il volume %(vol)s."
 
+msgid "No pair id in volume replication_driver_data."
+msgstr "Nessun id coppia nel volume replication_driver_data."
+
 msgid ""
 "No pools are available for provisioning volumes. Ensure that the "
 "configuration option netapp_pool_name_search_pattern is set correctly."
@@ -4949,6 +6066,9 @@ msgstr ""
 "Nessun pool disponibile per i volumi di provisioning. Assicurarsi "
 "chel'opzione di configurazione netapp_pool_name_search_pattern sia impostata "
 "correttamente. "
+
+msgid "No remote LUN id in volume replication_driver_data."
+msgstr "Nessun id LUN remota nel volume replication_driver_data."
 
 msgid ""
 "No response was received from CloudByte storage list iSCSI auth user API "
@@ -4967,6 +6087,9 @@ msgstr ""
 "Nessuna risposta ricevuta dalla chiamata API del file system dell'elenco "
 "CloudByte."
 
+msgid "No service VIP configured and no nexenta_client_address"
+msgstr "Nessun VIP di servizio configurato e nessun nexenta_client_address"
+
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "Nessuna istantanea (snap) trovata con %s come file di backup."
@@ -4974,6 +6097,10 @@ msgstr "Nessuna istantanea (snap) trovata con %s come file di backup."
 #, python-format
 msgid "No snapshot image found in snapshot group %s."
 msgstr "Nessuna immagine istantanea trovata nel gruppo di istantanee %s."
+
+#, python-format
+msgid "No snapshots could be found on volume %s."
+msgstr "Nessuna istantanea trovata sul volume %s."
 
 #, python-format
 msgid "No source snapshots provided to create consistency group %s."
@@ -5017,6 +6144,14 @@ msgid "No valid hosts for volume %(id)s with type %(type)s"
 msgstr "Nessun host valido per il volume %(id)s con tipo %(type)s"
 
 #, python-format
+msgid "No vdisk with the UID specified by ref %s."
+msgstr "Nessun vdisk con l'UID specificato da ref %s."
+
+#, python-format
+msgid "No views found for LUN: %s"
+msgstr "Nessuna vista trovata per LUN: %s"
+
+#, python-format
 msgid ""
 "No volume on cluster with vserver %(vserver)s and junction path %(junction)s "
 msgstr ""
@@ -5043,6 +6178,9 @@ msgstr "Nessun host pesato disponibile "
 #, python-format
 msgid "Not a valid string: %s"
 msgstr "Stringa non valida: %s"
+
+msgid "Not a valid value for NaElement."
+msgstr "Non un valore valido per NaElement."
 
 #, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
@@ -5115,6 +6253,9 @@ msgstr "Numero di tentativi se la connessione al cluster ceph non riesce. "
 msgid "Object Count"
 msgstr "Numero oggetti"
 
+msgid "Object Version"
+msgstr "Versione oggetto"
+
 msgid "Object is not a NetApp LUN."
 msgstr "L'oggetto non è un NetApp LUN."
 
@@ -5125,6 +6266,17 @@ msgid ""
 msgstr ""
 "In un'operazione di estensione si è verificato un errore durante l'aggiunta "
 "di un volume al volume composito. %(volumename)s."
+
+msgid ""
+"One of cinder-volume services is too old to accept such request. Are you "
+"running mixed Liberty-Mitaka cinder-volumes?"
+msgstr ""
+"Uno dei servizi cinder-volume è troppo vecchio per accettare queste "
+"richieste. Sono in esecuzione cinder-volume Liberty-Mitaka misti?"
+
+msgid "One of the required inputs from host, port or scheme was not found."
+msgstr ""
+"Uno degli input richiesti dall'host, porta o schema non è stato trovato."
 
 #, python-format
 msgid ""
@@ -5144,6 +6296,10 @@ msgstr ""
 "Solo agli utenti con token nell'ambito dei parent immediati o progetti root "
 "è consentito visualizzare le quote child."
 
+msgid "Only volumes managed by OpenStack can be unmanaged."
+msgstr ""
+"È possibile annullare la gestione solo dei volumi gestiti da OpenStack."
+
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
 msgstr "Operazione non riuscita con status=%(status)s. Dump completo: %(data)s"
@@ -5161,12 +6317,19 @@ msgstr "L'opzione gpfs_images_share_mode non è impostata correttamente."
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "L'opzione gpfs_mount_point_base non è impostata correttamente."
 
+msgid "Option map (cls._map) is not defined."
+msgstr "Mappa delle opzioni (cls._map) non definita."
+
 #, python-format
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
 msgstr "%(res)s %(prop)s di origine deve essere uno dei valori '%(vals)s'"
 
 msgid "Override HTTPS port to connect to Blockbridge API server."
 msgstr "Sovrascrivere porta HTTPS per connettersi al server API Blockbridge. "
+
+#, python-format
+msgid "Pair does not exist on array. Pair id: %s."
+msgstr "La coppia non esiste sull'array. Id coppia: %s."
 
 #, python-format
 msgid "ParseException: %s"
@@ -5208,6 +6371,10 @@ msgstr "La politica non consente di eseguire l'azione %(action)s."
 #, python-format
 msgid "Pool %(poolNameInStr)s is not found."
 msgstr "Il pool %(poolNameInStr)s non è stato trovato."
+
+#, python-format
+msgid "Pool %s does not exist in Nexenta Store appliance"
+msgstr "Il pool %s non esiste nell'applicazione Nexenta Store"
 
 #, python-format
 msgid "Pool from volume['host'] %(host)s not found."
@@ -5259,6 +6426,15 @@ msgid "Project ID"
 msgstr "Identificativo del Progetto"
 
 #, python-format
+msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
+msgstr ""
+"Le quote del progetto non sono configurate correttamente per le quote "
+"nidificate: %(reason)s."
+
+msgid "Protection Group not ready."
+msgstr "Gruppo di protezione non pronto."
+
+#, python-format
 msgid ""
 "Protocol %(storage_protocol)s is not supported for storage family "
 "%(storage_family)s."
@@ -5278,6 +6454,14 @@ msgstr ""
 "un'istantanea con lo stato %(current)s."
 
 #, python-format
+msgid ""
+"Provider information w.r.t CloudByte storage was not found for OpenStack "
+"volume [%s]."
+msgstr ""
+"Informazioni del provider sulla memoria CloudByte non trovate per il volume "
+"OpenStack [%s]."
+
+#, python-format
 msgid "Pure Storage Cinder driver failure: %(reason)s"
 msgstr "Errore driver Pure Storage Cinder: %(reason)s"
 
@@ -5288,6 +6472,10 @@ msgstr "Le specifiche QoS %(specs_id)s esistono già."
 #, python-format
 msgid "QoS Specs %(specs_id)s is still associated with entities."
 msgstr "Le specifiche QoS %(specs_id)s sono ancora associate alle entità."
+
+#, python-format
+msgid "QoS config is wrong. %s must > 0."
+msgstr "La configurazione QoS è errata. %s deve essere > 0."
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -5338,6 +6526,14 @@ msgid "Quota for project %(project_id)s could not be found."
 msgstr "Impossibile trovare la quota per il progetto %(project_id)s."
 
 #, python-format
+msgid ""
+"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
+"%(limit)d is less than in-use value of %(used)d"
+msgstr ""
+"Limite della quota non valido per il progetto '%(proj)s' per la risorsa "
+"'%(res)s': il limite di %(limit)d è inferiore al valore in uso di %(used)d"
+
+#, python-format
 msgid "Quota reservation %(uuid)s could not be found."
 msgstr "Impossibile trovare la prenotazione della quota %(uuid)s."
 
@@ -5350,6 +6546,10 @@ msgstr ""
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "Operazione diff RBD non riuscita - (ret=%(ret)s stderr=%(stderr)s)"
 
+#, python-format
+msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
+msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
+
 msgid "REST server IP must by specified."
 msgstr "È necessario specificare l'IP del server REST. "
 
@@ -5358,6 +6558,12 @@ msgstr "È necessario specificare la password del server REST. "
 
 msgid "REST server username must by specified."
 msgstr "È necessario specificare il nome utente del server REST. "
+
+msgid "RPC Version"
+msgstr "Versione RPC"
+
+msgid "RPC server response is incomplete"
+msgstr "La risposta del server RPC è incompleta"
 
 msgid "Raid did not have MCS Channel."
 msgstr "Il Raid non ha il canale MCS. "
@@ -5375,8 +6581,14 @@ msgstr ""
 msgid "Received error string: %s"
 msgstr "Ricevuta stringa di errore: %s"
 
+msgid "Reference must be for an unmanaged snapshot."
+msgstr "Il riferimento deve essere per un'istantanea non gestita."
+
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "Il riferimento deve essere per un volume virtuale non gestito."
+
+msgid "Reference must be the name of an unmanaged snapshot."
+msgstr "Il riferimento deve essere il nome di un'istantanea non gestita."
 
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr ""
@@ -5388,11 +6600,17 @@ msgstr "Il riferimento deve contenere l'elemento source-id o source-name."
 msgid "Reference must contain either source-name or source-id element."
 msgstr "Il riferimento deve contenere l'elemento source-name o source-id."
 
+msgid "Reference must contain source-id or source-name element."
+msgstr "Il riferimento deve contenere l'elemento source-id o source-name."
+
 msgid "Reference must contain source-id or source-name key."
 msgstr "Il riferimento deve contenere la chiave source-id o source-name."
 
 msgid "Reference must contain source-id or source-name."
 msgstr "Il riferimento deve contenere source-id o source-name."
+
+msgid "Reference must contain source-id."
+msgstr "Il riferimento deve contenere l'id dell'origine."
 
 msgid "Reference must contain source-name element."
 msgstr "Il riferimento deve contenere l'elemento source-name."
@@ -5403,6 +6621,13 @@ msgstr "Il riferimento deve contenere il nome e l'id dell'origine."
 msgid "Reference must contain source-name."
 msgstr "Il riferimento deve contenere source-name."
 
+msgid "Reference to volume to be managed must contain source-name."
+msgstr "Il riferimento al volume da gestire deve contenere source-name."
+
+#, python-format
+msgid "Reference to volume: %s to be managed must contain source-name."
+msgstr "Il riferimento al volume: %s da gestire deve contenere source-name."
+
 #, python-format
 msgid ""
 "Refusing to migrate volume ID: %(id)s. Please check your configuration "
@@ -5410,6 +6635,9 @@ msgid ""
 msgstr ""
 "Migrazione del volume con ID: %(id)s rifiutata. Verificare la configurazione "
 "perché il Gruppo di volumi è sia l'origine che la destinazione: %(name)s."
+
+msgid "Remote pool cannot be found."
+msgstr "Impossibile trovare il pool remoto."
 
 msgid "Remove CHAP error."
 msgstr "Errore di rimozione CHAP."
@@ -5426,17 +6654,30 @@ msgstr "Errore di rimozione host dal gruppo host. "
 msgid "Remove iscsi from host error."
 msgstr "Errore di rimozione iscsi dall'host. "
 
+msgid "Remove lun from QoS error."
+msgstr "Errore di rimozione lun da QoS. "
+
 msgid "Remove lun from cache error."
 msgstr "Errore di rimozione lun da cache."
 
 msgid "Remove lun from partition error."
 msgstr "Errore di rimozione lun dalla partizione. "
 
+msgid "Remove port from port group error."
+msgstr "Errore di rimozione porta da gruppo di porte."
+
 msgid "Remove volume export failed."
 msgstr "Rimozione esportazione volume non riuscita. "
 
 msgid "Rename lun on array error."
 msgstr "Errore di ridenominazione lun sull'array. "
+
+msgid "Rename snapshot on array error."
+msgstr "Errore di ridenominazione istantanea sull'array. "
+
+#, python-format
+msgid "Replication %(name)s to %(ssn)s failed."
+msgstr "Replica %(name)s su %(ssn)s non riuscita."
 
 #, python-format
 msgid "Replication Service Capability not found on %(storageSystemName)s."
@@ -5451,6 +6692,9 @@ msgstr "La replica non è abilitata"
 
 msgid "Replication is not enabled for volume"
 msgstr "La replica non è abilitata per il volume"
+
+msgid "Replication not allowed yet."
+msgstr "Replica non ancora consentita."
 
 #, python-format
 msgid ""
@@ -5519,6 +6763,9 @@ msgstr "Configurazione richiesta non trovata"
 msgid "Required flag %s is not set"
 msgstr "L'indicatore richiesto %s non è impostato"
 
+msgid "Requires an NaServer instance."
+msgstr "Richiede un'istanza NaServer."
+
 #, python-format
 msgid ""
 "Reset backup status aborted, the backup service currently configured "
@@ -5546,9 +6793,15 @@ msgstr "Risorsa non pronta."
 msgid "Response error - %s."
 msgstr "Errore di risposta - %s."
 
+msgid "Response error - The storage-system is offline."
+msgstr "Errore di risposta - Il sistema di archiviazione è offline."
+
 #, python-format
 msgid "Response error code - %s."
 msgstr "Codice di errore risposta - %s."
+
+msgid "RestURL is not configured."
+msgstr "RestURL non coinfigurato."
 
 #, python-format
 msgid ""
@@ -5575,6 +6828,22 @@ msgid ""
 msgstr ""
 "Ripristino del backup interrotto: lo stato del backup previsto è "
 "%(expected_status)s ma è stato ricevuto %(actual_status)s."
+
+#, python-format
+msgid ""
+"Retrieved a different amount of SolidFire volumes for the provided Cinder "
+"snapshots. Retrieved: %(ret)s Desired: %(des)s"
+msgstr ""
+"Richiamata una quantità diversa di volumi SolidFire per le istantanee Cinder "
+"fornite. Richiamati: %(ret)s Desiderati: %(des)s"
+
+#, python-format
+msgid ""
+"Retrieved a different amount of SolidFire volumes for the provided Cinder "
+"volumes. Retrieved: %(ret)s Desired: %(des)s"
+msgstr ""
+"Richiamata una quantità diversa di volumi SolidFire per i volumi Cinder "
+"forniti. Richiamati: %(ret)s Desiderati: %(des)s"
 
 #, python-format
 msgid "Retry count exceeded for command: %s"
@@ -5612,6 +6881,19 @@ msgstr ""
 #, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "Esecuzione roll back %(volumeName)s mediante eliminazione."
+
+#, python-format
+msgid ""
+"Running Cinder with a VMware vCenter version less than %s is not allowed."
+msgstr ""
+"L'esecuzione di Cinder con una versione di VMware vCenter inferiore a %s non "
+"è consentita."
+
+msgid "SAN product is not configured."
+msgstr "Prodotto SAN non configurato."
+
+msgid "SAN protocol is not configured."
+msgstr "Protocollo SAN non configurato."
 
 #, python-format
 msgid "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: %s"
@@ -5674,12 +6956,24 @@ msgstr ""
 "avanzamento sync è: %(progress)s%%."
 
 #, python-format
+msgid ""
+"Secondary id can not be the same as primary array, backend_id = "
+"%(secondary)s."
+msgstr ""
+"L'id secondario non può essere uguale all'array primario, backend_id = "
+"%(secondary)s."
+
+#, python-format
 msgid "SerialNumber must be in the file %(fileName)s."
 msgstr "SerialNumber deve essere nel file %(fileName)s."
 
 #, python-format
 msgid "Service %(service)s on host %(host)s removed."
 msgstr "Servizio %(service)s su host %(host)s rimosso."
+
+#, python-format
+msgid "Service %(service_id)s could not be found on host %(host)s."
+msgstr "Impossibile trovare il servizio %(service_id)s sull'host %(host)s."
 
 #, python-format
 msgid "Service %(service_id)s could not be found."
@@ -5689,11 +6983,17 @@ msgstr "Impossibile trovare il servizio %(service_id)s."
 msgid "Service %s not found."
 msgstr "Il servizio %s non è stato trovato."
 
+msgid "Service is too old to fulfil this request."
+msgstr "Il servizio è troppo vecchio per soddisfare la richiesta."
+
 msgid "Service is unavailable at this time."
 msgstr "Il servizio non è disponibile in questo momento."
 
 msgid "Service not found."
 msgstr "Servizio non trovato."
+
+msgid "Set pair secondary access error."
+msgstr "Errore di impostazione dell'accesso secondario alla coppia. "
 
 msgid "Sets thin provisioning."
 msgstr "Imposta il thin provisioning."
@@ -5765,6 +7065,23 @@ msgstr ""
 "dimensione del volume %(volume_size)sGB."
 
 #, python-format
+msgid ""
+"Snapshot %(id)s has been asked to be deleted while waiting for it to become "
+"available. Perhaps a concurrent request was made."
+msgstr ""
+"È stato richiesto di eliminare l'istantanea %(id)s nell'attesa che "
+"diventasse disponibile. È possibile che sia stata eseguita una richiesta "
+"contemporanea."
+
+#, python-format
+msgid ""
+"Snapshot %(id)s was found in state %(state)s rather than 'deleting' during "
+"cascade delete."
+msgstr ""
+"Istantanea %(id)s trovata nello stato %(state)s anziché nello stato "
+"'deleting' durante l'eliminazione a catena."
+
+#, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
 msgstr "Impossibile trovare l'istantanea %(snapshot_id)s."
 
@@ -5773,6 +7090,10 @@ msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "L'istantanea %(snapshot_id)s non contiene metadati con la chiave "
 "%(metadata_key)s."
+
+#, python-format
+msgid "Snapshot '%s' doesn't exist on array."
+msgstr "L'istantanea '%s' non esiste sull'array."
 
 #, python-format
 msgid ""
@@ -5799,6 +7120,9 @@ msgstr "Istantanea del volume non supportata nello stato: %s."
 msgid "Snapshot res \"%s\" that is not deployed anywhere?"
 msgstr "Risorsa dell'istantanea \"%s\" non distribuita?"
 
+msgid "Snapshot size must be multiple of 1 GB."
+msgstr "La dimensione dell'istantanea deve essere un multiplo di 1 GB. "
+
 #, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr ""
@@ -5806,6 +7130,21 @@ msgstr ""
 
 msgid "Snapshot status must be \"available\" to clone."
 msgstr "Lo stato dell'istantanea deve essere \"available\" per la clonazione."
+
+#, python-format
+msgid ""
+"Snapshot to be backed up must be available, but the current status is \"%s\"."
+msgstr ""
+"L'istantanea di cui deve essere eseguito il backup deve essere disponibile, "
+"ma lo stato corrente è  \"%s\"."
+
+#, python-format
+msgid "Snapshot with id of %s could not be found."
+msgstr "Impossibile trovare l'istantanea con id %s."
+
+#, python-format
+msgid "Snapshot%s must not be part of a consistency group."
+msgstr "L'istantanea %s non deve far parte di un gruppo di coerenza."
 
 #, python-format
 msgid ""
@@ -5866,11 +7205,27 @@ msgstr ""
 msgid "Specified logical volume does not exist."
 msgstr "Il volume logico specificato non esiste."
 
+#, python-format
+msgid "Specified snapshot group with id %s could not be found."
+msgstr "Impossibile trovare il gruppo di istantanee specificato con id %s. "
+
 msgid "Specify a password or private_key"
 msgstr "Specificare una password o private_key"
 
 msgid "Specify san_password or san_private_key"
 msgstr "Specifica san_password o san_private_key"
+
+msgid ""
+"Specify volume type name, description, is_public or a combination thereof."
+msgstr ""
+"Specificare il nome, la descrizione, is_public o una combinazione dei "
+"precedenti del tipo di volume."
+
+msgid "Split pair error."
+msgstr "Errore di divisione della coppia."
+
+msgid "Split replication failed."
+msgstr "Replica divisione non riuscita."
 
 msgid "Start LUNcopy error."
 msgstr "Errore di avvio LUNcopy."
@@ -5918,6 +7273,9 @@ msgstr ""
 msgid "Storage host %(svr)s not detected, verify name"
 msgstr "Host di memoria %(svr)s non rilevato, verificare il nome "
 
+msgid "Storage pool is not configured."
+msgstr "Pool di archiviazione non configurato."
+
 #, python-format
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "Profilo di archiviazione: %(storage_profile)s non trovato."
@@ -5934,6 +7292,11 @@ msgstr ""
 "Impossibile trovare il sistema di archiviazione per il pool "
 "%(poolNameInStr)s."
 
+msgid "Storage-assisted migration failed during manage volume."
+msgstr ""
+"La migrazione assistita dall'archiviazione non è riuscita durante la "
+"gestione del volume."
+
 #, python-format
 msgid "StorageSystem %(array)s is not found."
 msgstr "StorageSystem %(array)s non è stato trovato"
@@ -5942,8 +7305,28 @@ msgstr "StorageSystem %(array)s non è stato trovato"
 msgid "String with params: %s"
 msgstr "Stringa con parametri: %s"
 
+#, python-format
+msgid ""
+"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
+"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
+"for one or more of the following projects: '%(child_ids)s'"
+msgstr ""
+"La somma dell'utilizzo child '%(sum)s' è maggiore della quota disponibile di "
+"'%(free)s' per il progetto '%(proj)s' per la risorsa '%(res)s'. Ridurre il "
+"limite o l'utilizzo per uno o più dei seguenti progetti: '%(child_ids)s'"
+
+msgid "Switch over pair error."
+msgstr "Errore di passaggio alla coppia."
+
+msgid "Sync pair error."
+msgstr "Errore di sincronizzazione della coppia."
+
 msgid "Synchronizing secondary volume to primary failed."
 msgstr "Sincronizzazione volume secondario con il primario non riuscita."
+
+#, python-format
+msgid "System %(id)s found with bad password status - %(pass_status)s."
+msgstr "Sistema %(id)s trovato con stato password errata - %(pass_status)s."
 
 #, python-format
 msgid "System %(id)s found with bad status - %(status)s."
@@ -6032,6 +7415,19 @@ msgstr ""
 
 #, python-format
 msgid ""
+"The array does not support the storage pool setting for SLO %(slo)s and "
+"workload %(workload)s.  Please check the array for valid SLOs and workloads."
+msgstr ""
+"L'array non supporta l'impostazione del pool di archiviazione per SLO "
+"%(slo)s e carico di lavoro %(workload)s.  Controllare l'array per SLO e "
+"carichi di lavoro validi."
+
+msgid ""
+"The back-end where the volume is created does not have replication enabled."
+msgstr "Il back-end in cui viene creato il volume non ha la replica abilitata."
+
+#, python-format
+msgid ""
 "The command %(cmd)s failed. (ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
 msgstr ""
 "Il comando %(cmd)s non è riuscito. (ret: %(ret)s, stdout: %(out)s, stderr: "
@@ -6067,14 +7463,47 @@ msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "Specifica supplementare: %(extraspec)s non valida."
 
 #, python-format
+msgid "The failed-over volume could not be deleted: %s"
+msgstr "Impossibile eliminare il volume sottoposto a failover: %s"
+
+#, python-format
 msgid "The following elements are required: %s"
 msgstr "Sono richiesti i seguenti elementi: %s"
+
+#, python-format
+msgid ""
+"The following migrations have a downgrade, which are not allowed: \n"
+"\t%s"
+msgstr ""
+"Nelle seguenti migrazioni manca un downgrade che non è consentito:\n"
+"\t%s"
 
 msgid "The host group or iSCSI target could not be added."
 msgstr "Impossibile aggiungere il gruppo di host o la destinazione iSCSI."
 
 msgid "The host group or iSCSI target was not found."
 msgstr "Non è stato trovato il gruppo di host o la destinazione iSCSI."
+
+msgid ""
+"The host is not ready to be failed back. Please resynchronize the volumes "
+"and resume replication on the 3PAR backends."
+msgstr ""
+"L'host non è pronto per eseguire di nuovo il failover. Risincronizzare i "
+"volumi e riprendere la replica sui backend 3PAR."
+
+msgid ""
+"The host is not ready to be failed back. Please resynchronize the volumes "
+"and resume replication on the LeftHand backends."
+msgstr ""
+"L'host non è pronto per eseguire di nuovo il failover. Risincronizzare i "
+"volumi e riprendere la replica sui backend LeftHand."
+
+msgid ""
+"The host is not ready to be failed back. Please resynchronize the volumes "
+"and resume replication on the Storwize backends."
+msgstr ""
+"L'host non è pronto per eseguire di nuovo il failover. Risincronizzare i "
+"volumi e riprendere la replica sui backend Storwize."
 
 #, python-format
 msgid "The iSCSI CHAP user %(user)s does not exist."
@@ -6117,6 +7546,35 @@ msgid "The parent backup must be available for incremental backup."
 msgstr "Il backup parent deve essere disponibile per il backup incrementale."
 
 #, python-format
+msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
+msgstr "L'istantanea fornita '%s' non è un'istantanea del volume fornito."
+
+msgid ""
+"The reference to the volume in the backend should have the format "
+"file_system/volume_name (volume_name cannot contain '/')"
+msgstr ""
+"Il riferimento al volume nel backend deve avere il formato file_system/"
+"volume_name (volume_name non può contenere '/')"
+
+#, python-format
+msgid "The remote retention count must be %s or less."
+msgstr "Il conteggio memorizzazione remoto deve essere %s o inferiore."
+
+msgid ""
+"The replication mode was not configured correctly in the volume type "
+"extra_specs. If replication:mode is periodic, replication:sync_period must "
+"also be specified and be between 300 and 31622400 seconds."
+msgstr ""
+"La modalità di replica non è stata configurata correttamente nel tipo di "
+"volume extra_specs. Se replication:mode è periodic, replication:sync_period "
+"deve essere  specificato e deve essere compreso tra 300 e 31622400 secondi."
+
+#, python-format
+msgid "The replication sync period must be at least %s seconds."
+msgstr ""
+"Il periodo di sincronizzazione replica deve essere di almeno %s secondi."
+
+#, python-format
 msgid ""
 "The requested size : %(requestedSize)s is not the same as resulting size: "
 "%(resultSize)s."
@@ -6130,6 +7588,10 @@ msgstr "Impossibile trovare la risorsa %(resource)s."
 
 msgid "The results are invalid."
 msgstr "I risultati non sono validi."
+
+#, python-format
+msgid "The retention count must be %s or less."
+msgstr "Il conteggio memorizzazione deve essere %s o inferiore."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr ""
@@ -6159,6 +7621,10 @@ msgstr "Il tipo volume origine '%s' non è disponibile."
 #, python-format
 msgid "The specified %(desc)s is busy."
 msgstr "Il %(desc)s specificato è occupato."
+
+#, python-format
+msgid "The specified LUN does not belong to the given pool: %s."
+msgstr "La LUN specificata non appartiene al pool indicato: %s."
 
 #, python-format
 msgid ""
@@ -6207,10 +7673,27 @@ msgid "The specified volume is mapped to a host."
 msgstr "Il volume specificato è associato a un host."
 
 #, python-format
+msgid ""
+"The storage array password for %s is incorrect, please update the configured "
+"password."
+msgstr ""
+"La password dell'array di archiviazione per %s non è corretta, aggiornare la "
+"password configurata."
+
+#, python-format
 msgid "The storage backend can be used. (config_group: %(config_group)s)"
 msgstr ""
 "È possibile utilizzare il backend di memoria. (config_group: "
 "%(config_group)s)"
+
+#, python-format
+msgid ""
+"The storage device does not support %(prot)s. Please configure the device to "
+"support %(prot)s or switch to a driver using a different protocol."
+msgstr ""
+"Il dispositivo di archiviazione non supporta %(prot)s. Configurare il "
+"dispositivo per supportare %(prot)s o passare a un driver che utilizza un "
+"protocollo diverso."
 
 #, python-format
 msgid ""
@@ -6350,6 +7833,51 @@ msgid "There is no virtual disk device."
 msgstr "Non esistono unità del disco virtuale."
 
 #, python-format
+msgid "There was an error adding the volume to the remote copy group: %s."
+msgstr ""
+"Si è verificato un errore durante l'aggiunta del volume al gruppo di copie "
+"remote: %s."
+
+#, python-format
+msgid "There was an error creating the cgsnapshot: %s"
+msgstr "Si è verificato un errore durante la creazione di cgsnapshot: %s."
+
+#, python-format
+msgid "There was an error creating the remote copy group: %s."
+msgstr ""
+"Si è verificato un errore durante la creazione del gruppo di copie remote: "
+"%s."
+
+#, python-format
+msgid ""
+"There was an error setting the sync period for the remote copy group: %s."
+msgstr ""
+"Si è verificato un errore durante l'impostazione del periodo di "
+"sincronizzazione per il gruppo di copie remoto: %s."
+
+#, python-format
+msgid ""
+"There was an error setting up a remote copy group on the 3PAR arrays: "
+"('%s'). The volume will not be recognized as replication type."
+msgstr ""
+"Si è verificato un errore durante la configurazione di un gruppo di copie "
+"remoto sugli array 3PAR:('%s'). Il volume non verrà riconosciuto come tipo "
+"di replica."
+
+#, python-format
+msgid ""
+"There was an error setting up a remote schedule on the LeftHand arrays: "
+"('%s'). The volume will not be recognized as replication type."
+msgstr ""
+"Si è verificato un errore durante la configurazione di una pianificazione "
+"remota sugli array LeftHand:('%s'). Il volume non verrà riconosciuto come "
+"tipo di replica."
+
+#, python-format
+msgid "There was an error starting remote copy: %s."
+msgstr "Si è verificato un errore durante l'avvio della copia remota: %s."
+
+#, python-format
 msgid "There's no Gluster config file configured (%s)"
 msgstr "Nessun file di configurazione Gluster configurato (%s)"
 
@@ -6417,8 +7945,17 @@ msgstr ""
 "utilizzato il valore librados predefinito."
 
 #, python-format
+msgid "Timeout while calling %s "
+msgstr "Timeout durante la chiamata di %s "
+
+#, python-format
 msgid "Timeout while requesting %(service)s API."
 msgstr "Richiesta dell'API di %(service)s scaduta."
+
+#, python-format
+msgid "Timeout while requesting capabilities from backend %(service)s."
+msgstr ""
+"Timeout durante la richiesta delle funzionalità dal backend %(service)s."
 
 #, python-format
 msgid "Transfer %(transfer_id)s could not be found."
@@ -6458,6 +7995,9 @@ msgstr ""
 msgid "Type access modification is not applicable to public volume type."
 msgstr "Modifica di accesso tipo non applicabile al tipo di volume pubblico. "
 
+msgid "Type cannot be converted into NaElement."
+msgstr "Il tipo non può essere convertito in NaElement."
+
 #, python-format
 msgid "TypeError: %s"
 msgstr "TypeError: %s"
@@ -6466,6 +8006,10 @@ msgstr "TypeError: %s"
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr ""
 "Gli UUID %s sono presenti nell'elenco dei volumi di aggiunta e rimozione."
+
+#, python-format
+msgid "Unable to access the Storwize back-end for volume %s."
+msgstr "Impossibile accedere al back-end Storwize per il volume %s."
 
 msgid "Unable to access the backend storage via file handle."
 msgstr "Impossibile accedere alla memoria backend attraverso la gestione file."
@@ -6480,6 +8024,10 @@ msgid "Unable to add Cinder host to apphosts for space %(space)s"
 msgstr ""
 "Impossibile aggiungere l'host Cinder a apphosts per lo spazio %(space)s"
 
+#, python-format
+msgid "Unable to complete failover of %s."
+msgstr "Impossibile completare il failover di %s."
+
 msgid "Unable to connect or find connection to host"
 msgstr "Impossibile connettersi o trovare la connessione all'host"
 
@@ -6489,6 +8037,9 @@ msgstr "Impossibile creare il client Barbican senza project_id."
 #, python-format
 msgid "Unable to create consistency group %s"
 msgstr "Impossibile creare il gruppo di coerenza %s"
+
+msgid "Unable to create lock. Coordination backend not started."
+msgstr "Impossibile creare il blocco. Backend di coordinazione non avviato."
 
 #, python-format
 msgid ""
@@ -6503,8 +8054,31 @@ msgid "Unable to create replica clone for volume %s."
 msgstr "Impossibile creare il clone della replica per il volume %s."
 
 #, python-format
+msgid "Unable to create the relationship for %s."
+msgstr "Impossibile creare la relazione per %s."
+
+#, python-format
+msgid "Unable to create volume %(name)s from %(snap)s."
+msgstr "Impossibile creare il volume %(name)s da %(snap)s."
+
+#, python-format
+msgid "Unable to create volume %(name)s from %(vol)s."
+msgstr "Impossibile creare il volume %(name)s da %(vol)s."
+
+#, python-format
+msgid "Unable to create volume %s"
+msgstr "Impossibile creare il volume %s"
+
+msgid "Unable to create volume. Backend down."
+msgstr "Impossibile creare il volume. Backend disattivo."
+
+#, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
 msgstr "Impossibile eliminare l'istantanea del gruppo di coerenza %s "
+
+#, python-format
+msgid "Unable to delete encrypted volume: %s."
+msgstr "Impossibile eliminare il volume codificato: %s."
 
 #, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
@@ -6513,6 +8087,27 @@ msgstr "Impossibile eliminare l'istantanea %(id)s, stato: %(status)s."
 #, python-format
 msgid "Unable to delete snapshot policy on volume %s."
 msgstr "Impossibile eliminare la politica di istantanea sul volume %s. "
+
+#, python-format
+msgid ""
+"Unable to delete the target volume for volume %(vol)s. Exception: %(err)s."
+msgstr ""
+"Impossibile eliminare il volume di destinazione per il volume %(vol)s. "
+"Eccezione: %(err)s."
+
+msgid ""
+"Unable to detach volume. Volume status must be 'in-use' and attach_status "
+"must be 'attached' to detach."
+msgstr ""
+"Impossibile scollegare il volume. Lo stato del volume deve essere 'in-use' e "
+"attach_status deve essere 'attached' per scollegarlo. "
+
+#, python-format
+msgid ""
+"Unable to determine secondary_array from supplied secondary: %(secondary)s."
+msgstr ""
+"Impossibile determinare secondary_array dall'array secondario fornito: "
+"%(secondary)s."
 
 #, python-format
 msgid "Unable to determine snapshot name in Purity for snapshot %(id)s."
@@ -6535,8 +8130,44 @@ msgstr ""
 "REST Purity %(api_version)s, richiesta %(required_versions)s."
 
 #, python-format
+msgid ""
+"Unable to do replication with Purity REST API version %(api_version)s, "
+"requires one of %(required_versions)s."
+msgstr ""
+"Impossibile eseguire la replica con la versione API REST Purity "
+"%(api_version)s, richiesta una tra le versioni %(required_versions)s."
+
+msgid "Unable to enable replication and snapcopy at the same time."
+msgstr "Impossibile abilitare replica e snapcopy contemporaneamente."
+
+#, python-format
+msgid "Unable to establish the partnership with the Storwize cluster %s."
+msgstr "Impossibile stabilire la relazione con il cluster Storwize %s."
+
+#, python-format
 msgid "Unable to extend volume %s"
 msgstr "Impossibile estendere il volume %s."
+
+#, python-format
+msgid ""
+"Unable to fail-over the volume %(id)s to the secondary back-end, because the "
+"replication relationship is unable to switch: %(error)s"
+msgstr ""
+"Impossibile eseguire il failover del volume %(id)s sul back-end secondario, "
+"in quanto la relazione di replica non è in grado di eseguire il passaggio: "
+"%(error)s"
+
+msgid ""
+"Unable to failback to \"default\", this can only be done after a failover "
+"has completed."
+msgstr ""
+"Impossibile eseguire il failback su \"default\", è possibile eseguire questa "
+"operazione solo dopo il completamento di un failover."
+
+#, python-format
+msgid "Unable to failover to replication target:%(reason)s)."
+msgstr ""
+"Impossibile eseguire il failover sulla destinazione di replica:%(reason)s)."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "Impossibile recuperare le informazioni sulla connessione dal backend."
@@ -6554,6 +8185,11 @@ msgstr "Impossibile trovare ref Purity con nome=%s"
 msgid "Unable to find Volume Group: %(vg_name)s"
 msgstr "Impossibile trovare il gruppo volume: %(vg_name)s"
 
+msgid "Unable to find failover target, no secondary targets configured."
+msgstr ""
+"Impossibile trovare la destinazione di failover, nessuna destinazione "
+"secondaria configurata."
+
 msgid "Unable to find iSCSI mappings."
 msgstr "Impossibile trovare associazioni iSCSI. "
 
@@ -6563,6 +8199,21 @@ msgstr "Impossibile trovare ssh_hosts_key_file: %s"
 
 msgid "Unable to find system log file!"
 msgstr "Impossibile trovare il file di log di sistema."
+
+#, python-format
+msgid ""
+"Unable to find viable pg snapshot to use forfailover on selected secondary "
+"array: %(id)s."
+msgstr ""
+"Impossibile trovare l'istantanea pg utilizzabile da utilizzare per il "
+"failover sull'array secondario selezionato: %(id)s."
+
+#, python-format
+msgid ""
+"Unable to find viable secondary array fromconfigured targets: %(targets)s."
+msgstr ""
+"Impossibile trovare l'array secondario utilizzabile da destinazioni "
+"configurate: %(targets)s."
 
 #, python-format
 msgid "Unable to find volume %s"
@@ -6621,6 +8272,16 @@ msgstr ""
 "Impossibile acquisire gli endpoint di destinazione per hardwareId "
 "%(hardwareIdInstance)s."
 
+msgid "Unable to get the name of the masking view."
+msgstr "Impossibile ottenere il nome della vista di mascheramento."
+
+msgid "Unable to get the name of the portgroup."
+msgstr "Impossibile ottenere il nome del gruppo di porte."
+
+#, python-format
+msgid "Unable to get the replication relationship for volume %s."
+msgstr "Impossibile ottenere la relazione di replica per il volume %s."
+
 #, python-format
 msgid ""
 "Unable to import volume %(deviceId)s to cinder. It is the source volume of "
@@ -6665,6 +8326,10 @@ msgstr ""
 #, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "Impossibile individuare un SVM che stia gestendo l'indirizzo IP '%s'"
+
+#, python-format
+msgid "Unable to locate specified replay profiles %s "
+msgstr "Impossibile individuare i profili di risposta specificati %s "
 
 #, python-format
 msgid ""
@@ -6715,6 +8380,18 @@ msgid "Unable to rename volume %(existing)s to %(newname)s"
 msgstr "Impossibile ridenominare il volume %(existing)s in %(newname)s"
 
 #, python-format
+msgid "Unable to retrieve snapshot group with id of %s."
+msgstr "Impossibile richiamare il gruppo di istantanee con id %s."
+
+#, python-format
+msgid ""
+"Unable to retype %(specname)s, expected to receive current and requested "
+"%(spectype)s values. Value received: %(spec)s"
+msgstr ""
+"Impossibile riscrivere %(specname)s, era previsto di ricevere i valori "
+"%(spectype)s corrente e richiesto. Valore ricevuto: %(spec)s"
+
+#, python-format
 msgid ""
 "Unable to retype:  A copy of volume %s exists. Retyping would exceed the "
 "limit of 2 copies."
@@ -6729,6 +8406,13 @@ msgid ""
 msgstr ""
 "Impossibile eseguire la riscrittura: L'azione corrente richiede una copia "
 "volume, non consentita quando il nuovo tipo è replica. Volume = %s"
+
+#, python-format
+msgid ""
+"Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
+msgstr ""
+"Impossibile configurare la replica della modalità mirror per %(vol)s. "
+"Eccezione: %(err)s."
 
 #, python-format
 msgid "Unable to snap Consistency Group %s"
@@ -6788,11 +8472,26 @@ msgstr ""
 "Stato associazione imprevisto %(status)s per l'associazione %(id)s. "
 "Attributi: %(attr)s."
 
+#, python-format
+msgid "Unexpected output. Expected [%(expected)s] but received [%(output)s]"
+msgstr "Output imprevisto. Previsto [%(expected)s] ma ricevuto [%(output)s]"
+
 msgid "Unexpected response from Nimble API"
 msgstr "Risposta imprevista dall'API Nimble"
 
+msgid "Unexpected response from Tegile IntelliFlash API"
+msgstr "Risposta imprevista dall'API Tegile IntelliFlash"
+
 msgid "Unexpected status code"
 msgstr "Codice di stato imprevisto"
+
+#, python-format
+msgid ""
+"Unexpected status code from the switch %(switch_id)s with protocol "
+"%(protocol)s for url %(page)s. Error: %(error)s"
+msgstr ""
+"Codice di stato imprevisto dallo switch %(switch_id)s con protocollo "
+"%(protocol)s per url %(page)s. Errore: %(error)s"
 
 msgid "Unknown Gluster exception"
 msgstr "Eccezione Gluster sconosciuta"
@@ -6811,6 +8510,38 @@ msgstr "Eccezione Virtuozzo Storage sconosciuta "
 
 msgid "Unknown action"
 msgstr "Azione sconosciuta"
+
+#, python-format
+msgid ""
+"Unknown if the volume: %s to be managed is already being managed by Cinder. "
+"Aborting manage volume. Please add 'cinder_managed' custom schema property "
+"to the volume and set its value to False. Alternatively, Set the value of "
+"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
+"restriction."
+msgstr ""
+"Si ignora se il volume: %s da gestire è già gestito da Cinder. Interruzione "
+"della gestione del volume. Aggiungere la proprietà dello schema "
+"personalizzato 'cinder_managed' al volume e impostare il relativo valore su "
+"False. In alternativa, impostare il valore della politica di configurazione "
+"di cinder 'zfssa_manage_policy' su 'loose' per rimuovere questa restrizione."
+
+#, python-format
+msgid ""
+"Unknown if the volume: %s to be managed is already being managed by Cinder. "
+"Aborting manage volume. Please add 'cinder_managed' custom schema property "
+"to the volume and set its value to False. Alternatively, set the value of "
+"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
+"restriction."
+msgstr ""
+"Si ignora se il volume: %s da gestire è già gestito da Cinder. Interruzione "
+"della gestione del volume. Aggiungere la proprietà dello schema "
+"personalizzato 'cinder_managed' al volume e impostare il relativo valore su "
+"False. In alternativa, impostare il valore della politica di configurazione "
+"di cinder 'zfssa_manage_policy' su 'loose' per rimuovere questa restrizione."
+
+#, python-format
+msgid "Unknown operation %s."
+msgstr "Operazione %s sconosciuta."
 
 #, python-format
 msgid "Unknown or unsupported command %(cmd)s"
@@ -6833,6 +8564,24 @@ msgstr "Direzione ordinamento sconosciuta, deve essere 'desc' o 'asc'"
 msgid "Unknown sort direction, must be 'desc' or 'asc'."
 msgstr "Direzione ordinamento sconosciuta, deve essere 'desc' o 'asc'."
 
+msgid "Unmanage and cascade delete options are mutually exclusive."
+msgstr ""
+"Le opzioni di disabilitazione ed eliminazione a catena si escludono "
+"reciprocamente."
+
+msgid "Unmanage volume not implemented."
+msgstr "Disabilitazione gestione volume non implementata."
+
+msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
+msgstr ""
+"L'annullamento della gestione di istantanee da volumi sottoposti a failover "
+"non è consentito."
+
+msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
+msgstr ""
+"L'annullamento della gestione di istantanee da volumi sottoposti a failover "
+"non è consentito."
+
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""
 msgstr "Parola chiave QoS non riconosciuta: \"%s\" "
@@ -6844,6 +8593,14 @@ msgstr "Formato backup non riconosciuto: %s"
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "Valore read_deleted non riconosciuto '%s'"
+
+#, python-format
+msgid "Unset gcs options: %s"
+msgstr "Opzioni gcs non impostate: %s"
+
+#, python-format
+msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
+msgstr "iscsiadm non riuscito. L'eccezione è %(ex)s. "
 
 msgid "Unsupported Clustered Data ONTAP version."
 msgstr "Versione ONTAP dati in cluster non supportata."
@@ -6898,6 +8655,9 @@ msgstr ""
 "solo a progettinella stessa gerarchia del progetto che è l'ambito degli "
 "utenti. "
 
+msgid "Update list, doesn't include volume_id"
+msgstr "Aggiorna elenco, non includere volume_id"
+
 msgid "Updated At"
 msgstr "Aggiornato a"
 
@@ -6926,6 +8686,12 @@ msgstr "L'utente non è autorizzato ad utilizzare il gestore chiavi."
 msgid "User not authorized to perform WebDAV operations."
 msgstr "L'utente non è autorizzato ad eseguire le operazioni WebDAV."
 
+msgid "UserName is not configured."
+msgstr "UserName non configurato."
+
+msgid "UserPassword is not configured."
+msgstr "UserPassword non configurato."
+
 msgid ""
 "V2 rollback - Volume in another storage group besides default storage group."
 msgstr ""
@@ -6937,6 +8703,9 @@ msgstr "Rollback V2, il volume non è in alcun gruppo di memoria. "
 
 msgid "V3 rollback"
 msgstr "Rollback V3 "
+
+msgid "VF is not enabled."
+msgstr "VF non è abilitato."
 
 #, python-format
 msgid "VV Set %s does not exist."
@@ -6985,6 +8754,14 @@ msgstr ""
 "%(min_ver)s ed il massimo è %(max_ver)s."
 
 #, python-format
+msgid "VersionedObject %s cannot retrieve object by id."
+msgstr "VersionedObject %s non può richiamare l'oggetto mediante l'id."
+
+#, python-format
+msgid "VersionedObject %s does not support conditional update."
+msgstr "VersionedObject %s non supporta l'aggiornamento condizionale."
+
+#, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
 msgstr "Il volume virtuale '%s' non esiste nell'array."
 
@@ -7003,6 +8780,10 @@ msgid ""
 msgstr ""
 "Volume %(name)s non trovato nell'array. Impossibile determinare se vi sono "
 "volumi associati."
+
+#, python-format
+msgid "Volume %(name)s was created in VNX, but in %(state)s state."
+msgstr "Il volume %(name)s è stato creato in VNX, ma nello stato %(state)s."
 
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
@@ -7093,6 +8874,14 @@ msgid "Volume %s could not be created."
 msgstr "Impossibile creare il volume %s."
 
 #, python-format
+msgid "Volume %s does not exist in Nexenta SA"
+msgstr "Il volume %s non esiste in Nexenta SA"
+
+#, python-format
+msgid "Volume %s does not exist in Nexenta Store appliance"
+msgstr "Il volume %s non esiste nell'applicazione Nexenta Store"
+
+#, python-format
 msgid "Volume %s does not have provider_location specified, skipping."
 msgstr "Sul volume %s non è specificato provider_location; ignorato."
 
@@ -7101,8 +8890,33 @@ msgid "Volume %s doesn't exist on array."
 msgstr "Il volume %s non esiste nell'array."
 
 #, python-format
+msgid "Volume %s doesn't exist on the ZFSSA backend."
+msgstr "Il volume %s non esiste sul backend ZFSSA."
+
+#, python-format
+msgid "Volume %s is already managed by OpenStack."
+msgstr "Il volume %s è già gestito da OpenStack."
+
+#, python-format
 msgid "Volume %s is already part of an active migration."
 msgstr "Il volume %s è già parte di una migrazione attiva."
+
+#, python-format
+msgid ""
+"Volume %s is not of replicated type. This volume needs to be of a volume "
+"type with the extra spec replication_enabled set to '<is> True' to support "
+"replication actions."
+msgstr ""
+"Il volume %s non è di tipo replicato. Questo volume deve essere un tipo di "
+"volume con la specifica supplementare replication_enabled impostata su '<is> "
+"True' per supportare le azioni di replica."
+
+#, python-format
+msgid ""
+"Volume %s is online. Set volume to offline for managing using OpenStack."
+msgstr ""
+"Il volume %s è online. Impostare il volume su offline per la gestione "
+"tramite OpenStack."
 
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
@@ -7166,6 +8980,14 @@ msgid "Volume Type id must not be None."
 msgstr "L'id del tipo di volume non deve essere None."
 
 #, python-format
+msgid ""
+"Volume [%(cb_vol)s] was not found at CloudByte storage corresponding to "
+"OpenStack volume [%(ops_vol)s]."
+msgstr ""
+"Volume [%(cb_vol)s] non trovato nella memoria CloudByte corrispondente al "
+"volume OpenStack [%(ops_vol)s]."
+
+#, python-format
 msgid "Volume [%s] not found in CloudByte storage."
 msgstr "Volume [%s] non rilevato nell'archivio CloudByte."
 
@@ -7183,6 +9005,11 @@ msgstr "Il volume con questo nome già esiste"
 
 msgid "Volume cannot be restored since it contains snapshots."
 msgstr "Impossibile ripristinare il volume perché contiene delle istantanee."
+
+msgid "Volume create failed while extracting volume ref."
+msgstr ""
+"Creazione del volume non riuscita durante l'estrazione del riferimento del "
+"volume."
 
 #, python-format
 msgid "Volume device file path %s does not exist."
@@ -7202,6 +9029,14 @@ msgstr "Driver del volume non pronto."
 #, python-format
 msgid "Volume driver reported an error: %(message)s"
 msgstr "Il driver del volume ha riportato un errore: %(message)s"
+
+msgid "Volume has a temporary snapshot that can't be deleted at this time."
+msgstr ""
+"Il volume ha un'istantanea temporanea che non può essere eliminata in questo "
+"momento."
+
+msgid "Volume has children and cannot be deleted!"
+msgstr "Il volume ha elementi child e non può essere eliminata."
 
 #, python-format
 msgid "Volume in consistency group %s is attached. Need to detach first."
@@ -7252,6 +9087,9 @@ msgstr ""
 "Il volume deve trovarsi nella stessa area di disponibilità così come il "
 "volume di origine"
 
+msgid "Volume must have a volume type"
+msgstr "Il volume deve avere un tipo di volume"
+
 msgid "Volume must not be part of a consistency group."
 msgstr "Il volume non deve far parte di un gruppo di coerenza."
 
@@ -7268,11 +9106,21 @@ msgstr "Volume non trovato per l'istanza %(instance_id)s."
 msgid "Volume not found on configured storage backend."
 msgstr "Volume non trovato sul backend di archiviazione configurato."
 
+msgid ""
+"Volume not found on configured storage backend. If your volume name contains "
+"\"/\", please rename it and try to manage again."
+msgstr ""
+"Volume non trovato nel backend di archiviazione configurato. Se il nome "
+"volume contiene \"/\", ridenominarlo e provare a gestirlo di nuovo."
+
 msgid "Volume not found on configured storage pools."
 msgstr "Volume non trovato nei pool di archiviazione configurati."
 
 msgid "Volume not found."
 msgstr "Volume non trovato."
+
+msgid "Volume not unique."
+msgstr "Volume non univoco."
 
 msgid "Volume not yet assigned to host."
 msgstr "Il volume non è stato ancora assegnato all'host."
@@ -7328,6 +9176,12 @@ msgstr ""
 "La dimensione del volume è stata ridotta dall'ultimo backup. Eseguire un "
 "backup completo."
 
+msgid "Volume size must be a multiple of 1 GB."
+msgstr "La dimensione del volume deve essere un multiplo di 1 GB."
+
+msgid "Volume size must be multiple of 1 GB."
+msgstr "La dimensione del volume deve essere un multiplo di 1 GB."
+
 msgid "Volume size must multiple of 1 GB."
 msgstr "La dimensione del volume deve essere un multiplo di 1 GB. "
 
@@ -7347,6 +9201,10 @@ msgstr ""
 
 msgid "Volume status must be \"available\" or \"in-use\"."
 msgstr "Lo stato del volume deve essere \"available\" o \"in-use\"."
+
+#, python-format
+msgid "Volume status must be %s to reserve."
+msgstr "Lo stato del volume deve essere %s per eseguire la prenotazione."
 
 msgid "Volume status must be 'available'."
 msgstr "Lo stato del volume deve essere 'available'."
@@ -7415,6 +9273,14 @@ msgstr "Il volume con id volume %s non esiste. "
 
 #, python-format
 msgid ""
+"Volume%s must not be migrating, attached, belong to a consistency group or "
+"have snapshots."
+msgstr ""
+"Il volume %s non deve essere sottoposto a migrazione, essere collegato, far "
+"parte di un gruppo di coerenza o avere istantanee."
+
+#, python-format
+msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
 msgstr ""
@@ -7422,12 +9288,26 @@ msgstr ""
 "eseguire l'estensione su un volume concatenato. Uscire..."
 
 #, python-format
+msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
+msgstr ""
+"Il volume: %(volumeName)s non è stato aggiunto al gruppo di archiviazione "
+"%(sgGroupName)s."
+
+#, python-format
 msgid "Volume: %s could not be found."
 msgstr "Impossibile trovare il volume %s."
+
+#, python-format
+msgid "Volume: %s is already being managed by Cinder."
+msgstr "Il volume: %s è già in fase di importazione da Cinder."
 
 msgid "Volumes will be chunked into objects of this size (in megabytes)."
 msgstr ""
 "I volumi verranno suddivisi in oggetti di questa dimensione (in megabyte)."
+
+msgid ""
+"Volumes/account exceeded on both primary and secondary SolidFire accounts."
+msgstr "Volumi/account superati sugli account SolidFire primario e secondario."
 
 #, python-format
 msgid ""
@@ -7443,14 +9323,27 @@ msgstr "File config VzStorage in %(config)s non esiste."
 msgid "Wait replica complete timeout."
 msgstr "Timeout di attesa del completamento replica."
 
+#, python-format
+msgid "Wait synchronize failed. Running status: %s."
+msgstr "Sincronizzazione attesa non riuscita. Stato esecuzione: %s."
+
 msgid ""
 "Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
 msgstr ""
 "In attesa che tutti i nodi partecipino al cluster. Verificare che tutti i "
 "daemon sheep siano in esecuzione. "
 
+msgid "We should not do switch over on primary array."
+msgstr "Non è consigliabile passare all'array primario."
+
+msgid "Wrong resource call syntax"
+msgstr "Sintassi chiamata risorsa errata"
+
 msgid "X-IO Volume Driver exception!"
 msgstr "Eccezione X-IO Volume Driver!"
+
+msgid "XML support has been deprecated and will be removed in the N release."
+msgstr "Il supporto XML è obsoleto e verrà rimosso  nella release N."
 
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "XtremIO non configurato correttamente, nessun portale iscsi trovato"
@@ -7461,6 +9354,13 @@ msgstr ""
 
 msgid "You must implement __call__"
 msgstr "È necessario implementare __call__"
+
+msgid ""
+"You must install hpe3parclient before using 3PAR drivers. Run \"pip install "
+"python-3parclient\" to install the hpe3parclient."
+msgstr ""
+"È necessario installare hpe3parclient prima di utilizzare i driver 3PAR. "
+"Eseguire \"pip install python-3parclient\" per installare hpe3parclient."
 
 msgid "You must supply an array in your EMC configuration file."
 msgstr "È necessario fornire un array nel file di configurazione EMC."
@@ -7503,6 +9403,21 @@ msgstr ""
 msgid "_create_host: No connector ports."
 msgstr "_create_host: Nessuna porta connettore."
 
+msgid "_create_local_cloned_volume, Replication Service not found."
+msgstr "_create_local_cloned_volume, Servizio di replica non trovato."
+
+#, python-format
+msgid ""
+"_create_local_cloned_volume, volumename: %(volumename)s, sourcevolumename: "
+"%(sourcevolumename)s, source volume instance: %(source_volume)s, target "
+"volume instance: %(target_volume)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s."
+msgstr ""
+"_create_local_cloned_volume, nome volume: %(volumename)s, nome volume di "
+"origine: %(sourcevolumename)s, istanza volume di origine: %(source_volume)s, "
+"istanza volume di destinazione: %(target_volume)s, Codice di ritorno: "
+"%(rc)lu, Errore: %(errordesc)s."
+
 #, python-format
 msgid ""
 "_create_vdisk %(name)s - did not find success message in CLI output.\n"
@@ -7513,6 +9428,165 @@ msgstr ""
 "nell'output CLI.\n"
 " stdout: %(out)s\n"
 " stderr: %(err)s"
+
+msgid "_create_volume_name, id_code is None."
+msgstr "_create_volume_name, id_code è None."
+
+msgid "_delete_copysession, Cannot find Replication Service"
+msgstr "_delete_copysession, Impossibile trovare il servizio di replica"
+
+#, python-format
+msgid ""
+"_delete_copysession, copy session type is undefined! copy session: "
+"%(cpsession)s, copy type: %(copytype)s."
+msgstr ""
+"_delete_copysession, copy session type is undefined! sessione di copia: "
+"%(cpsession)s, tipo di copia: %(copytype)s."
+
+#, python-format
+msgid ""
+"_delete_copysession, copysession: %(cpsession)s, operation: %(operation)s, "
+"Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_delete_copysession, copysession: %(cpsession)s, operation: %(operation)s, "
+"Codice di ritorno: %(rc)lu, Errore: %(errordesc)s."
+
+#, python-format
+msgid ""
+"_delete_volume, volumename: %(volumename)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s."
+msgstr ""
+"_delete_volume, volumename: %(volumename)s, Codice di ritorno: %(rc)lu, "
+"Errore: %(errordesc)s."
+
+#, python-format
+msgid ""
+"_delete_volume, volumename: %(volumename)s, Storage Configuration Service "
+"not found."
+msgstr ""
+"_delete_volume, volumename: %(volumename)s, Storage Configuration Service "
+"non trovato."
+
+#, python-format
+msgid ""
+"_exec_eternus_service, classname: %(classname)s, InvokeMethod, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_exec_eternus_service, classname: %(classname)s, InvokeMethod, impossibile "
+"connettersi a ETERNUS."
+
+msgid "_extend_volume_op: Extending a volume with snapshots is not supported."
+msgstr ""
+"_extend_volume_op: l'estensione di un volume con le istantanee non è "
+"supportata."
+
+#, python-format
+msgid ""
+"_find_affinity_group, connector: %(connector)s, Associators: "
+"FUJITSU_AuthorizedTarget, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, connector: %(connector)s, Associatori: "
+"FUJITSU_AuthorizedTarget, impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_find_affinity_group, connector: %(connector)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, connector: %(connector)s, EnumerateInstanceNames, "
+"impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_find_affinity_group,connector: %(connector)s,AssocNames: "
+"FUJITSU_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group,connector: %(connector)s,AssocNames: "
+"FUJITSU_ProtocolControllerForUnit, impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_find_copysession, ReferenceNames, vol_instance: %(vol_instance_path)s, "
+"Cannot connect to ETERNUS."
+msgstr ""
+"_find_copysession, ReferenceNames, vol_instance: %(vol_instance_path)s, "
+"impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_find_eternus_service, classname: %(classname)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_find_eternus_service, classname: %(classname)s, EnumerateInstanceNames, "
+"impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid "_find_initiator_names, connector: %(connector)s, initiator not found."
+msgstr ""
+"_find_initiator_names, connector: %(connector)s, iniziatore non trovato."
+
+#, python-format
+msgid ""
+"_find_lun, volumename: %(volumename)s, EnumerateInstanceNames, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_find_lun, volumename: %(volumename)s, EnumerateInstanceNames, impossibile "
+"connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_find_pool, eternus_pool:%(eternus_pool)s, EnumerateInstances, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_find_pool, eternus_pool:%(eternus_pool)s, EnumerateInstances, impossibile "
+"connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_get_drvcfg, filename: %(filename)s, tagname: %(tagname)s, data is None!! "
+"Please edit driver configuration file and correct."
+msgstr ""
+"_get_drvcfg, nome file: %(filename)s, tagname: %(tagname)s, i dati sono "
+"None. Modificare il file di configurazione del driver e correggerlo."
+
+#, python-format
+msgid ""
+"_get_eternus_connection, filename: %(filename)s, ip: %(ip)s, port: %(port)s, "
+"user: %(user)s, passwd: ****, url: %(url)s, FAILED!!."
+msgstr ""
+"_get_eternus_connection, nome file: %(filename)s, ip: %(ip)s, porta: "
+"%(port)s, utente: %(user)s, password: ****, url: %(url)s, NON RIUSCITO."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip list: %(iscsiip_list)s, iqn not found."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip list: %(iscsiip_list)s, iqn non "
+"trovato."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, AssociatorNames: "
+"CIM_BindsTo, cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, AssociatorNames: "
+"CIM_BindsTo, impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, EnumerateInstanceNames, "
+"impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, GetInstance, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, GetInstance, "
+"impossibile connettersi a ETERNUS."
 
 #, python-format
 msgid ""
@@ -7528,6 +9602,73 @@ msgid "_get_host_from_connector failed to return the host name for connector."
 msgstr ""
 "_get_host_from_connector non è riuscito a restituire il nome host per il "
 "connettore."
+
+#, python-format
+msgid ""
+"_get_mapdata_fc, getting host-affinity from aglist/vol_instance failed, "
+"affinitygroup: %(ag)s, ReferenceNames, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_fc, richiamo host-affinity da aglist/vol_instance non riuscito, "
+"affinitygroup: %(ag)s, ReferenceNames, impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_fc, getting host-affinity instance failed, volmap: %(volmap)s, "
+"GetInstance, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_fc, richiamo istanza host-affinity non riuscito, volmap: "
+"%(volmap)s, GetInstance, impossibile connettersi a ETERNUS."
+
+msgid ""
+"_get_mapdata_iscsi, Associators: FUJITSU_SAPAvailableForElement, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, Associatori: FUJITSU_SAPAvailableForElement, impossibile "
+"connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, affinitygroup: %(ag)s, ReferenceNames, cannot connect to "
+"ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, affinitygroup: %(ag)s, ReferenceNames, impossibile "
+"connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, vol_instance: %(vol_instance)s, ReferenceNames: "
+"CIM_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, vol_instance: %(vol_instance)s, ReferenceNames: "
+"CIM_ProtocolControllerForUnit, impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, volmap: %(volmap)s, GetInstance, cannot connect to "
+"ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, volmap: %(volmap)s, GetInstance, impossibile connettersi "
+"a ETERNUS."
+
+msgid "_get_target_port, EnumerateInstances, cannot connect to ETERNUS."
+msgstr ""
+"_get_target_port, EnumerateInstances, impossibile connettersi a ETERNUS."
+
+#, python-format
+msgid "_get_target_port, protcol: %(protocol)s, target_port not found."
+msgstr ""
+"_get_target_port, protcol: %(protocol)s, porta di destinazione non trovata."
+
+#, python-format
+msgid "_get_unmanaged_replay: Cannot find snapshot named %s"
+msgstr "_get_unmanaged_replay: Impossibile trovare l'istantanea denominata %s"
+
+#, python-format
+msgid "_get_unmanaged_replay: Cannot find volume id %s"
+msgstr "_get_unmanaged_replay: Impossibile trovare l'id volume %s"
+
+msgid "_get_unmanaged_replay: Must specify source-name."
+msgstr "_get_unmanaged_replay: È necessario specificare source-name."
 
 msgid ""
 "_get_vdisk_map_properties: Could not get FC connection information for the "
@@ -7545,9 +9686,53 @@ msgstr ""
 "_get_vdisk_map_properties: Nessun nodo trovato nel gruppo I/O %(gid)s per il "
 "volume %(vol)s."
 
+#, python-format
+msgid ""
+"_map_lun, vol_instance.path:%(vol)s, volumename: %(volumename)s, volume_uid: "
+"%(uid)s, initiator: %(initiator)s, target: %(tgt)s, aglist: %(aglist)s, "
+"Storage Configuration Service not found."
+msgstr ""
+"_map_lun, vol_instance.path:%(vol)s, volumename: %(volumename)s, volume_uid: "
+"%(uid)s, iniziatore: %(initiator)s, destinazione: %(tgt)s, aglist: "
+"%(aglist)s, Storage Configuration Service non trovato."
+
+#, python-format
+msgid ""
+"_unmap_lun, vol_instance.path: %(volume)s, volumename: %(volumename)s, "
+"volume_uid: %(uid)s, aglist: %(aglist)s, Controller Configuration Service "
+"not found."
+msgstr ""
+"_unmap_lun, vol_instance.path: %(volume)s, volumename: %(volumename)s, "
+"volume_uid: %(uid)s, aglist: %(aglist)s, Controller Configuration Service "
+"non trovato."
+
+#, python-format
+msgid ""
+"_unmap_lun, volumename: %(volumename)s, volume_uid: %(volume_uid)s, "
+"AffinityGroup: %(ag)s, Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_unmap_lun, volumename: %(volumename)s, volume_uid: %(volume_uid)s, "
+"AffinityGroup: %(ag)s, Codice di ritorno: %(rc)lu, Errore: %(errordesc)s."
+
+#, python-format
+msgid ""
+"_unmap_lun,vol_instance.path: %(volume)s, AssociatorNames: "
+"CIM_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_unmap_lun,vol_instance.path: %(volume)s, AssociatorNames: "
+"CIM_ProtocolControllerForUnit, impossibile connettersi a ETERNUS."
+
 msgid "_update_volume_stats: Could not get storage pool data."
 msgstr ""
 "_update_volume_stats: Impossibile ottenere i dati del pool dell'archivio."
+
+#, python-format
+msgid ""
+"_wait_for_copy_complete, cpsession: %(cpsession)s, copysession state is "
+"BROKEN."
+msgstr ""
+"_wait_for_copy_complete, cpsession: %(cpsession)s, lo stato della sessione "
+"di copia è BROKEN."
 
 #, python-format
 msgid ""
@@ -7647,6 +9832,23 @@ msgid "being attached by different mode"
 msgstr "in fase di collegamento tramite una modalità differente"
 
 #, python-format
+msgid "call failed: %r"
+msgstr "chiamata non riuscita: %r"
+
+msgid "call failed: GARBAGE_ARGS"
+msgstr "chiamata non riuscita: GARBAGE_ARGS"
+
+msgid "call failed: PROC_UNAVAIL"
+msgstr "chiamata non riuscita: PROC_UNAVAIL"
+
+#, python-format
+msgid "call failed: PROG_MISMATCH: %r"
+msgstr "chiamata non riuscita: PROG_MISMATCH: %r"
+
+msgid "call failed: PROG_UNAVAIL"
+msgstr "chiamata non riuscita: PROG_UNAVAIL"
+
+#, python-format
 msgid "can't find lun-map, ig:%(ig)s vol:%(vol)s"
 msgstr "impossibile trovare lun-map, ig:%(ig)s vol:%(vol)s"
 
@@ -7666,6 +9868,18 @@ msgstr "Impossibile riconoscere XML"
 msgid "cg-%s"
 msgstr "gc-%s"
 
+msgid "cgsnapshot assigned"
+msgstr "cgsnapshot assegnato"
+
+msgid "cgsnapshot changed"
+msgstr "cgsnapshot modificato"
+
+msgid "cgsnapshots assigned"
+msgstr "cgsnapshots assegnati"
+
+msgid "cgsnapshots changed"
+msgstr "cgsnapshots modificati"
+
 msgid ""
 "check_for_setup_error: Password or SSH private key is required for "
 "authentication: set either san_password or san_private_key option."
@@ -7679,17 +9893,67 @@ msgstr "check_for_setup_error: Impossibile determinare l'ID del sistema."
 msgid "check_for_setup_error: Unable to determine system name."
 msgstr "check_for_setup_error: Impossibile determinare il nome del sistema."
 
+msgid "check_hypermetro_exist error."
+msgstr "Errore check_hypermetro_exist."
+
 #, python-format
 msgid "clone depth exceeds limit of %s"
 msgstr "la profondità del clone supera il limite di %s"
 
+msgid "consistencygroup assigned"
+msgstr "consistencygroup assegnato"
+
+msgid "consistencygroup changed"
+msgstr "consistencygroup modificato"
+
 msgid "control_location must be defined"
 msgstr "control_location deve essere definito"
+
+msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
+msgstr "create_cloned_volume, il volume di origine non esiste in ETERNUS."
+
+#, python-format
+msgid ""
+"create_cloned_volume, target volume instancename: %(volume_instancename)s, "
+"Get Instance Failed."
+msgstr ""
+"create_cloned_volume, nome istanza volume di destinazione: "
+"%(volume_instancename)s, Richiamo istanza non riuscito."
 
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr ""
 "create_cloned_volume: la dimensione dell'origine e della destinazione sono "
 "differenti."
+
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume: la dimensione del volume di origine %(src_vol)s è "
+"%(src_size)dGB e non si adatta al volume di destinazione %(tgt_vol)s di "
+"dimensione %(tgt_size)dGB."
+
+msgid ""
+"create_consistencygroup_from_src must be creating from a CG snapshot, or a "
+"source CG."
+msgstr ""
+"create_consistencygroup_from_src deve essere creato da un'istantanea CG o da "
+"un CG di origine."
+
+msgid ""
+"create_consistencygroup_from_src only supports a cgsnapshot source or a "
+"consistency group source. Multiple sources cannot be used."
+msgstr ""
+"create_consistencygroup_from_src supporta solo un'origine cgsnapshot o "
+"un'origine del gruppo di coerenza. Non possono essere utilizzate più origini."
+
+msgid ""
+"create_consistencygroup_from_src supports a cgsnapshot source or a "
+"consistency group source. Multiple sources cannot be used."
+msgstr ""
+"create_consistencygroup_from_src supporta un'origine cgsnapshot o un'origine "
+"del gruppo di coerenza. Non possono essere utilizzate più origini."
 
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."
@@ -7705,6 +9969,38 @@ msgstr "create_host: il nome host non è unicode o stringa."
 msgid "create_host: No initiators or wwpns supplied."
 msgstr "create_host: Nessun iniziatore o wwpns fornito."
 
+msgid "create_hypermetro_pair error."
+msgstr "Errore create_hypermetro_pair."
+
+#, python-format
+msgid "create_snapshot, eternus_pool: %(eternus_pool)s, pool not found."
+msgstr "create_snapshot, eternus_pool: %(eternus_pool)s, pool non trovato."
+
+#, python-format
+msgid ""
+"create_snapshot, snapshotname: %(snapshotname)s, source volume name: "
+"%(volumename)s, vol_instance.path: %(vol_instance)s, dest volume name: "
+"%(d_volumename)s, pool: %(pool)s, Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"create_snapshot, snapshotname: %(snapshotname)s, nome volume di origine: "
+"%(volumename)s, vol_instance.path: %(vol_instance)s, nome volume di "
+"destinazione: %(d_volumename)s, pool: %(pool)s, Codice di ritorno: %(rc)lu, "
+"Errore: %(errordesc)s."
+
+#, python-format
+msgid ""
+"create_snapshot, volumename: %(s_volumename)s, source volume not found on "
+"ETERNUS."
+msgstr ""
+"create_snapshot, volumename: %(s_volumename)s, volume di origine non trovato "
+"su ETERNUS."
+
+#, python-format
+msgid ""
+"create_snapshot, volumename: %(volumename)s, Replication Service not found."
+msgstr ""
+"create_snapshot, volumename: %(volumename)s, Server di replica non trovato."
+
 #, python-format
 msgid ""
 "create_snapshot: Volume status must be \"available\" or \"in-use\" for "
@@ -7715,6 +10011,42 @@ msgstr ""
 
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot: richiesta del volume di origine non riuscita."
+
+#, python-format
+msgid ""
+"create_volume, volume: %(volume)s, EnumerateInstances, cannot connect to "
+"ETERNUS."
+msgstr ""
+"create_volume, volume: %(volume)s, EnumerateInstances, impossibile "
+"connettersi a ETERNUS."
+
+#, python-format
+msgid ""
+"create_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service not found."
+msgstr ""
+"create_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service non trovato."
+
+#, python-format
+msgid ""
+"create_volume, volumename: %(volumename)s, poolname: %(eternus_pool)s, "
+"Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"create_volume, volumename: %(volumename)s, poolname: %(eternus_pool)s, "
+"Codice di ritorno: %(rc)lu, Errore: %(errordesc)s."
+
+msgid "create_volume_from_snapshot, Source Volume does not exist in ETERNUS."
+msgstr ""
+"create_volume_from_snapshot, il volume di origine non esiste in ETERNUS."
+
+#, python-format
+msgid ""
+"create_volume_from_snapshot, target volume instancename: "
+"%(volume_instancename)s, Get Instance Failed."
+msgstr ""
+"create_volume_from_snapshot, nome istanza volume di destinazione: "
+"%(volume_instancename)s, Richiamo istanza non riuscito."
 
 #, python-format
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
@@ -7762,6 +10094,16 @@ msgstr ""
 "eliminazione: %(vol_id)s non ha eseguito dsmc con stdout: %(out)s\n"
 " stderr: %(err)s"
 
+msgid "delete_hypermetro error."
+msgstr "Errore delete_hypermetro."
+
+#, python-format
+msgid "delete_initiator: %s ACL not found. Continuing."
+msgstr "delete_initiator: ACL %s non trovato. Continuare."
+
+msgid "delete_replication error."
+msgstr "Errore delete_replication."
+
 #, python-format
 msgid "deleting snapshot %(snapshot_name)s that has dependent volumes"
 msgstr ""
@@ -7792,6 +10134,30 @@ msgstr ""
 "errore di scrittura dell'oggetto in swift, MD5 dell'oggetto in swift "
 "%(etag)s non è uguale a MD5 dell'oggetto inviato a swift %(md5)s"
 
+#, python-format
+msgid "extend_volume, eternus_pool: %(eternus_pool)s, pool not found."
+msgstr "extend_volume, eternus_pool: %(eternus_pool)s, pool non trovato."
+
+#, python-format
+msgid ""
+"extend_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service not found."
+msgstr ""
+"extend_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service non trovato."
+
+#, python-format
+msgid ""
+"extend_volume, volumename: %(volumename)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s, PoolType: %(pooltype)s."
+msgstr ""
+"extend_volume, volumename: %(volumename)s, Codice di ritorno: %(rc)lu, "
+"Errore: %(errordesc)s, PoolType: %(pooltype)s."
+
+#, python-format
+msgid "extend_volume, volumename: %(volumename)s, volume not found."
+msgstr "extend_volume, volumename: %(volumename)s, volume non trovato."
+
 msgid "failed to create new_volume on destination host"
 msgstr "impossibile creare new_volume nell'host di destinazione"
 
@@ -7807,6 +10173,10 @@ msgstr "fileno non è supportato da SheepdogIOWrapper "
 
 msgid "fileno() not supported by RBD()"
 msgstr "fileno() non supportato da RBD()"
+
+#, python-format
+msgid "filesystem %s does not exist in Nexenta Store appliance"
+msgstr "Il filesystem %s non esiste nell'applicazione Nexenta Store"
 
 msgid ""
 "flashsystem_multihostmap_enabled is set to False, not allow multi host "
@@ -7831,6 +10201,12 @@ msgstr "fmt=%(fmt)s sottoposto a backup da: %(backing_file)s"
 msgid "force delete"
 msgstr "forzare eliminazione "
 
+msgid "get_hyper_domain_id error."
+msgstr "Errore get_hyper_domain_id."
+
+msgid "get_hypermetro_by_id error."
+msgstr "Errore get_hypermetro_by_id."
+
 #, python-format
 msgid ""
 "get_iscsi_params: Failed to get target IP for initiator %(ini)s, please "
@@ -7838,6 +10214,13 @@ msgid ""
 msgstr ""
 "get_iscsi_params: impossibile ottenere l'IP di destinazione per l'iniziatore "
 "%(ini)s, controllare il file di configurazione."
+
+#, python-format
+msgid "get_pool: Failed to get attributes for volume %s"
+msgstr "get_pool: Impossibile ottenere gli attributi per il volume %s"
+
+msgid "glance_metadata changed"
+msgstr "glance_metadata modificato"
 
 #, python-format
 msgid ""
@@ -7896,6 +10279,10 @@ msgid "image %s not found"
 msgstr "impossibile trovare l'immagine %s"
 
 #, python-format
+msgid "initialize_connection, volume: %(volume)s, Volume not found."
+msgstr "initialize_connection, volume: %(volume)s, Volume non trovato."
+
+#, python-format
 msgid "initialize_connection: Failed to get attributes for volume %s."
 msgstr ""
 "initialize_connection: impossibile ottenere gli attributi per il volume %s."
@@ -7929,6 +10316,9 @@ msgstr ""
 "iscsi_ip_address deve essere impostato nel file di configurazione quando si "
 "usa il protocollo 'iSCSI'."
 
+msgid "iscsiadm execution failed. "
+msgstr "Esecuzione di iscsiadm non riuscita. "
+
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "errore gestore chiavi: %(reason)s"
@@ -7942,10 +10332,25 @@ msgstr "parametro limite deve essere un numero intero"
 msgid "limit param must be positive"
 msgstr "parametro limite deve essere positivo"
 
+msgid ""
+"manage_existing cannot manage a volume connected to hosts. Please disconnect "
+"this volume from existing hosts before importing"
+msgstr ""
+"manage_existing non può gestire un volume connesso agli host. Disconnettere "
+"questo volume dagli host esistenti prima dell'importazione"
+
 msgid "manage_existing requires a 'name' key to identify an existing volume."
 msgstr ""
 "manage_existing richiede una chiave 'name' per identificare un volume "
 "esistente."
+
+#, python-format
+msgid ""
+"manage_existing_snapshot: Error managing existing replay %(ss)s on volume "
+"%(vol)s"
+msgstr ""
+"manage_existing_snapshot: Errore durante la gestione della risposta "
+"esistente %(ss)s sul volume %(vol)s"
 
 #, python-format
 msgid "marker [%s] not found"
@@ -7985,6 +10390,10 @@ msgstr "il nome non può essere None"
 #, python-format
 msgid "naviseccli_path: Could not find NAVISECCLI tool %(path)s."
 msgstr "naviseccli_path: Impossibile trovare lo strumento NAVISECCLI %(path)s."
+
+#, python-format
+msgid "no REPLY but %r"
+msgstr "nessuna RISPOSTA ma %r"
 
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
@@ -8049,6 +10458,14 @@ msgstr "le librerie python rados e rbd non sono state trovate"
 #, python-format
 msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr "read_deleted può essere solo 'no', 'yes' o 'only', non %r"
+
+#, python-format
+msgid "replication_failover failed. %s not found."
+msgstr "replication_failover non riuscito. %s non trovato."
+
+msgid "replication_failover failed. Backend not configured for failover"
+msgstr ""
+"replication_failover non riuscito. Backend non configurato per il failover"
 
 #, python-format
 msgid ""
@@ -8132,6 +10549,12 @@ msgstr "ID istantanea:%s non trovato"
 msgid "snapshot-%s"
 msgstr "istantanea-%s "
 
+msgid "snapshots assigned"
+msgstr "istantanee assegnate"
+
+msgid "snapshots changed"
+msgstr "snapshots modificato"
+
 #, python-format
 msgid "source vol id:%s not found"
 msgstr "ID volume di origine: %s non trovato"
@@ -8140,14 +10563,26 @@ msgstr "ID volume di origine: %s non trovato"
 msgid "source volume id:%s is not replicated"
 msgstr "ID volume origine:%s  non replicato"
 
+msgid "source-name cannot be empty."
+msgstr "source-name non può essere vuoto."
+
+msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
+msgstr "Il formato di source-name deve essere : 'vmdk_path@vm_inventory_path'."
+
 msgid "status must be available"
 msgstr "lo stato deve essere available"
+
+msgid "stop_hypermetro error."
+msgstr "Errore stop_hypermetro."
 
 msgid "subclasses must implement construct()!"
 msgstr "le sottoclassi devono implementare il costrutto()!"
 
 msgid "sudo failed, continuing as if nothing happened"
 msgstr "sudo non riuscito, proseguire come se nulla fosse successo"
+
+msgid "sync_hypermetro error."
+msgstr "Errore sync_hypermetro."
 
 msgid "sync_replica not implemented."
 msgstr "sync_replica non implementata."
@@ -8183,6 +10618,14 @@ msgstr "smontaggio: <mnt_path>: qualche altro errore"
 
 msgid "umount: <mnt_path>: target is busy"
 msgstr "smontaggio: <mnt_path>: la destinazione è occupata"
+
+#, python-format
+msgid "unmanage_snapshot: Cannot find snapshot named %s"
+msgstr "unmanage_snapshot: Impossibile trovare l'istantanea denominata %s"
+
+#, python-format
+msgid "unmanage_snapshot: Cannot find volume id %s"
+msgstr "unmanage_snapshot: Impossibile trovare l'id volume %s"
 
 #, python-format
 msgid "unrecognized argument %s"
@@ -8232,6 +10675,9 @@ msgstr ""
 msgid "volume size %d is invalid."
 msgstr "la dimensione del volume %d non è valida."
 
+msgid "volume_type cannot be None"
+msgstr "volume_type non può essere None"
+
 msgid ""
 "volume_type must be provided when creating a volume in a consistency group."
 msgstr ""
@@ -8250,6 +10696,23 @@ msgstr ""
 msgid "volume_types must be provided to create consistency group %s."
 msgstr "è necessario fornire volume_types per creare un gruppo di coerenza %s."
 
+msgid "volumes assigned"
+msgstr "volumi assegnati"
+
+msgid "volumes changed"
+msgstr "volumi modificati"
+
 #, python-format
 msgid "wait_for_condition: %s timed out."
 msgstr "wait_for_condition: %s scaduto."
+
+#, python-format
+msgid ""
+"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
+"value is: %s."
+msgstr ""
+"La proprietà zfssa_manage_policy deve essere impostata su 'strict' o "
+"'loose'. Il valore corrente è : %s."
+
+msgid "{} is not a valid option."
+msgstr "{} non è un'opzione valida."
