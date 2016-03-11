@@ -2958,7 +2958,7 @@ class EMCVnxCliBase(object):
         self._volume_creation_check(volume)
         base_lun_name = self._get_base_lun_name(src_vref)
         source_lun_id = self.get_lun_id(src_vref)
-        volume_size = src_vref['size']
+        volume_size = volume['size']
         source_volume_name = src_vref['name']
         consistencygroup_id = src_vref['consistencygroup_id']
         cgsnapshot_name = None
