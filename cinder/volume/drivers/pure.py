@@ -961,15 +961,11 @@ class PureBaseVolumeDriver(san.SanDriver):
                                        "new_name": unmanaged_snap_name})
         self._rename_volume_object(snap_name, unmanaged_snap_name)
 
-    @staticmethod
-    def _get_flasharray(san_ip, api_token, rest_version=None,
+    def _get_flasharray(self, san_ip, api_token, rest_version=None,
                         verify_https=None, ssl_cert_path=None):
         # Older versions of the module (1.4.0) do not support setting ssl certs
         # TODO(patrickeast): In future releases drop support for 1.4.0
-        module_version = purestorage.VERSION.split('.')
-        major_version = int(module_version[0])
-        minor_version = int(module_version[1])
-        if major_version > 1 or (major_version == 1 and minor_version > 4):
+        if self._client_version_greater_than([1, 4, 0]):
             array = purestorage.FlashArray(san_ip,
                                            api_token=api_token,
                                            rest_version=rest_version,
@@ -994,6 +990,14 @@ class PureBaseVolumeDriver(san.SanDriver):
                   {"array_name": array.array_name,
                    "api_version": array._rest_version})
         return array
+
+    @staticmethod
+    def _client_version_greater_than(version):
+        module_version = [int(v) for v in purestorage.VERSION.split('.')]
+        for limit_version, actual_version in zip(version, module_version):
+            if actual_version > limit_version:
+                return True
+        return False
 
     @staticmethod
     def _get_vol_name(volume):

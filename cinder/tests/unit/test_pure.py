@@ -1890,7 +1890,11 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             remvollist=[VOLUME_PURITY_NAME]
         )
 
-    @ddt.data(dict(version='1.5.0'), dict(version='2.0.0'))
+    @ddt.data(
+        dict(version='1.5.0'),
+        dict(version='2.0.0'),
+        dict(version='1.4.1'),
+    )
     @ddt.unpack
     def test_get_flasharray_verify_https(self, version):
         self.purestorage_module.VERSION = version
