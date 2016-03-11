@@ -18,7 +18,7 @@ import json
 import os
 import zlib
 
-from apiclient import errors
+from googleapiclient import errors
 from oauth2client import client
 from oslo_utils import units
 import six
