@@ -2243,7 +2243,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             # Test invalid secondary target.
             self.assertRaises(
-                exception.VolumeBackendAPIException,
+                exception.InvalidReplicationTarget,
                 self.driver.failover_host,
                 ctxt,
                 [self.volume_replicated],
@@ -2350,7 +2350,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
 
             volume = self.volume_replicated.copy()
             self.assertRaises(
-                exception.VolumeDriverException,
+                exception.InvalidReplicationTarget,
                 self.driver.failover_host,
                 context.get_admin_context(),
                 [volume],

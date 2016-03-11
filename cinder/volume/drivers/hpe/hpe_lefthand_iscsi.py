@@ -1414,7 +1414,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 msg = _("A valid secondary target MUST be specified in order "
                         "to failover.")
                 LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
+                raise exception.InvalidReplicationTarget(reason=msg)
 
             target_id = failover_target['backend_id']
             self._active_backend_id = target_id
@@ -1580,7 +1580,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                     "resynchronize the volumes and resume replication on the "
                     "LeftHand backends.")
             LOG.error(msg)
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.InvalidReplicationTarget(reason=msg)
 
         cl = None
         volume_update_list = []
