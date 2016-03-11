@@ -203,10 +203,6 @@ class PureBaseVolumeDriver(san.SanDriver):
                 target_array.array_id = target_array_info["id"]
                 LOG.debug("secondary array name: %s", target_array.array_name)
                 LOG.debug("secondary array id: %s", target_array.array_id)
-                self._setup_replicated_pgroups(target_array, [primary_array],
-                                               self._replication_pg_name,
-                                               self._replication_interval,
-                                               retention_policy)
                 self._replication_target_arrays.append(target_array)
         self._setup_replicated_pgroups(primary_array,
                                        self._replication_target_arrays,
