@@ -121,7 +121,7 @@ class ViewBuilderTestCase(test.TestCase):
 
         result = self._get_builder()._generate_href()
 
-        self.assertEqual('http://localhost/v1/', result)
+        self.assertEqual('http://localhost/v3/', result)
 
     @ddt.data(
         ('v2', None, URL_BASE + 'v2/'),
