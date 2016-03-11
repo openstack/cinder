@@ -30,9 +30,9 @@ import base64
 import hashlib
 import httplib2
 
-from apiclient import discovery
-from apiclient import errors
-from apiclient import http
+from googleapiclient import discovery
+from googleapiclient import errors
+from googleapiclient import http
 from oauth2client import client
 from oslo_config import cfg
 from oslo_log import log as logging
