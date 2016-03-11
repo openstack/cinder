@@ -69,6 +69,10 @@ RETRIES = 'storagetype:retries'
 ISV3 = 'isV3'
 TRUNCATE_5 = 5
 TRUNCATE_8 = 8
+SNAPVX = 7
+DISSOLVE_SNAPVX = 9
+CREATE_NEW_TARGET = 2
+SNAPVX_REPLICATION_TYPE = 6
 
 emc_opts = [
     cfg.StrOpt('cinder_emc_config_file',
@@ -2372,6 +2376,12 @@ class EMCVMAXCommon(object):
 
         if not extraSpecs[ISV3]:
             snapshotInstance = self._find_lun(snapshot)
+            if snapshotInstance is None:
+                LOG.error(_LE(
+                    "Snapshot %(snapshotname)s not found on the array. "
+                    "No volume to delete."),
+                    {'snapshotname': snapshotname})
+                return (-1, snapshotname)
             storageSystem = snapshotInstance['SystemName']
 
             # Wait for it to fully sync in case there is an ongoing
@@ -2937,13 +2947,9 @@ class EMCVMAXCommon(object):
         :param extraSpecs: extra specifications
         :returns: sgInstanceName
         """
-        storageGroupName = self.utils.get_v3_storage_group_name(
-            poolName, slo, workload)
-        controllerConfigService = (
-            self.utils.find_controller_configuration_service(
-                self.conn, storageSystemName))
-        sgInstanceName = self.utils.find_storage_masking_group(
-            self.conn, controllerConfigService, storageGroupName)
+        storageGroupName, controllerConfigService, sgInstanceName = (
+            self.utils.get_v3_default_sg_instance_name(
+                self.conn, poolName, slo, workload, storageSystemName))
         if sgInstanceName is None:
             sgInstanceName = self.provisionv3.create_storage_group_v3(
                 self.conn, controllerConfigService, storageGroupName,
@@ -3784,65 +3790,43 @@ class EMCVMAXCommon(object):
         :returns: dict -- cloneDict
         """
         cloneName = cloneVolume['name']
-        # Default syncType 8: clone.
-        syncType = self.utils.get_num(8, '16')
-        # Default operation 8: Detach for clone.
-        operation = self.utils.get_num(8, '16')
-
-        numOfBlocks = sourceInstance['NumberOfBlocks']
-        blockSize = sourceInstance['BlockSize']
-        volumeSizeInbits = numOfBlocks * blockSize
-
-        volume = {'size':
-                  int(self.utils.convert_bits_to_gbs(volumeSizeInbits))}
-        _rc, volumeDict, _storageSystemName = (
-            self._create_v3_volume(
-                volume, cloneName, volumeSizeInbits, extraSpecs))
-        targetInstance = self.utils.find_volume_instance(
-            self.conn, volumeDict, cloneName)
-        LOG.debug("Create replica target volume "
-                  "source volume: %(sourceVol)s, "
-                  "target volume: %(targetVol)s.",
-                  {'sourceVol': sourceInstance.path,
-                   'targetVol': targetInstance.path})
+        # SyncType 7: snap, VG3R default snapshot is snapVx.
+        syncType = self.utils.get_num(SNAPVX, '16')
+        # Operation 9: Dissolve for snapVx.
+        operation = self.utils.get_num(DISSOLVE_SNAPVX, '16')
+        rsdInstance = None
+        targetInstance = None
         if isSnapshot:
-            # SyncType 7: snap, VG3R default snapshot is snapVx.
-            syncType = self.utils.get_num(7, '16')
-            # Operation 9: Dissolve for snapVx.
-            operation = self.utils.get_num(9, '16')
+            rsdInstance = self.utils.set_target_element_supplier_in_rsd(
+                self.conn, repServiceInstanceName, SNAPVX_REPLICATION_TYPE,
+                CREATE_NEW_TARGET, extraSpecs)
+        else:
+            targetInstance = self._create_duplicate_volume(
+                sourceInstance, cloneName, extraSpecs)
 
         try:
             _rc, job = (
                 self.provisionv3.create_element_replica(
                     self.conn, repServiceInstanceName, cloneName, syncType,
-                    sourceInstance, extraSpecs, targetInstance))
+                    sourceInstance, extraSpecs, targetInstance, rsdInstance))
         except Exception:
             LOG.warning(_LW(
                 "Clone failed on V3. Cleaning up the target volume. "
                 "Clone name: %(cloneName)s "),
                 {'cloneName': cloneName})
             # Check if the copy session exists.
-            storageSystem = targetInstance['SystemName']
-            syncInstanceName = self.utils.find_sync_sv_by_target(
-                self.conn, storageSystem, targetInstance, False)
-            if syncInstanceName is not None:
-                # Break the clone relationship.
-                rc, job = self.provisionv3.break_replication_relationship(
-                    self.conn, repServiceInstanceName, syncInstanceName,
-                    operation, extraSpecs, True)
-            storageConfigService = (
-                self.utils.find_storage_configuration_service(
-                    self.conn, storageSystem))
-            deviceId = targetInstance['DeviceID']
-            volumeName = targetInstance['Name']
-            rc = self._delete_from_pool_v3(
-                storageConfigService, targetInstance, volumeName,
-                deviceId, extraSpecs)
-            # Re-throw the exception.
-            raise
+            if targetInstance:
+                self._cleanup_target(
+                    repServiceInstanceName, targetInstance, extraSpecs)
+                # Re-throw the exception.
+                raise
 
         cloneDict = self.provisionv3.get_volume_dict_from_job(
             self.conn, job['Job'])
+        targetVolumeInstance = (
+            self.provisionv3.get_volume_from_job(self.conn, job['Job']))
+        LOG.info(_LI("The target instance device id is: %(deviceid)s."),
+                 {'deviceid': targetVolumeInstance['DeviceID']})
 
         cloneVolume['provider_location'] = six.text_type(cloneDict)
 
@@ -3850,20 +3834,35 @@ class EMCVMAXCommon(object):
             self._find_storage_sync_sv_sv(cloneVolume, sourceVolume,
                                           extraSpecs, True))
 
-        # Detach/dissolve the clone/snap relationship.
-        # 8 - Detach operation.
-        # 9 - Dissolve operation.
-        if isSnapshot:
-            # Operation 9: dissolve for snapVx.
-            operation = self.utils.get_num(9, '16')
-        else:
-            # Operation 8: detach for clone.
-            operation = self.utils.get_num(8, '16')
-
         rc, job = self.provisionv3.break_replication_relationship(
             self.conn, repServiceInstanceName, syncInstanceName,
             operation, extraSpecs)
         return rc, cloneDict
+
+    def _cleanup_target(
+            self, repServiceInstanceName, targetInstance, extraSpecs):
+        """cleanup target after exception
+
+        :param repServiceInstanceName: the replication service
+        :param targetInstance: the target instance
+        :param extraSpecs: extra specifications
+        """
+        storageSystem = targetInstance['SystemName']
+        syncInstanceName = self.utils.find_sync_sv_by_target(
+            self.conn, storageSystem, targetInstance, False)
+        if syncInstanceName is not None:
+            # Break the clone relationship.
+            self.provisionv3.break_replication_relationship(
+                self.conn, repServiceInstanceName, syncInstanceName,
+                DISSOLVE_SNAPVX, extraSpecs, True)
+        storageConfigService = (
+            self.utils.find_storage_configuration_service(
+                self.conn, storageSystem))
+        deviceId = targetInstance['DeviceID']
+        volumeName = targetInstance['Name']
+        self._delete_from_pool_v3(
+            storageConfigService, targetInstance, volumeName,
+            deviceId, extraSpecs)
 
     def _delete_cg_and_members(
             self, storageSystem, cgName, modelUpdate, volumes, extraSpecs):
@@ -4434,3 +4433,30 @@ class EMCVMAXCommon(object):
             volumeName, new_size_in_bits, extraSpecs)
 
         return rc, volumeDict
+
+    def _create_duplicate_volume(
+            self, sourceInstance, cloneName, extraSpecs):
+        """Create a volume in the same dimensions of the source volume.
+
+        :param sourceInstance: the source volume instance
+        :param cloneName: the user supplied snap name
+        :param extraSpecs: additional info
+        :returns: targetInstance
+        """
+        numOfBlocks = sourceInstance['NumberOfBlocks']
+        blockSize = sourceInstance['BlockSize']
+        volumeSizeInbits = numOfBlocks * blockSize
+
+        volume = {'size':
+                  int(self.utils.convert_bits_to_gbs(volumeSizeInbits))}
+        _rc, volumeDict, _storageSystemName = (
+            self._create_v3_volume(
+                volume, cloneName, volumeSizeInbits, extraSpecs))
+        targetInstance = self.utils.find_volume_instance(
+            self.conn, volumeDict, cloneName)
+        LOG.debug("Create replica target volume "
+                  "Source Volume: %(sourceVol)s, "
+                  "Target Volume: %(targetVol)s.",
+                  {'sourceVol': sourceInstance.path,
+                   'targetVol': targetInstance.path})
+        return targetInstance

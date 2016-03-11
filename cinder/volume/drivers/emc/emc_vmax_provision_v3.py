@@ -31,6 +31,9 @@ EMC_ROOT = 'root/emc'
 THINPROVISIONINGCOMPOSITE = 32768
 THINPROVISIONING = 5
 INFO_SRC_V3 = 3
+ACTIVATESNAPVX = 4
+DEACTIVATESNAPVX = 19
+SNAPSYNCTYPE = 7
 
 
 class EMCVMAXProvisionV3(object):
@@ -169,7 +172,39 @@ class EMCVMAXProvisionV3(object):
         associators = conn.Associators(
             jobInstance,
             ResultClass='EMC_StorageVolume')
-        volpath = associators[0].path
+        if len(associators) > 0:
+            return self.create_volume_dict(associators[0].path)
+        else:
+            exceptionMessage = (_(
+                "Unable to get storage volume from job."))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+    def get_volume_from_job(self, conn, jobInstance):
+        """Given the jobInstance determine the volume Instance.
+
+        :param conn: the ecom connection
+        :param jobInstance: the instance of a job
+        :returns: dict -- volumeDict - an instance of a volume
+        """
+        associators = conn.Associators(
+            jobInstance,
+            ResultClass='EMC_StorageVolume')
+        if len(associators) > 0:
+            return associators[0]
+        else:
+            exceptionMessage = (_(
+                "Unable to get storage volume from job."))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+
+    def create_volume_dict(self, volumeInstanceName):
+        """Create volume dictionary
+
+        :param volumeInstanceName: the instance of a job
+        :returns: dict -- volumeDict - an instance of a volume
+        """
+        volpath = volumeInstanceName
         volumeDict = {}
         volumeDict['classname'] = volpath.classname
         keys = {}
@@ -184,7 +219,7 @@ class EMCVMAXProvisionV3(object):
     def create_element_replica(
             self, conn, repServiceInstanceName,
             cloneName, syncType, sourceInstance, extraSpecs,
-            targetInstance=None):
+            targetInstance=None, rsdInstance=None):
         """Make SMI-S call to create replica for source element.
 
         :param conn: the connection to the ecom server
@@ -193,36 +228,36 @@ class EMCVMAXProvisionV3(object):
         :param syncType: 7=snapshot, 8=clone
         :param sourceInstance: source volume instance
         :param extraSpecs: additional info
-        :param targetInstance: target volume instance. Defaults to None
+        :param targetInstance: Target volume instance. Default None
+        :param rsdInstance: replication settingdata instance. Default None
         :returns: int -- rc - return code
         :returns: job - job object of the replica creation operation
         :raises: VolumeBackendAPIException
         """
         startTime = time.time()
-
-        if targetInstance is None:
-            LOG.debug("Create targetless replica: %(clone)s "
-                      "syncType: %(syncType)s  Source: %(source)s.",
-                      {'clone': cloneName,
-                       'syncType': syncType,
-                       'source': sourceInstance.path})
+        LOG.debug("Create replica: %(clone)s "
+                  "syncType: %(syncType)s  Source: %(source)s.",
+                  {'clone': cloneName,
+                   'syncType': syncType,
+                   'source': sourceInstance.path})
+        storageSystemName = sourceInstance['SystemName']
+        __, __, sgInstanceName = (
+            self.utils.get_v3_default_sg_instance_name(
+                conn, extraSpecs[self.utils.POOL],
+                extraSpecs[self.utils.SLO],
+                extraSpecs[self.utils.WORKLOAD], storageSystemName))
+        if targetInstance is None and rsdInstance is None:
             rc, job = conn.InvokeMethod(
                 'CreateElementReplica', repServiceInstanceName,
-                ElementName=cloneName, SyncType=syncType,
-                SourceElement=sourceInstance.path)
-        else:
-            LOG.debug(
-                "Create replica: %(clone)s syncType: %(syncType)s "
-                "Source: %(source)s target: %(target)s.",
-                {'clone': cloneName,
-                 'syncType': syncType,
-                 'source': sourceInstance.path,
-                 'target': targetInstance.path})
-            rc, job = conn.InvokeMethod(
-                'CreateElementReplica', repServiceInstanceName,
-                ElementName=cloneName, SyncType=syncType,
+                ElementName=cloneName,
+                SyncType=self.utils.get_num(syncType, '16'),
                 SourceElement=sourceInstance.path,
-                TargetElement=targetInstance.path)
+                Collections=[sgInstanceName])
+        else:
+            rc, job = self._create_element_replica_extra_params(
+                conn, repServiceInstanceName, cloneName, syncType,
+                sourceInstance, targetInstance, rsdInstance,
+                sgInstanceName)
 
         if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
@@ -242,6 +277,49 @@ class EMCVMAXProvisionV3(object):
                   "took: %(delta)s H:MM:SS.",
                   {'delta': self.utils.get_time_delta(startTime,
                                                       time.time())})
+        return rc, job
+
+    def _create_element_replica_extra_params(
+            self, conn, repServiceInstanceName, cloneName, syncType,
+            sourceInstance, targetInstance, rsdInstance, sgInstanceName):
+        """CreateElementReplica using extra parameters.
+
+        :param conn: the connection to the ecom server
+        :param repServiceInstanceName: replication service
+        :param cloneName: clone volume name
+        :param syncType: 7=snapshot, 8=clone
+        :param sourceInstance: source volume instance
+        :param targetInstance: Target volume instance. Default None
+        :param rsdInstance: replication settingdata instance. Default None
+        :param sgInstanceName: pool instance name
+        :returns: int -- rc - return code
+        :returns: job - job object of the replica creation operation
+        """
+        syncType = self.utils.get_num(syncType, '16')
+        if targetInstance and rsdInstance:
+            rc, job = conn.InvokeMethod(
+                'CreateElementReplica', repServiceInstanceName,
+                ElementName=cloneName,
+                SyncType=syncType,
+                SourceElement=sourceInstance.path,
+                TargetElement=targetInstance.path,
+                ReplicationSettingData=rsdInstance)
+        elif targetInstance:
+            rc, job = conn.InvokeMethod(
+                'CreateElementReplica', repServiceInstanceName,
+                ElementName=cloneName,
+                SyncType=syncType,
+                SourceElement=sourceInstance.path,
+                TargetElement=targetInstance.path)
+        elif rsdInstance:
+            rc, job = conn.InvokeMethod(
+                'CreateElementReplica', repServiceInstanceName,
+                ElementName=cloneName,
+                SyncType=syncType,
+                SourceElement=sourceInstance.path,
+                ReplicationSettingData=rsdInstance,
+                Collections=[sgInstanceName])
+
         return rc, job
 
     def break_replication_relationship(
@@ -449,7 +527,7 @@ class EMCVMAXProvisionV3(object):
         :returns: job object of the replica creation operation
         """
         # Operation 4: activate the snapVx.
-        operation = self.utils.get_num(4, '16')
+        operation = ACTIVATESNAPVX
 
         LOG.debug("Activate snap: %(sv)s  operation: %(operation)s.",
                   {'sv': syncInstanceName, 'operation': operation})
@@ -470,7 +548,7 @@ class EMCVMAXProvisionV3(object):
         :returns: job object of the replica creation operation
         """
         # Operation 4: activate the snapVx.
-        operation = self.utils.get_num(19, '16')
+        operation = DEACTIVATESNAPVX
 
         LOG.debug("Return snap resource back to pool: "
                   "%(sv)s  operation: %(operation)s.",
@@ -503,7 +581,7 @@ class EMCVMAXProvisionV3(object):
 
         rc, job = conn.InvokeMethod(
             'ModifyReplicaSynchronization', repServiceInstanceName,
-            Operation=operation,
+            Operation=self.utils.get_num(operation, '16'),
             Synchronization=syncInstanceName,
             Force=force)
 
@@ -558,15 +636,13 @@ class EMCVMAXProvisionV3(object):
              'relationName': relationName,
              'srcGroup': srcGroupInstanceName,
              'tgtGroup': tgtGroupInstanceName})
-        # 7 for snap.
-        syncType = 7
         rc, job = conn.InvokeMethod(
             'CreateGroupReplica',
             replicationService,
             RelationshipName=relationName,
             SourceGroup=srcGroupInstanceName,
             TargetGroup=tgtGroupInstanceName,
-            SyncType=self.utils.get_num(syncType, '16'))
+            SyncType=self.utils.get_num(SNAPSYNCTYPE, '16'))
 
         if rc != 0:
             rc, errordesc = self.utils.wait_for_job_complete(conn, job,
