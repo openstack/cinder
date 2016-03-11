@@ -2535,7 +2535,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 replication.replication_failback(volume)
                 volume_update_list.append(
                     {'volume_id': volume['id'],
-                     'updates': {'replication_status': 'available'}})
+                     'updates': {'replication_status': 'enabled'}})
             else:
                 volume_update_list.append(
                     {'volume_id': volume['id'],
@@ -3103,6 +3103,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         data['pools'] = [self._build_pool_stats(pool)
                          for pool in
                          self.configuration.storwize_svc_volpool_name]
+        data['replication'] = self._replication_enabled
         data['replication_enabled'] = self._replication_enabled
         data['replication_targets'] = self._get_replication_targets(),
         self._stats = data
