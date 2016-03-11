@@ -2890,7 +2890,7 @@ class HPE3PARCommon(object):
                 msg = _("A valid secondary target MUST be specified in order "
                         "to failover.")
                 LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
+                raise exception.InvalidReplicationTarget(reason=msg)
 
             target_id = failover_target['backend_id']
             # For each volume, if it is replicated, we want to fail it over.
@@ -2947,7 +2947,7 @@ class HPE3PARCommon(object):
                     "resynchronize the volumes and resume replication on the "
                     "3PAR backends.")
             LOG.error(msg)
-            raise exception.VolumeDriverException(data=msg)
+            raise exception.InvalidReplicationTarget(reason=msg)
 
         # Update the volumes status to available.
         volume_update_list = []

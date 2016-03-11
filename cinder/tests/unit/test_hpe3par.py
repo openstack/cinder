@@ -4231,7 +4231,7 @@ class HPE3PARBaseDriver(object):
             volumes = [self.volume_replicated]
             # Test invalid secondary target.
             self.assertRaises(
-                exception.VolumeBackendAPIException,
+                exception.InvalidReplicationTarget,
                 self.driver.failover_host,
                 context.get_admin_context(),
                 volumes,
@@ -4239,7 +4239,7 @@ class HPE3PARBaseDriver(object):
 
             # Test no secondary target.
             self.assertRaises(
-                exception.VolumeBackendAPIException,
+                exception.InvalidReplicationTarget,
                 self.driver.failover_host,
                 context.get_admin_context(),
                 volumes,
@@ -4349,7 +4349,7 @@ class HPE3PARBaseDriver(object):
             volume['replication_status'] = 'failed-over'
 
             self.assertRaises(
-                exception.VolumeDriverException,
+                exception.InvalidReplicationTarget,
                 self.driver.failover_host,
                 context.get_admin_context(),
                 [volume],
