@@ -772,8 +772,8 @@ class RBDTestCase(test.TestCase):
             vendor_name='Open Source',
             driver_version=self.driver.VERSION,
             storage_protocol='ceph',
-            total_capacity_gb=27,
-            free_capacity_gb=26,
+            total_capacity_gb=28.44,
+            free_capacity_gb=27.0,
             reserved_percentage=0,
             multiattach=False)
 
