@@ -22,6 +22,7 @@ if possible.
 import os
 import uuid
 
+import fixtures
 from migrate.versioning import api as migration_api
 from migrate.versioning import repository
 from oslo_db.sqlalchemy import test_base
@@ -62,6 +63,65 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
     def get_table_ref(self, engine, name, metadata):
         metadata.bind = engine
         return sqlalchemy.Table(name, metadata, autoload=True)
+
+    class BannedDBSchemaOperations(fixtures.Fixture):
+        """Ban some operations for migrations"""
+        def __init__(self, banned_resources=None):
+            super(MigrationsMixin.BannedDBSchemaOperations, self).__init__()
+            self._banned_resources = banned_resources or []
+
+        @staticmethod
+        def _explode(resource, op):
+            print('%s.%s()' % (resource, op))  # noqa
+            raise Exception(
+                'Operation %s.%s() is not allowed in a database migration' % (
+                    resource, op))
+
+        def setUp(self):
+            super(MigrationsMixin.BannedDBSchemaOperations, self).setUp()
+            for thing in self._banned_resources:
+                self.useFixture(fixtures.MonkeyPatch(
+                    'sqlalchemy.%s.drop' % thing,
+                    lambda *a, **k: self._explode(thing, 'drop')))
+                self.useFixture(fixtures.MonkeyPatch(
+                    'sqlalchemy.%s.alter' % thing,
+                    lambda *a, **k: self._explode(thing, 'alter')))
+
+    def migrate_up(self, version, with_data=False):
+        # NOTE(dulek): This is a list of migrations where we allow dropping
+        # things. The rules for adding things here are very very specific.
+        # Insight on how to drop things from the DB in a backward-compatible
+        # manner is provided in Cinder's developer documentation.
+        # Reviewers: DO NOT ALLOW THINGS TO BE ADDED HERE WITHOUT CARE
+        exceptions = [
+            # NOTE(dulek): 62 alters the column type from boolean to integer to
+            # fix the bug 1518363. If we've followed the guidelines for live
+            # schema upgrades we would end up either waiting 3 releases to fix
+            # a simple bug or trigger a rebuild index operation in migration
+            # (because constraint was impossible to delete without deleting
+            # other foreign key constraints). Either way it's harsh... We've
+            # decided to go with alter to minimise upgrade impact. The only
+            # consequence for deployments running recent MySQL is inability
+            # to perform volume-type-access modifications while running this
+            # migration.
+            62,
+            # NOTE(dulek): 66 sets reservations.usage_id to nullable. This is
+            # 100% backward compatible and according to MySQL docs such ALTER
+            # is performed with the same restrictions as column addition, which
+            # we of course allow.
+            66,
+        ]
+
+        # NOTE(dulek): We only started requiring things be additive in
+        # Mitaka, so ignore all migrations before that point.
+        MITAKA_START = 61
+
+        if version >= MITAKA_START and version not in exceptions:
+            banned = ['Table', 'Column']
+        else:
+            banned = None
+        with MigrationsMixin.BannedDBSchemaOperations(banned):
+            super(MigrationsMixin, self).migrate_up(version, with_data)
 
     def _pre_upgrade_004(self, engine):
         """Change volume types to UUID """
