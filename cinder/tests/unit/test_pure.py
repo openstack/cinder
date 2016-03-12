@@ -496,8 +496,6 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assertEqual(self.array2,
                          self.driver._replication_target_arrays[0])
         calls = [
-            mock.call(self.array2, [self.array], 'cinder-group',
-                      REPLICATION_INTERVAL_IN_SEC, retention),
             mock.call(self.array, [self.array2], 'cinder-group',
                       REPLICATION_INTERVAL_IN_SEC, retention)
         ]
