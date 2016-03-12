@@ -151,9 +151,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.5 - Changed minimum client version to be 2.1.0
         2.0.6 - Update replication to version 2.1
         2.0.7 - Fixed bug #1554746, Create clone volume with new size.
+        2.0.8 - Add defaults for creating a replication client, bug #1556331
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     device_stats = {}
 
@@ -280,6 +281,9 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 remote_array['hpelefthand_username'],
                 remote_array['hpelefthand_password'])
 
+            ssh_conn_timeout = remote_array.get('ssh_conn_timeout', 30)
+            san_private_key = remote_array.get('san_private_key', '')
+
             # Extract IP address from API URL
             ssh_ip = self._extract_ip_from_url(
                 remote_array['hpelefthand_api_url'])
@@ -292,8 +296,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 remote_array['hpelefthand_username'],
                 remote_array['hpelefthand_password'],
                 port=remote_array['hpelefthand_ssh_port'],
-                conn_timeout=remote_array['ssh_conn_timeout'],
-                privatekey=remote_array['san_private_key'],
+                conn_timeout=ssh_conn_timeout,
+                privatekey=san_private_key,
                 missing_key_policy=policy,
                 known_hosts_file=known_hosts_file)
 
@@ -1417,7 +1421,6 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 raise exception.InvalidReplicationTarget(reason=msg)
 
             target_id = failover_target['backend_id']
-            self._active_backend_id = target_id
             volume_update_list = []
             for volume in volumes:
                 if self._volume_of_replicated_type(volume):
@@ -1440,9 +1443,6 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                     cl = None
                     try:
                         cl = self._create_replication_client(failover_target)
-                        # Make the volume primary so it can be attached after a
-                        # fail-over.
-                        cl.makeVolumePrimary(volume['name'])
                         # Stop snapshot schedule
                         try:
                             name = volume['name'] + (
@@ -1484,6 +1484,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                     volume_update_list.append(
                         {'volume_id': volume['id'],
                          'updates': {'status': 'error'}})
+
+            self._active_backend_id = target_id
 
         return target_id, volume_update_list
 

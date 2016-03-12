@@ -2355,3 +2355,41 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 context.get_admin_context(),
                 [volume],
                 'default')
+
+    def test__create_replication_client(self):
+        # set up driver with default config
+        self.setup_driver()
+
+        # Ensure creating a replication client works without specifiying
+        # ssh_conn_timeout or san_private_key.
+        remote_array = {
+            'hpelefthand_api_url': 'https://1.1.1.1:8080/lhos',
+            'hpelefthand_username': 'user',
+            'hpelefthand_password': 'password',
+            'hpelefthand_ssh_port': '16022'}
+        cl = self.driver._create_replication_client(remote_array)
+        cl.setSSHOptions.assert_called_with(
+            '1.1.1.1',
+            'user',
+            'password',
+            conn_timeout=30,
+            known_hosts_file=mock.ANY,
+            missing_key_policy='AutoAddPolicy',
+            port='16022',
+            privatekey='')
+
+        # Verify we can create a replication client with custom values for
+        # ssh_conn_timeout and san_private_key.
+        cl.reset_mock()
+        remote_array['ssh_conn_timeout'] = 45
+        remote_array['san_private_key'] = 'foobarkey'
+        cl = self.driver._create_replication_client(remote_array)
+        cl.setSSHOptions.assert_called_with(
+            '1.1.1.1',
+            'user',
+            'password',
+            conn_timeout=45,
+            known_hosts_file=mock.ANY,
+            missing_key_policy='AutoAddPolicy',
+            port='16022',
+            privatekey='foobarkey')
