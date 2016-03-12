@@ -1662,6 +1662,7 @@ class DellSCSanAPITestCase(test.TestCase):
         self.configuration.iscsi_ip_address = '192.168.1.1'
         self.configuration.iscsi_port = 3260
         self._context = context.get_admin_context()
+        self.apiversion = '2.0'
 
         # Set up the StorageCenterApi
         self.scapi = dell_storagecenter_api.StorageCenterApi(
@@ -1669,7 +1670,8 @@ class DellSCSanAPITestCase(test.TestCase):
             self.configuration.dell_sc_api_port,
             self.configuration.san_login,
             self.configuration.san_password,
-            self.configuration.dell_sc_verify_cert)
+            self.configuration.dell_sc_verify_cert,
+            self.apiversion)
 
         # Set up the scapi configuration vars
         self.scapi.ssn = self.configuration.dell_sc_ssn
@@ -6453,6 +6455,7 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
         self.configuration.iscsi_ip_address = '192.168.1.1'
         self.configuration.iscsi_port = 3260
         self._context = context.get_admin_context()
+        self.apiversion = '2.0'
 
         # Set up the StorageCenterApi
         self.scapi = dell_storagecenter_api.StorageCenterApi(
@@ -6460,7 +6463,8 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
             self.configuration.dell_sc_api_port,
             self.configuration.san_login,
             self.configuration.san_password,
-            self.configuration.dell_sc_verify_cert)
+            self.configuration.dell_sc_verify_cert,
+            self.apiversion)
 
         # Set up the scapi configuration vars
         self.scapi.ssn = self.configuration.dell_sc_ssn
@@ -6482,10 +6486,32 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
                        return_value=RESPONSE_400)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_check_version_fail',
+                       return_value=RESPONSE_400)
     def test_open_connection_failure(self,
+                                     mock_check_version_fail,
                                      mock_post):
+
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.scapi.open_connection)
+        self.assertTrue(mock_check_version_fail.called)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_check_version_fail',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json',
+                       return_value=APIDICT)
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post',
+                       return_value=RESPONSE_400)
+    def test_open_connection_sc(self,
+                                mock_post,
+                                mock_get_json,
+                                mock_check_version_fail):
+        self.scapi.open_connection()
+        self.assertTrue(mock_check_version_fail.called)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',

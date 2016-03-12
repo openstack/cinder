@@ -26,11 +26,12 @@ from cinder.volume import volume_types
 
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
-@mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+@mock.patch.object(dell_storagecenter_api.HttpClient,
                    '__init__',
                    return_value=None)
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                   'open_connection')
+                   'open_connection',
+                   return_value=mock.MagicMock())
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                    'close_connection')
 class DellSCSanISCSIDriverTestCase(test.TestCase):
