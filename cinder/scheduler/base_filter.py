@@ -18,7 +18,7 @@ Filter support
 """
 from oslo_log import log as logging
 
-from cinder.openstack.common._i18n import _LI
+from cinder.i18n import _LI
 from cinder.scheduler import base_handler
 
 LOG = logging.getLogger(__name__)

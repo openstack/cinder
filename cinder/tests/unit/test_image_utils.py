@@ -28,7 +28,7 @@ from cinder.volume import throttling
 
 
 class TestQemuImgInfo(test.TestCase):
-    @mock.patch('cinder.openstack.common.imageutils.QemuImgInfo')
+    @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info(self, mock_exec, mock_info):
         mock_out = mock.sentinel.out
@@ -41,7 +41,7 @@ class TestQemuImgInfo(test.TestCase):
                                           'info', test_path, run_as_root=True)
         self.assertEqual(mock_info.return_value, output)
 
-    @mock.patch('cinder.openstack.common.imageutils.QemuImgInfo')
+    @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info_not_root(self, mock_exec, mock_info):
         mock_out = mock.sentinel.out
@@ -55,7 +55,7 @@ class TestQemuImgInfo(test.TestCase):
         self.assertEqual(mock_info.return_value, output)
 
     @mock.patch('cinder.image.image_utils.os')
-    @mock.patch('cinder.openstack.common.imageutils.QemuImgInfo')
+    @mock.patch('oslo_utils.imageutils.QemuImgInfo')
     @mock.patch('cinder.utils.execute')
     def test_qemu_img_info_on_nt(self, mock_exec, mock_info, mock_os):
         mock_out = mock.sentinel.out

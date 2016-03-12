@@ -23,12 +23,12 @@ import traceback
 import mock
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
+from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import context
 from cinder import exception
 from cinder.image import image_utils
-from cinder.openstack.common import imageutils
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import quobyte

@@ -45,10 +45,9 @@ ignore_messages = ["An attribute affected in cinder.tests",
                    "Module 'hashlib' has no 'sha256' member",
                    "Module 'hashlib' has no 'sha224' member",
                    "Instance of 'Table' has no 'rename' member"]
-# Note(maoy): we ignore all errors in openstack.common because it should be
-# checked elsewhere. We also ignore cinder.tests for now due to high false
+# Note(maoy):  We ignore cinder.tests for now due to high false
 # positive rate.
-ignore_modules = ["cinder/openstack/common/", "cinder/tests/"]
+ignore_modules = ["cinder/tests/"]
 
 # Note(thangp): E0213, E1101, and E1102 should be ignored for only
 # cinder.object modules. E0213 and E1102 are error codes related to

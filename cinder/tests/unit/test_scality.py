@@ -20,11 +20,11 @@ import errno
 import os
 
 import mock
+from oslo_utils import imageutils
 from six.moves import urllib
 
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import imageutils
 from cinder import test
 from cinder.volume import configuration as conf
 import cinder.volume.drivers.scality as driver

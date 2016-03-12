@@ -17,9 +17,10 @@
 import ddt
 import mock
 
+from oslo_utils import imageutils
+
 from cinder import context
 from cinder import exception
-from cinder.openstack.common import imageutils
 from cinder import test
 from cinder.tests.unit import fake_consistencygroup
 from cinder.tests.unit import fake_snapshot
