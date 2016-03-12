@@ -2968,6 +2968,8 @@ Time Remaining:  0 second(s)
         volume = self.testData.test_volume.copy()
         volume['id'] = '2'
         volume = EMCVNXCLIDriverTestData.convert_volume(volume)
+        # Make sure this size is used
+        volume.size = 10
         self.driver.create_cloned_volume(volume, self.testData.test_volume)
         tmp_snap = 'tmp-snap-' + volume.id
         expect_cmd = [
@@ -2982,7 +2984,7 @@ Time Remaining:  0 second(s)
                 *self.testData.SNAP_ATTACH_CMD(
                     name='volume-2', snapName=tmp_snap)),
             mock.call(*self.testData.LUN_CREATION_CMD(
-                build_migration_dest_name('volume-2'), 1,
+                build_migration_dest_name('volume-2'), 10,
                 'unit_test_pool', None, None)),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
                 build_migration_dest_name('volume-2')), poll=False),
