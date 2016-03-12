@@ -12,9 +12,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev192\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-08 22:56+0000\n"
+"POT-Creation-Date: 2016-03-12 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2053,14 +2053,6 @@ msgstr "ceph 클러스터 연결 중에 오류가 발생했습니다. "
 #, python-format
 msgid "Error connecting via ssh: %s"
 msgstr "ssh를 통해 연결하는 중 오류 발생: %s"
-
-#, python-format
-msgid ""
-"Error creating cloned volume using Volume: %(cloneName)s, Source Volume: "
-"%(sourceName)s. Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"볼륨을 사용하여 복제된 볼륨 작성 중 오류: %(cloneName)s, 소스 볼륨: "
-"%(sourceName)s. 리턴 코드: %(rc)lu. 오류: %(error)s."
 
 #, python-format
 msgid "Error creating volume: %s."
@@ -7568,12 +7560,6 @@ msgstr "ID가 %s인 볼륨이 정확하게 하나가 아님"
 #, python-format
 msgid "obj missing quotes %s"
 msgstr "오브젝트에 따옴표 누락 %s"
-
-msgid "offset param must be an integer"
-msgstr "offset 매개변수는 정수여야 함"
-
-msgid "offset param must be positive"
-msgstr "offset 매개변수가 양수여야 함"
 
 msgid "open_access_enabled is not off."
 msgstr "open_access_enabled가 해제되지 않았습니다. "
