@@ -17,6 +17,7 @@
 import mock
 
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.nexentaedge import iscsi
@@ -97,6 +98,8 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.assertRaises(RuntimeError, self.driver.create_volume, MOCK_VOL)
 
     def test_delete_volume(self):
+        self.mock_api.side_effect = exception.VolumeBackendAPIException(
+            'No volume')
         self.driver.delete_volume(MOCK_VOL)
         self.mock_api.assert_called_with(NEDGE_URL, {
             'objectPath': NEDGE_BUCKET + '/' + MOCK_VOL['id']
