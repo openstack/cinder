@@ -15,7 +15,6 @@
 #
 
 import json
-import re
 
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -24,8 +23,6 @@ from cinder import exception
 from cinder.i18n import _, _LW, _LE
 from cinder.volume.drivers.huawei import constants
 from cinder.volume.drivers.huawei import huawei_utils
-from cinder.volume.drivers.huawei import rest_client
-from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -213,10 +210,6 @@ class ReplicaCommonDriver(object):
         self.sync(replica_id)
         return None
 
-    def disable(self, replica_id):
-        self.split(replica_id)
-        return None
-
     def switch(self, replica_id):
         self.split(replica_id)
         self.unprotect_second(replica_id)
@@ -332,32 +325,18 @@ def to_string(dict_data):
 
 
 class ReplicaPairManager(object):
-    def __init__(self, local_client, conf):
+    def __init__(self, local_client, rmt_client, conf):
         self.local_client = local_client
+        self.rmt_client = rmt_client
         self.conf = conf
-        self.replica_device = self.conf.safe_get('replication_device')
-        if not self.replica_device:
-            return
 
-        # managed_backed_name format: host_name@backend_name#pool_name
-        self.rmt_backend = self.replica_device[0]['managed_backend_name']
-        self.rmt_pool = volume_utils.extract_host(self.rmt_backend,
-                                                  level='pool')
-        self.target_dev_id = self.replica_device[0]['target_device_id']
+        # Now just support one remote pool.
+        self.rmt_pool = self.rmt_client.storage_pools[0]
 
-        self._init_rmt_client()
         self.local_op = PairOp(self.local_client)
         self.local_driver = ReplicaCommonDriver(self.conf, self.local_op)
         self.rmt_op = PairOp(self.rmt_client)
         self.rmt_driver = ReplicaCommonDriver(self.conf, self.rmt_op)
-
-        self.try_login_remote_array()
-
-    def try_login_remote_array(self):
-        try:
-            self.rmt_client.login()
-        except Exception as err:
-            LOG.warning(_LW('Remote array login failed. Error: %s.'), err)
 
     def try_get_remote_wwn(self):
         try:
@@ -381,9 +360,6 @@ class ReplicaPairManager(object):
         return {}
 
     def check_remote_available(self):
-        if not self.replica_device:
-            return False
-
         # We get device wwn in every check time.
         # If remote array changed, we can run normally.
         wwn = self.try_get_remote_wwn()
@@ -404,10 +380,7 @@ class ReplicaPairManager(object):
     def update_replica_capability(self, stats):
         is_rmt_dev_available = self.check_remote_available()
         if not is_rmt_dev_available:
-            if self.replica_device:
-                LOG.warning(_LW('Remote device is unavailable. '
-                                'Remote backend: %s.'),
-                            self.rmt_backend)
+            LOG.warning(_LW('Remote device is unavailable.'))
             return stats
 
         for pool in stats['pools']:
@@ -415,17 +388,6 @@ class ReplicaPairManager(object):
             pool['replication_type'] = ['sync', 'async']
 
         return stats
-
-    def _init_rmt_client(self):
-        # Multiple addresses support.
-        rmt_addrs = self.replica_device[0]['san_address'].split(';')
-        rmt_addrs = list(set([x.strip() for x in rmt_addrs if x.strip()]))
-        rmt_user = self.replica_device[0]['san_user']
-        rmt_password = self.replica_device[0]['san_password']
-        self.rmt_client = rest_client.RestClient(self.conf,
-                                                 rmt_addrs,
-                                                 rmt_user,
-                                                 rmt_password)
 
     def get_rmt_dev_info(self):
         wwn = self.try_get_remote_wwn()
@@ -545,7 +507,7 @@ class ReplicaPairManager(object):
         driver_data = {'pair_id': pair_id,
                        'rmt_lun_id': rmt_lun_id}
         model_update['replication_driver_data'] = to_string(driver_data)
-        model_update['replication_status'] = 'enabled'
+        model_update['replication_status'] = 'available'
         LOG.debug('Create replication, return info: %s.', model_update)
         return model_update
 
@@ -579,91 +541,102 @@ class ReplicaPairManager(object):
         if rmt_lun_id:
             self._delete_rmt_lun(rmt_lun_id)
 
-    def enable_replica(self, volume):
-        """Enable replication.
+    def failback(self, volumes):
+        """Failover volumes back to primary backend.
 
-        Purpose:
-            1. If local backend's array is secondary, switch to primary
-            2. Synchronize data
+        The main steps:
+        1. Switch the role of replication pairs.
+        2. Copy the second LUN data back to primary LUN.
+        3. Split replication pairs.
+        4. Switch the role of replication pairs.
+        5. Enable replications.
         """
-        LOG.debug('Enable replication, volume: %s.', volume['id'])
+        volumes_update = []
+        for v in volumes:
+            v_update = {}
+            v_update['volume_id'] = v['id']
+            drv_data = get_replication_driver_data(v)
+            pair_id = drv_data.get('pair_id')
+            if not pair_id:
+                LOG.warning(_LW("No pair id in volume %s."), v['id'])
+                v_update['updates'] = {'replication_status': 'error'}
+                volumes_update.append(v_update)
+                continue
 
-        info = get_replication_driver_data(volume)
-        pair_id = info.get('pair_id')
-        if not pair_id:
-            msg = _('No pair id in volume replication_driver_data.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            rmt_lun_id = drv_data.get('rmt_lun_id')
+            if not rmt_lun_id:
+                LOG.warning(_LW("No remote lun id in volume %s."), v['id'])
+                v_update['updates'] = {'replication_status': 'error'}
+                volumes_update.append(v_update)
+                continue
 
-        info = self.local_op.get_replica_info(pair_id)
-        if not info:
-            msg = _('Pair does not exist on array. Pair id: %s.') % pair_id
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            # Switch replication pair role, and start synchronize.
+            self.local_driver.enable(pair_id)
 
-        wait_sync_complete = False
-        if info.get('REPLICATIONMODEL') == constants.REPLICA_SYNC_MODEL:
-            wait_sync_complete = True
+            # Wait for synchronize complete.
+            self.local_driver.wait_replica_ready(pair_id)
 
-        return self.local_driver.enable(pair_id, wait_sync_complete)
+            # Split replication pair again
+            self.rmt_driver.failover(pair_id)
 
-    def disable_replica(self, volume):
-        """We consider that all abnormal states is disabled."""
-        LOG.debug('Disable replication, volume: %s.', volume['id'])
+            # Switch replication pair role, and start synchronize.
+            self.rmt_driver.enable(pair_id)
 
-        info = get_replication_driver_data(volume)
-        pair_id = info.get('pair_id')
-        if not pair_id:
-            LOG.warning(_LW('No pair id in volume replication_driver_data.'))
-            return None
+            lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
+            lun_wwn = lun_info.get('WWN')
+            metadata = huawei_utils.get_volume_metadata(v)
+            metadata.update({'lun_wwn': lun_wwn})
+            new_drv_data = {'pair_id': pair_id,
+                            'rmt_lun_id': v['provider_location']}
+            new_drv_data = to_string(new_drv_data)
+            v_update['updates'] = {'provider_location': rmt_lun_id,
+                                   'replication_status': 'available',
+                                   'replication_driver_data': new_drv_data,
+                                   'metadata': metadata}
+            volumes_update.append(v_update)
 
-        return self.local_driver.disable(pair_id)
+        return volumes_update
 
-    def failover_replica(self, volume):
-        """Just make the secondary available."""
-        LOG.debug('Failover replication, volume: %s.', volume['id'])
+    def failover(self, volumes):
+        """Failover volumes back to secondary array.
 
-        info = get_replication_driver_data(volume)
-        pair_id = info.get('pair_id')
-        if not pair_id:
-            msg = _('No pair id in volume replication_driver_data.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        Split the replication pairs and make the secondary LUNs R&W.
+        """
+        volumes_update = []
+        for v in volumes:
+            v_update = {}
+            v_update['volume_id'] = v['id']
+            drv_data = get_replication_driver_data(v)
+            pair_id = drv_data.get('pair_id')
+            if not pair_id:
+                LOG.warning(_LW("No pair id in volume %s."), v['id'])
+                v_update['updates'] = {'replication_status': 'error'}
+                volumes_update.append(v_update)
+                continue
 
-        rmt_lun_id = info.get('rmt_lun_id')
-        if not rmt_lun_id:
-            msg = _('No remote LUN id in volume replication_driver_data.')
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            rmt_lun_id = drv_data.get('rmt_lun_id')
+            if not rmt_lun_id:
+                LOG.warning(_LW("No remote lun id in volume %s."), v['id'])
+                v_update['updates'] = {'replication_status': 'error'}
+                volumes_update.append(v_update)
+                continue
 
-        # Remote array must be available. So we can get the real pool info.
-        lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
-        lun_wwn = lun_info.get('WWN')
-        lun_pool = lun_info.get('PARENTNAME')
-        new_backend = re.sub(r'(?<=#).*$', lun_pool, self.rmt_backend)
+            self.rmt_driver.failover(pair_id)
 
-        self.rmt_driver.failover(pair_id)
+            lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
+            lun_wwn = lun_info.get('WWN')
+            metadata = huawei_utils.get_volume_metadata(v)
+            metadata.update({'lun_wwn': lun_wwn})
+            new_drv_data = {'pair_id': pair_id,
+                            'rmt_lun_id': v['provider_location']}
+            new_drv_data = to_string(new_drv_data)
+            v_update['updates'] = {'provider_location': rmt_lun_id,
+                                   'replication_status': 'failed-over',
+                                   'replication_driver_data': new_drv_data,
+                                   'metadata': metadata}
+            volumes_update.append(v_update)
 
-        metadata = huawei_utils.get_volume_metadata(volume)
-        metadata.update({'lun_wwn': lun_wwn})
-
-        new_driver_data = {'pair_id': pair_id,
-                           'rmt_lun_id': volume['provider_location']}
-        new_driver_data = to_string(new_driver_data)
-        return {'host': new_backend,
-                'provider_location': rmt_lun_id,
-                'replication_driver_data': new_driver_data,
-                'metadata': metadata}
-
-    def list_replica_targets(self, volume):
-        info = get_replication_driver_data(volume)
-        if not info:
-            LOG.warning(_LW('Replication driver data does not exist. '
-                            'Volume: %s'), volume['id'])
-
-        targets = [{'target_device_id': self.target_dev_id}]
-        return {'volume_id': volume['id'],
-                'targets': targets}
+        return volumes_update
 
 
 def get_replication_opts(opts):
