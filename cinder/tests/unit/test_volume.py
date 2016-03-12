@@ -4868,6 +4868,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                           self.context, volume, new_vol_type['id'])
 
         volume = db.volume_get(elevated, volume.id)
+        self.assertEqual(0, len(self.notifier.notifications),
+                         self.notifier.notifications)
         self.assertEqual('available', volume['status'])
 
     def _retype_volume_exec(self, driver, snap=False, policy='on-demand',
@@ -4982,16 +4984,33 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
             self.assertEqual('available', volume.status)
             self.assertEqual(CONF.host, volume.host)
             self.assertEqual(1, volumes_in_use)
+            self.assertEqual(1, len(self.notifier.notifications),
+                             "Notifier count incorrect %s" %
+                             (self.notifier.notifications))
+            self.assertEqual(vol_type['id'], self.notifier.notifications[0]
+                             ['payload']['volume_type'])
+            self.assertEqual('volume.retype', self.notifier.notifications[0]
+                             ['event_type'])
         elif not exc:
             self.assertEqual(old_vol_type['id'], volume.volume_type_id)
             self.assertEqual('retyping', volume.status)
             self.assertEqual(CONF.host, volume.host)
             self.assertEqual(1, volumes_in_use)
+            self.assertEqual(1, len(self.notifier.notifications),
+                             "Notifier count incorrect %s" %
+                             (self.notifier.notifications))
+            self.assertEqual(vol_type['id'], self.notifier.notifications[0]
+                             ['payload']['volume_type'])
+            self.assertEqual('volume.retype', self.notifier.notifications[0]
+                             ['event_type'])
         else:
             self.assertEqual(old_vol_type['id'], volume.volume_type_id)
             self.assertEqual('available', volume.status)
             self.assertEqual(CONF.host, volume.host)
             self.assertEqual(0, volumes_in_use)
+            self.assertEqual(0, len(self.notifier.notifications),
+                             "Notifier count incorrect %s" %
+                             (self.notifier.notifications))
 
     def test_retype_volume_driver_success(self):
         self._retype_volume_exec(True)

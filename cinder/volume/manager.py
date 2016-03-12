@@ -2317,6 +2317,9 @@ class VolumeManager(manager.SchedulerDependentManager):
             QUOTAS.commit(context, old_reservations, project_id=project_id)
         if new_reservations:
             QUOTAS.commit(context, new_reservations, project_id=project_id)
+        self._notify_about_volume_usage(
+            context, volume, "retype",
+            extra_usage_info={'volume_type': new_type_id})
         self.publish_service_capabilities(context)
         LOG.info(_LI("Retype volume completed successfully."),
                  resource=volume)
