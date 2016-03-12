@@ -530,14 +530,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                 LOG.error(_LE("Service not found for updating "
                               "replication_status."))
 
-        if stats and stats.get('replication', False):
-            if service.replication_status == (
-                    fields.ReplicationStatus.FAILED_OVER):
-                pass
-            elif stats and stats.get('replication_enabled', False):
+        if service.replication_status != (
+                fields.ReplicationStatus.FAILED_OVER):
+            if stats and stats.get('replication_enabled', False):
                 service.replication_status = fields.ReplicationStatus.ENABLED
-        else:
-            service.replication_status = fields.ReplicationStatus.DISABLED
+            else:
+                service.replication_status = fields.ReplicationStatus.DISABLED
 
         service.save()
         LOG.info(_LI("Driver post RPC initialization completed successfully."),
