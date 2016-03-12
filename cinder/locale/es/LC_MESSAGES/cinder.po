@@ -12,9 +12,9 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev192\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-08 22:56+0000\n"
+"POT-Creation-Date: 2016-03-12 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2212,15 +2212,6 @@ msgstr "Error al conectarse con un clúster ceph."
 #, python-format
 msgid "Error connecting via ssh: %s"
 msgstr "Error al conectar mediante ssh: %s"
-
-#, python-format
-msgid ""
-"Error creating cloned volume using Volume: %(cloneName)s, Source Volume: "
-"%(sourceName)s. Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Error al crear el volumen clonado utilizando el volumen: %(cloneName)s, "
-"Volumen de origen: %(sourceName)s. Código de retorno: %(rc)lu. Error: "
-"%(error)s."
 
 #, python-format
 msgid "Error creating volume: %s."
@@ -8123,12 +8114,6 @@ msgstr "no exactamente un volumen con el id %s"
 #, python-format
 msgid "obj missing quotes %s"
 msgstr "obj no tiene comillas %s"
-
-msgid "offset param must be an integer"
-msgstr "el parámetro de desplazamiento debe ser un entero"
-
-msgid "offset param must be positive"
-msgstr "el parámetro de desplazamiento debe ser positivo"
 
 msgid "open_access_enabled is not off."
 msgstr "open_access_enabled no está inactivo."

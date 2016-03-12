@@ -10,13 +10,13 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev154\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev192\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-11 05:30+0000\n"
+"POT-Creation-Date: 2016-03-12 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-10 09:44+0000\n"
+"PO-Revision-Date: 2016-03-11 08:25+0000\n"
 "Last-Translator: Alessandra <alessandra@translated.net>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -601,8 +601,7 @@ msgid "Backend doesn't exist (%(backend)s)"
 msgstr "Il backend non esiste (%(backend)s)"
 
 msgid "Backend has already been failed over. Unable to fail back."
-msgstr ""
-"Failover del backend già eseguito. Impossibile eseguire di nuovo il failover."
+msgstr "Failover del backend già eseguito. Impossibile eseguire il failback."
 
 #, python-format
 msgid "Backend reports: %(message)s"
@@ -881,8 +880,7 @@ msgstr "Impossibile estendere il volume di replica, volume: %(id)s"
 
 msgid "Can't find LUN on the array, please check the source-name or source-id."
 msgstr ""
-"Impossibile trovare la LUN sull'array, controllare il nome origine o l'id "
-"origine."
+"Impossibile trovare la LUN sull'array, controllare source-name o source-id."
 
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
@@ -911,8 +909,8 @@ msgstr "Impossibile trovare il servizio: %s"
 msgid ""
 "Can't find snapshot on array, please check the source-name or source-id."
 msgstr ""
-"Impossibile trovare l'istantanea sull'array, controllare il nome origine o "
-"l'id origine."
+"Impossibile trovare l'istantanea sull'array, controllare source-name o "
+"source-id."
 
 msgid "Can't find the same host id from arrays."
 msgstr "Impossibile trovare lo stesso id host dagli array."
@@ -1388,7 +1386,7 @@ msgid "Cgsnapshot status must be available or error"
 msgstr "Lo stato di Cgsnapshot deve essere available o error"
 
 msgid "Change hostlun id error."
-msgstr "Errore di modifica id hostlun."
+msgstr "Errore di modifica ID hostlun."
 
 msgid "Change lun priority error."
 msgstr "Errore di modifica della priorità lun. "
@@ -1645,7 +1643,7 @@ msgstr ""
 "configurazione cinder.conf 'backup_swift_url'."
 
 msgid "Could not find DISCO wsdl file."
-msgstr "Impossibile trovare il file wsdl DISCO"
+msgstr "Impossibile trovare il file wsdl DISCO."
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1720,8 +1718,8 @@ msgstr ""
 #, python-format
 msgid "Could not restore configuration file %(file_path)s: %(exc)s"
 msgstr ""
-"Non è stato possibile ripristinare il file di configurazione file "
-"%(file_path)s:%(exc)s"
+"Non è stato possibile ripristinare il file di configurazione %(file_path)s:"
+"%(exc)s"
 
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
@@ -1921,7 +1919,7 @@ msgstr ""
 "QoS. "
 
 msgid "Database schema downgrade is not allowed."
-msgstr "La riduzione dello schema di database non è consentita."
+msgstr "Il downgrade dello schema di database non è consentito."
 
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
@@ -2399,7 +2397,7 @@ msgid ""
 "Error Deleting Initiator Group: %(initiatorGroupName)s. Return code: "
 "%(rc)lu. Error: %(error)s"
 msgstr ""
-"Errore durante l'eliminazione del gruppo di inizializzazione: "
+"Errore durante l'eliminazione del gruppo di iniziatori: "
 "%(initiatorGroupName)s. Codice di ritorno: %(rc)lu. Errore: %(error)s"
 
 #, python-format
@@ -2655,15 +2653,6 @@ msgstr "Errore durante la connessione al cluster ceph."
 #, python-format
 msgid "Error connecting via ssh: %s"
 msgstr "Errore durante la connessione mediante ssh: %s"
-
-#, python-format
-msgid ""
-"Error creating cloned volume using Volume: %(cloneName)s, Source Volume: "
-"%(sourceName)s. Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Errore durante la creazione del volume clonato utilizzando il volume: "
-"%(cloneName)s, volume di origine: %(sourceName)s. Codice di ritorno: "
-"%(rc)lu. Errore: %(error)s."
 
 #, python-format
 msgid "Error creating volume: %s."
@@ -4558,7 +4547,7 @@ msgid "Get iSCSI target port error."
 msgstr "Errore di richiamo porta di destinazione iscsi."
 
 msgid "Get lun id by name error."
-msgstr "Errore di richiamo dell'id lun per nome. "
+msgstr "Errore di richiamo dell'ID lun per nome. "
 
 msgid "Get lun migration task error."
 msgstr "Errore di richiamo attività di migrazione lun. "
@@ -4594,7 +4583,7 @@ msgid "Get ports by port group error."
 msgstr "Errore di richiamo porte per gruppo di porte."
 
 msgid "Get remote device info failed."
-msgstr "Richiamo informazioni sul dispositivo remoto non riuscito."
+msgstr "Richiamo informazioni dispositivo remoto non riuscito."
 
 msgid "Get remote devices error."
 msgstr "Errore di richiamo dispositivi remoti. "
@@ -5103,7 +5092,7 @@ msgid "Invalid imageRef provided."
 msgstr "imageRef specificato non è valido."
 
 msgid "Invalid initiator value received"
-msgstr "Ricevuto valore di inizializzazione non valido"
+msgstr "Ricevuto valore di iniziatore non valido"
 
 msgid "Invalid input"
 msgstr "Input non valido"
@@ -5176,10 +5165,6 @@ msgstr "Scadenza prenotazione non valida %(expire)s."
 
 msgid "Invalid response header from RPC server"
 msgstr "Intestazione di risposta non valida dal server RPC"
-
-#, python-format
-msgid "Invalid secondary specified, choose from %s."
-msgstr "Specificato valore secondario non valido, scegliere da %s."
 
 msgid "Invalid service catalog json."
 msgstr "json del catalogo del servizio non è valido."
@@ -5407,7 +5392,7 @@ msgstr ""
 
 #, python-format
 msgid "LU does not exist for volume: %s"
-msgstr "LU non esiste per il volume: %s"
+msgstr "LUN non esiste per il volume: %s"
 
 msgid "LUN export failed!"
 msgstr "Esportazione LUN non riuscita. "
@@ -5817,10 +5802,10 @@ msgid "Must specify readonly in request."
 msgstr "È necessario specificare readonly nella richiesta."
 
 msgid "Must specify snapshot source-name or source-id."
-msgstr "È necessario specificare nome origine o id origine dell'istantanea."
+msgstr "È necessario specificare source-name o source-id dell'istantanea."
 
 msgid "Must specify source-name or source-id."
-msgstr "È necessario specificare source-name or source-id."
+msgstr "È necessario specificare source-name o source-id."
 
 msgid "Must specify storage pool name or id."
 msgstr "È necessario specificare il nome o l'ID del pool di memoria. "
@@ -6068,7 +6053,7 @@ msgstr ""
 "correttamente. "
 
 msgid "No remote LUN id in volume replication_driver_data."
-msgstr "Nessun id LUN remota nel volume replication_driver_data."
+msgstr "Nessun ID LUN remota nel volume replication_driver_data."
 
 msgid ""
 "No response was received from CloudByte storage list iSCSI auth user API "
@@ -6271,8 +6256,8 @@ msgid ""
 "One of cinder-volume services is too old to accept such request. Are you "
 "running mixed Liberty-Mitaka cinder-volumes?"
 msgstr ""
-"Uno dei servizi cinder-volume è troppo vecchio per accettare queste "
-"richieste. Sono in esecuzione cinder-volume Liberty-Mitaka misti?"
+"Uno dei servizi per volumi cinder è troppo vecchio per accettare queste "
+"richieste. Sono in esecuzione volumi cinder Liberty-Mitaka misti?"
 
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
@@ -6329,7 +6314,7 @@ msgstr "Sovrascrivere porta HTTPS per connettersi al server API Blockbridge. "
 
 #, python-format
 msgid "Pair does not exist on array. Pair id: %s."
-msgstr "La coppia non esiste sull'array. Id coppia: %s."
+msgstr "La coppia non esiste sull'array. ID coppia: %s."
 
 #, python-format
 msgid "ParseException: %s"
@@ -6610,7 +6595,7 @@ msgid "Reference must contain source-id or source-name."
 msgstr "Il riferimento deve contenere source-id o source-name."
 
 msgid "Reference must contain source-id."
-msgstr "Il riferimento deve contenere l'id dell'origine."
+msgstr "Il riferimento deve contenere source-id."
 
 msgid "Reference must contain source-name element."
 msgstr "Il riferimento deve contenere l'elemento source-name."
@@ -7219,7 +7204,7 @@ msgid ""
 "Specify volume type name, description, is_public or a combination thereof."
 msgstr ""
 "Specificare il nome, la descrizione, is_public o una combinazione dei "
-"precedenti del tipo di volume."
+"precedenti per il tipo di volume."
 
 msgid "Split pair error."
 msgstr "Errore di divisione della coppia."
@@ -7475,7 +7460,7 @@ msgid ""
 "The following migrations have a downgrade, which are not allowed: \n"
 "\t%s"
 msgstr ""
-"Nelle seguenti migrazioni manca un downgrade che non è consentito:\n"
+"Nelle seguenti migrazioni è presente un downgrade che non è consentito:\n"
 "\t%s"
 
 msgid "The host group or iSCSI target could not be added."
@@ -7488,21 +7473,21 @@ msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
 "and resume replication on the 3PAR backends."
 msgstr ""
-"L'host non è pronto per eseguire di nuovo il failover. Risincronizzare i "
+"L'host non è pronto per essere sottoposto a failback. Risincronizzare i "
 "volumi e riprendere la replica sui backend 3PAR."
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
 "and resume replication on the LeftHand backends."
 msgstr ""
-"L'host non è pronto per eseguire di nuovo il failover. Risincronizzare i "
+"L'host non è pronto per essere sottoposto a failback. Risincronizzare i "
 "volumi e riprendere la replica sui backend LeftHand."
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
 "and resume replication on the Storwize backends."
 msgstr ""
-"L'host non è pronto per eseguire di nuovo il failover. Risincronizzare i "
+"L'host non è pronto per essere sottoposto a failback. Risincronizzare i "
 "volumi e riprendere la replica sui backend Storwize."
 
 #, python-format
@@ -7840,7 +7825,7 @@ msgstr ""
 
 #, python-format
 msgid "There was an error creating the cgsnapshot: %s"
-msgstr "Si è verificato un errore durante la creazione di cgsnapshot: %s."
+msgstr "Si è verificato un errore durante la creazione dell'istantanea cg: %s."
 
 #, python-format
 msgid "There was an error creating the remote copy group: %s."
@@ -8388,7 +8373,7 @@ msgid ""
 "Unable to retype %(specname)s, expected to receive current and requested "
 "%(spectype)s values. Value received: %(spec)s"
 msgstr ""
-"Impossibile riscrivere %(specname)s, era previsto di ricevere i valori "
+"Impossibile riscrivere %(specname)s, si prevedeva di ricevere i valori "
 "%(spectype)s corrente e richiesto. Valore ricevuto: %(spec)s"
 
 #, python-format
@@ -8596,7 +8581,7 @@ msgstr "Valore read_deleted non riconosciuto '%s'"
 
 #, python-format
 msgid "Unset gcs options: %s"
-msgstr "Opzioni gcs non impostate: %s"
+msgstr "Annulla opzioni gcs: %s"
 
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
@@ -8891,7 +8876,7 @@ msgstr "Il volume %s non esiste nell'array."
 
 #, python-format
 msgid "Volume %s doesn't exist on the ZFSSA backend."
-msgstr "Il volume %s non esiste sul backend ZFSSA."
+msgstr "Il volume %s non esiste nel backend ZFSSA."
 
 #, python-format
 msgid "Volume %s is already managed by OpenStack."
@@ -8907,9 +8892,9 @@ msgid ""
 "type with the extra spec replication_enabled set to '<is> True' to support "
 "replication actions."
 msgstr ""
-"Il volume %s non è di tipo replicato. Questo volume deve essere un tipo di "
-"volume con la specifica supplementare replication_enabled impostata su '<is> "
-"True' per supportare le azioni di replica."
+"Il volume %s non è di tipo replicato. Questo volume deve essere di un tipo "
+"di volume con la specifica supplementare replication_enabled impostata su "
+"'<is> True' per supportare le azioni di replica."
 
 #, python-format
 msgid ""
@@ -9036,7 +9021,7 @@ msgstr ""
 "momento."
 
 msgid "Volume has children and cannot be deleted!"
-msgstr "Il volume ha elementi child e non può essere eliminata."
+msgstr "Il volume ha elementi child e non può essere eliminato."
 
 #, python-format
 msgid "Volume in consistency group %s is attached. Need to detach first."
@@ -9276,7 +9261,7 @@ msgid ""
 "Volume%s must not be migrating, attached, belong to a consistency group or "
 "have snapshots."
 msgstr ""
-"Il volume %s non deve essere sottoposto a migrazione, essere collegato, far "
+"Il volume %s non deve essere in fase di migrazione, essere collegato, far "
 "parte di un gruppo di coerenza o avere istantanee."
 
 #, python-format
@@ -9869,16 +9854,16 @@ msgid "cg-%s"
 msgstr "gc-%s"
 
 msgid "cgsnapshot assigned"
-msgstr "cgsnapshot assegnato"
+msgstr "istantanea cg assegnata"
 
 msgid "cgsnapshot changed"
-msgstr "cgsnapshot modificato"
+msgstr "istantanea cg modificata"
 
 msgid "cgsnapshots assigned"
-msgstr "cgsnapshots assegnati"
+msgstr "istantanee cg assegnate"
 
 msgid "cgsnapshots changed"
-msgstr "cgsnapshots modificati"
+msgstr "istantanee cg modificate"
 
 msgid ""
 "check_for_setup_error: Password or SSH private key is required for "
@@ -9901,16 +9886,16 @@ msgid "clone depth exceeds limit of %s"
 msgstr "la profondità del clone supera il limite di %s"
 
 msgid "consistencygroup assigned"
-msgstr "consistencygroup assegnato"
+msgstr "gruppo di coerenza assegnato"
 
 msgid "consistencygroup changed"
-msgstr "consistencygroup modificato"
+msgstr "gruppo di coerenza modificato"
 
 msgid "control_location must be defined"
 msgstr "control_location deve essere definito"
 
 msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
-msgstr "create_cloned_volume, il volume di origine non esiste in ETERNUS."
+msgstr "create_cloned_volume, Il volume di origine non esiste in ETERNUS."
 
 #, python-format
 msgid ""
@@ -9945,8 +9930,8 @@ msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
 msgstr ""
-"create_consistencygroup_from_src supporta solo un'origine cgsnapshot o "
-"un'origine del gruppo di coerenza. Non possono essere utilizzate più origini."
+"create_consistencygroup_from_src supporta solo un'origine istantanea cg o "
+"un'origine gruppo di coerenza. Non possono essere utilizzate più origini."
 
 msgid ""
 "create_consistencygroup_from_src supports a cgsnapshot source or a "
@@ -10038,7 +10023,7 @@ msgstr ""
 
 msgid "create_volume_from_snapshot, Source Volume does not exist in ETERNUS."
 msgstr ""
-"create_volume_from_snapshot, il volume di origine non esiste in ETERNUS."
+"create_volume_from_snapshot, Il volume di origine non esiste in ETERNUS."
 
 #, python-format
 msgid ""
@@ -10411,12 +10396,6 @@ msgstr "non esattamente un solo volume con id %s"
 msgid "obj missing quotes %s"
 msgstr "apici mancanti per obj %s"
 
-msgid "offset param must be an integer"
-msgstr "il parametro offset deve essere un numero intero"
-
-msgid "offset param must be positive"
-msgstr "il parametro offset deve essere un numero positivo"
-
 msgid "open_access_enabled is not off."
 msgstr "open_access_enabled non è disattivo."
 
@@ -10553,7 +10532,7 @@ msgid "snapshots assigned"
 msgstr "istantanee assegnate"
 
 msgid "snapshots changed"
-msgstr "snapshots modificato"
+msgstr "istantanee modificate"
 
 #, python-format
 msgid "source vol id:%s not found"

@@ -10,9 +10,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev192\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-08 22:56+0000\n"
+"POT-Creation-Date: 2016-03-12 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2224,14 +2224,6 @@ msgstr "Chyba při připojování ke clusteru ceph."
 #, python-format
 msgid "Error connecting via ssh: %s"
 msgstr "Chyba při připojování pomocí ssh: %s"
-
-#, python-format
-msgid ""
-"Error creating cloned volume using Volume: %(cloneName)s, Source Volume: "
-"%(sourceName)s. Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Chyba při vytváření klonovaného svazku pomocí svazku %(cloneName)s. Zdrojový "
-"svazek: %(sourceName)s. Návratový kód: %(rc)lu. Chyba: %(error)s."
 
 #, python-format
 msgid "Error creating volume: %s."
@@ -8282,12 +8274,6 @@ msgstr "id %s nemá právě jeden svazek"
 #, python-format
 msgid "obj missing quotes %s"
 msgstr "objektu chybí uvozovky %s"
-
-msgid "offset param must be an integer"
-msgstr "parametr offset musí být celé číslo"
-
-msgid "offset param must be positive"
-msgstr "parametr offset musí být kladný"
 
 msgid "open_access_enabled is not off."
 msgstr "open_access_enabled není vypnuto."

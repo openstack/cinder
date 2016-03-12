@@ -12,9 +12,9 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev95\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev192\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-08 22:56+0000\n"
+"POT-Creation-Date: 2016-03-12 05:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2215,15 +2215,6 @@ msgstr "Fehler beim Herstellen der Verbindung zum ceph-Cluster."
 #, python-format
 msgid "Error connecting via ssh: %s"
 msgstr "Fehler beim Herstellen einer Verbindung über SSH: %s"
-
-#, python-format
-msgid ""
-"Error creating cloned volume using Volume: %(cloneName)s, Source Volume: "
-"%(sourceName)s. Return code: %(rc)lu. Error: %(error)s."
-msgstr ""
-"Fehler beim Erstellen eines geklonten Datenträgers mithilfe von Datenträger "
-"%(cloneName)s, Quellendatenträger: %(sourceName)s. Rückgabecode: %(rc)lu. "
-"Fehler: %(error)s."
 
 #, python-format
 msgid "Error creating volume: %s."
@@ -8120,12 +8111,6 @@ msgstr "nicht genau ein Datenträger mit ID %s"
 #, python-format
 msgid "obj missing quotes %s"
 msgstr "Fehlende Anführungszeichen für obj %s"
-
-msgid "offset param must be an integer"
-msgstr "'offset'-Parameter muss eine Ganzzahl sein"
-
-msgid "offset param must be positive"
-msgstr "'offset'-Parameter muss positiv sein"
 
 msgid "open_access_enabled is not off."
 msgstr "open_access_enabled ist nicht ausgeschaltet."
