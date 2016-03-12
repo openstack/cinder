@@ -1022,3 +1022,8 @@ class HNASConnError(CinderException):
 # NexentaStor driver exception
 class NexentaException(VolumeDriverException):
     message = _("%(message)s")
+
+
+class VersionNotFoundForAPIMethod(CinderException):
+    message = _("%(message)s")
+    
