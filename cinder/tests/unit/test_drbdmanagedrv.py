@@ -459,6 +459,39 @@ class DrbdManageIscsiTestCase(test.TestCase):
         self.assertEqual("list_snapshots", dmd.odm.calls[7][0])
         self.assertEqual("remove_snapshot", dmd.odm.calls[8][0])
 
+    def test_create_cloned_volume_larger_size(self):
+        srcvol = {'project_id': 'testprjid',
+                  'name': 'testvol',
+                  'size': 1,
+                  'id': 'ba253fd0-8068-11e4-98c0-5254008ea111',
+                  'volume_type_id': 'drbdmanage',
+                  'created_at': timeutils.utcnow()}
+
+        newvol = {'size': 5,
+                  'id': 'ca253fd0-8068-11e4-98c0-5254008ea111'}
+
+        dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
+        dmd.odm = DrbdManageFakeDriver()
+        dmd.create_cloned_volume(newvol, srcvol)
+        self.assertEqual("list_volumes", dmd.odm.calls[0][0])
+        self.assertEqual("list_assignments", dmd.odm.calls[1][0])
+        self.assertEqual("create_snapshot", dmd.odm.calls[2][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
+        self.assertEqual("list_snapshots", dmd.odm.calls[4][0])
+        self.assertEqual("restore_snapshot", dmd.odm.calls[5][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[6][0])
+        self.assertEqual("list_snapshots", dmd.odm.calls[7][0])
+        self.assertEqual("remove_snapshot", dmd.odm.calls[8][0])
+
+        # resize image checks
+        self.assertEqual("list_volumes", dmd.odm.calls[9][0])
+        self.assertEqual(newvol['id'], dmd.odm.calls[9][3]["aux:cinder-id"])
+        self.assertEqual("resize_volume", dmd.odm.calls[10][0])
+        self.assertEqual("res", dmd.odm.calls[10][1])
+        self.assertEqual(2, dmd.odm.calls[10][2])
+        self.assertEqual(-1, dmd.odm.calls[10][3])
+        self.assertEqual(5242880, dmd.odm.calls[10][4])
+
 
 class DrbdManageDrbdTestCase(DrbdManageIscsiTestCase):
 

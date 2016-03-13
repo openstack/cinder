@@ -595,6 +595,14 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
         self.delete_snapshot(snapshot)
 
+        if (('size' in volume) and (volume['size'] > src_vref['size'])):
+            LOG.debug("resize volume '%(dst_vol)s' from %(src_size)d to "
+                      "%(dst_size)d",
+                      {'dst_vol': volume['id'],
+                       'src_size': src_vref['size'],
+                       'dst_size': volume['size']})
+            self.extend_volume(volume, volume['size'])
+
     def _update_volume_stats(self):
         data = {}
 
