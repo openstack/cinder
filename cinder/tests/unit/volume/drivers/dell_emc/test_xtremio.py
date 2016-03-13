@@ -522,6 +522,52 @@ class XtremIODriverISCSITestCase(BaseXtremIODriverTestCase):
                           'provider_location': fake_provider},
                          update)
 
+    def test_clone_volume_and_resize(self, req):
+        req.side_effect = xms_request
+        self.driver.db = mock.Mock()
+        (self.driver.db.
+         image_volume_cache_get_by_volume_id.return_value) = mock.MagicMock()
+        self.driver.create_volume(self.data.test_volume)
+        vol = xms_data['volumes'][1]
+        vol['num-of-dest-snaps'] = 0
+        clone = self.data.test_clone.copy()
+        clone['size'] = 2
+        with mock.patch.object(self.driver,
+                               'extend_volume') as extend:
+            self.driver.create_cloned_volume(clone, self.data.test_volume)
+            extend.assert_called_once_with(clone, clone['size'])
+
+    def test_clone_volume_and_resize_fail(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        vol = xms_data['volumes'][1]
+
+        def failed_extend(obj_type='volumes', method='GET', data=None,
+                          *args, **kwargs):
+            if method == 'GET':
+                return {'content': vol}
+            elif method == 'POST':
+                return {'links': [{'href': 'volume/2'}]}
+            elif method == 'PUT':
+                if 'name' in data:
+                    return
+                raise exception.VolumeBackendAPIException('Failed Clone')
+
+        req.side_effect = failed_extend
+        self.driver.db = mock.Mock()
+        (self.driver.db.
+         image_volume_cache_get_by_volume_id.return_value) = mock.MagicMock()
+        vol['num-of-dest-snaps'] = 0
+        clone = self.data.test_clone.copy()
+        clone['size'] = 2
+        with mock.patch.object(self.driver,
+                               'delete_volume') as delete:
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.create_cloned_volume,
+                              clone,
+                              self.data.test_volume)
+            self.assertTrue(delete.called)
+
 # ##### Connection #####
     def test_no_portals_configured(self, req):
         req.side_effect = xms_request
