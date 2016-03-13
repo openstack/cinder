@@ -52,7 +52,7 @@ class TestExtendVolume(scaleio.TestScaleIODriver):
                 self.volume_name_2x_enc: '"{}"'.format(self.volume.id),
                 'instances/Volume::{}/action/setVolumeSize'.format(
                     self.volume.provider_id
-                ): 'OK',
+                ): mocks.MockHTTPSResponse({}, 200),
             },
             self.RESPONSE_MODE.BadStatus: {
                 'types/Volume/instances/getByName::' +
