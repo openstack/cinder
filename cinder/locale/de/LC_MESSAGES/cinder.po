@@ -12,9 +12,9 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev192\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev196\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-12 05:47+0000\n"
+"POT-Creation-Date: 2016-03-12 14:33+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4187,10 +4187,6 @@ msgid "Invalid input received: %(reason)s"
 msgstr "Ungültige Eingabe erhalten: %(reason)s"
 
 #, python-format
-msgid "Invalid input value \"%s\"."
-msgstr "Ungültiger Eingabewert \"%s\"."
-
-#, python-format
 msgid "Invalid is_public filter [%s]"
 msgstr "'is_public-Filter' [%s] ungültig"
 
@@ -5834,9 +5830,6 @@ msgid "Snapshot cannot be created while volume is migrating."
 msgstr ""
 "Momentaufnahme kann nicht erstellt werden, während der Datenträger migriert "
 "wird."
-
-msgid "Snapshot list encountered but no header found!"
-msgstr "Momentaufnahmenliste gefunden, aber kein Header gefunden!"
 
 msgid "Snapshot of secondary replica is not allowed."
 msgstr "Momentaufnahme der sekundären Replik ist nicht zulässig. "

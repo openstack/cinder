@@ -18,9 +18,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev192\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev196\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-12 05:47+0000\n"
+"POT-Creation-Date: 2016-03-12 14:33+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4562,10 +4562,6 @@ msgid "Invalid input received: %(reason)s"
 msgstr "输入无效： %(reason)s"
 
 #, python-format
-msgid "Invalid input value \"%s\"."
-msgstr "输入值“%s”无效。"
-
-#, python-format
 msgid "Invalid is_public filter [%s]"
 msgstr "is_public 过滤器 [%s] 无效"
 
@@ -6371,9 +6367,6 @@ msgstr "无法创建快照，因为卷 %(vol_id)s 不可用，当前卷状态为
 
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr "无法在迁移卷时创建快照。"
-
-msgid "Snapshot list encountered but no header found!"
-msgstr "遇到快照列表，但是找不到任何标题！"
 
 msgid "Snapshot of secondary replica is not allowed."
 msgstr "不允许获取辅助副本的快照。"
