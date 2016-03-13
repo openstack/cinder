@@ -70,9 +70,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nfs_mount_point_base = '/mnt/test'
         self.cfg.nfs_mount_attempts = 3
         self.cfg.nas_mount_options = 'vers=4'
-        self.cfg.nfs_used_ratio = 0.5
         self.cfg.reserved_percentage = 20
-        self.cfg.nfs_oversub_ratio = 1.0
         self.cfg.nexenta_rest_protocol = 'http'
         self.cfg.nexenta_rest_port = 8080
         self.cfg.nexenta_user = 'user'
