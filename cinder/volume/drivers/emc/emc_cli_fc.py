@@ -60,6 +60,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                 Support efficient non-disruptive backup
         7.0.0 - Clone consistency group support
                 Replication v2 support(managed)
+                Configurable migration rate support
     """
 
     def __init__(self, *args, **kwargs):

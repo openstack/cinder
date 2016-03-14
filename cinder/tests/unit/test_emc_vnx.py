@@ -12,6 +12,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import ddt
 import json
 import os
 import re
@@ -707,9 +708,9 @@ class EMCVNXCLIDriverTestData(object):
                 '-initialTier', tier,
                 '-tieringPolicy', policy)
 
-    def MIGRATION_CMD(self, src_id=1, dest_id=1):
+    def MIGRATION_CMD(self, src_id=1, dest_id=1, rate='high'):
         cmd = ("migrate", "-start", "-source", src_id, "-dest", dest_id,
-               "-rate", "high", "-o")
+               "-rate", rate, "-o")
         return cmd
 
     def MIGRATION_VERIFY_CMD(self, src_id):
@@ -1621,6 +1622,7 @@ class DriverTestCaseBase(test.TestCase):
         return _safe_get
 
 
+@ddt.ddt
 class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
     def generate_driver(self, conf):
         return emc_cli_iscsi.EMCCLIISCSIDriver(configuration=conf)
@@ -2018,7 +2020,7 @@ Time Remaining:  0 second(s)
                     23)]]
         fake_cli = self.driverSetup(commands, results)
         fakehost = {'capabilities': {'location_info':
-                                     "unit_test_pool2|fake_serial",
+                                     'unit_test_pool2|fake_serial',
                                      'storage_protocol': 'iSCSI'}}
         ret = self.driver.migrate_volume(None, self.testData.test_volume,
                                          fakehost)[0]
@@ -2063,13 +2065,58 @@ Time Remaining:  0 second(s)
                      'currently migrating', 23)]]
         fake_cli = self.driverSetup(commands, results)
         fake_host = {'capabilities': {'location_info':
-                                      "unit_test_pool2|fake_serial",
+                                      'unit_test_pool2|fake_serial',
                                       'storage_protocol': 'iSCSI'}}
         ret = self.driver.migrate_volume(None, self.testData.test_volume,
                                          fake_host)[0]
         self.assertTrue(ret)
         # verification
         expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(),
+                                retry_disable=True,
+                                poll=True),
+                      mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                                poll=True),
+                      mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
+                                poll=False)]
+        fake_cli.assert_has_calls(expect_cmd)
+
+    @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
+                "CommandLineHelper.create_lun_by_cmd",
+                mock.Mock(
+                    return_value={'lun_id': 1}))
+    @mock.patch(
+        "cinder.volume.drivers.emc.emc_vnx_cli.EMCVnxCliBase.get_lun_id",
+        mock.Mock(
+            side_effect=[1, 1]))
+    def test_volume_migration_with_rate(self):
+
+        test_volume_asap = self.testData.test_volume.copy()
+        test_volume_asap.update({'metadata': {'migrate_rate': 'asap'}})
+        commands = [self.testData.MIGRATION_CMD(rate="asap"),
+                    self.testData.MIGRATION_VERIFY_CMD(1)]
+        FAKE_MIGRATE_PROPERTY = """\
+Source LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d
+Source LU ID:  63950
+Dest LU Name:  volume-f6247ae1-8e1c-4927-aa7e-7f8e272e5c3d_dest
+Dest LU ID:  136
+Migration Rate:  ASAP
+Current State:  MIGRATED
+Percent Complete:  100
+Time Remaining:  0 second(s)
+"""
+        results = [SUCCEED,
+                   [(FAKE_MIGRATE_PROPERTY, 0),
+                    ('The specified source LUN is not '
+                     'currently migrating', 23)]]
+        fake_cli = self.driverSetup(commands, results)
+        fake_host = {'capabilities': {'location_info':
+                                      'unit_test_pool2|fake_serial',
+                                      'storage_protocol': 'iSCSI'}}
+        ret = self.driver.migrate_volume(None, test_volume_asap,
+                                         fake_host)[0]
+        self.assertTrue(ret)
+        # verification
+        expect_cmd = [mock.call(*self.testData.MIGRATION_CMD(rate='asap'),
                                 retry_disable=True,
                                 poll=True),
                       mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
@@ -2106,7 +2153,7 @@ Time Remaining:  0 second(s)
                      23)]]
         fake_cli = self.driverSetup(commands, results)
         fakehost = {'capabilities': {'location_info':
-                                     "unit_test_pool2|fake_serial",
+                                     'unit_test_pool2|fake_serial',
                                      'storage_protocol': 'iSCSI'}}
         ret = self.driver.migrate_volume(None, self.testData.test_volume5,
                                          fakehost)[0]
@@ -2134,7 +2181,7 @@ Time Remaining:  0 second(s)
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
         fakehost = {'capabilities': {'location_info':
-                                     "unit_test_pool2|fake_serial",
+                                     'unit_test_pool2|fake_serial',
                                      'storage_protocol': 'iSCSI'}}
         ret = self.driver.migrate_volume(None, self.testData.test_volume,
                                          fakehost)[0]
@@ -2166,7 +2213,7 @@ Time Remaining:  0 second(s)
                    SUCCEED]
         fake_cli = self.driverSetup(commands, results)
         fake_host = {'capabilities': {'location_info':
-                                      "unit_test_pool2|fake_serial",
+                                      'unit_test_pool2|fake_serial',
                                       'storage_protocol': 'iSCSI'}}
 
         self.assertRaisesRegex(exception.VolumeBackendAPIException,
@@ -2219,7 +2266,7 @@ Time Remaining:  0 second(s)
                      'currently migrating', 23)]]
         fake_cli = self.driverSetup(commands, results)
         fake_host = {'capabilities': {'location_info':
-                                      "unit_test_pool2|fake_serial",
+                                      'unit_test_pool2|fake_serial',
                                       'storage_protocol': 'iSCSI'}}
 
         vol = EMCVNXCLIDriverTestData.convert_volume(
@@ -2744,18 +2791,20 @@ Time Remaining:  0 second(s)
 
         fake_cli.assert_has_calls(expect_cmd)
 
-    def test_create_volume_from_snapshot(self):
+    @ddt.data('high', 'asap', 'low', 'medium')
+    def test_create_volume_from_snapshot(self, migrate_rate):
         test_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
             self.testData.test_snapshot)
         test_volume = EMCVNXCLIDriverTestData.convert_volume(
             self.testData.test_volume2)
+        test_volume.metadata = {'migrate_rate': migrate_rate}
         cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
             build_migration_dest_name(test_volume.name))
         cmd_dest_np = self.testData.LUN_PROPERTY_ALL_CMD(
             build_migration_dest_name(test_volume.name))
         output_dest = self.testData.LUN_PROPERTY(
             build_migration_dest_name(test_volume.name))
-        cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
+        cmd_migrate = self.testData.MIGRATION_CMD(1, 1, rate=migrate_rate)
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
         output_migrate_verify = (r'The specified source LUN '
@@ -2785,7 +2834,7 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
                       build_migration_dest_name(test_volume.name)),
                       poll=False),
-            mock.call(*self.testData.MIGRATION_CMD(1, 1),
+            mock.call(*self.testData.MIGRATION_CMD(1, 1, rate=migrate_rate),
                       retry_disable=True,
                       poll=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
@@ -2945,7 +2994,8 @@ Time Remaining:  0 second(s)
             mock.call(*self.testData.LUN_DELETE_CMD('volume-2'))]
         fake_cli.assert_has_calls(expect_cmd)
 
-    def test_create_cloned_volume(self):
+    @ddt.data('high', 'asap', 'low', 'medium')
+    def test_create_cloned_volume(self, migrate_rate):
         cmd_dest = self.testData.LUN_PROPERTY_ALL_CMD(
             build_migration_dest_name('volume-2'))
         cmd_dest_p = self.testData.LUN_PROPERTY_ALL_CMD(
@@ -2954,7 +3004,7 @@ Time Remaining:  0 second(s)
             build_migration_dest_name('volume-2'))
         cmd_clone = self.testData.LUN_PROPERTY_ALL_CMD("volume-2")
         output_clone = self.testData.LUN_PROPERTY("volume-2")
-        cmd_migrate = self.testData.MIGRATION_CMD(1, 1)
+        cmd_migrate = self.testData.MIGRATION_CMD(1, 1, rate=migrate_rate)
         output_migrate = ("", 0)
         cmd_migrate_verify = self.testData.MIGRATION_VERIFY_CMD(1)
         output_migrate_verify = (r'The specified source LUN '
@@ -2970,6 +3020,7 @@ Time Remaining:  0 second(s)
         volume = EMCVNXCLIDriverTestData.convert_volume(volume)
         # Make sure this size is used
         volume.size = 10
+        volume.metadata = {'migrate_rate': migrate_rate}
         self.driver.create_cloned_volume(volume, self.testData.test_volume)
         tmp_snap = 'tmp-snap-' + volume.id
         expect_cmd = [
@@ -2990,7 +3041,7 @@ Time Remaining:  0 second(s)
                 build_migration_dest_name('volume-2')), poll=False),
             mock.call(*self.testData.LUN_PROPERTY_ALL_CMD(
                 build_migration_dest_name('volume-2')), poll=False),
-            mock.call(*self.testData.MIGRATION_CMD(1, 1),
+            mock.call(*self.testData.MIGRATION_CMD(1, 1, rate=migrate_rate),
                       poll=True,
                       retry_disable=True),
             mock.call(*self.testData.MIGRATION_VERIFY_CMD(1),
