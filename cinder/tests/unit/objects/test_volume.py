@@ -346,14 +346,21 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                                      src_vol_type_id, dest_vol_type_id):
         src_volume_db = fake_volume.fake_db_volume(
             **{'id': fake.volume_id, 'volume_type_id': src_vol_type_id})
+        if src_vol_type_id:
+            src_volume_db['volume_type'] = fake_volume.fake_db_volume_type(
+                id=src_vol_type_id)
         dest_volume_db = fake_volume.fake_db_volume(
             **{'id': fake.volume2_id, 'volume_type_id': dest_vol_type_id})
+        if dest_vol_type_id:
+            dest_volume_db['volume_type'] = fake_volume.fake_db_volume_type(
+                id=dest_vol_type_id)
+        expected_attrs = objects.Volume._get_expected_attrs(self.context)
         src_volume = objects.Volume._from_db_object(
             self.context, objects.Volume(), src_volume_db,
-            expected_attrs=['metadata', 'glance_metadata'])
+            expected_attrs=expected_attrs)
         dest_volume = objects.Volume._from_db_object(
             self.context, objects.Volume(), dest_volume_db,
-            expected_attrs=['metadata', 'glance_metadata'])
+            expected_attrs=expected_attrs)
         updated_dest_volume = src_volume.finish_volume_migration(
             dest_volume)
         self.assertEqual('deleting', updated_dest_volume.migration_status)
@@ -361,6 +368,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                          updated_dest_volume.display_description)
         self.assertEqual(src_volume.id, updated_dest_volume._name_id)
         self.assertTrue(volume_update.called)
+        ctxt, vol_id, updates = volume_update.call_args[0]
+        self.assertNotIn('volume_type', updates)
 
         # Ensure that the destination volume type has not been overwritten
         self.assertEqual(dest_vol_type_id,
@@ -369,12 +378,14 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         # finish_volume_migration
         ignore_keys = ('id', 'provider_location', '_name_id',
                        'migration_status', 'display_description', 'status',
-                       'volume_type_id')
-        dest_vol_filtered = {k: v for k, v in updated_dest_volume.iteritems()
-                             if k not in ignore_keys}
-        src_vol_filtered = {k: v for k, v in src_volume.iteritems()
-                            if k not in ignore_keys}
-        self.assertEqual(src_vol_filtered, dest_vol_filtered)
+                       'volume_type_id', 'volume_glance_metadata',
+                       'volume_type')
+
+        dest_vol_dict = {k: updated_dest_volume[k] for k in
+                         updated_dest_volume.keys() if k not in ignore_keys}
+        src_vol_dict = {k: src_volume[k] for k in src_volume.keys()
+                        if k not in ignore_keys}
+        self.assertEqual(src_vol_dict, dest_vol_dict)
 
     def test_volume_with_metadata_serialize_deserialize_no_changes(self):
         updates = {'volume_glance_metadata': [{'key': 'foo', 'value': 'bar'}],
