@@ -163,7 +163,7 @@ class QuotaSetsController(wsgi.Controller):
         a show.
 
         :param req: request
-        :param id: target project id that needs to be updated
+        :param id: target project id that needs to be shown
         """
         context = req.environ['cinder.context']
         authorize_show(context)
@@ -352,7 +352,7 @@ class QuotaSetsController(wsgi.Controller):
         CLOUD admin are able to perform a delete.
 
         :param req: request
-        :param id: target project id that needs to be updated
+        :param id: target project id that needs to be deleted
         """
         context = req.environ['cinder.context']
         authorize_delete(context)
