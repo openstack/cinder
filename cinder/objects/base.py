@@ -193,20 +193,30 @@ class CinderObject(base.VersionedObject):
 
            Method accepts additional filters, which are basically anything that
            can be passed to a sqlalchemy query's filter method, for example:
-           [~sql.exists().where(models.Volume.id == models.Snapshot.volume_id)]
+
+           .. code-block:: python
+
+            [~sql.exists().where(models.Volume.id ==
+                                 models.Snapshot.volume_id)]
 
            We can select values based on conditions using Case objects in the
            'values' argument. For example:
-           has_snapshot_filter = sql.exists().where(
-               models.Snapshot.volume_id == models.Volume.id)
-           case_values = volume.Case([(has_snapshot_filter, 'has-snapshot')],
-                                     else_='no-snapshot')
-           volume.conditional_update({'status': case_values},
-                                     {'status': 'available'}))
 
-            And we can use DB fields using model class attribute for example to
-            store previous status in the corresponding field even though we
-            don't know which value is in the db from those we allowed:
+           .. code-block:: python
+
+            has_snapshot_filter = sql.exists().where(
+                models.Snapshot.volume_id == models.Volume.id)
+            case_values = volume.Case([(has_snapshot_filter, 'has-snapshot')],
+                                      else_='no-snapshot')
+            volume.conditional_update({'status': case_values},
+                                      {'status': 'available'}))
+
+           And we can use DB fields using model class attribute for example to
+           store previous status in the corresponding field even though we
+           don't know which value is in the db from those we allowed:
+
+           .. code-block:: python
+
             volume.conditional_update({'status': 'deleting',
                                        'previous_status': volume.model.status},
                                       {'status': ('available', 'error')})
@@ -223,9 +233,10 @@ class CinderObject(base.VersionedObject):
                                    be reflected in the versioned object.  This
                                    may mean in some cases that we have to
                                    reload the object from the database.
-           :returns number of db rows that were updated, which can be used as a
-                    boolean, since it will be 0 if we couldn't update the DB
-                    and 1 if we could, because we are using unique index id.
+           :returns: number of db rows that were updated, which can be used as
+                     a boolean, since it will be 0 if we couldn't update the
+                     DB and 1 if we could, because we are using unique index
+                     id.
         """
         if 'id' not in self.fields:
             msg = (_('VersionedObject %s does not support conditional update.')

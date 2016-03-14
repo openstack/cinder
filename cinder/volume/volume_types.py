@@ -221,15 +221,26 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
     Returns a tuple of (diff, equal), where 'equal' is a boolean indicating
     whether there is any difference, and 'diff' is a dictionary with the
     following format:
-    {'extra_specs': {'key1': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                     'key2': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                     ...}
-     'qos_specs': {'key1': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                   'key2': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                   ...}
-     'encryption': {'cipher': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                   {'key_size': (value_in_1st_vol_type, value_in_2nd_vol_type),
-                    ...}
+
+    .. code-block:: json
+
+        {
+            'extra_specs': {'key1': (value_in_1st_vol_type,
+                                     value_in_2nd_vol_type),
+                            'key2': (value_in_1st_vol_type,
+                                     value_in_2nd_vol_type),
+                            {...}}
+            'qos_specs': {'key1': (value_in_1st_vol_type,
+                                   value_in_2nd_vol_type),
+                          'key2': (value_in_1st_vol_type,
+                                   value_in_2nd_vol_type),
+                          {...}}
+            'encryption': {'cipher': (value_in_1st_vol_type,
+                                      value_in_2nd_vol_type),
+                          {'key_size': (value_in_1st_vol_type,
+                                        value_in_2nd_vol_type),
+                           {...}}
+        }
     """
     def _fix_qos_specs(qos_specs):
         if qos_specs:

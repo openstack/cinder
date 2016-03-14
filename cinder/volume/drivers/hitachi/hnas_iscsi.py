@@ -167,15 +167,20 @@ def _read_config(xml_config_file):
 class HDSISCSIDriver(driver.ISCSIDriver):
     """HDS HNAS volume driver.
 
-    Version 1.0.0: Initial driver version
-    Version 2.2.0: Added support to SSH authentication
-    Version 3.2.0: Added pool aware scheduling
-                   Fixed concurrency errors
-    Version 3.3.0: Fixed iSCSI target limitation error
-    Version 4.0.0: Added manage/unmanage features
-    Version 4.1.0: Fixed XML parser checks on blank options
-    Version 4.2.0: Fixed SSH and cluster_admin_ip0 verification
-    Version 4.3.0: Fixed attachment with os-brick 1.0.0
+    Version history:
+
+    .. code-block:: none
+
+        1.0.0: Initial driver version
+        2.2.0: Added support to SSH authentication
+        3.2.0: Added pool aware scheduling
+               Fixed concurrency errors
+        3.3.0: Fixed iSCSI target limitation error
+        4.0.0: Added manage/unmanage features
+        4.1.0: Fixed XML parser checks on blank options
+        4.2.0: Fixed SSH and cluster_admin_ip0 verification
+        4.3.0: Fixed attachment with os-brick 1.0.0
+
     """
 
     def __init__(self, *args, **kwargs):

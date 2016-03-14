@@ -117,18 +117,27 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             - modify volume access records;
 
     The access credentials to the SAN are provided by means of the following
-    flags
+    flags:
+
+    .. code-block:: ini
+
         san_ip=<ip_address>
         san_login=<user name>
         san_password=<user password>
         san_private_key=<file containing SSH private key>
 
     Thin provision of volumes is enabled by default, to disable it use:
+
+    .. code-block:: ini
+
         san_thin_provision=false
 
     In order to use target CHAP authentication (which is disabled by default)
     SAN administrator must create a local CHAP user and specify the following
     flags for the driver:
+
+    .. code-block:: ini
+
         use_chap_auth=True
         chap_login=<chap_login>
         chap_password=<chap_password>
@@ -138,6 +147,9 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
     parameter must be set to 'group-0'
 
     Version history:
+
+    .. code-block:: none
+
         1.0   - Initial driver
         1.1.0 - Misc fixes
         1.2.0 - Deprecated eqlx_cli_timeout infavor of ssh_conn_timeout

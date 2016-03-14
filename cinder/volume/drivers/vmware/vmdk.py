@@ -552,11 +552,15 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """Allow connection to connector and return connection info.
 
         The implementation returns the following information:
-        {'driver_volume_type': 'vmdk'
-         'data': {'volume': $VOLUME_MOREF_VALUE
-                  'volume_id': $VOLUME_ID
-                 }
-        }
+
+        .. code-block:: json
+
+            {
+                'driver_volume_type': 'vmdk'
+                'data': {'volume': $VOLUME_MOREF_VALUE
+                         'volume_id': $VOLUME_ID
+                        }
+            }
 
         :param volume: Volume object
         :param connector: Connector information
@@ -1147,9 +1151,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         has a vmdk disk type of "streamOptimized" that can only be downloaded
         using the HttpNfc API.
         Steps followed are:
-        1. Get the name of the vmdk file which the volume points to right now.
-           Can be a chain of snapshots, so we need to know the last in the
-           chain.
+        1. Get the name of the vmdk file which the volume points to right
+        now. Can be a chain of snapshots, so we need to know the last in the
+        chain.
         2. Use Nfc APIs to upload the contents of the vmdk file to glance.
         """
 
@@ -1701,7 +1705,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         :param volume: Cinder volume to manage
         :param existing_ref: Driver-specific information used to identify a
-        volume
+                             volume
         """
         (_vm, disk) = self._get_existing(existing_ref)
         return int(math.ceil(disk.capacityInKB * units.Ki / float(units.Gi)))
@@ -1714,7 +1718,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         :param volume: Cinder volume to manage
         :param existing_ref: Driver-specific information used to identify a
-        volume
+                             volume
         """
         (vm, disk) = self._get_existing(existing_ref)
 

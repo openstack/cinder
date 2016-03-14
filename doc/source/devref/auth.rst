@@ -20,33 +20,20 @@
 Authentication and Authorization
 ================================
 
+The :mod:`cinder.api.middleware.auth` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: cinder.api.middleware.auth
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
 The :mod:`cinder.quota` Module
-------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. automodule:: cinder.quota
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`cinder.auth.signer` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.auth.signer
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-Auth Manager
-------------
-
-The :mod:`cinder.auth.manager` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.auth.manager
     :noindex:
     :members:
     :undoc-members:
@@ -57,30 +44,30 @@ Tests
 -----
 
 
-The :mod:`auth_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`middleware.test_auth` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.auth_unittest
+.. automodule:: cinder.tests.unit.api.middleware.test_auth
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`access_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`test_quota` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.access_unittest
+.. automodule:: cinder.tests.unit.test_quota
     :noindex:
     :members:
     :undoc-members:
     :show-inheritance:
 
 
-The :mod:`quota_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`test_quota_utils` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.quota_unittest
+.. automodule:: cinder.tests.unit.test_quota_utils
     :noindex:
     :members:
     :undoc-members:

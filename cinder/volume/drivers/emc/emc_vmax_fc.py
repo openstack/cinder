@@ -31,6 +31,9 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
     """EMC FC Drivers for VMAX using SMI-S.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         1.1.0 - Multiple pools and thick/thin provisioning,
                 performance enhancement.
@@ -62,6 +65,7 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
               - Replacement of EMCGetTargetEndpoints api (bug #1512791)
               - VMAX3 snapvx improvements (bug #1522821)
               - Operations and timeout issues (bug #1538214)
+
     """
 
     VERSION = "2.3.0"

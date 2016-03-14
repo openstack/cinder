@@ -89,6 +89,9 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
     """OpenStack driver to enable Nimble Controller.
 
     Version history:
+
+    .. code-block:: none
+
         1.0 - Initial driver
         1.1.1 - Updated VERSION to Nimble driver version
         1.1.2 - Update snap-quota to unlimited

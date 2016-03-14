@@ -230,8 +230,8 @@ class BrcdHTTPFCZoneClient(object):
         """Return the sub string between the delimiters.
 
         :param data: String to manipulate
-        :param delim1 : Delimiter 1
-        :param delim2 : Delimiter 2
+        :param delim1: Delimiter 1
+        :param delim2: Delimiter 2
         :returns: substring between the delimiters
         """
         try:
@@ -448,13 +448,17 @@ class BrcdHTTPFCZoneClient(object):
         are active then it will return empty map.
 
         :returns: Map -- active zone set map in the following format
-        {
-            'zones':
-                {'openstack50060b0000c26604201900051ee8e329':
-                    ['50060b0000c26604', '201900051ee8e329']
-                },
-            'active_zone_config': 'OpenStack_Cfg'
-        }
+
+        .. code-block:: python
+
+            {
+                'zones':
+                    {'openstack50060b0000c26604201900051ee8e329':
+                        ['50060b0000c26604', '201900051ee8e329']
+                    },
+                'active_zone_config': 'OpenStack_Cfg'
+            }
+
         :raises: BrocadeZoningHttpException
         """
         active_zone_set = {}
@@ -483,16 +487,24 @@ class BrcdHTTPFCZoneClient(object):
 
         This method will add the zone configuration passed by user.
 
-        :param add_zones_info: Zone names mapped to members.
-            zone members are colon separated but case-insensitive
+        :param add_zones_info: Zone names mapped to members. Zone members
+                               are colon separated but case-insensitive
+
+        .. code-block:: python
+
             {   zonename1:[zonememeber1,zonemember2,...],
                 zonename2:[zonemember1, zonemember2,...]...}
-            e.g: {'openstack50060b0000c26604201900051ee8e329':
+
+            e.g:
+
+            {
+                'openstack50060b0000c26604201900051ee8e329':
                     ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:29']
-                }R
+            }
+
         :param activate: True will activate the zone config.
         :param active_zone_set: Active zone set dict retrieved from
-                              get_active_zone_set method
+                                get_active_zone_set method
         :raises: BrocadeZoningHttpException
         """
         LOG.debug("Add zones - zones passed: %(zones)s.",
@@ -589,9 +601,9 @@ class BrcdHTTPFCZoneClient(object):
         :param cfgs: Existing cfgs map
         :param active_cfg: Existing Active cfg string
         :param zones: Existing zones map
-        :param add_zones_info :Zones map to add
-        :param active_cfg :Existing active cfg
-        :param cfg_name : New cfg name
+        :param add_zones_info: Zones map to add
+        :param active_cfg: Existing active cfg
+        :param cfg_name: New cfg name
         :returns: updated zones, zone configs map, and active_cfg
         """
         cfg_string = ""
@@ -688,8 +700,8 @@ class BrcdHTTPFCZoneClient(object):
         :param cfgs: Existing cfgs map
         :param active_cfg: Existing Active cfg string
         :param zones: Existing zones map
-        :param delete_zones_info :Zones map to add
-        :param active_cfg :Existing active cfg
+        :param delete_zones_info: Zones map to add
+        :param active_cfg: Existing active cfg
         :returns: updated zones, zone config sets, and active zone config
         :raises: BrocadeZoningHttpException
         """

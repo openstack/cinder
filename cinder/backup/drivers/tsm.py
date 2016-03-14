@@ -353,7 +353,7 @@ class TSMBackupDriver(driver.BackupDriver):
         :param backup: backup information for volume
         :param volume_file: file object representing the volume
         :param backup_metadata: whether or not to backup volume metadata
-        :raises InvalidBackup
+        :raises InvalidBackup:
         """
 
         # TODO(dosaboy): this needs implementing (see backup.drivers.ceph for

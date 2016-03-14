@@ -50,14 +50,20 @@ class FCZoneDriver(fc_common.FCCommon):
         Abstract method to add connection control.
         All implementing drivers should provide concrete implementation
         for this API.
+
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
-        Example initiator_target_map:
+
+        .. code-block:: python
+
+            Example initiator_target_map:
+
             {
                 '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
             }
-        Note that WWPN can be in lower or upper case and can be
-        ':' separated strings
+
+        Note that WWPN can be in lower or upper case and can be ':'
+        separated strings
         """
         raise NotImplementedError()
 
@@ -68,14 +74,20 @@ class FCZoneDriver(fc_common.FCCommon):
         Abstract method to remove connection control.
         All implementing drivers should provide concrete implementation
         for this API.
+
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
-        Example initiator_target_map:
+
+        .. code-block:: python
+
+            Example initiator_target_map:
+
             {
                 '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
             }
-        Note that WWPN can be in lower or upper case and can be
-        ':' separated strings
+
+        Note that WWPN can be in lower or upper case and can be ':'
+        separated strings
         """
         raise NotImplementedError()
 

@@ -38,15 +38,14 @@ The :mod:`cinder.volume.driver` Module
     :members:
     :undoc-members:
     :show-inheritance:
-    :exclude-members: FakeAOEDriver
 
 Tests
 -----
 
-The :mod:`volume_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The :mod:`cinder.tests.unit.volume` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.volume_unittest
+.. automodule:: cinder.tests.unit.volume
     :noindex:
     :members:
     :undoc-members:

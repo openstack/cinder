@@ -226,7 +226,7 @@ class StorageCenterApi(object):
         1.1.0 - Added extra spec support for Storage Profile selection
         1.2.0 - Added consistency group support.
         2.0.0 - Switched to inheriting functional objects rather than volume
-                driver.
+        driver.
         2.1.0 - Added support for ManageableVD.
         2.2.0 - Added API 2.2 support.
         2.3.0 - Added Legacy Port Mode Support
@@ -2428,7 +2428,7 @@ class StorageCenterApi(object):
     def unmanage(self, scvolume):
         """Unmanage our volume.
 
-        We simply rename with with a prefix of 'Unmanaged_'.  That's it.
+        We simply rename with with a prefix of `Unmanaged_`  That's it.
 
         :param scvolume: The Dell SC volume object.
         :return: Nothing.

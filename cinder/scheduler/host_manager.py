@@ -133,44 +133,49 @@ class HostState(object):
         'capability' is the status info reported by volume backend, a typical
         capability looks like this:
 
-        capability = {
-            'volume_backend_name': 'Local iSCSI', #\
-            'vendor_name': 'OpenStack',           #  backend level
-            'driver_version': '1.0',              #  mandatory/fixed
-            'storage_protocol': 'iSCSI',          #- stats&capabilities
+        .. code-block:: python
 
-            'active_volumes': 10,                 #\
-            'IOPS_provisioned': 30000,            #  optional custom
-            'fancy_capability_1': 'eat',          #  stats & capabilities
-            'fancy_capability_2': 'drink',        #/
+         {
+          capability = {
+              'volume_backend_name': 'Local iSCSI', #
+              'vendor_name': 'OpenStack',           #  backend level
+              'driver_version': '1.0',              #  mandatory/fixed
+              'storage_protocol': 'iSCSI',          #  stats&capabilities
 
-            'pools': [
-                {'pool_name': '1st pool',         #\
-                 'total_capacity_gb': 500,        #  mandatory stats for
-                 'free_capacity_gb': 230,         #  pools
-                 'allocated_capacity_gb': 270,    # |
-                 'QoS_support': 'False',          # |
-                 'reserved_percentage': 0,        #/
+              'active_volumes': 10,                 #
+              'IOPS_provisioned': 30000,            #  optional custom
+              'fancy_capability_1': 'eat',          #  stats & capabilities
+              'fancy_capability_2': 'drink',        #
 
-                 'dying_disks': 100,              #\
-                 'super_hero_1': 'spider-man',    #  optional custom
-                 'super_hero_2': 'flash',         #  stats & capabilities
-                 'super_hero_3': 'neoncat'        #/
-                 },
-                {'pool_name': '2nd pool',
-                 'total_capacity_gb': 1024,
-                 'free_capacity_gb': 1024,
-                 'allocated_capacity_gb': 0,
-                 'QoS_support': 'False',
-                 'reserved_percentage': 0,
+              'pools': [
+                  {'pool_name': '1st pool',         #
+                   'total_capacity_gb': 500,        #  mandatory stats for
+                   'free_capacity_gb': 230,         #  pools
+                   'allocated_capacity_gb': 270,    #
+                   'QoS_support': 'False',          #
+                   'reserved_percentage': 0,        #
 
-                 'dying_disks': 200,
-                 'super_hero_1': 'superman',
-                 'super_hero_2': ' ',
-                 'super_hero_2': 'Hulk',
-                 }
-            ]
-        }
+                   'dying_disks': 100,              #
+                   'super_hero_1': 'spider-man',    #  optional custom
+                   'super_hero_2': 'flash',         #  stats & capabilities
+                   'super_hero_3': 'neoncat'        #
+                  },
+                  {'pool_name': '2nd pool',
+                   'total_capacity_gb': 1024,
+                   'free_capacity_gb': 1024,
+                   'allocated_capacity_gb': 0,
+                   'QoS_support': 'False',
+                   'reserved_percentage': 0,
+
+                   'dying_disks': 200,
+                   'super_hero_1': 'superman',
+                   'super_hero_2': ' ',
+                   'super_hero_2': 'Hulk'
+                  }
+              ]
+          }
+         }
+
         """
         self.update_capabilities(capability, service)
 

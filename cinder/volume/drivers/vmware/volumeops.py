@@ -625,7 +625,7 @@ class VMwareVolumeOps(object):
         :param path: Datastore path of the virtual disk to extend
         :param dc_ref: Reference to datacenter
         :param eager_zero: Boolean determining if the free space
-        is zeroed out
+                           is zeroed out
         """
         LOG.debug("Extending virtual disk: %(path)s to %(size)s GB.",
                   {'path': path, 'size': requested_size_in_gb})

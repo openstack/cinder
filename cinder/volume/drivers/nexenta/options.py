@@ -12,12 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.options` -- Contains configuration options for Nexenta drivers.
-=============================================================================
-
-.. automodule:: nexenta.options
-"""
 
 from oslo_config import cfg
 

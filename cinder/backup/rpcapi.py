@@ -33,6 +33,8 @@ class BackupAPI(rpc.RPCAPI):
 
     API version history:
 
+    .. code-block:: none
+
         1.0 - Initial version.
         1.1 - Changed methods to accept backup objects instead of IDs.
         1.2 - A version that got in by mistake (without breaking anything).

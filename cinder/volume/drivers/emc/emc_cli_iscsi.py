@@ -26,6 +26,9 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
     """EMC ISCSI Drivers for VNX using CLI.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         2.0.0 - Thick/thin provisioning, robust enhancement
         3.0.0 - Array-based Backend Support, FC Basic Support,
@@ -191,13 +194,18 @@ class EMCCLIISCSIDriver(driver.ISCSIDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        manage_existing_ref:{
-            'source-id':<lun id in VNX>
-        }
-        or
-        manage_existing_ref:{
-            'source-name':<lun name in VNX>
-        }
+        .. code-block:: none
+
+            manage_existing_ref:{
+                'source-id':<lun id in VNX>
+            }
+
+            or
+
+            manage_existing_ref:{
+                'source-name':<lun name in VNX>
+            }
+
         """
         return self.cli.manage_existing(volume, existing_ref)
 

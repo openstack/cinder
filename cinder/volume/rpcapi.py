@@ -35,6 +35,8 @@ class VolumeAPI(rpc.RPCAPI):
 
     API version history:
 
+    .. code-block:: none
+
         1.0 - Initial version.
         1.1 - Adds clone volume option to create_volume.
         1.2 - Add publish_service_capabilities() method.

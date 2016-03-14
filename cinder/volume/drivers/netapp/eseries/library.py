@@ -920,7 +920,7 @@ class NetAppESeriesLibrary(object):
 
         :param snapshot: The Cinder snapshot
         :param group_name: An optional label for the snapshot group
-        :return An E-Series snapshot image
+        :returns: An E-Series snapshot image
         """
 
         os_vol = snapshot['volume']
@@ -1127,6 +1127,9 @@ class NetAppESeriesLibrary(object):
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
         Example return values:
+
+        .. code-block:: python
+
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
@@ -1140,7 +1143,9 @@ class NetAppESeriesLibrary(object):
                 }
             }
 
-            or
+        or
+
+        .. code-block:: python
 
              {
                 'driver_volume_type': 'fibre_channel'

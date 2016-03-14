@@ -28,11 +28,16 @@ class GoodnessWeigher(weights.BaseHostWeigher):
 
     Goodness rating is the following:
 
-      0 -- host is a poor choice
-    ...
-     50 -- host is a good choice
-    ...
-    100 -- host is a perfect choice
+    .. code-block:: none
+
+          0 -- host is a poor choice
+          .
+          .
+         50 -- host is a good choice
+          .
+          .
+        100 -- host is a perfect choice
+
     """
 
     def _weigh_object(self, host_state, weight_properties):

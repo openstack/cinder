@@ -1696,7 +1696,7 @@ class EMCVMAXUtils(object):
 
         :param conn: the connection to the ecom server
         :param capabilityInstanceName: the replication service capabilities
-        instance name
+                                       instance name
         :returns: True if licensed and enabled; False otherwise.
         """
         capabilityInstance = conn.GetInstance(capabilityInstanceName)
@@ -1721,7 +1721,7 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param hardwareIdManagementService: the hardware ID management service
         :param initiator: initiator(IQN or WWPN) to create the hardware ID
-            instance
+                          instance
         :returns: hardwareIdList
         """
         hardwareIdList = None

@@ -37,6 +37,9 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
     """EMC ISCSI Drivers for VMAX using SMI-S.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         1.1.0 - Multiple pools and thick/thin provisioning,
                 performance enhancement.
@@ -68,6 +71,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - Replacement of EMCGetTargetEndpoints api (bug #1512791)
               - VMAX3 snapvx improvements (bug #1522821)
               - Operations and timeout issues (bug #1538214)
+
     """
 
     VERSION = "2.3.0"
@@ -161,7 +165,10 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
         The iscsi driver returns a driver_volume_type of 'iscsi'.
         the format of the driver data is defined in smis_get_iscsi_properties.
-        Example return value::
+        Example return value:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'iscsi'
                 'data': {
@@ -171,6 +178,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
                     'volume_id': '12345678-1234-4321-1234-123456789012',
                 }
             }
+
         """
         self.iscsi_ip_addresses = self.common.initialize_connection(
             volume, connector)
@@ -231,15 +239,18 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         We ideally get saved information in the volume entity, but fall back
         to discovery if need be. Discovery may be completely removed in future
         The properties are:
-        :target_discovered:    boolean indicating whether discovery was used
-        :target_iqn:    the IQN of the iSCSI target
-        :target_portal:    the portal of the iSCSI target
-        :target_lun:    the lun of the iSCSI target
-        :volume_id:    the UUID of the volume
-        :auth_method:, :auth_username:, :auth_password:
-            the authentication details. Right now, either auth_method is not
-            present meaning no authentication, or auth_method == `CHAP`
-            meaning use CHAP with the specified credentials.
+
+        - `target_discovered` - boolean indicating whether discovery was
+          used
+        - `target_iqn` - the IQN of the iSCSI target
+        - `target_portal` - the portal of the iSCSI target
+        - `target_lun` - the lun of the iSCSI target
+        - `volume_id` - the UUID of the volume
+        - `auth_method`, `auth_username`, `auth_password` - the
+          authentication details. Right now, either auth_method is not
+          present meaning no authentication, or auth_method == `CHAP`
+          meaning use CHAP with the specified credentials.
+
         """
         properties = {}
 

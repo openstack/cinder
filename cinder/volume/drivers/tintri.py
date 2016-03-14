@@ -73,6 +73,8 @@ class TintriDriver(driver.ManageableVD,
 
     Version History
 
+    .. code-block:: none
+
         2.1.0.1 - Liberty driver
         2.2.0.1 - Mitaka driver
                 -- Retype

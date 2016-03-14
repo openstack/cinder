@@ -74,7 +74,11 @@ class KeyManager(object):
         NotAuthorized error should be raised.
 
         Implementation note: This method should behave identically to
+
+        .. code-block:: python
+
             store_key(context, get_key(context, <encryption key UUID>))
+
         although it is preferable to perform this operation within the key
         manager to avoid unnecessary handling of the key material.
         """

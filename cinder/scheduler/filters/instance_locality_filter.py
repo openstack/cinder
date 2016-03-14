@@ -38,6 +38,7 @@ class InstanceLocalityFilter(filters.BaseHostFilter):
     the instance and the volume are located on the same physical machine.
 
     In order to work:
+
     - The Extended Server Attributes extension needs to be active in Nova (this
       is by default), so that the 'OS-EXT-SRV-ATTR:host' property is returned
       when requesting instance info.
@@ -45,6 +46,7 @@ class InstanceLocalityFilter(filters.BaseHostFilter):
       Cinder configuration (see 'os_privileged_user_name'), or the user making
       the call needs to have sufficient rights (see
       'extended_server_attributes' in Nova policy).
+
     """
 
     def __init__(self):

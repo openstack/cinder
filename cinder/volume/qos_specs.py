@@ -93,11 +93,11 @@ def create(context, name, specs=None):
 def update(context, qos_specs_id, specs):
     """Update qos specs.
 
-    :param specs dictionary that contains key/value pairs for updating
-    existing specs.
-        e.g. {'consumer': 'front-end',
-              'total_iops_sec': 500,
-              'total_bytes_sec': 512000,}
+    :param specs: dictionary that contains key/value pairs for updating
+                  existing specs.
+          e.g. {'consumer': 'front-end',
+                'total_iops_sec': 500,
+                'total_bytes_sec': 512000,}
     """
     # need to verify specs in case 'consumer' is passed
     _verify_prepare_qos_specs(specs, create=False)
@@ -174,15 +174,15 @@ def get_associations(context, specs_id):
 def associate_qos_with_type(context, specs_id, type_id):
     """Associate qos_specs with volume type.
 
-    Associate target qos specs with specific volume type. Would raise
-    following exceptions:
-        VolumeTypeNotFound  - if volume type doesn't exist;
-        QoSSpecsNotFound  - if qos specs doesn't exist;
-        InvalidVolumeType  - if volume type is already associated with
-                             qos specs other than given one.
-        QoSSpecsAssociateFailed -  if there was general DB error
+    Associate target qos specs with specific volume type.
+
     :param specs_id: qos specs ID to associate with
     :param type_id: volume type ID to associate with
+    :raises VolumeTypeNotFound: if volume type doesn't exist
+    :raises QoSSpecsNotFound: if qos specs doesn't exist
+    :raises InvalidVolumeType: if volume type is already associated
+                               with qos specs other than given one.
+    :raises QoSSpecsAssociateFailed: if there was general DB error
     """
     try:
         get_qos_specs(context, specs_id)

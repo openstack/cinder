@@ -13,7 +13,7 @@ is done with an HTTP header ``OpenStack-API-Version`` which
 is a monotonically increasing semantic version number starting from
 ``3.0``. Each service that uses microversions will share this header, so
 the Volume service will need to specifiy ``volume``:
-    ``OpenStack-API-Version: volume 3.0``
+``OpenStack-API-Version: volume 3.0``
 
 If a user makes a request without specifying a version, they will get
 the ``DEFAULT_API_VERSION`` as defined in

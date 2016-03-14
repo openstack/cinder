@@ -1820,26 +1820,29 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     """IBM Storwize V7000 SVC abstract base class for iSCSI/FC volume drivers.
 
     Version history:
-    1.0 - Initial driver
-    1.1 - FC support, create_cloned_volume, volume type support,
-          get_volume_stats, minor bug fixes
-    1.2.0 - Added retype
-    1.2.1 - Code refactor, improved exception handling
-    1.2.2 - Fix bug #1274123 (races in host-related functions)
-    1.2.3 - Fix Fibre Channel connectivity: bug #1279758 (add delim to
-            lsfabric, clear unused data from connections, ensure matching
-            WWPNs by comparing lower case
-    1.2.4 - Fix bug #1278035 (async migration/retype)
-    1.2.5 - Added support for manage_existing (unmanage is inherited)
-    1.2.6 - Added QoS support in terms of I/O throttling rate
-    1.3.1 - Added support for volume replication
-    1.3.2 - Added support for consistency group
-    1.3.3 - Update driver to use ABC metaclasses
-    2.0 - Code refactor, split init file and placed shared methods for
-          FC and iSCSI within the StorwizeSVCCommonDriver class
-    2.1 - Added replication V2 support to the global/metro mirror
-          mode
-    2.1.1 - Update replication to version 2.1
+
+    .. code-block:: none
+
+        1.0 - Initial driver
+        1.1 - FC support, create_cloned_volume, volume type support,
+              get_volume_stats, minor bug fixes
+        1.2.0 - Added retype
+        1.2.1 - Code refactor, improved exception handling
+        1.2.2 - Fix bug #1274123 (races in host-related functions)
+        1.2.3 - Fix Fibre Channel connectivity: bug #1279758 (add delim
+                to lsfabric, clear unused data from connections, ensure
+                matching WWPNs by comparing lower case
+        1.2.4 - Fix bug #1278035 (async migration/retype)
+        1.2.5 - Added support for manage_existing (unmanage is inherited)
+        1.2.6 - Added QoS support in terms of I/O throttling rate
+        1.3.1 - Added support for volume replication
+        1.3.2 - Added support for consistency group
+        1.3.3 - Update driver to use ABC metaclasses
+        2.0 - Code refactor, split init file and placed shared methods
+              for FC and iSCSI within the StorwizeSVCCommonDriver class
+        2.1 - Added replication V2 support to the global/metro mirror
+              mode
+        2.1.1 - Update replication to version 2.1
     """
 
     VERSION = "2.1.1"
@@ -3026,7 +3029,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
         :param source_cg: the dictionary of a consistency group as source.
         :param source_vols: a list of volume dictionaries in the source_cg.
-        :return model_update, volumes_model_update
+        :returns: model_update, volumes_model_update
         """
         LOG.debug('Enter: create_consistencygroup_from_src.')
         if cgsnapshot and snapshots:

@@ -748,13 +748,24 @@ class HBSDCommon(object):
 
         existing_ref is a dictionary of the form:
 
-        For HUS 100 Family,
-        {'ldev': <logical device number on storage>,
-         'unit_name': <storage device name>}
+        For HUS 100 Family:
 
-        For VSP G1000/VSP/HUS VM,
-        {'ldev': <logical device number on storage>,
-          'serial_number': <product number of storage system>}
+        .. code-block:: json
+
+            {
+                'ldev': <logical device number on storage>,
+                'unit_name': <storage device name>
+            }
+
+        For VSP G1000/VSP/HUS VM:
+
+        .. code-block:: json
+
+            {
+                'ldev': <logical device number on storage>,
+                'serial_number': <product number of storage system>
+            }
+
         """
 
         ldev = self._string2int(existing_ref.get('ldev'))

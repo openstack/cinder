@@ -124,6 +124,9 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     """Executes REST commands relating to HPE/LeftHand SAN ISCSI volumes.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial REST iSCSI proxy
         1.0.1 - Added support for retype
         1.0.2 - Added support for volume migrate

@@ -11,6 +11,7 @@ Running the tests
 There are a number of ways to run unit tests currently, and there's a combination
 of frameworks used depending on what commands you use.  The preferred method
 is to use tox, which calls ostestr via the tox.ini file.  To run all tests simply run::
+
     tox
 
 This will create a virtual environment, load all the packages from test-requirements.txt
@@ -76,6 +77,7 @@ Because ``run_tests.sh`` is a wrapper around testr, it also accepts the same
 flags as testr. See the `testr documentation`_ for details about
 these additional flags.
 
+.. _testr documentation: https://testrepository.readthedocs.org/en/latest/
 .. _nose options documentation: http://readthedocs.org/docs/nose/en/latest/usage.html#options
 
 Running a subset of tests
@@ -134,7 +136,7 @@ If you do not wish to use a virtualenv at all, use the flag::
 Database
 --------
 
-Some of the unit tests make queries against an sqlite database [#f3]_. By
+Some of the unit tests make queries against an sqlite database. By
 default, the test database (``tests.sqlite``) is deleted and recreated each
 time ``run_tests.sh`` is invoked (This is equivalent to using the
 ``-r, --recreate-db`` flag). To reduce testing time if a database already
@@ -152,7 +154,7 @@ Gotchas
 **Running Tests from Shared Folders**
 
 If you are running the unit tests from a shared folder, you may see tests start
-to fail or stop completely as a result of Python lockfile issues [#f4]_. You
+to fail or stop completely as a result of Python lockfile issues. You
 can get around this by manually setting or updating the following line in
 ``cinder/tests/conf_fixture.py``::
 
@@ -173,7 +175,8 @@ a shared folder.
 You will need to install:
 python3-dev
 in order to get py34 tests to run. If you do not have this, you will get the following::
-	 netifaces.c:1:20: fatal error: Python.h: No such file or directory
+
+	netifaces.c:1:20: fatal error: Python.h: No such file or directory
 	     #include <Python.h>
 				^
 	    compilation terminated.

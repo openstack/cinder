@@ -12,12 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.nfs` -- Driver to store volumes on NexentaStor Appliance.
-=======================================================================
-
-.. automodule:: nexenta.nfs
-"""
 
 import hashlib
 import os
@@ -45,6 +39,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver version.
         1.1.0 - Auto sharing for enclosing folder.
         1.1.1 - Added caching for NexentaStor appliance 'volroot' value.
