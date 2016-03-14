@@ -1080,30 +1080,44 @@ class BackupsAPITestCase(test.TestCase):
     def test_get_available_backup_service(self,
                                           _mock_service_get_all_by_topic):
         _mock_service_get_all_by_topic.return_value = [
-            {'availability_zone': 'az1', 'host': 'testhost',
+            {'availability_zone': 'az1', 'host': 'testhost1',
              'disabled': 0, 'updated_at': timeutils.utcnow()},
-            {'availability_zone': 'az2', 'host': 'fakehost',
-             'disabled': 0, 'updated_at': timeutils.utcnow()}]
-        actual_host = self.backup_api._get_available_backup_service_host(
-            'testhost', 'az1')
-        self.assertEqual('testhost', actual_host)
-        self.assertRaises(exception.ServiceNotFound,
-                          self.backup_api._get_available_backup_service_host,
-                          'testhost', 'az2')
-        self.assertRaises(exception.ServiceNotFound,
-                          self.backup_api._get_available_backup_service_host,
-                          'testhost2', 'az1')
-        self.override_config('backup_use_same_backend', True)
+            {'availability_zone': 'az2', 'host': 'testhost2',
+             'disabled': 0, 'updated_at': timeutils.utcnow()},
+            {'availability_zone': 'az2', 'host': 'testhost3',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}, ]
         actual_host = self.backup_api._get_available_backup_service_host(
             None, 'az1')
-        self.assertEqual('testhost', actual_host)
+        self.assertEqual('testhost1', actual_host)
         actual_host = self.backup_api._get_available_backup_service_host(
-            'testhost2', 'az1')
-        self.assertEqual('testhost', actual_host)
+            'testhost2', 'az2')
+        self.assertIn(actual_host, ['testhost2', 'testhost3'])
+        actual_host = self.backup_api._get_available_backup_service_host(
+            'testhost4', 'az1')
+        self.assertEqual('testhost1', actual_host)
 
     @mock.patch('cinder.db.service_get_all_by_topic')
-    def test_delete_backup_available(self,
-                                     _mock_service_get_all_by_topic):
+    def test_get_available_backup_service_with_same_host(
+            self, _mock_service_get_all_by_topic):
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': 'az1', 'host': 'testhost1',
+             'disabled': 0, 'updated_at': timeutils.utcnow()},
+            {'availability_zone': 'az2', 'host': 'testhost2',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}, ]
+        self.override_config('backup_use_same_host', True)
+        actual_host = self.backup_api._get_available_backup_service_host(
+            None, 'az1')
+        self.assertEqual('testhost1', actual_host)
+        actual_host = self.backup_api._get_available_backup_service_host(
+            'testhost2', 'az2')
+        self.assertEqual('testhost2', actual_host)
+        self.assertRaises(exception.ServiceNotFound,
+                          self.backup_api._get_available_backup_service_host,
+                          'testhost4', 'az1')
+
+    @mock.patch('cinder.db.service_get_all_by_topic')
+    def test_delete_backup_available(
+            self, _mock_service_get_all_by_topic):
         _mock_service_get_all_by_topic.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
@@ -1235,10 +1249,10 @@ class BackupsAPITestCase(test.TestCase):
 
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     def test_restore_backup_volume_id_specified_json(
-            self, _mock_is_service_enabled):
-        _mock_is_service_enabled.return_value = True
+            self, _mock_get_backup_host):
+        _mock_get_backup_host.return_value = 'testhost'
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
         # need to create the volume referenced below first
         volume_name = 'test1'
@@ -1260,10 +1274,10 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(volume_id, res_dict['restore']['volume_id'])
         self.assertEqual(volume_name, res_dict['restore']['volume_name'])
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     def test_restore_backup_volume_id_specified_xml(
-            self, _mock_is_service_enabled):
-        _mock_is_service_enabled.return_value = True
+            self, _mock_get_backup_host):
+        _mock_get_backup_host.return_value = 'testhost'
         volume_name = 'test1'
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
         volume_id = utils.create_volume(self.context,
@@ -1330,19 +1344,20 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual("Missing required element 'restore' in request body.",
                          res_dict['badRequest']['message'])
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.volume.api.API.create')
-    def test_restore_backup_volume_id_unspecified(self,
-                                                  _mock_volume_api_create,
-                                                  _mock_is_service_enabled):
-
+    def test_restore_backup_volume_id_unspecified(
+            self, _mock_volume_api_create,
+            _mock_service_get_all_by_topic):
         # intercept volume creation to ensure created volume
         # has status of available
         def fake_volume_api_create(context, size, name, description):
             volume_id = utils.create_volume(self.context, size=size)['id']
             return db.volume_get(context, volume_id)
 
-        _mock_is_service_enabled.return_value = True
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': 'az1', 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
         _mock_volume_api_create.side_effect = fake_volume_api_create
 
         backup_id = self._create_backup(size=5,
@@ -1360,11 +1375,11 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch('cinder.volume.api.API.create')
     def test_restore_backup_name_specified(self,
                                            _mock_volume_api_create,
-                                           _mock_is_service_enabled):
+                                           _mock_service_get_all_by_topic):
         # Intercept volume creation to ensure created volume
         # has status of available
         def fake_volume_api_create(context, size, name, description):
@@ -1373,7 +1388,9 @@ class BackupsAPITestCase(test.TestCase):
             return db.volume_get(context, volume_id)
 
         _mock_volume_api_create.side_effect = fake_volume_api_create
-        _mock_is_service_enabled.return_value = True
+        _mock_service_get_all_by_topic.return_value = [
+            {'availability_zone': 'az1', 'host': 'testhost',
+             'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
         backup_id = self._create_backup(size=5,
                                         status=fields.BackupStatus.AVAILABLE)
@@ -1398,10 +1415,10 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     def test_restore_backup_name_volume_id_specified(
-            self, _mock_is_service_enabled):
-        _mock_is_service_enabled.return_value = True
+            self, _mock_get_backup_host):
+        _mock_get_backup_host.return_value = 'testhost'
         backup_id = self._create_backup(size=5,
                                         status=fields.BackupStatus.AVAILABLE)
         orig_vol_name = "vol-00"
@@ -1618,12 +1635,11 @@ class BackupsAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id)
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
-    def test_restore_backup_to_oversized_volume(
-            self, _mock_is_service_enabled):
-        _mock_is_service_enabled.return_value = True
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
+    def test_restore_backup_to_oversized_volume(self, _mock_get_backup_host):
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE,
                                         size=10)
+        _mock_get_backup_host.return_value = 'testhost'
         # need to create the volume referenced below first
         volume_name = 'test1'
         volume_id = utils.create_volume(self.context,
@@ -1648,8 +1664,8 @@ class BackupsAPITestCase(test.TestCase):
         db.backup_destroy(context.get_admin_context(), backup_id)
 
     @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
-    def test_restore_backup_with_different_host(self, mock_is_backup_available,
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
+    def test_restore_backup_with_different_host(self, _mock_get_backup_host,
                                                 mock_restore_backup):
         volume_name = 'test1'
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE,
@@ -1658,7 +1674,7 @@ class BackupsAPITestCase(test.TestCase):
                                         host='HostB@BackendB#PoolB',
                                         display_name=volume_name)['id']
 
-        mock_is_backup_available.return_value = True
+        _mock_get_backup_host.return_value = 'testhost'
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/fake/backups/%s/restore' %
                                   backup_id)
@@ -1672,7 +1688,7 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(backup_id, res_dict['restore']['backup_id'])
         self.assertEqual(volume_id, res_dict['restore']['volume_id'])
         self.assertEqual(volume_name, res_dict['restore']['volume_name'])
-        mock_restore_backup.assert_called_once_with(mock.ANY, u'HostA',
+        mock_restore_backup.assert_called_once_with(mock.ANY, u'testhost',
                                                     mock.ANY, volume_id)
         # Manually check if restore_backup was called with appropriate backup.
         self.assertEqual(backup_id, mock_restore_backup.call_args[0][2].id)
@@ -1692,11 +1708,11 @@ class BackupsAPITestCase(test.TestCase):
         # request is not authorized
         self.assertEqual(403, res.status_int)
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     @mock.patch('cinder.backup.rpcapi.BackupAPI.export_record')
     def test_export_backup_record_id_specified_json(self,
                                                     _mock_export_record_rpc,
-                                                    _mock_service_enabled):
+                                                    _mock_get_backup_host):
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE,
                                         size=10)
         ctx = context.RequestContext('admin', 'fake', is_admin=True)
@@ -1705,7 +1721,7 @@ class BackupsAPITestCase(test.TestCase):
         _mock_export_record_rpc.return_value = \
             {'backup_service': backup_service,
              'backup_url': backup_url}
-        _mock_service_enabled.return_value = True
+        _mock_get_backup_host.return_value = 'testhost'
         req = webob.Request.blank('/v2/fake/backups/%s/export_record' %
                                   backup_id)
         req.method = 'GET'
@@ -1721,11 +1737,11 @@ class BackupsAPITestCase(test.TestCase):
                          res_dict['backup-record']['backup_url'])
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     @mock.patch('cinder.backup.rpcapi.BackupAPI.export_record')
     def test_export_record_backup_id_specified_xml(self,
                                                    _mock_export_record_rpc,
-                                                   _mock_service_enabled):
+                                                   _mock_get_backup_host):
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE,
                                         size=10)
         ctx = context.RequestContext('admin', 'fake', is_admin=True)
@@ -1734,7 +1750,7 @@ class BackupsAPITestCase(test.TestCase):
         _mock_export_record_rpc.return_value = \
             {'backup_service': backup_service,
              'backup_url': backup_url}
-        _mock_service_enabled.return_value = True
+        _mock_get_backup_host.return_value = 'testhost'
         req = webob.Request.blank('/v2/fake/backups/%s/export_record' %
                                   backup_id)
         req.method = 'GET'
@@ -1785,15 +1801,15 @@ class BackupsAPITestCase(test.TestCase):
                          res_dict['badRequest']['message'])
         db.backup_destroy(context.get_admin_context(), backup_id)
 
-    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     @mock.patch('cinder.backup.rpcapi.BackupAPI.export_record')
     def test_export_record_with_unavailable_service(self,
                                                     _mock_export_record_rpc,
-                                                    _mock_service_enabled):
+                                                    _mock_get_backup_host):
         msg = 'fake unavailable service'
         _mock_export_record_rpc.side_effect = \
             exception.InvalidBackup(reason=msg)
-        _mock_service_enabled.return_value = True
+        _mock_get_backup_host.return_value = 'testhost'
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
         ctx = context.RequestContext('admin', 'fake', is_admin=True)
         req = webob.Request.blank('/v2/fake/backups/%s/export_record' %

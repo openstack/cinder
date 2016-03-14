@@ -43,7 +43,7 @@ import cinder.volume
 from cinder.volume import utils as volume_utils
 
 backup_api_opts = [
-    cfg.BoolOpt('backup_use_same_backend',
+    cfg.BoolOpt('backup_use_same_host',
                 default=False,
                 help='Backup services use same backend.')
 ]
@@ -209,10 +209,10 @@ class API(base.Base):
                 raise exception.ServiceNotFound(service_id='cinder-backup')
 
         backup_host = None
-        if host and self._is_backup_service_enabled(az, host):
-            backup_host = host
-        if not backup_host and (not host or CONF.backup_use_same_backend):
+        if (not host or not CONF.backup_use_same_host):
             backup_host = self._get_any_available_backup_service(az)
+        elif self._is_backup_service_enabled(az, host):
+            backup_host = host
         if not backup_host:
             raise exception.ServiceNotFound(service_id='cinder-backup')
         return backup_host
