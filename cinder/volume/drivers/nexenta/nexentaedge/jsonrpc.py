@@ -48,7 +48,7 @@ class NexentaEdgeJSONProxy(object):
     @property
     def url(self):
         return '%s://%s:%s/%s' % (self.protocol,
-                                 self.host, self.port, self.path)
+                                  self.host, self.port, self.path)
 
     def __getattr__(self, name):
         if not self.method:
