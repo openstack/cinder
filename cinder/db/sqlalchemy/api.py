@@ -4019,11 +4019,7 @@ def consistencygroup_get_all(context, filters=None, marker=None, limit=None,
                       paired with corresponding item in sort_dirs
     :param sort_dirs: list of directions in which results should be sorted,
                       paired with corresponding item in sort_keys
-    :param filters: dictionary of filters; values that are in lists, tuples,
-                    or sets cause an 'IN' operation, while exact matching
-                    is used for other values, see
-                    _process_consistencygroups_filters function for more
-                    information
+    :param filters: Filters for the query in the form of key/value.
     :returns: list of matching consistency groups
     """
     return _consistencygroup_get_all(context, filters, marker, limit, offset,
@@ -4048,11 +4044,7 @@ def consistencygroup_get_all_by_project(context, project_id, filters=None,
                       paired with corresponding item in sort_dirs
     :param sort_dirs: list of directions in which results should be sorted,
                       paired with corresponding item in sort_keys
-    :param filters: dictionary of filters; values that are in lists, tuples,
-                    or sets cause an 'IN' operation, while exact matching
-                    is used for other values, see
-                    _process_consistencygroups_filters function for more
-                    information
+    :param filters: Filters for the query in the form of key/value.
     :returns: list of matching consistency groups
     """
     authorize_project_context(context, project_id)
