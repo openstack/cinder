@@ -10,13 +10,13 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev196\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev201\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-12 14:33+0000\n"
+"POT-Creation-Date: 2016-03-13 20:57+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-11 09:13+0000\n"
+"PO-Revision-Date: 2016-03-13 10:15+0000\n"
 "Last-Translator: Jennifer <cristxu@tw.ibm.com>\n"
 "Language: zh-TW\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -193,6 +193,10 @@ msgstr "無法使用複製作業來調整 %s 的大小，因為它是在壓縮�
 #, python-format
 msgid "%s configuration option is not set."
 msgstr "未設定 %s 配置選項。"
+
+#, python-format
+msgid "%s does not exist."
+msgstr "%s 不存在。"
 
 #, python-format
 msgid "%s is not a directory."
@@ -480,6 +484,14 @@ msgid "Append port group description error."
 msgstr "附加埠群組說明時發生錯誤。"
 
 #, python-format
+msgid ""
+"Applying the zones and cfgs to the switch failed (error code=%(err_code)s "
+"error msg=%(err_msg)s."
+msgstr ""
+"將區域和配置套用至交換器失敗（錯誤碼 = %(err_code)s，錯誤訊息 = "
+"%(err_msg)s）。"
+
+#, python-format
 msgid "Array does not exist or is offline. Current status of array is %s."
 msgstr "陣列不存在或者已離線。陣列的現行狀態為 %s。"
 
@@ -493,7 +505,7 @@ msgid "Associate initiator to host error."
 msgstr "將起始器關聯至主機時發生錯誤。"
 
 msgid "Associate lun to QoS error."
-msgstr "將 LUN 與 QoS 建立關聯時發生錯誤。"
+msgstr "將 LUN 與服務品質建立關聯時發生錯誤。"
 
 msgid "Associate lun to lungroup error."
 msgstr "將 LUN 關聯至 LUN 群組時發生錯誤。"
@@ -520,6 +532,10 @@ msgstr "在 CloudByte 儲存體中找不到鑑別使用者詳細資料。"
 
 msgid "Authentication error"
 msgstr "鑑別錯誤"
+
+#, python-format
+msgid "Authentication failed, verify the switch credentials, error code %s."
+msgstr "鑑別失敗，請驗證交換器認證，錯誤碼：%s。"
 
 msgid "Authorization error"
 msgstr "授權錯誤"
@@ -758,6 +774,10 @@ msgstr "快取名稱為「無」，請在索引鍵中設定 smartcache:cachename
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr "快取磁區 %(cache_vol)s 沒有 Snapshot %(cache_snap)s。"
 
+#, python-format
+msgid "Cache volume %s does not have required properties"
+msgstr "快取磁區 %s 沒有必需的內容"
+
 msgid "Call returned a None object"
 msgstr "呼叫傳回了 None 物件。"
 
@@ -945,6 +965,16 @@ msgid ""
 msgstr ""
 "無法連接已經連接的磁區 %s；已透過'netapp_enable_multiattach' 配置選項停用了多"
 "重連接。"
+
+msgid "Cannot change VF context in the session."
+msgstr "無法變更階段作業中的 VF 環境定義。"
+
+#, python-format
+msgid ""
+"Cannot change VF context, specified VF is not available in the manageable VF "
+"list %(vf_list)s."
+msgstr ""
+"無法變更 VF 環境定義，在可管理的 VF 清單 %(vf_list)s 中無法使用指定的 VF。"
 
 msgid "Cannot connect to ECOM server."
 msgstr "無法連接至 ECOM 伺服器。"
@@ -1278,6 +1308,14 @@ msgstr "Cisco 光纖通道分區 CLI 錯誤：%(reason)s"
 msgid "Clone feature is not licensed on %(storageSystem)s."
 msgstr "複製功能未在 %(storageSystem)s 上獲得授權。"
 
+#, python-format
+msgid ""
+"Clone type '%(clone_type)s' is invalid; valid values are: '%(full_clone)s' "
+"and '%(linked_clone)s'."
+msgstr ""
+"複製類型 '%(clone_type)s' 無效；有效值為：'%(full_clone)s' 和 "
+"'%(linked_clone)s'。"
+
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr "叢集未格式化。您可能應該執行 \"dog cluster format\"。"
@@ -1310,6 +1348,10 @@ msgstr "找不到計算叢集：%(cluster)s。"
 
 msgid "Condition has no field."
 msgstr "條件不含任何欄位。"
+
+#, python-format
+msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
+msgstr "配置 'max_over_subscription_ratio' 無效。必需大於 0：%s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "配置錯誤：未設定 dell_sc_ssn。"
@@ -1495,6 +1537,10 @@ msgstr "找不到目標 %s"
 msgid "Could not find the parent volume for Snapshot '%s' on array."
 msgstr "在陣列上，找不到 Snapshot '%s' 的母項磁區。"
 
+#, python-format
+msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
+msgstr "在磁區 %(vol)s 上找不到唯一的 Snapshot %(snap)s。"
+
 msgid "Could not get system name."
 msgstr "無法取得系統名稱。"
 
@@ -1507,12 +1553,26 @@ msgid "Could not read %s. Re-running with sudo"
 msgstr "無法讀取 %s。正在使用 sudo 來重新執行"
 
 #, python-format
+msgid ""
+"Could not read information for snapshot %(name)s. Code: %(code)s. Reason: "
+"%(reason)s"
+msgstr "無法讀取 Snapshot %(name)s 的資訊。程式碼：%(code)s。原因：%(reason)s"
+
+#, python-format
 msgid "Could not restore configuration file %(file_path)s: %(exc)s"
 msgstr "無法還原配置檔 %(file_path)s：%(exc)s"
 
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
 msgstr "無法將配置儲存至 %(file_path)s：%(exc)s"
+
+#, python-format
+msgid "Could not start consistency group snapshot %s."
+msgstr "無法啟動一致性群組 Snapshot %s。"
+
+#, python-format
+msgid "Counter %s not found"
+msgstr "找不到計數器 %s"
 
 msgid "Create QoS policy error."
 msgstr "建立服務品質原則時發生錯誤。"
@@ -1680,6 +1740,14 @@ msgstr "在 7 模式下運作的資料 ONTAP 不支援服務品質原則群組�
 
 msgid "Database schema downgrade is not allowed."
 msgstr "不容許將資料庫綱目降級。"
+
+#, python-format
+msgid "Dataset %s is not shared in Nexenta Store appliance"
+msgstr "資料集 %s 未在「Nexenta 儲存庫」軟體驅動裝置中共用"
+
+#, python-format
+msgid "Dataset group %s not found at Nexenta SA"
+msgstr "在 Nexenta SA 中，找不到資料集群組 %s"
 
 #, python-format
 msgid ""
@@ -2164,6 +2232,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
+"%(data)s."
+msgstr ""
+"取得儲存區統計資料時發生錯誤：儲存區：%(pool)s，回覆碼：%(status)d，訊息："
+"%(data)s。"
+
+#, python-format
+msgid ""
 "Error Getting Project Stats: Pool: %(pool)s Project: %(project)s Return "
 "code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
@@ -2217,6 +2293,10 @@ msgstr ""
 "修改遮罩視圖 %(groupName)s 時發生錯誤。回覆碼：%(rc)lu。錯誤：%(error)s。"
 
 #, python-format
+msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
+msgstr "錯誤的儲存區所有權：儲存區 %(pool)s 不歸 %(host)s 擁有。"
+
+#, python-format
 msgid ""
 "Error Setting props Props: %(props)s on Volume: %(lun)s of Pool: %(pool)s "
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
@@ -2264,6 +2344,14 @@ msgid ""
 "%(ret.data)s."
 msgstr ""
 "驗證目標 %(alias)s 時發生錯誤。回覆碼：%(ret.status)d。訊息：%(ret.data)s。"
+
+#, python-format
+msgid ""
+"Error Verifying share: %(share)s on Project: %(project)s and Pool: %(pool)s "
+"Return code: %(ret.status)d Message: %(ret.data)s."
+msgstr ""
+"在專案 %(project)s 及儲存區 %(pool)s 上驗證共用 %(share)s 時發生錯誤。回覆"
+"碼：%(ret.status)d，訊息：%(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -2380,6 +2468,12 @@ msgstr "尋找 %(name)s 時發生錯誤。"
 #, python-format
 msgid "Error finding %s."
 msgstr "尋找 %s 時發生錯誤。"
+
+#, python-format
+msgid ""
+"Error getting ReplicationSettingData. Return code: %(rc)lu. Error: %(error)s."
+msgstr ""
+"取得 ReplicationSettingData 時發生錯誤。回覆碼：%(rc)lu。錯誤：%(error)s。"
 
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
@@ -2517,6 +2611,10 @@ msgstr "移除磁區 %(vol)s 時發生錯誤。%(error)s。"
 msgid "Error renaming volume %(vol)s: %(err)s."
 msgstr "重命名磁區 %(vol)s 時發生錯誤：%(err)s。"
 
+#, python-format
+msgid "Error response: %s"
+msgstr "錯誤的回應：%s"
+
 msgid "Error retrieving volume size"
 msgstr "擷取磁區大小時發生錯誤"
 
@@ -2562,8 +2660,36 @@ msgstr ""
 "大小時發生錯誤"
 
 #, python-format
+msgid "Error while authenticating with switch: %s."
+msgstr "對交換器進行鑑別時發生錯誤：%s。"
+
+#, python-format
+msgid "Error while changing VF context %s."
+msgstr "變更 VF 環境定義 %s 時發生錯誤。"
+
+#, python-format
+msgid "Error while checking the firmware version %s."
+msgstr "檢查韌體版本 %s 時發生錯誤。"
+
+#, python-format
 msgid "Error while checking transaction status: %s"
 msgstr "檢查交易狀態時發生錯誤：%s"
+
+#, python-format
+msgid "Error while checking whether VF is available for management %s."
+msgstr "檢查 VF 是否適用於管理 %s 時發生錯誤。"
+
+#, python-format
+msgid ""
+"Error while connecting the switch %(switch_id)s with protocol %(protocol)s. "
+"Error: %(error)s."
+msgstr ""
+"連接使用通訊協定 %(protocol)s 的交換器 %(switch_id)s 時發生錯誤。錯誤："
+"%(error)s。"
+
+#, python-format
+msgid "Error while creating authentication token: %s"
+msgstr "建立鑑別記號時發生錯誤：%s"
 
 #, python-format
 msgid "Error while creating snapshot [status] %(stat)s - [result] %(res)s."
@@ -2598,12 +2724,39 @@ msgid "Error while getting disco information [%s]."
 msgstr "取得 DISCO 資訊 [%s] 時發生錯誤。"
 
 #, python-format
+msgid "Error while getting nvp value: %s."
+msgstr "取得 NVP 值時發生錯誤：%s。"
+
+#, python-format
+msgid "Error while getting session information %s."
+msgstr "取得階段作業資訊 %s 時發生錯誤。"
+
+#, python-format
+msgid "Error while parsing the data: %s."
+msgstr "剖析資料時發生錯誤：%s。"
+
+#, python-format
+msgid "Error while querying page %(url)s on the switch, reason %(error)s."
+msgstr "在交換器上查詢頁面 %(url)s 時發生錯誤，原因：%(error)s。"
+
+#, python-format
+msgid ""
+"Error while removing the zones and cfgs in the zone string: %(description)s."
+msgstr "移除區域字串中的區域和配置時發生錯誤：%(description)s。"
+
+#, python-format
 msgid "Error while requesting %(service)s API."
 msgstr "要求 %(service)s API 時發生錯誤。"
 
 #, python-format
 msgid "Error while running zoning CLI: (command=%(cmd)s error=%(err)s)."
 msgstr "執行分區 CLI 時發生錯誤：（指令 = %(cmd)s 錯誤 = %(err)s）。"
+
+#, python-format
+msgid ""
+"Error while updating the new zones and cfgs in the zone string. Error "
+"%(description)s."
+msgstr "更新區域字串中的新區域和配置時發生錯誤。錯誤：%(description)s。"
 
 msgid "Error writing field to database"
 msgstr "將欄位寫入資料庫時發生錯誤"
@@ -2647,6 +2800,10 @@ msgstr ""
 #, python-format
 msgid "Exception in _select_ds_for_volume: %s."
 msgstr "_select_ds_for_volume 發生異常狀況：%s。"
+
+#, python-format
+msgid "Exception while forming the zone string: %s."
+msgstr "對區域字串進行格式化時發生異常狀況：%s。"
 
 #, python-format
 msgid "Exception: %s"
@@ -2737,6 +2894,10 @@ msgstr "無法為群組建立 Snapshot：%(response)s。"
 #, python-format
 msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
 msgstr "無法為磁區 %(volname)s 建立 Snapshot：%(response)s。"
+
+#, python-format
+msgid "Failed getting active zone set from fabric %s."
+msgstr "無法從光纖 %s 取得作用中的區域集。"
 
 #, python-format
 msgid "Failed getting details for pool %s."
@@ -2987,6 +3148,10 @@ msgid ""
 msgstr "無法建立 Snapshot。找不到 OpenStack 磁區[%s] 的 CloudByte 磁區資訊。"
 
 #, python-format
+msgid "Failed to create south bound connector for %s."
+msgstr "無法建立 %s 的南行連接器。"
+
+#, python-format
 msgid "Failed to create storage group %(storageGroupName)s."
 msgstr "無法建立儲存體群組 %(storageGroupName)s。"
 
@@ -3109,6 +3274,10 @@ msgstr "無法執行一般指令。"
 msgid "Failed to export for volume: %(reason)s"
 msgstr "無法針對磁區進行匯出：%(reason)s"
 
+#, python-format
+msgid "Failed to extend volume %(name)s, Error msg: %(msg)s."
+msgstr "無法延伸現有磁區 %(name)s，錯誤訊息：%(msg)s。"
+
 msgid "Failed to find QoSnode"
 msgstr "找不到 QoSnode"
 
@@ -3132,6 +3301,10 @@ msgstr "找不到名為 %s 的群組 Snapshot"
 #, python-format
 msgid "Failed to find host %s."
 msgstr "找不到主機 %s。"
+
+#, python-format
+msgid "Failed to find iSCSI initiator group containing %(initiator)s."
+msgstr "找不到包含 %(initiator)s 的 iSCSI 起始器群組。"
 
 #, python-format
 msgid "Failed to find storage pool for source volume %s."
@@ -3239,11 +3412,19 @@ msgstr "無法取得具有磁區 %(volume_id)s 的儲存區 ID。"
 msgid "Failed to get remote copy information for %(volume)s due to %(err)s."
 msgstr "無法取得 %(volume)s 的遠端複製資訊，原因：%(err)s。"
 
+#, python-format
+msgid ""
+"Failed to get remote copy information for %(volume)s. Exception: %(err)s."
+msgstr "無法取得 %(volume)s 的遠端複製資訊。異常狀況：%(err)s。"
+
 msgid "Failed to get replica info."
 msgstr "無法取得抄本資訊。"
 
 msgid "Failed to get show fcns database info."
 msgstr "無法取得「顯示 fcns」資料庫資訊。"
+
+msgid "Failed to get size of existing volume: %(vol). Volume Manage failed."
+msgstr "無法取得現有磁區 %(vol) 的大小。磁區管理失敗。"
 
 #, python-format
 msgid "Failed to get size of volume %s"
@@ -3351,6 +3532,57 @@ msgid ""
 msgstr "無法管理現有磁區，因為所選磁區類型的儲存區與主機的儲存區不符。"
 
 #, python-format
+msgid ""
+"Failed to manage existing volume due to I/O group mismatch. The I/O group of "
+"the volume to be managed is %(vdisk_iogrp)s. I/O groupof the chosen type is "
+"%(opt_iogrp)s."
+msgstr ""
+"因為 I/O 群組不符，所以無法管理現有磁區。要管理之磁區的 I/O 群組是 "
+"%(vdisk_iogrp)s。所選類型的 I/O 群組是 %(opt_iogrp)s。"
+
+#, python-format
+msgid ""
+"Failed to manage existing volume due to the pool of the volume to be managed "
+"does not match the backend pool. Pool of the volume to be managed is "
+"%(vdisk_pool)s. Pool of the backend is %(backend_pool)s."
+msgstr ""
+"因為要管理之磁區的通訊協定與後端通訊協定不符，所以無法管理現有磁區。要管理之"
+"磁區的通訊協定是 %(vdisk_pool)s。後端的通訊協定是 %(backend_pool)s。"
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is "
+"compress, but the volume type chosen is not compress."
+msgstr ""
+"因為要管理的磁區是壓縮磁區，但所選磁區類型卻是未壓縮磁區，所以無法管理現有磁"
+"區。"
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is not "
+"compress, but the volume type chosen is compress."
+msgstr ""
+"因為要管理的磁區是未壓縮磁區，但所選磁區類型卻是壓縮磁區，所以無法管理現有磁"
+"區。"
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is not in a "
+"valid I/O group."
+msgstr "因為要管理的磁區不在有效的 I/O 群組中，所以無法管理現有磁區。"
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is thick, "
+"but the volume type chosen is thin."
+msgstr ""
+"因為要管理的磁區是豐富磁區，但所選磁區類型卻是精簡磁區，所以無法管理現有磁"
+"區。"
+
+msgid ""
+"Failed to manage existing volume due to the volume to be managed is thin, "
+"but the volume type chosen is thick."
+msgstr ""
+"因為要管理的磁區是精簡磁區，但所選磁區類型卻是豐富磁區，所以無法管理現有磁"
+"區。"
+
+#, python-format
 msgid "Failed to manage volume %s."
 msgstr "無法管理磁區 %s。"
 
@@ -3453,6 +3685,11 @@ msgid "Failed to retrieve active zoning configuration %s"
 msgstr "無法擷取作用中的分區配置 %s"
 
 #, python-format
+msgid ""
+"Failed to set CHAP authentication for target IQN %(iqn)s. Details: %(ex)s"
+msgstr "無法設定目標 IQN %(iqn)s 的 CHAP 鑑別。詳細資料：%(ex)s"
+
+#, python-format
 msgid "Failed to set QoS for existing volume %(name)s, Error msg: %(msg)s."
 msgstr "無法設定現有磁區 %(name)s 的服務品質，錯誤訊息：%(msg)s。"
 
@@ -3506,6 +3743,9 @@ msgstr "無法更新磁區的 meta 資料：%(reason)s"
 
 msgid "Failed to update or delete zoning configuration"
 msgstr "無法更新或刪除分區配置"
+
+msgid "Failed to update or delete zoning configuration."
+msgstr "無法更新或刪除分區配置。"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -3783,6 +4023,10 @@ msgid "Flexvisor volume %(id)s failed to join group %(vgid)s."
 msgstr "Flexvisor 磁區 %(id)s 無法加入群組 %(vgid)s 中。"
 
 #, python-format
+msgid "Folder %s does not exist in Nexenta Store appliance"
+msgstr "資料夾 %s 不存在於「Nexenta 儲存庫」軟體驅動裝置中"
+
+#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS 不在執行中，狀態：%s。"
 
@@ -4052,6 +4296,9 @@ msgstr "Blockbridge API 的 IP 位址/主機名稱。"
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
 msgstr "如果壓縮設為 True，則也必須設定調整大小（不等於 -1）。"
+
+msgid "If nofmtdisk is set to True, rsize must also be set to -1."
+msgstr "如果 nofmtdisk 設為 True，則 rsize 也必須設為 -1。"
 
 #, python-format
 msgid ""
@@ -4410,6 +4657,10 @@ msgstr "無效的預約有效期限 %(expire)s。"
 msgid "Invalid response header from RPC server"
 msgstr "來自 RPC 伺服器的回應標頭無效"
 
+#, python-format
+msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
+msgstr "指定的 secondary_backend_id 無效。有效的後端 ID 是 %s。"
+
 msgid "Invalid service catalog json."
 msgstr "無效的服務型錄 JSON。"
 
@@ -4438,6 +4689,9 @@ msgstr "所配置的儲存區無效。"
 #, python-format
 msgid "Invalid synchronize mode specified, allowed mode is %s."
 msgstr "指定的同步化模式無效，容許的模式為 %s。"
+
+msgid "Invalid transport type."
+msgstr "傳輸類型無效。"
 
 #, python-format
 msgid "Invalid update setting: '%s'"
@@ -4491,6 +4745,10 @@ msgstr "NetApp 配置選項 netapp_lun_ostype 的值無效。"
 #, python-format
 msgid "Invalid value for age, %(age)s"
 msgstr "經歷時間的值 %(age)s 無效"
+
+#, python-format
+msgid "Invalid value: \"%s\""
+msgstr "無效的值：\"%s\""
 
 #, python-format
 msgid ""
@@ -4571,11 +4829,18 @@ msgstr "提供的 volume_type 無效：%s（所要求的類型必須受此一致
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "無效的 WWPN 格式 %(wwpns)s"
 
+msgid "Invoking web service failed."
+msgstr "呼叫 Web 服務失敗。"
+
 msgid "Issue encountered waiting for job."
 msgstr "等待工作時遇到問題。"
 
 msgid "Issue encountered waiting for synchronization."
 msgstr "等待同步時遇到問題。"
+
+msgid ""
+"Issuing a fail-over failed because replication is not properly configured."
+msgstr "發出失效接手失敗，因為未正確配置抄寫。"
 
 msgid "Item not found"
 msgstr "找不到項目"
@@ -4599,6 +4864,10 @@ msgstr "KeyError：%s"
 
 msgid "Keystone version 3 or greater must be used to get nested quota support."
 msgstr "Keystone 第 3 版或更高版本必須用於取得巢狀配額支援。"
+
+#, python-format
+msgid "LU does not exist for volume: %s"
+msgstr "磁區不存在 LU：%s"
 
 msgid "LUN export failed!"
 msgstr "LUN 匯出失敗！"
@@ -5001,6 +5270,9 @@ msgstr "未探索到 NFS 檔 %s。"
 msgid "NFS file could not be discovered."
 msgstr "無法探索 NFS 檔案。"
 
+msgid "NaElement name cannot be null."
+msgstr "NaElement 名稱不能是空值。"
+
 msgid "Name"
 msgstr "名稱"
 
@@ -5063,6 +5335,9 @@ msgstr "找不到 FCP 目標"
 msgid "No Port Group elements found in config file."
 msgstr "在配置檔中找不到「埠群組」元素。"
 
+msgid "No VF ID is defined in the configuration file."
+msgstr "配置檔中未定以 VF ID。"
+
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "沒有具備所提供之 iSCSI IP 的作用中 iSCSI 入口網站"
 
@@ -5097,6 +5372,10 @@ msgstr "找不到任何配置節點。"
 #, python-format
 msgid "No consistency group with id %s"
 msgstr "沒有 ID 為 %s 的一致性群組"
+
+#, python-format
+msgid "No element by given name %s."
+msgstr "依給定的名稱 %s，找不到元素。"
 
 msgid "No errors in logfiles!"
 msgstr "日誌檔中沒有錯誤！"
@@ -5209,6 +5488,9 @@ msgstr "為了列出 tsm API 呼叫，未從 CloudByte 儲存體中接收到回�
 msgid "No response was received from CloudByte's list filesystem api call."
 msgstr "未從 CloudByte 的清單檔案系統 API 呼叫中接收到回應。"
 
+msgid "No service VIP configured and no nexenta_client_address"
+msgstr "未配置服務 VIP，且沒有 nexenta_client_address"
+
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "找不到含有 %s 的 Snapshot 來作為備用檔。"
@@ -5216,6 +5498,10 @@ msgstr "找不到含有 %s 的 Snapshot 來作為備用檔。"
 #, python-format
 msgid "No snapshot image found in snapshot group %s."
 msgstr "在 Snapshot 群組 %s 中找不到 Snapshot 映像檔。"
+
+#, python-format
+msgid "No snapshots could be found on volume %s."
+msgstr "在磁區 %s 上找不到 Snapshot。"
 
 #, python-format
 msgid "No source snapshots provided to create consistency group %s."
@@ -5256,6 +5542,14 @@ msgid "No valid hosts for volume %(id)s with type %(type)s"
 msgstr "類型為 %(type)s 的磁區 %(id)s 不具有有效主機"
 
 #, python-format
+msgid "No vdisk with the UID specified by ref %s."
+msgstr "不存在具有由參照 %s 所指定之 UID 的 vdisk。"
+
+#, python-format
+msgid "No views found for LUN: %s"
+msgstr "找不到 LUN 的視圖：%s"
+
+#, python-format
 msgid ""
 "No volume on cluster with vserver %(vserver)s and junction path %(junction)s "
 msgstr "叢集上沒有含 vserver %(vserver)s 及接合路徑%(junction)s 的磁區"
@@ -5278,6 +5572,9 @@ msgstr "沒有加權主機可用"
 #, python-format
 msgid "Not a valid string: %s"
 msgstr "不是有效的字串：%s"
+
+msgid "Not a valid value for NaElement."
+msgstr "不是 NaElement 的有效值。"
 
 #, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
@@ -5357,6 +5654,9 @@ msgid ""
 msgstr ""
 "其中一個 Cinder 磁區服務太舊，無法接受此類要求。您要執行混合 Liberty-Mitaka "
 "Cinder 磁區嗎？"
+
+msgid "One of the required inputs from host, port or scheme was not found."
+msgstr "找不到來自主機的其中一個必需輸入、埠或綱目。"
 
 #, python-format
 msgid ""
@@ -5444,6 +5744,10 @@ msgstr "原則不容許執行 %(action)s。"
 #, python-format
 msgid "Pool %(poolNameInStr)s is not found."
 msgstr "找不到儲存區 %(poolNameInStr)s。"
+
+#, python-format
+msgid "Pool %s does not exist in Nexenta Store appliance"
+msgstr "儲存區 %s 不存在於「Nexenta 儲存庫」軟體驅動裝置中"
 
 #, python-format
 msgid "Pool from volume['host'] %(host)s not found."
@@ -5536,7 +5840,7 @@ msgstr "服務品質規格 %(specs_id)s 仍與實體相關聯。"
 
 #, python-format
 msgid "QoS config is wrong. %s must > 0."
-msgstr "QoS 配置錯誤。%s 必須大於 0。"
+msgstr "服務品質配置錯誤。%s 必須大於 0。"
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -5651,6 +5955,9 @@ msgstr "參照必須包含 source-id 或 source-name 元素。"
 msgid "Reference must contain either source-name or source-id element."
 msgstr "參照必須包含 source-name 或 source-id 元素。"
 
+msgid "Reference must contain source-id or source-name element."
+msgstr "參照必須包含 source-id 或 source-name 元素。"
+
 msgid "Reference must contain source-id or source-name key."
 msgstr "參照必須包含 source-id 或 source-name 索引鍵。"
 
@@ -5668,6 +5975,13 @@ msgstr "參照必須包含 source-name 或 source-id。"
 
 msgid "Reference must contain source-name."
 msgstr "參照必須包含 source-name。"
+
+msgid "Reference to volume to be managed must contain source-name."
+msgstr "對要管理之磁區的參照必需包含 source-name。"
+
+#, python-format
+msgid "Reference to volume: %s to be managed must contain source-name."
+msgstr "對要管理之磁區 %s 的參照必需包含 source-name。"
 
 #, python-format
 msgid ""
@@ -5696,7 +6010,7 @@ msgid "Remove iscsi from host error."
 msgstr "從主機中移除 iSCSI 時發生錯誤。"
 
 msgid "Remove lun from QoS error."
-msgstr "從 QoS 移除 LUN 時發生錯誤。"
+msgstr "從服務品質中移除 LUN 時發生錯誤。"
 
 msgid "Remove lun from cache error."
 msgstr "從快取中移除 LUN 時發生錯誤。"
@@ -5794,6 +6108,9 @@ msgstr "找不到必要的配置"
 msgid "Required flag %s is not set"
 msgstr "未設定必要旗標 %s"
 
+msgid "Requires an NaServer instance."
+msgstr "需要 NaServer 實例。"
+
 #, python-format
 msgid ""
 "Reset backup status aborted, the backup service currently configured "
@@ -5819,6 +6136,9 @@ msgstr "資源未備妥。"
 #, python-format
 msgid "Response error - %s."
 msgstr "回應錯誤 - %s。"
+
+msgid "Response error - The storage-system is offline."
+msgstr "回應錯誤 - 儲存體系統在線上。"
 
 #, python-format
 msgid "Response error code - %s."
@@ -5895,6 +6215,11 @@ msgstr ""
 #, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "正在透過刪除 %(volumeName)s 來將其回復。"
+
+#, python-format
+msgid ""
+"Running Cinder with a VMware vCenter version less than %s is not allowed."
+msgstr "不容許使用低於 %s 的 VMware vCenter 版本來執行 Cinder。"
 
 msgid "SAN product is not configured."
 msgstr "未配置 SAN 產品。"
@@ -6113,6 +6438,10 @@ msgid ""
 msgstr "要備份的 Snapshot 必須可用，但現行狀態卻是 \"%s\"。"
 
 #, python-format
+msgid "Snapshot with id of %s could not be found."
+msgstr "找不到 ID 為 %s 的 Snapshot。"
+
+#, python-format
 msgid "Snapshot%s must not be part of a consistency group."
 msgstr "Snapshot %s 不得隸屬於一致性群組。"
 
@@ -6168,6 +6497,10 @@ msgstr "指定要對映至磁區 %(vol)s 的主機位於不受支援的主機群
 
 msgid "Specified logical volume does not exist."
 msgstr "指定的邏輯磁區不存在。"
+
+#, python-format
+msgid "Specified snapshot group with id %s could not be found."
+msgstr "找不到 ID 為 %s 的指定 Snapshot 群組。"
 
 msgid "Specify a password or private_key"
 msgstr "指定密碼或 private_key"
@@ -6276,6 +6609,10 @@ msgid "Synchronizing secondary volume to primary failed."
 msgstr "將次要磁碟區同步至主要磁碟區失敗。"
 
 #, python-format
+msgid "System %(id)s found with bad password status - %(pass_status)s."
+msgstr "找到具有不正確密碼狀態 %(pass_status)s 的系統 %(id)s。"
+
+#, python-format
 msgid "System %(id)s found with bad status - %(status)s."
 msgstr "發現系統 %(id)s 的狀態 %(status)s 不正確。"
 
@@ -6359,6 +6696,10 @@ msgstr ""
 "陣列不支援 SLO %(slo)s 及工作量 %(workload)s 的儲存區設定。請檢查陣列中的有"
 "效 SLO 及工作量。"
 
+msgid ""
+"The back-end where the volume is created does not have replication enabled."
+msgstr "在其中建立該磁區的後端尚未啟用抄寫。"
+
 #, python-format
 msgid ""
 "The command %(cmd)s failed. (ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
@@ -6424,6 +6765,12 @@ msgid ""
 "and resume replication on the LeftHand backends."
 msgstr ""
 "主機尚未備妥以進行失效回復。請重新同步磁區，並回復 LeftHand 後端上的抄寫。"
+
+msgid ""
+"The host is not ready to be failed back. Please resynchronize the volumes "
+"and resume replication on the Storwize backends."
+msgstr ""
+"主機尚未備妥以進行失效回復。請重新同步磁區，並回復 Storwize 後端上的抄寫。"
 
 #, python-format
 msgid "The iSCSI CHAP user %(user)s does not exist."
@@ -6576,8 +6923,22 @@ msgid "The specified volume is mapped to a host."
 msgstr "指定的磁區已對映至主機。"
 
 #, python-format
+msgid ""
+"The storage array password for %s is incorrect, please update the configured "
+"password."
+msgstr "%s 的儲存體陣列密碼不正確，請更新所配置的密碼。"
+
+#, python-format
 msgid "The storage backend can be used. (config_group: %(config_group)s)"
 msgstr "可以使用儲存體後端。（config_group：%(config_group)s）"
+
+#, python-format
+msgid ""
+"The storage device does not support %(prot)s. Please configure the device to "
+"support %(prot)s or switch to a driver using a different protocol."
+msgstr ""
+"儲存裝置不支援 %(prot)s。請配置該裝置以支援 %(prot)s，或者切換至使用其他通訊"
+"協定的驅動程式。"
 
 #, python-format
 msgid ""
@@ -6833,6 +7194,9 @@ msgstr "類型 %(type_id)s 已經與另一個服務品質規格%(qos_specs_id)s 
 msgid "Type access modification is not applicable to public volume type."
 msgstr "類型存取修訂不適用公用磁區類型。"
 
+msgid "Type cannot be converted into NaElement."
+msgstr "無法將類型轉換為 NaElement。"
+
 #, python-format
 msgid "TypeError: %s"
 msgstr "TypeError：%s"
@@ -7067,6 +7431,9 @@ msgstr "無法取得空間清單以建立新名稱。請驗證叢集是否在執
 msgid "Unable to get stats for backend_name: %s"
 msgstr "無法取得 backend_name 的統計資料：%s"
 
+msgid "Unable to get storage volume from job."
+msgstr "無法從工作中取得儲存磁區。"
+
 #, python-format
 msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
 msgstr "無法取得 hardwareId %(hardwareIdInstance)s 的目標端點。"
@@ -7167,6 +7534,10 @@ msgid "Unable to rename volume %(existing)s to %(newname)s"
 msgstr "無法將磁區 %(existing)s 重新命名為 %(newname)s"
 
 #, python-format
+msgid "Unable to retrieve snapshot group with id of %s."
+msgstr "無法擷取 ID 為 %s 的 Snapshot 群組。"
+
+#, python-format
 msgid ""
 "Unable to retype %(specname)s, expected to receive current and requested "
 "%(spectype)s values. Value received: %(spec)s"
@@ -7245,6 +7616,10 @@ msgid ""
 "Unexpected mapping status %(status)s for mapping%(id)s. Attributes: %(attr)s."
 msgstr "對映 %(id)s 的對映狀態 %(status)s 不符合預期。屬性：%(attr)s。"
 
+#, python-format
+msgid "Unexpected output. Expected [%(expected)s] but received [%(output)s]"
+msgstr "非預期的輸出。預期 [%(expected)s]，但卻接收到 [%(output)s]"
+
 msgid "Unexpected response from Nimble API"
 msgstr "來自 Nimble API 的非預期回應"
 
@@ -7253,6 +7628,14 @@ msgstr "來自 Tegile IntelliFlash API 的非預期回應"
 
 msgid "Unexpected status code"
 msgstr "非預期的狀態碼"
+
+#, python-format
+msgid ""
+"Unexpected status code from the switch %(switch_id)s with protocol "
+"%(protocol)s for url %(page)s. Error: %(error)s"
+msgstr ""
+"針對 URL %(page)s，從使用通訊協定 %(protocol)s 的交換器 %(switch_id)s 傳回非"
+"預期的狀態碼。錯誤：%(error)s"
 
 msgid "Unknown Gluster exception"
 msgstr "不明的 Gluster 異常狀況"
@@ -7271,6 +7654,30 @@ msgstr "「不明 Virtuozzo 儲存體」異常狀況"
 
 msgid "Unknown action"
 msgstr "不明動作"
+
+#, python-format
+msgid ""
+"Unknown if the volume: %s to be managed is already being managed by Cinder. "
+"Aborting manage volume. Please add 'cinder_managed' custom schema property "
+"to the volume and set its value to False. Alternatively, Set the value of "
+"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
+"restriction."
+msgstr ""
+"如果要管理的磁區 %s 已經由 Cinder 進行管理，則是不明情況。正在終止管理磁區。"
+"請將 'cinder_managed' 自訂綱目內容新增至該磁區，並將它的值設為 False。或者，"
+"將 Cinder 配置原則 'zfssa_manage_policy' 的值設為 'loose'，以移除此限制。"
+
+#, python-format
+msgid ""
+"Unknown if the volume: %s to be managed is already being managed by Cinder. "
+"Aborting manage volume. Please add 'cinder_managed' custom schema property "
+"to the volume and set its value to False. Alternatively, set the value of "
+"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
+"restriction."
+msgstr ""
+"如果要管理的磁區 %s 已經由 Cinder 進行管理，則是不明情況。正在終止管理磁區。"
+"請將 'cinder_managed' 自訂綱目內容新增至該磁區，並將它的值設為 False。或者，"
+"將 Cinder 配置原則 'zfssa_manage_policy' 的值設為 'loose'，以移除此限制。"
 
 #, python-format
 msgid "Unknown operation %s."
@@ -7417,6 +7824,9 @@ msgstr "第 2 版回復，磁區不在任何儲存體群組中。"
 
 msgid "V3 rollback"
 msgstr "第 3 版回復"
+
+msgid "VF is not enabled."
+msgstr "未啟用 VF。"
 
 #, python-format
 msgid "VV Set %s does not exist."
@@ -7568,6 +7978,14 @@ msgid "Volume %s could not be created."
 msgstr "無法建立磁區 %s。"
 
 #, python-format
+msgid "Volume %s does not exist in Nexenta SA"
+msgstr "磁區 %s 不存在於 Nexenta SA 中"
+
+#, python-format
+msgid "Volume %s does not exist in Nexenta Store appliance"
+msgstr "磁區 %s 不存在於「Nexenta 儲存庫」軟體驅動裝置中"
+
+#, python-format
 msgid "Volume %s does not have provider_location specified, skipping."
 msgstr "沒有為磁區 %s 指定 provider_location，正在跳過。"
 
@@ -7576,12 +7994,25 @@ msgid "Volume %s doesn't exist on array."
 msgstr "磁區 %s 不在陣列上。"
 
 #, python-format
+msgid "Volume %s doesn't exist on the ZFSSA backend."
+msgstr "磁區 %s 不存在於 ZFSSA 後端上。"
+
+#, python-format
 msgid "Volume %s is already managed by OpenStack."
 msgstr "磁區 %s 已經由 OpenStack 進行管理。"
 
 #, python-format
 msgid "Volume %s is already part of an active migration."
 msgstr "磁區 %s 已經是作用中移轉的一部分。"
+
+#, python-format
+msgid ""
+"Volume %s is not of replicated type. This volume needs to be of a volume "
+"type with the extra spec replication_enabled set to '<is> True' to support "
+"replication actions."
+msgstr ""
+"磁區 %s 不是已抄寫的類型。這個磁區需要是額外規格 replication_enabled 設為 "
+"'<is> True' 的磁區類型，才能支援抄寫動作。"
 
 #, python-format
 msgid ""
@@ -7669,6 +8100,9 @@ msgstr "具有此名稱的磁區已經存在"
 
 msgid "Volume cannot be restored since it contains snapshots."
 msgstr "無法還原磁區，因為該磁區包含 Snapshot。"
+
+msgid "Volume create failed while extracting volume ref."
+msgstr "擷取磁區參照時，磁區建立失敗。"
 
 #, python-format
 msgid "Volume device file path %s does not exist."
@@ -7925,6 +8359,10 @@ msgstr "未將磁區 %(volumeName)s 新增至儲存體群組 %(sgGroupName)s。"
 msgid "Volume: %s could not be found."
 msgstr "找不到磁區 %s。"
 
+#, python-format
+msgid "Volume: %s is already being managed by Cinder."
+msgstr "磁區 %s 已經由 Cinder 進行管理。"
+
 msgid "Volumes will be chunked into objects of this size (in megabytes)."
 msgstr "磁區將區塊化成此大小（以 MB 為單位）的物件。"
 
@@ -7955,6 +8393,9 @@ msgstr "正在等待所有節點結合叢集。請確保所有 sheep 常駐程�
 
 msgid "We should not do switch over on primary array."
 msgstr "我們不應切換到主要陣列上。"
+
+msgid "Wrong resource call syntax"
+msgstr "資源呼叫語法錯誤"
 
 msgid "X-IO Volume Driver exception!"
 msgstr "X-IO 磁區驅動程式異常狀況！"
@@ -8082,6 +8523,9 @@ msgid ""
 msgstr ""
 "_exec_eternus_service，類別名稱：%(classname)s，呼叫方法，無法連接至 "
 "ETERNUS。"
+
+msgid "_extend_volume_op: Extending a volume with snapshots is not supported."
+msgstr "_extend_volume_op：不支援延伸具有 Snapshot 的磁區。"
 
 #, python-format
 msgid ""
@@ -8506,6 +8950,20 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume：來源及目的地大小不同。"
 
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume：來源磁區 %(src_vol)s 大小為 %(src_size)dGB，且不適合大"
+"小為 %(tgt_size)dGB 的目標磁區 %(tgt_vol)s。"
+
+msgid ""
+"create_consistencygroup_from_src must be creating from a CG snapshot, or a "
+"source CG."
+msgstr ""
+"create_consistencygroup_from_src 必須是從 CG Snapshot 或來源 CG 進行建立。"
+
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
@@ -8725,6 +9183,10 @@ msgstr "SheepdogIOWrapper 不支援 fileno"
 msgid "fileno() not supported by RBD()"
 msgstr "RBD() 不支援 fileno()"
 
+#, python-format
+msgid "filesystem %s does not exist in Nexenta Store appliance"
+msgstr "檔案系統 %s 不存在於「Nexenta 儲存庫」軟體驅動裝置中"
+
 msgid ""
 "flashsystem_multihostmap_enabled is set to False, not allow multi host "
 "mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
@@ -8758,6 +9220,10 @@ msgid ""
 "get_iscsi_params: Failed to get target IP for initiator %(ini)s, please "
 "check config file."
 msgstr "get_iscsi_params：無法取得起始器 %(ini)s 的目標 IP，請檢查配置檔。"
+
+#, python-format
+msgid "get_pool: Failed to get attributes for volume %s"
+msgstr "get_pool：無法取得磁區 %s 的屬性"
 
 msgid "glance_metadata changed"
 msgstr "已變更 glance_metadata"
@@ -8981,6 +9447,14 @@ msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr "read_deleted 只能是 'no'、'yes' 或 'only' 其中之一，不能是 %r"
 
 #, python-format
+msgid "replication_device should be configured on backend: %s."
+msgstr "應該在後端上配置 replication_device：%s。"
+
+#, python-format
+msgid "replication_device with backend_id [%s] is missing."
+msgstr "遺漏 backend_id 為 [%s] 的 replication_device。"
+
+#, python-format
 msgid "replication_failover failed. %s not found."
 msgstr "replication_failover 失敗。找不到 %s。"
 
@@ -9076,6 +9550,12 @@ msgstr "找不到來源磁區 ID：%s"
 #, python-format
 msgid "source volume id:%s is not replicated"
 msgstr "未抄寫來源磁區 ID：%s"
+
+msgid "source-name cannot be empty."
+msgstr "source-name 不能是空的。"
+
+msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
+msgstr "source-name 格式應該是：'vmdk_path@vm_inventory_path'。"
 
 msgid "status must be available"
 msgstr "狀態必須可用"
@@ -9205,6 +9685,12 @@ msgstr "已變更磁區"
 #, python-format
 msgid "wait_for_condition: %s timed out."
 msgstr "wait_for_condition：%s 已逾時。"
+
+#, python-format
+msgid ""
+"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
+"value is: %s."
+msgstr "zfssa_manage_policy 內容需要設為 'strict' 或 'loose'。現行值為：%s。"
 
 msgid "{} is not a valid option."
 msgstr "{} 不是有效的選項。"
