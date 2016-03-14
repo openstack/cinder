@@ -537,12 +537,15 @@ class ScaleIODriver(driver.VolumeDriver):
         This action will round up the volume to the nearest size that is
         a granularity of 8 GBs.
         """
-        vol_id = volume['provider_id']
+        return self._extend_volume(volume['provider_id'], volume.size,
+                                   new_size)
+
+    def _extend_volume(self, volume_id, old_size, new_size):
+        vol_id = volume_id
         LOG.info(_LI(
-                 "ScaleIO extend volume:"
-                 " volume %(volname)s to size %(new_size)s."),
-                 {'volname': vol_id,
-                  'new_size': new_size})
+            "ScaleIO extend volume: volume %(volname)s to size %(new_size)s."),
+            {'volname': vol_id,
+             'new_size': new_size})
 
         req_vars = {'server_ip': self.server_ip,
                     'server_port': self.server_port,
@@ -555,7 +558,7 @@ class ScaleIODriver(driver.VolumeDriver):
         # Round up the volume size so that it is a granularity of 8 GBs
         # because ScaleIO only supports volumes with a granularity of 8 GBs.
         volume_new_size = self._round_to_8_gran(new_size)
-        volume_real_old_size = self._round_to_8_gran(volume.size)
+        volume_real_old_size = self._round_to_8_gran(old_size)
         if volume_real_old_size == volume_new_size:
             return
 
@@ -566,14 +569,7 @@ class ScaleIODriver(driver.VolumeDriver):
                         volume_new_size)
 
         params = {'sizeInGB': six.text_type(volume_new_size)}
-        r = requests.post(
-            request,
-            data=json.dumps(params),
-            headers=self._get_headers(),
-            auth=(self.server_username,
-                  self.server_token),
-            verify=self._get_verify_cert())
-        r = self._check_response(r, request, False, params)
+        r, response = self._execute_scaleio_post_request(params, request)
 
         if r.status_code != OK_STATUS_CODE:
             response = r.json()
@@ -598,7 +594,11 @@ class ScaleIODriver(driver.VolumeDriver):
                  {'src': volume_id,
                   'tgt': snapname})
 
-        return self._snapshot_volume(volume_id, snapname)
+        ret = self._snapshot_volume(volume_id, snapname)
+        if volume.size > src_vref.size:
+            self._extend_volume(ret['provider_id'], src_vref.size, volume.size)
+
+        return ret
 
     def delete_volume(self, volume):
         """Deletes a self.logical volume"""

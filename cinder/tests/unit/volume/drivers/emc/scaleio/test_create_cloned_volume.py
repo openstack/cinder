@@ -98,3 +98,8 @@ class TestCreateClonedVolume(scaleio.TestScaleIODriver):
     def test_create_cloned_volume(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)
         self.driver.create_cloned_volume(self.new_volume, self.src_volume)
+
+    def test_create_cloned_volume_larger_size(self):
+        self.set_https_response_mode(self.RESPONSE_MODE.Valid)
+        self.new_volume.size = 2
+        self.driver.create_cloned_volume(self.new_volume, self.src_volume)
