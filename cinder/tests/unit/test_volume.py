@@ -7697,6 +7697,19 @@ class ImageVolumeCacheTestCase(BaseVolumeTestCase):
                                                        volume['id'])
         self.assertIsNone(entry)
 
+    def test_delete_volume_with_keymanager_exception(self):
+        volume_params = {
+            'host': 'some_host',
+            'size': 1
+        }
+        volume_api = cinder.volume.api.API()
+        volume = tests_utils.create_volume(self.context, **volume_params)
+
+        with mock.patch.object(
+                volume_api.key_manager, 'delete_key') as key_del_mock:
+            key_del_mock.side_effect = Exception("Key not found")
+            volume_api.delete(self.context, volume)
+
 
 @ddt.ddt
 class DiscardFlagTestCase(BaseVolumeTestCase):

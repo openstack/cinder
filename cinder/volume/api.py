@@ -425,8 +425,8 @@ class API(base.Base):
             try:
                 self.key_manager.delete_key(context, encryption_key_id)
             except Exception as e:
-                msg = _("Unable to delete encrypted volume: %s.") % e.msg
-                raise exception.InvalidVolume(reason=msg)
+                LOG.warning(_LW("Unable to delete encryption key for "
+                                "volume: %s."), e.msg, resource=volume)
 
         self.volume_rpcapi.delete_volume(context,
                                          volume,
