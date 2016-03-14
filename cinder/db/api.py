@@ -41,6 +41,7 @@ from oslo_db import concurrency as db_concurrency
 from oslo_db import options as db_options
 
 from cinder.api import common
+from cinder.common import constants
 from cinder.i18n import _
 
 db_opts = [
@@ -69,7 +70,7 @@ _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
 IMPL = db_concurrency.TpoolDbapiWrapper(CONF, _BACKEND_MAPPING)
 
 # The maximum value a signed INT type may have
-MAX_INT = 0x7FFFFFFF
+MAX_INT = constants.DB_MAX_INT
 
 
 ###################
