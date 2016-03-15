@@ -522,9 +522,10 @@ class VolumeManager(manager.SchedulerDependentManager):
         stats = self.driver.get_volume_stats(refresh=True)
         svc_host = vol_utils.extract_host(self.host, 'backend')
         try:
-            service = objects.Service.get_by_host_and_topic(
-                context.get_admin_context(), svc_host,
-                CONF.volume_topic)
+            service = objects.Service.get_by_args(
+                context.get_admin_context(),
+                svc_host,
+                'cinder-volume')
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Service not found for updating "
