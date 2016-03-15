@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 import six
 
@@ -25,6 +26,7 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
 
+@ddt.ddt
 class TestVolume(test_objects.BaseObjectsTestCase):
     @staticmethod
     def _compare(test, db, obj):
@@ -335,9 +337,17 @@ class TestVolume(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.volume_metadata_update', return_value={})
     @mock.patch('cinder.db.volume_update')
-    def test_finish_volume_migration(self, volume_update, metadata_update):
-        src_volume_db = fake_volume.fake_db_volume(**{'id': fake.volume_id})
-        dest_volume_db = fake_volume.fake_db_volume(**{'id': fake.volume2_id})
+    @ddt.data({'src_vol_type_id': fake.volume_type_id,
+               'dest_vol_type_id': fake.volume_type2_id},
+              {'src_vol_type_id': None,
+               'dest_vol_type_id': fake.volume_type2_id})
+    @ddt.unpack
+    def test_finish_volume_migration(self, volume_update, metadata_update,
+                                     src_vol_type_id, dest_vol_type_id):
+        src_volume_db = fake_volume.fake_db_volume(
+            **{'id': fake.volume_id, 'volume_type_id': src_vol_type_id})
+        dest_volume_db = fake_volume.fake_db_volume(
+            **{'id': fake.volume2_id, 'volume_type_id': dest_vol_type_id})
         src_volume = objects.Volume._from_db_object(
             self.context, objects.Volume(), src_volume_db,
             expected_attrs=['metadata', 'glance_metadata'])
@@ -352,10 +362,14 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertEqual(src_volume.id, updated_dest_volume._name_id)
         self.assertTrue(volume_update.called)
 
+        # Ensure that the destination volume type has not been overwritten
+        self.assertEqual(dest_vol_type_id,
+                         getattr(updated_dest_volume, 'volume_type_id'))
         # Ignore these attributes, since they were updated by
         # finish_volume_migration
         ignore_keys = ('id', 'provider_location', '_name_id',
-                       'migration_status', 'display_description', 'status')
+                       'migration_status', 'display_description', 'status',
+                       'volume_type_id')
         dest_vol_filtered = {k: v for k, v in updated_dest_volume.iteritems()
                              if k not in ignore_keys}
         src_vol_filtered = {k: v for k, v in src_volume.iteritems()

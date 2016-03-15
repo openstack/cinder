@@ -1781,8 +1781,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                                                   new_volume.id)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Failed to copy volume %(vol1)s to %(vol2)s"),
-                          {'vol1': volume.id, 'vol2': new_volume.id})
+                LOG.exception(_LE(
+                    "Failed to copy volume %(vol1)s to %(vol2)s"), {
+                        'vol1': volume.id, 'vol2': new_volume.id})
                 self._clean_temporary_volume(ctxt, volume,
                                              new_volume)
 
