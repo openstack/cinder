@@ -20,7 +20,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LI
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
 from cinder.volume.drivers.nexenta import options
@@ -164,8 +164,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                                 '/iscsi', {'objectPath': self.bucket_path +
                                            '/' + volume['name']})
         except exception.VolumeBackendAPIException:
-            LOG.info('Volume %s was already deleted from appliance, skipping',
-                     volume['name'])
+            LOG.info(
+                _LI('Volume %s was already deleted from appliance, skipping'),
+                volume['name'])
 
     def extend_volume(self, volume, new_size):
         try:
