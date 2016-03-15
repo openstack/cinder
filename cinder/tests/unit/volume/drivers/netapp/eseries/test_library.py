@@ -1244,6 +1244,22 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
 
         self.assertEqual(result, actual)
 
+    def test_add_volume_to_consistencygroup(self):
+        fake_volume = cinder_utils.create_volume(self.ctxt)
+        fake_volume['consistencygroup'] = (
+            cinder_utils.create_consistencygroup(self.ctxt))
+        fake_volume['consistencygroup_id'] = fake_volume[
+            'consistencygroup']['id']
+        cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
+        self.mock_object(self.library, '_get_consistencygroup',
+                         mock.Mock(return_value=cg))
+        update_members = self.mock_object(self.library,
+                                          '_update_consistency_group_members')
+
+        self.library._add_volume_to_consistencygroup(fake_volume)
+
+        update_members.assert_called_once_with(cg, [fake_volume], [])
+
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall', new=
                 cinder_utils.ZeroIntervalLoopingCall)
     def test_copy_volume_high_priority_readonly(self):
@@ -1340,9 +1356,13 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_create_volume(self):
         self.library._client.create_volume = mock.Mock(
             return_value=eseries_fake.VOLUME)
+        update_members = self.mock_object(self.library,
+                                          '_update_consistency_group_members')
 
         self.library.create_volume(get_fake_volume())
         self.assertTrue(self.library._client.create_volume.call_count)
+
+        update_members.assert_not_called()
 
     @ddt.data(('netapp_eseries_flash_read_cache', 'flash_cache', 'true'),
               ('netapp_eseries_flash_read_cache', 'flash_cache', 'false'),
