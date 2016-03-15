@@ -1010,7 +1010,7 @@ class NetAppBlockStorageLibrary(object):
             except Exception:
                 volumes_model_update.append(
                     {'id': volume['id'], 'status': 'error_deleting'})
-                LOG.exception(_LE("Volume %(vol) in the consistency group "
+                LOG.exception(_LE("Volume %(vol)s in the consistency group "
                                   "could not be deleted."), {'vol': volume})
         return model_update, volumes_model_update
 
