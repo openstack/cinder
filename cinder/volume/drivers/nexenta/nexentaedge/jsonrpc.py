@@ -79,7 +79,7 @@ class NexentaEdgeJSONProxy(object):
             'Authorization': 'Basic %s' % auth
         }
 
-        LOG.debug('Sending JSON data: %s', self.url)
+        LOG.debug('Sending JSON data: %s, data: %s', self.url, data)
 
         if self.method == 'get':
             req = requests.get(self.url, headers=headers)
