@@ -63,7 +63,6 @@ class XIVDS8KDriver(san.SanDriver,
                     driver.ExtendVD,
                     driver.SnapshotVD,
                     driver.MigrateVD,
-                    driver.ReplicaVD,
                     driver.ConsistencyGroupVD,
                     driver.CloneableImageVD,
                     driver.TransferVD):
@@ -77,6 +76,8 @@ class XIVDS8KDriver(san.SanDriver,
         self.configuration.append_config_values(xiv_ds8k_opts)
 
         proxy = importutils.import_class(self.configuration.xiv_ds8k_proxy)
+
+        active_backend_id = kwargs.get('active_backend_id', None)
 
         # NOTE: All Array specific configurations are prefixed with:
         # "xiv_ds8k_array_"
@@ -96,7 +97,8 @@ class XIVDS8KDriver(san.SanDriver,
             },
             LOG,
             exception,
-            driver=self)
+            driver=self,
+            active_backend_id=active_backend_id)
 
     def do_setup(self, context):
         """Setup and verify IBM XIV and DS8K Storage connection."""
@@ -217,25 +219,26 @@ class XIVDS8KDriver(san.SanDriver,
 
         return self.xiv_ds8k_proxy.unmanage_volume(volume)
 
-    def reenable_replication(self, context, volume):
-        """Re-enable volume replication. """
+    def freeze_backend(self, context):
+        """Notify the backend that it's frozen. """
 
-        return self.xiv_ds8k_proxy.reenable_replication(context, volume)
+        return self.xiv_ds8k_proxy.freeze_backend(context)
+
+    def thaw_backend(self, context):
+        """Notify the backend that it's unfrozen/thawed. """
+
+        return self.xiv_ds8k_proxy.thaw_backend(context)
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover a backend to a secondary replication target. """
+
+        return self.xiv_ds8k_proxy.failover_host(
+            context, volumes, secondary_id)
 
     def get_replication_status(self, context, volume):
         """Return replication status."""
 
         return self.xiv_ds8k_proxy.get_replication_status(context, volume)
-
-    def promote_replica(self, context, volume):
-        """Promote the replica to be the primary volume."""
-
-        return self.xiv_ds8k_proxy.promote_replica(context, volume)
-
-    def create_replica_test_volume(self, volume, src_vref):
-        """Creates a test replica clone of the specified replicated volume."""
-
-        return self.xiv_ds8k_proxy.create_replica_test_volume(volume, src_vref)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
@@ -280,24 +283,3 @@ class XIVDS8KDriver(san.SanDriver,
         return self.xiv_ds8k_proxy.create_consistencygroup_from_src(
             context, group, volumes, cgsnapshot, snapshots,
             source_cg, source_vols)
-
-    def replication_disable(self, context, volume):
-        """Disable replication on the specified volume."""
-
-        return self.xiv_ds8k_proxy.replication_disable(context, volume)
-
-    def replication_enable(self, context, volume):
-        """Enable replication on a replication capable volume."""
-
-        return self.xiv_ds8k_proxy.replication_enable(context, volume)
-
-    def list_replication_targets(self, context, volume):
-        """Provide a means to obtain replication targets for a volume."""
-
-        return self.xiv_ds8k_proxy.list_replication_targets(context, volume)
-
-    def replication_failover(self, context, volume, secondary):
-        """Force failover to a secondary replication target. """
-
-        return self.xiv_ds8k_proxy.replication_failover(
-            context, volume, secondary)
