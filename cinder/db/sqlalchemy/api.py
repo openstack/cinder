@@ -2060,6 +2060,7 @@ def volume_metadata_delete(context, volume_id, key, meta_type):
 
 @require_context
 @require_volume_exists
+@handle_db_data_error
 @_retry_on_deadlock
 def volume_metadata_update(context, volume_id, metadata, delete, meta_type):
     if meta_type == common.METADATA_TYPES.user:
@@ -2432,6 +2433,7 @@ def _snapshot_metadata_get_item(context, snapshot_id, key, session=None):
 
 @require_context
 @require_snapshot_exists
+@handle_db_data_error
 @_retry_on_deadlock
 def snapshot_metadata_update(context, snapshot_id, metadata, delete):
     session = get_session()
@@ -3858,6 +3860,7 @@ def transfer_get_all_by_project(context, project_id):
 
 
 @require_context
+@handle_db_data_error
 def transfer_create(context, values):
     if not values.get('id'):
         values['id'] = str(uuid.uuid4())
