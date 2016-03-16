@@ -487,7 +487,7 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # will not destroy the volume (although they could in the future).
         if srcvol_ref.bootable:
             self._handle_bootable_volume_glance_meta(
-                context, volume_ref.id, source_volid=volume_ref.id)
+                context, volume_ref.id, source_volid=srcvol_ref.id)
         return model_update
 
     def _create_from_source_replica(self, context, volume_ref,
