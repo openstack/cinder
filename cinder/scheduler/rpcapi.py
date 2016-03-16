@@ -44,17 +44,29 @@ class SchedulerAPI(rpc.RPCAPI):
         1.10 - Adds support for sending objects over RPC in retype()
         1.11 - Adds support for sending objects over RPC in
                migrate_volume_to_host()
+
+        ... Mitaka supports messaging 1.11. Any changes to existing methods in
+        1.x after this point should be done so that they can handle version cap
+        set to 1.11.
+
+        2.0 - Remove 1.x compatibility
     """
 
-    RPC_API_VERSION = '1.11'
+    RPC_API_VERSION = '2.0'
     TOPIC = CONF.scheduler_topic
     BINARY = 'cinder-scheduler'
+
+    def _compat_ver(self, current, legacy):
+        if self.client.can_send_version(current):
+            return current
+        else:
+            return legacy
 
     def create_consistencygroup(self, ctxt, topic, group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
-
-        cctxt = self.client.prepare(version='1.8')
+        version = self._compat_ver('2.0', '1.8')
+        cctxt = self.client.prepare(version=version)
         request_spec_p_list = []
         for request_spec in request_spec_list:
             request_spec_p = jsonutils.to_primitive(request_spec)
@@ -69,13 +81,15 @@ class SchedulerAPI(rpc.RPCAPI):
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
                       filter_properties=None, volume=None):
-
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'topic': topic, 'volume_id': volume_id,
                     'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties}
-        if self.client.can_send_version('1.9'):
+        if self.client.can_send_version('2.0'):
+            version = '2.0'
+            msg_args['volume'] = volume
+        elif self.client.can_send_version('1.9'):
             version = '1.9'
             msg_args['volume'] = volume
         else:
@@ -92,7 +106,10 @@ class SchedulerAPI(rpc.RPCAPI):
                     'host': host, 'force_host_copy': force_host_copy,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties}
-        if self.client.can_send_version('1.11'):
+        if self.client.can_send_version('2.0'):
+            version = '2.0'
+            msg_args['volume'] = volume
+        elif self.client.can_send_version('1.11'):
             version = '1.11'
             msg_args['volume'] = volume
         else:
@@ -108,7 +125,10 @@ class SchedulerAPI(rpc.RPCAPI):
         msg_args = {'topic': topic, 'volume_id': volume_id,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties}
-        if self.client.can_send_version('1.10'):
+        if self.client.can_send_version('2.0'):
+            version = '2.0'
+            msg_args['volume'] = volume
+        elif self.client.can_send_version('1.10'):
             version = '1.10'
             msg_args['volume'] = volume
         else:
@@ -119,7 +139,8 @@ class SchedulerAPI(rpc.RPCAPI):
 
     def manage_existing(self, ctxt, topic, volume_id,
                         request_spec=None, filter_properties=None):
-        cctxt = self.client.prepare(version='1.5')
+        version = self._compat_ver('2.0', '1.5')
+        cctxt = self.client.prepare(version=version)
         request_spec_p = jsonutils.to_primitive(request_spec)
         return cctxt.cast(ctxt, 'manage_existing',
                           topic=topic,
@@ -128,7 +149,8 @@ class SchedulerAPI(rpc.RPCAPI):
                           filter_properties=filter_properties)
 
     def get_pools(self, ctxt, filters=None):
-        cctxt = self.client.prepare(version='1.7')
+        version = self._compat_ver('2.0', '1.7')
+        cctxt = self.client.prepare(version=version)
         return cctxt.call(ctxt, 'get_pools',
                           filters=filters)
 
@@ -136,7 +158,8 @@ class SchedulerAPI(rpc.RPCAPI):
                                     service_name, host,
                                     capabilities):
         # FIXME(flaper87): What to do with fanout?
-        cctxt = self.client.prepare(fanout=True, version='1.0')
+        version = self._compat_ver('2.0', '1.0')
+        cctxt = self.client.prepare(fanout=True, version=version)
         cctxt.cast(ctxt, 'update_service_capabilities',
                    service_name=service_name, host=host,
                    capabilities=capabilities)

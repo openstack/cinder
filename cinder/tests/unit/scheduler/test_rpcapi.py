@@ -75,7 +75,20 @@ class SchedulerRpcAPITestCase(test.TestCase):
                 for kwarg, value in self.fake_kwargs.items():
                     self.assertEqual(expected_msg[kwarg], value)
 
-    def test_update_service_capabilities(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_update_service_capabilities(self, can_send_version):
+        self._test_scheduler_api('update_service_capabilities',
+                                 rpc_method='cast',
+                                 service_name='fake_name',
+                                 host='fake_host',
+                                 capabilities='fake_capabilities',
+                                 fanout=True,
+                                 version='2.0')
+        can_send_version.assert_called_once_with('2.0')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_update_service_capabilities_old(self, can_send_version):
         self._test_scheduler_api('update_service_capabilities',
                                  rpc_method='cast',
                                  service_name='fake_name',
@@ -83,6 +96,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  capabilities='fake_capabilities',
                                  fanout=True,
                                  version='1.0')
+        can_send_version.assert_called_once_with('2.0')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=True)
@@ -96,8 +110,8 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  volume='volume',
-                                 version='1.9')
-        can_send_version.assert_called_once_with('1.9')
+                                 version='2.0')
+        can_send_version.assert_called_once_with('2.0')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=False)
@@ -112,7 +126,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.2')
-        can_send_version.assert_called_once_with('1.9')
+        can_send_version.assert_has_calls([mock.call('2.0'), mock.call('1.9')])
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=True)
@@ -126,8 +140,8 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  volume='volume',
-                                 version='1.11')
-        can_send_version.assert_called_once_with('1.11')
+                                 version='2.0')
+        can_send_version.assert_called_once_with('2.0')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=False)
@@ -142,7 +156,8 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  filter_properties='filter_properties',
                                  volume='volume',
                                  version='1.3')
-        can_send_version.assert_called_once_with('1.11')
+        can_send_version.assert_has_calls([mock.call('2.0'),
+                                           mock.call('1.11')])
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=True)
@@ -154,8 +169,8 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  volume='volume',
-                                 version='1.10')
-        can_send_version.assert_called_with('1.10')
+                                 version='2.0')
+        can_send_version.assert_called_with('2.0')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=False)
@@ -168,9 +183,23 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  filter_properties='filter_properties',
                                  volume='volume',
                                  version='1.4')
-        can_send_version.assert_called_with('1.10')
+        can_send_version.assert_has_calls([mock.call('2.0'),
+                                           mock.call('1.10')])
 
-    def test_manage_existing(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_manage_existing(self, can_send_version):
+        self._test_scheduler_api('manage_existing',
+                                 rpc_method='cast',
+                                 topic='topic',
+                                 volume_id='volume_id',
+                                 request_spec='fake_request_spec',
+                                 filter_properties='filter_properties',
+                                 version='2.0')
+        can_send_version.assert_called_with('2.0')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_manage_existing_old(self, can_send_version):
         self._test_scheduler_api('manage_existing',
                                  rpc_method='cast',
                                  topic='topic',
@@ -178,9 +207,21 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  version='1.5')
+        can_send_version.assert_called_with('2.0')
 
-    def test_get_pools(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_get_pools(self, can_send_version):
+        self._test_scheduler_api('get_pools',
+                                 rpc_method='call',
+                                 filters=None,
+                                 version='2.0')
+        can_send_version.assert_called_with('2.0')
+
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_get_pools_old(self, can_send_version):
         self._test_scheduler_api('get_pools',
                                  rpc_method='call',
                                  filters=None,
                                  version='1.7')
+        can_send_version.assert_called_with('2.0')
