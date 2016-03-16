@@ -414,6 +414,20 @@ class BackupCommands(object):
                          backup['size'],
                          object_count))
 
+    @args('--currenthost', required=True, help='Existing backup host name')
+    @args('--newhost', required=True, help='New backup host name')
+    def update_backup_host(self, currenthost, newhost):
+        """Modify the host name associated with a backup.
+
+        Particularly to recover from cases where one has moved
+        their Cinder Backup node, and not set backup_use_same_backend.
+        """
+        ctxt = context.get_admin_context()
+        backups = objects.BackupList.get_all_by_host(ctxt, currenthost)
+        for bk in backups:
+            bk.host = newhost
+            bk.save()
+
 
 class ServiceCommands(object):
     """Methods for managing services."""
