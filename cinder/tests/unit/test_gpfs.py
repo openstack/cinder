@@ -695,7 +695,6 @@ class GPFSDriverTestCase(test.TestCase):
                     'write_affinity_depth': 'test',
                     'block_group_factor': 'test',
                     'write_affinity_failure_group': 'test',
-                    'test': 'test',
                     'fstype': 'test',
                     'fslabel': 'test',
                     'test': 'test'}
