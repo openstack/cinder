@@ -243,6 +243,12 @@ class API(base.Base):
         if snapshot_id:
             snapshot = self.volume_api.get_snapshot(context, snapshot_id)
 
+            if volume_id != snapshot.volume_id:
+                msg = (_('Volume %(vol1)s does not match with '
+                         'snapshot.volume_id %(vol2)s.')
+                       % {'vol1': volume_id,
+                          'vol2': snapshot.volume_id})
+                raise exception.InvalidVolume(reason=msg)
         if volume['status'] not in ["available", "in-use"]:
             msg = (_('Volume to be backed up must be available '
                      'or in-use, but the current status is "%s".')
