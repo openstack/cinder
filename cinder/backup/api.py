@@ -200,6 +200,9 @@ class API(base.Base):
         # This snippet should go away in Newton. Note that volume_host
         # parameter will also be unnecessary then.
         if not self._is_scalable_only():
+            if volume_host:
+                volume_host = volume_utils.extract_host(volume_host,
+                                                        level='host')
             if volume_host and self._is_backup_service_enabled(az,
                                                                volume_host):
                 return volume_host
@@ -444,7 +447,7 @@ class API(base.Base):
         # Setting the status here rather than setting at start and unrolling
         # for each error condition, it should be a very small window
         backup.host = self._get_available_backup_service_host(
-            backup.host, backup.availability_zone)
+            backup.host, backup.availability_zone, volume_host=volume.host)
         backup.status = fields.BackupStatus.RESTORING
         backup.restore_volume_id = volume.id
         backup.save()
