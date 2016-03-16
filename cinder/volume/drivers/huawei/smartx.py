@@ -42,23 +42,49 @@ class SmartQos(object):
             return {}
 
         qos = {}
+        io_type_flag = None
         ctxt = context.get_admin_context()
         kvs = qos_specs.get_qos_specs(ctxt, qos_specs_id)['specs']
         LOG.info(_LI('The QoS sepcs is: %s.'), kvs)
         for k, v in kvs.items():
             if k not in constants.HUAWEI_VALID_KEYS:
                 continue
-
-            if k.upper() != 'IOTYPE' and int(v) <= 0:
+            if k != 'IOType' and int(v) <= 0:
                 msg = _('QoS config is wrong. %s must > 0.') % k
                 LOG.error(msg)
                 raise exception.InvalidInput(reason=msg)
-            elif k.upper() == 'IOTYPE' and v not in ['0', '1', '2']:
-                msg = _('Illegal value specified for IOTYPE: 0, 1, or 2.')
-                LOG.error(msg)
-                raise exception.InvalidInput(reason=msg)
+            if k == 'IOType':
+                if v not in ['0', '1', '2']:
+                    msg = _('Illegal value specified for IOTYPE: 0, 1, or 2.')
+                    LOG.error(msg)
+                    raise exception.InvalidInput(reason=msg)
+                io_type_flag = 1
+                qos[k.upper()] = v
             else:
                 qos[k.upper()] = v
+
+        if not io_type_flag:
+            msg = (_('QoS policy must specify for IOTYPE: 0, 1, or 2, '
+                     'QoS policy: %(qos_policy)s ') % {'qos_policy': qos})
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        # QoS policy must specify for IOTYPE and another qos_specs.
+        if len(qos) < 2:
+            msg = (_('QoS policy must specify for IOTYPE and another '
+                     'qos_specs, QoS policy: %(qos_policy)s.')
+                   % {'qos_policy': qos})
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        for upper_limit in constants.UPPER_LIMIT_KEYS:
+            for lower_limit in constants.LOWER_LIMIT_KEYS:
+                if upper_limit in qos and lower_limit in qos:
+                    msg = (_('QoS policy upper_limit and lower_limit '
+                             'conflict, QoS policy: %(qos_policy)s.')
+                           % {'qos_policy': qos})
+                    LOG.error(msg)
+                    raise exception.InvalidInput(reason=msg)
 
         return qos
 
