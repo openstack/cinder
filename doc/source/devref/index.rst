@@ -36,6 +36,7 @@ Programming HowTos and Tutorials
     replication
     migration
     api.apache
+    rolling.upgrades
 
 Background Concepts for Cinder
 ------------------------------
