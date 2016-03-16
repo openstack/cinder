@@ -2328,6 +2328,15 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         lun_PARENTID = mock_create_lun.call_args[0][0]['PARENTID']
         self.assertEqual(FAKE_FIND_POOL_RESPONSE['ID'], lun_PARENTID)
 
+    @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
+                       return_value={'hypermetro_id': '3400a30d844d0007',
+                                     'remote_lun_id': '1'})
+    def test_hypermetro_none_map_info_fail(self, mock_metadata):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.metro.connect_volume_fc,
+                          test_volume,
+                          FakeConnector)
+
     @mock.patch.object(rest_client.RestClient, 'check_lun_exist',
                        return_value=True)
     @mock.patch.object(rest_client.RestClient, 'check_hypermetro_exist',

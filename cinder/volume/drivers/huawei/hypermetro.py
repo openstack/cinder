@@ -166,6 +166,12 @@ class HuaweiHyperMetro(object):
         map_info = self.rmt_client.do_mapping(lun_id,
                                               hostgroup_id,
                                               host_id)
+        if not map_info:
+            msg = _('Map info is None due to array version '
+                    'not supporting hypermetro.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
         host_lun_id = self.rmt_client.get_host_lun_id(host_id, lun_id)
 
         # Return FC properties.
