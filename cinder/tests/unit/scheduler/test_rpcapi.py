@@ -96,6 +96,16 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  version='3.0')
         create_worker_mock.assert_called_once()
 
+    def test_notify_service_capabilities(self):
+        capabilities = {'host': 'fake_host',
+                        'total': '10.01', }
+        self._test_scheduler_api('notify_service_capabilities',
+                                 rpc_method='cast',
+                                 service_name='fake_name',
+                                 host='fake_host',
+                                 capabilities=capabilities,
+                                 version='3.1')
+
     def test_create_volume_serialization(self):
         volume = fake_volume.fake_volume_obj(self.context)
         create_worker_mock = self.mock_object(volume, 'create_worker')

@@ -58,9 +58,10 @@ class SchedulerAPI(rpc.RPCAPI):
         set to 2.3.
 
         3.0 - Remove 2.x compatibility
+        3.1 - Adds notify_service_capabilities()
     """
 
-    RPC_API_VERSION = '3.0'
+    RPC_API_VERSION = '3.1'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
@@ -137,5 +138,12 @@ class SchedulerAPI(rpc.RPCAPI):
                                     capabilities):
         cctxt = self._get_cctxt(fanout=True)
         cctxt.cast(ctxt, 'update_service_capabilities',
+                   service_name=service_name, host=host,
+                   capabilities=capabilities)
+
+    def notify_service_capabilities(self, ctxt, service_name,
+                                    host, capabilities):
+        cctxt = self._get_cctxt(version='3.1')
+        cctxt.cast(ctxt, 'notify_service_capabilities',
                    service_name=service_name, host=host,
                    capabilities=capabilities)

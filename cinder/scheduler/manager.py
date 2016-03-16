@@ -88,6 +88,15 @@ class SchedulerManager(manager.Manager):
                                                 host,
                                                 capabilities)
 
+    def notify_service_capabilities(self, context, service_name,
+                                    host, capabilities):
+        """Process a capability update from a service node."""
+        if capabilities is None:
+            capabilities = {}
+        self.driver.notify_service_capabilities(service_name,
+                                                host,
+                                                capabilities)
+
     def _wait_for_scheduler(self):
         # NOTE(dulek): We're waiting for scheduler to announce that it's ready
         # or CONF.periodic_interval seconds from service startup has passed.
