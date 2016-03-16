@@ -699,7 +699,7 @@ class CommandLineHelper(object):
             LOG.error(err_msg)
             raise exception.VolumeBackendAPIException(data=err_msg)
 
-        self.command = (navisecclipath, '-timeout 120', '-address')
+        self.command = (navisecclipath, '-address')
         self.active_storage_ip = configuration.san_ip
         self.primary_storage_ip = self.active_storage_ip
         self.secondary_storage_ip = configuration.san_secondary_ip

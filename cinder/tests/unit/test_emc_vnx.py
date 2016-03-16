@@ -5716,9 +5716,9 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
 
 class EMCVNXCLIToggleSPTestData(object):
     def FAKE_COMMAND_PREFIX(self, sp_address):
-        return ('/opt/Navisphere/bin/naviseccli', '-timeout 120',
-                '-address', sp_address, '-user', 'sysadmin',
-                '-password', 'sysadmin', '-scope', 'global')
+        return ('/opt/Navisphere/bin/naviseccli', '-address', sp_address,
+                '-user', 'sysadmin', '-password', 'sysadmin',
+                '-scope', 'global')
 
 
 class EMCVNXCLIToggleSPTestCase(test.TestCase):
