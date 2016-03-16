@@ -233,6 +233,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
+        self.additional_endpoints.append(_VolumeV2Proxy(self))
         self.configuration = config.Configuration(volume_manager_opts,
                                                   config_group=service_name)
         self.stats = {}
@@ -3468,3 +3469,148 @@ class VolumeManager(manager.SchedulerDependentManager):
     def secure_file_operations_enabled(self, ctxt, volume):
         secure_enabled = self.driver.secure_file_operations_enabled()
         return secure_enabled
+
+
+# TODO(dulek): This goes away immediately in Newton and is just present in
+# Mitaka so that we can receive v1.x and v2.0 messages
+class _VolumeV2Proxy(object):
+
+    target = messaging.Target(version='2.0')
+
+    def __init__(self, manager):
+        self.manager = manager
+
+    def create_volume(self, context, volume_id, request_spec=None,
+                      filter_properties=None, allow_reschedule=True,
+                      volume=None):
+        return self.manager.create_volume(
+            context, volume_id, request_spec=request_spec,
+            filter_properties=filter_properties,
+            allow_reschedule=allow_reschedule, volume=volume)
+
+    def delete_volume(self, context, volume_id, unmanage_only=False,
+                      volume=None, cascade=False):
+        return self.manager.delete_volume(
+            context, volume_id, unmanage_only=unmanage_only, volume=volume,
+            cascade=cascade)
+
+    def create_snapshot(self, context, volume_id, snapshot):
+        return self.manager.create_snapshot(context, volume_id, snapshot)
+
+    def delete_snapshot(self, context, snapshot, unmanage_only=False):
+        return self.manager.delete_snapshot(context, snapshot,
+                                            unmanage_only=unmanage_only)
+
+    def attach_volume(self, context, volume_id, instance_uuid, host_name,
+                      mountpoint, mode):
+        return self.manager.attach_volume(context, volume_id, instance_uuid,
+                                          host_name, mountpoint, mode)
+
+    def detach_volume(self, context, volume_id, attachment_id=None):
+        return self.manager.detach_volume(context, volume_id,
+                                          attachment_id=attachment_id)
+
+    def copy_volume_to_image(self, context, volume_id, image_meta):
+        return self.manager.copy_volume_to_image(context, volume_id,
+                                                 image_meta)
+
+    def initialize_connection(self, context, volume_id, connector):
+        return self.manager.initialize_connection(context, volume_id,
+                                                  connector)
+
+    def terminate_connection(self, context, volume_id, connector, force=False):
+        return self.manager.terminate_connection(context, volume_id, connector,
+                                                 force=force)
+
+    def remove_export(self, context, volume_id):
+        return self.manager.remove_export(context, volume_id)
+
+    def accept_transfer(self, context, volume_id, new_user, new_project):
+        return self.manager.accept_transfer(context, volume_id, new_user,
+                                            new_project)
+
+    def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
+                                  error=False, volume=None, new_volume=None):
+        return self.manager.migrate_volume_completion(
+            ctxt, volume_id, new_volume_id, error=error, volume=volume,
+            new_volume=new_volume)
+
+    def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
+                       new_type_id=None, volume=None):
+        return self.manager.migrate_volume(
+            ctxt, volume_id, host, force_host_copy=force_host_copy,
+            new_type_id=new_type_id, volume=volume)
+
+    def publish_service_capabilities(self, context):
+        return self.manager.publish_service_capabilities(context)
+
+    def extend_volume(self, context, volume_id, new_size, reservations,
+                      volume=None):
+        return self.manager.extend_volume(context, volume_id, new_size,
+                                          reservations, volume=volume)
+
+    def retype(self, ctxt, volume_id, new_type_id, host,
+               migration_policy='never', reservations=None,
+               volume=None, old_reservations=None):
+        return self.manager.retype(ctxt, volume_id, new_type_id, host,
+                                   migration_policy=migration_policy,
+                                   reservations=reservations, volume=volume,
+                                   old_reservations=old_reservations)
+
+    def manage_existing(self, ctxt, volume_id, ref=None):
+        return self.manager.manage_existing(ctxt, volume_id, ref=ref)
+
+    def promote_replica(self, ctxt, volume_id):
+        return self.manager.promote_replica(ctxt, volume_id)
+
+    def reenable_replication(self, ctxt, volume_id):
+        return self.manager.reenable_replication(ctxt, volume_id)
+
+    def create_consistencygroup(self, context, group):
+        return self.manager.create_consistencygroup(context, group)
+
+    def create_consistencygroup_from_src(self, context, group,
+                                         cgsnapshot=None, source_cg=None):
+        return self.manager.create_consistencygroup_from_src(
+            context, group, cgsnapshot=cgsnapshot, source_cg=source_cg)
+
+    def delete_consistencygroup(self, context, group):
+        return self.manager.delete_consistencygroup(context, group)
+
+    def update_consistencygroup(self, context, group, add_volumes=None,
+                                remove_volumes=None):
+        return self.manager.update_consistencygroup(
+            context, group, add_volumes=add_volumes,
+            remove_volumes=remove_volumes)
+
+    def create_cgsnapshot(self, context, cgsnapshot):
+        return self.manager.create_cgsnapshot(context, cgsnapshot)
+
+    def delete_cgsnapshot(self, context, cgsnapshot):
+        return self.manager.delete_cgsnapshot(context, cgsnapshot)
+
+    def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
+        return self.manager.update_migrated_volume(ctxt, volume, new_volume,
+                                                   volume_status)
+
+    def failover_host(self, context, secondary_backend_id=None):
+        return self.manager.failover_host(
+            context, secondary_backend_id=secondary_backend_id)
+
+    def freeze_host(self, context):
+        return self.manager.freeze_host(context)
+
+    def thaw_host(self, context):
+        return self.manager.thaw_host(context)
+
+    def manage_existing_snapshot(self, ctxt, snapshot, ref=None):
+        return self.manager.manage_exisiting_snapshot(ctxt, snapshot, ref=ref)
+
+    def get_capabilities(self, context, discover):
+        return self.manager.get_capabilities(context, discover)
+
+    def get_backup_device(self, ctxt, backup):
+        return self.manager.get_backup_device(ctxt, backup)
+
+    def secure_file_operations_enabled(self, ctxt, volume):
+        return self.manager.secure_file_operations_enabled(ctxt, volume)
