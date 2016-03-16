@@ -28,6 +28,8 @@ from cinder import exception
 from cinder.i18n import _
 from cinder.objects import fields
 from cinder import test
+
+from cinder.volume import configuration as conf
 from cinder.volume.drivers.emc import emc_vmax_common
 from cinder.volume.drivers.emc import emc_vmax_fast
 from cinder.volume.drivers.emc import emc_vmax_fc
@@ -37,7 +39,6 @@ from cinder.volume.drivers.emc import emc_vmax_provision
 from cinder.volume.drivers.emc import emc_vmax_provision_v3
 from cinder.volume.drivers.emc import emc_vmax_utils
 from cinder.volume import volume_types
-
 
 CINDER_EMC_CONFIG_DIR = '/etc/cinder/'
 
@@ -1693,12 +1694,15 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.config_file_path = None
         self.create_fake_config_file_no_fast()
         self.addCleanup(self._cleanup)
-
-        configuration = mock.Mock()
-        configuration.safe_get.return_value = 'ISCSINoFAST'
-        configuration.cinder_emc_config_file = self.config_file_path
+        configuration = conf.Configuration(None)
+        configuration.append_config_values = mock.Mock(return_value=0)
         configuration.config_group = 'ISCSINoFAST'
-
+        configuration.cinder_emc_config_file = self.config_file_path
+        self.stubs.Set(configuration, 'safe_get',
+                       self.fake_safe_get({'driver_use_ssl':
+                                           True,
+                                           'volume_backend_name':
+                                           'ISCSINoFAST'}))
         self.stubs.Set(emc_vmax_iscsi.EMCVMAXISCSIDriver,
                        'smis_do_iscsi_discovery',
                        self.fake_do_iscsi_discovery)
@@ -1716,6 +1720,11 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         driver.db = FakeDB()
         self.driver = driver
         self.driver.utils = emc_vmax_utils.EMCVMAXUtils(object)
+
+    def fake_safe_get(self, values):
+        def _safe_get(key):
+            return values.get(key)
+        return _safe_get
 
     def create_fake_config_file_no_fast(self):
 
@@ -3782,6 +3791,14 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                          model_update)
         self.assertEqual([{'status': 'available', 'id': '2'}],
                          volumes_model_update)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_update_pool_stats',
+        return_value={1, 2, 3})
+    def test_ssl_support(self, pool_stats):
+        self.driver.common.update_volume_stats()
+        self.assertTrue(self.driver.common.ecomUseSSL)
 
     def _cleanup(self):
         if self.config_file_path:
