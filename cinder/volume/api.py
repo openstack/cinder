@@ -390,8 +390,8 @@ class API(base.Base):
 
         if not result:
             status = utils.build_or_str(expected.get('status'),
-                                        _(' status must be %s and '))
-            msg = _('Volume%s must not be migrating, attached, belong to a '
+                                        _('status must be %s and'))
+            msg = _('Volume %s must not be migrating, attached, belong to a '
                     'consistency group or have snapshots.') % status
             LOG.info(msg)
             raise exception.InvalidVolume(reason=msg)
@@ -942,8 +942,8 @@ class API(base.Base):
         result = snapshot.conditional_update({'status': 'deleting'}, expected)
         if not result:
             status = utils.build_or_str(expected.get('status'),
-                                        _(' status must be %s and '))
-            msg = (_('Snapshot%s must not be part of a consistency group.') %
+                                        _('status must be %s and'))
+            msg = (_('Snapshot %s must not be part of a consistency group.') %
                    status)
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)
