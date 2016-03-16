@@ -93,6 +93,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         super(BackupManager, self).__init__(service_name='backup',
                                             *args, **kwargs)
+        self.additional_endpoints.append(_BackupV2Proxy(self))
 
     @property
     def driver_name(self):
@@ -855,3 +856,36 @@ class BackupManager(manager.SchedulerDependentManager):
         rpcapi = self.volume_rpcapi
         rpcapi.terminate_connection(context, volume, properties, force=force)
         rpcapi.remove_export(context, volume)
+
+
+# TODO(dulek): This goes away immediately in Newton and is just present in
+# Mitaka so that we can receive v1.x and v2.0 messages.
+class _BackupV2Proxy(object):
+
+    target = messaging.Target(version='2.0')
+
+    def __init__(self, manager):
+        self.manager = manager
+
+    def create_backup(self, context, backup):
+        return self.manager.create_backup(context, backup)
+
+    def restore_backup(self, context, backup, volume_id):
+        return self.manager.restore_backup(context, backup, volume_id)
+
+    def delete_backup(self, context, backup):
+        return self.manager.delete_backup(context, backup)
+
+    def export_record(self, context, backup):
+        return self.manager.export_record(context, backup)
+
+    def import_record(self, context, backup, backup_service, backup_url,
+                      backup_hosts):
+        return self.manager.import_record(context, backup, backup_service,
+                                          backup_url, backup_hosts)
+
+    def reset_status(self, context, backup, status):
+        return self.manager.reset_status(context, backup, status)
+
+    def check_support_to_force_delete(self, context):
+        return self.manager.check_support_to_force_delete(context)
