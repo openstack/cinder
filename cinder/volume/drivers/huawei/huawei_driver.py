@@ -64,20 +64,45 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             msg = _('Configuration is not found.')
             raise exception.InvalidInput(reason=msg)
 
+        self.active_backend_id = kwargs.get('active_backend_id')
+
         self.configuration.append_config_values(huawei_opts)
         self.huawei_conf = huawei_conf.HuaweiConf(self.configuration)
         self.metro_flag = False
+        self.replica = None
+
+    def get_local_and_remote_dev_conf(self):
+        self.loc_dev_conf = self.huawei_conf.get_local_device()
+
+        # Now just support one replication_devices.
+        replica_devs = self.huawei_conf.get_replication_devices()
+        self.replica_dev_conf = replica_devs[0] if replica_devs else {}
+
+    def get_local_and_remote_client_conf(self):
+        if self.active_backend_id:
+            return self.replica_dev_conf, self.loc_dev_conf
+        else:
+            return self.loc_dev_conf, self.replica_dev_conf
 
     def do_setup(self, context):
         """Instantiate common class and login storage system."""
         # Set huawei private configuration into Configuration object.
         self.huawei_conf.update_config_value()
+
+        self.get_local_and_remote_dev_conf()
+        client_conf, replica_client_conf = (
+            self.get_local_and_remote_client_conf())
+
         # init local client
+        if not client_conf:
+            msg = _('Get active client failed.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
         self.client = rest_client.RestClient(self.configuration,
-                                             self.configuration.san_address,
-                                             self.configuration.san_user,
-                                             self.configuration.san_password)
+                                             **client_conf)
         self.client.login()
+
         # init remote client
         metro_san_address = self.configuration.safe_get("metro_san_address")
         metro_san_user = self.configuration.safe_get("metro_san_user")
@@ -92,8 +117,13 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             self.rmt_client.login()
 
         # init replication manager
-        self.replica = replication.ReplicaPairManager(self.client,
-                                                      self.configuration)
+        if replica_client_conf:
+            self.replica_client = rest_client.RestClient(self.configuration,
+                                                         **replica_client_conf)
+            self.replica_client.try_login()
+            self.replica = replication.ReplicaPairManager(self.client,
+                                                          self.replica_client,
+                                                          self.configuration)
 
     def check_for_setup_error(self):
         pass
@@ -103,8 +133,15 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         self.huawei_conf.update_config_value()
         if self.metro_flag:
             self.rmt_client.get_all_pools()
+
         stats = self.client.update_volume_stats()
-        stats = self.replica.update_replica_capability(stats)
+
+        if self.replica:
+            stats = self.replica.update_replica_capability(stats)
+            targets = [self.replica_dev_conf['backend_id']]
+            stats['replication_targets'] = targets
+            stats['replication_enabled'] = True
+
         return stats
 
     def _get_volume_type(self, volume):
@@ -1393,21 +1430,109 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                         {'snapshot_id': snapshot['id'],
                          'snapshot_name': snapshot_name})
 
-    def replication_enable(self, context, volume):
-        """Enable replication and do switch role when needed."""
-        self.replica.enable_replica(volume)
+    def _classify_volume(self, volumes):
+        normal_volumes = []
+        replica_volumes = []
 
-    def replication_disable(self, context, volume):
-        """Disable replication."""
-        self.replica.disable_replica(volume)
+        for v in volumes:
+            volume_type = self._get_volume_type(v)
+            opts = self._get_volume_params(volume_type)
+            if opts.get('replication_enabled') == 'true':
+                replica_volumes.append(v)
+            else:
+                normal_volumes.append(v)
 
-    def replication_failover(self, context, volume, secondary):
-        """Disable replication and unprotect remote LUN."""
-        return self.replica.failover_replica(volume)
+        return normal_volumes, replica_volumes
 
-    def list_replication_targets(self, context, vref):
-        """Obtain volume repliction targets."""
-        return self.replica.list_replica_targets(vref)
+    def _failback_normal_volumes(self, volumes):
+        volumes_update = []
+        for v in volumes:
+            v_update = {}
+            v_update['volume_id'] = v['id']
+            metadata = huawei_utils.get_volume_metadata(v)
+            old_status = 'available'
+            if 'old_status' in metadata:
+                old_status = metadata['old_status']
+                del metadata['old_status']
+            v_update['updates'] = {'status': old_status,
+                                   'metadata': metadata}
+            volumes_update.append(v_update)
+
+        return volumes_update
+
+    def _failback(self, volumes):
+        if self.active_backend_id in ('', None):
+            return 'default', []
+
+        normal_volumes, replica_volumes = self._classify_volume(volumes)
+        volumes_update = []
+
+        replica_volumes_update = self.replica.failback(replica_volumes)
+        volumes_update.extend(replica_volumes_update)
+
+        normal_volumes_update = self._failback_normal_volumes(normal_volumes)
+        volumes_update.extend(normal_volumes_update)
+
+        self.active_backend_id = ""
+        secondary_id = 'default'
+
+        # Switch array connection.
+        self.client, self.replica_client = self.replica_client, self.client
+        self.replica = replication.ReplicaPairManager(self.client,
+                                                      self.replica_client,
+                                                      self.configuration)
+        return secondary_id, volumes_update
+
+    def _failover_normal_volumes(self, volumes):
+        volumes_update = []
+
+        for v in volumes:
+            v_update = {}
+            v_update['volume_id'] = v['id']
+            metadata = huawei_utils.get_volume_metadata(v)
+            metadata.update({'old_status': v['status']})
+            v_update['updates'] = {'status': 'error',
+                                   'metadata': metadata}
+            volumes_update.append(v_update)
+
+        return volumes_update
+
+    def _failover(self, volumes):
+        if self.active_backend_id not in ('', None):
+            return self.replica_dev_conf['backend_id'], []
+
+        normal_volumes, replica_volumes = self._classify_volume(volumes)
+        volumes_update = []
+
+        replica_volumes_update = self.replica.failover(replica_volumes)
+        volumes_update.extend(replica_volumes_update)
+
+        normal_volumes_update = self._failover_normal_volumes(normal_volumes)
+        volumes_update.extend(normal_volumes_update)
+
+        self.active_backend_id = self.replica_dev_conf['backend_id']
+        secondary_id = self.active_backend_id
+
+        # Switch array connection.
+        self.client, self.replica_client = self.replica_client, self.client
+        self.replica = replication.ReplicaPairManager(self.client,
+                                                      self.replica_client,
+                                                      self.configuration)
+        return secondary_id, volumes_update
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover all volumes to secondary."""
+        if secondary_id == 'default':
+            secondary_id, volumes_update = self._failback(volumes)
+        elif (secondary_id == self.replica_dev_conf['backend_id']
+                or secondary_id is None):
+            secondary_id, volumes_update = self._failover(volumes)
+        else:
+            msg = _("Invalid secondary id %s.") % secondary_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        return secondary_id, volumes_update
 
 
 class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):

@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 """Tests for huawei drivers."""
+import copy
 import ddt
 import json
 import mock
@@ -63,6 +64,7 @@ test_volume = {'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
                'volume_type_id': None,
                'host': 'ubuntu001@backend001#OpenStack_Pool',
                'provider_location': '11',
+               'status': 'available',
                }
 
 fake_smartx_value = {'smarttier': 'true',
@@ -1743,7 +1745,10 @@ def Fake_sleep(time):
     pass
 
 
-class FakeHuaweiConf(object):
+REPLICA_BACKEND_ID = 'huawei-replica-1'
+
+
+class FakeHuaweiConf(huawei_conf.HuaweiConf):
     def __init__(self, conf, protocol):
         self.conf = conf
         self.protocol = protocol
@@ -1789,8 +1794,8 @@ class FakeHuaweiConf(object):
                       'TargetPortGroup': 'portgroup-test', }
         setattr(self.conf, 'iscsi_info', [iscsi_info])
 
-        targets = [{'target_device_id': 'huawei-replica-1',
-                    'managed_backend_name': 'ubuntu@huawei2#OpenStack_Pool',
+        targets = [{'backend_id': REPLICA_BACKEND_ID,
+                    'storage_pool': 'OpenStack_Pool',
                     'san_address':
                         'https://192.0.2.69:8088/deviceManager/rest/',
                     'san_user': 'admin',
@@ -1870,16 +1875,23 @@ class FakeISCSIStorage(huawei_driver.HuaweiISCSIDriver):
     def __init__(self, configuration):
         self.configuration = configuration
         self.huawei_conf = FakeHuaweiConf(self.configuration, 'iSCSI')
+        self.active_backend_id = None
+        self.replica = None
 
     def do_setup(self):
         self.metro_flag = True
         self.huawei_conf.update_config_value()
+        self.get_local_and_remote_dev_conf()
+
         self.client = FakeClient(configuration=self.configuration)
         self.rmt_client = FakeClient(configuration=self.configuration)
+        self.replica_client = FakeClient(configuration=self.configuration)
         self.metro = hypermetro.HuaweiHyperMetro(self.client,
                                                  self.rmt_client,
                                                  self.configuration)
-        self.replica = FakeReplicaPairManager(self.client, self.configuration)
+        self.replica = FakeReplicaPairManager(self.client,
+                                              self.replica_client,
+                                              self.configuration)
 
 
 class FakeFCStorage(huawei_driver.HuaweiFCDriver):
@@ -1889,16 +1901,23 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
         self.configuration = configuration
         self.fcsan = None
         self.huawei_conf = FakeHuaweiConf(self.configuration, 'iSCSI')
+        self.active_backend_id = None
+        self.replica = None
 
     def do_setup(self):
         self.metro_flag = True
         self.huawei_conf.update_config_value()
+        self.get_local_and_remote_dev_conf()
+
         self.client = FakeClient(configuration=self.configuration)
         self.rmt_client = FakeClient(configuration=self.configuration)
+        self.replica_client = FakeClient(configuration=self.configuration)
         self.metro = hypermetro.HuaweiHyperMetro(self.client,
                                                  self.rmt_client,
                                                  self.configuration)
-        self.replica = FakeReplicaPairManager(self.client, self.configuration)
+        self.replica = FakeReplicaPairManager(self.client,
+                                              self.replica_client,
+                                              self.configuration)
 
 
 @ddt.ddt
@@ -1992,7 +2011,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                        'rmt_lun_id': '1'}
         driver_data = replication.to_string(driver_data)
         self.assertEqual(driver_data, model_update['replication_driver_data'])
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual('available', model_update['replication_status'])
 
     def test_initialize_connection_success(self):
         iscsi_properties = self.driver.initialize_connection(test_volume,
@@ -2737,14 +2756,6 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
             self.driver.unmanage_snapshot(test_snapshot)
             self.assertEqual(1, mock_rename.call_count)
 
-    def test_init_rmt_client(self):
-        self.mock_object(rest_client, 'RestClient',
-                         mock.Mock(return_value=None))
-        replica = replication.ReplicaPairManager(self.driver.client,
-                                                 self.configuration)
-        self.assertEqual(replica.rmt_pool, 'OpenStack_Pool')
-        self.assertEqual(replica.target_dev_id, 'huawei-replica-1')
-
     @ddt.data(sync_replica_specs, async_replica_specs)
     def test_create_replication_success(self, mock_type):
         self.mock_object(replication.ReplicaCommonDriver, 'sync')
@@ -2758,7 +2769,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                        'rmt_lun_id': '1'}
         driver_data = replication.to_string(driver_data)
         self.assertEqual(driver_data, model_update['replication_driver_data'])
-        self.assertEqual('enabled', model_update['replication_status'])
+        self.assertEqual('available', model_update['replication_status'])
 
     @ddt.data(
         [
@@ -2824,6 +2835,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def test_wait_volume_online(self):
         replica = FakeReplicaPairManager(self.driver.client,
+                                         self.driver.replica_client,
                                          self.configuration)
         lun_info = {'ID': '11'}
 
@@ -2888,124 +2900,240 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
             self.assertRaises(exception.VolumeBackendAPIException,
                               common_driver.wait_replica_ready, pair_id)
 
-    def test_replication_enable_success(self):
-        self.mock_object(replication.ReplicaCommonDriver, 'unprotect_second')
-        self.mock_object(replication.ReplicaCommonDriver, 'split')
-        self.mock_object(replication.PairOp, 'is_primary',
-                         mock.Mock(side_effect=[False, True]))
-        self.driver.replication_enable(None, replication_volume)
+    def test_failover_to_current(self):
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        secondary_id, volumes_update = driver.failover_host(
+            None, [test_volume], 'default')
+        self.assertTrue(driver.active_backend_id in ('', None))
+        self.assertTrue(old_client == driver.client)
+        self.assertTrue(old_replica_client == driver.replica_client)
+        self.assertTrue(old_replica == driver.replica)
+        self.assertEqual('default', secondary_id)
+        self.assertEqual(0, len(volumes_update))
 
-    @ddt.data(
-        [
-            replication.AbsReplicaOp,
-            'is_running_status',
-            mock.Mock(return_value=False)
-        ],
-        [
-            replication,
-            'get_replication_driver_data',
-            mock.Mock(return_value={})
-        ],
-        [
-            replication.PairOp,
-            'get_replica_info',
-            mock.Mock(return_value={})
-        ],
-    )
-    @ddt.unpack
-    def test_replication_enable_fail(self, mock_module, mock_func, mock_value):
-        self.mock_object(mock_module, mock_func, mock_value)
-        self.mock_object(huawei_utils.time, 'time', mock.Mock(
-            side_effect = utils.generate_timeout_series(
-                constants.DEFAULT_REPLICA_WAIT_TIMEOUT)))
+    def test_failover_normal_volumes(self):
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        secondary_id, volumes_update = driver.failover_host(
+            None, [test_volume], REPLICA_BACKEND_ID)
+        self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
+        self.assertTrue(old_client == driver.replica_client)
+        self.assertTrue(old_replica_client == driver.client)
+        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
+        self.assertEqual(1, len(volumes_update))
+        v_id = volumes_update[0]['volume_id']
+        v_update = volumes_update[0]['updates']
+        self.assertEqual(test_volume['id'], v_id)
+        self.assertEqual('error', v_update['status'])
+        self.assertEqual(test_volume['status'],
+                         v_update['metadata']['old_status'])
 
+    def test_failback_to_current(self):
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.active_backend_id = REPLICA_BACKEND_ID
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        secondary_id, volumes_update = driver.failover_host(
+            None, [test_volume], REPLICA_BACKEND_ID)
+        self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
+        self.assertTrue(old_client == driver.client)
+        self.assertTrue(old_replica_client == driver.replica_client)
+        self.assertTrue(old_replica == driver.replica)
+        self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
+        self.assertEqual(0, len(volumes_update))
+
+    def test_failback_normal_volumes(self):
+        volume = copy.deepcopy(test_volume)
+        volume['status'] = 'error'
+        volume['metadata'] = {'old_status', 'available'}
+
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.active_backend_id = REPLICA_BACKEND_ID
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        secondary_id, volumes_update = driver.failover_host(
+            None, [volume], 'default')
+        self.assertTrue(driver.active_backend_id in ('', None))
+        self.assertTrue(old_client == driver.replica_client)
+        self.assertTrue(old_replica_client == driver.client)
+        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual('default', secondary_id)
+        self.assertEqual(1, len(volumes_update))
+        v_id = volumes_update[0]['volume_id']
+        v_update = volumes_update[0]['updates']
+        self.assertEqual(volume['id'], v_id)
+        self.assertEqual('available', v_update['status'])
+        self.assertFalse('old_status' in v_update['metadata'])
+
+    def test_failover_replica_volumes(self):
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        self.mock_object(replication.ReplicaCommonDriver, 'failover')
+        self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
+                         mock.Mock(
+                             return_value={'replication_enabled': 'true'}))
+        secondary_id, volumes_update = driver.failover_host(
+            None, [replication_volume], REPLICA_BACKEND_ID)
+        self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
+        self.assertTrue(old_client == driver.replica_client)
+        self.assertTrue(old_replica_client == driver.client)
+        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
+        self.assertEqual(1, len(volumes_update))
+        v_id = volumes_update[0]['volume_id']
+        v_update = volumes_update[0]['updates']
+        self.assertEqual(replication_volume['id'], v_id)
+        self.assertEqual('1', v_update['provider_location'])
+        self.assertEqual('failed-over', v_update['replication_status'])
+        new_drv_data = {'pair_id': TEST_PAIR_ID,
+                        'rmt_lun_id': replication_volume['provider_location']}
+        new_drv_data = replication.to_string(new_drv_data)
+        self.assertEqual(new_drv_data, v_update['replication_driver_data'])
+
+    @ddt.data({}, {'pair_id': TEST_PAIR_ID})
+    def test_failover_replica_volumes_invalid_drv_data(self, mock_drv_data):
+        volume = copy.deepcopy(replication_volume)
+        volume['replication_driver_data'] = replication.to_string(
+            mock_drv_data)
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
+                         mock.Mock(
+                             return_value={'replication_enabled': 'true'}))
+        secondary_id, volumes_update = driver.failover_host(
+            None, [volume], REPLICA_BACKEND_ID)
+        self.assertTrue(driver.active_backend_id == REPLICA_BACKEND_ID)
+        self.assertTrue(old_client == driver.replica_client)
+        self.assertTrue(old_replica_client == driver.client)
+        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
+        self.assertEqual(1, len(volumes_update))
+        v_id = volumes_update[0]['volume_id']
+        v_update = volumes_update[0]['updates']
+        self.assertEqual(volume['id'], v_id)
+        self.assertEqual('error', v_update['replication_status'])
+
+    def test_failback_replica_volumes(self):
+        self.mock_object(replication.ReplicaCommonDriver, 'enable')
+        self.mock_object(replication.ReplicaCommonDriver, 'wait_replica_ready')
+        self.mock_object(replication.ReplicaCommonDriver, 'failover')
+        self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
+                         mock.Mock(
+                             return_value={'replication_enabled': 'true'}))
+
+        volume = copy.deepcopy(replication_volume)
+
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.active_backend_id = REPLICA_BACKEND_ID
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        secondary_id, volumes_update = driver.failover_host(
+            None, [volume], 'default')
+        self.assertTrue(driver.active_backend_id in ('', None))
+        self.assertTrue(old_client == driver.replica_client)
+        self.assertTrue(old_replica_client == driver.client)
+        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual('default', secondary_id)
+        self.assertEqual(1, len(volumes_update))
+        v_id = volumes_update[0]['volume_id']
+        v_update = volumes_update[0]['updates']
+        self.assertEqual(replication_volume['id'], v_id)
+        self.assertEqual('1', v_update['provider_location'])
+        self.assertEqual('available', v_update['replication_status'])
+        new_drv_data = {'pair_id': TEST_PAIR_ID,
+                        'rmt_lun_id': replication_volume['provider_location']}
+        new_drv_data = replication.to_string(new_drv_data)
+        self.assertEqual(new_drv_data, v_update['replication_driver_data'])
+
+    @ddt.data({}, {'pair_id': TEST_PAIR_ID})
+    def test_failback_replica_volumes_invalid_drv_data(self, mock_drv_data):
+        self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
+                         mock.Mock(
+                             return_value={'replication_enabled': 'true'}))
+
+        volume = copy.deepcopy(replication_volume)
+        volume['replication_driver_data'] = replication.to_string(
+            mock_drv_data)
+
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.active_backend_id = REPLICA_BACKEND_ID
+        driver.do_setup()
+        old_client = driver.client
+        old_replica_client = driver.replica_client
+        old_replica = driver.replica
+        secondary_id, volumes_update = driver.failover_host(
+            None, [volume], 'default')
+        self.assertTrue(driver.active_backend_id in ('', None))
+        self.assertTrue(old_client == driver.replica_client)
+        self.assertTrue(old_replica_client == driver.client)
+        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual('default', secondary_id)
+        self.assertEqual(1, len(volumes_update))
+        v_id = volumes_update[0]['volume_id']
+        v_update = volumes_update[0]['updates']
+        self.assertEqual(replication_volume['id'], v_id)
+        self.assertEqual('error', v_update['replication_status'])
+
+    @mock.patch.object(replication.PairOp, 'is_primary',
+                       side_effect=[False, True])
+    @mock.patch.object(replication.ReplicaCommonDriver, 'split')
+    @mock.patch.object(replication.ReplicaCommonDriver, 'unprotect_second')
+    def test_replication_driver_enable_success(self,
+                                               mock_unprotect,
+                                               mock_split,
+                                               mock_is_primary):
+        replica_id = TEST_PAIR_ID
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+        common_driver.enable(replica_id)
+        self.assertTrue(mock_unprotect.called)
+        self.assertTrue(mock_split.called)
+        self.assertTrue(mock_is_primary.called)
+
+    @mock.patch.object(replication.PairOp, 'is_primary', return_value=False)
+    @mock.patch.object(replication.ReplicaCommonDriver, 'split')
+    def test_replication_driver_failover_success(self,
+                                                 mock_split,
+                                                 mock_is_primary):
+        replica_id = TEST_PAIR_ID
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+        common_driver.failover(replica_id)
+        self.assertTrue(mock_split.called)
+        self.assertTrue(mock_is_primary.called)
+
+    @mock.patch.object(replication.PairOp, 'is_primary', return_value=True)
+    def test_replication_driver_failover_fail(self, mock_is_primary):
+        replica_id = TEST_PAIR_ID
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
         self.assertRaises(
             exception.VolumeBackendAPIException,
-            self.driver.replication_enable, None, replication_volume)
-
-    def test_replication_disable_fail(self):
-        self.mock_object(huawei_utils.time, 'time', mock.Mock(
-            side_effect = utils.generate_timeout_series(
-                constants.DEFAULT_REPLICA_WAIT_TIMEOUT)))
-
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.driver.replication_disable, None, replication_volume)
-
-    def test_replication_disable_success(self):
-        self.mock_object(replication.ReplicaCommonDriver, 'split')
-        self.driver.replication_disable(None, replication_volume)
-
-        self.mock_object(replication, 'get_replication_driver_data',
-                         mock.Mock(return_value={}))
-        self.driver.replication_disable(None, replication_volume)
-
-    def test_replication_failover_success(self):
-        self.mock_object(replication.ReplicaCommonDriver, 'split')
-        self.mock_object(replication.PairOp, 'is_primary',
-                         mock.Mock(return_value=False))
-        model_update = self.driver.replication_failover(
-            None, replication_volume, None)
-        self.assertEqual('ubuntu@huawei2#OpenStack_Pool', model_update['host'])
-        self.assertEqual('1', model_update['provider_location'])
-        driver_data = {'pair_id': TEST_PAIR_ID,
-                       'rmt_lun_id': '11'}
-        driver_data = replication.to_string(driver_data)
-        self.assertEqual(driver_data, model_update['replication_driver_data'])
-
-    @ddt.data(
-        [
-            replication.PairOp,
-            'is_primary',
-            mock.Mock(return_value=True)
-        ],
-        [
-            replication.PairOp,
-            'is_primary',
-            mock.Mock(return_value=False)
-        ],
-        [
-            replication,
-            'get_replication_driver_data',
-            mock.Mock(return_value={})
-        ],
-        [
-            replication,
-            'get_replication_driver_data',
-            mock.Mock(return_value={'pair_id': '1'})
-        ],
-    )
-    @ddt.unpack
-    def test_replication_failover_fail(self,
-                                       mock_module, mock_func, mock_value):
-        self.mock_object(
-            replication.ReplicaCommonDriver,
-            'wait_second_access',
-            mock.Mock(
-                side_effect=exception.VolumeBackendAPIException(data="error")))
-        self.mock_object(mock_module, mock_func, mock_value)
-        self.mock_object(huawei_utils.time, 'time', mock.Mock(
-            side_effect = utils.generate_timeout_series(
-                constants.DEFAULT_REPLICA_WAIT_TIMEOUT)))
-
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.driver.replication_failover,
-            None,
-            replication_volume, None)
-
-    def test_list_replication_targets(self):
-        info = self.driver.list_replication_targets(None, replication_volume)
-        targets = [{'target_device_id': 'huawei-replica-1'}]
-        self.assertEqual(targets, info['targets'])
-
-        self.mock_object(replication, 'get_replication_driver_data',
-                         mock.Mock(return_value={}))
-        info = self.driver.list_replication_targets(None, replication_volume)
-        self.assertEqual(targets, info['targets'])
+            common_driver.failover,
+            replica_id)
 
     @ddt.data(constants.REPLICA_SECOND_RW, constants.REPLICA_SECOND_RO)
-    def test_replication_protect_second(self, mock_access):
+    def test_replication_driver_protect_second(self, mock_access):
         replica_id = TEST_PAIR_ID
         op = replication.PairOp(self.driver.client)
         common_driver = replication.ReplicaCommonDriver(self.configuration, op)
@@ -3019,7 +3147,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         common_driver.protect_second(replica_id)
         common_driver.unprotect_second(replica_id)
 
-    def test_replication_sync(self):
+    def test_replication_driver_sync(self):
         replica_id = TEST_PAIR_ID
         op = replication.PairOp(self.driver.client)
         common_driver = replication.ReplicaCommonDriver(self.configuration, op)
@@ -3035,7 +3163,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         common_driver.sync(replica_id, True)
         common_driver.sync(replica_id, False)
 
-    def test_replication_split(self):
+    def test_replication_driver_split(self):
         replica_id = TEST_PAIR_ID
         op = replication.PairOp(self.driver.client)
         common_driver = replication.ReplicaCommonDriver(self.configuration, op)

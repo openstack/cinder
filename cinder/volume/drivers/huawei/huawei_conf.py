@@ -251,3 +251,37 @@ class HuaweiConf(object):
             iscsi_info.append(props)
 
         setattr(self.conf, 'iscsi_info', iscsi_info)
+
+    def get_replication_devices(self):
+        devs = self.conf.safe_get('replication_device')
+        if not devs:
+            return []
+
+        devs_config = []
+        for dev in devs:
+            dev_config = {}
+            dev_config['backend_id'] = dev['backend_id']
+            dev_config['san_address'] = dev['san_address'].split(';')
+            dev_config['san_user'] = dev['san_user']
+            dev_config['san_password'] = dev['san_password']
+            dev_config['storage_pool'] = dev['storage_pool'].split(';')
+            dev_config['iscsi_info'] = []
+            dev_config['iscsi_default_target_ip'] = (
+                dev['iscsi_default_target_ip'].split(';')
+                if 'iscsi_default_target_ip' in dev
+                else [])
+            devs_config.append(dev_config)
+
+        return devs_config
+
+    def get_local_device(self):
+        dev_config = {
+            'backend_id': "default",
+            'san_address': self.conf.san_address,
+            'san_user': self.conf.san_user,
+            'san_password': self.conf.san_password,
+            'storage_pool': self.conf.storage_pools,
+            'iscsi_info': self.conf.iscsi_info,
+            'iscsi_default_target_ip': self.conf.iscsi_default_target_ip,
+        }
+        return dev_config
