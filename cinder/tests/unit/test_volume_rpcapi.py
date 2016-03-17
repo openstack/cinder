@@ -861,7 +861,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='call',
                               backup=self.fake_backup_obj,
                               volume=self.fake_volume_obj,
-                              version='1.38')
+                              version='2.0')
 
         mock_can_send_version.return_value = False
         self.assertRaises(exception.ServiceTooOld, self._test_volume_api,
@@ -874,7 +874,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('secure_file_operations_enabled',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
-                              version='1.38')
+                              version='2.0')
 
         mock_can_send_version.return_value = False
         self.assertRaises(exception.ServiceTooOld, self._test_volume_api,
