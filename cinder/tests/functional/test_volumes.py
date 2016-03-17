@@ -15,28 +15,24 @@
 
 import time
 
-import testtools
-
-from cinder import service
 from cinder.tests.functional.api import client
 from cinder.tests.functional import functional_helpers
 from cinder.tests.unit import fake_driver
 
 
 class VolumesTest(functional_helpers._FunctionalTestBase):
+    _vol_type_name = 'functional_test_type'
+
     def setUp(self):
         super(VolumesTest, self).setUp()
+        self.api.create_type(self._vol_type_name)
         fake_driver.LoggingVolumeDriver.clear_logs()
-
-    def _start_api_service(self):
-        self.osapi = service.WSGIService("osapi_volume")
-        self.osapi.start()
-        self.auth_url = 'http://%s:%s/v2' % (self.osapi.host, self.osapi.port)
 
     def _get_flags(self):
         f = super(VolumesTest, self)._get_flags()
         f['volume_driver'] = \
             'cinder.tests.unit.fake_driver.LoggingVolumeDriver'
+        f['default_volume_type'] = self._vol_type_name
         return f
 
     def test_get_volumes_summary(self):
@@ -70,7 +66,6 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
                 break
         return found_volume
 
-    @testtools.skip('This test is failing: bug 1173266')
     def test_create_and_delete_volume(self):
         """Creates and deletes a volume."""
 
@@ -82,6 +77,7 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
         # Check it's there
         found_volume = self.api.get_volume(created_volume_id)
         self.assertEqual(created_volume_id, found_volume['id'])
+        self.assertEqual(self._vol_type_name, found_volume['volume_type'])
 
         # It should also be in the all-volume list
         volumes = self.api.get_volumes()
@@ -103,30 +99,17 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
         # Should be gone
         self.assertFalse(found_volume)
 
-        create_actions = fake_driver.LoggingVolumeDriver.logs_like(
-            'create_volume',
-            id=created_volume_id)
+        # Exactly one volume should have been created and deleted
+        for action_type in ['create_volume', 'delete_volume']:
+            actions = fake_driver.LoggingVolumeDriver.logs_like(
+                action_type, id=created_volume_id)
 
-        self.assertEqual(1, len(create_actions))
-        create_action = create_actions[0]
-        self.assertEqual(create_action['id'], created_volume_id)
-        self.assertEqual('nova', create_action['availability_zone'])
-        self.assertEqual(1, create_action['size'])
-
-        export_actions = fake_driver.LoggingVolumeDriver.logs_like(
-            'create_export',
-            id=created_volume_id)
-        self.assertEqual(1, len(export_actions))
-        export_action = export_actions[0]
-        self.assertEqual(export_action['id'], created_volume_id)
-        self.assertEqual('nova', export_action['availability_zone'])
-
-        delete_actions = fake_driver.LoggingVolumeDriver.logs_like(
-            'delete_volume',
-            id=created_volume_id)
-        self.assertEqual(1, len(delete_actions))
-        delete_action = export_actions[0]
-        self.assertEqual(delete_action['id'], created_volume_id)
+            self.assertEqual(1, len(actions))
+            action = actions[0]
+            self.assertEqual(created_volume_id, action['id'])
+            self.assertEqual('nova', action['availability_zone'])
+            if action_type == 'create_volume':
+                self.assertEqual(1, action['size'])
 
     def test_create_volume_with_metadata(self):
         """Creates a volume with metadata."""

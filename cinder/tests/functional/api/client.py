@@ -202,3 +202,10 @@ class TestOpenStackClient(object):
 
     def put_volume(self, volume_id, volume):
         return self.api_put('/volumes/%s' % volume_id, volume)['volume']
+
+    def create_type(self, type_name, extra_specs=None):
+        type = {"volume_type": {"name": type_name}}
+        if extra_specs:
+            type['extra_specs'] = extra_specs
+
+        return self.api_post('/types', type)['volume_type']
