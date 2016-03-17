@@ -542,10 +542,10 @@ class ScaleIODriver(driver.VolumeDriver):
 
         # Round up the volume size so that it is a granularity of 8 GBs
         # because ScaleIO only supports volumes with a granularity of 8 GBs.
-        if new_size % 8 == 0:
-            volume_new_size = new_size
-        else:
-            volume_new_size = new_size + 8 - (new_size % 8)
+        volume_new_size = self._round_to_8_gran(new_size)
+        volume_real_old_size = self._round_to_8_gran(volume.size)
+        if volume_real_old_size == volume_new_size:
+            return
 
         round_volume_capacity = self.configuration.sio_round_volume_capacity
         if (not round_volume_capacity and not new_size % 8 == 0):
@@ -570,6 +570,11 @@ class ScaleIODriver(driver.VolumeDriver):
                       'err': response['message']})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
+
+    def _round_to_8_gran(self, size):
+        if size % 8 == 0:
+            return size
+        return size + 8 - (size % 8)
 
     def create_cloned_volume(self, volume, src_vref):
         """Creates a cloned volume."""

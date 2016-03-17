@@ -29,7 +29,7 @@ class TestExtendVolume(scaleio.TestScaleIODriver):
     The 7 size should be either rounded up to 8 or raise an exception
     based on the round_volume_capacity config setting.
     """
-    NEW_SIZE = 8
+    NEW_SIZE = 16
     BAD_SIZE = 7
 
     def setUp(self):
