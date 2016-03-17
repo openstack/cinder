@@ -6,4 +6,5 @@
    :maxdepth: 1
 
    liberty
+   mitaka
    unreleased
