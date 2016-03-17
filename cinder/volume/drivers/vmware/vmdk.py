@@ -213,7 +213,8 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 1.3.0 - support for volume backup/restore
     # 1.4.0 - support for volume retype
     # 1.5.0 - restrict volume placement to specific vCenter clusters
-    VERSION = '1.5.0'
+    # 1.6.0 - support for manage existing
+    VERSION = '1.6.0'
 
     # Minimum supported vCenter version.
     MIN_SUPPORTED_VC_VERSION = dist_version.LooseVersion('5.1')
