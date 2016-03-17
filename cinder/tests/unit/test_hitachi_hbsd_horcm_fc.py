@@ -444,6 +444,10 @@ STS : NML"
                    'id': 'test-volume',
                    'provider_location': '1', 'status': 'available'}
 
+    test_volume_larger = {'name': 'test_volume', 'size': 256,
+                          'id': 'test-volume',
+                          'provider_location': '1', 'status': 'available'}
+
     test_volume_error = {'name': 'test_volume', 'size': 256,
                          'id': 'test-volume',
                          'status': 'creating'}
@@ -750,6 +754,28 @@ STS : NML"
         vol = self.driver.create_cloned_volume(self.test_volume,
                                                self._VOLUME)
         self.assertEqual('1', vol['provider_location'])
+        return
+
+    @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata',
+                       return_value={'dummy_volume_meta': 'meta'})
+    @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume',
+                       return_value=_VOLUME)
+    @mock.patch.object(hbsd_common.HBSDCommon, 'extend_volume')
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'exec_raidcom',
+                       side_effect=_exec_raidcom)
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'start_horcm',
+                       return_value=[0, "", ""])
+    @mock.patch.object(hbsd_horcm.HBSDHORCM, 'check_horcm',
+                       return_value=[0, "", ""])
+    def test_create_cloned_volume_larger_size(self, arg1, arg2, arg3, arg4,
+                                              arg5, arg6, arg7):
+        """test create_cloned_volume."""
+        vol = self.driver.create_cloned_volume(self.test_volume_larger,
+                                               self._VOLUME)
+        self.assertEqual('1', vol['provider_location'])
+        arg5.assert_called_once_with(self.test_volume_larger,
+                                     self.test_volume_larger['size'])
         return
 
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata',

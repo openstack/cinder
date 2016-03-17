@@ -401,13 +401,17 @@ class HDSNFSDriver(nfs.NfsDriver):
         vol_size = volume['size']
         src_vol_size = src_vref['size']
 
-        if vol_size != src_vol_size:
+        if vol_size < src_vol_size:
             msg = _("Cannot create clone of size %(vol_size)s from "
                     "volume of size %(src_vol_size)s")
             msg_fmt = {'vol_size': vol_size, 'src_vol_size': src_vol_size}
             raise exception.CinderException(msg % msg_fmt)
 
         self._clone_volume(src_vref['name'], volume['name'], src_vref['id'])
+
+        if vol_size > src_vol_size:
+            self.extend_volume(volume, vol_size)
+
         share = self._get_volume_location(src_vref['id'])
 
         return {'provider_location': share}

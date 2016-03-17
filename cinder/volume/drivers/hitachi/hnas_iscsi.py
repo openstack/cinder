@@ -579,9 +579,10 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         :param src: ditctionary source volume reference
         """
 
-        if src['size'] != dst['size']:
-            msg = 'clone volume size mismatch'
+        if src['size'] > dst['size']:
+            msg = 'Clone volume size must not be smaller than source volume'
             raise exception.VolumeBackendAPIException(data=msg)
+
         hdp = self._get_service(dst)
         size = int(src['size']) * units.Ki
         source_vol = self._id_to_vol(src['id'])
@@ -594,7 +595,12 @@ class HDSISCSIDriver(driver.ISCSIDriver):
                                    dst['name'])
 
         lun = self.arid + '.' + out.split()[1]
-        size = int(out.split()[5])
+
+        if src['size'] < dst['size']:
+            size = dst['size']
+            self.extend_volume(dst, size)
+        else:
+            size = int(out.split()[5])
 
         LOG.debug("LUN %(lun)s of size %(size)s MB is cloned.",
                   {'lun': lun, 'size': size})

@@ -644,7 +644,7 @@ class HBSDCommon(object):
             self.check_volume_status(self.get_volume(src_vref['id']), is_vvol)
             size = volume['size']
             src_size = src_vref['size']
-            if size != src_size:
+            if size < src_size:
                 msg = basic_lib.output_err(617, type='volume',
                                            volume_id=volume['id'])
                 raise exception.HBSDError(message=msg)
@@ -652,7 +652,10 @@ class HBSDCommon(object):
             metadata = self.get_volume_metadata(volume['id'])
             method = None if is_vvol else self.get_copy_method(volume)
 
-            svol, type = self.copy_data(pvol, size, is_vvol, method)
+            svol, type = self.copy_data(pvol, src_size, is_vvol, method)
+
+            if size > src_size:
+                self.extend_volume(volume, size)
 
             metadata['type'] = type
             metadata['volume'] = src_vref['id']

@@ -335,6 +335,30 @@ class HDSNFSDriverTest(test.TestCase):
         out = "{'provider_location': \'" + _SHARE + "'}"
         self.assertEqual(out, str(loc))
 
+    @mock.patch.object(nfs.HDSNFSDriver, '_get_service')
+    @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)
+    @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
+    @mock.patch.object(nfs.HDSNFSDriver, '_get_volume_location')
+    @mock.patch.object(nfs.HDSNFSDriver, 'extend_volume')
+    def test_create_cloned_volume_larger(self, m_extend_volume,
+                                         m_get_volume_location,
+                                         m_get_provider_location,
+                                         m_id_to_vol, m_get_service):
+        vol = _VOLUME.copy()
+        svol = _SNAPVOLUME.copy()
+
+        m_get_service.return_value = _SERVICE
+        m_get_provider_location.return_value = _SHARE
+        m_get_volume_location.return_value = _SHARE
+
+        svol['size'] = 256
+
+        loc = self.driver.create_cloned_volume(svol, vol)
+
+        out = "{'provider_location': \'" + _SHARE + "'}"
+        self.assertEqual(out, str(loc))
+        m_extend_volume.assert_called_once_with(svol, svol['size'])
+
     @mock.patch.object(nfs.HDSNFSDriver, '_ensure_shares_mounted')
     @mock.patch.object(nfs.HDSNFSDriver, '_do_create_volume')
     @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)

@@ -389,6 +389,25 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.backend.deleteVolumebyProvider(loc['provider_location'])
 
     @mock.patch.object(iscsi.HDSISCSIDriver, '_id_to_vol')
+    @mock.patch.object(iscsi.HDSISCSIDriver, 'extend_volume')
+    def test_create_clone_larger_size(self, m_extend_volume, m_id_to_vol):
+
+        src_vol = self._create_volume()
+        m_id_to_vol.return_value = src_vol
+        src_vol['volume_size'] = src_vol['size']
+
+        dst_vol = self._create_volume()
+        dst_vol['size'] = 256
+        dst_vol['volume_size'] = dst_vol['size']
+
+        loc = self.driver.create_cloned_volume(dst_vol, src_vol)
+        self.assertNotEqual(loc, None)
+        m_extend_volume.assert_called_once_with(dst_vol, 256)
+        # cleanup
+        self.backend.deleteVolumebyProvider(src_vol['provider_location'])
+        self.backend.deleteVolumebyProvider(loc['provider_location'])
+
+    @mock.patch.object(iscsi.HDSISCSIDriver, '_id_to_vol')
     def test_delete_snapshot(self, m_id_to_vol):
         svol = self._create_volume()
 
