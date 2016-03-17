@@ -888,7 +888,7 @@ class StorwizeHelpers(object):
         return self.ssh.lshostvdiskmap(host_name)
 
     @staticmethod
-    def build_default_opts(config, protocol):
+    def build_default_opts(config):
         # Ignore capitalization
 
         cluster_partner = config.storwize_svc_stretched_cluster_partner
@@ -898,7 +898,6 @@ class StorwizeHelpers(object):
                'grainsize': config.storwize_svc_vol_grainsize,
                'compression': config.storwize_svc_vol_compression,
                'easytier': config.storwize_svc_vol_easytier,
-               'protocol': protocol,
                'iogrp': config.storwize_svc_vol_iogrp,
                'qos': None,
                'stretched_cluster': cluster_partner,
@@ -926,14 +925,6 @@ class StorwizeHelpers(object):
                 reason=_('If compression is set to True, rsize must '
                          'also be set (not equal to -1).'))
 
-        # Check that the requested protocol is enabled
-        if opts['protocol'] not in state['enabled_protocols']:
-            raise exception.InvalidInput(
-                reason=_('The storage device does not support %(prot)s. '
-                         'Please configure the device to support %(prot)s or '
-                         'switch to a driver using a different protocol.')
-                % {'prot': opts['protocol']})
-
         if opts['iogrp'] not in state['available_iogrps']:
             avail_grps = ''.join(str(e) for e in state['available_iogrps'])
             raise exception.InvalidInput(
@@ -958,21 +949,6 @@ class StorwizeHelpers(object):
             else:
                 scope = key_split[0]
                 key = key_split[1]
-
-            # We generally do not look at capabilities in the driver, but
-            # protocol is a special case where the user asks for a given
-            # protocol and we want both the scheduler and the driver to act
-            # on the value.
-            if ((not scope or scope == 'capabilities') and
-                    key == 'storage_protocol'):
-                scope = None
-                key = 'protocol'
-                words = value.split()
-                if not (words and len(words) == 2 and words[0] == '<in>'):
-                    LOG.error(_LE('Protocol must be specified as '
-                                  '\'<in> iSCSI\' or \'<in> FC\'.'))
-                del words[0]
-                value = words[0]
 
             # We generally do not look at capabilities in the driver, but
             # replication is a special case where the user asks for
@@ -1066,13 +1042,13 @@ class StorwizeHelpers(object):
         timer = loopingcall.FixedIntervalLoopingCall(_inner)
         timer.start(interval=interval).wait()
 
-    def get_vdisk_params(self, config, state, type_id, protocol = 'iSCSI',
+    def get_vdisk_params(self, config, state, type_id,
                          volume_type=None, volume_metadata=None):
         """Return the parameters for creating the vdisk.
 
         Takes volume type and defaults from config options into account.
         """
-        opts = self.build_default_opts(config, protocol)
+        opts = self.build_default_opts(config)
         ctxt = context.get_admin_context()
         if volume_type is None and type_id is not None:
             volume_type = volume_types.get_volume_type(ctxt, type_id)
@@ -1870,7 +1846,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._helpers = StorwizeHelpers(self._run_ssh)
         self._vdiskcopyops = {}
         self._vdiskcopyops_loop = None
-        self.protocol = ''
+        self.protocol = None
         self.replication = None
         self._state = {'storage_nodes': {},
                        'enabled_protocols': set(),
@@ -1926,6 +1902,26 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         # Get the iSCSI and FC names of the Storwize/SVC nodes
         self._state['storage_nodes'] = self._helpers.get_node_info()
 
+        # Add the iSCSI IP addresses and WWPNs to the storage node info
+        self._helpers.add_iscsi_ip_addrs(self._state['storage_nodes'])
+        self._helpers.add_fc_wwpns(self._state['storage_nodes'])
+
+        # For each node, check what connection modes it supports.  Delete any
+        # nodes that do not support any types (may be partially configured).
+        to_delete = []
+        for k, node in self._state['storage_nodes'].items():
+            if ((len(node['ipv4']) or len(node['ipv6']))
+                    and len(node['iscsi_name'])):
+                node['enabled_protocols'].append('iSCSI')
+                self._state['enabled_protocols'].add('iSCSI')
+            if len(node['WWPN']):
+                node['enabled_protocols'].append('FC')
+                self._state['enabled_protocols'].add('FC')
+            if not len(node['enabled_protocols']):
+                to_delete.append(k)
+        for delkey in to_delete:
+            del self._state['storage_nodes'][delkey]
+
         # Build the list of in-progress vdisk copy operations
         if ctxt is None:
             admin_context = context.get_admin_context()
@@ -1946,6 +1942,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             self._vdiskcopyops_loop = loopingcall.FixedIntervalLoopingCall(
                 self._check_volume_copy_ops)
             self._vdiskcopyops_loop.start(interval=self.VDISKCOPYOPS_INTERVAL)
+        LOG.debug('leave: do_setup')
 
         # v2 replication setup
         self._do_replication_setup()
@@ -1972,6 +1969,21 @@ class StorwizeSVCCommonDriver(san.SanDriver,
             exception_msg = (_('Unable to determine system id.'))
             raise exception.VolumeBackendAPIException(data=exception_msg)
 
+        # Make sure we have at least one node configured
+        if not len(self._state['storage_nodes']):
+            msg = _('do_setup: No configured nodes.')
+            LOG.error(msg)
+            raise exception.VolumeDriverException(message=msg)
+
+        if self.protocol not in self._state['enabled_protocols']:
+            # TODO(mc_nair): improve this error message by looking at
+            # self._state['enabled_protocols'] to tell user what driver to use
+            raise exception.InvalidInput(
+                reason=_('The storage device does not support %(prot)s. '
+                         'Please configure the device to support %(prot)s or '
+                         'switch to a driver using a different protocol.')
+                % {'prot': self.protocol})
+
         required_flags = ['san_ip', 'san_ssh_port', 'san_login',
                           'storwize_svc_volpool_name']
         for flag in required_flags:
@@ -1986,8 +1998,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                          'authentication: set either san_password or '
                          'san_private_key option.'))
 
-        opts = self._helpers.build_default_opts(self.configuration,
-                                                self.protocol)
+        opts = self._helpers.build_default_opts(self.configuration)
         self._helpers.check_vdisk_opts(self._state, opts)
 
         LOG.debug('leave: check_for_setup_error')
@@ -2119,7 +2130,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                           volume_metadata=None):
         return self._helpers.get_vdisk_params(self.configuration,
                                               self._state, type_id,
-                                              self.protocol,
                                               volume_type=volume_type,
                                               volume_metadata=volume_metadata)
 
@@ -2722,10 +2732,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                                    'diff': diff,
                                                    'host': host})
 
-        ignore_keys = ['protocol']
         no_copy_keys = ['warning', 'autoexpand', 'easytier']
         copy_keys = ['rsize', 'grainsize', 'compression']
-        all_keys = ignore_keys + no_copy_keys + copy_keys
+        all_keys = no_copy_keys + copy_keys
         old_opts = self._get_vdisk_params(volume['volume_type_id'],
                                           volume_metadata=
                                           volume.get('volume_matadata'))

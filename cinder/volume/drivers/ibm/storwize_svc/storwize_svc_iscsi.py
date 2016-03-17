@@ -39,7 +39,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LE, _LW
 from cinder import utils
 
 from cinder.volume.drivers.ibm.storwize_svc import (
@@ -89,45 +89,9 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCISCSIDriver, self).__init__(*args, **kwargs)
+        self.protocol = 'iSCSI'
         self.configuration.append_config_values(
             storwize_svc_iscsi_opts)
-
-    def do_setup(self, ctxt):
-        # Set protocol
-        self.protocol = 'iSCSI'
-
-        # Setup common functionality between FC and iSCSI
-        super(StorwizeSVCISCSIDriver, self).do_setup(ctxt)
-
-        # Get the iSCSI names of the Storwize/SVC nodes
-        self._state['storage_nodes'] = self._helpers.get_node_info()
-
-        # Add the iSCSI IP addresses to the storage node info
-        self._helpers.add_iscsi_ip_addrs(self._state['storage_nodes'])
-
-        # For each node, check what connection modes it supports.  Delete any
-        # nodes that do not support any types (may be partially configured).
-        to_delete = []
-        for k, node in self._state['storage_nodes'].items():
-            if ((len(node['ipv4']) or len(node['ipv6']))
-                    and len(node['iscsi_name'])):
-                node['enabled_protocols'].append('iSCSI')
-                self._state['enabled_protocols'].add('iSCSI')
-            if not len(node['enabled_protocols']):
-                LOG.info(_LI("%(node)s will be removed since "
-                             "it is not supported by the "
-                             "iSCSI driver."), {'node': node['name']})
-                to_delete.append(k)
-        for delkey in to_delete:
-            del self._state['storage_nodes'][delkey]
-
-        # Make sure we have at least one node configured
-        if not len(self._state['storage_nodes']):
-            msg = _('do_setup: No configured nodes.')
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
-        LOG.debug('leave: do_setup')
 
     def validate_connector(self, connector):
         """Check connector for at least one enabled iSCSI protocol."""
@@ -152,7 +116,6 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
         LOG.debug('enter: initialize_connection: volume %(vol)s with connector'
                   ' %(conn)s', {'vol': volume['id'], 'conn': connector})
 
-        vol_opts = self._get_vdisk_params(volume['volume_type_id'])
         volume_name = volume['name']
 
         # Check if a host object is defined for this host name
@@ -194,7 +157,7 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
             preferred_node_entry = None
             io_group_nodes = []
             for node in self._state['storage_nodes'].values():
-                if vol_opts['protocol'] not in node['enabled_protocols']:
+                if self.protocol not in node['enabled_protocols']:
                     continue
                 if node['id'] == preferred_node:
                     preferred_node_entry = node

@@ -89,41 +89,9 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCFCDriver, self).__init__(*args, **kwargs)
+        self.protocol = 'FC'
         self.configuration.append_config_values(
             storwize_svc_fc_opts)
-
-    def do_setup(self, ctxt):
-        # Set protocol
-        self.protocol = 'FC'
-
-        # Setup common functionality between FC
-        super(StorwizeSVCFCDriver, self).do_setup(ctxt)
-
-        # Add WWPNs to the storage node info
-        self._helpers.add_fc_wwpns(self._state['storage_nodes'])
-
-        # For each node, check what connection modes it supports.  Delete any
-        # nodes that do not support any types (may be partially configured).
-        to_delete = []
-        for k, node in self._state['storage_nodes'].items():
-            if len(node['WWPN']):
-                node['enabled_protocols'].append('FC')
-                self._state['enabled_protocols'].add('FC')
-            if not len(node['enabled_protocols']):
-                LOG.info(_LI("%(node)s will be removed since "
-                             "it is not supported by the"
-                             " FC driver."), {'node': node['name']})
-                to_delete.append(k)
-        for delkey in to_delete:
-            del self._state['storage_nodes'][delkey]
-
-        # Make sure we have at least one node configured
-        if not len(self._state['storage_nodes']):
-            msg = _('do_setup: No configured nodes.')
-            LOG.error(msg)
-            raise exception.VolumeDriverException(message=msg)
-
-        LOG.debug('leave: do_setup')
 
     def validate_connector(self, connector):
         """Check connector for at least one enabled FC protocol."""
