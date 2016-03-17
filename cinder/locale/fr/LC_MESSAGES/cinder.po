@@ -10,17 +10,18 @@
 # Maxime Coquerel <max.coquerel@gmail.com>, 2015. #zanata
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
+# Martine Marin <mmarin@fr.ibm.com>, 2016. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev196\n"
+"Project-Id-Version: cinder 8.0.0.0b4.dev274\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-12 14:33+0000\n"
+"POT-Creation-Date: 2016-03-17 02:55+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2015-11-27 04:41+0000\n"
-"Last-Translator: Maxime Coquerel <max.coquerel@gmail.com>\n"
+"PO-Revision-Date: 2016-03-16 06:11+0000\n"
+"Last-Translator: Martine Marin <mmarin@fr.ibm.com>\n"
 "Language: fr\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -274,6 +275,9 @@ msgstr ""
 "Un numéro d'unité logique hôte (HLUN) est introuvable. (unité logique : "
 "%(ldev)s)"
 
+msgid "A concurrent, possibly contradictory, request has been made."
+msgstr "Une demande simultanée, et peut-être contradictoire, a été effectuée."
+
 #, python-format
 msgid ""
 "A free LUN (HLUN) was not found. Add a different host group. (LDEV: %(ldev)s)"
@@ -338,12 +342,25 @@ msgstr "Un statut de volume n'est pas valide. (statut : %(status)s)"
 msgid "API %(name)s failed with error string %(err)s"
 msgstr "Echec de l'API %(name)s avec la chaîne d'erreur %(err)s"
 
+#, python-format
+msgid ""
+"API Version String %(version)s is of invalid format. Must be of format "
+"MajorNum.MinorNum."
+msgstr ""
+"La chaîne de version d'API %(version)s a un format non valide. Elle doit "
+"être au format NumMajeur.NumMineur."
+
 msgid "API key is missing for CloudByte driver."
 msgstr "Clé d'API manquante pour le pilote CloudByte."
 
 #, python-format
 msgid "API response: %s"
 msgstr "Réponse de l'API : %s"
+
+#, python-format
+msgid "API version %(version)s is not supported on this method."
+msgstr ""
+"La version %(version)s de l'API n'est pas prise en charge avec cette méthode "
 
 msgid "API version could not be determined."
 msgstr "La version d'API n'a pas pu être déterminée."
@@ -716,6 +733,15 @@ msgid "Blockbridge user not configured (required for auth scheme 'password')"
 msgstr ""
 "L'utilisateur Blockbridge n'a pas été configuré (requis pour la méthode "
 "d'authentification 'mot de passe')"
+
+#, python-format
+msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
+msgstr ""
+"Erreur d'interface CLI de segmentation Brocade Fibre Channel : %(reason)s"
+
+#, python-format
+msgid "Brocade Fibre Channel Zoning HTTP error: %(reason)s"
+msgstr "Erreur HTTP de segmentation Brocade Fibre Channel : %(reason)s"
 
 msgid "CHAP secret should be 12-16 bytes."
 msgstr "Le secret CHAP doit contenir 12 à 16 octets."
@@ -1383,6 +1409,9 @@ msgstr "Converti au format brut, mais le format est maintenant %s"
 #, python-format
 msgid "Converted to raw, but format is now %s."
 msgstr "Converti au format brut, mais le format est maintenant %s."
+
+msgid "Coordinator uninitialized."
+msgstr "Coordinateur non initialisé."
 
 #, python-format
 msgid ""
@@ -2489,8 +2518,8 @@ msgstr "Erreur lors de la demande de l'API %(service)s."
 #, python-format
 msgid "Error while running zoning CLI: (command=%(cmd)s error=%(err)s)."
 msgstr ""
-"Erreur d'exécution de l'interface CLI de zonage : (commande=%(cmd)s erreur="
-"%(err)s)."
+"Erreur d'exécution de l'interface CLI de segmentation : (commande=%(cmd)s "
+"erreur=%(err)s)."
 
 #, python-format
 msgid ""
@@ -2627,7 +2656,7 @@ msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
 msgstr "Echec de connexion à 3PAR (%(url)s) en raison de %(err)s"
 
 msgid "Failed to access active zoning configuration."
-msgstr "Impossible d'accéder à la configuration de zonage active."
+msgstr "Impossible d'accéder à la configuration de segmentation active."
 
 #, python-format
 msgid "Failed to access zoneset status:%s"
@@ -2657,7 +2686,7 @@ msgstr ""
 "abouti. Retour : %(rc)lu.  Erreur : %(error)s."
 
 msgid "Failed to add zoning configuration."
-msgstr "L'ajout de la configuration de zonage a échoué."
+msgstr "L'ajout de la configuration de segmentation a échoué."
 
 #, python-format
 msgid ""
@@ -3447,7 +3476,8 @@ msgid "Failed to update metadata for volume: %(reason)s"
 msgstr "Échec de la mise à jour des métadonnées pour le volume : %(reason)s"
 
 msgid "Failed to update or delete zoning configuration"
-msgstr "Impossible de mettre à jour ou supprimer la configuration de zonage"
+msgstr ""
+"Impossible de mettre à jour ou supprimer la configuration de segmentation"
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -4123,6 +4153,10 @@ msgstr ""
 "QoS pour le volume %s"
 
 #, python-format
+msgid "Invalid Replication Target: %(reason)s"
+msgstr "Cible de réplication non valide : %(reason)s"
+
+#, python-format
 msgid "Invalid VNX authentication type: %s"
 msgstr "Type d'authentification VNX non valide : %s"
 
@@ -4507,6 +4541,9 @@ msgstr "Le chemin de lien existe déjà et n'est pas un lien symbolique"
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "Le clone lié du volume source n'est pas pris en charge à l'état : %s."
+
+msgid "Lock acquisition failed."
+msgstr "L'acquisition du verrou a échoué."
 
 msgid ""
 "Lookup service not configured. Config option for fc_san_lookup_service needs "
@@ -5124,6 +5161,10 @@ msgid "No weighed hosts available"
 msgstr "Aucun hôte pondéré n'est disponible"
 
 #, python-format
+msgid "Not a valid string: %s"
+msgstr "Chaîne non valide : %s"
+
+#, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
 msgstr ""
 "Impossible de trouver un magasin de données approprié pour le volume : %s."
@@ -5343,6 +5384,12 @@ msgstr ""
 
 msgid "Project ID"
 msgstr "ID Projet"
+
+#, python-format
+msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
+msgstr ""
+"Les quotas de projet ne sont pas correctement configurés pour les quotas "
+"imbriqués : %(reason)s."
 
 #, python-format
 msgid ""
@@ -5767,12 +5814,19 @@ msgid "Service %(service)s on host %(host)s removed."
 msgstr "Le service %(service)s sur l'hôte %(host)s a été retiré."
 
 #, python-format
+msgid "Service %(service_id)s could not be found on host %(host)s."
+msgstr "Service %(service_id)s introuvable sur l'hôte %(host)s."
+
+#, python-format
 msgid "Service %(service_id)s could not be found."
 msgstr "Le service %(service_id)s est introuvable."
 
 #, python-format
 msgid "Service %s not found."
 msgstr "Service %s non trouvé."
+
+msgid "Service is too old to fulfil this request."
+msgstr "Service trop ancien pour satisfaire cette demande."
 
 msgid "Service is unavailable at this time."
 msgstr "Le service est indisponible actuellement."
@@ -6515,6 +6569,12 @@ msgid "Timeout while requesting %(service)s API."
 msgstr "Dépassement du délai lors de la demande de l'API %(service)s."
 
 #, python-format
+msgid "Timeout while requesting capabilities from backend %(service)s."
+msgstr ""
+"Délai d'attente dépassé lors de la demande de fonctionnalités du backend "
+"%(service)s."
+
+#, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "Transfert %(transfer_id)s introuvable."
 
@@ -6587,6 +6647,10 @@ msgstr "Impossible de créer le client Barbican sans project_id."
 msgid "Unable to create consistency group %s"
 msgstr "Impossible de créer le groupe de cohérence %s"
 
+msgid "Unable to create lock. Coordination backend not started."
+msgstr ""
+"Impossible de créer un verrou. Le backend de coordination n'est pas démarré."
+
 #, python-format
 msgid ""
 "Unable to create or get default storage group for FAST policy: "
@@ -6634,6 +6698,10 @@ msgstr ""
 #, python-format
 msgid "Unable to extend volume %s"
 msgstr "Impossible d'étendre le volume %s"
+
+#, python-format
+msgid "Unable to failover to replication target:%(reason)s)."
+msgstr "Basculement impossible vers la cible de réplication : %(reason)s)."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "Impossible d'extraire des informations de connexion depuis le backend."
@@ -7082,6 +7150,14 @@ msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."
 msgstr ""
 "Le disque virtuel %(name)s n'est pas impliqué dans le mappage %(src)s -> "
 "%(tgt)s."
+
+#, python-format
+msgid ""
+"Version %(req_ver)s is not supported by the API. Minimum is %(min_ver)s and "
+"maximum is %(max_ver)s."
+msgstr ""
+"La version %(req_ver)s n'est pas prise en charge par l'API. Minimum : "
+"%(min_ver)s et maximum : %(max_ver)s."
 
 #, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
@@ -7586,7 +7662,7 @@ msgstr "Zone"
 
 #, python-format
 msgid "Zoning Policy: %s, not recognized"
-msgstr "Stratégie de zonage : %s, non reconnue"
+msgstr "Stratégie de segmentation : %s, non reconnue"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."
