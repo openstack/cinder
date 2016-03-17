@@ -739,12 +739,16 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             if profile:
                 LOG.debug('profile %s replayid %s', profile, snapshotid)
                 if api.snap_cg_replay(profile, snapshotid, 0):
+                    snapshot_updates = []
                     for snapshot in snapshots:
-                        snapshot.status = 'available'
+                        snapshot_updates.append({
+                            'id': snapshot.id,
+                            'status': 'available'
+                        })
 
                     model_update = {'status': 'available'}
 
-                    return model_update, snapshots
+                    return model_update, snapshot_updates
 
                 # That didn't go well.  Tell them why.  Then bomb out.
                 LOG.error(_LE('Failed to snap Consistency Group %s'), cgid)
