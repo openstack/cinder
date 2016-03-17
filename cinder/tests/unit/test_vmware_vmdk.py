@@ -1983,30 +1983,75 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         mock_vops.get_backing.assert_called_once_with('src_snapshot_name')
         get_clone_type.assert_called_once_with(volume)
 
-    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
-    def test_get_storage_profile(self, get_volume_type_extra_specs):
-        """Test vmdk _get_storage_profile."""
-        # volume with no type id returns None
-        volume = FakeObject()
-        volume['volume_type_id'] = None
-        sp = self._driver._get_storage_profile(volume)
-        self.assertIsNone(sp, "Without a volume_type_id no storage "
-                          "profile should be returned.")
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.'
+                '_get_volume_type_extra_spec')
+    def test_get_extra_spec_storage_profile(self, get_volume_type_extra_spec):
+        vol_type_id = mock.sentinel.vol_type_id
+        self._driver._get_extra_spec_storage_profile(vol_type_id)
+        get_volume_type_extra_spec.assert_called_once_with(vol_type_id,
+                                                           'storage_profile')
 
-        # profile associated with the volume type should be returned
-        fake_id = 'fake_volume_id'
-        volume['volume_type_id'] = fake_id
-        get_volume_type_extra_specs.return_value = 'fake_profile'
-        profile = self._driver._get_storage_profile(volume)
-        self.assertEqual('fake_profile', profile)
-        spec_key = 'vmware:storage_profile'
-        get_volume_type_extra_specs.assert_called_once_with(fake_id, spec_key)
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
+    def test_get_storage_profile(self, get_extra_spec_storage_profile):
+        volume = self._create_volume_dict()
+        self._driver._get_storage_profile(volume)
+        get_extra_spec_storage_profile.assert_called_once_with(
+            volume['volume_type_id'])
 
-        # None should be returned when no storage profile is
-        # associated with the volume type
-        get_volume_type_extra_specs.return_value = False
-        profile = self._driver._get_storage_profile(volume)
-        self.assertIsNone(profile)
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_storage_profile_id(
+            self, get_profile_id_by_name, session, get_storage_profile):
+        get_storage_profile.return_value = 'gold'
+        profile_id = mock.sentinel.profile_id
+        get_profile_id_by_name.return_value = mock.Mock(uniqueId=profile_id)
+
+        self._driver._storage_policy_enabled = True
+        volume = self._create_volume_dict()
+        self.assertEqual(profile_id,
+                         self._driver._get_storage_profile_id(volume))
+        get_storage_profile.assert_called_once_with(volume)
+        get_profile_id_by_name.assert_called_once_with(session, 'gold')
+
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_storage_profile_id_with_missing_extra_spec(
+            self, get_profile_id_by_name, session, get_storage_profile):
+        get_storage_profile.return_value = None
+
+        self._driver._storage_policy_enabled = True
+        volume = self._create_volume_dict()
+        self.assertIsNone(self._driver._get_storage_profile_id(volume))
+        get_storage_profile.assert_called_once_with(volume)
+        self.assertFalse(get_profile_id_by_name.called)
+
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_storage_profile_id_with_pbm_disabled(
+            self, get_profile_id_by_name, session, get_storage_profile):
+        get_storage_profile.return_value = 'gold'
+
+        volume = self._create_volume_dict()
+        self.assertIsNone(self._driver._get_storage_profile_id(volume))
+        get_storage_profile.assert_called_once_with(volume)
+        self.assertFalse(get_profile_id_by_name.called)
+
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.pbm.get_profile_id_by_name')
+    def test_get_storage_profile_id_with_missing_profile(
+            self, get_profile_id_by_name, session, get_storage_profile):
+        get_storage_profile.return_value = 'gold'
+        get_profile_id_by_name.return_value = None
+
+        self._driver._storage_policy_enabled = True
+        volume = self._create_volume_dict()
+        self.assertIsNone(self._driver._get_storage_profile_id(volume))
+        get_storage_profile.assert_called_once_with(volume)
+        get_profile_id_by_name.assert_called_once_with(session, 'gold')
 
     def _test_copy_image(self, download_flat_image, session, vops,
                          expected_cacerts=False):
