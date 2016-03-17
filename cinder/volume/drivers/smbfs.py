@@ -637,19 +637,37 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return flags.strip(',')
 
     def _get_volume_format_spec(self, volume):
-        extra_specs = []
+        # This method needs to be able to parse metadata/volume type
+        # specs for volume SQLAlchemy objects and versioned objects,
+        # as the transition to versioned objects is not complete and the
+        # driver may receive either of them.
+        #
+        # TODO(lpetrut): once the transition to oslo.versionedobjects is
+        # complete, we can skip some of those checks.
+        volume_metadata_specs = {}
+        volume_type_specs = {}
 
-        metadata_specs = volume.get('volume_metadata') or []
-        extra_specs += metadata_specs
+        if volume.get('metadata') and isinstance(volume.metadata, dict):
+            volume_metadata_specs.update(volume.metadata)
+        elif volume.get('volume_metadata'):
+            volume_metadata_specs.update(
+                {spec.key: spec.value for spec in volume.volume_metadata})
 
         vol_type = volume.get('volume_type')
         if vol_type:
-            volume_type_specs = vol_type.get('extra_specs') or []
-            extra_specs += volume_type_specs
+            specs = vol_type.get('extra_specs') or {}
+            if isinstance(specs, dict):
+                volume_type_specs.update(specs)
+            else:
+                volume_type_specs.update(
+                    {spec.key: spec.value for spec in specs})
 
-        for spec in extra_specs:
-            if 'volume_format' in spec.key:
-                return spec.value
+        # In this case, we want the volume metadata specs to take
+        # precedence over the volume type specs.
+        for specs in [volume_metadata_specs, volume_type_specs]:
+            for key, val in specs.items():
+                if 'volume_format' in key:
+                    return val
         return None
 
     def _is_file_size_equal(self, path, size):
