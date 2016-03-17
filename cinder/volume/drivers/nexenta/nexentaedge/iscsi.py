@@ -237,6 +237,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error creating cloned volume'))
 
+        if (('size' in volume) and (volume['size'] > src_vref['size'])):
+            self.extend_volume(volume, volume['size'])
+
     def create_export(self, context, volume, connector=None):
         return {'provider_location': self._get_provider_location(volume)}
 
