@@ -5721,6 +5721,7 @@ class EMCVNXCLIToggleSPTestData(object):
                 '-scope', 'global')
 
 
+@mock.patch('time.sleep')
 class EMCVNXCLIToggleSPTestCase(test.TestCase):
     def setUp(self):
         super(EMCVNXCLIToggleSPTestCase, self).setUp()
@@ -5739,11 +5740,12 @@ class EMCVNXCLIToggleSPTestCase(test.TestCase):
         self.configuration.iscsi_initiators = '{"fakehost": ["10.0.0.2"]}'
         self.configuration.zoning_mode = None
         self.configuration.storage_vnx_security_file_dir = ""
+        self.configuration.config_group = 'toggle-backend'
         self.cli_client = emc_vnx_cli.CommandLineHelper(
             configuration=self.configuration)
         self.test_data = EMCVNXCLIToggleSPTestData()
 
-    def test_no_sp_toggle(self):
+    def test_no_sp_toggle(self, time_mock):
         self.cli_client.active_storage_ip = '10.10.10.10'
         FAKE_SUCCESS_RETURN = ('success', 0)
         FAKE_COMMAND = ('list', 'pool')
@@ -5757,8 +5759,9 @@ class EMCVNXCLIToggleSPTestCase(test.TestCase):
                 mock.call(*(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.10')
                           + FAKE_COMMAND), check_exit_code=True)]
             mock_utils.assert_has_calls(expected)
+        time_mock.assert_not_called()
 
-    def test_toggle_sp_with_server_unavailabe(self):
+    def test_toggle_sp_with_server_unavailabe(self, time_mock):
         self.cli_client.active_storage_ip = '10.10.10.10'
         FAKE_ERROR_MSG = """\
 Error occurred during HTTP request/response from the target: '10.244.213.142'.
@@ -5783,12 +5786,41 @@ Message : HTTP/1.1 503 Service Unavailable"""
                         + FAKE_COMMAND),
                     check_exit_code=True)]
             mock_utils.assert_has_calls(expected)
+        time_mock.assert_has_calls([mock.call(30)])
 
-    def test_toggle_sp_with_end_of_data(self):
+    def test_toggle_sp_with_server_unavailabe_max_retry(self, time_mock):
         self.cli_client.active_storage_ip = '10.10.10.10'
-        FAKE_ERROR_MSG = """\
-Error occurred during HTTP request/response from the target: '10.244.213.142'.
-Message : End of data stream"""
+        FAKE_ERROR_MSG = ("Error occurred during HTTP request/response "
+                          "from the target: '10.244.213.142'.\n"
+                          "Message : HTTP/1.1 503 Service Unavailable")
+        FAKE_COMMAND = ('list', 'pool')
+        SIDE_EFFECTS = [processutils.ProcessExecutionError(
+            exit_code=255, stdout=FAKE_ERROR_MSG)] * 5
+
+        with mock.patch('cinder.utils.execute') as mock_utils:
+            mock_utils.side_effect = SIDE_EFFECTS
+            self.assertRaisesRegex(exception.EMCSPUnavailableException,
+                                   '.*Error occurred during HTTP request',
+                                   self.cli_client.command_execute,
+                                   *FAKE_COMMAND)
+            self.assertEqual("10.10.10.11", self.cli_client.active_storage_ip)
+            expected = [
+                mock.call(
+                    *(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.10')
+                        + FAKE_COMMAND),
+                    check_exit_code=True),
+                mock.call(
+                    *(self.test_data.FAKE_COMMAND_PREFIX('10.10.10.11')
+                        + FAKE_COMMAND),
+                    check_exit_code=True)]
+            mock_utils.assert_has_calls(expected)
+        time_mock.assert_has_calls([mock.call(30)] * 4)
+
+    def test_toggle_sp_with_end_of_data(self, time_mock):
+        self.cli_client.active_storage_ip = '10.10.10.10'
+        FAKE_ERROR_MSG = ("Error occurred during HTTP request/response "
+                          "from the target: '10.244.213.142'.\n"
+                          "Message : HTTP/1.1 503 Service Unavailable")
         FAKE_SUCCESS_RETURN = ('success', 0)
         FAKE_COMMAND = ('list', 'pool')
         SIDE_EFFECTS = [processutils.ProcessExecutionError(
@@ -5809,8 +5841,9 @@ Message : End of data stream"""
                         + FAKE_COMMAND),
                     check_exit_code=True)]
             mock_utils.assert_has_calls(expected)
+        time_mock.assert_has_calls([mock.call(30)])
 
-    def test_toggle_sp_with_connection_refused(self):
+    def test_toggle_sp_with_connection_refused(self, time_mock):
         self.cli_client.active_storage_ip = '10.10.10.10'
         FAKE_ERROR_MSG = """\
 A network error occurred while trying to connect: '10.244.213.142'.
@@ -5837,8 +5870,9 @@ Unable to establish a secure connection to the Management Server.
                         + FAKE_COMMAND),
                     check_exit_code=True)]
             mock_utils.assert_has_calls(expected)
+        time_mock.assert_has_calls([mock.call(30)])
 
-    def test_toggle_sp_with_connection_error(self):
+    def test_toggle_sp_with_connection_error(self, time_mock):
         self.cli_client.active_storage_ip = '10.10.10.10'
         FAKE_ERROR_MSG = """\
 A network error occurred while trying to connect: '192.168.1.56'.
@@ -5863,6 +5897,7 @@ Message : Error occurred because of time out"""
                         + FAKE_COMMAND),
                     check_exit_code=True)]
             mock_utils.assert_has_calls(expected)
+        time_mock.assert_has_calls([mock.call(30)])
 
 
 class EMCVNXCLIBackupTestCase(DriverTestCaseBase):
