@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc1\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 10:29+0000\n"
+"POT-Creation-Date: 2016-03-18 06:31+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2349,80 +2349,80 @@ msgstr ""
 msgid "PoolName must be in the file %(fileName)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:792
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:793
 #, python-format
 msgid "Error on enable compression on lun %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:803
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:804
 #, python-format
 msgid "Error on adding lun to consistency group. %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1042
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1043
 #, python-format
 msgid "Can not add the lun %(lun)s to consistency group %(cg_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1055
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1056
 #, python-format
 msgid "Can not remove LUNs %(luns)s in consistency group %(cg_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1068
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1069
 #, python-format
 msgid "Can not place new LUNs %(luns)s in consistency group %(cg_name)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1374
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1375
 msgid "Failed to query migration status of LUN."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1390
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1391
 #, python-format
 msgid "Migration of LUN %s failed to complete."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1666
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1667
 #, python-format
 msgid "Invalid value for %(key)s, value is %(value)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1705
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1706
 #, python-format
 msgid "Error happened during storage pool querying, %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2418
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2428
 msgid "The given extra_spec or valid_values is None."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3162
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3172
 #, python-format
 msgid "Create consistency group %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3180
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3190
 #, python-format
 msgid "Delete consistency group %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3246
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3256
 #, python-format
 msgid "Create cg snapshot %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3271
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3281
 #, python-format
 msgid "Delete cgsnapshot %s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3685
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3695
 #, python-format
 msgid "Failed to find available iSCSI targets for %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4010
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4020
 #, python-format
 msgid "Failed to failover volume %(volume_id)s to %(target)s: %(error)s."
 msgstr ""
@@ -2747,52 +2747,47 @@ msgstr ""
 msgid "Extra specs must be specified as capabilities:%s='<is> True'."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:316
+#: cinder/volume/drivers/huawei/huawei_driver.py:319
 #, python-format
 msgid "Create hypermetro error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:327
+#: cinder/volume/drivers/huawei/huawei_driver.py:330
 msgid "Create replication volume error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:388
+#: cinder/volume/drivers/huawei/huawei_driver.py:391
 #, python-format
 msgid "Delete hypermetro error: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:399
+#: cinder/volume/drivers/huawei/huawei_driver.py:404
 msgid "Delete replication error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:443
+#: cinder/volume/drivers/huawei/huawei_driver.py:448
 msgid "Get LUN migration error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:501
+#: cinder/volume/drivers/huawei/huawei_driver.py:506
 #, python-format
 msgid "Unable to rename lun %s on array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:824
+#: cinder/volume/drivers/huawei/huawei_driver.py:866
 msgid "Retype volume error. Delete replication failed."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:841
+#: cinder/volume/drivers/huawei/huawei_driver.py:883
 msgid "Retype volume error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:854
+#: cinder/volume/drivers/huawei/huawei_driver.py:896
 msgid "Retype volume error. Create replication failed."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1283
+#: cinder/volume/drivers/huawei/huawei_driver.py:1328
 msgid "Manage exist volume failed."
-msgstr ""
-
-#: cinder/volume/drivers/huawei/huawei_driver.py:1313
-#, python-format
-msgid "Can't find LUN on the array for volume: %s."
 msgstr ""
 
 #: cinder/volume/drivers/huawei/replication.py:492
@@ -2826,18 +2821,18 @@ msgstr ""
 msgid "Can't open the recent url, relogin."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:461
+#: cinder/volume/drivers/huawei/rest_client.py:466
 msgid ""
 "Error occurred when adding hostgroup and lungroup to view. Remove lun "
 "from lungroup now."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:614
+#: cinder/volume/drivers/huawei/rest_client.py:619
 #, python-format
 msgid "JSON transfer data error. %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1830
+#: cinder/volume/drivers/huawei/rest_client.py:1835
 msgid "Can not open the recent url, login again."
 msgstr ""
 
@@ -3463,57 +3458,57 @@ msgstr ""
 msgid "Error occurred while selecting datastore."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:459
+#: cinder/volume/drivers/vmware/vmdk.py:460
 #, python-format
 msgid "There are no valid hosts available in configured cluster(s): %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:465
+#: cinder/volume/drivers/vmware/vmdk.py:466
 #, python-format
 msgid "There is no valid datastore satisfying requirements: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:721
+#: cinder/volume/drivers/vmware/vmdk.py:722
 #, python-format
 msgid "Error occurred while copying %(src)s to %(dst)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:829
+#: cinder/volume/drivers/vmware/vmdk.py:830
 #, python-format
 msgid "Error occurred while copying image: %(image_id)s to %(path)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:961
+#: cinder/volume/drivers/vmware/vmdk.py:962
 #, python-format
 msgid "Error occurred while creating volume: %(id)s from image: %(image_id)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1036
-#: cinder/volume/drivers/vmware/vmdk.py:1113
+#: cinder/volume/drivers/vmware/vmdk.py:1037
+#: cinder/volume/drivers/vmware/vmdk.py:1114
 #, python-format
 msgid "Error occurred while copying image: %(id)s to volume: %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1324
+#: cinder/volume/drivers/vmware/vmdk.py:1325
 #, python-format
 msgid "Error occurred while cloning backing: %s during retype."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1409
+#: cinder/volume/drivers/vmware/vmdk.py:1410
 #, python-format
 msgid "Failed to extend volume: %(vol)s to size: %(size)s GB."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1528
+#: cinder/volume/drivers/vmware/vmdk.py:1529
 msgid "Error occurred while creating temporary backing."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1778
+#: cinder/volume/drivers/vmware/vmdk.py:1779
 #, python-format
 msgid "Version string '%s' is not parseable"
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1802
+#: cinder/volume/drivers/vmware/vmdk.py:1803
 #, python-format
 msgid "Not able to configure PBM for vCenter server: %s"
 msgstr ""
