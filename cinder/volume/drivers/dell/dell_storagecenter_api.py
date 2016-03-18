@@ -1,4 +1,4 @@
-#    Copyright 2015 Dell Inc.
+#    Copyright 2016 Dell Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -414,8 +414,10 @@ class StorageCenterApi(object):
     def _check_version_fail(self, payload, response):
         try:
             # Is it even our error?
-            if response.text.startswith('Invalid API version specified, '
-                                        'the version must be in the range ['):
+            result = self._get_json(response).get('result')
+            if result and result.startswith(
+                    'Invalid API version specified, '
+                    'the version must be in the range ['):
                 # We're looking for something very specific. The except
                 # will catch any errors.
                 # Update our version and update our header.
