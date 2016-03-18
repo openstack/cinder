@@ -10,9 +10,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev196\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-12 14:33+0000\n"
+"POT-Creation-Date: 2016-03-17 18:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -46,10 +46,6 @@ msgstr "ale velikost je nyní %d."
 
 msgid " or "
 msgstr "nebo"
-
-#, python-format
-msgid " status must be %s and "
-msgstr "stav musí být %s a"
 
 #, python-format
 msgid ""
@@ -5901,10 +5897,6 @@ msgid ""
 msgstr "Zálohovaný snímek musí být dostupný, ale jeho stav je nyní \"%s\"."
 
 #, python-format
-msgid "Snapshot%s must not be part of a consistency group."
-msgstr "Snímek %s nesmí být součástí skupiny jednotnosti."
-
-#, python-format
 msgid ""
 "Snapshot='%(snap)s' does not exist in base image='%(base)s' - aborting "
 "incremental backup"
@@ -6668,10 +6660,6 @@ msgstr "Nelze vytvořit klon repliky svazku %s."
 #, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
 msgstr "Nelze smazat snímek skupiny jednotnosti %s"
-
-#, python-format
-msgid "Unable to delete encrypted volume: %s."
-msgstr "Nelze smazat zašifrovaný svazek: %s."
 
 #, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
@@ -7595,14 +7583,6 @@ msgstr "Typ svazku s názvem %(volume_type_name)s nemohl být nalezen."
 #, python-format
 msgid "Volume with volume id %s does not exist."
 msgstr "Svazek s id %s neexistuje."
-
-#, python-format
-msgid ""
-"Volume%s must not be migrating, attached, belong to a consistency group or "
-"have snapshots."
-msgstr ""
-"Svazek %s nesní mýt přesunován, připojen, patřit ke skupině jednotnosti, "
-"nebo mít snímky."
 
 #, python-format
 msgid ""

@@ -18,13 +18,13 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev196\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-12 14:33+0000\n"
+"POT-Creation-Date: 2016-03-17 18:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-12 06:16+0000\n"
+"PO-Revision-Date: 2016-03-16 01:07+0000\n"
 "Last-Translator: Linda <duleish@cn.ibm.com>\n"
 "Language: zh-CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -54,10 +54,6 @@ msgstr "但现在大小为 %d。"
 
 msgid " or "
 msgstr "或者"
-
-#, python-format
-msgid " status must be %s and "
-msgstr "状态必须为 %s，并且"
 
 #, python-format
 msgid "%(attr)s is not set."
@@ -4021,6 +4017,9 @@ msgstr "获取 QoS 策略时发生错误。"
 msgid "Get SplitMirror error."
 msgstr "获取 SplitMirror 时出错。"
 
+msgid "Get active client failed."
+msgstr "获取活动客户机失败。"
+
 msgid "Get array info error."
 msgstr "获取阵列信息时出错。"
 
@@ -4618,6 +4617,10 @@ msgid "Invalid response header from RPC server"
 msgstr "RPC 服务器发送的响应头无效"
 
 #, python-format
+msgid "Invalid secondary id %s."
+msgstr "无效辅助标识 %s。"
+
+#, python-format
 msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
 msgstr "指定了无效 secondary_backend_id。有效后端为 %s。"
 
@@ -4985,6 +4988,9 @@ msgstr "如果启用了 FAST，那么不支持管理卷。快速策略：%(fastP
 
 msgid "Managing of snapshots to failed-over volumes is not allowed."
 msgstr "不允许管理到达已故障转移的卷的快照。"
+
+msgid "Map info is None due to array version not supporting hypermetro."
+msgstr "无映射信息，因为阵列版本不支持 hypermetro。"
 
 #, python-format
 msgid ""
@@ -5424,18 +5430,12 @@ msgstr "找不到任何已安装的共享项"
 msgid "No node found in I/O group %(gid)s for volume %(vol)s."
 msgstr "在卷 %(vol)s 的 I/O 组 %(gid)s 中找不到节点。"
 
-msgid "No pair id in volume replication_driver_data."
-msgstr "卷 replication_driver_data 中没有对标识。"
-
 msgid ""
 "No pools are available for provisioning volumes. Ensure that the "
 "configuration option netapp_pool_name_search_pattern is set correctly."
 msgstr ""
 "没有池可用于提供卷。请确保正确设置了 netapp_pool_name_search_pattern 配置选"
 "项。"
-
-msgid "No remote LUN id in volume replication_driver_data."
-msgstr "卷 replication_driver_data 中没有远程 LUN 标识。"
 
 msgid ""
 "No response was received from CloudByte storage list iSCSI auth user API "
@@ -5666,10 +5666,6 @@ msgid "Override HTTPS port to connect to Blockbridge API server."
 msgstr "覆盖 HTTPS 端口以连接至 Blockbridge API 服务器。"
 
 #, python-format
-msgid "Pair does not exist on array. Pair id: %s."
-msgstr "对在阵列上不存在。对标识：%s。"
-
-#, python-format
 msgid "ParseException: %s"
 msgstr "ParseException：%s"
 
@@ -5801,6 +5797,23 @@ msgstr "QoS 规范 %(specs_id)s 仍然与实体关联。"
 #, python-format
 msgid "QoS config is wrong. %s must > 0."
 msgstr "QoS 配置不正确。%s 必须大于 0。"
+
+#, python-format
+msgid ""
+"QoS policy must specify for IOTYPE and another qos_specs, QoS policy: "
+"%(qos_policy)s."
+msgstr "QoS 策略必须指定 IOTYPE 和另一 qos_specs，QoS 策略：%(qos_policy)s。"
+
+#, python-format
+msgid ""
+"QoS policy must specify for IOTYPE: 0, 1, or 2, QoS policy: %(qos_policy)s "
+msgstr "QoS 策略必须指定 IOTYPE：0、1 或 2。QoS 策略：%(qos_policy)s "
+
+#, python-format
+msgid ""
+"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
+msgstr ""
+"QoS 策略 upper_limit 和 lower_limit 存在冲突，QoS 策略：%(qos_policy)s。"
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -6397,10 +6410,6 @@ msgstr "要备份的快照必须可用，但当前状态为“%s”。"
 #, python-format
 msgid "Snapshot with id of %s could not be found."
 msgstr "找不到标识为 %s 的快照。"
-
-#, python-format
-msgid "Snapshot%s must not be part of a consistency group."
-msgstr "快照 %s 不能包含在一致性组中。"
 
 #, python-format
 msgid ""
@@ -7221,10 +7230,6 @@ msgstr "无法创建卷。后端已关闭。"
 #, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
 msgstr "无法删除一致性组快照 %s"
-
-#, python-format
-msgid "Unable to delete encrypted volume: %s."
-msgstr "无法删除已加密卷：%s。"
 
 #, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
@@ -8284,12 +8289,6 @@ msgstr "名为 %(volume_type_name)s 的卷类型没有找到。"
 #, python-format
 msgid "Volume with volume id %s does not exist."
 msgstr "卷标识为 %s 的卷不存在。"
-
-#, python-format
-msgid ""
-"Volume%s must not be migrating, attached, belong to a consistency group or "
-"have snapshots."
-msgstr "卷 %s 不能正在迁移、已附加、属于某个一致性组或具有快照。"
 
 #, python-format
 msgid ""
