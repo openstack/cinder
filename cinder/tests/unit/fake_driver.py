@@ -196,6 +196,15 @@ class LoggingVolumeDriver(driver.VolumeDriver):
                 matches.append(entry)
         return matches
 
+    def get_volume_stats(self, refresh=False):
+        return {
+            'volume_backend_name': self.configuration.safe_get(
+                'volume_backend_name'),
+            'vendor_name': 'LoggingVolumeDriver',
+            'total_capacity_gb': 'infinite',
+            'free_capacity_gb': 'infinite',
+        }
+
 
 class FakeGateDriver(lvm.LVMVolumeDriver):
     """Class designation for FakeGateDriver.
