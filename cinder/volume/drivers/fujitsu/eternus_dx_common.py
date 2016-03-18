@@ -39,10 +39,9 @@ CONF = cfg.CONF
 
 try:
     import pywbem
+    pywbemAvailable = True
 except ImportError:
-    msg = _LE('import pywbem failed!! '
-              'pywbem is necessary for this volume driver.')
-    LOG.error(msg)
+    pywbemAvailable = False
 
 VOL_PREFIX = "FJosv_"
 RAIDGROUP = 2
@@ -154,6 +153,11 @@ class FJDXCommon(object):
     }
 
     def __init__(self, prtcl, configuration=None):
+
+        if not pywbemAvailable:
+            LOG.error(_LE('import pywbem failed!! '
+                          'pywbem is necessary for this volume driver.'))
+
         self.protocol = prtcl
         self.configuration = configuration
         self.configuration.append_config_values(FJ_ETERNUS_DX_OPT_opts)
