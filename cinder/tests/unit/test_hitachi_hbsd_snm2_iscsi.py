@@ -212,6 +212,10 @@ Authentication\n\
                    'id': 'test-volume-0',
                    'provider_location': '1', 'status': 'available'}
 
+    test_volume_larger = {'name': 'test_volume', 'size': 256,
+                          'id': 'test-volume-0',
+                          'provider_location': '1', 'status': 'available'}
+
     test_volume_error = {'name': 'test_volume_error', 'size': 256,
                          'id': 'test-volume-error',
                          'provider_location': '3', 'status': 'available'}
@@ -448,6 +452,22 @@ Authentication\n\
         vol = self.driver.create_cloned_volume(self._VOLUME,
                                                self.test_snapshot)
         self.assertIsNotNone(vol)
+        return
+
+    @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata',
+                       return_value={'dummy_volume_meta': 'meta'})
+    @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume',
+                       return_value=_VOLUME)
+    @mock.patch.object(hbsd_common.HBSDCommon, 'extend_volume')
+    @mock.patch.object(hbsd_snm2.HBSDSNM2, 'exec_hsnm', side_effect=_exec_hsnm)
+    @mock.patch.object(hbsd_basiclib, 'get_process_lock')
+    def test_create_cloned_volume_larger(self, arg1, arg2, arg3, arg4, arg5):
+        """test create_cloned_volume."""
+        vol = self.driver.create_cloned_volume(self.test_volume_larger,
+                                               self._VOLUME)
+        self.assertIsNotNone(vol)
+        arg3.assert_called_once_with(self.test_volume_larger,
+                                     self.test_volume_larger['size'])
         return
 
     @mock.patch.object(hbsd_common.HBSDCommon, 'get_volume_metadata',
