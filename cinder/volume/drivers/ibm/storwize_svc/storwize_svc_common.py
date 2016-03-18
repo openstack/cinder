@@ -727,7 +727,18 @@ class StorwizeHelpers(object):
         hosts_info = self.ssh.lshost()
         found = False
         for name in hosts_info.select('name'):
-            resp = self.ssh.lshost(host=name)
+            try:
+                resp = self.ssh.lshost(host=name)
+            except processutils.ProcessExecutionError as ex:
+                if 'CMMVC5754E' in ex.stderr:
+                    # CMMVC5754E: The specified object does not exist
+                    # The host has been deleted while walking the list.
+                    # This is a result of a host change on the SVC that
+                    # is out of band to this request.
+                    continue
+                # unexpected error so reraise it
+                with excutils.save_and_reraise_exception():
+                    pass
             if 'initiator' in connector:
                 for iscsi in resp.select('iscsi_name'):
                     if iscsi == connector['initiator']:
