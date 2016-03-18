@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc1\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 10:28+0000\n"
+"POT-Creation-Date: 2016-03-18 06:30+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -869,182 +869,189 @@ msgid ""
 "(Output: %(out)s)."
 msgstr ""
 
-#: cinder/exception.py:913
+#: cinder/exception.py:912
+#, python-format
+msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: "
+"%(rc)s) (Output: %(out)s)."
+msgstr ""
+
+#: cinder/exception.py:918
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
 msgstr ""
 
-#: cinder/exception.py:917
+#: cinder/exception.py:922
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:922
+#: cinder/exception.py:927
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr ""
 
-#: cinder/exception.py:926
+#: cinder/exception.py:931
 #, python-format
 msgid "Invalid CgSnapshot: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:931
+#: cinder/exception.py:936
 msgid "HBSD error occurs."
 msgstr ""
 
-#: cinder/exception.py:948
+#: cinder/exception.py:953
 msgid "Storage resource could not be found."
 msgstr ""
 
-#: cinder/exception.py:952
+#: cinder/exception.py:957
 #, python-format
 msgid "Volume %(volume_name)s is busy."
 msgstr ""
 
-#: cinder/exception.py:957
+#: cinder/exception.py:962
 msgid "Bad response from Datera API"
 msgstr ""
 
-#: cinder/exception.py:962
+#: cinder/exception.py:967
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:966
+#: cinder/exception.py:971
 #, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:970
+#: cinder/exception.py:975
 #, python-format
 msgid "Failed to attach iSCSI target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:974
+#: cinder/exception.py:979
 #, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:978
+#: cinder/exception.py:983
 #, python-format
 msgid "%(error_message)s"
 msgstr ""
 
-#: cinder/exception.py:983
+#: cinder/exception.py:988
 msgid "X-IO Volume Driver exception!"
 msgstr ""
 
-#: cinder/exception.py:988
+#: cinder/exception.py:993
 #, python-format
 msgid "Volume backend config is invalid: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:992
+#: cinder/exception.py:997
 #, python-format
 msgid "Backend service retry timeout hit: %(timeout)s sec"
 msgstr ""
 
-#: cinder/exception.py:996
+#: cinder/exception.py:1001
 #, python-format
 msgid "Backend reports: %(message)s"
 msgstr ""
 
-#: cinder/exception.py:1000
+#: cinder/exception.py:1005
 msgid "Backend reports: item already exists"
 msgstr ""
 
-#: cinder/exception.py:1004
+#: cinder/exception.py:1009
 msgid "Backend reports: item not found"
 msgstr ""
 
-#: cinder/exception.py:1009
+#: cinder/exception.py:1014
 #, python-format
 msgid ""
 "The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s,"
 " Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
 msgstr ""
 
-#: cinder/exception.py:1016
+#: cinder/exception.py:1021
 msgid "Volume to Initiator Group mapping already exists"
 msgstr ""
 
-#: cinder/exception.py:1020
+#: cinder/exception.py:1025
 msgid "System is busy, retry operation."
 msgstr ""
 
-#: cinder/exception.py:1024
+#: cinder/exception.py:1029
 msgid "Exceeded the limit of snapshots per volume"
 msgstr ""
 
-#: cinder/exception.py:1029
+#: cinder/exception.py:1034
 #, python-format
 msgid ""
 "Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
 "(Output: %(out)s)"
 msgstr ""
 
-#: cinder/exception.py:1035
+#: cinder/exception.py:1040
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr ""
 
-#: cinder/exception.py:1039 cinder/exception.py:1043 cinder/exception.py:1051
-#: cinder/exception.py:1081 cinder/exception.py:1096
+#: cinder/exception.py:1044 cinder/exception.py:1048 cinder/exception.py:1056
+#: cinder/exception.py:1086 cinder/exception.py:1101
 #, python-format
 msgid "%(message)s"
 msgstr ""
 
-#: cinder/exception.py:1047
+#: cinder/exception.py:1052
 #, python-format
 msgid "Not enough space on backend (%(backend)s)"
 msgstr ""
 
-#: cinder/exception.py:1055
+#: cinder/exception.py:1060
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr ""
 
-#: cinder/exception.py:1060
+#: cinder/exception.py:1065
 #, python-format
 msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
 msgstr ""
 
-#: cinder/exception.py:1064
+#: cinder/exception.py:1069
 #, python-format
 msgid ""
 "(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
 "(Stderr: %(stderr)s)"
 msgstr ""
 
-#: cinder/exception.py:1071
+#: cinder/exception.py:1076
 msgid "There is no metadata in DB object."
 msgstr ""
 
-#: cinder/exception.py:1075
+#: cinder/exception.py:1080
 #, python-format
 msgid "Operation not supported: %(operation)s."
 msgstr ""
 
-#: cinder/exception.py:1086
+#: cinder/exception.py:1091
 #, python-format
 msgid "Coho Data Cinder driver failure: %(message)s"
 msgstr ""
 
-#: cinder/exception.py:1091
+#: cinder/exception.py:1096
 msgid "Unexpected response from Tegile IntelliFlash API"
 msgstr ""
 
-#: cinder/exception.py:1101
+#: cinder/exception.py:1106
 #, python-format
 msgid "Google Cloud Storage connection failure: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:1105
+#: cinder/exception.py:1110
 #, python-format
 msgid "Google Cloud Storage api failure: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:1109
+#: cinder/exception.py:1114
 #, python-format
 msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr ""
@@ -5261,7 +5268,7 @@ msgstr ""
 
 #: cinder/volume/drivers/dell/dell_storagecenter_common.py:830
 #: cinder/volume/drivers/dell/dell_storagecenter_common.py:849
-#: cinder/volume/drivers/huawei/huawei_driver.py:1292
+#: cinder/volume/drivers/huawei/huawei_driver.py:1337
 msgid "Must specify source-name or source-id."
 msgstr ""
 
@@ -6304,171 +6311,171 @@ msgstr ""
 msgid "san_ip: Mandatory field configuration. san_ip is not set."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:725
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:726
 #, python-format
 msgid "Invalid VNX authentication type: %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:829
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:830
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:919
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:920
 #, python-format
 msgid "CommandLineHelper._wait_for_a_condition: %s timeout"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1160
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1161
 msgid "Failed to create snapshot as no LUN ID is specified"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1348
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1349
 #, python-format
 msgid "Migration of LUN %s has been stopped or faulted."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2171
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2181
 msgid "MirrorView/S enabler is not installed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2210
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2220
 #, python-format
 msgid ""
 "All the specified storage pools to be managed do not exist. Please check "
 "your configuration. Non-existent pools: %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2259
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2269
 #, python-format
 msgid "Invalid %(protocol)s ports %(port)s specified for io_port_list."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2420
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2430
 #, python-format
 msgid "The extra_spec: %s is invalid."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2457
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2467
 msgid "deduplicated and auto tiering can't be both enabled."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2461
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2471
 msgid "Compression Enabler is not installed. Can not create compressed volume."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2467
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2477
 msgid "Deduplication Enabler is not installed. Can not create deduplicated volume"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2473
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2483
 msgid "ThinProvisioning Enabler is not installed. Can not create thin volume"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2478
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2488
 msgid "FAST VP Enabler is not installed. Can't set tiering policy for the volume"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2939
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3017
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2949
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3027
 msgid "Unable to enable replication and snapcopy at the same time."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3143
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3153
 #, python-format
 msgid ""
 "Failed to create consistency group %s because VNX consistency group "
 "cannot accept compressed LUNs as members."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3335
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3345
 #, python-format
 msgid "Host %s has no iSCSI initiator"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3346
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3356
 #, python-format
 msgid "Host %s has no FC initiators"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3633
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3643
 #, python-format
 msgid ""
 "Reach limitation set by configuration option max_luns_per_storage_group. "
 "Operation to add %(vol)s into Storage Group %(sg)s is rejected."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3649
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3659
 #, python-format
 msgid "Failed to add %(vol)s into %(sg)s after %(retries)s tries."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3843
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3941
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3853
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3951
 msgid "Reference must contain source-id or source-name key."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3848
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3858
 #, python-format
 msgid ""
 "The imported lun %(lun_id)s is in pool %(lun_pool)s which is not managed "
 "by the host %(host)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3900
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3910
 msgid ""
 "Driver is not able to do retype because the volume (LUN {}) has snapshot "
 "which is forbidden to migrate."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3910
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3920
 msgid "Storage-assisted migration failed during manage volume."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3992
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4002
 #, python-format
 msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4134
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4144
 #, python-format
 msgid "replication_device should be configured on backend: %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4145
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4155
 #, python-format
 msgid "replication_device with backend_id [%s] is missing."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4210
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4220
 msgid ""
 "create_consistencygroup_from_src supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4363
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4373
 #, python-format
 msgid "Failed to find storage pool for source volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4370
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4380
 #, python-format
 msgid ""
 "The source volume %s is not in the pool which is managed by the current "
 "host."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4521
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4531
 #, python-format
 msgid "Migrate volume failed between source vol %(src)s and dest vol %(dst)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4629
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4639
 #, python-format
 msgid "Migrate volume %(src)s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4656
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4666
 #, python-format
 msgid "Invalid synchronize mode specified, allowed mode is %s."
 msgstr ""
@@ -7814,63 +7821,68 @@ msgstr ""
 msgid "Get active client failed."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:295
+#: cinder/volume/drivers/huawei/huawei_driver.py:298
 #, python-format
 msgid "Create volume error. Because %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:339
-#: cinder/volume/drivers/huawei/huawei_driver.py:630
+#: cinder/volume/drivers/huawei/huawei_driver.py:342
+#: cinder/volume/drivers/huawei/huawei_driver.py:637
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:428
+#: cinder/volume/drivers/huawei/huawei_driver.py:433
 msgid "Lun migration error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:433
+#: cinder/volume/drivers/huawei/huawei_driver.py:438
 msgid "Cannot find migration task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:640
+#: cinder/volume/drivers/huawei/huawei_driver.py:647
 #, python-format
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:685
-#: cinder/volume/drivers/huawei/huawei_driver.py:718
+#: cinder/volume/drivers/huawei/huawei_driver.py:731
+#: cinder/volume/drivers/huawei/huawei_driver.py:745
+#, python-format
+msgid "Volume %s does not exist on the array."
+msgstr ""
+
+#: cinder/volume/drivers/huawei/huawei_driver.py:758
 #, python-format
 msgid "Can't find lun id from db, volume: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:726
+#: cinder/volume/drivers/huawei/huawei_driver.py:766
 #, python-format
 msgid "Can't extend replication volume, volume: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:744
+#: cinder/volume/drivers/huawei/huawei_driver.py:784
 #, python-format
 msgid ""
 "New size should be bigger than the real size from backend storage. "
 "realsize: %(oldsize)s, newsize: %(newsize)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:765
+#: cinder/volume/drivers/huawei/huawei_driver.py:805
 #, python-format
 msgid "Can't get volume id from snapshot, snapshot: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:946
+#: cinder/volume/drivers/huawei/huawei_driver.py:988
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:958
+#: cinder/volume/drivers/huawei/huawei_driver.py:1000
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1098
+#: cinder/volume/drivers/huawei/huawei_driver.py:1140
 #, python-format
 msgid ""
 "An error occurred during the LUNcopy operation. LUNcopy name: "
@@ -7878,117 +7890,117 @@ msgid ""
 "%(luncopystate)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1124
+#: cinder/volume/drivers/huawei/huawei_driver.py:1166
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a LUN group."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1131
+#: cinder/volume/drivers/huawei/huawei_driver.py:1173
 #, python-format
 msgid "Can't import LUN %s to Cinder. LUN status is not normal."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1145
+#: cinder/volume/drivers/huawei/huawei_driver.py:1187
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a HyperMetroPair."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1160
+#: cinder/volume/drivers/huawei/huawei_driver.py:1202
 msgid "Failed to get SplitMirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1167
+#: cinder/volume/drivers/huawei/huawei_driver.py:1209
 msgid "Failed to get target LUN of SplitMirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1171
+#: cinder/volume/drivers/huawei/huawei_driver.py:1213
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a SplitMirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1186
+#: cinder/volume/drivers/huawei/huawei_driver.py:1228
 msgid "Failed to get migration task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1192
+#: cinder/volume/drivers/huawei/huawei_driver.py:1234
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a migration task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1200
+#: cinder/volume/drivers/huawei/huawei_driver.py:1242
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a LUN copy task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1208
+#: cinder/volume/drivers/huawei/huawei_driver.py:1250
 #, python-format
 msgid ""
 "Can't import LUN %s to Cinder. Already exists in a remote replication "
 "task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1215
+#: cinder/volume/drivers/huawei/huawei_driver.py:1257
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a LUN mirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1236
+#: cinder/volume/drivers/huawei/huawei_driver.py:1278
 #, python-format
 msgid "The specified LUN does not belong to the given pool: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1253
+#: cinder/volume/drivers/huawei/huawei_driver.py:1295
 #, python-format
 msgid "Can't import LUN %(lun_id)s to Cinder. LUN type mismatched."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1298
+#: cinder/volume/drivers/huawei/huawei_driver.py:1343
 msgid "Can't find LUN on the array, please check the source-name or source-id."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1333
+#: cinder/volume/drivers/huawei/huawei_driver.py:1378
 msgid "Volume size must be multiple of 1 GB."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1342
+#: cinder/volume/drivers/huawei/huawei_driver.py:1387
 #, python-format
 msgid ""
 "Can't import snapshot %s to Cinder. Snapshot status is not normal or "
 "running status is not online."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1349
+#: cinder/volume/drivers/huawei/huawei_driver.py:1394
 #, python-format
 msgid "Can't import snapshot %s to Cinder. Snapshot is exposed to initiator."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1359
+#: cinder/volume/drivers/huawei/huawei_driver.py:1404
 msgid "Must specify snapshot source-name or source-id."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1365
+#: cinder/volume/drivers/huawei/huawei_driver.py:1410
 msgid "Can't find snapshot on array, please check the source-name or source-id."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1379
+#: cinder/volume/drivers/huawei/huawei_driver.py:1424
 #, python-format
 msgid "Can't import snapshot %s to Cinder. Snapshot doesn't belong to volume."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1408
+#: cinder/volume/drivers/huawei/huawei_driver.py:1453
 msgid "Snapshot size must be multiple of 1 GB."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1532
+#: cinder/volume/drivers/huawei/huawei_driver.py:1577
 #, python-format
 msgid "Invalid secondary id %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1816
+#: cinder/volume/drivers/huawei/huawei_driver.py:1855
 msgid "No FC initiator can be added to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1899
+#: cinder/volume/drivers/huawei/huawei_driver.py:1938
 msgid "Can't find the same host id from arrays."
 msgstr ""
 
@@ -8065,542 +8077,542 @@ msgstr ""
 msgid "Create lun error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:223
+#: cinder/volume/drivers/huawei/rest_client.py:228
 msgid "Delete lun error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:228
+#: cinder/volume/drivers/huawei/rest_client.py:233
 msgid "Query resource pool error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:263
+#: cinder/volume/drivers/huawei/rest_client.py:268
 #, python-format
 msgid "Can not get pool info. pool: %s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:278
+#: cinder/volume/drivers/huawei/rest_client.py:283
 msgid "Get lun id by name error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:286
+#: cinder/volume/drivers/huawei/rest_client.py:291
 msgid "Activate snapshot error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:297
+#: cinder/volume/drivers/huawei/rest_client.py:302
 msgid "Create snapshot error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:307
+#: cinder/volume/drivers/huawei/rest_client.py:312
 #, python-format
 msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:327
+#: cinder/volume/drivers/huawei/rest_client.py:332
 msgid "Stop snapshot error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:333
+#: cinder/volume/drivers/huawei/rest_client.py:338
 msgid "Delete snapshot error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:342
+#: cinder/volume/drivers/huawei/rest_client.py:347
 msgid "Get snapshot id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:360
+#: cinder/volume/drivers/huawei/rest_client.py:365
 msgid "Create luncopy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:385
+#: cinder/volume/drivers/huawei/rest_client.py:390
 msgid "Find portgroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:397
+#: cinder/volume/drivers/huawei/rest_client.py:402
 msgid "Associate portgroup to mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:404
+#: cinder/volume/drivers/huawei/rest_client.py:409
 msgid "Check portgroup associate error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:489
+#: cinder/volume/drivers/huawei/rest_client.py:494
 msgid "Get iSCSI target port error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:499
+#: cinder/volume/drivers/huawei/rest_client.py:504
 msgid "Get hostgroup information error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:507
+#: cinder/volume/drivers/huawei/rest_client.py:512
 msgid "Get lungroup information error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:532
+#: cinder/volume/drivers/huawei/rest_client.py:537
 #, python-format
 msgid "Failed to create hostgroup: %(name)s. Check if it exists on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:553
+#: cinder/volume/drivers/huawei/rest_client.py:558
 msgid "Create hostgroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:567
+#: cinder/volume/drivers/huawei/rest_client.py:572
 msgid "Create lungroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:576
+#: cinder/volume/drivers/huawei/rest_client.py:581
 msgid "Delete lungroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:582
-#: cinder/volume/drivers/huawei/rest_client.py:694
+#: cinder/volume/drivers/huawei/rest_client.py:587
+#: cinder/volume/drivers/huawei/rest_client.py:699
 msgid "Check lungroup associate error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:592
-#: cinder/volume/drivers/huawei/rest_client.py:681
+#: cinder/volume/drivers/huawei/rest_client.py:597
+#: cinder/volume/drivers/huawei/rest_client.py:686
 msgid "Check hostgroup associate error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:602
+#: cinder/volume/drivers/huawei/rest_client.py:607
 msgid "Find host lun id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:622
+#: cinder/volume/drivers/huawei/rest_client.py:627
 msgid "Find host in hostgroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:646
+#: cinder/volume/drivers/huawei/rest_client.py:651
 #, python-format
 msgid "Failed to create host: %(name)s. Please check if it exists on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:670
+#: cinder/volume/drivers/huawei/rest_client.py:675
 msgid "Add new host error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:709
+#: cinder/volume/drivers/huawei/rest_client.py:714
 msgid "Associate host to hostgroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:719
+#: cinder/volume/drivers/huawei/rest_client.py:724
 msgid "Associate lun to lungroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:728
+#: cinder/volume/drivers/huawei/rest_client.py:733
 msgid "Delete associated lun from lungroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:735
+#: cinder/volume/drivers/huawei/rest_client.py:740
 msgid "Check initiator added to array error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:746
+#: cinder/volume/drivers/huawei/rest_client.py:751
 msgid "Check initiator associated to host error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:762
+#: cinder/volume/drivers/huawei/rest_client.py:767
 msgid "Add initiator to array error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:773
+#: cinder/volume/drivers/huawei/rest_client.py:778
 msgid "Associate initiator to host error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:811
+#: cinder/volume/drivers/huawei/rest_client.py:816
 msgid "Invalid ALUA value. ALUA value must be 1 or 0."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:834
+#: cinder/volume/drivers/huawei/rest_client.py:839
 msgid ""
 "Use CHAP to associate initiator to host error. Please check the CHAP "
 "username and password."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:846
+#: cinder/volume/drivers/huawei/rest_client.py:851
 msgid "Use ALUA to associate initiator to host error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:856
+#: cinder/volume/drivers/huawei/rest_client.py:861
 msgid "Remove CHAP error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:863
+#: cinder/volume/drivers/huawei/rest_client.py:868
 msgid "Find mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:872
+#: cinder/volume/drivers/huawei/rest_client.py:877
 msgid "Add mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:883
+#: cinder/volume/drivers/huawei/rest_client.py:888
 msgid "Associate host to mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:895
+#: cinder/volume/drivers/huawei/rest_client.py:900
 msgid "Associate lungroup to mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:905
+#: cinder/volume/drivers/huawei/rest_client.py:910
 msgid "Delete lungroup from mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:918
+#: cinder/volume/drivers/huawei/rest_client.py:923
 msgid "Delete hostgroup from mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:930
+#: cinder/volume/drivers/huawei/rest_client.py:935
 msgid "Delete portgroup from mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:936
+#: cinder/volume/drivers/huawei/rest_client.py:941
 msgid "Delete mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:947
+#: cinder/volume/drivers/huawei/rest_client.py:952
 msgid "Find lun number error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:957
+#: cinder/volume/drivers/huawei/rest_client.py:962
 msgid "Find portgroup from mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:969
+#: cinder/volume/drivers/huawei/rest_client.py:974
 msgid "Find lun group from mapping view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:984
+#: cinder/volume/drivers/huawei/rest_client.py:989
 msgid "Start LUNcopy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1004
+#: cinder/volume/drivers/huawei/rest_client.py:1009
 msgid "Get LUNcopy information error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1021
+#: cinder/volume/drivers/huawei/rest_client.py:1026
 msgid "Delete LUNcopy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1046
+#: cinder/volume/drivers/huawei/rest_client.py:1051
 msgid "Get connected free FC wwn error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1065
+#: cinder/volume/drivers/huawei/rest_client.py:1070
 msgid "Add FC port to host error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1072
+#: cinder/volume/drivers/huawei/rest_client.py:1077
 msgid "Get iSCSI port information error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1089
+#: cinder/volume/drivers/huawei/rest_client.py:1094
 msgid ""
 "Get iSCSI port info error, please check the target IP configured in "
 "huawei conf file."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1120
+#: cinder/volume/drivers/huawei/rest_client.py:1125
 msgid "Get FC target wwpn error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1162
+#: cinder/volume/drivers/huawei/rest_client.py:1167
 msgid "Get QoS policy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1184
+#: cinder/volume/drivers/huawei/rest_client.py:1189
 msgid "Update QoS policy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1192
+#: cinder/volume/drivers/huawei/rest_client.py:1197
 msgid "Get target IP error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1234
+#: cinder/volume/drivers/huawei/rest_client.py:1239
 #, python-format
 msgid ""
 "get_iscsi_params: Failed to get target IP for initiator %(ini)s, please "
 "check config file."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1303
+#: cinder/volume/drivers/huawei/rest_client.py:1308
 msgid "Create QoS policy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1313
+#: cinder/volume/drivers/huawei/rest_client.py:1318
 msgid "Delete QoS policy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1327
+#: cinder/volume/drivers/huawei/rest_client.py:1332
 msgid "Activate or deactivate QoS error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1333
-#: cinder/volume/drivers/huawei/rest_client.py:1525
+#: cinder/volume/drivers/huawei/rest_client.py:1338
+#: cinder/volume/drivers/huawei/rest_client.py:1530
 msgid "Get QoS information error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1357
+#: cinder/volume/drivers/huawei/rest_client.py:1362
 msgid "Remove lun from QoS error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1369
+#: cinder/volume/drivers/huawei/rest_client.py:1374
 msgid "Change lun priority error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1380
+#: cinder/volume/drivers/huawei/rest_client.py:1385
 msgid "Change lun smarttier policy error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1386
+#: cinder/volume/drivers/huawei/rest_client.py:1391
 msgid "Get QoS id by lun id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1396
+#: cinder/volume/drivers/huawei/rest_client.py:1401
 msgid "Get lungroup id by lun id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1409
+#: cinder/volume/drivers/huawei/rest_client.py:1414
 msgid "Get volume error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1419
+#: cinder/volume/drivers/huawei/rest_client.py:1424
 msgid "Get snapshot error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1431
+#: cinder/volume/drivers/huawei/rest_client.py:1436
 msgid "Extend volume error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1446
+#: cinder/volume/drivers/huawei/rest_client.py:1451
 msgid "Create lun migration error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1453
+#: cinder/volume/drivers/huawei/rest_client.py:1458
 msgid "Get lun migration task error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1459
+#: cinder/volume/drivers/huawei/rest_client.py:1464
 msgid "Delete lun migration error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1466
+#: cinder/volume/drivers/huawei/rest_client.py:1471
 msgid "Get partition by name error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1475
+#: cinder/volume/drivers/huawei/rest_client.py:1480
 msgid "Get partition by partition id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1485
+#: cinder/volume/drivers/huawei/rest_client.py:1490
 msgid "Add lun to partition error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1492
+#: cinder/volume/drivers/huawei/rest_client.py:1497
 msgid "Remove lun from partition error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1497
+#: cinder/volume/drivers/huawei/rest_client.py:1502
 msgid "Get cache by name error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1508
+#: cinder/volume/drivers/huawei/rest_client.py:1513
 msgid "Get smartcache by cache id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1520
+#: cinder/volume/drivers/huawei/rest_client.py:1525
 msgid "Remove lun from cache error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1586
+#: cinder/volume/drivers/huawei/rest_client.py:1591
 msgid "Associate lun to QoS error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1598
+#: cinder/volume/drivers/huawei/rest_client.py:1603
 msgid "Add lun to cache error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1603
+#: cinder/volume/drivers/huawei/rest_client.py:1608
 msgid "Get array info error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1613
+#: cinder/volume/drivers/huawei/rest_client.py:1618
 msgid "Remove host from array error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1618
+#: cinder/volume/drivers/huawei/rest_client.py:1623
 msgid "Delete hostgroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1626
+#: cinder/volume/drivers/huawei/rest_client.py:1631
 msgid "Remove host from hostgroup error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1633
+#: cinder/volume/drivers/huawei/rest_client.py:1638
 msgid "Remove iscsi from host error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1678
+#: cinder/volume/drivers/huawei/rest_client.py:1683
 msgid "Rename lun on array error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1688
+#: cinder/volume/drivers/huawei/rest_client.py:1693
 msgid "Rename snapshot on array error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1710
+#: cinder/volume/drivers/huawei/rest_client.py:1715
 msgid "Remove fc from host error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1715
+#: cinder/volume/drivers/huawei/rest_client.py:1720
 msgid "Get host initiators info failed."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1737
+#: cinder/volume/drivers/huawei/rest_client.py:1742
 msgid "Add fc initiator to array error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1749
+#: cinder/volume/drivers/huawei/rest_client.py:1754
 msgid "Get FC ports from array error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1775
+#: cinder/volume/drivers/huawei/rest_client.py:1780
 msgid "get_hyper_domain_id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1783
+#: cinder/volume/drivers/huawei/rest_client.py:1788
 msgid "create_hypermetro_pair error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1792
+#: cinder/volume/drivers/huawei/rest_client.py:1797
 msgid "delete_hypermetro error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1802
+#: cinder/volume/drivers/huawei/rest_client.py:1807
 msgid "sync_hypermetro error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1812
+#: cinder/volume/drivers/huawei/rest_client.py:1817
 msgid "stop_hypermetro error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1819
+#: cinder/volume/drivers/huawei/rest_client.py:1824
 msgid "get_hypermetro_by_id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1837
+#: cinder/volume/drivers/huawei/rest_client.py:1842
 msgid "check_hypermetro_exist error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1867
+#: cinder/volume/drivers/huawei/rest_client.py:1872
 msgid "Change hostlun id error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1875
+#: cinder/volume/drivers/huawei/rest_client.py:1880
 msgid "Get HyperMetroPair error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1884
-#: cinder/volume/drivers/huawei/rest_client.py:1907
+#: cinder/volume/drivers/huawei/rest_client.py:1889
+#: cinder/volume/drivers/huawei/rest_client.py:1912
 msgid "License is unavailable."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1886
+#: cinder/volume/drivers/huawei/rest_client.py:1891
 msgid "Get SplitMirror error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1895
+#: cinder/volume/drivers/huawei/rest_client.py:1900
 msgid "Get target LUN of SplitMirror error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1909
+#: cinder/volume/drivers/huawei/rest_client.py:1914
 msgid "Get migration task error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1917
+#: cinder/volume/drivers/huawei/rest_client.py:1922
 msgid "Get volume by name error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1934
+#: cinder/volume/drivers/huawei/rest_client.py:1939
 msgid "Get port groups by port error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1946
+#: cinder/volume/drivers/huawei/rest_client.py:1951
 msgid "Get views by port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1957
+#: cinder/volume/drivers/huawei/rest_client.py:1962
 msgid "Get LUN group by view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1968
+#: cinder/volume/drivers/huawei/rest_client.py:1973
 msgid "Get port group by view error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1978
+#: cinder/volume/drivers/huawei/rest_client.py:1983
 msgid "Get FC ports by port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:1990
+#: cinder/volume/drivers/huawei/rest_client.py:1995
 msgid "Create port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2001
+#: cinder/volume/drivers/huawei/rest_client.py:2006
 msgid "Add port to port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2006
+#: cinder/volume/drivers/huawei/rest_client.py:2011
 msgid "Delete port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2013
+#: cinder/volume/drivers/huawei/rest_client.py:2018
 msgid "Remove port from port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2019
+#: cinder/volume/drivers/huawei/rest_client.py:2024
 msgid "Get engines error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2026
+#: cinder/volume/drivers/huawei/rest_client.py:2031
 msgid "Get port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2038
+#: cinder/volume/drivers/huawei/rest_client.py:2043
 msgid "Append port group description error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2047
+#: cinder/volume/drivers/huawei/rest_client.py:2052
 msgid "Get ports by port group error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2056
+#: cinder/volume/drivers/huawei/rest_client.py:2061
 msgid "Get remote devices error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2063
+#: cinder/volume/drivers/huawei/rest_client.py:2068
 msgid "Create replication error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2072
+#: cinder/volume/drivers/huawei/rest_client.py:2077
 msgid "Get pair failed."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2082
+#: cinder/volume/drivers/huawei/rest_client.py:2087
 msgid "Switch over pair error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2091
+#: cinder/volume/drivers/huawei/rest_client.py:2096
 msgid "Split pair error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2102
+#: cinder/volume/drivers/huawei/rest_client.py:2107
 msgid "delete_replication error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2111
+#: cinder/volume/drivers/huawei/rest_client.py:2116
 msgid "Sync pair error."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/rest_client.py:2125
+#: cinder/volume/drivers/huawei/rest_client.py:2130
 msgid "Set pair secondary access error."
 msgstr ""
 
@@ -10590,77 +10602,77 @@ msgstr ""
 msgid "Invalid disk type: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:257
+#: cinder/volume/drivers/vmware/vmdk.py:258
 #, python-format
 msgid "%s not set."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:296
+#: cinder/volume/drivers/vmware/vmdk.py:297
 #, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:586
+#: cinder/volume/drivers/vmware/vmdk.py:587
 #, python-format
 msgid "Snapshot of volume not supported in state: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:618
+#: cinder/volume/drivers/vmware/vmdk.py:619
 #, python-format
 msgid "Delete snapshot of volume not supported in state: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:656
+#: cinder/volume/drivers/vmware/vmdk.py:657
 #, python-format
 msgid "Cannot create image of disk format: %s. Only vmdk disk format is accepted."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:985
+#: cinder/volume/drivers/vmware/vmdk.py:986
 #, python-format
 msgid "Exception in _select_ds_for_volume: %s."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1080
+#: cinder/volume/drivers/vmware/vmdk.py:1081
 #, python-format
 msgid ""
 "Container format: %s is unsupported by the VMDK driver, only 'bare' is "
 "supported."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1152
+#: cinder/volume/drivers/vmware/vmdk.py:1153
 msgid "Upload to glance of attached volume is not supported."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1619
+#: cinder/volume/drivers/vmware/vmdk.py:1620
 msgid "Volume cannot be restored since it contains snapshots."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1669
+#: cinder/volume/drivers/vmware/vmdk.py:1670
 msgid "source-name cannot be empty."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1675
+#: cinder/volume/drivers/vmware/vmdk.py:1676
 msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1681
+#: cinder/volume/drivers/vmware/vmdk.py:1682
 #, python-format
 msgid "%s does not exist."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1784
+#: cinder/volume/drivers/vmware/vmdk.py:1785
 #, python-format
 msgid "Running Cinder with a VMware vCenter version less than %s is not allowed."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:1909
+#: cinder/volume/drivers/vmware/vmdk.py:1910
 #, python-format
 msgid ""
 "Clone type '%(clone_type)s' is invalid; valid values are: "
 "'%(full_clone)s' and '%(linked_clone)s'."
 msgstr ""
 
-#: cinder/volume/drivers/vmware/vmdk.py:2011
+#: cinder/volume/drivers/vmware/vmdk.py:2012
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr ""

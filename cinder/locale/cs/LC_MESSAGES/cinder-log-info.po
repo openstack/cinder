@@ -7,9 +7,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev154\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-11 05:31+0000\n"
+"POT-Creation-Date: 2016-03-17 18:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1030,9 +1030,6 @@ msgstr ""
 msgid "Enabling LVM thin provisioning by default because no LVs exist."
 msgstr ""
 "Protože neexistují žádné LV, je standardně povoleno mělké poskytování LVM."
-
-msgid "Enter initialize_connection."
-msgstr "Vstup do zavedení spojení."
 
 #, python-format
 msgid "Entering extend_volume volume=%(vol)s new_size=%(size)s"
@@ -2414,10 +2411,6 @@ msgstr ""
 "Pro snímek svazku %(snap)s neexistuje žádný bod snímku. Záloha pro svazek "
 "%(vol)s nebude vytvořena."
 
-#, python-format
-msgid "Toggle storage_vnx_ip_address from %(old)s to %(new)s."
-msgstr "IP adresa úložiště VNX přepnuta z %(old)s na %(new)s."
-
 msgid "Token is invalid, going to re-login and get a new one."
 msgstr "Známka je neplatná, přihlášení bude opakováno pro získání nového."
 
@@ -2976,10 +2969,6 @@ msgid "initialize_connection, host lun id is: %s."
 msgstr "Zavedení spojení, id hostitele lun: %s."
 
 #, python-format
-msgid "initialize_connection, initiator: %(wwpns)s, volume name: %(volume)s."
-msgstr "Zavedení spojení: Zavaděč %(wwpns)s, název svazku: %(volume)s."
-
-#, python-format
 msgid ""
 "initialize_connection, iscsi_iqn: %(iscsi_iqn)s, target_ip: %(target_ip)s, "
 "portgroup_id: %(portgroup_id)s."
@@ -3002,10 +2991,6 @@ msgstr "Zavedení: Spojení %s"
 
 msgid "initiator has no password while using chap,adding it"
 msgstr "Zavaděč nemá žádné heslo při používání chap, heslo je přidáno"
-
-#, python-format
-msgid "initiator name: %(initiator_name)s, volume name: %(volume)s."
-msgstr "Název zavaděče: %(initiator_name)s, název svazku: %(volume)s."
 
 msgid ""
 "initiator_auto_registration: False. Initiator auto registration is not "
@@ -3094,22 +3079,6 @@ msgstr "Ukončení připojení se svazkem: %(volume)s, konektor: %(con)s"
 #, python-format
 msgid "terminate_connection, return data is: %s."
 msgstr "Ukončení spojení, vrácená data: %s."
-
-#, python-format
-msgid ""
-"terminate_connection: volume name: %(volume)s, initiator name: %(ini)s, "
-"lun_id: %(lunid)s."
-msgstr ""
-"Ukončení spojení: Název svazku %(volume)s, název zavaděče: %(ini)s, id lun: "
-"%(lunid)s."
-
-#, python-format
-msgid ""
-"terminate_connection: volume name: %(volume)s, wwpns: %(wwns)s, lun_id: "
-"%(lunid)s."
-msgstr ""
-"Ukončení spojení: Název svazku %(volume)s, wwpns: %(wwns)s, id lun: "
-"%(lunid)s."
 
 #, python-format
 msgid ""

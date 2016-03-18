@@ -7,9 +7,9 @@
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev154\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-11 05:31+0000\n"
+"POT-Creation-Date: 2016-03-17 18:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1925,10 +1925,6 @@ msgstr ""
 "Anlık görüntülenen mantıksal sürücü: %(snap)s için anlık görüntü noktası "
 "yok. Mantıksal sürücü: %(vol)s için destek oluşturulmuyor."
 
-#, python-format
-msgid "Toggle storage_vnx_ip_address from %(old)s to %(new)s."
-msgstr "storage_vnx_ip_address'i %(old)s dan %(new)s e değiştir."
-
 msgid "Token is invalid, going to re-login and get a new one."
 msgstr "Jeton geçersiz, tekrar giriş yapıp yeni bir tane alınacak."
 
@@ -2319,10 +2315,6 @@ msgstr ""
 #, python-format
 msgid "initiate: connection %s"
 msgstr "başlat: bağlantı %s"
-
-#, python-format
-msgid "initiator name: %(initiator_name)s, volume name: %(volume)s."
-msgstr "başlatıcı ismi: %(initiator_name)s, mantıksal sürücü ismi: %(volume)s."
 
 msgid ""
 "initiator_auto_registration: False. Initiator auto registration is not "
