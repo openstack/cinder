@@ -54,15 +54,8 @@ global_opts = [
     cfg.StrOpt('my_ip',
                default=netutils.get_my_ipv4(),
                help='IP address of this host'),
-    cfg.StrOpt('glance_host',
-               default='$my_ip',
-               help='Default glance host name or IP'),
-    cfg.IntOpt('glance_port',
-               default=9292,
-               min=1, max=65535,
-               help='Default glance port'),
     cfg.ListOpt('glance_api_servers',
-                default=['$glance_host:$glance_port'],
+                default=None,
                 help='A list of the URLs of glance API servers available to '
                      'cinder ([http[s]://][hostname|ip]:port). If protocol '
                      'is not specified it defaults to http.'),

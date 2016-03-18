@@ -15,6 +15,7 @@
 
 
 import datetime
+import itertools
 
 import glanceclient.exc
 import mock
@@ -94,8 +95,12 @@ class TestGlanceImageService(test.TestCase):
         super(TestGlanceImageService, self).setUp()
 
         client = glance_stubs.StubGlanceClient()
+        service_catalog = [{u'type': u'image', u'name': u'glance',
+                            u'endpoints': [{
+                                u'publicURL': u'http://example.com:9292'}]}]
         self.service = self._create_image_service(client)
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
+        self.context.service_catalog = service_catalog
         self.stubs.Set(glance.time, 'sleep', lambda s: None)
 
     def _create_image_service(self, client):
@@ -122,6 +127,11 @@ class TestGlanceImageService(test.TestCase):
         return self._make_fixture(created_at=self.NOW_GLANCE_FORMAT,
                                   updated_at=self.NOW_GLANCE_FORMAT,
                                   deleted_at=self.NOW_GLANCE_FORMAT)
+
+    def test_get_api_servers(self):
+        result = glance.get_api_servers(self.context)
+        expected = (u'example.com:9292', False)
+        self.assertEqual(expected, next(result))
 
     def test_create_with_instance_id(self):
         """Ensure instance_id is persisted as an image-property."""
@@ -533,7 +543,10 @@ class TestGlanceImageService(test.TestCase):
 
     @mock.patch('six.moves.builtins.open')
     @mock.patch('shutil.copyfileobj')
-    def test_download_from_direct_file(self, mock_copyfileobj, mock_open):
+    @mock.patch('cinder.image.glance.get_api_servers',
+                return_value=itertools.cycle([(False, 'localhost:9292')]))
+    def test_download_from_direct_file(self, api_servers,
+                                       mock_copyfileobj, mock_open):
         fixture = self._make_fixture(name='test image',
                                      locations=[{'url': 'file:///tmp/test'}])
         image_id = self.service.create(self.context, fixture)['id']
@@ -545,7 +558,9 @@ class TestGlanceImageService(test.TestCase):
 
     @mock.patch('six.moves.builtins.open')
     @mock.patch('shutil.copyfileobj')
-    def test_download_from_direct_file_non_file(self,
+    @mock.patch('cinder.image.glance.get_api_servers',
+                return_value=itertools.cycle([(False, 'localhost:9292')]))
+    def test_download_from_direct_file_non_file(self, api_servers,
                                                 mock_copyfileobj, mock_open):
         fixture = self._make_fixture(name='test image',
                                      direct_url='swift+http://test/image')
@@ -734,7 +749,9 @@ class TestGlanceClientVersion(test.TestCase):
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
 
     @mock.patch('cinder.image.glance.glanceclient.Client')
-    def test_call_glance_version_by_arg(self, _mockglanceclient):
+    @mock.patch('cinder.image.glance.get_api_servers',
+                return_value=itertools.cycle([(False, 'localhost:9292')]))
+    def test_call_glance_version_by_arg(self, api_servers, _mockglanceclient):
         """Test glance version set by arg to GlanceClientWrapper"""
         glance_wrapper = glance.GlanceClientWrapper()
         glance_wrapper.call('fake_context', 'method', version=2)
