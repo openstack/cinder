@@ -523,6 +523,7 @@ class API(base.Base):
         return volumes
 
     def get_snapshot(self, context, snapshot_id):
+        check_policy(context, 'get_snapshot')
         snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
 
         # FIXME(jdg): The objects don't have the db name entries
