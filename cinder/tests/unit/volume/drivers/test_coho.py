@@ -313,6 +313,46 @@ class CohoDriverTest(test.TestCase):
              mock.call().set_qos_policy(os.path.join(PATH, VOLUME['name']),
                                         QOS)])
 
+    def test_create_cloned_volume_larger(self):
+        drv = coho.CohoDriver(configuration=self.configuration)
+
+        mock_rpc_client = self.mock_object(coho, 'CohoRPCClient')
+        mock_find_share = self.mock_object(drv, '_find_share')
+        mock_find_share.return_value = ADDR + ':' + PATH
+        mock_execute = self.mock_object(drv, '_execute')
+        mock_local_path = self.mock_object(drv, 'local_path')
+        mock_local_path.return_value = LOCAL_PATH
+        mock_get_volume_type = self.mock_object(volume_types,
+                                                'get_volume_type')
+        mock_get_volume_type.return_value = VOLUME_TYPE
+        mock_get_qos_specs = self.mock_object(qos_specs, 'get_qos_specs')
+        mock_get_qos_specs.return_value = QOS_SPEC
+        mock_get_admin_context = self.mock_object(context, 'get_admin_context')
+        mock_get_admin_context.return_value = 'test'
+
+        drv.create_cloned_volume(CLONE_VOL, VOLUME)
+
+        mock_find_share.assert_has_calls(
+            [mock.call(CLONE_VOL['size'])])
+        mock_local_path.assert_has_calls(
+            [mock.call(CLONE_VOL), mock.call(VOLUME)])
+        mock_execute.assert_has_calls(
+            [mock.call('cp', LOCAL_PATH, LOCAL_PATH, run_as_root=True)])
+        self.assertTrue(mock_get_admin_context.called)
+        mock_get_volume_type.assert_has_calls(
+            [mock.call('test', VOLUME_TYPE['id'])])
+        mock_get_qos_specs.assert_has_calls(
+            [mock.call('test', QOS_SPEC['id'])])
+        mock_rpc_client.assert_has_calls(
+            [mock.call(ADDR, self.configuration.coho_rpc_port),
+             mock.call().set_qos_policy(os.path.join(PATH, VOLUME['name']),
+                                        QOS)])
+        mock_local_path.assert_has_calls(
+            [mock.call(CLONE_VOL)])
+        mock_execute.assert_has_calls(
+            [mock.call('truncate', '-s', '256G',
+                       LOCAL_PATH, run_as_root=True)])
+
     def test_extend_volume(self):
         drv = coho.CohoDriver(configuration=self.configuration)
 

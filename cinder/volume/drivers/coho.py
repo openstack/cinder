@@ -466,6 +466,9 @@ class CohoDriver(nfs.NfsDriver):
 
         self._do_clone_volume(volume, src_vref)
 
+        if volume['size'] > src_vref['size']:
+            self.extend_volume(volume, volume['size'])
+
     def extend_volume(self, volume, new_size):
         """Extend the specified file to the new_size (sparsely)."""
         volume_path = self.local_path(volume)
