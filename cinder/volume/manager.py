@@ -3328,7 +3328,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         if exception_encountered:
             LOG.error(
                 _LE("Error encountered during failover on host: "
-                    "%(host)s invalid target ID %(backend_id)"),
+                    "%(host)s invalid target ID %(backend_id)s"),
                 {'host': self.host, 'backend_id':
                  secondary_backend_id})
             return
