@@ -11,13 +11,13 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev7\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 18:05+0000\n"
+"POT-Creation-Date: 2016-03-18 12:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-14 01:41+0000\n"
+"PO-Revision-Date: 2016-03-18 02:07+0000\n"
 "Last-Translator: Grigory Mokhin <mokhin@gmail.com>\n"
 "Language: ru\n"
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
@@ -406,6 +406,9 @@ msgstr "Ошибка добавления представления связе�
 msgid "Add new host error."
 msgstr "Ошибка добавления нового хоста."
 
+msgid "Add port to port group error."
+msgstr "Ошибка добавления порта в группу портов."
+
 #, python-format
 msgid ""
 "All the specified storage pools to be managed do not exist. Please check "
@@ -481,6 +484,9 @@ msgstr ""
 "Пользователи с маркером, связанным с подпроектом, не могут видеть квоту "
 "родительских объектов."
 
+msgid "Append port group description error."
+msgstr "Ошибка добавления описания группы портов."
+
 #, python-format
 msgid "Array does not exist or is offline. Current status of array is %s."
 msgstr "Массив не существует или выключен. Текущее состояние массива: %s."
@@ -493,6 +499,9 @@ msgstr "Ошибка связывания хоста с представлени
 
 msgid "Associate initiator to host error."
 msgstr "Ошибка связывания инициатора с хостом."
+
+msgid "Associate lun to QoS error."
+msgstr "Ошибка связывания LUN с QoS."
 
 msgid "Associate lun to lungroup error."
 msgstr "Ошибка связывания LUN с группой LUN."
@@ -541,6 +550,11 @@ msgstr ""
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "Базовый сервер не существует (%(backend)s)"
+
+msgid "Backend has already been failed over. Unable to fail back."
+msgstr ""
+"Переключение базовой системы после сбоя уже выполнено. Обратное переключение "
+"невозможно."
 
 #, python-format
 msgid "Backend reports: %(message)s"
@@ -803,8 +817,25 @@ msgid "Can't decode backup record."
 msgstr "Не удалось декодировать запись резервной копии."
 
 #, python-format
+msgid "Can't extend replication volume, volume: %(id)s"
+msgstr "Невозможно расширить том репликации %(id)s"
+
+msgid "Can't find LUN on the array, please check the source-name or source-id."
+msgstr ""
+"Не найден LUN массива, проверьте правильность source-name или source-id."
+
+#, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "Не найдено имя кэша в массиве. Имя кэша: %(name)s."
+
+#, python-format
+msgid "Can't find lun id from db, volume: %(id)s"
+msgstr "Не удалось найти ИД lun в базе данных, том: %(id)s"
+
+#, python-format
+msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
+msgstr ""
+"Не удалось найти информацию о lun в массиве. Том: %(id)s, имя lun: %(name)s."
 
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
@@ -813,6 +844,81 @@ msgstr "Не найдено имя раздела в массиве. Имя ра
 #, python-format
 msgid "Can't find service: %s"
 msgstr "Служба не найдена: %s"
+
+msgid ""
+"Can't find snapshot on array, please check the source-name or source-id."
+msgstr ""
+"Не найдена моментальная копия в массиве, проверьте правильность source-name "
+"или source-id."
+
+#, python-format
+msgid "Can't get volume id from snapshot, snapshot: %(id)s"
+msgstr "Не удалось получить ИД тома из моментальной копии: %(id)s"
+
+#, python-format
+msgid "Can't import LUN %(lun_id)s to Cinder. LUN type mismatched."
+msgstr ""
+"Не удается импортировать LUN %(lun_id)s в Cinder. Несовпадение типов LUN."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a HyperMetroPair."
+msgstr ""
+"Не удается импортировать LUN %s в Cinder. Он уже есть в HyperMetroPair."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a LUN copy task."
+msgstr ""
+"Не удается импортировать LUN %s в Cinder. Он уже есть в задаче копирования "
+"LUN."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a LUN group."
+msgstr "Не удается импортировать LUN %s в Cinder. Он уже есть в группе LUN."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a LUN mirror."
+msgstr "Не удается импортировать LUN %s в Cinder. Он уже есть в зеркале LUN."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a SplitMirror."
+msgstr "Не удается импортировать LUN %s в Cinder. Он уже есть в SplitMirror."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. Already exists in a migration task."
+msgstr ""
+"Не удается импортировать LUN %s в Cinder. Он уже есть в задаче переноса."
+
+#, python-format
+msgid ""
+"Can't import LUN %s to Cinder. Already exists in a remote replication task."
+msgstr ""
+"Не удается импортировать LUN %s в Cinder. Он уже есть в задаче удаленной "
+"репликации."
+
+#, python-format
+msgid "Can't import LUN %s to Cinder. LUN status is not normal."
+msgstr ""
+"Не удается импортировать LUN %s в Cinder. Состояние LUN указывает на ошибку."
+
+#, python-format
+msgid "Can't import snapshot %s to Cinder. Snapshot doesn't belong to volume."
+msgstr ""
+"Не удается импортировать моментальную копию %s в Cinder. Моментальная копия "
+"не принадлежит тому."
+
+#, python-format
+msgid "Can't import snapshot %s to Cinder. Snapshot is exposed to initiator."
+msgstr ""
+"Не удается импортировать моментальную копию %s в Cinder. Моментальная копия "
+"экспортирована для инициатора."
+
+#, python-format
+msgid ""
+"Can't import snapshot %s to Cinder. Snapshot status is not normal or running "
+"status is not online."
+msgstr ""
+"Не удается импортировать моментальную копию %s в Cinder. Состояние "
+"моментальной копии указывает на ошибку или на то, что она недоступна."
 
 #, python-format
 msgid "Can't open config file: %s"
@@ -1179,6 +1285,9 @@ msgstr ""
 "Состояние моментальной копии группы согласования должно быть available или "
 "error"
 
+msgid "Change hostlun id error."
+msgstr "Ошибка изменения ИД lun хоста."
+
 msgid "Change lun priority error."
 msgstr "Ошибка изменения приоритета LUN."
 
@@ -1270,6 +1379,9 @@ msgstr "Ошибка конфигурации: dell_sc_ssn не задан."
 #, python-format
 msgid "Configuration file %(configurationFile)s does not exist."
 msgstr "Файл конфигурации %(configurationFile)s не существует."
+
+msgid "Configuration is not found."
+msgstr "Конфигурация не найдена."
 
 #, python-format
 msgid "Configuration value %s is not set."
@@ -1521,6 +1633,12 @@ msgstr "Ошибка создания группы LUN."
 msgid "Create manager volume flow failed."
 msgstr "Не удалось создать поток тома администратора."
 
+msgid "Create port group error."
+msgstr "Ошибка создания группы портов."
+
+msgid "Create replication error."
+msgstr "Ошибка создания репликации."
+
 msgid "Create snapshot error."
 msgstr "Ошибка создания моментальной копии."
 
@@ -1720,6 +1838,9 @@ msgstr "Ошибка удаления группы LUN из представле
 msgid "Delete mapping view error."
 msgstr "Ошибка удаления представления связей."
 
+msgid "Delete port group error."
+msgstr "Ошибка удаления группы портов."
+
 msgid "Delete portgroup from mapping view error."
 msgstr "Ошибка удаления группы портов из представления связей."
 
@@ -1748,6 +1869,18 @@ msgstr "Не удалось удалить зоны: (команда=%(cmd)s о�
 msgid "Dell API 2.1 or later required for Consistency Group support"
 msgstr ""
 "Для поддержки групп согласования требуется Dell API версии 2.1 или выше"
+
+msgid ""
+"Dell Cinder driver configuration error replication not supported with direct "
+"connect."
+msgstr ""
+"Ошибка конфигурации драйвера Dell Cinder. Репликация не поддерживается для "
+"прямого подключения."
+
+#, python-format
+msgid "Dell Cinder driver configuration error replication_device %s not found"
+msgstr ""
+"Ошибка конфигурации драйвера Dell Cinder. replication_device %s не найден"
 
 msgid "Deploy v3 of the Cinder API."
 msgstr "Развернуть версию 3 API Cinder."
@@ -2290,6 +2423,10 @@ msgstr "Ошибка создания тома: %s."
 
 msgid "Error deleting replay profile."
 msgstr "Ошибка удаления профайла повтора."
+
+#, python-format
+msgid "Error deleting volume %(ssn)s: %(volume)s"
+msgstr "Ошибка удаления тома %(ssn)s: %(volume)s"
 
 #, python-format
 msgid "Error deleting volume %(vol)s: %(err)s."
@@ -3138,6 +3275,9 @@ msgstr ""
 "Не удалось получить ИД моментальной копии RAID из моментальной копии "
 "%(snapshot_id)s."
 
+msgid "Failed to get SplitMirror."
+msgstr "Не удалось получить SplitMirror."
+
 #, python-format
 msgid ""
 "Failed to get a storage resource. The system will attempt to get the storage "
@@ -3184,6 +3324,9 @@ msgstr "Не удалось получить информацию о логич�
 msgid "Failed to get map info."
 msgstr "Не удалось получить информацию о карте связей."
 
+msgid "Failed to get migration task."
+msgstr "Не удалось получить задачу переноса."
+
 msgid "Failed to get model update from clone"
 msgstr "Не удалось получить обновление модели из копии"
 
@@ -3224,6 +3367,9 @@ msgstr "Не удалось получить информацию о момен�
 #, python-format
 msgid "Failed to get target IQN for the LUN %s"
 msgstr "Не удалось получить целевой IQN для LUN %s"
+
+msgid "Failed to get target LUN of SplitMirror."
+msgstr "Не удалось получить целевой LUN SplitMirror."
 
 #, python-format
 msgid "Failed to get target portal for the LUN %s"
@@ -3822,11 +3968,20 @@ msgstr "GPFS не выполняется, состояние: %s."
 msgid "Gateway VIP is not set"
 msgstr "Не задан VIP шлюза"
 
+msgid "Get FC ports by port group error."
+msgstr "Ошибка получения портов FC по группе портов."
+
 msgid "Get FC ports from array error."
 msgstr "Ошибка получения портов Fibre Channel из массива."
 
 msgid "Get FC target wwpn error."
 msgstr "Ошибка получения целевого WWPN Fibre Channel."
+
+msgid "Get HyperMetroPair error."
+msgstr "Ошибка получения HyperMetroPair."
+
+msgid "Get LUN group by view error."
+msgstr "Ошибка получения группы LUN по представлению."
 
 msgid "Get LUNcopy information error."
 msgstr "Ошибка получения информации LUNcopy."
@@ -3840,11 +3995,23 @@ msgstr "Ошибка получения информации QoS."
 msgid "Get QoS policy error."
 msgstr "Ошибка получения стратегии QoS."
 
+msgid "Get SplitMirror error."
+msgstr "Ошибка получения SplitMirror."
+
+msgid "Get active client failed."
+msgstr "Не удалось получить активного клиента."
+
+msgid "Get array info error."
+msgstr "Ошибка получения информации о массиве."
+
 msgid "Get cache by name error."
 msgstr "Ошибка получения кэша по имени."
 
 msgid "Get connected free FC wwn error."
 msgstr "Ошибка получения подключенного свободного WWN Fibre Channel."
+
+msgid "Get engines error."
+msgstr "Ошибка получения модулей."
 
 msgid "Get host initiators info failed."
 msgstr "Ошибка получения информации об инициаторах хоста."
@@ -3874,20 +4041,50 @@ msgstr "Ошибка получения ИД группы LUN по ИД LUN."
 msgid "Get lungroup information error."
 msgstr "Ошибка получения информации о группе LUN."
 
+msgid "Get migration task error."
+msgstr "Ошибка получения задачи переноса."
+
+msgid "Get pair failed."
+msgstr "Не удалось получить пару."
+
 msgid "Get partition by name error."
 msgstr "Ошибка получения раздела по имени."
 
 msgid "Get partition by partition id error."
 msgstr "Ошибка получения раздела по ИД раздела."
 
+msgid "Get port group by view error."
+msgstr "Ошибка получения группы портов по представлению."
+
+msgid "Get port group error."
+msgstr "Ошибка получения группы портов."
+
+msgid "Get port groups by port error."
+msgstr "Ошибка получения группы портов по порту."
+
+msgid "Get ports by port group error."
+msgstr "Ошибка получения портов по группе портов."
+
+msgid "Get remote devices error."
+msgstr "Ошибка получения удаленных устройств."
+
 msgid "Get smartcache by cache id error."
 msgstr "Ошибка получения smartcache по ИД кэша."
+
+msgid "Get snapshot error."
+msgstr "Ошибка получения моментальной копии."
 
 msgid "Get snapshot id error."
 msgstr "Ошибка получения ИД моментальной копии."
 
 msgid "Get target IP error."
 msgstr "Ошибка получения целевого IP-адреса."
+
+msgid "Get target LUN of SplitMirror error."
+msgstr "Ошибка получения целевого LUN или SplitMirror."
+
+msgid "Get views by port group error."
+msgstr "Ошибка получения представлений по группе портов."
 
 msgid "Get volume by name error."
 msgstr "Ошибка получения тома по имени."
@@ -4041,6 +4238,9 @@ msgid ""
 msgstr ""
 "Для flashsystem_connection_protocol указано недопустимое значение "
 "'%(prot)s': допустимые значения: %(enabled)s."
+
+msgid "Illegal value specified for IOTYPE: 0, 1, or 2."
+msgstr "Указано недопустимое значение для IOTYPE: 0, 1 или 2."
 
 msgid "Illegal value specified for smarttier: set to either 0, 1, 2, or 3."
 msgstr ""
@@ -4322,6 +4522,10 @@ msgid "Invalid is_public filter [%s]"
 msgstr "Неверный фильтр is_public [%s]"
 
 #, python-format
+msgid "Invalid lun type %s is configured."
+msgstr "Настроен недопустимый тип lun %s."
+
+#, python-format
 msgid "Invalid metadata size: %(reason)s"
 msgstr "Недопустимый размер метаданных: %(reason)s"
 
@@ -4344,6 +4548,13 @@ msgstr "Недопустимое новое имя snapCPG для изменен
 #, python-format
 msgid "Invalid port number %(config)s for Coho rpc port"
 msgstr "Недопустимый порт %(config)s для порта RPC Coho"
+
+#, python-format
+msgid ""
+"Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
+msgstr ""
+"Настроен недопустимый тип предварительной выборки '%s'. Тип PrefetchType "
+"должен быть 0,1,2,3."
 
 #, python-format
 msgid "Invalid qos specs: %(reason)s"
@@ -4388,6 +4599,12 @@ msgstr "Запрошен недопустимый пул памяти %s. Сбо
 #, python-format
 msgid "Invalid storage pool %s specificed."
 msgstr "Указан недопустимый пул памяти %s."
+
+msgid "Invalid storage pool is configured."
+msgstr "Настроен недопустимый пул памяти."
+
+msgid "Invalid transport type."
+msgstr "Недопустимый тип транспорта."
 
 #, python-format
 msgid "Invalid update setting: '%s'"
@@ -4529,6 +4746,9 @@ msgstr ""
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "Недопустимый формат wwpns %(wwpns)s"
 
+msgid "Invoking web service failed."
+msgstr "Ошибка вызова веб-службы."
+
 msgid "Issue encountered waiting for job."
 msgstr "Во время ожидания задания обнаружена неполадка."
 
@@ -4590,6 +4810,9 @@ msgstr "Последние записи системного протокола 
 
 msgid "LeftHand cluster not found"
 msgstr "Кластер LeftHand не найден"
+
+msgid "License is unavailable."
+msgstr "Лицензия недоступна."
 
 #, python-format
 msgid "Line %(dis)d : %(line)s"
@@ -4940,6 +5163,12 @@ msgstr "Необходимо указать имя или ИД домена за
 msgid "Must specify readonly in request."
 msgstr "В запросе должен быть указан параметр readonly."
 
+msgid "Must specify snapshot source-name or source-id."
+msgstr "Необходимо указать source-name или source-id моментальной копии."
+
+msgid "Must specify source-name or source-id."
+msgstr "Необходимо указать source-name или source-id."
+
 msgid "Must specify storage pool name or id."
 msgstr "Необходимо указать имя или ИД пула памяти."
 
@@ -5011,6 +5240,9 @@ msgstr "Новое значение volume_type совпадает с прежн
 
 msgid "Nimble Cinder Driver exception"
 msgstr "Исключительная ситуация драйвера Nimble Cinder"
+
+msgid "No FC port connected to fabric."
+msgstr "Никакой порт Fibre Channel не подключен к фабрике."
 
 msgid "No FCP targets found"
 msgstr "Не найден ы целевые объекты FCP"
@@ -5086,6 +5318,9 @@ msgstr "В целевом массиве нет портов с поддержк
 
 msgid "No image_name was specified in request."
 msgstr "В запросе не указан параметр image_name."
+
+msgid "No initiator connected to fabric."
+msgstr "Никакой инициатор не подключен к фабрике."
 
 #, python-format
 msgid "No initiator group found for initiator %s"
@@ -5495,6 +5730,10 @@ msgid "QoS Specs %(specs_id)s is still associated with entities."
 msgstr "Спецификация QoS %(specs_id)s еще связана с сущностями."
 
 #, python-format
+msgid "QoS config is wrong. %s must > 0."
+msgstr "Недопустимая конфигурация QoS. %s должен быть > 0."
+
+#, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
 msgstr ""
 "Спецификация QoS %(specs_id)s не имеет спецификации с ключом %(specs_key)s."
@@ -5641,17 +5880,30 @@ msgstr "Ошибка удаления хоста из группы хостов.
 msgid "Remove iscsi from host error."
 msgstr "Ошибка удаления iSCSI с хоста."
 
+msgid "Remove lun from QoS error."
+msgstr "Ошибка удаления LUN из QoS."
+
 msgid "Remove lun from cache error."
 msgstr "Ошибка удаления LUN из кэша."
 
 msgid "Remove lun from partition error."
 msgstr "Ошибка удаления LUN из раздела."
 
+msgid "Remove port from port group error."
+msgstr "Ошибка удаления порта из группы портов."
+
 msgid "Remove volume export failed."
 msgstr "Не удалось удалить экспорт тома."
 
 msgid "Rename lun on array error."
 msgstr "Ошибка переименования LUN в массиве."
+
+msgid "Rename snapshot on array error."
+msgstr "Ошибка переименования моментальной копии в массиве."
+
+#, python-format
+msgid "Replication %(name)s to %(ssn)s failed."
+msgstr "Репликация %(name)s в %(ssn)s не выполнена."
 
 #, python-format
 msgid "Replication Service Capability not found on %(storageSystemName)s."
@@ -5766,6 +6018,9 @@ msgstr "Ошибка ответа: %s."
 msgid "Response error code - %s."
 msgstr "Код ошибки ответа: %s."
 
+msgid "RestURL is not configured."
+msgstr "RestURL не настроен."
+
 #, python-format
 msgid ""
 "Restore backup aborted, expected volume status %(expected_status)s but got "
@@ -5825,6 +6080,12 @@ msgstr ""
 #, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "Выполняется откат %(volumeName)s путем его удаления."
+
+msgid "SAN product is not configured."
+msgstr "Продукт SAN не настроен."
+
+msgid "SAN protocol is not configured."
+msgstr "Протокол SAN не настроен."
 
 #, python-format
 msgid "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: %s"
@@ -5925,6 +6186,9 @@ msgstr "В данный момент служба недоступна."
 msgid "Service not found."
 msgstr "Служба не найдена."
 
+msgid "Set pair secondary access error."
+msgstr "Ошибка настройки вспомогательного доступа к паре."
+
 msgid "Sets thin provisioning."
 msgstr "Задает тонкое резервирование."
 
@@ -6016,6 +6280,10 @@ msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
 msgstr "У снимка %(snapshot_id)s нет метаданных с ключом %(metadata_key)s."
 
 #, python-format
+msgid "Snapshot %s must not be part of a consistency group."
+msgstr "Моментальная копия %s не должна быть частью группы согласования."
+
+#, python-format
 msgid ""
 "Snapshot cannot be created because volume %(vol_id)s is not available, "
 "current volume status: %(vol_status)s."
@@ -6038,6 +6306,9 @@ msgid "Snapshot res \"%s\" that is not deployed anywhere?"
 msgstr ""
 "Создать моментальную копию для ресурса \"%s\", который нигде не был "
 "развернут?"
+
+msgid "Snapshot size must be multiple of 1 GB."
+msgstr "Размер моментальной копии должен быть кратен 1 ГБ."
 
 #, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
@@ -6126,6 +6397,9 @@ msgstr ""
 "Укажите такие параметры, как тип тома, имя, описание, is_public или их "
 "сочетание."
 
+msgid "Split pair error."
+msgstr "Ошибка разделения пары."
+
 msgid "Start LUNcopy error."
 msgstr "Ошибка запуска LUNcopy."
 
@@ -6172,6 +6446,9 @@ msgstr "Группа носителей %(storageGroupName)s не была уд�
 msgid "Storage host %(svr)s not detected, verify name"
 msgstr "Хост памяти %(svr)s не обнаружен. Укажите имя"
 
+msgid "Storage pool is not configured."
+msgstr "Пул памяти не настроен."
+
 #, python-format
 msgid "Storage profile: %(storage_profile)s not found."
 msgstr "Профайл хранилища: %(storage_profile)s не найден."
@@ -6204,6 +6481,12 @@ msgstr ""
 "'%(free)s' в проекте '%(proj)s' для ресурса '%(res)s'. Уменьшите требования "
 "или использование для одного или нескольких следующих проектов: "
 "'%(child_ids)s'"
+
+msgid "Switch over pair error."
+msgstr "Ошибка переключения пары."
+
+msgid "Sync pair error."
+msgstr "Ошибка синхронизации пары."
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr "Сбой синхронизации вспомогательного тома с основным."
@@ -6432,6 +6715,10 @@ msgid "The specified %(desc)s is busy."
 msgstr "Указанное %(desc)s занято."
 
 #, python-format
+msgid "The specified LUN does not belong to the given pool: %s."
+msgstr "LUN не принадлежит данному пулу: %s."
+
+#, python-format
 msgid ""
 "The specified ldev %(ldev)s could not be managed. The ldev must not be "
 "mapping."
@@ -6476,6 +6763,13 @@ msgstr "Указанный vdisk связан с хостом."
 
 msgid "The specified volume is mapped to a host."
 msgstr "Указанный том связан с хостом."
+
+#, python-format
+msgid ""
+"The storage array password for %s is incorrect, please update the configured "
+"password."
+msgstr ""
+"Неверный пароль массива хранения для %s. Обновите пароль в конфигурации."
 
 #, python-format
 msgid "The storage backend can be used. (config_group: %(config_group)s)"
@@ -6741,6 +7035,10 @@ msgstr ""
 #, python-format
 msgid "Unable to add Cinder host to apphosts for space %(space)s"
 msgstr "Не удалось добавить хост Cinder в apphosts для пространства %(space)s"
+
+#, python-format
+msgid "Unable to complete failover of %s."
+msgstr "Не удается выполнить переключение после сбоя %s."
 
 msgid "Unable to connect or find connection to host"
 msgstr "Не удалось подключиться к хосту или найти соединение с ним"
@@ -7148,6 +7446,10 @@ msgid "Unknown action"
 msgstr "Неизвестное действие"
 
 #, python-format
+msgid "Unknown operation %s."
+msgstr "Неизвестная операция %s."
+
+#, python-format
 msgid "Unknown or unsupported command %(cmd)s"
 msgstr "Неизвестная или неподдерживаемая команда %(cmd)s"
 
@@ -7273,6 +7575,12 @@ msgstr "У пользователя нет прав на использован�
 msgid "User not authorized to perform WebDAV operations."
 msgstr "У пользователя нет прав доступа для выполнения операций WebDAV."
 
+msgid "UserName is not configured."
+msgstr "UserName не настроен."
+
+msgid "UserPassword is not configured."
+msgstr "UserPassword не настроен."
+
 msgid ""
 "V2 rollback - Volume in another storage group besides default storage group."
 msgstr "Откат V2: том не в группе носителей по умолчанию."
@@ -7361,6 +7669,10 @@ msgid "Volume %(vol)s could not be created in pool %(pool)s."
 msgstr "Не удалось создать том %(vol)s в пуле %(pool)s."
 
 #, python-format
+msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
+msgstr "Том %(vol1)s не соответствует snapshot.volume_id %(vol2)s."
+
+#, python-format
 msgid ""
 "Volume %(vol_id)s status must be available or in-use, but current status is: "
 "%(vol_status)s."
@@ -7442,6 +7754,10 @@ msgid "Volume %s could not be created."
 msgstr "Не удалось создать том %s."
 
 #, python-format
+msgid "Volume %s does not exist on the array."
+msgstr "Том %s не существует в массиве."
+
+#, python-format
 msgid "Volume %s does not have provider_location specified, skipping."
 msgstr "Для тома %s не указан параметр provider_location - пропущено."
 
@@ -7462,6 +7778,14 @@ msgid ""
 "Volume %s is online. Set volume to offline for managing using OpenStack."
 msgstr ""
 "Том %s включен. Выключите его, чтобы передать под управление OpenStack."
+
+#, python-format
+msgid ""
+"Volume %s must not be migrating, attached, belong to a consistency group or "
+"have snapshots."
+msgstr ""
+"Том %s не должен быть в процессе переноса или присоединен, не должен "
+"принадлежать группе согласования или иметь моментальные копии."
 
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
@@ -7626,6 +7950,9 @@ msgstr "Не найден том в настроенных пулах памят
 msgid "Volume not found."
 msgstr "Том не найден."
 
+msgid "Volume not unique."
+msgstr "Том не является уникальным."
+
 msgid "Volume not yet assigned to host."
 msgstr "Том не связан с хостом."
 
@@ -7679,6 +8006,9 @@ msgstr ""
 "Необходимо полное резервное копирование."
 
 msgid "Volume size must be a multiple of 1 GB."
+msgstr "Размер тома должен быть кратным 1 ГБ."
+
+msgid "Volume size must be multiple of 1 GB."
 msgstr "Размер тома должен быть кратным 1 ГБ."
 
 msgid "Volume size must multiple of 1 GB."
@@ -7883,6 +8213,17 @@ msgid "_get_host_from_connector failed to return the host name for connector."
 msgstr ""
 "Функции _get_host_from_connector не удалось вернуть имя хоста для коннектора."
 
+#, python-format
+msgid "_get_unmanaged_replay: Cannot find snapshot named %s"
+msgstr "_get_unmanaged_replay: не найдена моментальная копия %s"
+
+#, python-format
+msgid "_get_unmanaged_replay: Cannot find volume id %s"
+msgstr "_get_unmanaged_replay: не найден том с ИД %s"
+
+msgid "_get_unmanaged_replay: Must specify source-name."
+msgstr "_get_unmanaged_replay: необходимо указать source-name."
+
 msgid ""
 "_get_vdisk_map_properties: Could not get FC connection information for the "
 "host-volume connection. Is the host configured properly for FC connections?"
@@ -8062,6 +8403,9 @@ msgstr "check_for_setup_error: не удалось определить ИД с�
 msgid "check_for_setup_error: Unable to determine system name."
 msgstr "check_for_setup_error: не удалось определить имя системы."
 
+msgid "check_hypermetro_exist error."
+msgstr "Ошибка check_hypermetro_exist."
+
 #, python-format
 msgid "clone depth exceeds limit of %s"
 msgstr "Глубина дублирования превышает ограничение (%s)"
@@ -8091,6 +8435,9 @@ msgstr "create_host: Имя хоста не типа string или unicode."
 
 msgid "create_host: No initiators or wwpns supplied."
 msgstr "create_host: Не переданы инициаторы или глобальные имена портов."
+
+msgid "create_hypermetro_pair error."
+msgstr "Ошибка create_hypermetro_pair."
 
 #, python-format
 msgid ""
@@ -8150,9 +8497,15 @@ msgstr ""
 "%(out)s\n"
 " stderr: %(err)s"
 
+msgid "delete_hypermetro error."
+msgstr "Ошибка delete_hypermetro."
+
 #, python-format
 msgid "delete_initiator: %s ACL not found. Continuing."
 msgstr "delete_initiator: %s ACL не найден. Выполнение продолжается."
+
+msgid "delete_replication error."
+msgstr "Ошибка delete_replication."
 
 #, python-format
 msgid "deleting snapshot %(snapshot_name)s that has dependent volumes"
@@ -8220,6 +8573,12 @@ msgstr "резервная копия fmt=%(fmt)s создана :%(backing_file
 
 msgid "force delete"
 msgstr "принудительно удалить"
+
+msgid "get_hyper_domain_id error."
+msgstr "Ошибка get_hyper_domain_id."
+
+msgid "get_hypermetro_by_id error."
+msgstr "Ошибка get_hypermetro_by_id."
 
 #, python-format
 msgid ""
@@ -8447,6 +8806,15 @@ msgstr ""
 "недопустимо"
 
 #, python-format
+msgid "replication_failover failed. %s not found."
+msgstr "Ошибка replication_failover. %s не найден."
+
+msgid "replication_failover failed. Backend not configured for failover"
+msgstr ""
+"Ошибка replication_failover. Базовая система не настроена для переключения "
+"после сбоя"
+
+#, python-format
 msgid ""
 "restore: %(vol_id)s failed to run dsmc due to invalid arguments on "
 "%(bpath)s.\n"
@@ -8543,8 +8911,15 @@ msgstr "Не найден ИД исходного тома %s"
 msgid "source volume id:%s is not replicated"
 msgstr "исходный том с ИД %s не скопирован"
 
+#, python-format
+msgid "status must be %s and"
+msgstr " состоянием должно быть %s и "
+
 msgid "status must be available"
 msgstr "Требуемое состояние: Доступен"
+
+msgid "stop_hypermetro error."
+msgstr "Ошибка stop_hypermetro."
 
 msgid "subclasses must implement construct()!"
 msgstr "подклассы должны реализовывать construct()!"
@@ -8553,6 +8928,9 @@ msgid "sudo failed, continuing as if nothing happened"
 msgstr ""
 "не удалось выполнить sudo, выполнение продолжается, как будто ничего не "
 "произошло"
+
+msgid "sync_hypermetro error."
+msgstr "Ошибка sync_hypermetro."
 
 msgid "sync_replica not implemented."
 msgstr "sync_replica не реализован."
