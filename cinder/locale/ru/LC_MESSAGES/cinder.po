@@ -11,13 +11,13 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev7\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev8\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-18 12:49+0000\n"
+"POT-Creation-Date: 2016-03-19 12:27+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-18 02:07+0000\n"
+"PO-Revision-Date: 2016-03-19 09:55+0000\n"
 "Last-Translator: Grigory Mokhin <mokhin@gmail.com>\n"
 "Language: ru\n"
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
@@ -266,6 +266,9 @@ msgstr "Должно быть указано значение status."
 
 msgid "'volume_id' must be specified"
 msgstr "Должен быть указан параметр volume_id"
+
+msgid "'{}' object has no attribute '{}'"
+msgstr "Объект '{}' не имеет атрибута '{}'"
 
 #, python-format
 msgid ""
@@ -794,6 +797,9 @@ msgstr "Имя кэша - None. Укажите smartcache:cachename в ключ�
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr "Том кэша %(cache_vol)s не имеет моментальной копии %(cache_snap)s."
 
+msgid "Call returned a None object"
+msgstr "Вызов возвратил объект None"
+
 #, python-format
 msgid "Can not find cache id by cache name %(name)s."
 msgstr "Не удалось найти ИД кэша по имени кэша %(name)s."
@@ -1082,6 +1088,9 @@ msgstr ""
 msgid "Cannot delete encryption specs. Volume type in use."
 msgstr "Невозможно удалить спецификацию шифрования. Тип тома используется."
 
+msgid "Cannot determine storage pool settings."
+msgstr "Не удается определить параметры пула памяти."
+
 msgid "Cannot execute /sbin/mount.sofs"
 msgstr "Не удалось выполнить /sbin/mount.sofs"
 
@@ -1180,6 +1189,9 @@ msgid ""
 msgstr ""
 "Не удалось получить группу носителей по умолчанию для стратегии FAST "
 "%(fastPolicyName)s."
+
+msgid "Cannot get the portgroup from the masking view."
+msgstr "Не удается получить группу портов из маскирующего представления."
 
 msgid "Cannot mount Scality SOFS, check syslog for errors"
 msgstr ""
@@ -1525,6 +1537,9 @@ msgstr ""
 "Не удается определить, какую конечную точку Swift следует использовать. "
 "Задать ее можно в каталоге служб или посредством опции конфигурации cinder."
 "conf, 'backup_swift_url'."
+
+msgid "Could not find DISCO wsdl file."
+msgstr "Не найден файл WSDL DISCO."
 
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
@@ -1939,6 +1954,13 @@ msgstr ""
 msgid "Driver initialize connection failed (error: %(err)s)."
 msgstr "Драйверу не удалось инициализировать соединение (ошибка: %(err)s)."
 
+msgid ""
+"Driver is not able to do retype because the volume (LUN {}) has snapshot "
+"which is forbidden to migrate."
+msgstr ""
+"Драйвер не может изменить тип, так как том (LUN {}) содержит моментальную "
+"копию, перенос которой запрещен."
+
 msgid "Driver must implement initialize_connection"
 msgstr "Драйвер должен реализовать initialize_connection"
 
@@ -2198,6 +2220,22 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu. Error: "
+"%(error)s"
+msgstr ""
+"Ошибка удаления группы %(storageGroupName)s. Код возврата: %(rc)lu.  Ошибка: "
+"%(error)s"
+
+#, python-format
+msgid ""
+"Error Deleting Initiator Group: %(initiatorGroupName)s. Return code: "
+"%(rc)lu. Error: %(error)s"
+msgstr ""
+"Ошибка удаления группы инициатора: %(initiatorGroupName)s. Код возврата: "
+"%(rc)lu.  Ошибка: %(error)s"
+
+#, python-format
+msgid ""
 "Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
 "Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
@@ -2237,6 +2275,13 @@ msgid ""
 msgstr ""
 "Ошибка действия удаления репликации %(id)s. Код возврата: %(ret.status)d "
 "Сообщение: %(ret.data)s."
+
+#, python-format
+msgid ""
+"Error Extend Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
+msgstr ""
+"Ошибка расширения тома: %(volumeName)s.  Код возврата: %(rc)lu.  Ошибка: "
+"%(error)s."
 
 #, python-format
 msgid ""
@@ -2483,6 +2528,13 @@ msgstr "Ошибка при поиске %(name)s."
 msgid "Error finding %s."
 msgstr "Ошибка при поиске %s."
 
+#, python-format
+msgid ""
+"Error getting ReplicationSettingData. Return code: %(rc)lu. Error: %(error)s."
+msgstr ""
+"Ошибка получения ReplicationSettingData.  Код возврата: %(rc)lu.  Ошибка: "
+"%(error)s."
+
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
 "Message: %(ret.data)s ."
@@ -2562,6 +2614,10 @@ msgstr ""
 "Ошибка в операции расширения пространства для тома %(space)s на %(size)d ГБ"
 
 #, python-format
+msgid "Error managing volume: %s."
+msgstr "Ошибка управления томом: %s."
+
+#, python-format
 msgid "Error mapping volume %(vol)s. %(error)s."
 msgstr "Ошибка при преобразовании тома %(vol)s: %(error)s."
 
@@ -2618,6 +2674,10 @@ msgstr "Ошибка при попытке продвинуть вспомога
 msgid "Error removing volume %(vol)s. %(error)s."
 msgstr "Ошибка при удалении тома %(vol)s: %(error)s."
 
+#, python-format
+msgid "Error renaming volume %(vol)s: %(err)s."
+msgstr "Ошибка переименования тома %(vol)s: %(err)s."
+
 msgid "Error retrieving volume size"
 msgstr "Ошибка получения размера тома"
 
@@ -2669,8 +2729,40 @@ msgid "Error while checking transaction status: %s"
 msgstr "Ошибка проверки состояния транзакции: %s"
 
 #, python-format
+msgid "Error while creating snapshot [status] %(stat)s - [result] %(res)s."
+msgstr ""
+"Ошибка создания моментальной копии [состояние] %(stat)s - [результат] "
+"%(res)s."
+
+#, python-format
+msgid "Error while creating volume [status] %(stat)s - [result] %(res)s."
+msgstr "Ошибка создания тома [состояние] %(stat)s - [результат] %(res)s."
+
+#, python-format
+msgid "Error while deleting snapshot [status] %(stat)s - [result] %(res)s"
+msgstr ""
+"Ошибка удаления моментальной копии [состояние] %(stat)s - [результат] "
+"%(res)s."
+
+#, python-format
+msgid "Error while deleting volume [status] %(stat)s - [result] %(res)s."
+msgstr "Ошибка удаления тома [состояние] %(stat)s - [результат] %(res)s."
+
+#, python-format
+msgid "Error while extending volume [status] %(stat)s - [result] %(res)s."
+msgstr "Ошибка расширения тома [состояние] %(stat)s - [результат] %(res)s."
+
+#, python-format
+msgid "Error while getting %(op)s details, returned code: %(status)s."
+msgstr "Ошибка получения сведений о %(op)s , код возврата: %(status)s."
+
+#, python-format
 msgid "Error while getting data via ssh: (command=%(cmd)s error=%(err)s)."
 msgstr "Ошибка получения данных через ssh: (команда=%(cmd)s ошибка=%(err)s)."
+
+#, python-format
+msgid "Error while getting disco information [%s]."
+msgstr "Ошибка при получении информации disco [%s]."
 
 #, python-format
 msgid "Error while requesting %(service)s API."
@@ -2684,6 +2776,23 @@ msgstr ""
 
 msgid "Error writing field to database"
 msgstr "Ошибка записи поля в базу данных"
+
+#, python-format
+msgid "Error[%(stat)s - %(res)s] while getting volume id."
+msgstr "Ошибка [%(stat)s - %(res)s] при получении ИД тома."
+
+#, python-format
+msgid ""
+"Error[%(stat)s - %(res)s] while restoring snapshot [%(snap_id)s] into volume "
+"[%(vol)s]."
+msgstr ""
+"Ошибка [%(stat)s - %(res)s] при восстановлении моментальной копии "
+"[%(snap_id)s] в том [%(vol)s]."
+
+#, python-format
+msgid "Error[status] %(stat)s - [result] %(res)s] while getting volume id."
+msgstr ""
+"Ошибка [состояние] %(stat)s - [результат] %(res)s] при получении ИД тома."
 
 #, python-format
 msgid ""
@@ -2790,6 +2899,9 @@ msgstr ""
 msgid "FAST is not supported on this array."
 msgstr "FAST не поддерживается в этом массиве."
 
+msgid "FC is the protocol but wwpns are not supplied by OpenStack."
+msgstr "Протокол - FC, но не получены WWPN от OpenStack."
+
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "Отменить назначение %(volume)s не удалось"
@@ -2806,6 +2918,10 @@ msgstr ""
 
 msgid "Failed cgsnapshot"
 msgstr "Сбойная моментальная копия группы согласования"
+
+#, python-format
+msgid "Failed creating snapshot for group: %(response)s."
+msgstr "Не удалось создать моментальную копию для группы %(response)s."
 
 #, python-format
 msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
@@ -3080,6 +3196,10 @@ msgid ""
 msgstr ""
 "Не удалось создать моментальную копию. Не найдена информация о томе "
 "CloudByte для тома OpenStack [%s]."
+
+#, python-format
+msgid "Failed to create storage group %(storageGroupName)s."
+msgstr "Не удалось создать группу носителей %(storageGroupName)s."
 
 #, python-format
 msgid "Failed to create thin pool, error message was: %s"
@@ -4127,6 +4247,9 @@ msgstr "Получена неправильная информация о пут
 msgid "HBSD error occurs."
 msgstr "Ошибка HBSD."
 
+msgid "HNAS has disconnected SSC"
+msgstr "HNAS отключил SSC"
+
 #, python-format
 msgid ""
 "HTTPS certificate verification was requested but cannot be enabled with "
@@ -4316,6 +4439,12 @@ msgid ""
 msgstr ""
 "Исключительная ситуация CLI Infortrend: %(err)s. Параметр: %(param)s (Код "
 "возврата: %(rc)s) (Вывод: %(out)s)"
+
+msgid "Initial tier: {}, policy: {} is not valid."
+msgstr "Недопустимые параметры: начальный уровень: {}, стратегия: {}."
+
+msgid "Input type {} is not supported."
+msgstr "Тип ввода {} не поддерживается."
 
 msgid "Input volumes or snapshots are invalid."
 msgstr "Недопустимые входные тома или моментальные копии."
@@ -4578,6 +4707,11 @@ msgstr "Неверный срок резервирования %(expire)s."
 msgid "Invalid response header from RPC server"
 msgstr "Недопустимый заголовок ответа от сервера RPC"
 
+#, python-format
+msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
+msgstr ""
+"Указан недопустимый secondary_backend_id. Допустимый ИД базовой системы: %s."
+
 msgid "Invalid service catalog json."
 msgstr "Недопустимый json каталога службы."
 
@@ -4602,6 +4736,10 @@ msgstr "Указан недопустимый пул памяти %s."
 
 msgid "Invalid storage pool is configured."
 msgstr "Настроен недопустимый пул памяти."
+
+#, python-format
+msgid "Invalid synchronize mode specified, allowed mode is %s."
+msgstr "Указан недопустимый режим синхронизации. Допустимый режим: %s."
 
 msgid "Invalid transport type."
 msgstr "Недопустимый тип транспорта."
@@ -4783,12 +4921,18 @@ msgstr "Поддержка вложенных квот доступна в keyst
 msgid "LUN export failed!"
 msgstr "Сбой экспорта LUN!"
 
+msgid "LUN id({}) is not valid."
+msgstr "Недопустимый LUN id({})."
+
 msgid "LUN map overflow on every channel."
 msgstr "Переполнение карты LUN на каждом канале."
 
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "LUN не найден по данной ссылке %s."
+
+msgid "LUN number ({}) is not an integer."
+msgstr "Номер LUN ({}) не является целым числом."
 
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
@@ -5022,6 +5166,9 @@ msgstr ""
 msgid "Migration of LUN %s has been stopped or faulted."
 msgstr "Миграция LUN %s остановлена или возникла неполадка."
 
+msgid "MirrorView/S enabler is not installed."
+msgstr "Программа включения MirrorView/S не установлена."
+
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
 "available."
@@ -5172,6 +5319,9 @@ msgstr "Необходимо указать source-name или source-id."
 msgid "Must specify storage pool name or id."
 msgstr "Необходимо указать имя или ИД пула памяти."
 
+msgid "Must specify storage pools. Option: sio_storage_pools."
+msgstr "Необходимо указать пулы памяти. Опция: sio_storage_pools."
+
 msgid "Must supply a positive value for age"
 msgstr "Должно быть указано положительное значение возраста"
 
@@ -5246,6 +5396,9 @@ msgstr "Никакой порт Fibre Channel не подключен к фаб�
 
 msgid "No FCP targets found"
 msgstr "Не найден ы целевые объекты FCP"
+
+msgid "No Port Group elements found in config file."
+msgstr "Элементы группы портов не найдены в файле конфигурации."
 
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "Нет активных порталов iSCSI с указанными IP-адресами iSCSI"
@@ -5589,6 +5742,9 @@ msgstr "Опция gpfs_images_share_mode указана неправильно.
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "Опция gpfs_mount_point_base указана неправильно."
 
+msgid "Option map (cls._map) is not defined."
+msgstr "Карта опций (cls._map) не определена."
+
 #, python-format
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
 msgstr "Исходное значение %(res)s %(prop)s должно быть одно из '%(vals)s'"
@@ -5848,6 +6004,9 @@ msgstr "Ссылка должна содержать ключ source-id или s
 msgid "Reference must contain source-id or source-name."
 msgstr "Ссылка должна содержать source-id или source-name."
 
+msgid "Reference must contain source-id."
+msgstr "Ссылка должна содержать source-id."
+
 msgid "Reference must contain source-name element."
 msgstr "Ссылка должна содержать элемент имени источника."
 
@@ -6047,6 +6206,22 @@ msgid ""
 msgstr ""
 "Восстановление резервной копии прервано: ожидалось состояние резервной копии "
 "%(expected_status)s, получено %(actual_status)s."
+
+#, python-format
+msgid ""
+"Retrieved a different amount of SolidFire volumes for the provided Cinder "
+"snapshots. Retrieved: %(ret)s Desired: %(des)s"
+msgstr ""
+"Полученное непредвиденное число томов SolidFire для предоставленных "
+"моментальных копий Cinder. Получено: %(ret)s Ожидалось: %(des)s"
+
+#, python-format
+msgid ""
+"Retrieved a different amount of SolidFire volumes for the provided Cinder "
+"volumes. Retrieved: %(ret)s Desired: %(des)s"
+msgstr ""
+"Полученное непредвиденное число томов SolidFire для предоставленных томов "
+"Cinder. Получено: %(ret)s Ожидалось: %(des)s"
 
 #, python-format
 msgid "Retry count exceeded for command: %s"
@@ -6463,6 +6638,9 @@ msgstr "Не указан ИД системы хранения."
 msgid "Storage system not found for pool %(poolNameInStr)s."
 msgstr "Для пула %(poolNameInStr)s не найдена система памяти."
 
+msgid "Storage-assisted migration failed during manage volume."
+msgstr "Перенос с помощью носителя не выполнен при операции управления томом."
+
 #, python-format
 msgid "StorageSystem %(array)s is not found."
 msgstr "Система хранения %(array)s не найдена."
@@ -6577,6 +6755,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"The array does not support the storage pool setting for SLO %(slo)s and "
+"workload %(workload)s.  Please check the array for valid SLOs and workloads."
+msgstr ""
+"Массив не поддерживает параметр пула памяти для SLO %(slo)s и нагрузки "
+"%(workload)s.  Проверьте правильность настройки SLO и нагрузок для массива."
+
+#, python-format
+msgid ""
 "The command %(cmd)s failed. (ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
 msgstr ""
 "Команда %(cmd)s не выполнена. (код возврата: %(ret)s, stdout: %(out)s, "
@@ -6671,6 +6857,13 @@ msgid "The parent backup must be available for incremental backup."
 msgstr ""
 "Родительская резервная копия должна быть доступна для создания дополняющей "
 "резервной копии."
+
+msgid ""
+"The reference to the volume in the backend should have the format "
+"file_system/volume_name (volume_name cannot contain '/')"
+msgstr ""
+"Ссылка на том в базовой системе должна указываться в формате: файловая-"
+"система/имя-тома. Имя тома не может содержать символ '/'"
 
 #, python-format
 msgid ""
@@ -6970,6 +7163,10 @@ msgstr ""
 "librados по умолчанию."
 
 #, python-format
+msgid "Timeout while calling %s "
+msgstr "Тайм-аут при вызове %s "
+
+#, python-format
 msgid "Timeout while requesting %(service)s API."
 msgstr "Тайм-аут во время запроса API %(service)s."
 
@@ -7133,6 +7330,10 @@ msgstr ""
 "Невозможно выполнить репликацию с версией API %(api_version)s Purity REST, "
 "требуется одна из версий %(required_versions)s."
 
+msgid "Unable to enable replication and snapcopy at the same time."
+msgstr ""
+"Нельзя использовать репликацию и моментальное копирование одновременно."
+
 #, python-format
 msgid "Unable to extend volume %s"
 msgstr "Не удалось расширить том %s"
@@ -7246,11 +7447,20 @@ msgstr ""
 msgid "Unable to get stats for backend_name: %s"
 msgstr "Не удалось получить статистику для backend_name: %s"
 
+msgid "Unable to get storage volume from job."
+msgstr "Не удается получить том носителя из задания."
+
 #, python-format
 msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
 msgstr ""
 "Не удалось получить целевые конечные точки для ИД аппаратного обеспечения "
 "%(hardwareIdInstance)s."
+
+msgid "Unable to get the name of the masking view."
+msgstr "Не удается получить имя маскирующего представления."
+
+msgid "Unable to get the name of the portgroup."
+msgstr "Не удается получить имя группы портов."
 
 #, python-format
 msgid ""
@@ -7296,6 +7506,10 @@ msgstr ""
 #, python-format
 msgid "Unable to locate an SVM that is managing the IP address '%s'"
 msgstr "Не удалось найти SVM, управляющую IP-адресом '%s'"
+
+#, python-format
+msgid "Unable to locate specified replay profiles %s "
+msgstr "Не найдены указанные профили повтора %s "
 
 #, python-format
 msgid ""
@@ -7344,6 +7558,14 @@ msgstr ""
 #, python-format
 msgid "Unable to rename volume %(existing)s to %(newname)s"
 msgstr "Не удалось переименовать том %(existing)s в %(newname)s"
+
+#, python-format
+msgid ""
+"Unable to retype %(specname)s, expected to receive current and requested "
+"%(spectype)s values. Value received: %(spec)s"
+msgstr ""
+"Не удается изменить тип %(specname)s, ожидалось получение текущих и "
+"запрошенных значений %(spectype)s. Полученное значение: %(spec)s"
 
 #, python-format
 msgid ""
@@ -7491,6 +7713,10 @@ msgstr "Нераспознанное значение read_deleted '%s'"
 #, python-format
 msgid "Unset gcs options: %s"
 msgstr "Сбросить параметры gcs: %s"
+
+#, python-format
+msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
+msgstr "Ошибка iscsiadm. Исключительная ситуация: %(ex)s. "
 
 msgid "Unsupported Clustered Data ONTAP version."
 msgstr "Неподдерживаемая версия ONTAP кластерных данных."
@@ -7663,6 +7889,10 @@ msgid ""
 msgstr ""
 "Том %(name)s не найден в массиве. Не удается определить, преобразованы ли "
 "тома."
+
+#, python-format
+msgid "Volume %(name)s was created in VNX, but in %(state)s state."
+msgstr "Том %(name)s создан в VNX, но в состоянии %(state)s."
 
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
@@ -7848,6 +8078,14 @@ msgid "Volume Type id must not be None."
 msgstr "ИД типа тома не должен быть None."
 
 #, python-format
+msgid ""
+"Volume [%(cb_vol)s] was not found at CloudByte storage corresponding to "
+"OpenStack volume [%(ops_vol)s]."
+msgstr ""
+"Том [%(cb_vol)s] не найден в носителе CloudByte, соответствующем тому "
+"OpenStack [%(ops_vol)s]."
+
+#, python-format
 msgid "Volume [%s] not found in CloudByte storage."
 msgstr "Том [%s] не найден в хранилище CloudByte."
 
@@ -7927,6 +8165,9 @@ msgstr "Том должен находиться в одной зоне дост
 
 msgid "Volume must be in the same availability zone as the source volume"
 msgstr "Том должен находиться в одной зоне доступности с исходным томом"
+
+msgid "Volume must have a volume type"
+msgstr "Должен быть задан тип тома"
 
 msgid "Volume must not be part of a consistency group."
 msgstr "Том не должен быть частью группы согласования."
@@ -8108,11 +8349,22 @@ msgstr ""
 "только над объединенным томом. Выполняется выход..."
 
 #, python-format
+msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
+msgstr ""
+"Том %(volumeName)s не был добавлен в группу носителей %(sgGroupName)s. "
+
+#, python-format
 msgid "Volume: %s could not be found."
 msgstr "Не найден том %s."
 
 msgid "Volumes will be chunked into objects of this size (in megabytes)."
 msgstr "Тома будут разбиты на блоки этого размера (в мегабайтах)."
+
+msgid ""
+"Volumes/account exceeded on both primary and secondary SolidFire accounts."
+msgstr ""
+"Число томов превышено и для основной, и для вторичной учетной записи "
+"SolidFire."
 
 #, python-format
 msgid ""
@@ -8189,6 +8441,21 @@ msgstr ""
 msgid "_create_host: No connector ports."
 msgstr "_create_host: отсутствуют порты коннекторов."
 
+msgid "_create_local_cloned_volume, Replication Service not found."
+msgstr "_create_local_cloned_volume, служба репликации не найдена."
+
+#, python-format
+msgid ""
+"_create_local_cloned_volume, volumename: %(volumename)s, sourcevolumename: "
+"%(sourcevolumename)s, source volume instance: %(source_volume)s, target "
+"volume instance: %(target_volume)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s."
+msgstr ""
+"_create_local_cloned_volume, имя тома: %(volumename)s, имя исходного тома: "
+"%(sourcevolumename)s, экземпляр исходного тома: %(source_volume)s, экземпляр "
+"целевого тома: %(target_volume)s, код возврата: %(rc)lu, ошибка: "
+"%(errordesc)s."
+
 #, python-format
 msgid ""
 "_create_vdisk %(name)s - did not find success message in CLI output.\n"
@@ -8198,6 +8465,158 @@ msgstr ""
 "_create_vdisk %(name)s - в выводе CLI не найдено сообщение об успехе.\n"
 " stdout: %(out)s\n"
 " stderr: %(err)s"
+
+msgid "_create_volume_name, id_code is None."
+msgstr "_create_volume_name, id_code равен None."
+
+msgid "_delete_copysession, Cannot find Replication Service"
+msgstr "_delete_copysession, не найдена служба репликации"
+
+#, python-format
+msgid ""
+"_delete_copysession, copy session type is undefined! copy session: "
+"%(cpsession)s, copy type: %(copytype)s."
+msgstr ""
+"_delete_copysession, не определен тип сеанса копировния, сеанс копирования: "
+"%(cpsession)s, тип копирования: %(copytype)s."
+
+#, python-format
+msgid ""
+"_delete_copysession, copysession: %(cpsession)s, operation: %(operation)s, "
+"Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_delete_copysession, сеанс копирования: %(cpsession)s, операция: "
+"%(operation)s, код возврата: %(rc)lu, ошибка: %(errordesc)s."
+
+#, python-format
+msgid ""
+"_delete_volume, volumename: %(volumename)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s."
+msgstr ""
+"_delete_volume, имя тома: %(volumename)s, код возврата: %(rc)lu, ошибка: "
+"%(errordesc)s."
+
+#, python-format
+msgid ""
+"_delete_volume, volumename: %(volumename)s, Storage Configuration Service "
+"not found."
+msgstr ""
+"_delete_volume, имя тома: %(volumename)s, служба настройки хранилища не "
+"найдена."
+
+#, python-format
+msgid ""
+"_exec_eternus_service, classname: %(classname)s, InvokeMethod, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_exec_eternus_service, имя класса: %(classname)s, InvokeMethod, не удается "
+"подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_find_affinity_group, connector: %(connector)s, Associators: "
+"FUJITSU_AuthorizedTarget, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, коннектор: %(connector)s, Associators: "
+"FUJITSU_AuthorizedTarget, не удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_find_affinity_group, connector: %(connector)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, коннектор: %(connector)s, EnumerateInstanceNames, не "
+"удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_find_affinity_group,connector: %(connector)s,AssocNames: "
+"FUJITSU_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, коннектор: %(connector)s,AssocNames: "
+"FUJITSU_ProtocolControllerForUnit, не удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_find_copysession, ReferenceNames, vol_instance: %(vol_instance_path)s, "
+"Cannot connect to ETERNUS."
+msgstr ""
+"_find_copysession, ReferenceNames, экземпляр тома: %(vol_instance_path)s, не "
+"удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_find_eternus_service, classname: %(classname)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_find_eternus_service, имя класса: %(classname)s, EnumerateInstanceNames, не "
+"удается подключиться к ETERNUS."
+
+#, python-format
+msgid "_find_initiator_names, connector: %(connector)s, initiator not found."
+msgstr "_find_initiator_names, коннектор: %(connector)s, инициатор не найден."
+
+#, python-format
+msgid ""
+"_find_lun, volumename: %(volumename)s, EnumerateInstanceNames, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_find_lun, имя тома: %(volumename)s, EnumerateInstanceNames, не удается "
+"подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_find_pool, eternus_pool:%(eternus_pool)s, EnumerateInstances, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_find_pool, пул eternus:%(eternus_pool)s, EnumerateInstances, не удается "
+"подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_get_drvcfg, filename: %(filename)s, tagname: %(tagname)s, data is None!! "
+"Please edit driver configuration file and correct."
+msgstr ""
+"_get_drvcfg, имя файла: %(filename)s, имя тега: %(tagname)s, пустые данные. "
+"Исправьте ошибку в файле конфигурации драйвера."
+
+#, python-format
+msgid ""
+"_get_eternus_connection, filename: %(filename)s, ip: %(ip)s, port: %(port)s, "
+"user: %(user)s, passwd: ****, url: %(url)s, FAILED!!."
+msgstr ""
+"_get_eternus_connection, имя файла: %(filename)s, ip: %(ip)s, порт: "
+"%(port)s, пользователь: %(user)s, пароль: ****, url: %(url)s, ошибка."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip list: %(iscsiip_list)s, iqn not found."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip list: %(iscsiip_list)s, iqn не найден."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, AssociatorNames: "
+"CIM_BindsTo, cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, AssociatorNames: "
+"CIM_BindsTo, не удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, EnumerateInstanceNames, "
+"не удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, GetInstance, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, GetInstance, не удается "
+"подключиться к ETERNUS."
 
 #, python-format
 msgid ""
@@ -8212,6 +8631,61 @@ msgstr ""
 msgid "_get_host_from_connector failed to return the host name for connector."
 msgstr ""
 "Функции _get_host_from_connector не удалось вернуть имя хоста для коннектора."
+
+#, python-format
+msgid ""
+"_get_mapdata_fc, getting host-affinity from aglist/vol_instance failed, "
+"affinitygroup: %(ag)s, ReferenceNames, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_fc, ошибка получения host-affinity из aglist/vol_instance, "
+"группа привязки: %(ag)s, ReferenceNames, не удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_fc, getting host-affinity instance failed, volmap: %(volmap)s, "
+"GetInstance, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_fc, ошибка получения экземпляра host-affinity, volmap: "
+"%(volmap)s, GetInstance, не удается подключиться к ETERNUS."
+
+msgid ""
+"_get_mapdata_iscsi, Associators: FUJITSU_SAPAvailableForElement, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, Associators: FUJITSU_SAPAvailableForElement, не удается "
+"подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, affinitygroup: %(ag)s, ReferenceNames, cannot connect to "
+"ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, группа привязки: %(ag)s, ReferenceNames, не удается "
+"подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, vol_instance: %(vol_instance)s, ReferenceNames: "
+"CIM_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, экземпляр тома: %(vol_instance)s, ReferenceNames: "
+"CIM_ProtocolControllerForUnit, не удается подключиться к ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, volmap: %(volmap)s, GetInstance, cannot connect to "
+"ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, volmap: %(volmap)s, GetInstance, не удается подключиться "
+"к ETERNUS."
+
+msgid "_get_target_port, EnumerateInstances, cannot connect to ETERNUS."
+msgstr ""
+"_get_target_port, EnumerateInstances, не удается подключиться к ETERNUS."
+
+#, python-format
+msgid "_get_target_port, protcol: %(protocol)s, target_port not found."
+msgstr "_get_target_port, протокол: %(protocol)s, целевой порт не найден."
 
 #, python-format
 msgid "_get_unmanaged_replay: Cannot find snapshot named %s"
@@ -8239,8 +8713,51 @@ msgstr ""
 "_get_vdisk_map_properties: не найдены узлы в группе ввода-вывода %(gid)s для "
 "тома %(vol)s."
 
+#, python-format
+msgid ""
+"_map_lun, vol_instance.path:%(vol)s, volumename: %(volumename)s, volume_uid: "
+"%(uid)s, initiator: %(initiator)s, target: %(tgt)s, aglist: %(aglist)s, "
+"Storage Configuration Service not found."
+msgstr ""
+"_map_lun, vol_instance.path:%(vol)s, имя тома: %(volumename)s, uid тома: "
+"%(uid)s, инициатор: %(initiator)s, цель: %(tgt)s, aglist: %(aglist)s, служба "
+"настройки хранилища не найдена."
+
+#, python-format
+msgid ""
+"_unmap_lun, vol_instance.path: %(volume)s, volumename: %(volumename)s, "
+"volume_uid: %(uid)s, aglist: %(aglist)s, Controller Configuration Service "
+"not found."
+msgstr ""
+"_unmap_lun, vol_instance.path: %(volume)s, имя тома: %(volumename)s, uid "
+"тома: %(uid)s, aglist: %(aglist)s, служба настройки контроллера не найдена."
+
+#, python-format
+msgid ""
+"_unmap_lun, volumename: %(volumename)s, volume_uid: %(volume_uid)s, "
+"AffinityGroup: %(ag)s, Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_unmap_lun, имя тома: %(volumename)s, uid тома: %(volume_uid)s, "
+"AffinityGroup: %(ag)s, код возврата: %(rc)lu, ошибка: %(errordesc)s."
+
+#, python-format
+msgid ""
+"_unmap_lun,vol_instance.path: %(volume)s, AssociatorNames: "
+"CIM_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_unmap_lun,vol_instance.path: %(volume)s, AssociatorNames: "
+"CIM_ProtocolControllerForUnit, не удается подключиться к ETERNUS."
+
 msgid "_update_volume_stats: Could not get storage pool data."
 msgstr "_update_volume_stats: не удалось получить данные пула памяти."
+
+#, python-format
+msgid ""
+"_wait_for_copy_complete, cpsession: %(cpsession)s, copysession state is "
+"BROKEN."
+msgstr ""
+"_wait_for_copy_complete, cpsession: %(cpsession)s, состояние copysession: "
+"BROKEN."
 
 #, python-format
 msgid ""
@@ -8419,8 +8936,33 @@ msgstr "consistencygroup изменена"
 msgid "control_location must be defined"
 msgstr "Должен быть определен параметр control_location"
 
+msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
+msgstr "create_cloned_volume, том источника не существует в ETERNUS."
+
+#, python-format
+msgid ""
+"create_cloned_volume, target volume instancename: %(volume_instancename)s, "
+"Get Instance Failed."
+msgstr ""
+"create_cloned_volume, имя экземпляра целевого тома: %(volume_instancename)s, "
+"ошибка получения экземпляра."
+
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: различаются исходный и целевой размеры."
+
+msgid ""
+"create_consistencygroup_from_src only supports a cgsnapshot source or a "
+"consistency group source. Multiple sources cannot be used."
+msgstr ""
+"create_consistencygroup_from_src поддерживает только источник cgsnapshot или "
+"источник группы согласования. Несколько источников использовать нельзя."
+
+msgid ""
+"create_consistencygroup_from_src supports a cgsnapshot source or a "
+"consistency group source. Multiple sources cannot be used."
+msgstr ""
+"create_consistencygroup_from_src поддерживает только источник cgsnapshot или "
+"источник группы согласования. Несколько источников использовать нельзя."
 
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."
@@ -8440,6 +8982,35 @@ msgid "create_hypermetro_pair error."
 msgstr "Ошибка create_hypermetro_pair."
 
 #, python-format
+msgid "create_snapshot, eternus_pool: %(eternus_pool)s, pool not found."
+msgstr "create_snapshot, пул eternus: %(eternus_pool)s, пул не найден."
+
+#, python-format
+msgid ""
+"create_snapshot, snapshotname: %(snapshotname)s, source volume name: "
+"%(volumename)s, vol_instance.path: %(vol_instance)s, dest volume name: "
+"%(d_volumename)s, pool: %(pool)s, Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"create_snapshot, имя моментальной копии: %(snapshotname)s, имя исходного "
+"тома: %(volumename)s, путь к экземпляру: %(vol_instance)s, имя целевого "
+"тома: %(d_volumename)s, пул: %(pool)s, код возврата: %(rc)lu, ошибка: "
+"%(errordesc)s."
+
+#, python-format
+msgid ""
+"create_snapshot, volumename: %(s_volumename)s, source volume not found on "
+"ETERNUS."
+msgstr ""
+"create_snapshot, имя тома: %(s_volumename)s, исходный том не найден в "
+"ETERNUS."
+
+#, python-format
+msgid ""
+"create_snapshot, volumename: %(volumename)s, Replication Service not found."
+msgstr ""
+"create_snapshot, имя тома: %(volumename)s, служба репликации не найдена."
+
+#, python-format
 msgid ""
 "create_snapshot: Volume status must be \"available\" or \"in-use\" for "
 "snapshot. The invalid status is %s."
@@ -8449,6 +9020,41 @@ msgstr ""
 
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot: не удалось получить исходный том."
+
+#, python-format
+msgid ""
+"create_volume, volume: %(volume)s, EnumerateInstances, cannot connect to "
+"ETERNUS."
+msgstr ""
+"create_volume, том: %(volume)s, EnumerateInstances, не удается подключиться "
+"к ETERNUS."
+
+#, python-format
+msgid ""
+"create_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service not found."
+msgstr ""
+"create_volume, том: %(volume)s, имя тома: %(volumename)s, пул eternus: "
+"%(eternus_pool)s, служба настройки хранилища не найдена."
+
+#, python-format
+msgid ""
+"create_volume, volumename: %(volumename)s, poolname: %(eternus_pool)s, "
+"Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"create_volume, имя тома: %(volumename)s, имя пула: %(eternus_pool)s, код "
+"возврата: %(rc)lu, ошибка: %(errordesc)s."
+
+msgid "create_volume_from_snapshot, Source Volume does not exist in ETERNUS."
+msgstr "create_volume_from_snapshot, том источника не существует в ETERNUS."
+
+#, python-format
+msgid ""
+"create_volume_from_snapshot, target volume instancename: "
+"%(volume_instancename)s, Get Instance Failed."
+msgstr ""
+"create_volume_from_snapshot, имя экземпляра целевого тома: "
+"%(volume_instancename)s, ошибка получения экземпляра."
 
 #, python-format
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
@@ -8534,6 +9140,30 @@ msgid ""
 msgstr ""
 "Ошибка записи объекта в swift, MD5 объекта в swift %(etag)s не совпадает с "
 "MD5 объекта, отправленного в swift %(md5)s"
+
+#, python-format
+msgid "extend_volume, eternus_pool: %(eternus_pool)s, pool not found."
+msgstr "extend_volume, пул eternus: %(eternus_pool)s, пул не найден."
+
+#, python-format
+msgid ""
+"extend_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service not found."
+msgstr ""
+"extend_volume, том: %(volume)s, имя тома: %(volumename)s, пул eternus: "
+"%(eternus_pool)s, служба настройки хранилища не найдена."
+
+#, python-format
+msgid ""
+"extend_volume, volumename: %(volumename)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s, PoolType: %(pooltype)s."
+msgstr ""
+"extend_volume, имя тома: %(volumename)s, код возврата: %(rc)lu, ошибка: "
+"%(errordesc)s, тип пула: %(pooltype)s."
+
+#, python-format
+msgid "extend_volume, volumename: %(volumename)s, volume not found."
+msgstr "extend_volume, имя тома: %(volumename)s, том не найден."
 
 msgid "failed to create new_volume on destination host"
 msgstr "не удалось создать new_volume на целевом хосте"
@@ -8652,6 +9282,10 @@ msgid "image %s not found"
 msgstr "не найден образ %s"
 
 #, python-format
+msgid "initialize_connection, volume: %(volume)s, Volume not found."
+msgstr "initialize_connection, том: %(volume)s, том не найден."
+
+#, python-format
 msgid "initialize_connection: Failed to get attributes for volume %s."
 msgstr "initialize_connection: Не удалось получить атрибуты для тома %s."
 
@@ -8684,6 +9318,9 @@ msgstr ""
 "В файле конфигурации должен быть указан параметр iscsi_ip_address, когда "
 "используется протокол 'iSCSI'."
 
+msgid "iscsiadm execution failed. "
+msgstr "Ошибка выполнения iscsiadm. "
+
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "ошибка администратора ключей: %(reason)s"
@@ -8697,10 +9334,25 @@ msgstr "Параметр limit должен быть целым числом"
 msgid "limit param must be positive"
 msgstr "Параметр limit должен быть положительным"
 
+msgid ""
+"manage_existing cannot manage a volume connected to hosts. Please disconnect "
+"this volume from existing hosts before importing"
+msgstr ""
+"manage_existing не поддерживает управление томом, подключенным к хостам. "
+"Отключите том от существующих хостов перед импортом"
+
 msgid "manage_existing requires a 'name' key to identify an existing volume."
 msgstr ""
 "Для manage_existing требуется ключ 'name' для идентификации существующего "
 "тома."
+
+#, python-format
+msgid ""
+"manage_existing_snapshot: Error managing existing replay %(ss)s on volume "
+"%(vol)s"
+msgstr ""
+"manage_existing_snapshot: ошибка при обработке существующего повтора %(ss)s "
+"для тома %(vol)s"
 
 #, python-format
 msgid "marker [%s] not found"
@@ -8804,6 +9456,14 @@ msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
 msgstr ""
 "read_deleted может принимать значения 'no', 'yes' или 'only', значение %r "
 "недопустимо"
+
+#, python-format
+msgid "replication_device should be configured on backend: %s."
+msgstr "В базовой системе должно быть настроено устройство репликации: %s."
+
+#, python-format
+msgid "replication_device with backend_id [%s] is missing."
+msgstr "Отсутствует устройство репликации с backend_id [%s]."
 
 #, python-format
 msgid "replication_failover failed. %s not found."
@@ -8967,6 +9627,14 @@ msgid "umount: <mnt_path>: target is busy"
 msgstr "umount: <путь_к_mnt>: цель занята"
 
 #, python-format
+msgid "unmanage_snapshot: Cannot find snapshot named %s"
+msgstr "unmanage_snapshot: не найдена моментальная копия %s"
+
+#, python-format
+msgid "unmanage_snapshot: Cannot find volume id %s"
+msgstr "unmanage_snapshot: не найден том с ИД %s"
+
+#, python-format
 msgid "unrecognized argument %s"
 msgstr "Нераспознанный аргумент %s"
 
@@ -9043,3 +9711,6 @@ msgstr "тома изменены"
 #, python-format
 msgid "wait_for_condition: %s timed out."
 msgstr "Истек тайм-аут wait_for_condition: %s."
+
+msgid "{} is not a valid option."
+msgstr "{} не является допустимым параметром."
