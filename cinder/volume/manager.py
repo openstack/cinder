@@ -214,7 +214,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '1.40'
+    RPC_API_VERSION = '2.0'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -233,7 +233,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
-        self.additional_endpoints.append(_VolumeV2Proxy(self))
+        self.additional_endpoints.append(_VolumeV1Proxy(self))
         self.configuration = config.Configuration(volume_manager_opts,
                                                   config_group=service_name)
         self.stats = {}
@@ -3476,9 +3476,9 @@ class VolumeManager(manager.SchedulerDependentManager):
 
 # TODO(dulek): This goes away immediately in Newton and is just present in
 # Mitaka so that we can receive v1.x and v2.0 messages
-class _VolumeV2Proxy(object):
+class _VolumeV1Proxy(object):
 
-    target = messaging.Target(version='2.0')
+    target = messaging.Target(version='1.40')
 
     def __init__(self, manager):
         self.manager = manager
