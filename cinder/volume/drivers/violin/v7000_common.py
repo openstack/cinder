@@ -407,6 +407,10 @@ class V7000Common(object):
         self._wait_for_lun_or_snap_copy(
             src_vol['id'], dest_obj_id=result['object_id'])
 
+        # extend the copied lun if requested size is larger then original
+        if dest_vol['size'] > src_vol['size']:
+            self._extend_lun(dest_vol, dest_vol['size'])
+
     def _send_cmd(self, request_func, success_msgs, *args, **kwargs):
         """Run an XG request function, and retry as needed.
 

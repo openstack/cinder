@@ -16,6 +16,7 @@
 """
 Tests for Violin Memory 7000 Series All-Flash Array Common Driver
 """
+import ddt
 import math
 import mock
 
@@ -24,6 +25,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_vmem_client as vmemclient
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.violin import v7000_common
@@ -60,6 +62,7 @@ INITIATOR_IQN = "iqn.1111-22.org.debian:11:222"
 CONNECTOR = {"initiator": INITIATOR_IQN}
 
 
+@ddt.ddt
 class V7000CommonTestCase(test.TestCase):
     """Test case for Violin drivers."""
     def setUp(self):
@@ -419,9 +422,15 @@ class V7000CommonTestCase(test.TestCase):
         self.assertRaises(failure, self.driver._create_volume_from_snapshot,
                           SNAPSHOT, VOLUME)
 
-    def test_create_lun_from_lun(self):
+    @ddt.data(2, 10)
+    def test_create_lun_from_lun_and_resize(self, size):
         """lun full clone to new volume completes successfully."""
-        object_id = '12345'
+        larger_size_flag = False
+        dest_vol = VOLUME.copy()
+        if size > VOLUME['size']:
+            dest_vol['size'] = size
+            larger_size_flag = True
+        object_id = fake.OBJECT_ID
         response = {'success': True,
                     'object_id': object_id,
                     'msg': 'Copy Snapshot resource successfully'}
@@ -432,25 +441,35 @@ class V7000CommonTestCase(test.TestCase):
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._ensure_snapshot_resource_area = mock.Mock()
         self.driver._wait_for_lun_or_snap_copy = mock.Mock()
+        self.driver._extend_lun = mock.Mock()
 
-        result = self.driver._create_lun_from_lun(SRC_VOL, VOLUME)
+        result = self.driver._create_lun_from_lun(SRC_VOL, dest_vol)
 
         self.driver._ensure_snapshot_resource_area.assert_called_with(
             SRC_VOL['id'])
         self.driver.vmem_mg.lun.copy_lun_to_new_lun.assert_called_with(
-            source=SRC_VOL['id'], destination=VOLUME['id'], storage_pool=None)
+            source=SRC_VOL['id'], destination=dest_vol['id'],
+            storage_pool=None)
         self.driver._wait_for_lun_or_snap_copy.assert_called_with(
             SRC_VOL['id'], dest_obj_id=object_id)
+        if larger_size_flag:
+            self.driver._extend_lun.assert_called_once_with(
+                dest_vol, dest_vol['size'])
+        else:
+            self.assertFalse(self.driver._extend_lun.called)
 
         self.assertIsNone(result)
 
-    def test_create_lun_from_lun_on_a_storage_pool(self):
-
+    @ddt.data(2, 10)
+    def test_create_lun_from_lun_on_a_storage_pool_and_resize(self, size):
         """lun full clone to new volume completes successfully."""
+        larger_size_flag = False
         dest_vol = VOLUME.copy()
-        dest_vol['size'] = 100
-        dest_vol['volume_type_id'] = '1'
-        object_id = '12345'
+        if size > VOLUME['size']:
+            dest_vol['size'] = size
+            larger_size_flag = True
+        dest_vol['volume_type_id'] = fake.VOLUME_TYPE_ID
+        object_id = fake.OBJECT_ID
         response = {'success': True,
                     'object_id': object_id,
                     'msg': 'Copy Snapshot resource successfully'}
@@ -461,6 +480,7 @@ class V7000CommonTestCase(test.TestCase):
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._ensure_snapshot_resource_area = mock.Mock()
         self.driver._wait_for_lun_or_snap_copy = mock.Mock()
+        self.driver._extend_lun = mock.Mock()
 
         # simulates extra specs: {'storage_pool', 'StoragePool'}
         self.driver._get_violin_extra_spec = mock.Mock(
@@ -475,6 +495,11 @@ class V7000CommonTestCase(test.TestCase):
             storage_pool="StoragePool")
         self.driver._wait_for_lun_or_snap_copy.assert_called_with(
             SRC_VOL['id'], dest_obj_id=object_id)
+        if larger_size_flag:
+            self.driver._extend_lun.assert_called_once_with(
+                dest_vol, dest_vol['size'])
+        else:
+            self.assertFalse(self.driver._extend_lun.called)
 
         self.assertIsNone(result)
 
