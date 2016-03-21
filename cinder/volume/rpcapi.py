@@ -399,23 +399,25 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'get_capabilities', discover=discover)
 
     def get_backup_device(self, ctxt, backup, volume):
-        if not self.client.can_send_version('1.38'):
+        if (not self.client.can_send_version('1.38') and
+                not self.client.can_send_version('2.0')):
             msg = _('One of cinder-volume services is too old to accept such '
                     'request. Are you running mixed Liberty-Mitaka '
                     'cinder-volumes?')
             raise exception.ServiceTooOld(msg)
-        new_host = utils.extract_host(volume.host)
-        cctxt = self.client.prepare(server=new_host, version='1.38')
+        version = self._compat_ver('2.0', '1.38')
+        cctxt = self._get_cctxt(volume.host, version)
         return cctxt.call(ctxt, 'get_backup_device',
                           backup=backup)
 
     def secure_file_operations_enabled(self, ctxt, volume):
-        if not self.client.can_send_version('1.38'):
+        if (not self.client.can_send_version('1.38') and
+                not self.client.can_send_version('2.0')):
             msg = _('One of cinder-volume services is too old to accept such '
                     'request. Are you running mixed Liberty-Mitaka '
                     'cinder-volumes?')
             raise exception.ServiceTooOld(msg)
-        new_host = utils.extract_host(volume.host)
-        cctxt = self.client.prepare(server=new_host, version='1.38')
+        version = self._compat_ver('2.0', '1.38')
+        cctxt = self._get_cctxt(volume.host, version)
         return cctxt.call(ctxt, 'secure_file_operations_enabled',
                           volume=volume)
