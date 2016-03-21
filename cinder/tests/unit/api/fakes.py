@@ -99,7 +99,7 @@ class FakeToken(object):
 
 class FakeRequestContext(context.RequestContext):
     def __init__(self, *args, **kwargs):
-        kwargs['auth_token'] = kwargs.get('auth_token', 'fake_auth_token')
+        kwargs['auth_token'] = kwargs.get(fake.user_id, fake.project_id)
         super(FakeRequestContext, self).__init__(*args, **kwargs)
 
 
@@ -117,18 +117,10 @@ class HTTPRequest(webob.Request):
         use_admin_context = kwargs.pop('use_admin_context', False)
         version = kwargs.pop('version', api_version._MIN_API_VERSION)
         out = os_wsgi.Request.blank(*args, **kwargs)
-        # TODO(tbarron): move v2+ to use fake.user_id and fake.project_id
-        # instead of 'fake_user' and 'fake_project'.
-        if 'v1' in args[0]:
-            out.environ['cinder.context'] = FakeRequestContext(
-                fake.user_id,
-                fake.project_id,
-                is_admin=use_admin_context)
-        else:
-            out.environ['cinder.context'] = FakeRequestContext(
-                'fake_user',
-                'fakeproject',
-                is_admin=use_admin_context)
+        out.environ['cinder.context'] = FakeRequestContext(
+            fake.user_id,
+            fake.project_id,
+            is_admin=use_admin_context)
         out.api_version_request = api_version.APIVersionRequest(version)
         return out
 

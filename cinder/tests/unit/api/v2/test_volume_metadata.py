@@ -28,6 +28,7 @@ from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import volume
 from cinder.volume import api as volume_api
@@ -141,7 +142,8 @@ class volumeMetaDataTest(test.TestCase):
         self.volume_controller = volumes.VolumeController(self.ext_mgr)
         self.controller = volume_metadata.Controller()
         self.req_id = str(uuid.uuid4())
-        self.url = '/v2/fake/volumes/%s/metadata' % self.req_id
+        self.url = '/v2/%s/volumes/%s/metadata' % (
+            fake.project_id, self.req_id)
 
         vol = {"size": 100,
                "display_name": "Volume Test Name",
@@ -581,7 +583,8 @@ class volumeMetaDataTest(test.TestCase):
     def test_update_item_nonexistent_volume(self):
         self.stubs.Set(db, 'volume_get',
                        return_volume_nonexistent)
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes/asdf/metadata/key1')
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/volumes/asdf/metadata/key1' % fake.project_id)
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
         req.body = jsonutils.dump_as_bytes(body)
