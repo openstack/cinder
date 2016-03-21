@@ -81,7 +81,7 @@ QUOTAS = quota.QUOTAS
 class BackupManager(manager.SchedulerDependentManager):
     """Manages backup of block storage devices."""
 
-    RPC_API_VERSION = '1.3'
+    RPC_API_VERSION = '2.0'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -93,7 +93,7 @@ class BackupManager(manager.SchedulerDependentManager):
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         super(BackupManager, self).__init__(service_name='backup',
                                             *args, **kwargs)
-        self.additional_endpoints.append(_BackupV2Proxy(self))
+        self.additional_endpoints.append(_BackupV1Proxy(self))
 
     @property
     def driver_name(self):
@@ -860,9 +860,9 @@ class BackupManager(manager.SchedulerDependentManager):
 
 # TODO(dulek): This goes away immediately in Newton and is just present in
 # Mitaka so that we can receive v1.x and v2.0 messages.
-class _BackupV2Proxy(object):
+class _BackupV1Proxy(object):
 
-    target = messaging.Target(version='2.0')
+    target = messaging.Target(version='1.3')
 
     def __init__(self, manager):
         self.manager = manager
