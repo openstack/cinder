@@ -1835,7 +1835,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                mock_open_connection,
                                mock_init):
         mock_snapshot = mock.MagicMock()
-        expected_snapshots = [mock_snapshot]
+        mock_snapshot.id = '1'
+        expected_snapshots = [{'id': '1', 'status': 'available'}]
 
         context = {}
         cggrp = {'consistencygroup_id': 'fc8f2fec-fab2-4e34-9148-c094c913b9a3',
