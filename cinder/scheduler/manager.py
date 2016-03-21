@@ -56,7 +56,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.11'
+    RPC_API_VERSION = '2.0'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -66,7 +66,7 @@ class SchedulerManager(manager.Manager):
             scheduler_driver = CONF.scheduler_driver
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
-        self.additional_endpoints.append(_SchedulerV2Proxy(self))
+        self.additional_endpoints.append(_SchedulerV1Proxy(self))
         self._startup_delay = True
 
     def init_host_with_rpc(self):
@@ -320,9 +320,9 @@ class SchedulerManager(manager.Manager):
 
 # TODO(dulek): This goes away immediately in Newton and is just present in
 # Mitaka so that we can receive v1.x and v2.0 messages.
-class _SchedulerV2Proxy(object):
+class _SchedulerV1Proxy(object):
 
-    target = messaging.Target(version='2.0')
+    target = messaging.Target(version='1.11')
 
     def __init__(self, manager):
         self.manager = manager
