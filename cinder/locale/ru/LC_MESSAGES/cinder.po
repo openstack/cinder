@@ -11,13 +11,13 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev8\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev9\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-19 12:27+0000\n"
+"POT-Creation-Date: 2016-03-20 17:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-19 09:55+0000\n"
+"PO-Revision-Date: 2016-03-20 10:39+0000\n"
 "Last-Translator: Grigory Mokhin <mokhin@gmail.com>\n"
 "Language: ru\n"
 "Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n"
@@ -335,6 +335,11 @@ msgstr "Не найден пул. (ИД пул: %(pool_id)s)"
 #, python-format
 msgid "A snapshot status is invalid. (status: %(status)s)"
 msgstr "Недопустимое состояние моментальной копии. (состояние: %(status)s)"
+
+msgid "A valid secondary target MUST be specified in order to failover."
+msgstr ""
+"Для переключения после сбоя необходимо указать допустимый вторичный целевой "
+"объект."
 
 msgid "A volume ID or share was not specified."
 msgstr "Не указан ИД тома или общий ресурс."
@@ -1237,6 +1242,10 @@ msgstr ""
 "том находится в недопустимом состоянии %(status)s. Допустимые состояния: "
 "%(valid)s."
 
+#, python-format
+msgid "Cannot retype from HPE3PARDriver to %s."
+msgstr "Изменить тип с HPE3PARDriver на %s невозможно."
+
 msgid "Cannot retype from one 3PAR array to another."
 msgstr "Изменить тип с одного массива 3PAR на другой невозможно."
 
@@ -1635,6 +1644,13 @@ msgstr "Не удалось создать экспорт для тома."
 
 msgid "Create hostgroup error."
 msgstr "Ошибка создания группы хостов."
+
+#, python-format
+msgid "Create hypermetro error. %s."
+msgstr "Ошибка создания hypermetro. %s."
+
+msgid "Create lun error."
+msgstr "Ошибка создания LUN."
 
 msgid "Create lun migration error."
 msgstr "Ошибка создания переноса LUN."
@@ -4250,6 +4266,9 @@ msgstr "Ошибка HBSD."
 msgid "HNAS has disconnected SSC"
 msgstr "HNAS отключил SSC"
 
+msgid "HPELeftHand url not found"
+msgstr "URL HPELeftHand не найден"
+
 #, python-format
 msgid ""
 "HTTPS certificate verification was requested but cannot be enabled with "
@@ -4708,6 +4727,10 @@ msgid "Invalid response header from RPC server"
 msgstr "Недопустимый заголовок ответа от сервера RPC"
 
 #, python-format
+msgid "Invalid secondary id %s."
+msgstr "Недопустимый вторичный ИД %s."
+
+#, python-format
 msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
 msgstr ""
 "Указан недопустимый secondary_backend_id. Допустимый ИД базовой системы: %s."
@@ -4971,6 +4994,9 @@ msgstr "Связанный дубликат исходного тома не п�
 
 msgid "Lock acquisition failed."
 msgstr "Не удается установить блокировку."
+
+msgid "Logout session error."
+msgstr "Ошибка завершения сеанса."
 
 msgid ""
 "Lookup service not configured. Config option for fc_san_lookup_service needs "
@@ -5986,6 +6012,9 @@ msgstr ""
 msgid "Received error string: %s"
 msgstr "Получена ошибочная строка: %s"
 
+msgid "Reference must be for an unmanaged snapshot."
+msgstr "Ссылка должна быть указана для неуправляемой моментальной копии."
+
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "Для неуправляемого виртуального тома должна быть ссылка."
 
@@ -6023,6 +6052,9 @@ msgid ""
 msgstr ""
 "Перенос ИД тома %(id)s отклонен. Проверьте конфигурацию, так как исходный и "
 "целевой объекты относятся к одной группе томов: %(name)s."
+
+msgid "Remote pool cannot be found."
+msgstr "Удаленный пул не найден."
 
 msgid "Remove CHAP error."
 msgstr "Ошибка удаления CHAP."
@@ -6459,6 +6491,10 @@ msgid "Snapshot %s must not be part of a consistency group."
 msgstr "Моментальная копия %s не должна быть частью группы согласования."
 
 #, python-format
+msgid "Snapshot '%s' doesn't exist on array."
+msgstr "Моментальная копия '%s' не существует в массиве."
+
+#, python-format
 msgid ""
 "Snapshot cannot be created because volume %(vol_id)s is not available, "
 "current volume status: %(vol_status)s."
@@ -6858,6 +6894,10 @@ msgstr ""
 "Родительская резервная копия должна быть доступна для создания дополняющей "
 "резервной копии."
 
+#, python-format
+msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
+msgstr "Моментальная копия '%s' не является моментальной копией данного тома."
+
 msgid ""
 "The reference to the volume in the backend should have the format "
 "file_system/volume_name (volume_name cannot contain '/')"
@@ -7096,6 +7136,22 @@ msgstr "Не существует такого действия: %s"
 
 msgid "There is no virtual disk device."
 msgstr "Нет устройства виртуального диска."
+
+#, python-format
+msgid "There was an error adding the volume to the remote copy group: %s."
+msgstr "Ошибка при добавлении тома в группу удаленного копирования: %s."
+
+#, python-format
+msgid "There was an error creating the cgsnapshot: %s"
+msgstr "При создании cgsnapshot возникла ошибка: %s"
+
+#, python-format
+msgid "There was an error creating the remote copy group: %s."
+msgstr "Ошибка при создании группы удаленного копирования: %s."
+
+#, python-format
+msgid "There was an error starting remote copy: %s."
+msgstr "Ошибка при запуске удаленного копирования: %s."
 
 #, python-format
 msgid "There's no Gluster config file configured (%s)"
@@ -8121,6 +8177,9 @@ msgstr "Драйвер тома не готов."
 #, python-format
 msgid "Volume driver reported an error: %(message)s"
 msgstr "Драйвер тома выдал ошибку: %(message)s"
+
+msgid "Volume has children and cannot be deleted!"
+msgstr "Невозможно удалить том, у которого есть дочерние объекты."
 
 #, python-format
 msgid "Volume in consistency group %s is attached. Need to detach first."

@@ -12,13 +12,13 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev7\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev9\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-18 12:49+0000\n"
+"POT-Creation-Date: 2016-03-20 17:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-18 04:47+0000\n"
+"PO-Revision-Date: 2016-03-20 10:19+0000\n"
 "Last-Translator: Monika Wolf <vcomas3@de.ibm.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -201,6 +201,10 @@ msgstr ""
 #, python-format
 msgid "%s configuration option is not set."
 msgstr "Konfigurationsoption %s ist nicht festgelegt."
+
+#, python-format
+msgid "%s does not exist."
+msgstr "%s ist nicht vorhanden."
 
 #, python-format
 msgid "%s is not a directory."
@@ -518,6 +522,14 @@ msgid "Append port group description error."
 msgstr "Fehler beim Anhängen der Portgruppenbeschreibung."
 
 #, python-format
+msgid ""
+"Applying the zones and cfgs to the switch failed (error code=%(err_code)s "
+"error msg=%(err_msg)s."
+msgstr ""
+"Anwenden der Zonen und Konfigurationen auf den Switch fehlgeschlagen "
+"(Fehlercode=%(err_code)s Fehlernachricht=%(err_msg)s)."
+
+#, python-format
 msgid "Array does not exist or is offline. Current status of array is %s."
 msgstr ""
 "Array ist nicht vorhanden oder ist offline. Aktueller Status des Arrays: %s."
@@ -829,6 +841,12 @@ msgstr "Cachename ist None. Legen Sie smartcache:cachename im Schlüssel fest."
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
 msgstr ""
 "Cachedatenträger %(cache_vol)s enthält Momentaufnahme %(cache_snap)s nicht."
+
+#, python-format
+msgid "Cache volume %s does not have required properties"
+msgstr ""
+"Der Zwischenspeicherdatenträger %s hat nicht die erforderlichen "
+"Eigenschaften."
 
 msgid "Call returned a None object"
 msgstr "Der Aufruf hat ein 'None'-Objekt zurückgegeben."
@@ -1445,6 +1463,14 @@ msgstr "Fehler bei der Cisco Fibre Channel-Zoning-CLI: %(reason)s"
 msgid "Clone feature is not licensed on %(storageSystem)s."
 msgstr "Klonfunktion ist nicht lizenziert auf %(storageSystem)s."
 
+#, python-format
+msgid ""
+"Clone type '%(clone_type)s' is invalid; valid values are: '%(full_clone)s' "
+"and '%(linked_clone)s'."
+msgstr ""
+"Der Klontyp '%(clone_type)s' ist ungültig. Gültige Werte: '%(full_clone)s' "
+"und '%(linked_clone)s'."
+
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr ""
@@ -1481,6 +1507,12 @@ msgstr "Compute-Cluster: %(cluster)s nicht gefunden."
 
 msgid "Condition has no field."
 msgstr "Die Bedingung hat kein Feld."
+
+#, python-format
+msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
+msgstr ""
+"Die Konfiguration von 'max_over_subscription_ratio' ist ungültig. Muss > 0 "
+"sein: %s"
 
 msgid "Configuration error: dell_sc_ssn not set."
 msgstr "Konfigurationsfehler: dell_sc_ssn ist nicht festgelegt."
@@ -1923,6 +1955,16 @@ msgstr ""
 
 msgid "Database schema downgrade is not allowed."
 msgstr "Das Herabstufen des Datenbankschemas ist nicht zulässig."
+
+#, python-format
+msgid "Dataset %s is not shared in Nexenta Store appliance"
+msgstr ""
+"Die Datengruppe %s wird nicht in der Nexenta Store-Appliance gemeinsam "
+"genutzt."
+
+#, python-format
+msgid "Dataset group %s not found at Nexenta SA"
+msgstr "Die Datengruppe %s wurde nicht in Nexenta SA gefunden."
 
 #, python-format
 msgid ""
@@ -2456,6 +2498,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Error Getting Pool Stats: Pool: %(pool)s Return code: %(status)d Message: "
+"%(data)s."
+msgstr ""
+"Fehler beim Abrufen der Poolstatistikdaten: Pool: %(pool)s Rückgabecode: "
+"%(status)d Nachricht: %(data)s."
+
+#, python-format
+msgid ""
 "Error Getting Project Stats: Pool: %(pool)s Project: %(project)s Return "
 "code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
@@ -2511,6 +2561,11 @@ msgid ""
 msgstr ""
 "Fehler beim Ändern der Maskenansicht %(groupName)s. Rückgabecode: %(rc)lu.  "
 "Fehler: %(error)s."
+
+#, python-format
+msgid "Error Pool ownership: Pool %(pool)s is not owned by %(host)s."
+msgstr ""
+"Fehler bei Pooleigentümer: Eigner des Pools %(pool)s ist nicht %(host)s."
 
 #, python-format
 msgid ""
@@ -2952,12 +3007,27 @@ msgid "Error while getting disco information [%s]."
 msgstr "Fehler beim Abrufen von Disco-Informationen [%s]."
 
 #, python-format
+msgid ""
+"Error while removing the zones and cfgs in the zone string: %(description)s."
+msgstr ""
+"Fehler beim Entfernen der Zonen und Konfigurationen in der "
+"Zonenzeichenfolge: %(description)s."
+
+#, python-format
 msgid "Error while requesting %(service)s API."
 msgstr "Fehler beim Anfordern der %(service)s-API."
 
 #, python-format
 msgid "Error while running zoning CLI: (command=%(cmd)s error=%(err)s)."
 msgstr "Fehler beim Ausführen von Zoning-CLI: (Befehl=%(cmd)s Fehler=%(err)s)."
+
+#, python-format
+msgid ""
+"Error while updating the new zones and cfgs in the zone string. Error "
+"%(description)s."
+msgstr ""
+"Fehler beim Aktualisieren der neuen Zonen und Konfigurationen in der "
+"Zonenzeichenfolge. Fehler %(description)s."
 
 msgid "Error writing field to database"
 msgstr "Fehler beim Schreiben eines Felds in Datenbank"
@@ -3008,6 +3078,11 @@ msgstr ""
 #, python-format
 msgid "Exception in _select_ds_for_volume: %s."
 msgstr "Ausnahme in _select_ds_for_volume: %s."
+
+#, python-format
+msgid "Exception while forming the zone string: %s."
+msgstr ""
+"Beim Zusammensetzen der Zonenzeichenfolge ist eine Ausnahme eingetreten: %s."
 
 #, python-format
 msgid "Exception: %s"
@@ -3112,6 +3187,10 @@ msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
 msgstr ""
 "Fehler beim Erstellen einer Momentaufnahme für Datenträger %(volname)s: "
 "%(response)s."
+
+#, python-format
+msgid "Failed getting active zone set from fabric %s."
+msgstr "Fehler beim Abrufen der aktiven über Fabric %s gesetzten Zone."
 
 #, python-format
 msgid "Failed getting details for pool %s."
@@ -3568,6 +3647,10 @@ msgid "Failed to find host %s."
 msgstr "Host %s nicht gefunden."
 
 #, python-format
+msgid "Failed to find iSCSI initiator group containing %(initiator)s."
+msgstr "Die iSCSI-Initiatorgruppe mit %(initiator)s wurde nicht gefunden."
+
+#, python-format
 msgid "Failed to find storage pool for source volume %s."
 msgstr "Speicherpool für Quellendatenträger %s konnte nicht gefunden werden."
 
@@ -3696,6 +3779,11 @@ msgstr "Fehler beim Abrufen der Informationen zum Replikat."
 
 msgid "Failed to get show fcns database info."
 msgstr "Fehler beim Abrufen der Anzeige-FCNS-Datenbankinformationen."
+
+msgid "Failed to get size of existing volume: %(vol). Volume Manage failed."
+msgstr ""
+"Fehler beim Abrufen der Größe von Datenträger %(vol). Datenträgerverwaltung "
+"fehlgeschlagen."
 
 #, python-format
 msgid "Failed to get size of volume %s"
@@ -3924,13 +4012,12 @@ msgstr ""
 " Standardausgabe: %(out)s\n"
 " Standardfehler: %(err)s."
 
-#, fuzzy
 msgid ""
 "Failed to parse the configuration option 'keystone_catalog_info', must be in "
 "the form <service_type>:<service_name>:<endpoint_type>"
 msgstr ""
-"Die Konfigurationsoption 'keystone_catalog_info' muss das Format "
-"<service_type>:<service_name>:<endpoint_type> haben."
+"Die Konfigurationsoption 'keystone_catalog_info' muss das Format <Diensttyp>:"
+"<Dienstname>:<Endpunkttyp> haben."
 
 msgid ""
 "Failed to parse the configuration option 'swift_catalog_info', must be in "
@@ -4068,6 +4155,9 @@ msgstr "Aktualisieren von Metadaten für Datenträger fehlgeschlagen: %(reason)s
 
 msgid "Failed to update or delete zoning configuration"
 msgstr "Fehler beim Aktualisieren oder Löschen der Zoningkonfiguration"
+
+msgid "Failed to update or delete zoning configuration."
+msgstr "Fehler beim Aktualisieren oder Löschen der Zoningkonfiguration."
 
 #, python-format
 msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
@@ -5303,6 +5393,10 @@ msgstr ""
 "Für die Unterstützung von verschachtelten Kontingenten muss Keystone ab "
 "Version 3 verwendet werden."
 
+#, python-format
+msgid "LU does not exist for volume: %s"
+msgstr "LU für den Datenträger nicht vorhanden: %s"
+
 msgid "LUN export failed!"
 msgstr "Exportieren der LUN fehlgeschlagen!"
 
@@ -5371,7 +5465,7 @@ msgstr ""
 msgid "Lun migration error."
 msgstr "Fehler bei LUN-Migration."
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "MD5 of object: %(object_name)s before: %(md5)s and after: %(etag)s is not "
 "same."
@@ -5807,6 +5901,9 @@ msgid "No Port Group elements found in config file."
 msgstr ""
 "Es wurden keine Portgruppenelemente in der Konfigurationsdatei gefunden."
 
+msgid "No VF ID is defined in the configuration file."
+msgstr "In der Konfigurationsdatei ist keine VF-ID definiert."
+
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "Keine aktiven iSCSI-Portale mit angegebenen iSCSI-IPs"
 
@@ -5964,6 +6061,10 @@ msgstr ""
 "Von API-Aufruf zum Auflisten vom Dateisystem (listFileSystem) keine Antwort "
 "von CloudByte erhalten."
 
+msgid "No service VIP configured and no nexenta_client_address"
+msgstr ""
+"Kein Dienst-VIP konfiguriert und 'nexenta_client_address' nicht vorhanden."
+
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr "Keine Momentaufnahme mit %s als Sicherungsdatei gefunden."
@@ -6021,6 +6122,10 @@ msgid "No vdisk with the UID specified by ref %s."
 msgstr ""
 "Keine virtuelle Platte mit der durch die Referenz %s angegebenen UID "
 "vorhanden."
+
+#, python-format
+msgid "No views found for LUN: %s"
+msgstr "Keine Ansichten für LUN gefunden: %s"
 
 #, python-format
 msgid ""
@@ -6256,6 +6361,10 @@ msgid "Pool %(poolNameInStr)s is not found."
 msgstr "Pool %(poolNameInStr)s wurde nicht gefunden."
 
 #, python-format
+msgid "Pool %s does not exist in Nexenta Store appliance"
+msgstr "Der Pool %s ist nicht in der Nexenta Store-Appliance vorhanden."
+
+#, python-format
 msgid "Pool from volume['host'] %(host)s not found."
 msgstr "Pool von Datenträger ['host'] %(host)s nicht gefunden."
 
@@ -6370,6 +6479,13 @@ msgid ""
 msgstr ""
 "QoS policy muss für IOTYPE angegeben werden: 0, 1 oder 2. QoS-Richtlinie: "
 "%(qos_policy)s "
+
+#, python-format
+msgid ""
+"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
+msgstr ""
+"QoS-Richtlinienkonflikt bei 'upper_limit' und 'lower_limit'. QoS-Richtlinie: "
+"%(qos_policy)s."
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -6515,6 +6631,17 @@ msgstr "Verweis muss 'source-name' oder 'source-id' enthalten."
 
 msgid "Reference must contain source-name."
 msgstr "Verweis muss Element 'source-name' enthalten."
+
+msgid "Reference to volume to be managed must contain source-name."
+msgstr ""
+"Die Referenz auf den zu verwaltenden Datenträger muss 'source-name' "
+"enthalten."
+
+#, python-format
+msgid "Reference to volume: %s to be managed must contain source-name."
+msgstr ""
+"Die Referenz auf den zu verwaltenden Datenträger %s muss 'source-name' "
+"enthalten."
 
 #, python-format
 msgid ""
@@ -6769,6 +6896,13 @@ msgstr ""
 #, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "Für %(volumeName)s wird ein Rollback durch Löschung durchgeführt."
+
+#, fuzzy, python-format
+msgid ""
+"Running Cinder with a VMware vCenter version less than %s is not allowed."
+msgstr ""
+"Es ist nicht zulässig, Cinder mit einer VMware vCenter-Version auszuführen, "
+"die niedriger ist als  %s."
 
 msgid "SAN product is not configured."
 msgstr "SAN-Produkt ist nicht konfiguriert."
@@ -7170,6 +7304,17 @@ msgstr "StorageSystem %(array)s wurde nicht gefunden. "
 #, python-format
 msgid "String with params: %s"
 msgstr "Zeichenkette mit Parameter: %s"
+
+#, python-format
+msgid ""
+"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
+"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
+"for one or more of the following projects: '%(child_ids)s'"
+msgstr ""
+"Die Summe der Nutzung untergeordneter Projekte '%(sum)s' ist größer als das "
+"freie Kontingent von '%(free)s' für das Projekt '%(proj)s' für die Ressource "
+"'%(res)s'. Reduzieren Sie den Grenzwert oder die Nutzung für mindestens "
+"eines der folgenden Projekte: '%(child_ids)s'"
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr ""
@@ -8009,6 +8154,10 @@ msgstr ""
 "Replication und Snapcopy können nicht zur selben Zeit aktiviert werden. "
 
 #, python-format
+msgid "Unable to establish the partnership with the Storwize cluster %s."
+msgstr "Es kann keine Beziehung zum Storwizse-Cluster %s hergestellt werden."
+
+#, python-format
 msgid "Unable to extend volume %s"
 msgstr "Datenträger %s kann nicht erweitert werden"
 
@@ -8372,6 +8521,36 @@ msgid "Unknown action"
 msgstr "Unbekannte Aktion"
 
 #, python-format
+msgid ""
+"Unknown if the volume: %s to be managed is already being managed by Cinder. "
+"Aborting manage volume. Please add 'cinder_managed' custom schema property "
+"to the volume and set its value to False. Alternatively, Set the value of "
+"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
+"restriction."
+msgstr ""
+"Es ist nicht bekannt, ob der zu verwaltende Datenträger %s bereits von "
+"Cinder verwaltet wird. Verwalten des Datenträgers wird abgebrochen. Fügen "
+"Sie dem Datenträger die angepasste Schemaeigenschaft 'cinder_managed' hinzu "
+"und setzen Sie den zugehörigen Wert auf 'False'. Alternativ können Sie den "
+"Wert der Cinder-Konfigurationsrichtlinie 'zfssa_manage_policy' auf 'loose' "
+"setzen, um diese Einschränkung zu entfernen."
+
+#, python-format
+msgid ""
+"Unknown if the volume: %s to be managed is already being managed by Cinder. "
+"Aborting manage volume. Please add 'cinder_managed' custom schema property "
+"to the volume and set its value to False. Alternatively, set the value of "
+"cinder config policy 'zfssa_manage_policy' to 'loose' to remove this "
+"restriction."
+msgstr ""
+"Es ist nicht bekannt, ob der zu verwaltende Datenträger %s bereits von "
+"Cinder verwaltet wird. Verwalten des Datenträgers wird abgebrochen. Fügen "
+"Sie dem Datenträger die angepasste Schemaeigenschaft 'cinder_managed' hinzu "
+"und setzen Sie den zugehörigen Wert auf 'False'. Alternativ können Sie den "
+"Wert der Cinder-Konfigurationsrichtlinie 'zfssa_manage_policy' auf 'loose' "
+"setzen, um diese Einschränkung zu entfernen."
+
+#, python-format
 msgid "Unknown operation %s."
 msgstr "Unbekannte Operation %s."
 
@@ -8524,6 +8703,9 @@ msgstr "V2-Rollback. Datenträger befindet sich in keiner Speichergruppe."
 msgid "V3 rollback"
 msgstr "V3-Rollback"
 
+msgid "VF is not enabled."
+msgstr "VF ist nicht aktiviert."
+
 #, python-format
 msgid "VV Set %s does not exist."
 msgstr "VV-Gruppe %s ist nicht vorhanden."
@@ -8607,6 +8789,11 @@ msgstr ""
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
 msgstr "Datenträger %(vol)s konnte nicht in Pool %(pool)s erstellt werden."
+
+#, python-format
+msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
+msgstr ""
+"Datenträger %(vol1)s stimmt nicht mit snapshot.volume_id %(vol2)s überein."
 
 #, python-format
 msgid ""
@@ -8721,6 +8908,10 @@ msgid "Volume %s doesn't exist on array."
 msgstr "Datenträger %s ist auf Platteneinheit nicht vorhanden. "
 
 #, python-format
+msgid "Volume %s doesn't exist on the ZFSSA backend."
+msgstr "Der Datenträger %s ist nicht im ZFSSA-Backend vorhanden."
+
+#, python-format
 msgid "Volume %s is already managed by OpenStack."
 msgstr "Datenträger %s wird bereits von OpenStack verwaltet."
 
@@ -8730,10 +8921,29 @@ msgstr "Datenträger %s ist bereits Teil einer aktiven Migration."
 
 #, python-format
 msgid ""
+"Volume %s is not of replicated type. This volume needs to be of a volume "
+"type with the extra spec replication_enabled set to '<is> True' to support "
+"replication actions."
+msgstr ""
+"Der Datenträger %s hat nicht den Typ 'replication'. Dieser Datenträger muss "
+"ein Datenträgertyp sein, bei dem die extra Spezifikation "
+"'replication_enabled' auf '<is> True' gesetzt ist, damit "
+"Replikationsaktionen unterstützt werden."
+
+#, python-format
+msgid ""
 "Volume %s is online. Set volume to offline for managing using OpenStack."
 msgstr ""
 "Der Datenträger %s ist 'online'. Setzen Sie den Datenträger für die "
 "Verwaltung mit OpenStack auf 'offline'."
+
+#, python-format
+msgid ""
+"Volume %s must not be migrating, attached, belong to a consistency group or "
+"have snapshots."
+msgstr ""
+"Der Datenträger %s darf nicht migriert oder zugeordnet sein, darf zu keiner "
+"Konsistenzgruppe gehören und keine Schattenkopien haben."
 
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
@@ -8824,6 +9034,11 @@ msgid "Volume cannot be restored since it contains snapshots."
 msgstr ""
 "Datenträger kann nicht wiederhergestellt werden, da er Momentaufnahmen "
 "enthält."
+
+msgid "Volume create failed while extracting volume ref."
+msgstr ""
+"Datenträgererstellung beim Extrahieren der Datenträgerreferenz "
+"fehlgeschlagen."
 
 #, python-format
 msgid "Volume device file path %s does not exist."
@@ -9109,6 +9324,10 @@ msgstr ""
 #, python-format
 msgid "Volume: %s could not be found."
 msgstr "Datenträger: %s wurde nicht gefunden."
+
+#, python-format
+msgid "Volume: %s is already being managed by Cinder."
+msgstr "Der Datenträger %s wird bereits von Cinder verwaltet."
 
 msgid "Volumes will be chunked into objects of this size (in megabytes)."
 msgstr "Datenträger werden in Objekte dieser Größe (in Megabyte) aufgeteilt. "
@@ -9710,6 +9929,14 @@ msgstr ""
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "create_cloned_volume: Größe von Quelle und Ziel sind unterschiedlich."
 
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume: Der Quellendatenträger %(src_vol)s mit %(src_size)d GB "
+"passt nicht in einen Zieldatenträger %(tgt_vol)s mit %(tgt_size)d GB."
+
 msgid ""
 "create_consistencygroup_from_src must be creating from a CG snapshot, or a "
 "source CG."
@@ -9958,6 +10185,10 @@ msgstr "fileno wird durch SheepdogIOWrapper nicht unterstützt"
 
 msgid "fileno() not supported by RBD()"
 msgstr "fileno() wird von RBD() nicht unterstützt"
+
+#, python-format
+msgid "filesystem %s does not exist in Nexenta Store appliance"
+msgstr "Das Dateisystem %s ist nicht in der Nexenta Store-Appliance vorhanden."
 
 msgid ""
 "flashsystem_multihostmap_enabled is set to False, not allow multi host "
@@ -10355,6 +10586,19 @@ msgstr "Quellendatenträger-ID %s nicht gefunden"
 msgid "source volume id:%s is not replicated"
 msgstr "Quellendatenträger-ID %s wird nicht repliziert"
 
+msgid "source-name cannot be empty."
+msgstr "'source-name' darf nicht leer sein."
+
+#, fuzzy
+msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
+msgstr ""
+"Das Format für 'source-name' muss wie folgt lauten: "
+"'vmdk_path@vm_inventory_path'."
+
+#, python-format
+msgid "status must be %s and"
+msgstr " Status muss %s sein und "
+
 msgid "status must be available"
 msgstr "Status muss 'available' sein"
 
@@ -10493,6 +10737,14 @@ msgstr "Datenträger geändert"
 #, python-format
 msgid "wait_for_condition: %s timed out."
 msgstr "wait_for_condition: %s hat zulässiges Zeitlimit überschritten."
+
+#, python-format
+msgid ""
+"zfssa_manage_policy property needs to be set to 'strict' or 'loose'. Current "
+"value is: %s."
+msgstr ""
+"Die Eigenschaft 'zfssa_manage_policy' muss auf 'strict' oder 'loose' gesetzt "
+"sein. Aktueller Wert: %s."
 
 msgid "{} is not a valid option."
 msgstr "{} ist keine gültige Option."
