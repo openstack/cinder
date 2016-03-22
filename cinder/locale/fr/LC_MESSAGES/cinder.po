@@ -14,13 +14,13 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev7\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev12\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-18 12:49+0000\n"
+"POT-Creation-Date: 2016-03-21 11:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-18 11:15+0000\n"
+"PO-Revision-Date: 2016-03-21 08:59+0000\n"
 "Last-Translator: Martine Marin <mmarin@fr.ibm.com>\n"
 "Language: fr\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
@@ -913,6 +913,12 @@ msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "Nom de cache %(name)s introuvable sur la matrice."
 
 #, python-format
+msgid "Can't find lun id from db, volume: %(id)s"
+msgstr ""
+"ID de numéro d'unité logique (lun) introuvable à partir de la base de "
+"données,  volume : %(id)s"
+
+#, python-format
 msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
 msgstr ""
 "Informations de numéro d'unité logique (lun) introuvables sur la matrice. "
@@ -1760,6 +1766,11 @@ msgid "Could not find the parent volume for Snapshot '%s' on array."
 msgstr ""
 "Impossible de trouver le volume parent de l'instantané '%s' sur la matrice."
 
+#, python-format
+msgid "Could not find unique snapshot %(snap)s on volume %(vol)s."
+msgstr ""
+"Impossible de trouver l'instantané unique %(snap)s sur le volume %(vol)s."
+
 msgid "Could not get system name."
 msgstr "Impossible d'obtenir le nom du système."
 
@@ -1787,6 +1798,14 @@ msgstr ""
 #, python-format
 msgid "Could not save configuration to %(file_path)s: %(exc)s"
 msgstr "Impossible d'enregistrer la configuration dans %(file_path)s: %(exc)s"
+
+#, python-format
+msgid "Could not start consistency group snapshot %s."
+msgstr "Impossible de démarrer l'instantané du groupe de cohérence %s."
+
+#, python-format
+msgid "Counter %s not found"
+msgstr "Compteur %s non trouvé"
 
 msgid "Create QoS policy error."
 msgstr "Erreur lors de la création de la stratégie QoS."
@@ -5485,6 +5504,10 @@ msgstr ""
 "Keystone version 3 ou ultérieure doit être utilisé pour la prise en charge "
 "de quotas imbriqués."
 
+#, python-format
+msgid "LU does not exist for volume: %s"
+msgstr "L'unité logique n'existe pas pour le volume : %s"
+
 msgid "LUN export failed!"
 msgstr "L'exportation de numéro d'unité logique a échoué. "
 
@@ -5647,6 +5670,11 @@ msgstr ""
 msgid "Managing of snapshots to failed-over volumes is not allowed."
 msgstr ""
 "La gestion des instantanés sur des volumes basculés n'est pas autorisée."
+
+msgid "Map info is None due to array version not supporting hypermetro."
+msgstr ""
+"La valeur de Map info est None car la version de la matrice ne prend pas en "
+"charge hypermetro."
 
 #, python-format
 msgid ""
@@ -6206,6 +6234,10 @@ msgstr "Aucun hôte valide pour le volume %(id)s de type %(type)s"
 #, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "Aucun disque virtuel (vdisk) avec l'UID indiqué par ref %s."
+
+#, python-format
+msgid "No views found for LUN: %s"
+msgstr "Aucune vue n'a été trouvée pour le numéro d'unité logique (LUN) : %s"
 
 #, python-format
 msgid ""
