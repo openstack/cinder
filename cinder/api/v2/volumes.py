@@ -249,6 +249,7 @@ class VolumeController(wsgi.Controller):
             except (ValueError, SyntaxError):
                 LOG.debug('Could not evaluate value %s, assuming string', v)
 
+        self.volume_api.check_volume_filters(filters)
         volumes = self.volume_api.get_all(context, marker, limit,
                                           sort_keys=sort_keys,
                                           sort_dirs=sort_dirs,

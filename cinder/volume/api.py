@@ -16,7 +16,7 @@
 
 """Handles all requests relating to volumes."""
 
-
+import ast
 import collections
 import datetime
 import functools
@@ -1714,6 +1714,35 @@ class API(base.Base):
         # also, would be worth having something at a backend/host
         # level to show an admin how a backend is configured.
         return self.volume_rpcapi.list_replication_targets(ctxt, volume)
+
+    def check_volume_filters(self, filters):
+        '''Sets the user filter value to accepted format'''
+        booleans = self.db.get_booleans_for_table('volume')
+
+        # To translate any true/false equivalent to True/False
+        # which is only acceptable format in database queries.
+        accepted_true = ['True', 'true', 'TRUE']
+        accepted_false = ['False', 'false', 'FALSE']
+        for k, v in filters.items():
+            try:
+                if k in booleans:
+                    if v in accepted_false:
+                        filters[k] = False
+                    elif v in accepted_true:
+                        filters[k] = True
+                    else:
+                        filters[k] = bool(v)
+                elif k == 'display_name':
+                    # Use the raw value of display name as is for the filter
+                    # without passing it through ast.literal_eval(). If the
+                    # display name is a properly quoted string (e.g. '"foo"')
+                    # then literal_eval() strips the quotes (i.e. 'foo'), so
+                    # the filter becomes different from the user input.
+                    continue
+                else:
+                    filters[k] = ast.literal_eval(v)
+            except (ValueError, SyntaxError):
+                LOG.debug('Could not evaluate value %s, assuming string', v)
 
 
 class HostAPI(base.Base):

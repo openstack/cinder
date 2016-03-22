@@ -46,6 +46,7 @@ from sqlalchemy.sql.expression import desc
 from sqlalchemy.sql.expression import literal_column
 from sqlalchemy.sql.expression import true
 from sqlalchemy.sql import func
+from sqlalchemy.sql import sqltypes
 
 from cinder.api import common
 from cinder.common import sqlalchemyutils
@@ -1108,6 +1109,18 @@ def volume_create(context, values):
         raise exception.Invalid()
 
     return _volume_get(context, values['id'], session=session)
+
+
+def get_booleans_for_table(table_name):
+    booleans = set()
+    table = getattr(models, table_name.capitalize())
+    if hasattr(table, '__table__'):
+        columns = table.__table__.columns
+        for column in columns:
+            if isinstance(column.type, sqltypes.Boolean):
+                booleans.add(column.name)
+
+    return booleans
 
 
 @require_admin_context
