@@ -387,6 +387,15 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                 'storagetype:replayprofiles')
                             scvolume = api.create_view_volume(
                                 volume_name, replay, replay_profile_string)
+
+                            # Extend Volume
+                            if scvolume and (volume['size'] >
+                                             snapshot["volume_size"]):
+                                LOG.debug("Resize the new volume to %s.",
+                                          volume['size'])
+                                scvolume = api.expand_volume(scvolume,
+                                                             volume['size'])
+
                             if scvolume is None:
                                 raise exception.VolumeBackendAPIException(
                                     message=_('Unable to create volume '
