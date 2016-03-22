@@ -34,6 +34,7 @@ from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 class TestNexentaISCSIDriver(test.TestCase):
     TEST_VOLUME_NAME = 'volume1'
     TEST_VOLUME_NAME2 = 'volume2'
+    TEST_VOLUME_NAME3 = 'volume3'
     TEST_SNAPSHOT_NAME = 'snapshot1'
     TEST_VOLUME_REF = {
         'name': TEST_VOLUME_NAME,
@@ -47,10 +48,17 @@ class TestNexentaISCSIDriver(test.TestCase):
         'id': '2',
         'status': 'in-use'
     }
+    TEST_VOLUME_REF3 = {
+        'name': TEST_VOLUME_NAME3,
+        'size': 2,
+        'id': '2',
+        'status': 'in-use'
+    }
     TEST_SNAPSHOT_REF = {
         'name': TEST_SNAPSHOT_NAME,
         'volume_name': TEST_VOLUME_NAME,
-        'volume_id': '1'
+        'volume_id': '1',
+        'size': 1
     }
 
     def __init__(self, method):
@@ -131,17 +139,19 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.nef_mock.post.assert_called_with(url, data)
 
     def test_extend_volume(self):
-        self.nef_mock.put.side_effect = exception.NexentaException()
-        self.assertRaises(
-            exception.NexentaException,
-            self.drv.extend_volume, self.TEST_VOLUME_REF, 2)
+        self.drv.extend_volume(self.TEST_VOLUME_REF, 2)
+        url = ('storage/pools/pool/volumeGroups/dsg/volumes/%(name)s') % {
+            'name': self.TEST_VOLUME_REF['name']}
+        self.nef_mock.put.assert_called_with(url, {
+            'volumeSize': 2 * units.Gi})
 
     def test_delete_snapshot(self):
         self._create_volume_db_entry()
-        self.nef_mock.delete.side_effect = exception.NexentaException('EBUSY')
-        self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
         url = ('storage/pools/pool/volumeGroups/dsg/'
                'volumes/volume-1/snapshots/snapshot1')
+
+        self.nef_mock.delete.side_effect = exception.NexentaException('EBUSY')
+        self.drv.delete_snapshot(self.TEST_SNAPSHOT_REF)
         self.nef_mock.delete.assert_called_with(url)
 
         self.nef_mock.delete.side_effect = exception.NexentaException('Error')
@@ -170,6 +180,19 @@ class TestNexentaISCSIDriver(test.TestCase):
         url = 'storage/pools/pool/volumeGroups/dsg/volumes/volume-1/snapshots'
         self.nef_mock.post.assert_called_with(
             url, {'name': 'snapshot1'})
+
+    def test_create_larger_volume_from_snapshot(self):
+        self._create_volume_db_entry()
+        vol = self.TEST_VOLUME_REF3
+        src_vref = self.TEST_SNAPSHOT_REF
+
+        self.drv.create_volume_from_snapshot(vol, src_vref)
+
+        # make sure the volume get extended!
+        url = ('storage/pools/pool/volumeGroups/dsg/volumes/%(name)s') % {
+            'name': self.TEST_VOLUME_REF3['name']}
+        self.nef_mock.put.assert_called_with(url, {
+            'volumeSize': 2 * units.Gi})
 
     def test_get_target_by_alias(self):
         self.nef_mock.get.return_value = {'data': []}

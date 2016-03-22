@@ -323,6 +323,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
         }
         self.nef.post(url)
 
+        if (('size' in volume) and (volume['size'] > snapshot['size'])):
+            self.extend_volume(volume, volume['size'])
+
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
 
