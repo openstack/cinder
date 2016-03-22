@@ -122,6 +122,9 @@ class Service(service.Service):
     it state to the database services table.
     """
 
+    # Make service_id a class attribute so it can be used for clean up
+    service_id = None
+
     def __init__(self, host, binary, topic, manager, report_interval=None,
                  periodic_interval=None, periodic_fuzzy_delay=None,
                  service_name=None, coordination=False, cluster=None, *args,
@@ -186,7 +189,7 @@ class Service(service.Service):
                 self._ensure_cluster_exists(ctxt, service_ref.disabled)
                 service_ref.cluster_name = cluster
             service_ref.save()
-            self.service_id = service_ref.id
+            Service.service_id = service_ref.id
         except exception.NotFound:
             # We don't want to include cluster information on the service or
             # create the cluster entry if we are upgrading.
@@ -332,7 +335,7 @@ class Service(service.Service):
             kwargs['cluster_name'] = self.cluster
         service_ref = objects.Service(context=context, **kwargs)
         service_ref.create()
-        self.service_id = service_ref.id
+        Service.service_id = service_ref.id
         # TODO(geguileo): In O unconditionally ensure that the cluster exists
         if not self.is_upgrading_to_n:
             self._ensure_cluster_exists(context)
@@ -442,12 +445,14 @@ class Service(service.Service):
         zone = CONF.storage_availability_zone
         try:
             try:
-                service_ref = objects.Service.get_by_id(ctxt, self.service_id)
+                service_ref = objects.Service.get_by_id(ctxt,
+                                                        Service.service_id)
             except exception.NotFound:
                 LOG.debug('The service database object disappeared, '
                           'recreating it.')
                 self._create_service_ref(ctxt)
-                service_ref = objects.Service.get_by_id(ctxt, self.service_id)
+                service_ref = objects.Service.get_by_id(ctxt,
+                                                        Service.service_id)
 
             service_ref.report_count += 1
             if zone != service_ref.availability_zone:
