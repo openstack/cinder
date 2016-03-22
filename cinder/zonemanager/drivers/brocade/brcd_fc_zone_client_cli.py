@@ -139,6 +139,7 @@ class BrcdFCZoneClientCLI(object):
             active_zone_set = self.get_active_zone_set()
             LOG.debug("Active zone set: %s", active_zone_set)
         zone_list = active_zone_set[zone_constant.CFG_ZONES]
+        zone_updated = []
         LOG.debug("zone list: %s", zone_list)
         for zone in zones.keys():
             # If zone exists, its an update. Delete & insert
@@ -150,6 +151,7 @@ class BrcdFCZoneClientCLI(object):
                     break
                 try:
                     self.delete_zones(zone, activate, active_zone_set)
+                    zone_updated.append(zone)
                 except exception.BrocadeZoningCliException:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_LE("Deleting zone failed %s"), zone)
@@ -170,10 +172,12 @@ class BrcdFCZoneClientCLI(object):
         if not zone_with_sep:
             return
         try:
-            # Get active zone set from device, as some of the zones
-            # could be deleted.
-            active_zone_set = self.get_active_zone_set()
-            cfg_name = active_zone_set[zone_constant.ACTIVE_ZONE_CONFIG]
+            # If all existing zones are to be updated, the active zone config
+            # will require a recreate, since all zones have been deleted.
+            if len(zone_list) == len(zone_updated):
+                cfg_name = None
+            else:
+                cfg_name = active_zone_set[zone_constant.ACTIVE_ZONE_CONFIG]
             cmd = None
             if not cfg_name:
                 cfg_name = zone_constant.OPENSTACK_CFG_NAME

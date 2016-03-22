@@ -96,7 +96,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
                                             get_active_zs_mock):
         get_active_zs_mock.return_value = active_zoneset
         self.add_zones(new_zones, False, None)
-        self.assertEqual(2, get_active_zs_mock.call_count)
+        self.assertEqual(1, get_active_zs_mock.call_count)
         self.assertEqual(3, apply_zone_change_mock.call_count)
         cfg_save_mock.assert_called_once_with()
 
@@ -137,6 +137,22 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
         self.add_zones(new_zone_memb_not_same, True, active_zoneset)
         self.assertEqual(2, apply_zone_change_mock.call_count)
         self.assertEqual(1, delete_zones_mock.call_count)
+
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'get_active_zone_set')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'delete_zones')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'activate_zoneset')
+    @mock.patch.object(client_cli.BrcdFCZoneClientCLI, 'apply_zone_change')
+    def test_add_zone_all_exists_memb_not_same(self, apply_zone_change_mock,
+                                               activate_zoneset_mock,
+                                               delete_zones_mock,
+                                               get_active_zs_mock):
+
+        self.add_zones(new_zone_memb_not_same, True, active_zoneset)
+        call_args = apply_zone_change_mock.call_args[0][0]
+        self.assertEqual(0, get_active_zs_mock.call_count)
+        self.assertEqual(2, apply_zone_change_mock.call_count)
+        self.assertEqual(1, delete_zones_mock.call_count)
+        self.assertTrue('cfgcreate' in call_args)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
     def test_activate_zoneset(self, ssh_execute_mock):
