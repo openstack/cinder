@@ -266,7 +266,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         lun_info = self.client.create_lun(lun_params)
         model_update['provider_location'] = lun_info['ID']
 
-        admin_metadata = volume['admin_metadata']
+        admin_metadata = huawei_utils.get_admin_metadata(volume)
         admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
         model_update['admin_metadata'] = admin_metadata
         metadata = huawei_utils.get_volume_metadata(volume)
@@ -736,7 +736,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                     raise exception.VolumeBackendAPIException(data=msg)
                 return
 
-        metadata = volume['admin_metadata']
+        metadata = huawei_utils.get_admin_metadata(volume)
         lun_wwn = metadata.get('huawei_lun_wwn') if metadata else None
         if not lun_wwn:
             LOG.debug("No LUN WWN recorded for volume %s.", volume['id'])
@@ -753,12 +753,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
-        lun_id = volume.get('provider_location')
-        if not lun_id:
-            msg = (_("Can't find lun id from db, volume: %(id)s") %
-                   {"id": volume['id']})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+        lun_id = self._check_volume_exist_on_array(
+            volume, constants.VOLUME_NOT_EXISTS_RAISE)
 
         volume_type = self._get_volume_type(volume)
         opts = self._get_volume_params(volume_type)
@@ -1309,7 +1305,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                   {'old_name': lun_info.get('NAME'),
                    'new_name': new_name})
         self.client.rename_lun(lun_id, new_name, description)
-        metadata = volume['admin_metadata']
+        metadata = huawei_utils.get_admin_metadata(volume)
         metadata.update({'huawei_lun_wwn': lun_info['WWN']})
 
         model_update = {}
