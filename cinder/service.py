@@ -121,7 +121,6 @@ class Service(service.Service):
     on topic. It also periodically runs tasks on the manager and reports
     it state to the database services table.
     """
-
     # Make service_id a class attribute so it can be used for clean up
     service_id = None
 
@@ -143,6 +142,8 @@ class Service(service.Service):
         manager_class = importutils.import_class(self.manager_class_name)
         if CONF.profiler.enabled:
             manager_class = profiler.trace_cls("rpc")(manager_class)
+
+        self.service = None
 
         # NOTE(geguileo): We need to create the Service DB entry before we
         # create the manager, otherwise capped versions for serializer and rpc
@@ -234,7 +235,8 @@ class Service(service.Service):
         if self.coordination:
             coordination.COORDINATOR.start()
 
-        self.manager.init_host(added_to_cluster=self.added_to_cluster)
+        self.manager.init_host(added_to_cluster=self.added_to_cluster,
+                               service_id=Service.service_id)
 
         LOG.debug("Creating RPC server for service %s", self.topic)
 

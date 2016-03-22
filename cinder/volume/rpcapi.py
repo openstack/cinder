@@ -164,6 +164,7 @@ class VolumeAPI(rpc.RPCAPI):
                    volume=volume)
 
     def delete_volume(self, ctxt, volume, unmanage_only=False, cascade=False):
+        volume.create_worker()
         cctxt = self._get_cctxt(volume.host)
         msg_args = {
             'volume': volume, 'unmanage_only': unmanage_only,
@@ -173,6 +174,7 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'delete_volume', **msg_args)
 
     def create_snapshot(self, ctxt, volume, snapshot):
+        snapshot.create_worker()
         cctxt = self._get_cctxt(volume['host'])
         cctxt.cast(ctxt, 'create_snapshot', snapshot=snapshot)
 

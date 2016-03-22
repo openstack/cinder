@@ -1751,8 +1751,8 @@ def volume_get(context, volume_id):
 
 
 @require_admin_context
-def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
-                   filters=None, offset=None):
+def volume_get_all(context, marker=None, limit=None, sort_keys=None,
+                   sort_dirs=None, filters=None, offset=None):
     """Retrieves all volumes.
 
     If no sort parameters are specified then the returned volumes are sorted
@@ -1997,6 +1997,15 @@ def _process_volume_filters(query, filters):
         except AttributeError:
             LOG.debug("'migration_status' column could not be found.")
             return None
+
+    host = filters.pop('host', None)
+    if host:
+        query = query.filter(_filter_host(models.Volume.host, host))
+
+    cluster_name = filters.pop('cluster_name', None)
+    if cluster_name:
+        query = query.filter(_filter_host(models.Volume.cluster_name,
+                                          cluster_name))
 
     # Apply exact match filters for everything else, ensure that the
     # filter value exists on the model
@@ -2608,7 +2617,8 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
     order.
 
     :param context: context to query under
-    :param filters: dictionary of filters; will do exact matching on values
+    :param filters: dictionary of filters; will do exact matching on values.
+                    Special keys host and cluster_name refer to the volume.
     :param marker: the last item of the previous page, used to determine the
                    next page of results to return
     :param limit: maximum number of items to return
@@ -2618,7 +2628,9 @@ def snapshot_get_all(context, filters=None, marker=None, limit=None,
                       paired with corresponding item in sort_keys
     :returns: list of matching snapshots
     """
-    if filters and not is_valid_model_filters(models.Snapshot, filters):
+    if filters and not is_valid_model_filters(models.Snapshot, filters,
+                                              exclude_list=('host',
+                                                            'cluster_name')):
         return []
 
     session = get_session()
@@ -2642,8 +2654,19 @@ def _snaps_get_query(context, session=None, project_only=False):
 def _process_snaps_filters(query, filters):
     if filters:
         # Ensure that filters' keys exist on the model
-        if not is_valid_model_filters(models.Snapshot, filters):
+        if not is_valid_model_filters(models.Snapshot, filters,
+                                      exclude_list=('host', 'cluster_name')):
             return None
+        filters = filters.copy()
+        host = filters.pop('host', None)
+        cluster = filters.pop('cluster_name', None)
+        if host or cluster:
+            query = query.join(models.Snapshot.volume)
+        vol_field = models.Volume
+        if host:
+            query = query.filter(_filter_host(vol_field.host, host))
+        if cluster:
+            query = query.filter(_filter_host(vol_field.cluster_name, cluster))
         query = query.filter_by(**filters)
     return query
 
@@ -5481,13 +5504,15 @@ def cgsnapshot_get(context, cgsnapshot_id):
     return _cgsnapshot_get(context, cgsnapshot_id)
 
 
-def is_valid_model_filters(model, filters):
+def is_valid_model_filters(model, filters, exclude_list=None):
     """Return True if filter values exist on the model
 
     :param model: a Cinder model
     :param filters: dictionary of filters
     """
     for key in filters.keys():
+        if exclude_list and key in exclude_list:
+            continue
         try:
             getattr(model, key)
         except AttributeError:
@@ -6055,7 +6080,7 @@ def image_volume_cache_get_all_for_host(context, host):
 
 
 def _worker_query(context, session=None, until=None, db_filters=None,
-                  **filters):
+                  ignore_sentinel=True, **filters):
     # Remove all filters based on the workers table that are set to None
     filters = _clean_filters(filters)
 
@@ -6063,6 +6088,11 @@ def _worker_query(context, session=None, until=None, db_filters=None,
         return None
 
     query = model_query(context, models.Worker, session=session)
+
+    # TODO(geguileo): Once we remove support for MySQL 5.5 we can remove this
+    if ignore_sentinel:
+        # We don't want to retrieve the workers sentinel
+        query = query.filter(models.Worker.resource_type != 'SENTINEL')
 
     if until:
         db_filters = list(db_filters) if db_filters else []
@@ -6079,8 +6109,41 @@ def _worker_query(context, session=None, until=None, db_filters=None,
     return query
 
 
+DB_SUPPORTS_SUBSECOND_RESOLUTION = True
+
+
+def workers_init():
+    """Check if DB supports subsecond resolution and set global flag.
+
+    MySQL 5.5 doesn't support subsecond resolution in datetime fields, so we
+    have to take it into account when working with the worker's table.
+
+    To do this we'll have 1 row in the DB, created by the migration script,
+    where we have tried to set the microseconds and we'll check it.
+
+    Once we drop support for MySQL 5.5 we can remove this method.
+    """
+    global DB_SUPPORTS_SUBSECOND_RESOLUTION
+    session = get_session()
+    query = session.query(models.Worker).filter_by(resource_type='SENTINEL')
+    worker = query.first()
+    DB_SUPPORTS_SUBSECOND_RESOLUTION = bool(worker.updated_at.microsecond)
+
+
+def _worker_set_updated_at_field(values):
+    # TODO(geguileo): Once we drop support for MySQL 5.5 we can simplify this
+    # method.
+    updated_at = values.get('updated_at', timeutils.utcnow())
+    if isinstance(updated_at, six.string_types):
+        return
+    if not DB_SUPPORTS_SUBSECOND_RESOLUTION:
+        updated_at = updated_at.replace(microsecond=0)
+    values['updated_at'] = updated_at
+
+
 def worker_create(context, **values):
     """Create a worker entry from optional arguments."""
+    _worker_set_updated_at_field(values)
     worker = models.Worker(**values)
     session = get_session()
     try:
@@ -6118,6 +6181,11 @@ def worker_update(context, id, filters=None, orm_worker=None, **values):
     """Update a worker with given values."""
     filters = filters or {}
     query = _worker_query(context, id=id, **filters)
+
+    # If we want to update the orm_worker and we don't set the update_at field
+    # we set it here instead of letting SQLAlchemy do it to be able to update
+    # the orm_worker.
+    _worker_set_updated_at_field(values)
     result = query.update(values)
     if not result:
         raise exception.WorkerNotFound(id=id, **filters)
@@ -6131,6 +6199,7 @@ def worker_claim_for_cleanup(context, claimer_id, orm_worker):
     # service_id is the same in the DB, thus flagging the claim.
     values = {'service_id': claimer_id,
               'updated_at': timeutils.utcnow()}
+    _worker_set_updated_at_field(values)
 
     # We only update the worker entry if it hasn't been claimed by other host
     # or thread

@@ -95,6 +95,7 @@ class SchedulerAPI(rpc.RPCAPI):
 
     def create_volume(self, ctxt, volume, snapshot_id=None, image_id=None,
                       request_spec=None, filter_properties=None):
+        volume.create_worker()
         cctxt = self._get_cctxt()
         msg_args = {'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec,

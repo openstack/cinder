@@ -21,8 +21,8 @@ from cinder import test
 
 
 class BaseObjectsTestCase(test.TestCase):
-    def setUp(self):
-        super(BaseObjectsTestCase, self).setUp()
+    def setUp(self, *args, **kwargs):
+        super(BaseObjectsTestCase, self).setUp(*args, **kwargs)
         self.user_id = 'fake-user'
         self.project_id = 'fake-project'
         self.context = context.RequestContext(self.user_id, self.project_id,

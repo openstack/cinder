@@ -15,9 +15,11 @@
 
 """Unit tests for cinder.db.api.Worker"""
 
+from datetime import datetime
 import time
 import uuid
 
+import mock
 from oslo_db import exception as db_exception
 import six
 
@@ -40,11 +42,40 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
         super(DBAPIWorkerTestCase, self).setUp()
         self.ctxt = context.get_admin_context()
 
+    def tearDown(self):
+        db.sqlalchemy.api.DB_SUPPORTS_SUBSECOND_RESOLUTION = True
+        super(DBAPIWorkerTestCase, self).tearDown()
+
+    def test_workers_init(self):
+        # SQLite supports subsecond resolution so result is True
+        db.sqlalchemy.api.DB_SUPPORTS_SUBSECOND_RESOLUTION = None
+        db.workers_init()
+        self.assertTrue(db.sqlalchemy.api.DB_SUPPORTS_SUBSECOND_RESOLUTION)
+
+    def test_workers_init_not_supported(self):
+        # Fake a Db that doesn't support sub-second resolution in datetimes
+        db.worker_update(
+            self.ctxt, None,
+            {'resource_type': 'SENTINEL', 'ignore_sentinel': False},
+            updated_at=datetime.utcnow().replace(microsecond=0))
+        db.workers_init()
+        self.assertFalse(db.sqlalchemy.api.DB_SUPPORTS_SUBSECOND_RESOLUTION)
+
     def test_worker_create_and_get(self):
         """Test basic creation of a worker record."""
         worker = db.worker_create(self.ctxt, **self.worker_fields)
         db_worker = db.worker_get(self.ctxt, id=worker.id)
         self._assertEqualObjects(worker, db_worker)
+
+    @mock.patch('oslo_utils.timeutils.utcnow',
+                return_value=datetime.utcnow().replace(microsecond=123))
+    def test_worker_create_no_subsecond(self, mock_utcnow):
+        """Test basic creation of a worker record."""
+        db.sqlalchemy.api.DB_SUPPORTS_SUBSECOND_RESOLUTION = False
+        worker = db.worker_create(self.ctxt, **self.worker_fields)
+        db_worker = db.worker_get(self.ctxt, id=worker.id)
+        self._assertEqualObjects(worker, db_worker)
+        self.assertEqual(0, db_worker.updated_at.microsecond)
 
     def test_worker_create_unique_constrains(self):
         """Test when we use an already existing resource type and id."""
@@ -131,6 +162,21 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
         db_worker = db.worker_get(self.ctxt, id=worker.id)
         self._assertEqualObjects(worker, db_worker, ['updated_at'])
 
+    def test_worker_update_no_subsecond(self):
+        """Test basic worker update."""
+        db.sqlalchemy.api.DB_SUPPORTS_SUBSECOND_RESOLUTION = False
+        worker = self._create_workers(1)[0]
+        worker = db.worker_get(self.ctxt, id=worker.id)
+        now = datetime.utcnow().replace(microsecond=123)
+        with mock.patch('oslo_utils.timeutils.utcnow', return_value=now):
+            res = db.worker_update(self.ctxt, worker.id, service_id=1)
+        self.assertEqual(1, res)
+        worker.service_id = 1
+
+        db_worker = db.worker_get(self.ctxt, id=worker.id)
+        self._assertEqualObjects(worker, db_worker, ['updated_at'])
+        self.assertEqual(0, db_worker.updated_at.microsecond)
+
     def test_worker_update_update_orm(self):
         """Test worker update updating the worker orm object."""
         worker = self._create_workers(1)[0]
@@ -139,7 +185,9 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
         self.assertEqual(1, res)
 
         db_worker = db.worker_get(self.ctxt, id=worker.id)
-        self._assertEqualObjects(worker, db_worker, ['updated_at'])
+        # If we are updating the ORM object we don't ignore the update_at field
+        # because it will get updated in the ORM instance.
+        self._assertEqualObjects(worker, db_worker)
 
     def test_worker_destroy(self):
         """Test that worker destroy really deletes the DB entry."""
@@ -152,7 +200,7 @@ class DBAPIWorkerTestCase(test.TestCase, test.ModelsObjectComparatorMixin):
 
     def test_worker_destroy_non_existent(self):
         """Test that worker destroy returns 0 when entry doesn't exist."""
-        res = db.worker_destroy(self.ctxt, id=1)
+        res = db.worker_destroy(self.ctxt, id=100)
         self.assertEqual(0, res)
 
     def test_worker_claim(self):

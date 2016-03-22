@@ -251,8 +251,8 @@ def volume_get(context, volume_id):
     return IMPL.volume_get(context, volume_id)
 
 
-def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
-                   filters=None, offset=None):
+def volume_get_all(context, marker=None, limit=None, sort_keys=None,
+                   sort_dirs=None, filters=None, offset=None):
     """Get all volumes."""
     return IMPL.volume_get_all(context, marker, limit, sort_keys=sort_keys,
                                sort_dirs=sort_dirs, filters=filters,
@@ -1582,6 +1582,17 @@ def message_destroy(context, message_id):
 
 
 ###################
+
+
+def workers_init():
+    """Check if DB supports subsecond resolution and set global flag.
+
+    MySQL 5.5 doesn't support subsecond resolution in datetime fields, so we
+    have to take it into account when working with the worker's table.
+
+    Once we drop support for MySQL 5.5 we can remove this method.
+    """
+    return IMPL.workers_init()
 
 
 def worker_create(context, **values):

@@ -40,6 +40,7 @@ class Backup(cleanable.CinderCleanableObject):
 
 
 class TestCleanable(test_objects.BaseObjectsTestCase):
+    MOCK_WORKER = False
 
     def setUp(self):
         super(TestCleanable, self).setUp()

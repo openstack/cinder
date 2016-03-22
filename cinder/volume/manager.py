@@ -152,7 +152,8 @@ MAPPING = {
 }
 
 
-class VolumeManager(manager.SchedulerDependentManager):
+class VolumeManager(manager.CleanableManager,
+                    manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
     RPC_API_VERSION = volume_rpcapi.VolumeAPI.RPC_API_VERSION
@@ -192,7 +193,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.debug("Cinder Volume DB check: vol_db_empty=%s", vol_db_empty)
 
         # We pass the current setting for service.active_backend_id to
-        # the driver on init, incase there was a restart or something
+        # the driver on init, in case there was a restart or something
         curr_active_backend_id = None
         svc_host = vol_utils.extract_host(self.host, 'backend')
         try:
@@ -317,9 +318,9 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def _sync_provider_info(self, ctxt, volumes, snapshots):
         # NOTE(jdg): For now this just updates provider_id, we can add more
-        # add more items to the update if they're relevant but we need
-        # to be safe in what we allow and add a list of allowed keys
-        # things that make sense are provider_*, replication_status etc
+        # items to the update if they're relevant but we need to be safe in
+        # what we allow and add a list of allowed keys.  Things that make sense
+        # are provider_*, replication_status etc
 
         updates, snapshot_updates = self.driver.update_provider_info(
             volumes, snapshots)
@@ -370,7 +371,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                  {'num_vols': num_vols, 'num_cgs': num_cgs,
                   'host': self.host, 'cluster': self.cluster})
 
-    def init_host(self, added_to_cluster=None):
+    def init_host(self, added_to_cluster=None, **kwargs):
         """Perform any required initialization."""
         ctxt = context.get_admin_context()
         if not self.driver.supported:
@@ -407,14 +408,19 @@ class VolumeManager(manager.SchedulerDependentManager):
         # Initialize backend capabilities list
         self.driver.init_capabilities()
 
-        volumes = objects.VolumeList.get_all_by_host(ctxt, self.host)
-        snapshots = objects.SnapshotList.get_by_host(ctxt, self.host)
+        if self.cluster:
+            filters = {'cluster_name': self.cluster}
+        else:
+            filters = {'host': self.host}
+        volumes = objects.VolumeList.get_all(ctxt, filters=filters)
+        snapshots = objects.SnapshotList.get_all(ctxt, search_opts=filters)
         self._sync_provider_info(ctxt, volumes, snapshots)
         # FIXME volume count for exporting is wrong
 
+        self.stats['pools'] = {}
+        self.stats.update({'allocated_capacity_gb': 0})
+
         try:
-            self.stats['pools'] = {}
-            self.stats.update({'allocated_capacity_gb': 0})
             for volume in volumes:
                 # available volume should also be counted into allocated
                 if volume['status'] in ['in-use', 'available']:
@@ -428,32 +434,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                         LOG.exception(_LE("Failed to re-export volume, "
                                           "setting to ERROR."),
                                       resource=volume)
-                        volume.status = 'error'
-                        volume.save()
-                elif volume['status'] in ('downloading', 'creating'):
-                    LOG.warning(_LW("Detected volume stuck "
-                                    "in %(curr_status)s "
-                                    "status, setting to ERROR."),
-                                {'curr_status': volume['status']},
-                                resource=volume)
+                        volume.conditional_update({'status': 'error'},
+                                                  {'status': 'in-use'})
+            # All other cleanups are processed by parent class CleanableManager
 
-                    if volume['status'] == 'downloading':
-                        self.driver.clear_download(ctxt, volume)
-                    volume.status = 'error'
-                    volume.save()
-                elif volume.status == 'uploading':
-                    # Set volume status to available or in-use.
-                    self.db.volume_update_status_based_on_attachment(
-                        ctxt, volume.id)
-                else:
-                    pass
-            snapshots = objects.SnapshotList.get_by_host(
-                ctxt, self.host, {'status': fields.SnapshotStatus.CREATING})
-            for snapshot in snapshots:
-                LOG.warning(_LW("Detected snapshot stuck in creating "
-                            "status, setting to ERROR."), resource=snapshot)
-                snapshot.status = fields.SnapshotStatus.ERROR
-                snapshot.save()
         except Exception:
             LOG.exception(_LE("Error during re-export on driver init."),
                           resource=volume)
@@ -466,25 +450,15 @@ class VolumeManager(manager.SchedulerDependentManager):
         # that an entry exists in the service table
         self.driver.set_initialized()
 
-        for volume in volumes:
-            if volume['status'] == 'deleting':
-                if CONF.volume_service_inithost_offload:
-                    # Offload all the pending volume delete operations to the
-                    # threadpool to prevent the main volume service thread
-                    # from being blocked.
-                    self._add_to_threadpool(self.delete_volume, ctxt, volume,
-                                            cascade=True)
-                else:
-                    # By default, delete volumes sequentially
-                    self.delete_volume(ctxt, volume, cascade=True)
-                LOG.info(_LI("Resume volume delete completed successfully."),
-                         resource=volume)
-
         # collect and publish service capabilities
         self.publish_service_capabilities(ctxt)
         LOG.info(_LI("Driver initialization completed successfully."),
                  resource={'type': 'driver',
                            'id': self.driver.__class__.__name__})
+
+        # Make sure to call CleanableManager to do the cleanup
+        super(VolumeManager, self).init_host(added_to_cluster=added_to_cluster,
+                                             **kwargs)
 
     def init_host_with_rpc(self):
         LOG.info(_LI("Initializing RPC dependent components of volume "
@@ -527,6 +501,37 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'driver',
                            'id': self.driver.__class__.__name__})
 
+    def _do_cleanup(self, ctxt, vo_resource):
+        if isinstance(vo_resource, objects.Volume):
+            if vo_resource.status == 'downloading':
+                self.driver.clear_download(ctxt, vo_resource)
+
+            elif vo_resource.status == 'uploading':
+                # Set volume status to available or in-use.
+                self.db.volume_update_status_based_on_attachment(
+                    ctxt, vo_resource.id)
+
+            elif vo_resource.status == 'deleting':
+                if CONF.volume_service_inithost_offload:
+                    # Offload all the pending volume delete operations to the
+                    # threadpool to prevent the main volume service thread
+                    # from being blocked.
+                    self._add_to_threadpool(self.delete_volume, ctxt,
+                                            vo_resource, cascade=True)
+                else:
+                    # By default, delete volumes sequentially
+                    self.delete_volume(ctxt, vo_resource, cascade=True)
+                # We signal that we take care of cleaning the worker ourselves
+                # (with set_workers decorator in delete_volume method) so
+                # do_cleanup method doesn't need to remove it.
+                return True
+
+        # For Volume creating and downloading and for Snapshot downloading
+        # statuses we have to set status to error
+        if vo_resource.status in ('creating', 'downloading'):
+            vo_resource.status = 'error'
+            vo_resource.save()
+
     def is_working(self):
         """Return if Manager is ready to accept requests.
 
@@ -536,6 +541,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         """
         return self.driver.initialized
 
+    @objects.Volume.set_workers
     def create_volume(self, context, volume, request_spec=None,
                       filter_properties=None, allow_reschedule=True):
         """Creates the volume."""
@@ -627,6 +633,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         return volume.id
 
     @coordination.synchronized('{volume.id}-{f_name}')
+    @objects.Volume.set_workers
     def delete_volume(self, context, volume, unmanage_only=False,
                       cascade=False):
         """Deletes and unexports volume.
@@ -786,6 +793,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             volume_ref.status = status
             volume_ref.save()
 
+    @objects.Snapshot.set_workers
     def create_snapshot(self, context, snapshot):
         """Creates and exports the snapshot."""
         context = context.elevated()

@@ -17,8 +17,6 @@
 Unit Tests for cinder.scheduler.rpcapi
 """
 
-import copy
-
 import mock
 
 from cinder import context
@@ -46,7 +44,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
             "version": kwargs.pop('version', rpcapi.RPC_API_VERSION)
         }
 
-        expected_msg = copy.deepcopy(kwargs)
+        expected_msg = kwargs.copy()
 
         self.fake_args = None
         self.fake_kwargs = None
@@ -86,44 +84,65 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  version='3.0')
 
     def test_create_volume(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        create_worker_mock = self.mock_object(volume, 'create_worker')
         self._test_scheduler_api('create_volume',
                                  rpc_method='cast',
                                  snapshot_id='snapshot_id',
                                  image_id='image_id',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 volume=fake_volume.fake_volume_obj(
-                                     self.context),
+                                 volume=volume,
                                  version='3.0')
+        create_worker_mock.assert_called_once()
+
+    def test_create_volume_serialization(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        create_worker_mock = self.mock_object(volume, 'create_worker')
+        self._test_scheduler_api('create_volume',
+                                 rpc_method='cast',
+                                 snapshot_id='snapshot_id',
+                                 image_id='image_id',
+                                 request_spec={'volume_type': {}},
+                                 filter_properties='filter_properties',
+                                 volume=volume,
+                                 version='3.0')
+        create_worker_mock.assert_called_once()
 
     def test_migrate_volume_to_host(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        create_worker_mock = self.mock_object(volume, 'create_worker')
         self._test_scheduler_api('migrate_volume_to_host',
                                  rpc_method='cast',
                                  host='host',
                                  force_host_copy=True,
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 volume=fake_volume.fake_volume_obj(
-                                     self.context),
+                                 volume=volume,
                                  version='3.0')
+        create_worker_mock.assert_not_called()
 
     def test_retype(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        create_worker_mock = self.mock_object(volume, 'create_worker')
         self._test_scheduler_api('retype',
                                  rpc_method='cast',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 volume=fake_volume.fake_volume_obj(
-                                     self.context),
+                                 volume=volume,
                                  version='3.0')
+        create_worker_mock.assert_not_called()
 
     def test_manage_existing(self):
+        volume = fake_volume.fake_volume_obj(self.context)
+        create_worker_mock = self.mock_object(volume, 'create_worker')
         self._test_scheduler_api('manage_existing',
                                  rpc_method='cast',
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
-                                 volume=fake_volume.fake_volume_obj(
-                                     self.context),
+                                 volume=volume,
                                  version='3.0')
+        create_worker_mock.assert_not_called()
 
     def test_get_pools(self):
         self._test_scheduler_api('get_pools',
