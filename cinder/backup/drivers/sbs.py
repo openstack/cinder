@@ -143,7 +143,7 @@ class SBSBackupDriver(driver.BackupDriver):
         LOG.debug("rbd base image name: %s", rbd_image_name)
         return rbd_image_name
     #Returns rbd images name as: backup.<backup_id>.snap.time_stamp
-    def _get_rbd_image_name(self, backup):
+    def (self, backup):
 	    #if base image, then volume id == backup id
         if backup['parent_id'] == None:
 	        rbd_image_name = encodeutils.safe_encode("volume-%s.backup.base" % backup['id'])
@@ -588,13 +588,16 @@ class SBSBackupDriver(driver.BackupDriver):
         base_name = None
         # Identify our --from-snap point (if one exists)
         from_snap = self._get_most_recent_snap(source_rbd_image, volume_id)
+        LOG.debug("backup From snap %s", from_snap)
         base = self._get_backup_base_from_src(source_rbd_image, volume_id)
+        LOG.debug("backup Base %s", base)
         ceph_args = self._ceph_args(rbd_user, rbd_conf, pool=rbd_pool)
         upload_base = False
         if base != None:
             base_name = self._get_backup_base_name(base['id'])
         else:
             upload_base = True
+        LOG.debug("backup upload_base %s", upload_base)
 
         #check base snap and from_snap and create base if missing
         base_id, from_snap = self._check_create_base(volume_id, volume_file,

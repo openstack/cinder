@@ -162,7 +162,7 @@ class API(base.Base):
                availability_zone=None, source_volume=None,
                scheduler_hints=None,
                source_replica=None, consistencygroup=None,
-               cgsnapshot=None, multiattach=False,volume_from_cache=None):
+               cgsnapshot=None, multiattach=False,volume_from_cache=None, backup_id=None):
 
         # NOTE(jdg): we can have a create without size if we're
         # doing a create from snap or volume.  Currently
@@ -173,6 +173,7 @@ class API(base.Base):
         # of the size value.  BUT there is a possibility that somebody
         # could call the API directly so the is_int_like check
         # handles both cases (string representation of true float or int).
+        LOG.info("I am here Snapshot:"+ str(backup_id))
         if size and (not utils.is_int_like(size) or int(size) <= 0):
             msg = _('Invalid volume size provided for create request: %s '
                     '(size argument must be an integer (or string '
@@ -239,6 +240,7 @@ class API(base.Base):
             'cgsnapshot': cgsnapshot,
             'multiattach': multiattach,
             'volume_from_cache':volume_from_cache,
+            'backup_id':backup_id,
         }
         try:
             if cgsnapshot:
