@@ -20,6 +20,4 @@ class Extended_services(extensions.ExtensionDescriptor):
 
     name = "ExtendedServices"
     alias = "os-extended-services"
-    namespace = ("http://docs.openstack.org/volume/ext/"
-                 "extended_services/api/v2")
     updated = "2014-01-10T00:00:00-00:00"

@@ -15,7 +15,6 @@
 
 import datetime
 
-from lxml import etree
 from oslo_utils import timeutils
 
 import cinder.api.contrib.availability_zones
@@ -60,31 +59,3 @@ class ControllerTestCase(cinder.test.TestCase):
             ],
         }
         self.assertEqual(expected, actual)
-
-
-class XMLSerializerTest(cinder.test.TestCase):
-
-    def test_index_xml(self):
-        fixture = {
-            'availabilityZoneInfo': [
-                {'zoneName': 'ping', 'zoneState': {'available': True}},
-                {'zoneName': 'pong', 'zoneState': {'available': False}},
-            ],
-        }
-
-        serializer = cinder.api.contrib.availability_zones.ListTemplate()
-        text = serializer.serialize(fixture)
-        tree = etree.fromstring(text)
-
-        self.assertEqual('availabilityZones', tree.tag)
-        self.assertEqual(2, len(tree))
-
-        self.assertEqual('availabilityZone', tree[0].tag)
-
-        self.assertEqual('ping', tree[0].get('name'))
-        self.assertEqual('zoneState', tree[0][0].tag)
-        self.assertEqual('True', tree[0][0].get('available'))
-
-        self.assertEqual('pong', tree[1].get('name'))
-        self.assertEqual('zoneState', tree[1][0].tag)
-        self.assertEqual('False', tree[1][0].get('available'))

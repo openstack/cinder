@@ -17,7 +17,6 @@ import webob.exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.v2 import volumes
 from cinder.i18n import _
 
 LOG = logging.getLogger(__name__)
@@ -53,7 +52,6 @@ class Scheduler_hints(extensions.ExtensionDescriptor):
 
     name = "SchedulerHints"
     alias = "OS-SCH-HNT"
-    namespace = volumes.SCHEDULER_HINTS_NAMESPACE
     updated = "2013-04-18T00:00:00+00:00"
 
     def get_controller_extensions(self):

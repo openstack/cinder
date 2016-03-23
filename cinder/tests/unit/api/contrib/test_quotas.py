@@ -21,8 +21,6 @@ Tests for cinder.api.contrib.quotas.py
 
 import mock
 
-from lxml import etree
-
 import uuid
 import webob.exc
 
@@ -1039,23 +1037,3 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         quota_limit['volumes'] = 5
         self.controller.update(self.req, self.B.id, body)
         self._assert_quota_show(self.A.id, res, allocated=6, in_use=1, limit=7)
-
-
-class QuotaSerializerTest(test.TestCase):
-
-    def setUp(self):
-        super(QuotaSerializerTest, self).setUp()
-        self.req = mock.Mock()
-        self.req.environ = {'cinder.context': context.get_admin_context()}
-
-    def test_update_serializer(self):
-        serializer = quotas.QuotaTemplate()
-        quota_set = make_body(root=False)
-        text = serializer.serialize({'quota_set': quota_set})
-        tree = etree.fromstring(text)
-        self.assertEqual('quota_set', tree.tag)
-        self.assertEqual(quota_set['id'], tree.get('id'))
-        body = make_body(root=False, tenant_id=None)
-        for node in tree:
-            self.assertIn(node.tag, body)
-            self.assertEqual(str(body[node.tag]), node.text)

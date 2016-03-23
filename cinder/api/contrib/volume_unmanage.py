@@ -66,7 +66,6 @@ class Volume_unmanage(extensions.ExtensionDescriptor):
 
     name = "VolumeUnmanage"
     alias = "os-volume-unmanage"
-    namespace = "http://docs.openstack.org/volume/ext/volume-unmanage/api/v1.1"
     updated = "2012-05-31T00:00:00+00:00"
 
     def get_controller_extensions(self):

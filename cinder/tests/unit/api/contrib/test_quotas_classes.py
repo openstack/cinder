@@ -20,7 +20,6 @@ Tests for cinder.api.contrib.quota_classes.py
 
 import mock
 
-from lxml import etree
 import webob.exc
 
 
@@ -152,23 +151,3 @@ class QuotaClassSetsControllerTest(test.TestCase):
                                                 request_body=body,
                                                 tenant_id=None),
                              result)
-
-
-class QuotaClassesSerializerTest(test.TestCase):
-
-    def setUp(self):
-        super(QuotaClassesSerializerTest, self).setUp()
-        self.req = mock.Mock()
-        self.req.environ = {'cinder.context': context.get_admin_context()}
-
-    def test_update_serializer(self):
-        serializer = quota_classes.QuotaClassTemplate()
-        quota_class_set = make_body(root=False)
-        text = serializer.serialize({'quota_class_set': quota_class_set})
-        tree = etree.fromstring(text)
-        self.assertEqual('quota_class_set', tree.tag)
-        self.assertEqual(tree.get('id'), quota_class_set['id'])
-        body = make_body(root=False, tenant_id=None)
-        for node in tree:
-            self.assertIn(node.tag, body)
-            self.assertEqual(str(body[node.tag]), node.text)

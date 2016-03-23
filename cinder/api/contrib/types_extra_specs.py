@@ -20,7 +20,6 @@ import webob
 from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -28,26 +27,6 @@ from cinder import rpc
 from cinder.volume import volume_types
 
 authorize = extensions.extension_authorizer('volume', 'types_extra_specs')
-
-
-class VolumeTypeExtraSpecsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.make_flat_dict('extra_specs', selector='extra_specs')
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class VolumeTypeExtraSpecTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        tagname = xmlutil.Selector('key')
-
-        def extraspec_sel(obj, do_raise=False):
-            # Have to extract the key and value for later use...
-            key, value = list(obj.items())[0]
-            return dict(key=key, value=value)
-
-        root = xmlutil.TemplateElement(tagname, selector=extraspec_sel)
-        root.text = 'value'
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class VolumeTypeExtraSpecsController(wsgi.Controller):
@@ -66,7 +45,6 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         except exception.VolumeTypeNotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
-    @wsgi.serializers(xml=VolumeTypeExtraSpecsTemplate)
     def index(self, req, type_id):
         """Returns the list of extra specs for a given volume type."""
         context = req.environ['cinder.context']
@@ -85,7 +63,6 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                 self.validate_string_length(value, 'Value for key "%s"' % key,
                                             min_length=0, max_length=255)
 
-    @wsgi.serializers(xml=VolumeTypeExtraSpecsTemplate)
     def create(self, req, type_id, body=None):
         context = req.environ['cinder.context']
         authorize(context)
@@ -106,7 +83,6 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                       notifier_info)
         return body
 
-    @wsgi.serializers(xml=VolumeTypeExtraSpecTemplate)
     def update(self, req, type_id, id, body=None):
         context = req.environ['cinder.context']
         authorize(context)
@@ -133,7 +109,6 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
                       notifier_info)
         return body
 
-    @wsgi.serializers(xml=VolumeTypeExtraSpecTemplate)
     def show(self, req, type_id, id):
         """Return a single extra spec item."""
         context = req.environ['cinder.context']
@@ -178,7 +153,6 @@ class Types_extra_specs(extensions.ExtensionDescriptor):
 
     name = "TypesExtraSpecs"
     alias = "os-types-extra-specs"
-    namespace = "http://docs.openstack.org/volume/ext/types-extra-specs/api/v1"
     updated = "2011-08-24T00:00:00+00:00"
 
     def get_resources(self):

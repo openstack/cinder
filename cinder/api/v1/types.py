@@ -19,32 +19,8 @@ from webob import exc
 
 from cinder.api.openstack import wsgi
 from cinder.api.views import types as views_types
-from cinder.api import xmlutil
 from cinder import exception
 from cinder.volume import volume_types
-
-
-def make_voltype(elem):
-    elem.set('id')
-    elem.set('name')
-    extra_specs = xmlutil.make_flat_dict('extra_specs', selector='extra_specs')
-    elem.append(extra_specs)
-
-
-class VolumeTypeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume_type', selector='volume_type')
-        make_voltype(root)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class VolumeTypesTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume_types')
-        elem = xmlutil.SubTemplateElement(root, 'volume_type',
-                                          selector='volume_types')
-        make_voltype(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class VolumeTypesController(wsgi.Controller):
@@ -52,7 +28,6 @@ class VolumeTypesController(wsgi.Controller):
 
     _view_builder_class = views_types.ViewBuilder
 
-    @wsgi.serializers(xml=VolumeTypesTemplate)
     def index(self, req):
         """Returns the list of volume types."""
         context = req.environ['cinder.context']
@@ -61,7 +36,6 @@ class VolumeTypesController(wsgi.Controller):
         req.cache_resource(vol_types, name='types')
         return self._view_builder.index(req, vol_types)
 
-    @wsgi.serializers(xml=VolumeTypeTemplate)
     def show(self, req, id):
         """Return a single volume type item."""
         context = req.environ['cinder.context']

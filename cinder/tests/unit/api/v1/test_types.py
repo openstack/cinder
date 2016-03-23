@@ -15,7 +15,6 @@
 
 import uuid
 
-from lxml import etree
 from oslo_utils import timeutils
 import webob
 
@@ -166,45 +165,3 @@ class VolumeTypesApiTest(test.TestCase):
                                         description=None)
             self.assertDictMatch(expected_volume_type,
                                  output['volume_types'][i])
-
-
-class VolumeTypesSerializerTest(test.TestCase):
-    def _verify_volume_type(self, vtype, tree):
-        self.assertEqual('volume_type', tree.tag)
-        self.assertEqual(vtype['name'], tree.get('name'))
-        self.assertEqual(vtype['id'], tree.get('id'))
-        self.assertEqual(1, len(tree))
-        extra_specs = tree[0]
-        self.assertEqual('extra_specs', extra_specs.tag)
-        seen = set(vtype['extra_specs'].keys())
-        for child in extra_specs:
-            self.assertIn(child.tag, seen)
-            self.assertEqual(vtype['extra_specs'][child.tag], child.text)
-            seen.remove(child.tag)
-        self.assertEqual(0, len(seen))
-
-    def test_index_serializer(self):
-        serializer = types.VolumeTypesTemplate()
-
-        # Just getting some input data
-        vtypes = return_volume_types_get_all_types(None)
-        text = serializer.serialize({'volume_types': list(vtypes.values())})
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('volume_types', tree.tag)
-        self.assertEqual(len(vtypes), len(tree))
-        for child in tree:
-            name = child.get('name')
-            self.assertIn(name, vtypes)
-            self._verify_volume_type(vtypes[name], child)
-
-    def test_voltype_serializer(self):
-        serializer = types.VolumeTypeTemplate()
-
-        vtype = stub_volume_type(fake.volume_type_id)
-        text = serializer.serialize(dict(volume_type=vtype))
-
-        tree = etree.fromstring(text)
-
-        self._verify_volume_type(vtype, tree)

@@ -19,7 +19,6 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -31,12 +30,6 @@ authorize = extensions.extension_authorizer('volume',
                                             'volume_type_encryption')
 
 CONTROL_LOCATION = ['front-end', 'back-end']
-
-
-class VolumeTypeEncryptionTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.make_flat_dict('encryption', selector='encryption')
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class VolumeTypeEncryptionController(wsgi.Controller):
@@ -89,7 +82,6 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         else:
             return False
 
-    @wsgi.serializers(xml=VolumeTypeEncryptionTemplate)
     def index(self, req, type_id):
         """Returns the encryption specs for a given volume type."""
         context = req.environ['cinder.context']
@@ -97,7 +89,6 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         self._check_type(context, type_id)
         return self._get_volume_type_encryption(context, type_id)
 
-    @wsgi.serializers(xml=VolumeTypeEncryptionTemplate)
     def create(self, req, type_id, body=None):
         """Create encryption specs for an existing volume type."""
         context = req.environ['cinder.context']
@@ -125,7 +116,6 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         notifier.info(context, 'volume_type_encryption.create', notifier_info)
         return body
 
-    @wsgi.serializers(xml=VolumeTypeEncryptionTemplate)
     def update(self, req, type_id, id, body=None):
         """Update encryption specs for a given volume type."""
         context = req.environ['cinder.context']
@@ -153,7 +143,6 @@ class VolumeTypeEncryptionController(wsgi.Controller):
 
         return body
 
-    @wsgi.serializers(xml=VolumeTypeEncryptionTemplate)
     def show(self, req, type_id, id):
         """Return a single encryption item."""
         context = req.environ['cinder.context']
@@ -190,8 +179,6 @@ class Volume_type_encryption(extensions.ExtensionDescriptor):
 
     name = "VolumeTypeEncryption"
     alias = "encryption"
-    namespace = ("http://docs.openstack.org/volume/ext/"
-                 "volume-type-encryption/api/v1")
     updated = "2013-07-01T00:00:00+00:00"
 
     def get_resources(self):

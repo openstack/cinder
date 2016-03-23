@@ -14,7 +14,6 @@
 
 import uuid
 
-from lxml import etree
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
@@ -119,27 +118,3 @@ class VolumeHostAttributeTest(test.TestCase):
         res = req.get_response(app())
         vol = jsonutils.loads(res.body)['volumes']
         self.assertNotIn('os-vol-host-attr:host', vol[0])
-
-    def test_get_volume_xml(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
-        req.method = 'GET'
-        req.accept = 'application/xml'
-        req.environ['cinder.context'] = ctx
-        res = req.get_response(app())
-        vol = etree.XML(res.body)
-        host_key = ('{http://docs.openstack.org/volume/ext/'
-                    'volume_host_attribute/api/v2}host')
-        self.assertEqual('host001', vol.get(host_key))
-
-    def test_list_volumes_detail_xml(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/detail')
-        req.method = 'GET'
-        req.accept = 'application/xml'
-        req.environ['cinder.context'] = ctx
-        res = req.get_response(app())
-        vol = list(etree.XML(res.body))[0]
-        host_key = ('{http://docs.openstack.org/volume/ext/'
-                    'volume_host_attribute/api/v2}host')
-        self.assertEqual('host001', vol.get(host_key))

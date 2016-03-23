@@ -18,7 +18,6 @@ from webob import exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.v2 import snapshots
 from cinder.api.views import snapshots as snapshot_views
 from cinder import exception
 from cinder.i18n import _
@@ -39,7 +38,6 @@ class SnapshotManageController(wsgi.Controller):
         self.volume_api = cinder_volume.API()
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=snapshots.SnapshotTemplate)
     def create(self, req, body):
         """Instruct Cinder to manage a storage snapshot object.
 
@@ -135,8 +133,6 @@ class Snapshot_manage(extensions.ExtensionDescriptor):
 
     name = 'SnapshotManage'
     alias = 'os-snapshot-manage'
-    namespace = ('http://docs.openstack.org/volume/ext/'
-                 'os-snapshot-manage/api/v1')
     updated = '2014-12-31T00:00:00+00:00'
 
     def get_resources(self):

@@ -25,5 +25,4 @@ class Image_create(extensions.ExtensionDescriptor):
 
     name = "CreateVolumeExtension"
     alias = "os-image-create"
-    namespace = "http://docs.openstack.org/volume/ext/image-create/api/v1"
     updated = "2012-08-13T00:00:00+00:00"

@@ -56,7 +56,6 @@ class Scheduler_stats(extensions.ExtensionDescriptor):
 
     name = "Scheduler_stats"
     alias = "scheduler-stats"
-    namespace = "http://docs.openstack.org/volume/ext/scheduler-stats/api/v1"
     updated = "2014-09-07T00:00:00+00:00"
 
     def get_resources(self):

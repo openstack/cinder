@@ -16,7 +16,6 @@
 import datetime
 
 from iso8601 import iso8601
-from lxml import etree
 from oslo_utils import timeutils
 import webob.exc
 
@@ -161,51 +160,3 @@ class HostTestCase(test.TestCase):
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.show,
                           self.req, dest)
-
-
-class HostSerializerTest(test.TestCase):
-    def setUp(self):
-        super(HostSerializerTest, self).setUp()
-        self.deserializer = os_hosts.HostDeserializer()
-
-    def test_index_serializer(self):
-        serializer = os_hosts.HostIndexTemplate()
-        text = serializer.serialize({"hosts": LIST_RESPONSE})
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('hosts', tree.tag)
-        self.assertEqual(len(LIST_RESPONSE), len(tree))
-        for i in range(len(LIST_RESPONSE)):
-            self.assertEqual('host', tree[i].tag)
-            self.assertEqual(LIST_RESPONSE[i]['service-status'],
-                             tree[i].get('service-status'))
-            self.assertEqual(LIST_RESPONSE[i]['service'],
-                             tree[i].get('service'))
-            self.assertEqual(LIST_RESPONSE[i]['zone'],
-                             tree[i].get('zone'))
-            self.assertEqual(LIST_RESPONSE[i]['service-state'],
-                             tree[i].get('service-state'))
-            self.assertEqual(LIST_RESPONSE[i]['host_name'],
-                             tree[i].get('host_name'))
-            self.assertEqual(str(LIST_RESPONSE[i]['last-update']),
-                             tree[i].get('last-update'))
-
-    def test_update_serializer_with_status(self):
-        exemplar = dict(host='test.host.1', status='enabled')
-        serializer = os_hosts.HostUpdateTemplate()
-        text = serializer.serialize(exemplar)
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('host', tree.tag)
-        for key, value in exemplar.items():
-            self.assertEqual(value, tree.get(key))
-
-    def test_update_deserializer(self):
-        exemplar = dict(status='enabled', foo='bar')
-        intext = ("<?xml version='1.0' encoding='UTF-8'?>\n"
-                  '<updates><status>enabled</status><foo>bar</foo></updates>')
-        result = self.deserializer.deserialize(intext)
-
-        self.assertEqual(dict(body=exemplar), result)

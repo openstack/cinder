@@ -66,8 +66,6 @@ class Snapshot_unmanage(extensions.ExtensionDescriptor):
 
     name = "SnapshotUnmanage"
     alias = "os-snapshot-unmanage"
-    namespace = ('http://docs.openstack.org/snapshot/ext/snapshot-unmanage'
-                 '/api/v1')
     updated = "2014-12-31T00:00:00+00:00"
 
     def get_controller_extensions(self):

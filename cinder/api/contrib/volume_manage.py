@@ -19,7 +19,6 @@ from webob import exc
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
-from cinder.api.v2 import volumes
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
@@ -40,8 +39,6 @@ class VolumeManageController(wsgi.Controller):
         self.volume_api = cinder_volume.API()
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=volumes.VolumeTemplate)
-    @wsgi.deserializers(xml=volumes.CreateDeserializer)
     def create(self, req, body):
         """Instruct Cinder to manage a storage object.
 
@@ -151,8 +148,6 @@ class Volume_manage(extensions.ExtensionDescriptor):
 
     name = 'VolumeManage'
     alias = 'os-volume-manage'
-    namespace = ('http://docs.openstack.org/volume/ext/'
-                 'os-volume-manage/api/v1')
     updated = '2014-02-10T00:00:00+00:00'
 
     def get_resources(self):

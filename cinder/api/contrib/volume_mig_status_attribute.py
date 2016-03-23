@@ -14,8 +14,6 @@
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
-
 
 authorize = extensions.soft_extension_authorizer('volume',
                                                  'volume_mig_status_attribute')
@@ -33,14 +31,12 @@ class VolumeMigStatusAttributeController(wsgi.Controller):
     def show(self, req, resp_obj, id):
         context = req.environ['cinder.context']
         if authorize(context):
-            resp_obj.attach(xml=VolumeMigStatusAttributeTemplate())
             self._add_volume_mig_status_attribute(req, resp_obj.obj['volume'])
 
     @wsgi.extends
     def detail(self, req, resp_obj):
         context = req.environ['cinder.context']
         if authorize(context):
-            resp_obj.attach(xml=VolumeListMigStatusAttributeTemplate())
             for vol in list(resp_obj.obj['volumes']):
                 self._add_volume_mig_status_attribute(req, vol)
 
@@ -50,37 +46,9 @@ class Volume_mig_status_attribute(extensions.ExtensionDescriptor):
 
     name = "VolumeMigStatusAttribute"
     alias = "os-vol-mig-status-attr"
-    namespace = ("http://docs.openstack.org/volume/ext/"
-                 "volume_mig_status_attribute/api/v1")
     updated = "2013-08-08T00:00:00+00:00"
 
     def get_controller_extensions(self):
         controller = VolumeMigStatusAttributeController()
         extension = extensions.ControllerExtension(self, 'volumes', controller)
         return [extension]
-
-
-def make_volume(elem):
-    elem.set('{%s}migstat' % Volume_mig_status_attribute.namespace,
-             '%s:migstat' % Volume_mig_status_attribute.alias)
-    elem.set('{%s}name_id' % Volume_mig_status_attribute.namespace,
-             '%s:name_id' % Volume_mig_status_attribute.alias)
-
-
-class VolumeMigStatusAttributeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume', selector='volume')
-        make_volume(root)
-        alias = Volume_mig_status_attribute.alias
-        namespace = Volume_mig_status_attribute.namespace
-        return xmlutil.SlaveTemplate(root, 1, nsmap={alias: namespace})
-
-
-class VolumeListMigStatusAttributeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volumes')
-        elem = xmlutil.SubTemplateElement(root, 'volume', selector='volumes')
-        make_volume(elem)
-        alias = Volume_mig_status_attribute.alias
-        namespace = Volume_mig_status_attribute.namespace
-        return xmlutil.SlaveTemplate(root, 1, nsmap={alias: namespace})

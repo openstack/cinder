@@ -42,14 +42,11 @@ class Controller(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=error.msg)
         return (volume, meta)
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
     def index(self, req, volume_id):
         """Returns the list of metadata for a given volume."""
         context = req.environ['cinder.context']
         return {'metadata': self._get_metadata(context, volume_id)}
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
-    @wsgi.deserializers(xml=common.MetadataDeserializer)
     def create(self, req, volume_id, body):
         self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
@@ -62,8 +59,6 @@ class Controller(wsgi.Controller):
 
         return {'metadata': new_metadata}
 
-    @wsgi.serializers(xml=common.MetaItemTemplate)
-    @wsgi.deserializers(xml=common.MetaItemDeserializer)
     def update(self, req, volume_id, id, body):
         self.assert_valid_body(body, 'meta')
         meta_item = body['meta']
@@ -84,8 +79,6 @@ class Controller(wsgi.Controller):
 
         return {'meta': meta_item}
 
-    @wsgi.serializers(xml=common.MetadataTemplate)
-    @wsgi.deserializers(xml=common.MetadataDeserializer)
     def update_all(self, req, volume_id, body):
         self.assert_valid_body(body, 'metadata')
         metadata = body['metadata']
@@ -122,7 +115,6 @@ class Controller(wsgi.Controller):
         except exception.InvalidVolumeMetadataSize as error:
             raise webob.exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
-    @wsgi.serializers(xml=common.MetaItemTemplate)
     def show(self, req, volume_id, id):
         """Return a single metadata item."""
         context = req.environ['cinder.context']

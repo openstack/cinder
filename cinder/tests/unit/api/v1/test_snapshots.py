@@ -13,9 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from lxml import etree
 import mock
-from oslo_utils import timeutils
 import webob
 
 from cinder.api.v1 import snapshots
@@ -377,56 +375,6 @@ class SnapshotApiTest(test.TestCase):
         res = self.controller.index(req)
         self.assertIn('snapshots', res)
         self.assertEqual(1, len(res['snapshots']))
-
-
-class SnapshotSerializerTest(test.TestCase):
-    def _verify_snapshot(self, snap, tree):
-        self.assertEqual('snapshot', tree.tag)
-
-        for attr in ('id', 'status', 'size', 'created_at',
-                     'display_name', 'display_description', 'volume_id'):
-            self.assertEqual(str(snap[attr]), tree.get(attr))
-
-    def test_snapshot_show_create_serializer(self):
-        serializer = snapshots.SnapshotTemplate()
-        raw_snapshot = dict(
-            id='snap_id',
-            status='snap_status',
-            size=1024,
-            created_at=timeutils.utcnow(),
-            display_name='snap_name',
-            display_description='snap_desc',
-            volume_id='vol_id', )
-        text = serializer.serialize(dict(snapshot=raw_snapshot))
-
-        tree = etree.fromstring(text)
-
-        self._verify_snapshot(raw_snapshot, tree)
-
-    def test_snapshot_index_detail_serializer(self):
-        serializer = snapshots.SnapshotsTemplate()
-        raw_snapshots = [dict(id='snap1_id',
-                              status='snap1_status',
-                              size=1024,
-                              created_at=timeutils.utcnow(),
-                              display_name='snap1_name',
-                              display_description='snap1_desc',
-                              volume_id='vol1_id', ),
-                         dict(id='snap2_id',
-                              status='snap2_status',
-                              size=1024,
-                              created_at=timeutils.utcnow(),
-                              display_name='snap2_name',
-                              display_description='snap2_desc',
-                              volume_id='vol2_id', )]
-        text = serializer.serialize(dict(snapshots=raw_snapshots))
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('snapshots', tree.tag)
-        self.assertEqual(len(raw_snapshots), len(tree))
-        for idx, child in enumerate(tree):
-            self._verify_snapshot(raw_snapshots[idx], child)
 
 
 class SnapshotsUnprocessableEntityTestCase(test.TestCase):

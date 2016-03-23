@@ -22,7 +22,6 @@ import webob.exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -36,51 +35,12 @@ LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('volume', 'services')
 
 
-class ServicesIndexTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('services')
-        elem = xmlutil.SubTemplateElement(root, 'service', selector='services')
-        elem.set('binary')
-        elem.set('host')
-        elem.set('zone')
-        elem.set('status')
-        elem.set('state')
-        elem.set('update_at')
-        elem.set('disabled_reason')
-        elem.set('replication_status')
-        elem.set('active_backend_id')
-        elem.set('frozen')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        # TODO(uni): template elements of 'host', 'service' and 'disabled'
-        # should be deprecated to make ServicesUpdateTemplate consistent
-        # with ServicesIndexTemplate. Still keeping it here for API
-        # compatibility sake.
-        root = xmlutil.TemplateElement('host')
-        root.set('host')
-        root.set('service')
-        root.set('disabled')
-        root.set('binary')
-        root.set('status')
-        root.set('disabled_reason')
-        root.set('replication_status')
-        root.set('active_backend_id')
-        root.set('frozen')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
 class ServiceController(wsgi.Controller):
     def __init__(self, ext_mgr=None):
         self.ext_mgr = ext_mgr
         super(ServiceController, self).__init__()
         self.volume_api = volume.API()
 
-    @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
         """Return a list of all running services.
 
@@ -154,7 +114,6 @@ class ServiceController(wsgi.Controller):
     def _failover(self, context, host, backend_id=None):
         return self.volume_api.failover_host(context, host, backend_id)
 
-    @wsgi.serializers(xml=ServicesUpdateTemplate)
     def update(self, req, id, body):
         """Enable/Disable scheduling for a service.
 
@@ -236,7 +195,6 @@ class Services(extensions.ExtensionDescriptor):
 
     name = "Services"
     alias = "os-services"
-    namespace = "http://docs.openstack.org/volume/ext/services/api/v2"
     updated = "2012-10-28T00:00:00-00:00"
 
     def get_resources(self):
