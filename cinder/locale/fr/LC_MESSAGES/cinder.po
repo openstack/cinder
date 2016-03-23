@@ -14,9 +14,9 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev12\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev19\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-21 11:08+0000\n"
+"POT-Creation-Date: 2016-03-22 19:34+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2214,6 +2214,14 @@ msgid ""
 msgstr ""
 "Exception CLI du pilote EMC VNX Cinder : %(cmd)s (code retour : %(rc)s) "
 "(sortie : %(out)s)."
+
+#, python-format
+msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
+"(Output: %(out)s)."
+msgstr ""
+"Exception SPUnavailableException du pilote EMC VNX Cinder : %(cmd)s (code "
+"retour : %(rc)s) (sortie : %(out)s)."
 
 msgid ""
 "EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "

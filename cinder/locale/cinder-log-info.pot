@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev6\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev19\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-18 06:32+0000\n"
+"POT-Creation-Date: 2016-03-23 06:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1491,31 +1491,31 @@ msgstr ""
 msgid "Updated Consistency Group %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:774
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:778
 #, python-format
 msgid "Deleting snapshot %(ss)s from %(pro)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:902
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:906
 msgid "Retype was to same Storage Profile."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1020
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1024
 #, python-format
 msgid "replication failover secondary is %(ssn)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1049
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1053
 #, python-format
 msgid "Failing backend to %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1063
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1067
 #, python-format
 msgid "Failing over volume %(id)s replication: %(res)s."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1159
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1163
 #, python-format
 msgid ""
 "manage_existing_snapshot: snapshot %(exist)s on volume %(volume)s has "
@@ -1856,131 +1856,131 @@ msgstr ""
 msgid "No volume found for CG: %(cg)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:732
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:733
 #, python-format
 msgid "Using security file in %s for authentication"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:740
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:741
 msgid "Plain text credentials are being used for authentication"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:743
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:744
 msgid ""
 "Neither security file nor plain text credentials are specified. Security "
 "file under home directory will be used for authentication if present."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:752
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:753
 #, python-format
 msgid "iscsi_initiators: %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1090
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1091
 #, python-format
 msgid "Consistency group %s was deleted successfully."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1205
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1206
 #, python-format
 msgid "Snapshot %s was deleted successfully."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1400
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1401
 #, python-format
 msgid "Cancelling Migration from LUN %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2068
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2077
 #, python-format
-msgid "Toggle storage_vnx_ip_address from %(old)s to %(new)s."
+msgid "Toggle san_ip from %(current)s to %(new)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2159
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2169
 msgid ""
 "initiator_auto_registration: False. Initiator auto registration is not "
 "enabled. Please register initiator manually."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2348
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2358
 #, python-format
 msgid ""
 "Create Volume: %(volume)s  Size: %(size)s pool: %(pool)s provisioning: "
 "%(provisioning)s tiering: %(tiering)s "
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2883
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4547
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2893
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4557
 #, python-format
 msgid "Create snapshot: %(snapshot)s: volume: %(volume)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2912
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2922
 #, python-format
 msgid "Delete Snapshot: %(snapshot)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3151
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3161
 #: cinder/volume/drivers/prophetstor/dplcommon.py:869
 #, python-format
 msgid "Start to create consistency group: %(group_name)s id: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3174
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3184
 #: cinder/volume/drivers/prophetstor/dplcommon.py:898
 #, python-format
 msgid "Start to delete consistency group: %(cg_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3234
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3244
 #: cinder/volume/drivers/prophetstor/dplcommon.py:926
 #, python-format
 msgid "Start to create cgsnapshot for consistency group: %(group_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3260
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3270
 #: cinder/volume/drivers/prophetstor/dplcommon.py:954
 #, python-format
 msgid "Delete cgsnapshot %(snap_name)s for consistency group: %(group_name)s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3438
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3448
 #, python-format
 msgid "Get ISCSI targets %(tg)s to register initiator %(in)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3465
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3475
 #, python-format
 msgid "Get FC targets %(tg)s to register initiator %(in)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3538
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3548
 #, python-format
 msgid "iSCSI Initiators %(in)s of %(ins)s need registration."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3557
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3567
 #, python-format
 msgid "FC Initiators %(in)s of %(ins)s need registration"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3785
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3795
 #, python-format
 msgid "Storage Group %s was empty."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4073
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4083
 #, python-format
 msgid "Successfully setup replication for %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4174
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4184
 #, python-format
 msgid "Replication is not configured on backend: %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4234
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4260
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4244
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4270
 #, python-format
 msgid "Consistency group %(cg)s is created successfully."
 msgstr ""

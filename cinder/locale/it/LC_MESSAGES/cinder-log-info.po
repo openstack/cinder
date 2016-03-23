@@ -7,9 +7,9 @@
 # Alessandra <alessandra@translated.net>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev7\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev19\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-18 12:50+0000\n"
+"POT-Creation-Date: 2016-03-22 19:34+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2805,6 +2805,10 @@ msgid ""
 msgstr ""
 "Non esiste alcun punto di istantanea per il volume con istantanea: %(snap)s. "
 "Non viene creato alcun backup per il volume: %(vol)s."
+
+#, python-format
+msgid "Toggle san_ip from %(current)s to %(new)s."
+msgstr "Passare a san_ip da %(current)s a %(new)s."
 
 msgid "Token is invalid, going to re-login and get a new one."
 msgstr "Il token non è valido, rieseguire il login e ottenere un nuovo token."

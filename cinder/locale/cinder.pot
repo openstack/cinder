@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev6\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev19\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-18 06:32+0000\n"
+"POT-Creation-Date: 2016-03-23 06:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -869,182 +869,189 @@ msgid ""
 "(Output: %(out)s)."
 msgstr ""
 
-#: cinder/exception.py:913
+#: cinder/exception.py:912
+#, python-format
+msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: "
+"%(rc)s) (Output: %(out)s)."
+msgstr ""
+
+#: cinder/exception.py:918
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
 msgstr ""
 
-#: cinder/exception.py:917
+#: cinder/exception.py:922
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:922
+#: cinder/exception.py:927
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr ""
 
-#: cinder/exception.py:926
+#: cinder/exception.py:931
 #, python-format
 msgid "Invalid CgSnapshot: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:931
+#: cinder/exception.py:936
 msgid "HBSD error occurs."
 msgstr ""
 
-#: cinder/exception.py:948
+#: cinder/exception.py:953
 msgid "Storage resource could not be found."
 msgstr ""
 
-#: cinder/exception.py:952
+#: cinder/exception.py:957
 #, python-format
 msgid "Volume %(volume_name)s is busy."
 msgstr ""
 
-#: cinder/exception.py:957
+#: cinder/exception.py:962
 msgid "Bad response from Datera API"
 msgstr ""
 
-#: cinder/exception.py:962
+#: cinder/exception.py:967
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:966
+#: cinder/exception.py:971
 #, python-format
 msgid "Failed to remove iscsi target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:970
+#: cinder/exception.py:975
 #, python-format
 msgid "Failed to attach iSCSI target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:974
+#: cinder/exception.py:979
 #, python-format
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
 msgstr ""
 
-#: cinder/exception.py:978
+#: cinder/exception.py:983
 #, python-format
 msgid "%(error_message)s"
 msgstr ""
 
-#: cinder/exception.py:983
+#: cinder/exception.py:988
 msgid "X-IO Volume Driver exception!"
 msgstr ""
 
-#: cinder/exception.py:988
+#: cinder/exception.py:993
 #, python-format
 msgid "Volume backend config is invalid: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:992
+#: cinder/exception.py:997
 #, python-format
 msgid "Backend service retry timeout hit: %(timeout)s sec"
 msgstr ""
 
-#: cinder/exception.py:996
+#: cinder/exception.py:1001
 #, python-format
 msgid "Backend reports: %(message)s"
 msgstr ""
 
-#: cinder/exception.py:1000
+#: cinder/exception.py:1005
 msgid "Backend reports: item already exists"
 msgstr ""
 
-#: cinder/exception.py:1004
+#: cinder/exception.py:1009
 msgid "Backend reports: item not found"
 msgstr ""
 
-#: cinder/exception.py:1009
+#: cinder/exception.py:1014
 #, python-format
 msgid ""
 "The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s,"
 " Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
 msgstr ""
 
-#: cinder/exception.py:1016
+#: cinder/exception.py:1021
 msgid "Volume to Initiator Group mapping already exists"
 msgstr ""
 
-#: cinder/exception.py:1020
+#: cinder/exception.py:1025
 msgid "System is busy, retry operation."
 msgstr ""
 
-#: cinder/exception.py:1024
+#: cinder/exception.py:1029
 msgid "Exceeded the limit of snapshots per volume"
 msgstr ""
 
-#: cinder/exception.py:1029
+#: cinder/exception.py:1034
 #, python-format
 msgid ""
 "Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
 "(Output: %(out)s)"
 msgstr ""
 
-#: cinder/exception.py:1035
+#: cinder/exception.py:1040
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr ""
 
-#: cinder/exception.py:1039 cinder/exception.py:1043 cinder/exception.py:1051
-#: cinder/exception.py:1081 cinder/exception.py:1096
+#: cinder/exception.py:1044 cinder/exception.py:1048 cinder/exception.py:1056
+#: cinder/exception.py:1086 cinder/exception.py:1101
 #, python-format
 msgid "%(message)s"
 msgstr ""
 
-#: cinder/exception.py:1047
+#: cinder/exception.py:1052
 #, python-format
 msgid "Not enough space on backend (%(backend)s)"
 msgstr ""
 
-#: cinder/exception.py:1055
+#: cinder/exception.py:1060
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr ""
 
-#: cinder/exception.py:1060
+#: cinder/exception.py:1065
 #, python-format
 msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
 msgstr ""
 
-#: cinder/exception.py:1064
+#: cinder/exception.py:1069
 #, python-format
 msgid ""
 "(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
 "(Stderr: %(stderr)s)"
 msgstr ""
 
-#: cinder/exception.py:1071
+#: cinder/exception.py:1076
 msgid "There is no metadata in DB object."
 msgstr ""
 
-#: cinder/exception.py:1075
+#: cinder/exception.py:1080
 #, python-format
 msgid "Operation not supported: %(operation)s."
 msgstr ""
 
-#: cinder/exception.py:1086
+#: cinder/exception.py:1091
 #, python-format
 msgid "Coho Data Cinder driver failure: %(message)s"
 msgstr ""
 
-#: cinder/exception.py:1091
+#: cinder/exception.py:1096
 msgid "Unexpected response from Tegile IntelliFlash API"
 msgstr ""
 
-#: cinder/exception.py:1101
+#: cinder/exception.py:1106
 #, python-format
 msgid "Google Cloud Storage connection failure: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:1105
+#: cinder/exception.py:1110
 #, python-format
 msgid "Google Cloud Storage api failure: %(reason)s"
 msgstr ""
 
-#: cinder/exception.py:1109
+#: cinder/exception.py:1114
 #, python-format
 msgid "Google Cloud Storage oauth2 failure: %(reason)s"
 msgstr ""
@@ -3774,7 +3781,7 @@ msgstr ""
 msgid "Cascade option is not supported."
 msgstr ""
 
-#: cinder/volume/rpcapi.py:403 cinder/volume/rpcapi.py:414
+#: cinder/volume/rpcapi.py:404 cinder/volume/rpcapi.py:416
 msgid ""
 "One of cinder-volume services is too old to accept such request. Are you "
 "running mixed Liberty-Mitaka cinder-volumes?"
@@ -5249,73 +5256,73 @@ msgstr ""
 msgid "Unable to update consistency group %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:754
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:758
 #, python-format
 msgid "Unable to snap Consistency Group %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:778
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:782
 #, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:830
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:849
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:834
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:853
 #: cinder/volume/drivers/huawei/huawei_driver.py:1337
 msgid "Must specify source-name or source-id."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:883
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:887
 #, python-format
 msgid ""
 "Unable to retype %(specname)s, expected to receive current and requested "
 "%(spectype)s values. Value received: %(spec)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1046
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1050
 msgid "Backend has already been failed over. Unable to fail back."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1084
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1088
 #, python-format
 msgid "replication_failover failed. %s not found."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1088
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1092
 msgid "replication_failover failed. Backend not configured for failover"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1096
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1100
 msgid "_get_unmanaged_replay: Must specify source-name."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1104
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1108
 #, python-format
 msgid "_get_unmanaged_replay: Cannot find volume id %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1112
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1116
 #, python-format
 msgid "_get_unmanaged_replay: Cannot find snapshot named %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1151
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1155
 #, python-format
 msgid ""
 "manage_existing_snapshot: Error managing existing replay %(ss)s on volume"
 " %(vol)s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1180
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1184
 msgid "Volume size must be a multiple of 1 GB."
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1199
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1203
 #, python-format
 msgid "unmanage_snapshot: Cannot find volume id %s"
 msgstr ""
 
-#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1207
+#: cinder/volume/drivers/dell/dell_storagecenter_common.py:1211
 #, python-format
 msgid "unmanage_snapshot: Cannot find snapshot named %s"
 msgstr ""
@@ -6304,171 +6311,171 @@ msgstr ""
 msgid "san_ip: Mandatory field configuration. san_ip is not set."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:725
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:726
 #, python-format
 msgid "Invalid VNX authentication type: %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:829
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:830
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:919
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:920
 #, python-format
 msgid "CommandLineHelper._wait_for_a_condition: %s timeout"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1160
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1161
 msgid "Failed to create snapshot as no LUN ID is specified"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:1348
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:1349
 #, python-format
 msgid "Migration of LUN %s has been stopped or faulted."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2171
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2181
 msgid "MirrorView/S enabler is not installed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2210
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2220
 #, python-format
 msgid ""
 "All the specified storage pools to be managed do not exist. Please check "
 "your configuration. Non-existent pools: %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2259
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2269
 #, python-format
 msgid "Invalid %(protocol)s ports %(port)s specified for io_port_list."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2420
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2430
 #, python-format
 msgid "The extra_spec: %s is invalid."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2457
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2467
 msgid "deduplicated and auto tiering can't be both enabled."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2461
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2471
 msgid "Compression Enabler is not installed. Can not create compressed volume."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2467
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2477
 msgid "Deduplication Enabler is not installed. Can not create deduplicated volume"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2473
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2483
 msgid "ThinProvisioning Enabler is not installed. Can not create thin volume"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2478
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2488
 msgid "FAST VP Enabler is not installed. Can't set tiering policy for the volume"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:2939
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3017
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:2949
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3027
 msgid "Unable to enable replication and snapcopy at the same time."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3143
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3153
 #, python-format
 msgid ""
 "Failed to create consistency group %s because VNX consistency group "
 "cannot accept compressed LUNs as members."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3335
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3345
 #, python-format
 msgid "Host %s has no iSCSI initiator"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3346
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3356
 #, python-format
 msgid "Host %s has no FC initiators"
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3633
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3643
 #, python-format
 msgid ""
 "Reach limitation set by configuration option max_luns_per_storage_group. "
 "Operation to add %(vol)s into Storage Group %(sg)s is rejected."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3649
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3659
 #, python-format
 msgid "Failed to add %(vol)s into %(sg)s after %(retries)s tries."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3843
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3941
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3853
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3951
 msgid "Reference must contain source-id or source-name key."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3848
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3858
 #, python-format
 msgid ""
 "The imported lun %(lun_id)s is in pool %(lun_pool)s which is not managed "
 "by the host %(host)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3900
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3910
 msgid ""
 "Driver is not able to do retype because the volume (LUN {}) has snapshot "
 "which is forbidden to migrate."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3910
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:3920
 msgid "Storage-assisted migration failed during manage volume."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:3992
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4002
 #, python-format
 msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4134
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4144
 #, python-format
 msgid "replication_device should be configured on backend: %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4145
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4155
 #, python-format
 msgid "replication_device with backend_id [%s] is missing."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4210
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4220
 msgid ""
 "create_consistencygroup_from_src supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4363
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4373
 #, python-format
 msgid "Failed to find storage pool for source volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4370
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4380
 #, python-format
 msgid ""
 "The source volume %s is not in the pool which is managed by the current "
 "host."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4521
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4531
 #, python-format
 msgid "Migrate volume failed between source vol %(src)s and dest vol %(dst)s."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4629
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4639
 #, python-format
 msgid "Migrate volume %(src)s failed."
 msgstr ""
 
-#: cinder/volume/drivers/emc/emc_vnx_cli.py:4656
+#: cinder/volume/drivers/emc/emc_vnx_cli.py:4666
 #, python-format
 msgid "Invalid synchronize mode specified, allowed mode is %s."
 msgstr ""
