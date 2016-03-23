@@ -1660,7 +1660,7 @@ class API(base.Base):
             return "Backend reported error during thaw_host operation."
 
     def check_volume_filters(self, filters):
-        '''Sets the user filter value to accepted format'''
+        """Sets the user filter value to accepted format."""
         booleans = self.db.get_booleans_for_table('volume')
 
         # To translate any true/false equivalent to True/False
