@@ -807,6 +807,13 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(reservations.c.allocated_id.type,
                               self.INTEGER_TYPE)
 
+    def __check_cinderbase_fields(self, columns):
+        """Check fields inherited from CinderBase ORM class."""
+        self.assertIsInstance(columns.created_at.type, self.TIME_TYPE)
+        self.assertIsInstance(columns.updated_at.type, self.TIME_TYPE)
+        self.assertIsInstance(columns.deleted_at.type, self.TIME_TYPE)
+        self.assertIsInstance(columns.deleted.type, self.BOOL_TYPE)
+
     def _check_067(self, engine, data):
         iscsi_targets = db_utils.get_table(engine, 'iscsi_targets')
         fkey, = iscsi_targets.c.volume_id.foreign_keys
@@ -843,34 +850,33 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         """Test adding cluster table and cluster_id fields."""
         self.assertTrue(engine.dialect.has_table(engine.connect(), 'clusters'))
         clusters = db_utils.get_table(engine, 'clusters')
-
-        # Inherited fields from CinderBase
-        self.assertIsInstance(clusters.c.created_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(clusters.c.updated_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(clusters.c.deleted_at.type,
-                              self.TIME_TYPE)
-        self.assertIsInstance(clusters.c.deleted.type,
-                              self.BOOL_TYPE)
+        columns = clusters.c
+        self.__check_cinderbase_fields(columns)
 
         # Cluster specific fields
-        self.assertIsInstance(clusters.c.id.type,
-                              self.INTEGER_TYPE)
-        self.assertIsInstance(clusters.c.name.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(clusters.c.binary.type,
-                              self.VARCHAR_TYPE)
-        self.assertIsInstance(clusters.c.disabled.type,
-                              self.BOOL_TYPE)
-        self.assertIsInstance(clusters.c.disabled_reason.type,
-                              self.VARCHAR_TYPE)
+        self.assertIsInstance(columns.id.type, self.INTEGER_TYPE)
+        self.assertIsInstance(columns.name.type, self.VARCHAR_TYPE)
+        self.assertIsInstance(columns.binary.type, self.VARCHAR_TYPE)
+        self.assertIsInstance(columns.disabled.type, self.BOOL_TYPE)
+        self.assertIsInstance(columns.disabled_reason.type, self.VARCHAR_TYPE)
 
         # Check that we have added cluster_name field to all required tables
         for table_name in ('services', 'consistencygroups', 'volumes'):
             table = db_utils.get_table(engine, table_name)
             self.assertIsInstance(table.c.cluster_name.type,
                                   self.VARCHAR_TYPE)
+
+    def _check_076(self, engine, data):
+        workers = db_utils.get_table(engine, 'workers')
+        columns = workers.c
+        self.__check_cinderbase_fields(columns)
+
+        # Workers specific fields
+        self.assertIsInstance(columns.id.type, self.INTEGER_TYPE)
+        self.assertIsInstance(columns.resource_type.type, self.VARCHAR_TYPE)
+        self.assertIsInstance(columns.resource_id.type, self.VARCHAR_TYPE)
+        self.assertIsInstance(columns.status.type, self.VARCHAR_TYPE)
+        self.assertIsInstance(columns.service_id.type, self.INTEGER_TYPE)
 
     def test_walk_versions(self):
         self.walk_versions(False, False)
