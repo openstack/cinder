@@ -118,6 +118,17 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertIsNone(self.driver.create_cloned_volume(self.volume,
                                                            source_volume))
 
+    @mock.patch.object(datera.DateraDriver, 'extend_volume')
+    def test_create_cloned_volume_success_larger(self, mock_extend):
+        cloned_volume = _stub_volume(
+            id='7f91abfa-7964-41ed-88fc-207c3a290b4f',
+            display_name='foo',
+            size=2
+        )
+        self.driver.create_cloned_volume(cloned_volume, self.volume)
+        mock_extend.assert_called_once_with(cloned_volume,
+                                            cloned_volume['size'])
+
     def test_create_cloned_volume_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
         source_volume = _stub_volume(
