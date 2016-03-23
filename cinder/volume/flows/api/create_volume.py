@@ -489,7 +489,7 @@ class EntryCreateTask(flow_utils.CinderTask):
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
                     'source_replicaid', 'consistencygroup_id',
-                    'cgsnapshot_id', 'multiattach','volume_from_cache']
+                    'cgsnapshot_id', 'multiattach','volume_from_cache','backup_id']
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
@@ -508,6 +508,12 @@ class EntryCreateTask(flow_utils.CinderTask):
         if cache_image_id is not None:
             misc="volume_from_cache: %s,"%(cache_image_id)
 
+        snapshot_id = ''
+        try:
+            snapshot_id = kwargs.pop('backup_id')
+        except:
+            pass
+
         volume_properties = {
             'size': kwargs.pop('size'),
             'user_id': context.user_id,
@@ -515,6 +521,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'status': 'creating',
             'attach_status': 'detached',
             'encryption_key_id': kwargs.pop('encryption_key_id'),
+            'snapshot_id': snapshot_id,
             # Rename these to the internal name.
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),
@@ -526,6 +533,8 @@ class EntryCreateTask(flow_utils.CinderTask):
         # Merge in the other required arguments which should provide the rest
         # of the volume property fields (if applicable).
         volume_properties.update(kwargs)
+        # This method rewrites the update snapshot_id field and hence we need to repopulate it again
+        volume_properties['snapshot_id'] = snapshot_id
         volume = self.db.volume_create(context, volume_properties)
 
         return {
@@ -873,3 +882,4 @@ def get_flow_no_rpc(db_api, image_service_api, availability_zones,
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(api_flow, store=create_what)
+
