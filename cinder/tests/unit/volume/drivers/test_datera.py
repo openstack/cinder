@@ -350,6 +350,32 @@ class DateraVolumeTestCasev2(test.TestCase):
         self.assertIsNone(
             self.driver.create_volume_from_snapshot(self.volume, snapshot))
 
+    @mock.patch.object(datera.DateraDriver, 'extend_volume')
+    def test_create_volume_from_snapshot_success_larger(self, mock_extend):
+        snapshot = _stub_snapshot(volume_id=self.volume['id'])
+        extend_volume = _stub_volume(size=2)
+
+        mock_extend = mock.Mock()
+        if self._apiv == '2':
+            self.driver._extend_volume_2 = mock_extend
+            self.mock_api.side_effect = [
+                stub_return_snapshots,
+                list(stub_return_snapshots.values())[0],
+                None]
+            self.driver.create_volume_from_snapshot(extend_volume, snapshot)
+            mock_extend.assert_called_once_with(extend_volume,
+                                                extend_volume['size'])
+        else:
+            self.driver._extend_volume_2_1 = mock_extend
+            self.mock_api.side_effect = [
+                self._generate_fake_api_request("tenant"),
+                stub_return_snapshots_21,
+                {'data': stub_return_snapshots_21['data'][0]},
+                None]
+            self.driver.create_volume_from_snapshot(extend_volume, snapshot)
+            mock_extend.assert_called_once_with(extend_volume,
+                                                extend_volume['size'])
+
     def test_create_volume_from_snapshot_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
         snapshot = _stub_snapshot(volume_id=self.volume['id'])
@@ -1152,9 +1178,11 @@ def _stub_volume(*args, **kwargs):
 def _stub_snapshot(*args, **kwargs):
     uuid = u'0bb34f0c-fea4-48e0-bf96-591120ac7e3c'
     name = u'snapshot-00000001'
+    size = 1
     volume = {}
     volume['id'] = kwargs.get('id', uuid)
     volume['display_name'] = kwargs.get('display_name', name)
+    volume['volume_size'] = kwargs.get('size', size)
     volume['volume_id'] = kwargs.get('volume_id', None)
     return volume
 
