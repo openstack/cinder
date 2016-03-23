@@ -38,6 +38,7 @@ import string
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
 from cinder.zonemanager.drivers.brocade import fc_zone_constants
 from cinder.zonemanager.drivers import driver_utils
@@ -57,6 +58,7 @@ CONF = cfg.CONF
 CONF.register_opts(brcd_opts, group='fc-zone-manager')
 
 
+@interface.fczmdriver
 class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
     """Brocade FC zone driver implementation.
 

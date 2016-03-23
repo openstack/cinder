@@ -14,38 +14,42 @@
 
 """Generate list of cinder drivers"""
 
-import importlib
-import inspect
-import pkgutil
-import pprint
-
-from cinder.volume import drivers
-from cinder.volume import driver
-
-package = drivers
+from cinder.interface import util
 
 
-def get_driver_list():
-    dr_list = []
-    for _loader, modname, _ispkg in pkgutil.walk_packages(
-            path=package.__path__,
-            prefix=package.__name__ + '.',
-            onerror=lambda x: None):
-        try:
-            mod = importlib.import_module(modname)
-            list_classes = inspect.getmembers(mod, inspect.isclass)
-            dr_list += [
-                modname + '.' + dr_name for dr_name, dr in list_classes
-                if driver.BaseVD in inspect.getmro(dr)]
-        except ImportError:
-            print("%s module ignored!!" % modname)
-    return dr_list
+def format_description(desc):
+    desc = desc or '<None>'
+    lines = desc.rstrip('\n').split('\n')
+    for line in lines:
+        print('    %s' % line)
+
+
+def print_drivers(drivers, config_name):
+    # for driver in drivers.sort(key=lambda x: x.class_fqn):
+    for driver in sorted(drivers, key=lambda x: x.class_fqn):
+        print(driver.class_name)
+        print('-' * len(driver.class_name))
+        if driver.version:
+            print('* Version: %s' % driver.version)
+        print('* %s=%s' % (config_name, driver.class_fqn))
+        print('* Description:')
+        format_description(driver.desc)
+        print('')
+    print('')
 
 
 def main():
-    dr_list = get_driver_list()
-    print("Drivers list:")
-    pprint.pprint(dr_list)
+    print('VOLUME DRIVERS')
+    print('==============')
+    print_drivers(util.get_volume_drivers(), 'volume_driver')
+
+    print('BACKUP DRIVERS')
+    print('==============')
+    print_drivers(util.get_backup_drivers(), 'backup_driver')
+
+    print('FC ZONE MANAGER DRIVERS')
+    print('=======================')
+    print_drivers(util.get_fczm_drivers(), 'zone_driver')
 
 
 if __name__ == '__main__':

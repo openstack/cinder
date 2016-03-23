@@ -56,6 +56,7 @@ from cinder.backup import chunkeddriver
 from cinder import exception
 from cinder.i18n import _
 from cinder.i18n import _LE
+from cinder import interface
 
 LOG = logging.getLogger(__name__)
 
@@ -138,6 +139,7 @@ CONF = cfg.CONF
 CONF.register_opts(swiftbackup_service_opts)
 
 
+@interface.backupdriver
 class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within Swift."""
 

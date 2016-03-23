@@ -14,10 +14,12 @@
 #    under the License.
 #
 
+from cinder import interface
 from cinder.volume.drivers.dothill import dothill_iscsi
 from cinder.volume.drivers.lenovo import lenovo_common
 
 
+@interface.volumedriver
 class LenovoISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
     """OpenStack iSCSI cinder drivers for Lenovo Storage arrays.
 

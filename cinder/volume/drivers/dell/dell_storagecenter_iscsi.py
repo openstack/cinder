@@ -19,11 +19,13 @@ from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_common
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                                    driver.ISCSIDriver):
 

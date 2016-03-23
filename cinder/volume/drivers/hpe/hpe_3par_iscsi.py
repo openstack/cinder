@@ -40,6 +40,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
@@ -51,6 +52,7 @@ CHAP_USER_KEY = "HPQ-cinder-CHAP-name"
 CHAP_PASS_KEY = "HPQ-cinder-CHAP-secret"
 
 
+@interface.volumedriver
 class HPE3PARISCSIDriver(driver.TransferVD,
                          driver.ManageableVD,
                          driver.ExtendVD,

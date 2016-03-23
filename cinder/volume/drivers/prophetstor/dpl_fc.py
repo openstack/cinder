@@ -19,6 +19,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import dplcommon
 from cinder.zonemanager import utils as fczm_utils
@@ -26,6 +27,7 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class DPLFCDriver(dplcommon.DPLCOMMONDriver,
                   driver.FibreChannelDriver):
     def __init__(self, *args, **kwargs):

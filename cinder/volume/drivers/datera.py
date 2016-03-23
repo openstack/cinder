@@ -29,6 +29,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -111,6 +112,7 @@ def _authenticated(func):
     return func_wrapper
 
 
+@interface.volumedriver
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
 class DateraDriver(san.SanISCSIDriver):
 

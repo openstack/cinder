@@ -30,6 +30,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hnas_backend
@@ -164,6 +165,7 @@ def _read_config(xml_config_file):
     return config
 
 
+@interface.volumedriver
 class HDSISCSIDriver(driver.ISCSIDriver):
     """HDS HNAS volume driver.
 

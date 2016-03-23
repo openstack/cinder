@@ -20,6 +20,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI, _LE, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.nexenta.ns5 import jsonrpc
 from cinder.volume.drivers.nexenta import options
@@ -29,6 +30,7 @@ VERSION = '1.0.0'
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class NexentaISCSIDriver(driver.ISCSIDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 

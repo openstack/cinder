@@ -28,6 +28,7 @@ from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -105,6 +106,7 @@ def factory_zfssa():
     return zfssarest.ZFSSAApi()
 
 
+@interface.volumedriver
 class ZFSSAISCSIDriver(driver.ISCSIDriver):
     """ZFSSA Cinder iSCSI volume driver.
 
@@ -224,10 +226,10 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
 
         # Parse interfaces
         interfaces = []
-        for interface in lcfg.zfssa_target_interfaces.split(','):
-            if interface == '':
+        for intrface in lcfg.zfssa_target_interfaces.split(','):
+            if intrface == '':
                 continue
-            interfaces.append(interface)
+            interfaces.append(intrface)
 
         # Setup target and target group
         iqn = self.zfssa.create_target(

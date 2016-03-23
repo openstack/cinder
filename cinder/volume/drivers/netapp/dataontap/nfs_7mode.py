@@ -28,6 +28,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
@@ -40,6 +41,7 @@ LOG = logging.getLogger(__name__)
 
 
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
+@interface.volumedriver
 class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
     """NetApp NFS driver for Data ONTAP (7-mode)."""
 

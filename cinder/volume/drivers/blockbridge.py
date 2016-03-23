@@ -29,6 +29,7 @@ from six.moves import urllib
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume import utils as volume_utils
 
@@ -168,6 +169,7 @@ class BlockbridgeAPIClient(object):
         return rsp_data
 
 
+@interface.volumedriver
 class BlockbridgeISCSIDriver(driver.ISCSIDriver):
     """Manages volumes hosted on Blockbridge EPS."""
 

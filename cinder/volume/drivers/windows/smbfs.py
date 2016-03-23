@@ -26,6 +26,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
+from cinder import interface
 from cinder.volume.drivers import remotefs as remotefs_drv
 from cinder.volume.drivers import smbfs
 from cinder.volume.drivers.windows import remotefs
@@ -42,6 +43,7 @@ CONF.set_default('smbfs_mount_point_base', r'C:\OpenStack\_mnt')
 CONF.set_default('smbfs_default_volume_format', 'vhd')
 
 
+@interface.volumedriver
 class WindowsSmbfsDriver(smbfs.SmbfsDriver):
     VERSION = VERSION
     _MINIMUM_QEMU_IMG_VERSION = '1.6'

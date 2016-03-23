@@ -16,12 +16,14 @@
 Volume driver for NetApp E-Series FibreChannel storage systems.
 """
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import library
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.zonemanager import utils as fczm_utils
 
 
+@interface.volumedriver
 class NetAppEseriesFibreChannelDriver(driver.BaseVD,
                                       driver.ManageableVD,
                                       driver.ExtendVD,

@@ -28,6 +28,7 @@ import six
 from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LI, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as volume_utils
@@ -472,6 +473,7 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
                                                       'set.') % {'attr': attr})
 
 
+@interface.volumedriver
 class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
     """Tegile ISCSI Driver."""
 
@@ -584,6 +586,7 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
              'provider_auth': provider_auth})
 
 
+@interface.volumedriver
 class TegileFCDriver(TegileIntelliFlashVolumeDriver,
                      driver.FibreChannelDriver):
     """Tegile FC driver."""

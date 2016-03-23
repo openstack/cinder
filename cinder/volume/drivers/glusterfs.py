@@ -27,6 +27,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import remotefs as remotefs_drv
@@ -47,6 +48,7 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
+@interface.volumedriver
 class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
                       driver.ExtendVD):
     """Gluster based cinder driver.

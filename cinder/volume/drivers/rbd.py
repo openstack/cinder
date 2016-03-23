@@ -30,6 +30,7 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 
@@ -261,6 +262,7 @@ class RADOSClient(object):
         return int(features)
 
 
+@interface.volumedriver
 class RBDDriver(driver.TransferVD, driver.ExtendVD,
                 driver.CloneableImageVD, driver.SnapshotVD,
                 driver.MigrateVD, driver.ManageableVD, driver.BaseVD):

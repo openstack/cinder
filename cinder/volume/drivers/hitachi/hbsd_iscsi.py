@@ -25,6 +25,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _LE, _LI
+from cinder import interface
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -52,6 +53,7 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
+@interface.volumedriver
 class HBSDISCSIDriver(cinder.volume.driver.ISCSIDriver):
     VERSION = common.VERSION
 

@@ -31,6 +31,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
+from cinder import interface
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
@@ -105,6 +106,7 @@ def _sizestr(size_in_g):
     return '%sG' % size_in_g
 
 
+@interface.volumedriver
 class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                  driver.LocalVD, driver.TransferVD,
                  driver.CloneableImageVD, driver.SnapshotVD,
@@ -1240,6 +1242,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
         return model_update, snapshots_model_update
 
 
+@interface.volumedriver
 class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
     """GPFS cinder driver extension.
 

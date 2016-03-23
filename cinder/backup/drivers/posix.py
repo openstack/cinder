@@ -26,6 +26,7 @@ from oslo_log import log as logging
 
 from cinder.backup import chunkeddriver
 from cinder import exception
+from cinder import interface
 
 LOG = logging.getLogger(__name__)
 
@@ -63,6 +64,7 @@ CONF = cfg.CONF
 CONF.register_opts(posixbackup_service_opts)
 
 
+@interface.backupdriver
 class PosixBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete using a Posix file system."""
 

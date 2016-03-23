@@ -44,6 +44,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder.objects import fields
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -120,6 +121,7 @@ extra_specs_value_map = {
 }
 
 
+@interface.volumedriver
 class HPELeftHandISCSIDriver(driver.ISCSIDriver):
     """Executes REST commands relating to HPE/LeftHand SAN ISCSI volumes.
 

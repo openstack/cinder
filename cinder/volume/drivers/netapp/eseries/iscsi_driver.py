@@ -18,11 +18,13 @@
 Volume driver for NetApp E-Series iSCSI storage systems.
 """
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.eseries import library
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
+@interface.volumedriver
 class NetAppEseriesISCSIDriver(driver.BaseVD,
                                driver.ManageableVD,
                                driver.ExtendVD,

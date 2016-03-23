@@ -20,6 +20,7 @@ import six
 
 from cinder import context
 from cinder.i18n import _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vmax_common
 from cinder.zonemanager import utils as fczm_utils
@@ -27,6 +28,7 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class EMCVMAXFCDriver(driver.FibreChannelDriver):
     """EMC FC Drivers for VMAX using SMI-S.
 

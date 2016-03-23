@@ -16,10 +16,12 @@
 Volume driver for NetApp Data ONTAP (C-mode) iSCSI storage systems.
 """
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 
 
+@interface.volumedriver
 class NetAppCmodeISCSIDriver(driver.BaseVD,
                              driver.ConsistencyGroupVD,
                              driver.ManageableVD,

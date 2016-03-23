@@ -34,6 +34,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 
@@ -423,6 +424,7 @@ class SheepdogIOWrapper(io.RawIOBase):
         raise IOError(_("fileno is not supported by SheepdogIOWrapper"))
 
 
+@interface.volumedriver
 class SheepdogDriver(driver.VolumeDriver):
     """Executes commands relating to Sheepdog Volumes."""
 

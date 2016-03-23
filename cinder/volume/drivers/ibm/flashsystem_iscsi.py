@@ -33,6 +33,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import interface
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.ibm import flashsystem_common as fscommon
@@ -51,6 +52,7 @@ CONF = cfg.CONF
 CONF.register_opts(flashsystem_iscsi_opts)
 
 
+@interface.volumedriver
 class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
                              cinder.volume.driver.ISCSIDriver):
     """IBM FlashSystem iSCSI volume driver.

@@ -32,6 +32,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -88,6 +89,7 @@ VOLUME_NOT_MAPPED_ERROR = 84
 VOLUME_ALREADY_MAPPED_ERROR = 81
 
 
+@interface.volumedriver
 class ScaleIODriver(driver.VolumeDriver):
     """EMC ScaleIO Driver."""
 

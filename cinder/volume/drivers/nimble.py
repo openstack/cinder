@@ -33,6 +33,7 @@ from suds import client
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder.objects import volume
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
@@ -84,6 +85,7 @@ class NimbleAPIException(exception.VolumeBackendAPIException):
     message = _("Unexpected response from Nimble API")
 
 
+@interface.volumedriver
 class NimbleISCSIDriver(san.SanISCSIDriver):
 
     """OpenStack driver to enable Nimble Controller.

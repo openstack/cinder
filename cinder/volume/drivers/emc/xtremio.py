@@ -44,6 +44,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder import objects
 from cinder.objects import fields
 from cinder import utils
@@ -774,6 +775,7 @@ class XtremIOVolumeDriver(san.SanDriver):
                    (data=_("Failed to create IG, %s") % name))
 
 
+@interface.volumedriver
 class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
     """Executes commands relating to ISCSI volumes.
 
@@ -918,6 +920,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
         return connector['initiator']
 
 
+@interface.volumedriver
 class XtremIOFibreChannelDriver(XtremIOVolumeDriver,
                                 driver.FibreChannelDriver):
 
