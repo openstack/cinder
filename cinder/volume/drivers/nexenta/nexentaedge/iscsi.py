@@ -147,6 +147,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         }
 
     def create_volume(self, volume):
+        LOG.warning(volume['name'])
         try:
             self.restapi.post('service/' + self.iscsi_service + '/iscsi', {
                 'objectPath': self.bucket_path + '/' + volume['name'],
@@ -166,7 +167,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
         except exception.VolumeBackendAPIException:
             LOG.info(
                 _LI('Volume %s was already deleted from appliance, skipping'),
-                volume['id'])
+                resource=volume)
 
     def extend_volume(self, volume, new_size):
         try:
