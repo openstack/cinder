@@ -1305,6 +1305,41 @@ def message_destroy(context, message_id):
 ###################
 
 
+def worker_create(context, **values):
+    """Create a worker entry from optional arguments."""
+    return IMPL.worker_create(context, **values)
+
+
+def worker_get(context, **filters):
+    """Get a worker or raise exception if it does not exist."""
+    return IMPL.worker_get(context, **filters)
+
+
+def worker_get_all(context, until=None, db_filters=None, **filters):
+    """Get all workers that match given criteria."""
+    return IMPL.worker_get_all(context, until=until, db_filters=db_filters,
+                               **filters)
+
+
+def worker_update(context, id, filters=None, orm_worker=None, **values):
+    """Update a worker with given values."""
+    return IMPL.worker_update(context, id, filters=filters,
+                              orm_worker=orm_worker, **values)
+
+
+def worker_claim_for_cleanup(context, claimer_id, orm_worker):
+    """Soft delete a worker, change the service_id and update the worker."""
+    return IMPL.worker_claim_for_cleanup(context, claimer_id, orm_worker)
+
+
+def worker_destroy(context, **filters):
+    """Delete a worker (no soft delete)."""
+    return IMPL.worker_destroy(context, **filters)
+
+
+###################
+
+
 def resource_exists(context, model, resource_id):
     return IMPL.resource_exists(context, model, resource_id)
 
