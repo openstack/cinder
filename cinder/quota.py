@@ -532,7 +532,7 @@ class NestedDbQuotaDriver(DbQuotaDriver):
         :param ctxt: context used to retrieve DB values
         :param resource: the resource to calculate allocated value for
         :param project_tree: the project tree used to calculate allocated
-                e.g. {'A': {'B': {'D': None}, 'C': None}
+                e.g. {'A': {'B': {'D': None}, 'C': None}}
 
         A project's "allocated" value depends on:
             1) the quota limits which have been "given" to it's children, in
