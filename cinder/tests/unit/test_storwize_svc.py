@@ -2819,6 +2819,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                                   consistencygroup_id= cg_id,
                                                   **kwargs)
 
+        snapshots = []
         cg_id = cg_snapshot['consistencygroup_id']
         volumes = self.db.volume_get_all_by_group(self.ctxt.elevated(), cg_id)
 
@@ -2828,29 +2829,27 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             raise exception.InvalidConsistencyGroup(reason=msg)
 
         for volume in volumes:
-            testutils.create_snapshot(self.ctxt,
-                                      volume['id'],
-                                      cg_snapshot.id,
-                                      cg_snapshot.name,
-                                      cg_snapshot.id,
-                                      "creating")
+            snapshots.append(testutils.create_snapshot(
+                self.ctxt, volume['id'],
+                cg_snapshot.id,
+                cg_snapshot.name,
+                cg_snapshot.id,
+                "creating"))
 
-        return cg_snapshot
+        return cg_snapshot, snapshots
 
     def _create_cgsnapshot(self, cg_id, **kwargs):
-        cg_snapshot = self._create_cgsnapshot_in_db(cg_id, **kwargs)
+        cg_snapshot, snapshots = self._create_cgsnapshot_in_db(cg_id, **kwargs)
 
-        model_update, snapshots = (
-            self.driver.create_cgsnapshot(self.ctxt, cg_snapshot, []))
+        model_update, snapshots_model = (
+            self.driver.create_cgsnapshot(self.ctxt, cg_snapshot, snapshots))
         self.assertEqual('available',
                          model_update['status'],
                          "CGSnapshot created failed")
 
-        for snapshot in snapshots:
+        for snapshot in snapshots_model:
             self.assertEqual('available', snapshot['status'])
-        snapshots = (
-            self.db.snapshot_get_all_for_cgsnapshot(self.ctxt.elevated(),
-                                                    cg_snapshot['id']))
+
         return cg_snapshot, snapshots
 
     def _create_test_vol(self, opts):
@@ -4064,17 +4063,20 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.assertEqual(fields.ConsistencyGroupStatus.AVAILABLE,
                          model_update['status'],
                          "CG created failed")
-        # Add volumes to CG
-        self._create_volume(volume_type_id=cg_type['id'],
-                            consistencygroup_id=cg['id'])
-        self._create_volume(volume_type_id=cg_type['id'],
-                            consistencygroup_id=cg['id'])
-        self._create_volume(volume_type_id=cg_type['id'],
-                            consistencygroup_id=cg['id'])
-        cg_snapshot = self._create_cgsnapshot_in_db(cg['id'])
+
+        volumes = [
+            self._create_volume(volume_type_id=cg_type['id'],
+                                consistencygroup_id=cg['id']),
+            self._create_volume(volume_type_id=cg_type['id'],
+                                consistencygroup_id=cg['id']),
+            self._create_volume(volume_type_id=cg_type['id'],
+                                consistencygroup_id=cg['id'])
+        ]
+
+        cg_snapshot, snapshots = self._create_cgsnapshot_in_db(cg['id'])
 
         model_update = self.driver.create_cgsnapshot(self.ctxt, cg_snapshot,
-                                                     [])
+                                                     snapshots)
         self.assertEqual('available',
                          model_update[0]['status'],
                          "CGSnapshot created failed")
@@ -4082,7 +4084,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         for snapshot in model_update[1]:
             self.assertEqual('available', snapshot['status'])
 
-        model_update = self.driver.delete_consistencygroup(self.ctxt, cg, [])
+        model_update = self.driver.delete_consistencygroup(self.ctxt,
+                                                           cg, volumes)
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
@@ -4146,7 +4149,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                           self.ctxt, cg, volumes, None, snapshots,
                           None, None)
 
-        model_update = self.driver.delete_consistencygroup(self.ctxt, cg, [])
+        model_update = self.driver.delete_consistencygroup(self.ctxt,
+                                                           cg, volumes)
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
@@ -4154,7 +4158,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertEqual('deleted', volume['status'])
 
         model_update = (
-            self.driver.delete_consistencygroup(self.ctxt, source_cg, []))
+            self.driver.delete_consistencygroup(self.ctxt,
+                                                source_cg, source_vols))
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
@@ -4162,7 +4167,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertEqual('deleted', volume['status'])
 
         model_update = (
-            self.driver.delete_consistencygroup(self.ctxt, cgsnapshot, []))
+            self.driver.delete_consistencygroup(self.ctxt,
+                                                cgsnapshot, snapshots))
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
@@ -4219,7 +4225,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.assertEqual('available', each_vol['status'])
         model_update = self.driver.delete_consistencygroup(self.ctxt,
                                                            cg,
-                                                           [])
+                                                           volumes)
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
@@ -4238,11 +4244,11 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                          model_update['status'],
                          "CG create from src created failed")
 
-        for each_vol in volumes:
+        for each_vol in volumes_model_update:
             self.assertEqual('available', each_vol['status'])
 
         model_update = self.driver.delete_consistencygroup(self.ctxt,
-                                                           cg, [])
+                                                           cg, volumes)
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
@@ -4251,7 +4257,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         model_update = self.driver.delete_consistencygroup(self.ctxt,
                                                            cgsnapshot,
-                                                           [])
+                                                           snapshots)
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
@@ -4260,7 +4266,7 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         model_update = self.driver.delete_consistencygroup(self.ctxt,
                                                            source_cg,
-                                                           [])
+                                                           source_vols)
 
         self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
                          model_update[0]['status'])
