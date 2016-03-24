@@ -21,21 +21,22 @@ import json
 
 import mock
 
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.netapp.eseries import utils
 import cinder.volume.drivers.netapp.options as na_opts
 import cinder.volume.drivers.netapp.utils as na_utils
 
 FAKE_CINDER_VOLUME = {
-    'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'id': fake.volume_id,
     'size': 1,
     'volume_name': 'lun1',
     'host': 'hostname@backend#DDP',
     'os_type': 'linux',
     'provider_location': 'lun1',
-    'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    'name_id': fake.volume2_id,
     'provider_auth': 'provider a b',
-    'project_id': 'project',
+    'project_id': fake.project_id,
     'display_name': None,
     'display_description': 'lun1',
     'volume_type_id': None,
@@ -44,16 +45,17 @@ FAKE_CINDER_VOLUME = {
 }
 
 FAKE_CINDER_SNAPSHOT = {
-    'id': '78f95b9d-3f02-4781-a512-1a1c921d48a1',
-    'volume': FAKE_CINDER_VOLUME
+    'id': fake.snapshot_id,
+    'volume': FAKE_CINDER_VOLUME,
+    'provider_id': '3400000060080E500023BB3400631F335294A5A8',
 }
 
 FAKE_CINDER_CG = {
-    'id': '78f95b9d-3f02-4781-a512-1a1c951d48a2',
+    'id': fake.consistency_group_id,
 }
 
 FAKE_CINDER_CG_SNAPSHOT = {
-    'id': '78f95b9d-4d13-4781-a512-1a1c951d6a6',
+    'id': fake.cgsnapshot_id,
     'consistencygroup_id': FAKE_CINDER_CG['id'],
 }
 
@@ -691,7 +693,7 @@ SNAPSHOT_GROUP = {
 }
 
 SNAPSHOT_IMAGE = {
-    'id': '3400000060080E500023BB3400631F335294A5A8',
+    'id': fake.snapshot_id,
     'baseVol': '0200000060080E500023C734000009825294A534',
     'status': 'optimal',
     'pitCapacity': '2147483648',
@@ -759,29 +761,6 @@ SNAPSHOT_VOLUME = {
 FAKE_BACKEND_STORE = {
     'key': 'cinder-snapshots',
     'value': '{"3300000060080E50003416400000E90D56B047E5":"2"}'
-}
-
-FAKE_CINDER_VOLUME = {
-    'id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
-    'size': 1,
-    'volume_name': 'lun1',
-    'host': 'hostname@backend#DDP',
-    'os_type': 'linux',
-    'provider_location': 'lun1',
-    'name_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
-    'provider_auth': 'provider a b',
-    'project_id': 'project',
-    'display_name': None,
-    'display_description': 'lun1',
-    'volume_type_id': None,
-    'migration_status': None,
-    'attach_status': "detached"
-}
-
-FAKE_CINDER_SNAPSHOT = {
-    'id': '78f95b9d-3f02-4781-a512-1a1c921d48a1',
-    'volume': FAKE_CINDER_VOLUME,
-    'provider_id': '3400000060080E500023BB3400631F335294A5A8'
 }
 
 HARDWARE_INVENTORY_SINGLE_CONTROLLER = {
