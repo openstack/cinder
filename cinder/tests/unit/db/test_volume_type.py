@@ -17,6 +17,7 @@
 from cinder import context
 from cinder import db
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import volume_types
 
 
@@ -25,8 +26,8 @@ class VolumeTypeTestCase(test.TestCase):
 
     def setUp(self):
         super(VolumeTypeTestCase, self).setUp()
-        self.ctxt = context.RequestContext(user_id='user_id',
-                                           project_id='project_id',
+        self.ctxt = context.RequestContext(user_id=fake.USER_ID,
+                                           project_id=fake.PROJECT_ID,
                                            is_admin = True)
 
     def test_volume_type_update(self):

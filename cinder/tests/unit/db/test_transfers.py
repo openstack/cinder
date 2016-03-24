@@ -19,6 +19,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 
 
@@ -27,8 +28,8 @@ class TransfersTableTestCase(test.TestCase):
 
     def setUp(self):
         super(TransfersTableTestCase, self).setUp()
-        self.ctxt = context.RequestContext(user_id='user_id',
-                                           project_id='project_id')
+        self.ctxt = context.RequestContext(user_id=fake.USER_ID,
+                                           project_id=fake.PROJECT_ID)
 
     def _create_transfer(self, volume_id=None):
         """Create a transfer object."""
@@ -84,8 +85,8 @@ class TransfersTableTestCase(test.TestCase):
         xfer = db.transfer_get_all_by_project(self.ctxt, self.ctxt.project_id)
         self.assertEqual(2, len(xfer), "Unexpected number of transfer records")
 
-        nctxt = context.RequestContext(user_id='new_user_id',
-                                       project_id='new_project_id')
+        nctxt = context.RequestContext(user_id=fake.USER2_ID,
+                                       project_id=fake.PROJECT2_ID)
         self.assertRaises(exception.NotAuthorized,
                           db.transfer_get_all_by_project,
                           nctxt, self.ctxt.project_id)
@@ -109,8 +110,8 @@ class TransfersTableTestCase(test.TestCase):
         self.assertEqual(xfer[0]['id'], xfer_id2,
                          "Unexpected value for Transfer id")
 
-        nctxt = context.RequestContext(user_id='new_user_id',
-                                       project_id='new_project_id')
+        nctxt = context.RequestContext(user_id=fake.USER2_ID,
+                                       project_id=fake.PROJECT2_ID)
         self.assertRaises(exception.TransferNotFound,
                           db.transfer_destroy, nctxt, xfer_id2)
 
