@@ -17,6 +17,7 @@ Unit tests for OpenStack Cinder volume driver
 """
 
 import mock
+from mock import patch
 from oslo_utils import units
 
 from cinder import context
@@ -33,6 +34,7 @@ from cinder.volume.drivers.nexenta import utils
 class TestNexentaISCSIDriver(test.TestCase):
     TEST_VOLUME_NAME = 'volume1'
     TEST_VOLUME_NAME2 = 'volume2'
+    TEST_VOLUME_NAME3 = 'volume3'
     TEST_SNAPSHOT_NAME = 'snapshot1'
     TEST_VOLUME_REF = {
         'name': TEST_VOLUME_NAME,
@@ -46,9 +48,16 @@ class TestNexentaISCSIDriver(test.TestCase):
         'id': '2',
         'status': 'in-use'
     }
+    TEST_VOLUME_REF3 = {
+        'name': TEST_VOLUME_NAME3,
+        'size': 3,
+        'id': '3',
+        'status': 'in-use'
+    }
     TEST_SNAPSHOT_REF = {
         'name': TEST_SNAPSHOT_NAME,
         'volume_name': TEST_VOLUME_NAME,
+        'size': 1,
     }
 
     def __init__(self, method):
@@ -197,10 +206,14 @@ class TestNexentaISCSIDriver(test.TestCase):
             'cinder/volume1', 'snapshot1', '')
 
     def test_create_volume_from_snapshot(self):
-        self.drv.create_volume_from_snapshot(self.TEST_VOLUME_REF2,
+        self._create_volume_db_entry()
+        self.drv.create_volume_from_snapshot(self.TEST_VOLUME_REF3,
                                              self.TEST_SNAPSHOT_REF)
         self.nms_mock.zvol.clone.assert_called_with(
-            'cinder/volume1@snapshot1', 'cinder/volume2')
+            'cinder/volume1@snapshot1', 'cinder/volume3')
+        self.nms_mock.zvol.set_child_prop.assert_called_with(
+            'cinder/volume3', 'volsize', '3G')
+
 
     def test_delete_snapshot(self):
         self._create_volume_db_entry()
@@ -297,6 +310,28 @@ class TestNexentaISCSIDriver(test.TestCase):
 
 
 class TestNexentaNfsDriver(test.TestCase):
+    TEST_VOLUME_NAME = 'volume1'
+    TEST_VOLUME_NAME2 = 'volume2'
+    TEST_SNAPSHOT_NAME = 'snapshot1'
+    TEST_VOLUME_REF = {
+        'name': TEST_VOLUME_NAME,
+        'size': 1,
+        'id': '1',
+        'status': 'available'
+    }
+    TEST_VOLUME_REF2 = {
+        'name': TEST_VOLUME_NAME2,
+        'size': 2,
+        'id': '2',
+        'status': 'in-use'
+    }
+    TEST_SNAPSHOT_REF = {
+        'name': TEST_SNAPSHOT_NAME,
+        'volume_name': TEST_VOLUME_NAME,
+        'size': 1,
+        'volume_id': 1
+    }
+
     TEST_EXPORT1 = 'host1:/volumes/stack/share'
     TEST_NMS1 = 'http://admin:nexenta@host1:2000'
 
@@ -326,6 +361,7 @@ class TestNexentaNfsDriver(test.TestCase):
             'status': 'available',
             'provider_location': self.TEST_EXPORT1
         }
+        self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
         return db.volume_create(self.ctxt, vol)['id']
 
     def setUp(self):
@@ -445,6 +481,21 @@ class TestNexentaNfsDriver(test.TestCase):
         self.drv._create_regular_file(self.nms_mock, '/tmp/path', 1)
         self.nms_mock.appliance.execute.assert_called_with(
             'dd if=/dev/zero of=/tmp/path bs=1M count=1024')
+
+    @patch('cinder.volume.drivers.remotefs.'
+           'RemoteFSDriver._ensure_shares_mounted')
+    @patch('cinder.volume.drivers.nexenta.nfs.'
+           'NexentaNfsDriver._get_volroot')
+    @patch('cinder.volume.drivers.nexenta.nfs.'
+           'NexentaNfsDriver._get_nfs_server_version')
+    def test_create_volume_from_snapshot(self, version, volroot, ensure):
+        version.return_value = 4
+        volroot.return_value = 'volroot'
+        self._create_volume_db_entry()
+        self.drv.create_volume_from_snapshot(self.TEST_VOLUME_REF2,
+                                             self.TEST_SNAPSHOT_REF)
+        self.nms_mock.appliance.execute.assert_called_with(
+            'truncate --size 2G /volumes/stack/share/volume2/volume')
 
     def test_set_rw_permissions_for_all(self):
         path = '/tmp/path'
