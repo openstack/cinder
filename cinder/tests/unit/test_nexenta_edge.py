@@ -17,7 +17,6 @@
 import mock
 
 from cinder import context
-from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.nexentaedge import iscsi
@@ -37,6 +36,11 @@ MOCK_VOL2 = {
     'id': 'vol2',
     'name': 'vol2',
     'size': 1
+}
+MOCK_VOL3 = {
+    'id': 'vol3',
+    'name': 'vol3',
+    'size': 2
 }
 MOCK_SNAP = {
     'id': 'snap1',
@@ -98,8 +102,6 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.assertRaises(RuntimeError, self.driver.create_volume, MOCK_VOL)
 
     def test_delete_volume(self):
-        self.mock_api.side_effect = exception.VolumeBackendAPIException(
-            'No volume')
         self.driver.delete_volume(MOCK_VOL)
         self.mock_api.assert_called_with(NEDGE_URL, {
             'objectPath': NEDGE_BUCKET + '/' + MOCK_VOL['id']
@@ -164,6 +166,14 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
             'volSizeMB': MOCK_VOL2['size'] * 1024,
             'blockSize': NEDGE_BLOCKSIZE,
             'chunkSize': NEDGE_CHUNKSIZE
+        })
+
+    def test_create_cloned_volume_larger(self):
+        self.driver.create_cloned_volume(MOCK_VOL3, MOCK_VOL)
+        # ignore the clone call, this has been tested before
+        self.mock_api.assert_called_with(NEDGE_URL + '/resize', {
+            'objectPath': NEDGE_BUCKET + '/' + MOCK_VOL3['id'],
+            'newSizeMB': MOCK_VOL3['size'] * 1024
         })
 
     def test_create_cloned_volume_fail(self):
