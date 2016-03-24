@@ -287,7 +287,7 @@ class QuotaSetsController(wsgi.Controller):
                 except exception.OverQuota as e:
                     if reservations:
                         db.reservation_rollback(context, reservations)
-                    raise webob.exc.HTTPBadRequest(explanation=e.message)
+                    raise webob.exc.HTTPBadRequest(explanation=e.msg)
 
             valid_quotas[key] = value
 
