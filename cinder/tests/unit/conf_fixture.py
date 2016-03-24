@@ -52,4 +52,6 @@ def set_defaults(conf):
     conf.set_default('state_path', os.path.abspath(
         os.path.join(os.path.dirname(__file__), '..', '..', '..')))
     conf.set_default('policy_dirs', [], group='oslo_policy')
+    # This is where we don't authenticate
     conf.set_default('auth_strategy', 'noauth')
+    conf.set_default('auth_uri', 'fake', 'keystone_authtoken')
