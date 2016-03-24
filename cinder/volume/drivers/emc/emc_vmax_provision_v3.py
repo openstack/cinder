@@ -51,7 +51,7 @@ class EMCVMAXProvisionV3(object):
             extraSpecs):
         """Given the volume instance remove it from the pool.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param storageConfigservice: volume created from job
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
@@ -758,7 +758,7 @@ class EMCVMAXProvisionV3(object):
             volumeName, volumeSize, extraSpecs):
         """Extend a volume instance.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param storageConfigservice: the storage configuration service
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)

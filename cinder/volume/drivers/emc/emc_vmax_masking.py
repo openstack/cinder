@@ -738,7 +738,7 @@ class EMCVMAXMasking(object):
         Will not handle any exception in this method it will be handled
         up the stack.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param maskingViewDict: the masking view dictionary
         :param defaultStorageGroupInstanceName: the default storage group
             instance name (Can be None)
@@ -1352,7 +1352,7 @@ class EMCVMAXMasking(object):
     def _find_new_initiator_group(self, conn, maskingGroupDict):
         """After creating an new initiator group find it and return it.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param maskingGroupDict: the maskingGroupDict dict
         :returns: instance name foundInitiatorGroupInstanceName
         """
@@ -1367,7 +1367,7 @@ class EMCVMAXMasking(object):
             self, conn, maskingViewName, storageSystemName):
         """Given the masking view name get the initiator group from it.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param maskingViewName: the name of the masking view
         :param storageSystemName: the storage system name
         :returns: instance name foundInitiatorMaskingGroupInstanceName
@@ -1404,7 +1404,7 @@ class EMCVMAXMasking(object):
         NOTE:  EMC does not support ModifyMaskingView so we must first
                delete the masking view and recreate it.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param maskingViewName: maskingview name (String)
         :param connector: the connector dict
@@ -1489,7 +1489,7 @@ class EMCVMAXMasking(object):
         Given a list of hardwareId Instance name create a new
         initiator group.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param igGroupName: the initiator group name (String)
         :param hardwareIdinstanceNames: one or more hardware id instance names
@@ -1548,7 +1548,7 @@ class EMCVMAXMasking(object):
             self, conn, maskingViewName, storageSystemName):
         """Given the masking view name get the port group from it.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param maskingViewName: the name of the masking view
         :param storageSystemName: the storage system name
         :returns: instance name foundPortMaskingGroupInstanceName
@@ -1576,7 +1576,7 @@ class EMCVMAXMasking(object):
             maskingViewInstanceName, extraSpecs):
         """Delete a masking view.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param maskingViewName: maskingview name (String)
         :param maskingViewInstanceName: the masking view instance name
@@ -1608,7 +1608,7 @@ class EMCVMAXMasking(object):
         Given storage group instance name, get the associated masking
         view instance name.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param storageGroupInstanceName: the storage group instance name
         :returns: instance name foundMaskingViewInstanceName
         """
@@ -1732,7 +1732,7 @@ class EMCVMAXMasking(object):
         Given the storage group instance name get the associated volume
         Instance names.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param storageGroupInstanceName: the storage group instance name
         :returns: list -- volumeInstanceNames list of volume instance names
         """
@@ -1749,7 +1749,7 @@ class EMCVMAXMasking(object):
         Given the volume instance name get the associated storage group
         instance names.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param volumeInstanceName: the volume instance name
         :returns: list -- list of storage group instance names
         """
@@ -1772,7 +1772,7 @@ class EMCVMAXMasking(object):
         If the connector is not None get the associated SG and remove volume
         from the storage group, otherwise it is a VMAX3 deletion.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param volumeInstance: the volume Instance
         :param volumeName: the volume name
@@ -1965,7 +1965,7 @@ class EMCVMAXMasking(object):
             volumeInstance, volumeName, extraSpecs):
         """Delete the Masking view, the storage Group and  the initiator group.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param mvInstanceName: masking view instance name
         :param maskingViewName: masking view name
@@ -2019,7 +2019,7 @@ class EMCVMAXMasking(object):
         Moving the volume to the default SG for VMAX3 and
         FAST for VMAX2.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param volumeInstance: the volume Instance
         :param volumeName: the volume name

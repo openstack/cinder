@@ -838,7 +838,7 @@ class XtremIOISCSIDriver(XtremIOVolumeDriver, driver.ISCSIDriver):
              discovery_passwd) = self._create_initiator(connector,
                                                         login_chap,
                                                         discovery_chap)
-        # if CHAP was enabled after the the initiator was created
+        # if CHAP was enabled after the initiator was created
         if login_chap and not login_passwd:
             LOG.info(_LI('initiator has no password while using chap,'
                          'adding it'))

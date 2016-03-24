@@ -236,7 +236,7 @@ If your storage driver in Cinder provides iSCSI support, it should
 naturally work under the generic host-assisted migration, when
 --force-host-copy is set to True from the API request. Normally you
 do not need to change any code, unless you need to transfer the volume
-from your driver via a different way from the the block-based transfer
+from your driver via a different way from the block-based transfer
 or the file-based transfer.
 
 If your driver uses a network connection to communicate the block data

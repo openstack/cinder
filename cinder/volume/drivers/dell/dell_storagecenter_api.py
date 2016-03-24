@@ -333,7 +333,7 @@ class StorageCenterApi(object):
 
         If the JSON blob is a list then it will be searched for the attribute
         and value combination.  If attribute and value are not specified then
-        the the first item is returned.  If the JSON blob is a dict then it
+        the first item is returned.  If the JSON blob is a dict then it
         will be returned so long as the dict matches the attribute and value
         combination or attribute is None.
 
@@ -1112,7 +1112,7 @@ class StorageCenterApi(object):
         return scserver
 
     def create_server(self, wwnoriscsiname, isfc=False):
-        """Creates a Dell server object on the the Storage Center.
+        """Creates a Dell server object on the Storage Center.
 
         Adds the first HBA identified by wwnoriscsiname to it.
 
