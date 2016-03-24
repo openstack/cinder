@@ -14,13 +14,13 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev19\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev20\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-22 19:34+0000\n"
+"POT-Creation-Date: 2016-03-23 08:23+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-21 08:59+0000\n"
+"PO-Revision-Date: 2016-03-23 05:55+0000\n"
 "Last-Translator: Martine Marin <mmarin@fr.ibm.com>\n"
 "Language: fr\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
@@ -1247,8 +1247,8 @@ msgstr "Service Replication introuvable sur le système %s."
 #, python-format
 msgid "Cannot find Volume: %(id)s. unmanage operation.  Exiting..."
 msgstr ""
-"Impossible de trouver le volume : %(id)s. Opération d'annulation de la "
-"gestion.  Sortie..."
+"Impossible de trouver le volume : %(id)s. Opération d'arrêt de la gestion "
+"(unmanage).  Sortie..."
 
 #, python-format
 msgid "Cannot find Volume: %(volumename)s. Extend operation.  Exiting...."
@@ -1843,6 +1843,10 @@ msgstr "La création d'une exportation pour le volume a échoué."
 msgid "Create hostgroup error."
 msgstr "Erreur lors de la création de hostgroup."
 
+#, python-format
+msgid "Create hypermetro error. %s."
+msgstr "Erreur lors de la création d'hypermetro. %s."
+
 msgid "Create lun error."
 msgstr "Erreur de création du numéro d'unité logique (lun)."
 
@@ -1863,6 +1867,12 @@ msgstr "Erreur de création du groupe de ports."
 
 msgid "Create replication error."
 msgstr "Erreur de création de réplication."
+
+#, python-format
+msgid "Create replication pair failed. Error: %s."
+msgstr ""
+"La création d'une paire de systèmes pour la réplication a échoué. Erreur : "
+"%s."
 
 msgid "Create snapshot error."
 msgstr "Erreur lors de la création de l'instantané."
@@ -1988,6 +1998,14 @@ msgstr ""
 
 msgid "Database schema downgrade is not allowed."
 msgstr "Rétrograder le schéma de base de données n'est pas autorisé."
+
+#, python-format
+msgid "Dataset %s is not shared in Nexenta Store appliance"
+msgstr "Dataset %s n'est pas partagé dans Nexenta Store Appliance"
+
+#, python-format
+msgid "Dataset group %s not found at Nexenta SA"
+msgstr "Groupe Dataset %s introuvable sur Nexenta SA"
 
 #, python-format
 msgid ""
@@ -3562,6 +3580,10 @@ msgstr ""
 "introuvables pour le volume OpenStack [%s]."
 
 #, python-format
+msgid "Failed to create south bound connector for %s."
+msgstr "Impossible de créer le connecteur Southbound pour %s."
+
+#, python-format
 msgid "Failed to create storage group %(storageGroupName)s."
 msgstr "La création du groupe de stockage %(storageGroupName)s a échoué."
 
@@ -4615,6 +4637,9 @@ msgstr "Erreur lors de l'obtention des ports FC à partir de la matrice."
 msgid "Get FC target wwpn error."
 msgstr "Erreur lors de l'obtention du wwpn FC cible."
 
+msgid "Get HyperMetroPair error."
+msgstr "Erreur lors de l'obtention d'HyperMetroPair."
+
 msgid "Get LUN group by view error."
 msgstr "Erreur d'obention de groupe LUN  par vue."
 
@@ -4685,6 +4710,9 @@ msgstr "Erreur lors de l'obtention des informations lungroup."
 
 msgid "Get migration task error."
 msgstr "Erreur d'obtention de la tâche de migration."
+
+msgid "Get pair failed."
+msgstr "L'obtention d'une paire a échoué."
 
 msgid "Get partition by name error."
 msgstr "Erreur lors de l'obtention de la partition à partir du nom."
@@ -4865,6 +4893,11 @@ msgstr "Type d'hôte %s non pris en charge."
 #, python-format
 msgid "Host with ports %(ports)s not found."
 msgstr "Aucun hôte avec ports %(ports)s n'a été trouvé."
+
+msgid "Hypermetro and Replication can not be used in the same volume_type."
+msgstr ""
+"Hypermetro et Replication ne peuvent pas être utilisés dans le même "
+"paramètre volume_type."
 
 #, python-format
 msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s."
@@ -5594,6 +5627,18 @@ msgstr ""
 "%(etag)s n'est pas la même."
 
 #, python-format
+msgid "MSG_DENIED: %r"
+msgstr "MSG_DENIED : %r"
+
+#, python-format
+msgid "MSG_DENIED: AUTH_ERROR: %r"
+msgstr "MSG_DENIED : AUTH_ERROR : %r"
+
+#, python-format
+msgid "MSG_DENIED: RPC_MISMATCH: %r"
+msgstr "MSG_DENIED : RPC_MISMATCH : %r"
+
+#, python-format
 msgid "Malformed fcns output string: %s"
 msgstr "Format de chaîne de sortie fcns incorrect : %s"
 
@@ -5976,6 +6021,10 @@ msgstr ""
 msgid "Need non-zero volume size"
 msgstr "Taille de volume non nulle nécessaire"
 
+#, python-format
+msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
+msgstr "Ni MSG_DENIED ni MSG_ACCEPTED : %r"
+
 msgid "NetApp Cinder Driver exception."
 msgstr "Exception de pilote NetApp Cinder."
 
@@ -6014,6 +6063,9 @@ msgstr "Exception du pilote Nimble Cinder"
 
 msgid "No FC initiator can be added to host."
 msgstr "Aucun initiateur FC ne peut être ajouté à l'hôte."
+
+msgid "No FC port connected to fabric."
+msgstr "Aucun port FC n'est connecté à l'ensemble de noeuds (fabric)."
 
 msgid "No FCP targets found"
 msgstr "Aucune cible FCP détectée"
@@ -6100,6 +6152,9 @@ msgstr "Aucun port activé pour iSCSI n'existe sur la matrice cible."
 
 msgid "No image_name was specified in request."
 msgstr "image_name non défini dans la demande."
+
+msgid "No initiator connected to fabric."
+msgstr "Aucun initiateur n'est connecté à l'ensemble de noeuds (fabric)."
 
 #, python-format
 msgid "No initiator group found for initiator %s"
@@ -6575,6 +6630,28 @@ msgstr "Les spécifications QoS %(specs_id)s sont encore associées aux entités
 #, python-format
 msgid "QoS config is wrong. %s must > 0."
 msgstr "Configuration incorrecte de QoS. %s doit être > 0."
+
+#, python-format
+msgid ""
+"QoS policy must specify for IOTYPE and another qos_specs, QoS policy: "
+"%(qos_policy)s."
+msgstr ""
+"La stratégie QoS doit indiquer une valeur pour IOTYPE et  une autre "
+"spécification qos_specs, stratégie QoS : %(qos_policy)s."
+
+#, python-format
+msgid ""
+"QoS policy must specify for IOTYPE: 0, 1, or 2, QoS policy: %(qos_policy)s "
+msgstr ""
+"La stratégie QoS doit indiquer pour IOTYPE : 0, 1 ou 2, stratégie QoS : "
+"%(qos_policy)s "
+
+#, python-format
+msgid ""
+"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
+msgstr ""
+"Conflit entre les valeurs  upper_limit et lower_limit dans la stratégie QoS, "
+"stratégie QoS : %(qos_policy)s."
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -7091,6 +7168,9 @@ msgstr "Le service est indisponible actuellement."
 msgid "Service not found."
 msgstr "Service introuvable."
 
+msgid "Set pair secondary access error."
+msgstr "Erreur de définition d'accès secondaire à une paire."
+
 msgid "Sets thin provisioning."
 msgstr "Active l'allocation de ressources à la demande."
 
@@ -7314,6 +7394,12 @@ msgstr ""
 "Indiquez le nom de type de volume, une description, is_public ou une "
 "combinaison de ces éléments."
 
+msgid "Split pair error."
+msgstr "Erreur de fractionnement d'une paire."
+
+msgid "Split replication failed."
+msgstr "L'opération de fractionnement de la réplication a échoué."
+
 msgid "Start LUNcopy error."
 msgstr "Erreur lors du lancement de LUNcopy."
 
@@ -7380,6 +7466,11 @@ msgstr "ID du système de stockage non défini."
 msgid "Storage system not found for pool %(poolNameInStr)s."
 msgstr "Système de stockage introuvable pour le pool %(poolNameInStr)s."
 
+msgid "Storage-assisted migration failed during manage volume."
+msgstr ""
+"La migration à l'aide du backend de stockage a échoué lors de l'opération de "
+"gestion du volume."
+
 #, python-format
 msgid "StorageSystem %(array)s is not found."
 msgstr "StorageSystem %(array)s introuvable."
@@ -7394,10 +7485,16 @@ msgid ""
 "project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
 "for one or more of the following projects: '%(child_ids)s'"
 msgstr ""
-"La somme d'utilisation enfant '%(sum)s' est supérieure au quota disponible  "
-"'%(free)s' pour le projet '%(proj)s' de la ressource '%(res)s'. Réduisez la "
-"limite ou l'utilisation pour un ou plusieurs projets parmi les suivants : "
-"'%(child_ids)s'"
+"La somme d'utilisation du quota enfant '%(sum)s' est supérieure au quota "
+"disponible  '%(free)s' pour le projet '%(proj)s' de la ressource '%(res)s'. "
+"Réduisez la limite ou l'utilisation pour un ou plusieurs projets parmi les "
+"suivants : '%(child_ids)s'"
+
+msgid "Switch over pair error."
+msgstr "Erreur de basculement d'une paire."
+
+msgid "Sync pair error."
+msgstr "Erreur de synchronisation de paire."
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr ""
@@ -7647,6 +7744,11 @@ msgstr ""
 "système_de_fichiers/nom_volume (nom_volume ne peut pas contenir de barre "
 "oblique '/')"
 
+#, python-format
+msgid "The remote retention count must be %s or less."
+msgstr ""
+"La valeur de la rétention à distance doit être inférieure ou égale à %s."
+
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -7677,6 +7779,10 @@ msgstr "Ressource %(resource)s introuvable."
 
 msgid "The results are invalid."
 msgstr "Le résultat n'est pas valide."
+
+#, python-format
+msgid "The retention count must be %s or less."
+msgstr "La valeur de rétention doit être inférieure ou égale à %s."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr ""
@@ -7811,8 +7917,8 @@ msgid ""
 "The volume %(volume_id)s could not be unmanaged. The volume type must be "
 "%(volume_type)s."
 msgstr ""
-"Le volume %(volume_id)s ne peut pas faire l'objet d'une demande d'annulation "
-"de gestion. Son type doit être %(volume_type)s."
+"Le volume %(volume_id)s ne peut pas être non géré. Son type doit être "
+"%(volume_type)s."
 
 #, python-format
 msgid "The volume %(volume_id)s is managed successfully. (LDEV: %(ldev)s)"
@@ -8663,11 +8769,12 @@ msgid "Unknown sort direction, must be 'desc' or 'asc'."
 msgstr "Sens de tri inconnu, doit être 'desc' ou 'asc'."
 
 msgid "Unmanage and cascade delete options are mutually exclusive."
-msgstr ""
-"Les options Ne pas gérer et Suppression en cascade s'excluent mutuellement."
+msgstr "Les options  unmanage et cascade delete s'excluent mutuellement."
 
 msgid "Unmanage volume not implemented."
-msgstr "Volume non géré non implémenté."
+msgstr ""
+"La fonction consistant à ne plus gérer un volume (unmanage volume) n'est pas "
+"implémentée."
 
 msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
 msgstr ""
@@ -9439,11 +9546,19 @@ msgstr "Le fichier de configuration VzStorage %(config)s n'existe pas."
 msgid "Wait replica complete timeout."
 msgstr "Dépassement du délai d'attente d'achèvement de la réplique."
 
+#, python-format
+msgid "Wait synchronize failed. Running status: %s."
+msgstr "Echec de l'attente de synchronisation. Statut d'exécution : %s."
+
 msgid ""
 "Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
 msgstr ""
 "En attente que tous les noeuds aient rejoint le cluster. Vérifiez que tous "
 "les démons sheep sont en exécution."
+
+msgid "We should not do switch over on primary array."
+msgstr ""
+"Il est déconseillé d'effectuer un basculement sur la matrice principale."
 
 msgid "Wrong resource call syntax"
 msgstr "Syntaxe d'appel de ressource incorrecte"
@@ -9516,6 +9631,21 @@ msgstr ""
 msgid "_create_host: No connector ports."
 msgstr "_create_host : aucun port de connecteur."
 
+msgid "_create_local_cloned_volume, Replication Service not found."
+msgstr "_create_local_cloned_volume, Service de réplication introuvable."
+
+#, python-format
+msgid ""
+"_create_local_cloned_volume, volumename: %(volumename)s, sourcevolumename: "
+"%(sourcevolumename)s, source volume instance: %(source_volume)s, target "
+"volume instance: %(target_volume)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s."
+msgstr ""
+"_create_local_cloned_volume, nom du volume : %(volumename)s, nom du volume "
+"source : %(sourcevolumename)s, instance de volume source : "
+"%(source_volume)s, instance de volume cible : %(target_volume)s, Code "
+"retour : %(rc)lu, Erreur : %(errordesc)s."
+
 #, python-format
 msgid ""
 "_create_vdisk %(name)s - did not find success message in CLI output.\n"
@@ -9527,10 +9657,165 @@ msgstr ""
 " stdout : %(out)s\n"
 " stderr : %(err)s"
 
+msgid "_create_volume_name, id_code is None."
+msgstr "_create_volume_name, la valeur de id_code est None."
+
+msgid "_delete_copysession, Cannot find Replication Service"
+msgstr "_delete_copysession, Service de réplication introuvable"
+
+#, python-format
+msgid ""
+"_delete_copysession, copy session type is undefined! copy session: "
+"%(cpsession)s, copy type: %(copytype)s."
+msgstr ""
+"_delete_copysession, le type de session de copie (copy session) n'est pas "
+"défini ! Session de copie : %(cpsession)s, type de copie : %(copytype)s."
+
+#, python-format
+msgid ""
+"_delete_copysession, copysession: %(cpsession)s, operation: %(operation)s, "
+"Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_delete_copysession, session de copie : %(cpsession)s, opération : "
+"%(operation)s, Code retour : %(rc)lu, Erreur : %(errordesc)s."
+
+#, python-format
+msgid ""
+"_delete_volume, volumename: %(volumename)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s."
+msgstr ""
+"_delete_volume, nom du volume : %(volumename)s, Code retour : %(rc)lu, "
+"Erreur : %(errordesc)s."
+
+#, python-format
+msgid ""
+"_delete_volume, volumename: %(volumename)s, Storage Configuration Service "
+"not found."
+msgstr ""
+"_delete_volume, nom du volume : %(volumename)s, Service de configuration de "
+"stockage introuvable."
+
+#, python-format
+msgid ""
+"_exec_eternus_service, classname: %(classname)s, InvokeMethod, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_exec_eternus_service, nom de classe : %(classname)s, InvokeMethod, "
+"impossible de se connecter à ETERNUS."
+
 msgid "_extend_volume_op: Extending a volume with snapshots is not supported."
 msgstr ""
 "_extend_volume_op : l'extension d'un volume avec des instantanés n'est pas "
 "prise en charge."
+
+#, python-format
+msgid ""
+"_find_affinity_group, connector: %(connector)s, Associators: "
+"FUJITSU_AuthorizedTarget, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, connecteur : %(connector)s, Associateurs : "
+"FUJITSU_AuthorizedTarget, impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_find_affinity_group, connector: %(connector)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, connecteur : %(connector)s, EnumerateInstanceNames, "
+"impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_find_affinity_group,connector: %(connector)s,AssocNames: "
+"FUJITSU_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group, connecteur : %(connector)s, AssocNames : "
+"FUJITSU_ProtocolControllerForUnit, impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_find_copysession, ReferenceNames, vol_instance: %(vol_instance_path)s, "
+"Cannot connect to ETERNUS."
+msgstr ""
+"_find_copysession, ReferenceNames, vol_instance : %(vol_instance_path)s, "
+"Impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_find_eternus_service, classname: %(classname)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_find_eternus_service, nom de classe : %(classname)s, "
+"EnumerateInstanceNames, impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid "_find_initiator_names, connector: %(connector)s, initiator not found."
+msgstr ""
+"_find_initiator_names, connecteur : %(connector)s, initiateur introuvable."
+
+#, python-format
+msgid ""
+"_find_lun, volumename: %(volumename)s, EnumerateInstanceNames, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_find_lun, nom du volume : %(volumename)s, EnumerateInstanceNames, "
+"impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_find_pool, eternus_pool:%(eternus_pool)s, EnumerateInstances, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_find_pool, eternus_pool :%(eternus_pool)s, EnumerateInstances, impossible "
+"de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_get_drvcfg, filename: %(filename)s, tagname: %(tagname)s, data is None!! "
+"Please edit driver configuration file and correct."
+msgstr ""
+"_get_drvcfg, nom du fichier : %(filename)s, tagname : %(tagname)s, la valeur "
+"de data est None ! Editez le fichier de configuration du pilote et corrigez."
+
+#, python-format
+msgid ""
+"_get_eternus_connection, filename: %(filename)s, ip: %(ip)s, port: %(port)s, "
+"user: %(user)s, passwd: ****, url: %(url)s, FAILED!!."
+msgstr ""
+"_get_eternus_connection, nom du fichier : %(filename)s, adresse IP : %(ip)s, "
+"port : %(port)s, utilisateur : %(user)s, mot de passe : ****, URL : %(url)s, "
+"ECHEC !!."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip list: %(iscsiip_list)s, iqn not found."
+msgstr ""
+"_get_eternus_iscsi_properties, liste iscsiip : %(iscsiip_list)s, iqn "
+"introuvable."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, AssociatorNames: "
+"CIM_BindsTo, cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip : %(iscsiip)s, AssociatorNames : "
+"CIM_BindsTo, impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip : %(iscsiip)s, "
+"EnumerateInstanceNames, impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, GetInstance, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties, iscsiip : %(iscsiip)s, GetInstance, "
+"impossible de se connecter à ETERNUS."
 
 #, python-format
 msgid ""
@@ -9546,6 +9831,62 @@ msgid "_get_host_from_connector failed to return the host name for connector."
 msgstr ""
 "Echec de _get_host_from_connector lors du renvoi du nom d'hôte pour le "
 "connecteur."
+
+#, python-format
+msgid ""
+"_get_mapdata_fc, getting host-affinity from aglist/vol_instance failed, "
+"affinitygroup: %(ag)s, ReferenceNames, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_fc, échec d'obtention de host-affinity depuis aglist/"
+"vol_instance, groupe d'affinité : %(ag)s, ReferenceNames, impossible de se "
+"connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_fc, getting host-affinity instance failed, volmap: %(volmap)s, "
+"GetInstance, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_fc, échec d'obtention de l'instance host-affinity, volmap : "
+"%(volmap)s, GetInstance, impossible de se connecter à ETERNUS."
+
+msgid ""
+"_get_mapdata_iscsi, Associators: FUJITSU_SAPAvailableForElement, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, Associateurs : FUJITSU_SAPAvailableForElement, "
+"impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, affinitygroup: %(ag)s, ReferenceNames, cannot connect to "
+"ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, groupe d'affinité : %(ag)s, ReferenceNames, impossible "
+"de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, vol_instance: %(vol_instance)s, ReferenceNames: "
+"CIM_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, vol_instance : %(vol_instance)s, ReferenceNames : "
+"CIM_ProtocolControllerForUnit, impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"_get_mapdata_iscsi, volmap: %(volmap)s, GetInstance, cannot connect to "
+"ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, volmap : %(volmap)s, GetInstance, impossible de se "
+"connecter à ETERNUS."
+
+msgid "_get_target_port, EnumerateInstances, cannot connect to ETERNUS."
+msgstr ""
+"_get_target_port, EnumerateInstances, impossible de se connecter à ETERNUS."
+
+#, python-format
+msgid "_get_target_port, protcol: %(protocol)s, target_port not found."
+msgstr "_get_target_port, protcole : %(protocol)s, target_port introuvable."
 
 #, python-format
 msgid "_get_unmanaged_replay: Cannot find snapshot named %s"
@@ -9574,9 +9915,53 @@ msgstr ""
 "_get_vdisk_map_properties : noeud introuvable dans le groupe d'E-S %(gid)s "
 "pour le volume %(vol)s."
 
+#, python-format
+msgid ""
+"_map_lun, vol_instance.path:%(vol)s, volumename: %(volumename)s, volume_uid: "
+"%(uid)s, initiator: %(initiator)s, target: %(tgt)s, aglist: %(aglist)s, "
+"Storage Configuration Service not found."
+msgstr ""
+"_map_lun, chemin vol_instance.path :%(vol)s, nom du volume : %(volumename)s, "
+"volume_uid: %(uid)s, initiateur : %(initiator)s, cible : %(tgt)s, aglist : "
+"%(aglist)s, Service de configuration de stockage introuvable."
+
+#, python-format
+msgid ""
+"_unmap_lun, vol_instance.path: %(volume)s, volumename: %(volumename)s, "
+"volume_uid: %(uid)s, aglist: %(aglist)s, Controller Configuration Service "
+"not found."
+msgstr ""
+"_unmap_lun, chemin vol_instance.path : %(volume)s, nom du volume : "
+"%(volumename)s, volume_uid : %(uid)s, aglist : %(aglist)s, Service de "
+"configuration de contrôleur introuvable."
+
+#, python-format
+msgid ""
+"_unmap_lun, volumename: %(volumename)s, volume_uid: %(volume_uid)s, "
+"AffinityGroup: %(ag)s, Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_unmap_lun, nom du volume : %(volumename)s, volume_uid : %(volume_uid)s, "
+"groupe d'affinité : %(ag)s, Code retour : %(rc)lu, Erreur : %(errordesc)s."
+
+#, python-format
+msgid ""
+"_unmap_lun,vol_instance.path: %(volume)s, AssociatorNames: "
+"CIM_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_unmap_lun, chemin vol_instance.path : %(volume)s, AssociatorNames : "
+"CIM_ProtocolControllerForUnit, impossible de se connecter à ETERNUS."
+
 msgid "_update_volume_stats: Could not get storage pool data."
 msgstr ""
 "_update_volume_stats : impossible d'obtenir les données du pool de stockage."
+
+#, python-format
+msgid ""
+"_wait_for_copy_complete, cpsession: %(cpsession)s, copysession state is "
+"BROKEN."
+msgstr ""
+"_wait_for_copy_complete, cpsession : %(cpsession)s, l'état de copysession "
+"est BROKEN."
 
 #, python-format
 msgid ""
@@ -9755,9 +10140,29 @@ msgstr "groupe de cohérence (consistencygroup) modifié"
 msgid "control_location must be defined"
 msgstr "control_location doit être défini"
 
+msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
+msgstr "create_cloned_volume,  le volume source n'existe pas dans ETERNUS."
+
+#, python-format
+msgid ""
+"create_cloned_volume, target volume instancename: %(volume_instancename)s, "
+"Get Instance Failed."
+msgstr ""
+"create_cloned_volume, nom d'instance du volume cible : "
+"%(volume_instancename)s, La récupération de l'instance a échoué."
+
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr ""
 "create_cloned_volume : La taille de la source et de la destination diffère."
+
+#, python-format
+msgid ""
+"create_cloned_volume: source volume %(src_vol)s size is %(src_size)dGB and "
+"doesn't fit in target volume %(tgt_vol)s of size %(tgt_size)dGB."
+msgstr ""
+"create_cloned_volume : la taille du volume source %(src_vol)s est "
+"%(src_size)d Go et ne peut pas tenir dans le volume cible %(tgt_vol)s d'une "
+"taille de %(tgt_size)d Go."
 
 msgid ""
 "create_consistencygroup_from_src must be creating from a CG snapshot, or a "
@@ -9802,6 +10207,36 @@ msgid "create_hypermetro_pair error."
 msgstr "Erreur de l'élément create_hypermetro_pair."
 
 #, python-format
+msgid "create_snapshot, eternus_pool: %(eternus_pool)s, pool not found."
+msgstr "create_snapshot, eternus_pool : %(eternus_pool)s, pool introuvable."
+
+#, python-format
+msgid ""
+"create_snapshot, snapshotname: %(snapshotname)s, source volume name: "
+"%(volumename)s, vol_instance.path: %(vol_instance)s, dest volume name: "
+"%(d_volumename)s, pool: %(pool)s, Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"create_snapshot, nom de l'instantané : %(snapshotname)s, nom du volume "
+"source : %(volumename)s, chemin vol_instance.path : %(vol_instance)s, nom du "
+"volume de destination : %(d_volumename)s, pool : %(pool)s, Code retour : "
+"%(rc)lu, Erreur : %(errordesc)s."
+
+#, python-format
+msgid ""
+"create_snapshot, volumename: %(s_volumename)s, source volume not found on "
+"ETERNUS."
+msgstr ""
+"create_snapshot, nom du volume : %(s_volumename)s, volume source introuvable "
+"sur ETERNUS."
+
+#, python-format
+msgid ""
+"create_snapshot, volumename: %(volumename)s, Replication Service not found."
+msgstr ""
+"create_snapshot, nom du volume : %(volumename)s, Service de réplication "
+"introuvable."
+
+#, python-format
 msgid ""
 "create_snapshot: Volume status must be \"available\" or \"in-use\" for "
 "snapshot. The invalid status is %s."
@@ -9811,6 +10246,43 @@ msgstr ""
 
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot : échec de récupération du volume source."
+
+#, python-format
+msgid ""
+"create_volume, volume: %(volume)s, EnumerateInstances, cannot connect to "
+"ETERNUS."
+msgstr ""
+"create_volume, volume : %(volume)s, EnumerateInstances, impossible de se "
+"connecter à ETERNUS."
+
+#, python-format
+msgid ""
+"create_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service not found."
+msgstr ""
+"create_volume, volume : %(volume)s, nom du volume : %(volumename)s, "
+"eternus_pool : %(eternus_pool)s, Service de configuration de stockage "
+"introuvable."
+
+#, python-format
+msgid ""
+"create_volume, volumename: %(volumename)s, poolname: %(eternus_pool)s, "
+"Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"create_volume, nom du volume : %(volumename)s, nom du pool : "
+"%(eternus_pool)s, Code retour : %(rc)lu, Erreur : %(errordesc)s."
+
+msgid "create_volume_from_snapshot, Source Volume does not exist in ETERNUS."
+msgstr ""
+"create_volume_from_snapshot, le volume source n'existe pas dans ETERNUS."
+
+#, python-format
+msgid ""
+"create_volume_from_snapshot, target volume instancename: "
+"%(volume_instancename)s, Get Instance Failed."
+msgstr ""
+"create_volume_from_snapshot, nom d'instance du volume cible : "
+"%(volume_instancename)s, La récupération de l'instance a échoué."
 
 #, python-format
 msgid "create_volume_from_snapshot: Snapshot %(name)s does not exist."
@@ -9867,6 +10339,9 @@ msgstr "Erreur de l'élément delete_hypermetro."
 msgid "delete_initiator: %s ACL not found. Continuing."
 msgstr "delete_initiator : ACL %s introuvable. Poursuite de l'opération."
 
+msgid "delete_replication error."
+msgstr "Erreur de suppression de réplication (delete_replication)."
+
 #, python-format
 msgid "deleting snapshot %(snapshot_name)s that has dependent volumes"
 msgstr ""
@@ -9895,6 +10370,31 @@ msgid ""
 msgstr ""
 "erreur lors de l'écriture de l'objet à Swift, MD5 de l'objet dans swift "
 "%(etag)s est différent de MD5 de l'objet envoyé à swift %(md5)s"
+
+#, python-format
+msgid "extend_volume, eternus_pool: %(eternus_pool)s, pool not found."
+msgstr "extend_volume, eternus_pool : %(eternus_pool)s, pool introuvable."
+
+#, python-format
+msgid ""
+"extend_volume, volume: %(volume)s, volumename: %(volumename)s, eternus_pool: "
+"%(eternus_pool)s, Storage Configuration Service not found."
+msgstr ""
+"extend_volume, volume : %(volume)s, nom du volume : %(volumename)s, "
+"eternus_pool : %(eternus_pool)s, service de configuration de stockage "
+"introuvable."
+
+#, python-format
+msgid ""
+"extend_volume, volumename: %(volumename)s, Return code: %(rc)lu, Error: "
+"%(errordesc)s, PoolType: %(pooltype)s."
+msgstr ""
+"extend_volume, nom du volume : %(volumename)s, Code retour : %(rc)lu, "
+"Erreur : %(errordesc)s, Type de pool : %(pooltype)s."
+
+#, python-format
+msgid "extend_volume, volumename: %(volumename)s, volume not found."
+msgstr "extend_volume, nom du volume : %(volumename)s, volume introuvable."
 
 msgid "failed to create new_volume on destination host"
 msgstr "échec de la création de new_volume sur l'hôte de destination"
@@ -10017,6 +10517,10 @@ msgstr "l'ID ne peut pas être None"
 #, python-format
 msgid "image %s not found"
 msgstr "image %s non trouvée"
+
+#, python-format
+msgid "initialize_connection, volume: %(volume)s, Volume not found."
+msgstr "initialize_connection, volume : %(volume)s, Volume introuvable."
 
 #, python-format
 msgid "initialize_connection: Failed to get attributes for volume %s."

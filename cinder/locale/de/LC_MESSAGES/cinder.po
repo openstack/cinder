@@ -8,17 +8,18 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
+# Frank Kloeker <eumel@arcor.de>, 2016. #zanata
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev9\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev20\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-20 17:43+0000\n"
+"POT-Creation-Date: 2016-03-23 08:23+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-20 10:19+0000\n"
+"PO-Revision-Date: 2016-03-23 04:41+0000\n"
 "Last-Translator: Monika Wolf <vcomas3@de.ibm.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -575,6 +576,12 @@ msgstr ""
 msgid "Authentication error"
 msgstr "Authentifizierungsfehler"
 
+#, python-format
+msgid "Authentication failed, verify the switch credentials, error code %s."
+msgstr ""
+"Authentifizierung fehlgeschlagen. Überprüfen Sie die Berechtigungsnachweise "
+"für den Switch. Fehlercode %s."
+
 msgid "Authorization error"
 msgstr "Autorisierungsfehler"
 
@@ -1073,6 +1080,17 @@ msgstr ""
 "Der bereits angehängte Datenträger %s kann nicht angehängt werden. Das "
 "mehrfache Anhängen ist über die Konfigurationsoption "
 "'netapp_enable_multiattach' inaktiviert."
+
+msgid "Cannot change VF context in the session."
+msgstr "VF-Kontext kann nicht in der Sitzung geändert werden."
+
+#, python-format
+msgid ""
+"Cannot change VF context, specified VF is not available in the manageable VF "
+"list %(vf_list)s."
+msgstr ""
+"VF-Kontext kann nicht geändert werden. Die angegebene VF ist nicht in der "
+"Liste der verwaltbaren VFs %(vf_list)s enthalten."
 
 msgid "Cannot connect to ECOM server."
 msgstr "Verbindung zu ECOM-Server kann nicht hergestellt werden."
@@ -1938,7 +1956,7 @@ msgstr ""
 "DRBDmanage-Zeitlimitüberschreitung beim Warten auf Datenträgererstellung: "
 "Ressource \"%(res)s\", Datenträger \"%(vol)s\""
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "DRBDmanage timeout waiting for volume size; volume ID \"%(id)s\" (res "
 "\"%(res)s\", vnr %(vnr)d)"
@@ -2189,6 +2207,14 @@ msgid ""
 msgstr ""
 "EMC-VNX-Cinder-Treiber-CLI-Ausnahme: %(cmd)s (Rückgabecode: %(rc)s) "
 "(Ausgabe: %(out)s)."
+
+#, python-format
+msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
+"(Output: %(out)s)."
+msgstr ""
+"EMC-VNX-Cinder-Treiber-Ausnahme vom Typ 'SPUnavailableException': %(cmd)s "
+"(Rückgabecode: %(rc)s) (Ausgabe: %(out)s)."
 
 msgid ""
 "EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
@@ -2962,8 +2988,36 @@ msgstr ""
 "%(size)d für Momentaufnahme: %(snapshot)s"
 
 #, python-format
+msgid "Error while authenticating with switch: %s."
+msgstr "Fehler beim Authentifizieren am Switch: %s."
+
+#, python-format
+msgid "Error while changing VF context %s."
+msgstr "Fehler beim Ändern des VF-Kontexts %s."
+
+#, python-format
+msgid "Error while checking the firmware version %s."
+msgstr "Fehler beim Überprüfen der Firmwareversion %s."
+
+#, python-format
 msgid "Error while checking transaction status: %s"
 msgstr "Fehler beim Überprüfen des Transaktionsstatus: %s"
+
+#, python-format
+msgid "Error while checking whether VF is available for management %s."
+msgstr "Fehler beim Überprüfen, ob VF für die Verwaltung von %s verfügbar ist."
+
+#, python-format
+msgid ""
+"Error while connecting the switch %(switch_id)s with protocol %(protocol)s. "
+"Error: %(error)s."
+msgstr ""
+"Fehler beim Herstellen der Verbindung zum Switch %(switch_id)s mit dem "
+"Protokoll %(protocol)s. Fehler: %(error)s."
+
+#, python-format
+msgid "Error while creating authentication token: %s"
+msgstr "Fehler beim Erstellen des Authentifizierungstokens: %s"
 
 #, python-format
 msgid "Error while creating snapshot [status] %(stat)s - [result] %(res)s."
@@ -3005,6 +3059,23 @@ msgstr ""
 #, python-format
 msgid "Error while getting disco information [%s]."
 msgstr "Fehler beim Abrufen von Disco-Informationen [%s]."
+
+#, python-format
+msgid "Error while getting nvp value: %s."
+msgstr "Fehler beim Abrufen des nvp-Werts: %s."
+
+#, python-format
+msgid "Error while getting session information %s."
+msgstr "Fehler beim Abrufen der Sitzungsinformationen %s."
+
+#, python-format
+msgid "Error while parsing the data: %s."
+msgstr "Fehler bei der syntaktischen Analyse der Daten: %s."
+
+#, python-format
+msgid "Error while querying page %(url)s on the switch, reason %(error)s."
+msgstr ""
+"Fehler beim Abrufen der Seite %(url)s für den Switch. Ursache: %(error)s."
 
 #, python-format
 msgid ""
@@ -3473,6 +3544,10 @@ msgid ""
 msgstr ""
 "Erstellen der Momentaufnahme fehlgeschlagen. CloudByte-"
 "Datenträgerinformationen für OpenStack-Datenträger [%s] nicht gefunden."
+
+#, python-format
+msgid "Failed to create south bound connector for %s."
+msgstr "Fehler beim Erstellen eines untergeordneten Connectors für %s."
 
 #, python-format
 msgid "Failed to create storage group %(storageGroupName)s."
@@ -4576,9 +4651,8 @@ msgstr "Fehler beim Abrufen der Informationen zur LUN-Gruppe."
 msgid "Get migration task error."
 msgstr "Fehler beim Abrufen der Migrationsaufgabe."
 
-#, fuzzy
 msgid "Get pair failed."
-msgstr "Fehler beim Abrufen von Paaren."
+msgstr "Fehler beim Abrufen von Paar."
 
 msgid "Get partition by name error."
 msgstr "Fehler beim Abrufen der Partition nach Name."
@@ -4654,9 +4728,9 @@ msgstr "Google-Cloudspeicher-API-Fehler: %(reason)s"
 msgid "Google Cloud Storage connection failure: %(reason)s"
 msgstr "Google-Cloudspeicherverbindungsfehler:  %(reason)s"
 
-#, fuzzy, python-format
+#, python-format
 msgid "Google Cloud Storage oauth2 failure: %(reason)s"
-msgstr "Google-Cloudspeicher-Oauth2-Fehler: %(reason)s"
+msgstr "Oauth2-Fehler in Google-Cloudspeicher: %(reason)s"
 
 #, python-format
 msgid "Got bad path information from DRBDmanage! (%s)"
@@ -4759,6 +4833,11 @@ msgstr "Hosttyp %s nicht unterstützt."
 #, python-format
 msgid "Host with ports %(ports)s not found."
 msgstr "Host mit Ports %(ports)s nicht gefunden."
+
+msgid "Hypermetro and Replication can not be used in the same volume_type."
+msgstr ""
+"Hypermetro und Replikation dürfen nicht in demselben Datenträgertyp "
+"(volume_type) verwendet werden."
 
 #, python-format
 msgid "I/O group %(iogrp)d is not valid; available I/O groups are %(avail)s."
@@ -4936,6 +5015,15 @@ msgstr ""
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr ""
 "Ungültige Konsistenzgruppe: Kein Host für die Erstellung der Konsistenzgruppe"
+
+#, python-format
+msgid ""
+"Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
+"greater required for manage/unmanage support."
+msgstr ""
+"Ungültige HPELeftHand-API-Version gefunden: %(found)s. Version %(minimum)s "
+"oder höher erforderlich für die Unterstützung der Funktionen Verwaltung/"
+"Aufheben von Verwaltung."
 
 #, python-format
 msgid "Invalid IP address format: '%s'"
@@ -5357,7 +5445,6 @@ msgstr "Beim Warten auf den Job ist ein Problem aufgetreten. "
 msgid "Issue encountered waiting for synchronization."
 msgstr "Beim Warten auf die Synchronisation ist ein Problem aufgetreten. "
 
-#, fuzzy
 msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr ""
@@ -5563,6 +5650,10 @@ msgid ""
 msgstr ""
 "Datenträger verwalten wird nicht unterstützt, wenn FAST aktiviert wurde. "
 "FAST-Richtlinie: %(fastPolicyName)s."
+
+msgid "Managing of snapshots to failed-over volumes is not allowed."
+msgstr ""
+"Verwalten von Schattenkopien für Failover-Datenträger ist nicht zulässig."
 
 msgid "Map info is None due to array version not supporting hypermetro."
 msgstr ""
@@ -5871,6 +5962,14 @@ msgid ""
 msgstr ""
 "Neue Größe für Erweitern muss größer als aktuelle Größe sein (aktuell: "
 "%(size)s, erweitert: %(new_size)s)."
+
+#, python-format
+msgid ""
+"New size should be bigger than the real size from backend storage. realsize: "
+"%(oldsize)s, newsize: %(newsize)s."
+msgstr ""
+"Die neue Größe muss größer sein als die tatsächliche Größe aus dem "
+"Backendspeicher. realsize: %(oldsize)s, newsize: %(newsize)s."
 
 msgid "New volume size must be specified as an integer."
 msgstr "Neue Datenträgergröße muss als Ganzzahl angegeben werden."
@@ -6463,7 +6562,7 @@ msgstr "QoS-Spezifikationen %(specs_id)s sind immer noch Entitäten zugeordnet."
 
 #, python-format
 msgid "QoS config is wrong. %s must > 0."
-msgstr "QoS-Konfiguratin ist falsch. %s muss > 0 sein."
+msgstr "QoS-Konfiguration ist falsch. %s muss > 0 sein."
 
 #, python-format
 msgid ""
@@ -6535,6 +6634,15 @@ msgstr "Quote überschritten: code=%(code)s"
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
 msgstr "Quote für Projekt %(project_id)s konnte nicht gefunden werden."
+
+#, python-format
+msgid ""
+"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
+"%(limit)d is less than in-use value of %(used)d"
+msgstr ""
+"Kontingentgrenzwert ungültig für Projekt '%(proj)s' für die Ressource "
+"'%(res)s': Grenzwert von %(limit)d ist kleiner als der Wert von %(used)d, "
+"der im Gebrauch ist."
 
 #, python-format
 msgid "Quota reservation %(uuid)s could not be found."
@@ -6897,7 +7005,7 @@ msgstr ""
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "Für %(volumeName)s wird ein Rollback durch Löschung durchgeführt."
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Running Cinder with a VMware vCenter version less than %s is not allowed."
 msgstr ""
@@ -7007,6 +7115,9 @@ msgstr "Service ist derzeit nicht verfügbar."
 msgid "Service not found."
 msgstr "Dienst nicht gefunden."
 
+msgid "Set pair secondary access error."
+msgstr "Fehler beim Festlegen des sekundären Paarzugriffs."
+
 msgid "Sets thin provisioning."
 msgstr "Legt Thin Provisioning fest."
 
@@ -7085,6 +7196,14 @@ msgstr ""
 "Es wurde angefordert, die Schattenkopie %(id)s  zu löschen, während darauf "
 "gewartet wurde, dass sie verfügbar wird. Möglicherweise wurde eine "
 "Anforderung gleichzeitig gestellt."
+
+#, python-format
+msgid ""
+"Snapshot %(id)s was found in state %(state)s rather than 'deleting' during "
+"cascade delete."
+msgstr ""
+"Die Schattenkopie %(id)s wurde während des kaskadierenden Löschvorgangs im "
+"Status %(state)s und nicht im Status 'Wird gelöscht' gefunden."
 
 #, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
@@ -7228,6 +7347,12 @@ msgstr ""
 "Geben Sie den Namen des Datenträgertyps, eine Beschreibung, 'is_public' oder "
 "eine Kombination aus allem an."
 
+msgid "Split pair error."
+msgstr "Fehler bei Paaraufteilung."
+
+msgid "Split replication failed."
+msgstr "Aufteilen der Replikation fehlgeschlagen."
+
 msgid "Start LUNcopy error."
 msgstr "Fehler beim Starten der LUN-Kopie."
 
@@ -7315,6 +7440,12 @@ msgstr ""
 "freie Kontingent von '%(free)s' für das Projekt '%(proj)s' für die Ressource "
 "'%(res)s'. Reduzieren Sie den Grenzwert oder die Nutzung für mindestens "
 "eines der folgenden Projekte: '%(child_ids)s'"
+
+msgid "Switch over pair error."
+msgstr "Fehler bei Paarwechsel."
+
+msgid "Sync pair error."
+msgstr "Fehler bei Paarsynchronisierung."
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr ""
@@ -7466,7 +7597,7 @@ msgstr "extra_spec %s ist ungültig. "
 msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "Die zusätzliche Spezifikation: %(extraspec)s ist nicht gültig."
 
-#, fuzzy, python-format
+#, python-format
 msgid "The failed-over volume could not be deleted: %s"
 msgstr "Der Failover-Datenträger konnte nicht gelöscht werden: %s"
 
@@ -7571,6 +7702,10 @@ msgstr ""
 "Der Verweis auf den Datenträger im Backend muss das Format file_system/"
 "volume_name haben (volume_name darf keinen Schrägstrich '/' enthalten)."
 
+#, python-format
+msgid "The remote retention count must be %s or less."
+msgstr "Der Zähler für ferne Aufbewahrung muss kleiner-gleich %s sein. "
+
 msgid ""
 "The replication mode was not configured correctly in the volume type "
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
@@ -7601,6 +7736,10 @@ msgstr "Die Ressource %(resource)s wurde nicht gefunden."
 
 msgid "The results are invalid."
 msgstr "Die Ergebnisse sind ungültig."
+
+#, python-format
+msgid "The retention count must be %s or less."
+msgstr "Der Zähler für Aufbewahrung muss kleiner-gleich %s sein."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr ""
@@ -7848,7 +7987,7 @@ msgstr "Aktion existiert nicht: %s"
 msgid "There is no virtual disk device."
 msgstr "Es ist keine virtuelle Platteneinheit vorhanden."
 
-#, fuzzy, python-format
+#, python-format
 msgid "There was an error adding the volume to the remote copy group: %s."
 msgstr ""
 "Fehler beim Hinzufügen des Datenträgers zur Gruppe der fernen Kopie: %s."
@@ -7857,16 +7996,25 @@ msgstr ""
 msgid "There was an error creating the cgsnapshot: %s"
 msgstr "Beim Erstellen von cgsnapshot ist ein Fehler aufgetreten: %s"
 
-#, fuzzy, python-format
+#, python-format
 msgid "There was an error creating the remote copy group: %s."
 msgstr "Fehler beim Erstellen der Gruppe der fernen Kopie: %s."
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "There was an error setting the sync period for the remote copy group: %s."
 msgstr ""
 "Fehler beim Konfigurieren des Synchronisierungsintervalls für die Gruppe der "
 "fernen Kopie: %s."
+
+#, python-format
+msgid ""
+"There was an error setting up a remote copy group on the 3PAR arrays: "
+"('%s'). The volume will not be recognized as replication type."
+msgstr ""
+"Beim Konfigurieren einer Gruppe der fernen Kopie in den 3PAR-Arrays ist ein "
+"Fehler aufgetreten: ('%s'). Der Datenträger wird nicht als Replikationstyp "
+"erkannt."
 
 #, python-format
 msgid ""
@@ -8112,7 +8260,7 @@ msgstr ""
 "use' lauten und 'attach_status' muss 'attached' lauten, damit das Abhängen "
 "erfolgen kann."
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Unable to determine secondary_array from supplied secondary: %(secondary)s."
 msgstr ""
@@ -8151,7 +8299,7 @@ msgstr ""
 #, fuzzy
 msgid "Unable to enable replication and snapcopy at the same time."
 msgstr ""
-"Replication und Snapcopy können nicht zur selben Zeit aktiviert werden. "
+"Replikation und Snapcopy können nicht zur selben Zeit aktiviert werden. "
 
 #, python-format
 msgid "Unable to establish the partnership with the Storwize cluster %s."
@@ -8502,6 +8650,14 @@ msgstr "Unerwartete Antwort von Tegile IntelliFlash-API"
 msgid "Unexpected status code"
 msgstr "Unerwarteter Statuscode"
 
+#, python-format
+msgid ""
+"Unexpected status code from the switch %(switch_id)s with protocol "
+"%(protocol)s for url %(page)s. Error: %(error)s"
+msgstr ""
+"Unerwarteter Statuscode des Switch %(switch_id)s mit dem Protokoll "
+"%(protocol)s für URL %(page)s. Fehler: %(error)s"
+
 msgid "Unknown Gluster exception"
 msgstr "Unbekannte Gluster-Ausnahme"
 
@@ -8575,8 +8731,23 @@ msgstr "Unbekannte Sortierrichtung; muss 'desc' oder 'asc' sein"
 msgid "Unknown sort direction, must be 'desc' or 'asc'."
 msgstr "Unbekannte Sortierrichtung; muss 'desc' oder 'asc' sein."
 
+msgid "Unmanage and cascade delete options are mutually exclusive."
+msgstr ""
+"Die Optionen 'Aufheben der Verwaltung' und 'Kaskadiertes Löschen' heben sich "
+"gegenseitig auf."
+
 msgid "Unmanage volume not implemented."
 msgstr "Aufheben der Verwaltung für einen Datenträger nicht implementiert."
+
+msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
+msgstr ""
+"Aufheben der Verwaltung von Schattenkopien aus Failover-Datenträgern ist "
+"nicht zulässig."
+
+msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
+msgstr ""
+"Aufheben der Verwaltung von Schattenkopien aus Failover-Datenträgern ist "
+"nicht zulässig."
 
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""
@@ -9352,11 +9523,18 @@ msgstr "VzStorage-Konfigurationsdatei unter %(config)s ist nicht vorhanden."
 msgid "Wait replica complete timeout."
 msgstr "Zeitlimitüberschreitung beim Warten auf Fertigstellung des Replikats."
 
+#, python-format
+msgid "Wait synchronize failed. Running status: %s."
+msgstr "Warten auf Synchronisierung fehlgeschlagen. Ausführungsstatus: %s."
+
 msgid ""
 "Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
 msgstr ""
 "Es wird gewartet, bis alle Knoten mit Cluster verknüpft sind. Stellen Sie "
 "sicher, dass alle sheep-Dämonprozesse ausgeführt werden."
+
+msgid "We should not do switch over on primary array."
+msgstr "Wechsel in primären Array nicht empfohlen."
 
 msgid "Wrong resource call syntax"
 msgstr "Falsche Syntax für Ressourcenaufruf"
@@ -9456,6 +9634,22 @@ msgstr "'_create_volume_name', 'id_code' ist 'None'."
 
 msgid "_delete_copysession, Cannot find Replication Service"
 msgstr "_delete_copysession, Replikationsdienst wurde nicht gefunden."
+
+#, python-format
+msgid ""
+"_delete_copysession, copy session type is undefined! copy session: "
+"%(cpsession)s, copy type: %(copytype)s."
+msgstr ""
+"_delete_copysession, Typ der Kopiersitzung ist nicht definiert! "
+"Kopiersitzung: %(cpsession)s, Kopiertyp: %(copytype)s."
+
+#, fuzzy, python-format
+msgid ""
+"_delete_copysession, copysession: %(cpsession)s, operation: %(operation)s, "
+"Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_delete_copysession, copysession: %(cpsession)s, operation: %(operation)s, "
+"Rückgabecode: %(rc)lu, Fehler: %(errordesc)s."
 
 #, python-format
 msgid ""
@@ -9629,6 +9823,14 @@ msgstr ""
 "%(volmap)s, GetInstance. Es kann keine Verbindung zu ETERNUS hergestellt "
 "werden."
 
+#, fuzzy
+msgid ""
+"_get_mapdata_iscsi, Associators: FUJITSU_SAPAvailableForElement, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_mapdata_iscsi, Associators: FUJITSU_SAPAvailableForElement. Es kann "
+"keine Verbindung zu ETERNUS hergestellt werden."
+
 #, fuzzy, python-format
 msgid ""
 "_get_mapdata_iscsi, affinitygroup: %(ag)s, ReferenceNames, cannot connect to "
@@ -9662,7 +9864,7 @@ msgstr ""
 #, fuzzy, python-format
 msgid "_get_target_port, protcol: %(protocol)s, target_port not found."
 msgstr ""
-"_get_target_port, protocol: %(protocol)s, target_port wurde nicht gefunden."
+"_get_target_port, protcol: %(protocol)s, target_port wurde nicht gefunden."
 
 #, python-format
 msgid "_get_unmanaged_replay: Cannot find snapshot named %s"
@@ -9732,6 +9934,14 @@ msgstr ""
 msgid "_update_volume_stats: Could not get storage pool data."
 msgstr ""
 "_update_volume_stats: Pooldaten aus Speicher konnten nicht abgerufen werden."
+
+#, fuzzy, python-format
+msgid ""
+"_wait_for_copy_complete, cpsession: %(cpsession)s, copysession state is "
+"BROKEN."
+msgstr ""
+"_wait_for_copy_complete, cpsession: %(cpsession)s. Status der Kopiersitzung "
+"ist BROKEN."
 
 #, python-format
 msgid ""
