@@ -490,6 +490,11 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
             src_volume_name = src_vref['name']
             out = self._eql_execute('volume', 'select', src_volume_name,
                                     'clone', volume['name'])
+
+            # Extend Volume if needed
+            if out and volume['size'] > src_vref['size']:
+                out = self.extend_volume(out, volume['size'])
+
             self.add_multihost_access(volume)
             return self._get_volume_data(out)
         except Exception:
@@ -583,6 +588,11 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         try:
             self._eql_execute('volume', 'select', volume['name'],
                               'size', "%sG" % new_size)
+            LOG.info(_LI('Volume %(name)s resized from '
+                         '%(current_size)sGB to %(new_size)sGB.'),
+                     {'name': volume['name'],
+                      'current_size': volume['size'],
+                      'new_size': new_size})
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to extend_volume %(name)s from '
