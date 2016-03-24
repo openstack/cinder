@@ -133,6 +133,16 @@ class TestGlanceImageService(test.TestCase):
         expected = (u'example.com:9292', False)
         self.assertEqual(expected, next(result))
 
+    def test_get_api_servers_not_mounted_at_root_and_ssl(self):
+        service_catalog = [{u'type': u'image', u'name': u'glance',
+                            u'endpoints': [{
+                                u'publicURL': u'https://example.com/image'}]}]
+        self.context = context.RequestContext('fake', 'fake', auth_token=True)
+        self.context.service_catalog = service_catalog
+        result = glance.get_api_servers(self.context)
+        expected = (u'example.com/image', True)
+        self.assertEqual(expected, next(result))
+
     def test_create_with_instance_id(self):
         """Ensure instance_id is persisted as an image-property."""
         fixture = {'name': 'test image',
