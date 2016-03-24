@@ -166,7 +166,7 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                                            '/' + volume['name']})
         except exception.VolumeBackendAPIException:
             LOG.info(
-                _LI('Volume %s was already deleted from appliance, skipping'),
+                _LI('Volume was already deleted from appliance, skipping'),
                 resource=volume)
 
     def extend_volume(self, volume, new_size):

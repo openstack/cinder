@@ -398,6 +398,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                                                  volume)
             self._ensure_share_mounted(sub_share, mnt_path)
 
+        if (('size' in volume) and ('size' in snapshot) and (
+            volume['size'] > snapshot['size'])):
+            self.extend_volume(volume, volume['size'])
+
         return {'provider_location': volume['provider_location']}
 
     def create_cloned_volume(self, volume, src_vref):

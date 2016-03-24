@@ -480,6 +480,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             '%s@%s' % (self._get_zvol_name(snapshot['volume_name']),
                        snapshot['name']),
             self._get_zvol_name(volume['name']))
+        if (('size' in volume) and ('size' in snapshot) and (
+            volume['size'] > snapshot['size'])):
+            self.extend_volume(volume, volume['size'])
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.
