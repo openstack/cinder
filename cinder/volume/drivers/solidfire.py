@@ -195,7 +195,11 @@ class SolidFireDriver(san.SanISCSIDriver):
         self._set_cluster_uuid()
 
     def __getattr__(self, attr):
-        return getattr(self.target_driver, attr)
+        if hasattr(self.target_driver, attr):
+            return getattr(self.target_driver, attr)
+        else:
+            msg = _('Attribute: %s not found.') % attr
+            raise NotImplementedError(msg)
 
     def _set_cluster_uuid(self):
         self.cluster_uuid = (

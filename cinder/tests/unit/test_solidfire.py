@@ -1746,3 +1746,11 @@ class SolidFireVolumeTestCase(test.TestCase):
                               ctxt,
                               cgsnapshot,
                               snapshots)
+
+    def test_getattr_failure(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        try:
+            sfv.foo()
+            self.fail("Should have thrown Error")
+        except Exception:
+            pass
