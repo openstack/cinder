@@ -18,7 +18,6 @@ Unit tests for OpenStack Cinder volume driver
 
 import mock
 from mock import patch
-from oslo_utils import units
 
 from cinder import context
 from cinder import db
