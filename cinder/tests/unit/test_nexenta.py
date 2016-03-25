@@ -311,6 +311,7 @@ class TestNexentaISCSIDriver(test.TestCase):
 class TestNexentaNfsDriver(test.TestCase):
     TEST_VOLUME_NAME = 'volume1'
     TEST_VOLUME_NAME2 = 'volume2'
+    TEST_VOLUME_NAME3 = 'volume3'
     TEST_SNAPSHOT_NAME = 'snapshot1'
     TEST_VOLUME_REF = {
         'name': TEST_VOLUME_NAME,
@@ -321,6 +322,11 @@ class TestNexentaNfsDriver(test.TestCase):
     TEST_VOLUME_REF2 = {
         'name': TEST_VOLUME_NAME2,
         'size': 2,
+        'id': '2',
+        'status': 'in-use'
+    }
+    TEST_VOLUME_REF3 = {
+        'name': TEST_VOLUME_NAME2,
         'id': '2',
         'status': 'in-use'
     }
@@ -487,7 +493,7 @@ class TestNexentaNfsDriver(test.TestCase):
            'NexentaNfsDriver._get_volroot')
     @patch('cinder.volume.drivers.nexenta.nfs.'
            'NexentaNfsDriver._get_nfs_server_version')
-    def test_create_volume_from_snapshot(self, version, volroot, ensure):
+    def test_create_larger_volume_from_snapshot(self, version, volroot, ensure):
         version.return_value = 4
         volroot.return_value = 'volroot'
         self._create_volume_db_entry()
@@ -495,6 +501,24 @@ class TestNexentaNfsDriver(test.TestCase):
                                              self.TEST_SNAPSHOT_REF)
         self.nms_mock.appliance.execute.assert_called_with(
             'truncate --size 2G /volumes/stack/share/volume2/volume')
+
+    @patch('cinder.volume.drivers.remotefs.'
+           'RemoteFSDriver._ensure_shares_mounted')
+    @patch('cinder.volume.drivers.nexenta.nfs.'
+           'NexentaNfsDriver._get_volroot')
+    @patch('cinder.volume.drivers.nexenta.nfs.'
+           'NexentaNfsDriver._get_nfs_server_version')
+    def test_create_volume_from_snapshot(self, version, volroot, ensure):
+        version.return_value = 4
+        volroot.return_value = 'volroot'
+        self._create_volume_db_entry()
+        self.drv.create_volume_from_snapshot(self.TEST_VOLUME_REF,
+                                             self.TEST_SNAPSHOT_REF)
+        self.nms_mock.appliance.execute.assert_not_called()
+
+        self.drv.create_volume_from_snapshot(self.TEST_VOLUME_REF3,
+                                             self.TEST_SNAPSHOT_REF)
+        self.nms_mock.appliance.execute.assert_not_called()
 
     def test_set_rw_permissions_for_all(self):
         path = '/tmp/path'
