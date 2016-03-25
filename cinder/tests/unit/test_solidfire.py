@@ -40,7 +40,7 @@ def create_configuration():
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
         self.ctxt = context.get_admin_context()
-        self.configuration = mock.Mock(conf.Configuration)
+        self.configuration = conf.Configuration(None)
         self.configuration.sf_allow_tenant_qos = True
         self.configuration.san_is_local = True
         self.configuration.sf_emulate_512 = True
@@ -53,6 +53,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.sf_enable_volume_mapping = True
         self.configuration.sf_volume_prefix = 'UUID-'
         self.configuration.sf_enable_vag = False
+        self.configuration.replication_device = []
 
         super(SolidFireVolumeTestCase, self).setUp()
         self.stubs.Set(solidfire.SolidFireDriver,
@@ -61,9 +62,7 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.stubs.Set(solidfire.SolidFireDriver,
                        '_build_endpoint_info',
                        self.fake_build_endpoint_info)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_set_cluster_uuid',
-                       self.fake_set_cluster_uuid)
+
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
                                      'burstIOPS': 20000}
@@ -89,6 +88,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                                 'owner': 'testprjid'}
         self.fake_image_service = 'null'
 
+    def fake_init_cluster_pairs(*args, **kwargs):
+        return None
+
     def fake_build_endpoint_info(obj, **kwargs):
         endpoint = {}
         endpoint['mvip'] = '1.1.1.1'
@@ -102,10 +104,8 @@ class SolidFireVolumeTestCase(test.TestCase):
 
         return endpoint
 
-    def fake_set_cluster_uuid(obj):
-        return '95e46307-67d4-49b3-8857-6104a9c30e46'
-
-    def fake_issue_api_request(obj, method, params, version='1.0'):
+    def fake_issue_api_request(obj, method, params, version='1.0',
+                               endpoint=None):
         if method is 'GetClusterCapacity' and version == '1.0':
             data = {'result':
                     {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
@@ -116,14 +116,20 @@ class SolidFireVolumeTestCase(test.TestCase):
             return data
 
         elif method is 'GetClusterInfo' and version == '1.0':
-            results = {'result': {'clusterInfo':
-                                  {'name': 'fake-cluster',
-                                   'mvip': '1.1.1.1',
-                                   'svip': '1.1.1.1',
-                                   'uniqueID': 'unqid',
-                                   'repCount': 2,
-                                   'attributes': {}}}}
+            results = {
+                'result':
+                    {'clusterInfo':
+                        {'name': 'fake-cluster',
+                         'mvip': '1.1.1.1',
+                         'svip': '1.1.1.1',
+                         'uniqueID': 'unqid',
+                         'repCount': 2,
+                         'uuid': '53c8be1e-89e2-4f7f-a2e3-7cb84c47e0ec',
+                         'attributes': {}}}}
             return results
+
+        elif method is 'GetClusterVersionInfo':
+            return {'result': {'clusterAPIVersion': '8.0'}}
 
         elif method is 'AddAccount' and version == '1.0':
             return {'result': {'accountID': 25}, 'id': 1}
@@ -191,6 +197,8 @@ class SolidFireVolumeTestCase(test.TestCase):
             return result
         elif method is 'DeleteSnapshot':
             return {'result': {}}
+        elif method is 'GetClusterVersionInfo':
+            return {'result': {'clusterAPIVersion': '8.0'}}
         else:
             # Crap, unimplemented API call in Fake
             return None
@@ -217,6 +225,9 @@ class SolidFireVolumeTestCase(test.TestCase):
     def fake_update_cluster_status(self):
         return
 
+    def fake_get_cluster_version_info(self):
+        return
+
     def fake_get_model_info(self, account, vid):
         return {'fake': 'fake-model'}
 
@@ -225,7 +236,7 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_create_volume_with_qos_type(self,
                                          _mock_create_template_account,
                                          _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_issue_api_request.side_effect = self.fake_issue_api_request
         _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
@@ -267,9 +278,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                                '_get_sfaccounts_for_tenant',
                                return_value=fake_sfaccounts), \
                 mock.patch.object(sfv,
-                                  '_issue_api_request',
-                                  side_effect=self.fake_issue_api_request), \
-                mock.patch.object(sfv,
                                   '_get_account_create_availability',
                                   return_value=fake_sfaccounts[0]), \
                 mock.patch.object(sfv,
@@ -292,7 +300,7 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_create_volume(self,
                            _mock_create_template_account,
                            _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_issue_api_request.side_effect = self.fake_issue_api_request
         _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
@@ -310,9 +318,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                                '_get_sfaccounts_for_tenant',
                                return_value=fake_sfaccounts), \
             mock.patch.object(sfv,
-                              '_issue_api_request',
-                              side_effect=self.fake_issue_api_request), \
-            mock.patch.object(sfv,
                               '_get_account_create_availability',
                               return_value=fake_sfaccounts[0]):
 
@@ -325,7 +330,7 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_create_volume_non_512e(self,
                                     _mock_create_template_account,
                                     _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_issue_api_request.side_effect = self.fake_issue_api_request
         _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
@@ -385,7 +390,7 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_create_clone(self,
                           _mock_create_template_account,
                           _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_issue_api_request.side_effect = self.fake_issue_api_request
         _mock_create_template_account.return_value = 1
         _fake_get_snaps = [{'snapshotID': 5, 'name': 'testvol'}]
         _fake_get_volume = (
@@ -455,13 +460,16 @@ class SolidFireVolumeTestCase(test.TestCase):
                        self.fake_update_cluster_status)
         self.stubs.Set(solidfire.SolidFireDriver,
                        '_issue_api_request',
-                       self.fake_issue_api_request_fails)
+                       self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.stubs.Set(solidfire.SolidFireDriver,
+                       '_issue_api_request',
+                       self.fake_issue_api_request_fails)
         try:
             sfv.create_volume(testvol)
             self.fail("Should have thrown Error")
@@ -586,26 +594,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                               return_value=fake_no_volumes):
             sfv.delete_snapshot(testsnap)
 
-    def test_get_cluster_info(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        sfv._get_cluster_info()
-
-    def test_get_cluster_info_fail(self):
-        # NOTE(JDG) This test just fakes update_cluster_status
-        # this is inentional for this test
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_update_cluster_status',
-                       self.fake_update_cluster_status)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request_fails)
-        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.assertRaises(exception.SolidFireAPIException,
-                          sfv._get_cluster_info)
-
     def test_extend_volume(self):
         self.stubs.Set(solidfire.SolidFireDriver,
                        '_issue_api_request',
@@ -640,7 +628,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                        self.fake_update_cluster_status)
         self.stubs.Set(solidfire.SolidFireDriver,
                        '_issue_api_request',
-                       self.fake_issue_api_request_fails)
+                       self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
@@ -648,6 +636,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        self.stubs.Set(solidfire.SolidFireDriver,
+                       '_issue_api_request',
+                       self.fake_issue_api_request_fails)
         self.assertRaises(exception.SolidFireAPIException,
                           sfv.extend_volume,
                           testvol, 2)
@@ -828,7 +819,7 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_create_volume_for_migration(self,
                                          _mock_create_template_account,
                                          _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_issue_api_request.side_effect = self.fake_issue_api_request
         _mock_create_template_account.return_value = 1
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
@@ -850,9 +841,6 @@ class SolidFireVolumeTestCase(test.TestCase):
         with mock.patch.object(sfv,
                                '_get_sfaccounts_for_tenant',
                                return_value=fake_sfaccounts), \
-                mock.patch.object(sfv,
-                                  '_issue_api_request',
-                                  side_effect=self.fake_issue_api_request), \
                 mock.patch.object(sfv,
                                   '_get_account_create_availability',
                                   return_value=fake_sfaccounts[0]), \
@@ -886,15 +874,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                      'image_name': 'fake-image',
                      'image_created_at': '2014-12-17T00:16:23+00:00'}}}
 
-        stats_data =\
-            {'result':
-                {'clusterCapacity': {'maxProvisionedSpace': 107374182400,
-                                     'usedSpace': 1073741824,
-                                     'compressionPercent': 100,
-                                     'deDuplicationPercent': 100,
-                                     'thinProvisioningPercent': 100}}}
-
-        _mock_issue_api_request.return_value = stats_data
+        _mock_issue_api_request.return_value.side_effect = (
+            self.fake_issue_api_request)
         _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
                                             'accountID': 7777}
         _mock_get_sf_volume.return_value = fake_sf_vref
@@ -921,7 +902,6 @@ class SolidFireVolumeTestCase(test.TestCase):
                                     _mock_get_sfaccount,
                                     _mock_issue_api_request):
 
-        _mock_issue_api_request.return_value = self.mock_stats_data
         _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
                                             'accountID': 7777}
         _mock_get_sf_volume.return_value =\
@@ -940,6 +920,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                                                       325355)}
         image_service = 'null'
 
+        _mock_issue_api_request.return_value.side_effect = (
+            self.fake_issue_api_request)
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         _mock_issue_api_request.return_value = {'result': 'ok'}
 
@@ -948,7 +930,7 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     def test_clone_image_not_configured(self, _mock_issue_api_request):
-        _mock_issue_api_request.return_value = self.mock_stats_data
+        _mock_issue_api_request.side_effect = self.fake_issue_api_request
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         self.assertEqual((None, False),
@@ -1090,10 +1072,12 @@ class SolidFireVolumeTestCase(test.TestCase):
                 sfv, '_issue_api_request', side_effect=_fake_issue_api_req):
             volume_updates, snapshot_updates = sfv.update_provider_info(
                 vrefs, snaprefs)
-            self.assertEqual('99 100 None', volume_updates[0]['provider_id'])
+            self.assertEqual('99 100 53c8be1e-89e2-4f7f-a2e3-7cb84c47e0ec',
+                             volume_updates[0]['provider_id'])
             self.assertEqual(1, len(volume_updates))
 
-            self.assertEqual('1 99 None', snapshot_updates[0]['provider_id'])
+            self.assertEqual('1 99 53c8be1e-89e2-4f7f-a2e3-7cb84c47e0ec',
+                             snapshot_updates[0]['provider_id'])
             self.assertEqual(1, len(snapshot_updates))
 
     def test_get_sf_volume_missing_attributes(self):

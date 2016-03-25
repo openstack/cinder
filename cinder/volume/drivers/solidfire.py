@@ -176,23 +176,22 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(SolidFireDriver, self).__init__(*args, **kwargs)
-        self.cluster_uuid = None
+        self.active_cluster_info = {}
         self.configuration.append_config_values(sf_opts)
-        self._endpoint = self._build_endpoint_info()
         self.template_account_id = None
         self.max_volumes_per_account = 1990
         self.volume_map = {}
-
+        self.target_driver = SolidFireISCSI(solidfire_driver=self,
+                                            configuration=self.configuration)
+        self._set_active_cluster_info()
         try:
             self._update_cluster_status()
         except exception.SolidFireAPIException:
             pass
+
         if self.configuration.sf_allow_template_caching:
             account = self.configuration.sf_template_account_name
             self.template_account_id = self._create_template_account(account)
-        self.target_driver = SolidFireISCSI(solidfire_driver=self,
-                                            configuration=self.configuration)
-        self._set_cluster_uuid()
 
     def __getattr__(self, attr):
         if hasattr(self.target_driver, attr):
@@ -201,28 +200,30 @@ class SolidFireDriver(san.SanISCSIDriver):
             msg = _('Attribute: %s not found.') % attr
             raise NotImplementedError(msg)
 
-    def _set_cluster_uuid(self):
-        self.cluster_uuid = (
-            self._get_cluster_info()['clusterInfo']['uuid'])
+    def _set_active_cluster_info(self):
+        self.active_cluster_info['endpoint'] = self._build_endpoint_info()
+        for k, v in self._issue_api_request(
+                'GetClusterInfo',
+                {})['result']['clusterInfo'].items():
+            self.active_cluster_info[k] = v
+
+        # Add a couple extra things that are handy for us
+        self.active_cluster_info['clusterAPIVersion'] = (
+            self._issue_api_request('GetClusterVersionInfo',
+                                    {})['result']['clusterAPIVersion'])
 
     def _parse_provider_id_string(self, id_string):
         return tuple(id_string.split())
 
     def _create_provider_id_string(self,
                                    resource_id,
-                                   account_or_vol_id,
-                                   cluster_uuid=None):
+                                   account_or_vol_id):
         # NOTE(jdg): We use the same format, but in the case
         # of snapshots, we don't have an account id, we instead
         # swap that with the parent volume id
-        cluster_id = self.cluster_uuid
-        # We allow specifying a remote cluster
-        if cluster_uuid:
-            cluster_id = cluster_uuid
-
         return "%s %s %s" % (resource_id,
                              account_or_vol_id,
-                             cluster_id)
+                             self.active_cluster_info['uuid'])
 
     def _init_snapshot_mappings(self, srefs):
         updates = []
@@ -234,7 +235,8 @@ class SolidFireDriver(san.SanISCSIDriver):
                 (ss for ss in sf_snaps if ss['name'] == seek_name), None)
             if sfsnap:
                 id_string = self._create_provider_id_string(
-                    sfsnap['snapshotID'], sfsnap['volumeID'])
+                    sfsnap['snapshotID'],
+                    sfsnap['volumeID'])
                 if s.get('provider_id') != id_string:
                     updates.append(
                         {'id': s['id'],
@@ -307,11 +309,10 @@ class SolidFireDriver(san.SanISCSIDriver):
     def _issue_api_request(self, method, params, version='1.0', endpoint=None):
         if params is None:
             params = {}
-
         if endpoint is None:
-            endpoint = self._endpoint
-        payload = {'method': method, 'params': params}
+            endpoint = self.active_cluster_info['endpoint']
 
+        payload = {'method': method, 'params': params}
         url = '%s/json-rpc/%s/' % (endpoint['url'], version)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", exceptions.InsecureRequestWarning)
@@ -320,7 +321,6 @@ class SolidFireDriver(san.SanISCSIDriver):
                                 auth=(endpoint['login'], endpoint['passwd']),
                                 verify=False,
                                 timeout=30)
-
         response = req.json()
         req.close()
         if (('error' in response) and
@@ -397,11 +397,6 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         return sfaccount
 
-    def _get_cluster_info(self):
-        """Query the SolidFire cluster for some property info."""
-        params = {}
-        return self._issue_api_request('GetClusterInfo', params)['result']
-
     def _generate_random_string(self, length):
         """Generates random_string to use for CHAP password."""
 
@@ -410,9 +405,8 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def _get_model_info(self, sfaccount, sf_volume_id):
         """Gets the connection info for specified account and volume."""
-        cluster_info = self._get_cluster_info()
         if self.configuration.sf_svip is None:
-            iscsi_portal = cluster_info['clusterInfo']['svip'] + ':3260'
+            iscsi_portal = self.active_cluster_info['svip'] + ':3260'
         else:
             iscsi_portal = self.configuration.sf_svip
         chap_secret = sfaccount['targetSecret']
@@ -448,8 +442,7 @@ class SolidFireDriver(san.SanISCSIDriver):
             model_update['provider_geometry'] = ('%s %s' % (4096, 4096))
         model_update['provider_id'] = (
             self._create_provider_id_string(sf_volume_id,
-                                            sfaccount['accountID'],
-                                            self.cluster_uuid))
+                                            sfaccount['accountID']))
         return model_update
 
     def _snapshot_discovery(self, src_uuid, params, vref):
@@ -553,8 +546,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                   int(snapshot_id)), None))
         model_update['provider_id'] = (
             self._create_provider_id_string(snap['snapshotID'],
-                                            snap['volumeID'],
-                                            self.cluster_uuid))
+                                            snap['volumeID']))
         return model_update
 
     def _set_qos_presets(self, volume):
