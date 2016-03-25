@@ -70,29 +70,6 @@ TRACE_API = False
 synchronized = lockutils.synchronized_with_prefix('cinder-')
 
 
-def find_config(config_path):
-    """Find a configuration file using the given hint.
-
-    :param config_path: Full or relative path to the config.
-    :returns: Full path of the config, if it exists.
-    :raises: `cinder.exception.ConfigNotFound`
-
-    """
-    possible_locations = [
-        config_path,
-        os.path.join(CONF.state_path, "etc", "cinder", config_path),
-        os.path.join(CONF.state_path, "etc", config_path),
-        os.path.join(CONF.state_path, config_path),
-        "/etc/cinder/%s" % config_path,
-    ]
-
-    for path in possible_locations:
-        if os.path.exists(path):
-            return os.path.abspath(path)
-
-    raise exception.ConfigNotFound(path=os.path.abspath(config_path))
-
-
 def as_int(obj, quiet=True):
     # Try "2" -> 2
     try:
