@@ -23,6 +23,7 @@ import hashlib
 import os
 
 from oslo_log import log as logging
+from oslo_utils import units
 
 from cinder import context
 from cinder import db
@@ -231,6 +232,29 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                     'Volume %s does not exist on appliance', '/'.join(
                         [pool, fs]))
 
+    def extend_volume(self, volume, new_size):
+        """Extend an existing volume.
+
+        :param volume: volume reference
+        :param new_size: volume new size in GB
+        """
+        LOG.info(_LI('Extending volume: %(id)s New size: %(size)s GB'),
+                 {'id': volume['id'], 'size': new_size})
+        if getattr(self.configuration,
+                   self.driver_prefix + '_sparsed_volumes'):
+            self._create_sparsed_file(self.local_path(volume), new_size)
+        else:
+            block_size_mb = 1
+            block_count = ((new_size - volume['size']) * units.Gi /
+                           (block_size_mb * units.Mi))
+            self._execute(
+                'dd', 'if=/dev/zero',
+                'seek=%d' % (volume['size'] * units.Gi / block_size_mb),
+                'of=%s' % self.local_path(volume),
+                'bs=%dM' % block_size_mb,
+                'count=%d' % block_count,
+                run_as_root=True)
+
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
 
@@ -307,6 +331,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                             'filesystem': volume['name']})
             raise
 
+        if (('size' in volume) and (
+                volume['size'] > snapshot['volume_size'])):
+            self.extend_volume(volume, volume['size'])
         return {'provider_location': volume['provider_location']}
 
     def create_cloned_volume(self, volume, src_vref):
@@ -318,6 +345,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
         snapshot = {'volume_name': src_vref['name'],
                     'volume_id': src_vref['id'],
+                    'volume_size': src_vref['size'],
                     'name': self._get_clone_snapshot_name(volume)}
         self.create_snapshot(snapshot)
         try:

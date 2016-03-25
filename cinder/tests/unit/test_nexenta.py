@@ -57,7 +57,7 @@ class TestNexentaISCSIDriver(test.TestCase):
     TEST_SNAPSHOT_REF = {
         'name': TEST_SNAPSHOT_NAME,
         'volume_name': TEST_VOLUME_NAME,
-        'size': 1,
+        'volume_size': 1,
     }
 
     def __init__(self, method):
@@ -327,7 +327,7 @@ class TestNexentaNfsDriver(test.TestCase):
     TEST_SNAPSHOT_REF = {
         'name': TEST_SNAPSHOT_NAME,
         'volume_name': TEST_VOLUME_NAME,
-        'size': 1,
+        'volume_size': 1,
         'volume_id': 1
     }
 

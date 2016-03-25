@@ -18,6 +18,7 @@ Unit tests for OpenStack Cinder volume driver
 
 import mock
 from mock import patch
+from oslo_utils import units
 
 from cinder import context
 from cinder import db
@@ -45,7 +46,7 @@ class TestNexentaNfsDriver(test.TestCase):
     }
     TEST_VOLUME2 = {
         'name': TEST_VOLUME_NAME2,
-        'size': 1,
+        'size': 2,
         'id': '2',
         'status': 'in-use'
     }
@@ -53,6 +54,7 @@ class TestNexentaNfsDriver(test.TestCase):
     TEST_SNAPSHOT = {
         'name': TEST_SNAPSHOT_NAME,
         'volume_name': TEST_VOLUME_NAME,
+        'volume_size': 1,
         'volume_id': '1'
     }
 
@@ -154,14 +156,21 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.delete.assert_called_with(url)
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
+           'NexentaNfsDriver.local_path')
+    @patch('cinder.volume.drivers.remotefs.'
+           'RemoteFSDriver._create_sparsed_file')
+    @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver._share_folder')
-    def test_create_volume_from_snapshot(self, share):
+    def test_create_volume_from_snapshot(self, share, create, path):
         self._create_volume_db_entry()
         url = ('storage/filesystems/pool%2Fshare%2Fvolume2/promote')
 
         self.drv.create_volume_from_snapshot(
             self.TEST_VOLUME2, self.TEST_SNAPSHOT)
         self.nef_mock.post.assert_called_with(url)
+
+        # make sure the volume get extended!
+        create.assert_has_calls(path, 2)
 
     def test_get_capacity_info(self):
         self.nef_mock.get.return_value = {
