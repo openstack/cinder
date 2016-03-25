@@ -21,6 +21,7 @@ import six
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_consistencygroup as fake_cg
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume.drivers.emc import xtremio
@@ -622,7 +623,8 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                                                      [new_vol1],
                                                      d.cgsnapshot, [snapshot1])
 
-        new_cg_obj = fake_cg.fake_consistencyobject_obj(d.context, id=5)
+        new_cg_obj = fake_cg.fake_consistencyobject_obj(
+            d.context, id=fake.CONSISTENCY_GROUP2_ID)
         snapset2_name = new_cg_obj.id
         new_vol1.id = '192eb39b-6c2f-420c-bae3-3cfd117f0001'
         new_vol2 = fake_volume.fake_volume_obj(d.context)
