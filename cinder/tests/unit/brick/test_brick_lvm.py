@@ -168,10 +168,6 @@ class BrickLvmTestCase(test.TestCase):
     def test_vg_exists(self):
         self.assertTrue(self.vg._vg_exists())
 
-    def test_get_vg_uuid(self):
-        self.assertEqual('kVxztV-dKpG-Rz7E-xtKY-jeju-QsYU-SLG6Z1',
-                         self.vg._get_vg_uuid()[0])
-
     def test_get_all_volumes(self):
         out = self.vg.get_volumes()
 
@@ -226,10 +222,6 @@ class BrickLvmTestCase(test.TestCase):
         # Non-Filtered, all VG's
         pvs = self.vg.get_all_physical_volumes('sudo')
         self.assertEqual(4, len(pvs))
-
-    def test_get_physical_volumes(self):
-        pvs = self.vg.get_physical_volumes()
-        self.assertEqual(3, len(pvs))
 
     def test_get_volume_groups(self):
         self.assertEqual(3, len(self.vg.get_all_volume_groups('sudo')))

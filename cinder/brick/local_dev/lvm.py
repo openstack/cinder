@@ -138,17 +138,6 @@ class LVM(executor.Executor):
         cmd = ['vgcreate', self.vg_name, ','.join(pv_list)]
         self._execute(*cmd, root_helper=self._root_helper, run_as_root=True)
 
-    def _get_vg_uuid(self):
-        cmd = LVM.LVM_CMD_PREFIX + ['vgs', '--noheadings',
-                                    '-o', 'uuid', self.vg_name]
-        (out, _err) = self._execute(*cmd,
-                                    root_helper=self._root_helper,
-                                    run_as_root=True)
-        if out is not None:
-            return out.split()
-        else:
-            return []
-
     def _get_thin_pool_free_space(self, vg_name, thin_pool_name):
         """Returns available thin pool free space.
 
@@ -351,16 +340,6 @@ class LVM(executor.Executor):
                             'size': float(fields[2]),
                             'available': float(fields[3])})
         return pv_list
-
-    def get_physical_volumes(self):
-        """Get all PVs associated with this instantiation (VG).
-
-        :returns: List of Dictionaries with PV info
-
-        """
-        self.pv_list = self.get_all_physical_volumes(self._root_helper,
-                                                     self.vg_name)
-        return self.pv_list
 
     @staticmethod
     def get_all_volume_groups(root_helper, vg_name=None):
