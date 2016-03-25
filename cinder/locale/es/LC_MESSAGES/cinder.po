@@ -9,17 +9,18 @@
 # Eduardo Gonzalez Gutierrez <dabarren@gmail.com>, 2015. #zanata
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
+# Eugènia Torrella <tester03@es.ibm.com>, 2016. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev196\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev21\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-12 14:33+0000\n"
+"POT-Creation-Date: 2016-03-24 10:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2015-09-15 11:41+0000\n"
-"Last-Translator: Eduardo Gonzalez Gutierrez <dabarren@gmail.com>\n"
+"PO-Revision-Date: 2016-03-25 12:08+0000\n"
+"Last-Translator: Eugènia Torrella <tester03@es.ibm.com>\n"
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -45,6 +46,9 @@ msgstr " pero el tamaño ahora es %d"
 #, python-format
 msgid " but size is now %d."
 msgstr " pero el tamaño es ahora %d."
+
+msgid " or "
+msgstr " o "
 
 #, python-format
 msgid ""
@@ -271,6 +275,9 @@ msgstr ""
 msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
 msgstr "No se ha encontrado un LUN (HLUN). (LDEV: %(ldev)s)"
 
+msgid "A concurrent, possibly contradictory, request has been made."
+msgstr "Se ha realizado una solicitud simultánea, posiblemente contradictoria."
+
 #, python-format
 msgid ""
 "A free LUN (HLUN) was not found. Add a different host group. (LDEV: %(ldev)s)"
@@ -334,12 +341,24 @@ msgstr "Un estado de volumen no es válido. (estado: %(status)s)"
 msgid "API %(name)s failed with error string %(err)s"
 msgstr "La API %(name)s ha fallado con serie de error %(err)s"
 
+#, python-format
+msgid ""
+"API Version String %(version)s is of invalid format. Must be of format "
+"MajorNum.MinorNum."
+msgstr ""
+"La cadena de la versión de la API %(version)s tiene un formato no válido. "
+"Debe ser un formato MajorNum.MinorNum."
+
 msgid "API key is missing for CloudByte driver."
 msgstr "Falta la clave de API para el controlador CloudByte."
 
 #, python-format
 msgid "API response: %s"
 msgstr "Respuesta de la API: %s"
+
+#, python-format
+msgid "API version %(version)s is not supported on this method."
+msgstr "La versión de la API %(version)s, no está soportada en este método."
 
 msgid "API version could not be determined."
 msgstr "No se ha podido determinar la versión de API."
@@ -388,6 +407,11 @@ msgid ""
 msgstr ""
 "No existen las agrupaciones de almacenamiento especificadas que se van a "
 "gestionar. Compruebe su configuración. Agrupaciones no existentes: %s"
+
+msgid "An API version request must be compared to a VersionedMethod object."
+msgstr ""
+"Una solicitud de versión de la API se debe comparar con un objeto "
+"VersionedMethod."
 
 #, python-format
 msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
@@ -712,6 +736,18 @@ msgstr ""
 "Usuario de API Blockbridge no configurado (obligatorio para el esquema de "
 "autenticación 'password')"
 
+#, python-format
+msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
+msgstr ""
+"Error de CLI de distribución en zonas de canal de fibra de Brocade: "
+"%(reason)s"
+
+#, python-format
+msgid "Brocade Fibre Channel Zoning HTTP error: %(reason)s"
+msgstr ""
+"Error de HTTP  de distribución en zonas de canal de fibra de Brocade: "
+"%(reason)s"
+
 msgid "CHAP secret should be 12-16 bytes."
 msgstr "El secreto de CHAP debe tener entre 12 y 16 bytes."
 
@@ -795,6 +831,10 @@ msgid "Can't find partition name on the array, partition name is: %(name)s."
 msgstr ""
 "No se puede encontrar el nombre de la partición en la matriz, el nombre de "
 "la partición es: %(name)s."
+
+#, python-format
+msgid "Can't find service: %s"
+msgstr "No se ha podido encontrar el servicio: %s"
 
 #, python-format
 msgid "Can't open config file: %s"
@@ -1225,6 +1265,11 @@ msgstr ""
 "hash."
 
 #, python-format
+msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
+msgstr ""
+"Error de CLI de distribución en zonas de canal de fibra de Cisco: %(reason)s"
+
+#, python-format
 msgid "Clone feature is not licensed on %(storageSystem)s."
 msgstr "La función Clonar no tiene licencia en %(storageSystem)s."
 
@@ -1233,6 +1278,10 @@ msgid ""
 msgstr ""
 "El clúster no se ha formateado. Debe realizar probablemente \"dog cluster "
 "format\"."
+
+#, python-format
+msgid "Coho Data Cinder driver failure: %(message)s"
+msgstr "Error de controlador Coho Data Cinder: %(message)s"
 
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
@@ -1370,6 +1419,9 @@ msgstr "Convertido a sin formato, pero el formato es ahora %s"
 #, python-format
 msgid "Converted to raw, but format is now %s."
 msgstr "Se ha convertido a sin formato, pero el formato es ahora %s."
+
+msgid "Coordinator uninitialized."
+msgstr "Coordinador desinicializado."
 
 #, python-format
 msgid ""
@@ -1755,6 +1807,14 @@ msgid ""
 msgstr ""
 "Excepción de CLI del controlador de EMC VNX Cinder: %(cmd)s (Código de "
 "retorno: %(rc)s) (Salida: %(out)s)."
+
+#, python-format
+msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
+"(Output: %(out)s)."
+msgstr ""
+"Excepción SPUnavailableException del controlador de EMC VNX Cinder: %(cmd)s "
+"(Código de retorno: %(rc)s) (Salida: %(out)s)."
 
 msgid ""
 "EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
@@ -2469,6 +2529,9 @@ msgid ""
 msgstr ""
 "Se ha superado el máximo de intentos de planificación %(max_attempts)d para "
 "el volumen %(volume_id)s"
+
+msgid "Exceeded the limit of snapshots per volume"
+msgstr "Se ha superado el límite de instantáneas por volumen"
 
 #, python-format
 msgid "Exception appending meta volume to target volume %(volumename)s."
@@ -3841,6 +3904,18 @@ msgid "Gluster config file at %(config)s doesn't exist"
 msgstr "El archivo de configuración de Gluster en %(config)s no existe"
 
 #, python-format
+msgid "Google Cloud Storage api failure: %(reason)s"
+msgstr "Error de la api de Google Cloud Storage: %(reason)s"
+
+#, python-format
+msgid "Google Cloud Storage connection failure: %(reason)s"
+msgstr "Error de conexión de Google Cloud Storage: %(reason)s"
+
+#, python-format
+msgid "Google Cloud Storage oauth2 failure: %(reason)s"
+msgstr "Error de oauth2 de Google Cloud Storage: %(reason)s"
+
+#, python-format
 msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr ""
 "Se ha obtenido información incorrecta sobre vía de acceso de DRBDmanage (%s)"
@@ -4088,6 +4163,10 @@ msgstr ""
 "del volumen %s"
 
 #, python-format
+msgid "Invalid Replication Target: %(reason)s"
+msgstr "Destino de replicación no válido: %(reason)s"
+
+#, python-format
 msgid "Invalid VNX authentication type: %s"
 msgstr "Tipo de autenticación VNX no válido: %s"
 
@@ -4104,6 +4183,12 @@ msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr ""
 "Versión de XtremIO no válida %(cur)s, se requiere la versión %(min)s o "
 "superior"
+
+#, python-format
+msgid "Invalid allocated quotas defined for the following project quotas: %s"
+msgstr ""
+"Se han definido unas cuotas asignadas no válidas en las siguientes cuotas de "
+"proyecto: %s"
 
 msgid "Invalid argument"
 msgstr "Argumento no válido"
@@ -4432,6 +4517,11 @@ msgstr ""
 msgid "KeyError: %s"
 msgstr "KeyError: %s"
 
+msgid "Keystone version 3 or greater must be used to get nested quota support."
+msgstr ""
+"Se debe utilizar la versión 3 o superior de Keystone para tener soporte para "
+"cuotas anidadas."
+
 msgid "LUN export failed!"
 msgstr "Error al exportar LUN."
 
@@ -4472,6 +4562,9 @@ msgstr "La vía de acceso al enlace existe y no es un symlink"
 #, python-format
 msgid "Linked clone of source volume not supported in state: %s."
 msgstr "No se soporta el clon enlazado del volumen de origen en estado: %s."
+
+msgid "Lock acquisition failed."
+msgstr "Ha fallado la adquisición del bloqueo."
 
 msgid ""
 "Lookup service not configured. Config option for fc_san_lookup_service needs "
@@ -4733,6 +4826,14 @@ msgstr "Es necesario implementar schedule_get_pools"
 
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "Se debe pasar wwpn o host a lsfabric."
+
+msgid ""
+"Must run this command as cloud admin using a Keystone policy.json which "
+"allows cloud admin to list and get any project."
+msgstr ""
+"Debe ejecutar este comando como administrador de nube utilizando un archivo "
+"policy.json de Keystone, que permite al administrador de nube listar y "
+"obtener cualquier proyecto."
 
 msgid "Must specify 'connector'"
 msgstr "Debe especificar 'connector'"
@@ -5100,6 +5201,10 @@ msgid "No weighed hosts available"
 msgstr "No hay hosts ponderados disponibles"
 
 #, python-format
+msgid "Not a valid string: %s"
+msgstr "Cadena no válida: %s"
+
+#, python-format
 msgid "Not able to find a suitable datastore for the volume: %s."
 msgstr ""
 "No se puede encontrar un almacén de datos adecuado para el volumen: %s."
@@ -5326,6 +5431,12 @@ msgid "Project ID"
 msgstr "ID del proyecto"
 
 #, python-format
+msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
+msgstr ""
+"No se han configurado correctamente las cuotas del proyecto para las cuotas "
+"anidadas: %(reason)s."
+
+#, python-format
 msgid ""
 "Protocol %(storage_protocol)s is not supported for storage family "
 "%(storage_family)s."
@@ -5403,6 +5514,14 @@ msgstr "Cuota excedida: código=%(code)s"
 #, python-format
 msgid "Quota for project %(project_id)s could not be found."
 msgstr "No se ha podido encontrar la cuota para el proyecto %(project_id)s."
+
+#, python-format
+msgid ""
+"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
+"%(limit)d is less than in-use value of %(used)d"
+msgstr ""
+"Límite de cuota no válido para el proyecto '%(proj)s' para el recurso "
+"'%(res)s': el límite de %(limit)d es menor que el valor en uso, de %(used)d"
 
 #, python-format
 msgid "Quota reservation %(uuid)s could not be found."
@@ -5758,12 +5877,20 @@ msgid "Service %(service)s on host %(host)s removed."
 msgstr "Se ha eliminado el servicio %(service)s en el host %(host)s."
 
 #, python-format
+msgid "Service %(service_id)s could not be found on host %(host)s."
+msgstr ""
+"No se ha podido encontrar el servicio %(service_id)s en el host %(host)s."
+
+#, python-format
 msgid "Service %(service_id)s could not be found."
 msgstr "No se ha podido encontrar el servicio %(service_id)s."
 
 #, python-format
 msgid "Service %s not found."
 msgstr "El servicio %s no se ha encontrado."
+
+msgid "Service is too old to fulfil this request."
+msgstr "El servicio es demasiado antiguo para cumplir esta solicitud."
 
 msgid "Service is unavailable at this time."
 msgstr "El servicio no esta disponible en este momento"
@@ -5880,6 +6007,13 @@ msgstr "El estado de la instantánea debe ser \"disponible\" para clonar."
 
 #, python-format
 msgid ""
+"Snapshot to be backed up must be available, but the current status is \"%s\"."
+msgstr ""
+"La instantánea de la que se va a hacer una copia de seguridad debe estar "
+"disponible, pero el estado actual es  \"%s\"."
+
+#, python-format
+msgid ""
 "Snapshot='%(snap)s' does not exist in base image='%(base)s' - aborting "
 "incremental backup"
 msgstr ""
@@ -5944,6 +6078,12 @@ msgstr "Especifique una contraseña o private_key"
 
 msgid "Specify san_password or san_private_key"
 msgstr "Especifique san_password o san_private_key"
+
+msgid ""
+"Specify volume type name, description, is_public or a combination thereof."
+msgstr ""
+"Especifique el nombre del tipo de volumen, la descripción, is_public o una "
+"combinación de los mismos."
 
 msgid "Start LUNcopy error."
 msgstr "Error al iniciar LUNcopy."
@@ -6020,6 +6160,16 @@ msgstr "El sistema de almacenamiento %(array)s no se ha encontrado."
 #, python-format
 msgid "String with params: %s"
 msgstr "Serie con parámetros: %s"
+
+#, python-format
+msgid ""
+"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
+"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
+"for one or more of the following projects: '%(child_ids)s'"
+msgstr ""
+"La suma de uso de hijos '%(sum)s' es superior a la cuota libre de '%(free)s' "
+"para el proyecto '%(proj)s' para el recurso '%(res)s'. Rebaje el límite de "
+"uso de uno o más de los siguientes proyectos: '%(child_ids)s'"
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr "Error en la sincronización del volumen secundario con primario."
@@ -6511,6 +6661,12 @@ msgid "Timeout while requesting %(service)s API."
 msgstr "Se ha agotado el tiempo de espera al solicitar la API de %(service)s."
 
 #, python-format
+msgid "Timeout while requesting capabilities from backend %(service)s."
+msgstr ""
+"Se ha agotado el tiempo de espera al solicitar capacidades al programa de "
+"fondo %(service)s."
+
+#, python-format
 msgid "Transfer %(transfer_id)s could not be found."
 msgstr "No se ha podido encontrar la transferencia %(transfer_id)s)."
 
@@ -6583,6 +6739,11 @@ msgstr "No se puede crear el cliente Barbican sin un project_id."
 msgid "Unable to create consistency group %s"
 msgstr "No se ha podido crear el grupo de consistencia %s"
 
+msgid "Unable to create lock. Coordination backend not started."
+msgstr ""
+"No se puede crear el bloqueo. El programa de fondo de coordinación no se ha "
+"iniciado"
+
 #, python-format
 msgid ""
 "Unable to create or get default storage group for FAST policy: "
@@ -6630,6 +6791,12 @@ msgstr ""
 #, python-format
 msgid "Unable to extend volume %s"
 msgstr "No se ha podido ampliar el volumen %s"
+
+#, python-format
+msgid "Unable to failover to replication target:%(reason)s)."
+msgstr ""
+"No se ha podido realizar la migración tras error al destino de replicación:"
+"%(reason)s)."
 
 msgid "Unable to fetch connection information from backend."
 msgstr "No se puede captar información de conexión de programa de fondo."
@@ -6887,6 +7054,9 @@ msgstr ""
 msgid "Unexpected response from Nimble API"
 msgstr "Respuesta inesperada de la API Nimble"
 
+msgid "Unexpected response from Tegile IntelliFlash API"
+msgstr "Respuesta inesperada de la API de Tegile IntelliFlash"
+
 msgid "Unexpected status code"
 msgstr "Código de estado inesperado"
 
@@ -7077,6 +7247,14 @@ msgstr ""
 "%(tgt)s."
 
 #, python-format
+msgid ""
+"Version %(req_ver)s is not supported by the API. Minimum is %(min_ver)s and "
+"maximum is %(max_ver)s."
+msgstr ""
+"La versión %(req_ver)s no está soportada  por la API.  La versión mínima es "
+"la %(min_ver)s y la máxima es la %(max_ver)s."
+
+#, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
 msgstr "El volumen virtual '%s' no existe en la matriz."
 
@@ -7099,6 +7277,11 @@ msgstr ""
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
 msgstr "No se ha podido crear el volumen %(vol)s en la agrupación %(pool)s."
+
+#, python-format
+msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
+msgstr ""
+"El volumen %(vol1)s no coincide con el valor de snapshot.volume_id %(vol2)s."
 
 #, python-format
 msgid ""
@@ -7547,6 +7730,9 @@ msgstr ""
 
 msgid "X-IO Volume Driver exception!"
 msgstr "Excepción del controlador de volumen X-IO"
+
+msgid "XML support has been deprecated and will be removed in the N release."
+msgstr "El soporte XML está en desuso y se eliminará en el release N."
 
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr ""
