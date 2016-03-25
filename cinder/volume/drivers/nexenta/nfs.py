@@ -398,8 +398,8 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                                                  volume)
             self._ensure_share_mounted(sub_share, mnt_path)
 
-        if (('size' in volume) and ('size' in snapshot) and (
-            volume['size'] > snapshot['size'])):
+        if (('size' in volume) and (
+                volume['size'] > snapshot['volume_size'])):
             self.extend_volume(volume, volume['size'])
 
         return {'provider_location': volume['provider_location']}
@@ -413,6 +413,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         LOG.info(_LI('Creating clone of volume: %s'), src_vref['id'])
         snapshot = {'volume_name': src_vref['name'],
                     'volume_id': src_vref['id'],
+                    'volume_size': src_vref['size'],
                     'name': self._get_clone_snapshot_name(volume)}
         # We don't delete this snapshot, because this snapshot will be origin
         # of new volume. This snapshot will be automatically promoted by NMS

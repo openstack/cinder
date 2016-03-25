@@ -264,7 +264,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         :param src_vref: source volume reference
         """
         snapshot = {'volume_name': src_vref['name'],
-                    'name': self._get_clone_snapshot_name(volume)}
+                    'name': self._get_clone_snapshot_name(volume),
+                    'volume_size': src_vref['size']}
         LOG.debug('Creating temp snapshot of the original volume: '
                   '%(volume_name)s@%(name)s', snapshot)
         # We don't delete this snapshot, because this snapshot will be origin
@@ -480,8 +481,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             '%s@%s' % (self._get_zvol_name(snapshot['volume_name']),
                        snapshot['name']),
             self._get_zvol_name(volume['name']))
-        if (('size' in volume) and ('size' in snapshot) and (
-            volume['size'] > snapshot['size'])):
+        if (('size' in volume) and (
+                volume['size'] > snapshot['volume_size'])):
             self.extend_volume(volume, volume['size'])
 
     def delete_snapshot(self, snapshot):
