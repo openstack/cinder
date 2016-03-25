@@ -446,6 +446,22 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(utils, 'execute')
     @mock.patch.object(sheepdog, 'LOG')
+    def test_run_dog_fail_to_connect_bugcase(self, fake_logger, fake_execute):
+        # NOTE(zhangsong): Sheepdog's bug case.
+        # details are written to Sheepdog driver code.
+        args = ('node', 'list')
+        stdout = ''
+        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
+        expected_reason = (_('Failed to connect to sheep daemon. '
+                           'addr: %(addr)s, port: %(port)s'),
+                           {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
+        fake_execute.return_value = (stdout, stderr)
+        ex = self.assertRaises(exception.SheepdogError,
+                               self.client._run_dog, *args)
+        self.assertEqual(expected_reason, ex.kwargs['reason'])
+
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(sheepdog, 'LOG')
     def test_run_dog_unknown_error(self, fake_logger, fake_execute):
         args = ('cluster', 'info')
         cmd = self.test_data.CMD_DOG_CLUSTER_INFO
@@ -498,7 +514,25 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(utils, 'execute')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_run_qemu_img_execution_error(self, fake_logger, fake_execute):
+    def test_run_qemu_img_fail_to_connect(self, fake_logger, fake_execute):
+        args = ('create', 'dummy')
+        cmd = ('qemu-img', 'create', 'dummy')
+        exit_code = 1
+        stdout = 'stdout dummy'
+        stderr = self.test_data.QEMU_IMG_FAILED_TO_CONNECT
+        expected_reason = (_('Failed to connect to sheep daemon. '
+                             'addr: %(addr)s, port: %(port)s'),
+                           {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
+        fake_execute.side_effect = processutils.ProcessExecutionError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout, stderr=stderr)
+        ex = self.assertRaises(exception.SheepdogError,
+                               self.client._run_qemu_img, *args)
+        self.assertEqual(expected_reason, ex.kwargs['reason'])
+
+    @mock.patch.object(utils, 'execute')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_run_qemu_img_unknown_execution_error(self, fake_logger,
+                                                  fake_execute):
         args = ('create', 'dummy')
         cmd = ('qemu-img', 'create', 'dummy')
         exit_code = 1
@@ -654,20 +688,6 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertTrue(fake_logger.warning.called)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    def test_delete_fail_to_connect_bugcase(self, fake_execute):
-        # NOTE(tishizaki): Sheepdog's bug case.
-        # details are written to Sheepdog driver code.
-        stdout = ''
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_reason = (_('Failed to connect to sheep daemon. '
-                           'addr: %(addr)s, port: %(port)s'),
-                           {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
-        fake_execute.return_value = (stdout, stderr)
-        ex = self.assertRaises(exception.SheepdogError,
-                               self.client.delete, self._vdiname)
-        self.assertEqual(expected_reason, ex.kwargs['reason'])
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
     def test_delete_unknown_error(self, fake_logger, fake_execute):
         cmd = self.test_data.cmd_dog_vdi_delete(self._vdiname)
@@ -788,23 +808,6 @@ class SheepdogClientTestCase(test.TestCase):
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     @mock.patch.object(sheepdog, 'LOG')
-    def test_delete_snapshot_fail_to_connect_bugcase(self, fake_logger,
-                                                     fake_execute):
-        # NOTE(tishizaki): Sheepdog's bug case.
-        # details are written to Sheepdog driver code.
-        args = (self._src_vdiname, self._snapname)
-        stdout = ''
-        stderr = self.test_data.DOG_COMMAND_ERROR_FAIL_TO_CONNECT
-        expected_reason = (_('Failed to connect to sheep daemon. '
-                           'addr: %(addr)s, port: %(port)s'),
-                           {'addr': SHEEP_ADDR, 'port': SHEEP_PORT})
-        fake_execute.return_value = (stdout, stderr)
-        ex = self.assertRaises(exception.SheepdogError,
-                               self.client.delete_snapshot, *args)
-        self.assertEqual(expected_reason, ex.kwargs['reason'])
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
-    @mock.patch.object(sheepdog, 'LOG')
     def test_delete_snapshot_unknown_error(self, fake_logger, fake_execute):
         args = (self._src_vdiname, self._snapname)
         cmd = self.test_data.cmd_dog_vdi_delete_snapshot(*args)
@@ -835,27 +838,6 @@ class SheepdogClientTestCase(test.TestCase):
         fake_execute.return_code = ("", "")
         self.client.clone(*args)
         fake_execute.assert_called_once_with(*expected_cmd)
-
-    @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
-    @mock.patch.object(sheepdog, 'LOG')
-    def test_clone_fail_to_connect(self, fake_logger, fake_execute):
-        args = (self._src_vdiname, self._snapname,
-                self._dst_vdiname, self._dst_vdisize)
-        cmd = self.test_data.cmd_qemuimg_vdi_clone(*args)
-        exit_code = 2
-        stdout = 'stdout_dummy'
-        stderr = self.test_data.QEMU_IMG_FAILED_TO_CONNECT
-        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
-                                                         exit_code=exit_code,
-                                                         stdout=stdout,
-                                                         stderr=stderr)
-        fake_execute.side_effect = exception.SheepdogCmdError(
-            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
-            stderr=stderr.replace('\n', '\\n'))
-        ex = self.assertRaises(exception.SheepdogCmdError, self.client.clone,
-                               *args)
-        self.assertTrue(fake_logger.error.called)
-        self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_qemu_img')
     @mock.patch.object(sheepdog, 'LOG')
