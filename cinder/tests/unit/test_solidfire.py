@@ -30,13 +30,6 @@ from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
 
-def create_configuration():
-    configuration = mock.Mock(conf.Configuration)
-    configuration.san_is_local = False
-    configuration.append_config_values(mock.IgnoreArg())
-    return configuration
-
-
 class SolidFireVolumeTestCase(test.TestCase):
     def setUp(self):
         self.ctxt = context.get_admin_context()
@@ -1029,7 +1022,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual('1.1.1.1:3260  0', v['provider_location'])
 
             configured_svip = '9.9.9.9:6500'
-            self.configuration.sf_svip = configured_svip
+            sfv.active_cluster_info['svip'] = configured_svip
             v = sfv._get_model_info(sfaccount, 1)
             self.assertEqual('%s  0' % configured_svip, v['provider_location'])
 
