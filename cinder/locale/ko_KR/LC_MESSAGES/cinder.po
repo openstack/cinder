@@ -13,13 +13,13 @@
 # SeYeon Lee <sy_lee@kr.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev21\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev22\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-24 10:43+0000\n"
+"POT-Creation-Date: 2016-03-25 10:18+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-25 06:52+0000\n"
+"PO-Revision-Date: 2016-03-25 06:57+0000\n"
 "Last-Translator: SeYeon Lee <sy_lee@kr.ibm.com>\n"
 "Language: ko-KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -507,6 +507,14 @@ msgstr ""
 
 msgid "Append port group description error."
 msgstr "포트 그룹 설명 추가 오류."
+
+#, python-format
+msgid ""
+"Applying the zones and cfgs to the switch failed (error code=%(err_code)s "
+"error msg=%(err_msg)s."
+msgstr ""
+"구역과 cfgs를 스위치에 적용하는 데 실패했습니다(오류 코드=%(err_code)s 오류 "
+"메시지=%(err_msg)s."
 
 #, python-format
 msgid "Array does not exist or is offline. Current status of array is %s."
@@ -1006,6 +1014,17 @@ msgid ""
 msgstr ""
 "이미 연결된 볼륨 %s은(는) 연결할 수 없습니다. 다중 연결은 "
 "'netapp_enable_multiattach' 구성 옵션을 통해 사용 안함으로 설정됩니다. "
+
+msgid "Cannot change VF context in the session."
+msgstr "세션에서 VF 컨텍스트를 변경할 수 없습니다."
+
+#, python-format
+msgid ""
+"Cannot change VF context, specified VF is not available in the manageable VF "
+"list %(vf_list)s."
+msgstr ""
+"VF 컨텍스트를 변경할 수 없음, 관리할 수 있는 VF 목록 %(vf_list)s에서 지정된 "
+"VF를 사용할 수 없습니다."
 
 msgid "Cannot connect to ECOM server."
 msgstr "ECOM 서버를 연결할 수 없습니다. "
@@ -2778,8 +2797,20 @@ msgid "Error while authenticating with switch: %s."
 msgstr "스위치로 인증하는 동안 오류 발생: %s."
 
 #, python-format
+msgid "Error while changing VF context %s."
+msgstr "VF 컨텍스트 %s을(를) 변경하는 중에 오류가 발생했습니다."
+
+#, python-format
+msgid "Error while checking the firmware version %s."
+msgstr "펌웨어 버전 %s을(를) 확인하는 중에 오류가 발생했습니다."
+
+#, python-format
 msgid "Error while checking transaction status: %s"
 msgstr "트랜잭션 상태 검사 중에 오류 발생: %s"
+
+#, python-format
+msgid "Error while checking whether VF is available for management %s."
+msgstr "VF가 관리 %s에 사용 가능한지 확인하는 중 오류가 발생했습니다."
 
 #, python-format
 msgid ""
@@ -2837,13 +2868,27 @@ msgid "Error while getting disco information [%s]."
 msgstr "disco 정보 [%s]을(를) 가져오는 중에 오류가 발생했습니다."
 
 #, python-format
+msgid "Error while getting nvp value: %s."
+msgstr "nvp 값을 가져오는 중 오류 발생: %s."
+
+#, python-format
 msgid "Error while getting session information %s."
 msgstr "세션 정보 %s을(를) 가져오는 중에 오류가 발생했습니다."
+
+#, python-format
+msgid "Error while parsing the data: %s."
+msgstr "데이터 구문 분석 중 오류 발생: %s."
 
 #, python-format
 msgid "Error while querying page %(url)s on the switch, reason %(error)s."
 msgstr ""
 "스위치에서 페이지 %(url)s을(를) 쿼리하는 중에 오류 발생, 이유 %(error)s."
+
+#, python-format
+msgid ""
+"Error while removing the zones and cfgs in the zone string: %(description)s."
+msgstr ""
+"구역 문자열에서 구역과 cfgs를 제거하는 중에 오류 발생: %(description)s."
 
 #, python-format
 msgid "Error while requesting %(service)s API."
@@ -2852,6 +2897,14 @@ msgstr "%(service)s API를 요청하는 중 오류가 발생했습니다."
 #, python-format
 msgid "Error while running zoning CLI: (command=%(cmd)s error=%(err)s)."
 msgstr "구역 지정 CLI 실행 중에 오류 발생: (명령=%(cmd)s 오류=%(err)s)."
+
+#, python-format
+msgid ""
+"Error while updating the new zones and cfgs in the zone string. Error "
+"%(description)s."
+msgstr ""
+"구역 설정에서 새 구역과 cfgs를 업데이트하는 중에 오류가 발생했습니다. 오류 "
+"%(description)s."
 
 msgid "Error writing field to database"
 msgstr "데이터베이스에 필드 쓰기 오류"
@@ -2900,6 +2953,10 @@ msgstr ""
 #, python-format
 msgid "Exception in _select_ds_for_volume: %s."
 msgstr "_select_ds_for_volume의 예외: %s"
+
+#, python-format
+msgid "Exception while forming the zone string: %s."
+msgstr "구역 문자열을 형성하는 중에 예외 발생: %s."
 
 #, python-format
 msgid "Exception: %s"
@@ -2997,6 +3054,10 @@ msgstr "그룹의 스냅샷 작성 실패: %(response)s."
 #, python-format
 msgid "Failed creating snapshot for volume %(volname)s: %(response)s."
 msgstr "볼륨 %(volname)s에 대한 스냅샷 작성 실패: %(response)s."
+
+#, python-format
+msgid "Failed getting active zone set from fabric %s."
+msgstr "패브릭 %s에서 활성 구역 세트를 가져오는 데 실패했습니다."
 
 #, python-format
 msgid "Failed getting details for pool %s."
@@ -5570,6 +5631,9 @@ msgstr "FCP 대상을 찾을 수 없음"
 
 msgid "No Port Group elements found in config file."
 msgstr "구성 파일에서 포트 그룹 요소를 찾을 수 없습니다."
+
+msgid "No VF ID is defined in the configuration file."
+msgstr "구성 파일에 VF ID가 정의되지 않았습니다."
 
 msgid "No active iSCSI portals with supplied iSCSI IPs"
 msgstr "제공된 iSCSI IP를 가진 활성 iSCSI 포털이 없음"
@@ -8219,6 +8283,9 @@ msgstr "V2 롤백, 볼륨이 스토리지 그룹에 없습니다. "
 
 msgid "V3 rollback"
 msgstr "V3 롤백"
+
+msgid "VF is not enabled."
+msgstr "VF가 사용되지 않습니다."
 
 #, python-format
 msgid "VV Set %s does not exist."

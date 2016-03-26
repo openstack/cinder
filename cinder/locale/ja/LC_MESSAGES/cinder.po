@@ -16,13 +16,13 @@
 # 笹原 昌美 <ebb0de1@jp.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev21\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev22\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-24 10:43+0000\n"
+"POT-Creation-Date: 2016-03-25 10:18+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-25 06:51+0000\n"
+"PO-Revision-Date: 2016-03-25 07:35+0000\n"
 "Last-Translator: 笹原 昌美 <ebb0de1@jp.ibm.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -204,6 +204,12 @@ msgid "%s is not set"
 msgstr "%s が設定されていません"
 
 #, python-format
+msgid "%s is not set and is required for the replication device to be valid."
+msgstr ""
+"%s が設定されていません。これはレプリケーションデバイスを有効にするために必要"
+"です。"
+
+#, python-format
 msgid "%s is not set."
 msgstr "%s が設定されていません。"
 
@@ -316,6 +322,11 @@ msgstr "プールが見つかりませんでした。(プール ID: %(pool_id)s)
 #, python-format
 msgid "A snapshot status is invalid. (status: %(status)s)"
 msgstr "スナップショット状況が無効です。(状況: %(status)s)"
+
+msgid "A valid secondary target MUST be specified in order to failover."
+msgstr ""
+"フェイルオーバーのために有効なセカンダリーターゲットを指定する必要がありま"
+"す。"
 
 #, python-format
 msgid "A volume status is invalid. (status: %(status)s)"
@@ -1132,6 +1143,10 @@ msgstr ""
 "ボリューム %(volume_id)s は無効な状態 %(status)s であるため、整合性グルー"
 "プ%(group_id)s から削除できません。有効な状態は %(valid)s です。"
 
+#, python-format
+msgid "Cannot retype from HPE3PARDriver to %s."
+msgstr "HPE3PARDriver から %s にタイプ変更することはできません。"
+
 msgid "Cannot retype from one 3PAR array to another."
 msgstr "3PAR アレイから別のアレイにタイプ変更することはできません。"
 
@@ -1383,6 +1398,13 @@ msgid ""
 msgstr ""
 "ボリュームのコピー・タスクが失敗しました: convert_to_base_volume: id=%(id)s、"
 "status=%(status)s。"
+
+#, python-format
+msgid ""
+"Copy volume task failed: create_cloned_volume id=%(id)s, status=%(status)s."
+msgstr ""
+"ボリュームタイプのコピーのタスクが失敗しました: create_cloned_volume id="
+"%(id)s、状態=%(status)s。"
 
 #, python-format
 msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
@@ -2196,6 +2218,10 @@ msgstr ""
 "への関連付けエラーです。エラーの説明: %(errordesc)s。"
 
 #, python-format
+msgid "Error attaching volume %s. Target limit might be reached!"
+msgstr "ボリューム %s の接続エラー。ターゲットの制限に達します。"
+
+#, python-format
 msgid ""
 "Error break clone relationship: Sync Name: %(syncName)s Return code: "
 "%(rc)lu.  Error: %(error)s."
@@ -2912,6 +2938,9 @@ msgstr ""
 "スナップショットリソースエリアの確認に失敗しました。ID %s のボリュームを見つ"
 "けることができませんでした"
 
+msgid "Failed to establish SSC connection."
+msgstr "SSC 接続の確立に失敗しました。"
+
 #, python-format
 msgid ""
 "Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
@@ -3152,6 +3181,27 @@ msgid ""
 msgstr ""
 "変更されたサイズ %(size)s が浮動小数点数ではなかったため、既存ボリューム "
 "%(name)s の管理に失敗しました。"
+
+msgid ""
+"Failed to manage existing volume because the pool of the volume type chosen "
+"does not match the NFS share passed in the volume reference."
+msgstr ""
+"選択されたボリューム種別のプールがボリューム参照で渡された NFS 共有に一致しな"
+"いため、既存のボリュームの管理に失敗しました。"
+
+msgid ""
+"Failed to manage existing volume because the pool of the volume type chosen "
+"does not match the file system passed in the volume reference."
+msgstr ""
+"選択されたボリューム種別のプールがボリューム参照で渡されたファイルシステムを"
+"一致しないため、既存のボリュームの管理に失敗しました。"
+
+msgid ""
+"Failed to manage existing volume because the pool of the volume type chosen "
+"does not match the pool of the host."
+msgstr ""
+"選択されたボリューム種別がホストのプールと一致しないため、既存のボリュームの"
+"管理に失敗しました。"
 
 #, python-format
 msgid ""
@@ -3847,6 +3897,12 @@ msgstr "Google Cloud Storage の oauth2 エラー: %(reason)s"
 msgid "HBSD error occurs."
 msgstr "HBSD エラーが発生しました。"
 
+msgid "HNAS has disconnected SSC"
+msgstr "HNAS に接続解除された SSC があります"
+
+msgid "HPELeftHand url not found"
+msgstr "HPELeftHand url が見つかりません"
+
 #, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
@@ -4129,6 +4185,26 @@ msgstr "ディスクタイプが無効です: %s。"
 #, python-format
 msgid "Invalid host: %(reason)s"
 msgstr "無効なホスト: %(reason)s"
+
+#, python-format
+msgid ""
+"Invalid hpe3parclient version found (%(found)s). Version %(minimum)s or "
+"greater required. Run \"pip install --upgrade python-3parclient\" to upgrade "
+"the hpe3parclient."
+msgstr ""
+"無効な hpe3parclient バージョンが見つかりました (%(found)s)。バージョン "
+"%(minimum)s 以上が必要です。 \"pip install --upgrade python-3parclient\" を実"
+"行して hpe3parclient をアップグレードしてください。"
+
+#, python-format
+msgid ""
+"Invalid hpelefthandclient version found (%(found)s). Version %(minimum)s or "
+"greater required. Run 'pip install --upgrade python-lefthandclient' to "
+"upgrade the hpelefthandclient."
+msgstr ""
+"無効な hpelefthandclient バージョンが見つかりました (%(found)s)。バージョン "
+"%(minimum)s 以上が必要です。 'pip install --upgrade python-lefthandclient'  "
+"を実行して hpelefthandclient をアップグレードしてください。"
 
 #, python-format
 msgid "Invalid image href %(image_href)s."
@@ -4488,6 +4564,11 @@ msgstr ""
 
 msgid "Manage existing volume not implemented."
 msgstr "既存ボリュームの管理は実装されていません。"
+
+msgid "Managing of snapshots to failed-over volumes is not allowed."
+msgstr ""
+"フェイルオーバーされたボリュームへのスナップショットを管理対象にすることは許"
+"可されません。"
 
 msgid "Map info is None due to array version not supporting hypermetro."
 msgstr ""
@@ -5290,6 +5371,10 @@ msgstr "プロジェクト %(project_id)s の割り当て量使用率が見つ�
 msgid "RBD diff op failed - (ret=%(ret)s stderr=%(stderr)s)"
 msgstr "RBD diff 操作が失敗しました: (ret=%(ret)s stderr=%(stderr)s)"
 
+#, python-format
+msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
+msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
+
 msgid "Raid did not have MCS Channel."
 msgstr "RAID に MCS チャンネルがありません。"
 
@@ -5300,6 +5385,9 @@ msgid ""
 msgstr ""
 "構成オプション max_luns_per_storage_group によって設定された制限に達しまし"
 "た。%(vol)s をストレージ・グループ %(sg)s に追加する操作は拒否されます。"
+
+msgid "Reference must be for an unmanaged snapshot."
+msgstr "参照は非管理対象のスナップショットに対するものでなければなりません。"
 
 msgid "Reference must be for an unmanaged virtual volume."
 msgstr "非管理対象の仮想ボリュームに対する参照でなければなりません。"
@@ -5736,6 +5824,10 @@ msgstr ""
 "ありません。"
 
 #, python-format
+msgid "Snapshot '%s' doesn't exist on array."
+msgstr "スナップショット '%s' はアレイに存在しません。"
+
+#, python-format
 msgid ""
 "Snapshot cannot be created because volume %(vol_id)s is not available, "
 "current volume status: %(vol_status)s."
@@ -6024,6 +6116,10 @@ msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "追加仕様: %(extraspec)s は無効です。"
 
 #, python-format
+msgid "The failed-over volume could not be deleted: %s"
+msgstr "failed-over ボリュームを削除することができませんでした: %s"
+
+#, python-format
 msgid "The following elements are required: %s"
 msgstr "次のエレメントが必要です: %s"
 
@@ -6032,6 +6128,13 @@ msgstr "ホスト・グループまたは iSCSI ターゲットを追加でき�
 
 msgid "The host group or iSCSI target was not found."
 msgstr "ホスト・グループまたは iSCSI ターゲットが見つかりませんでした。"
+
+msgid ""
+"The host is not ready to be failed back. Please resynchronize the volumes "
+"and resume replication on the 3PAR backends."
+msgstr ""
+"ホストはフェイルバックを行う準備ができていません。3PAR バックエンドでボリュー"
+"ムを再同期し、複製を再開してください。"
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
@@ -6079,8 +6182,30 @@ msgid "The parent backup must be available for incremental backup."
 msgstr "増分バックアップでは親バックアップが使用可能でなければなりません。"
 
 #, python-format
+msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
+msgstr ""
+"指定されたスナップショット '%s' は指定されたボリュームのスナップショットでは"
+"ありません。"
+
+msgid ""
+"The reference to the volume in the backend should have the format "
+"file_system/volume_name (volume_name cannot contain '/')"
+msgstr ""
+"バックエンドのボリュームへの参照の形式は file_system/volume_name "
+"(volume_name には '/' を使用できません) でなければなりません"
+
+#, python-format
 msgid "The remote retention count must be %s or less."
 msgstr "リモートの保存数は %s 以下でなければなりません。"
+
+msgid ""
+"The replication mode was not configured correctly in the volume type "
+"extra_specs. If replication:mode is periodic, replication:sync_period must "
+"also be specified and be between 300 and 31622400 seconds."
+msgstr ""
+"ボリューム種別の extra_specs でレプリケーションモードが正しく構成されていませ"
+"ん。replication:mode が periodic の場合、replication:sync_period must も 300 "
+"秒から 31622400 秒の間に設定しなければなりません。"
 
 #, python-format
 msgid "The replication sync period must be at least %s seconds."
@@ -6295,12 +6420,42 @@ msgid "There is no virtual disk device."
 msgstr "仮想ディスク・デバイスがありません。"
 
 #, python-format
+msgid "There was an error adding the volume to the remote copy group: %s."
+msgstr ""
+"リモートコピーグループへのボリュームの追加中にエラーが発生しました: %s。"
+
+#, python-format
+msgid "There was an error creating the cgsnapshot: %s"
+msgstr "cgsnapshot の作成中にエラーが発生しました: %s"
+
+#, python-format
+msgid "There was an error creating the remote copy group: %s."
+msgstr "リモートコピーグループの作成中にエラーが発生しました: %s。"
+
+#, python-format
+msgid ""
+"There was an error setting the sync period for the remote copy group: %s."
+msgstr "リモートコピーグループの同期期間の設定中にエラーが発生しました: %s。"
+
+#, python-format
+msgid ""
+"There was an error setting up a remote copy group on the 3PAR arrays: "
+"('%s'). The volume will not be recognized as replication type."
+msgstr ""
+"3PAR アレイでのリモートコピーグループのセットアップ中にエラーが発生しました: "
+"('%s')。ボリュームはレプリケーションタイプとして認識されません。"
+
+#, python-format
 msgid ""
 "There was an error setting up a remote schedule on the LeftHand arrays: "
 "('%s'). The volume will not be recognized as replication type."
 msgstr ""
 "LeftHand アレイのリモートスケジュールのセットアップ中にエラーが発生しました: "
 "('%s')。ボリュームはレプリケーションタイプとして認識されません。"
+
+#, python-format
+msgid "There was an error starting remote copy: %s."
+msgstr "リモートコピーの開始中にエラーが発生しました: %s。"
 
 #, python-format
 msgid "There's no Gluster config file configured (%s)"
@@ -6745,7 +6900,14 @@ msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "ソート方向が不明です。'desc' または 'asc' でなければなりません"
 
 msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
-msgstr "'failed-over'  ボリュームのスナップショットの非管理は許可されません。"
+msgstr ""
+"'failed-over'  ボリュームからのスナップショットを非管理対象にすることは許可さ"
+"れません。"
+
+msgid "Unmanaging of snapshots from failed-over volumes is not allowed."
+msgstr ""
+"フェイルオーバーされたボリュームからのスナップショットを非管理対象にすること"
+"は許可されません。"
 
 #, python-format
 msgid "Unrecognized QOS keyword: \"%s\""
@@ -7133,6 +7295,13 @@ msgstr "ボリュームドライバーが準備できていません。"
 msgid "Volume driver reported an error: %(message)s"
 msgstr "ボリュームドライバーがエラーを報告しました: %(message)s"
 
+msgid "Volume has a temporary snapshot that can't be deleted at this time."
+msgstr ""
+"ボリュームには今回削除できない一時的なスナップショットが含まれています。"
+
+msgid "Volume has children and cannot be deleted!"
+msgstr "ボリュームには子が含まれており、削除できません。"
+
 #, python-format
 msgid "Volume in consistency group %s is attached. Need to detach first."
 msgstr ""
@@ -7184,7 +7353,14 @@ msgid "Volume not found for instance %(instance_id)s."
 msgstr "インスタンス %(instance_id)s のボリュームが見つかりませんでした。"
 
 msgid "Volume not found on configured storage backend."
-msgstr "ボリュームが構成済みストレージ・バックエンドに見つかりません。"
+msgstr "ボリュームが構成済みストレージバックエンドに見つかりません。"
+
+msgid ""
+"Volume not found on configured storage backend. If your volume name contains "
+"\"/\", please rename it and try to manage again."
+msgstr ""
+"設定されたストレージバックエンドでボリュームが見つかりません。ボリューム名に "
+"\"/\" が使用されている場合、名前を変更し、再度管理を試行してください。"
 
 msgid "Volume not found on configured storage pools."
 msgstr "ボリュームが構成済みストレージ・プールに見つかりません。"
@@ -7367,6 +7543,14 @@ msgstr "XtremIO は正しく初期化されていません。クラスターが�
 msgid "You must implement __call__"
 msgstr "__call__ を実装しなければなりません"
 
+msgid ""
+"You must install hpe3parclient before using 3PAR drivers. Run \"pip install "
+"python-3parclient\" to install the hpe3parclient."
+msgstr ""
+"3PAR ドライバーを使用するには hpe3parclient をインストールしておく必要があり"
+"ます。 \"pip install python-3parclient\" を実行して hpe3parclient をインス"
+"トールしてください。"
+
 msgid "You must supply an array in your EMC configuration file."
 msgstr "EMC 構成ファイルにアレイを指定する必要があります。"
 
@@ -7444,6 +7628,67 @@ msgstr ""
 
 #, python-format
 msgid ""
+"_find_affinity_group, connector: %(connector)s, Associators: "
+"FUJITSU_AuthorizedTarget, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group、コネクター: %(connector)s、アソシエーター: "
+"FUJITSU_AuthorizedTarget を ETERNUS に接続できません。"
+
+#, python-format
+msgid ""
+"_find_affinity_group, connector: %(connector)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group、コネクター: %(connector)s、EnumerateInstanceNames を "
+"ETERNUS に接続できません。"
+
+#, python-format
+msgid ""
+"_find_affinity_group,connector: %(connector)s,AssocNames: "
+"FUJITSU_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_find_affinity_group、コネクター: %(connector)s、AssocNames: "
+"FUJITSU_ProtocolControllerForUnit を ETERNUS に接続できません。"
+
+#, python-format
+msgid "_find_initiator_names, connector: %(connector)s, initiator not found."
+msgstr ""
+"_find_initiator_names、コネクター: %(connector)s、イニシエーターが見つかりま"
+"せん。"
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip list: %(iscsiip_list)s, iqn not found."
+msgstr ""
+"_get_eternus_iscsi_properties、iscsiip list: %(iscsiip_list)s、iqn が見つかり"
+"ません。"
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, AssociatorNames: "
+"CIM_BindsTo, cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties、iscsiip: %(iscsiip)s、AssociatorNames: "
+"CIM_BindsTo を ETERNUS に接続できません。"
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, EnumerateInstanceNames, "
+"cannot connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties、iscsiip: %(iscsiip)s、EnumerateInstanceNames "
+"を ETERNUS に接続できません。"
+
+#, python-format
+msgid ""
+"_get_eternus_iscsi_properties, iscsiip: %(iscsiip)s, GetInstance, cannot "
+"connect to ETERNUS."
+msgstr ""
+"_get_eternus_iscsi_properties、iscsiip: %(iscsiip)s、GetInstance を ETERNUS "
+"に接続できません。"
+
+#, python-format
+msgid ""
 "_get_hdr_dic: attribute headers and values do not match.\n"
 " Headers: %(header)s\n"
 " Values: %(row)s."
@@ -7478,6 +7723,42 @@ msgid ""
 msgstr ""
 "_get_vdisk_map_properties: ボリューム %(vol)s の入出力グループ %(gid)s でノー"
 "ドが見つかりませんでした。"
+
+#, python-format
+msgid ""
+"_map_lun, vol_instance.path:%(vol)s, volumename: %(volumename)s, volume_uid: "
+"%(uid)s, initiator: %(initiator)s, target: %(tgt)s, aglist: %(aglist)s, "
+"Storage Configuration Service not found."
+msgstr ""
+"_map_lun、vol_instance.path:%(vol)s、ボリューム名: %(volumename)s、"
+"volume_uid: %(uid)s、イニシエーター: %(initiator)s、ターゲット: %(tgt)s、"
+"aglist: %(aglist)s、ストレージ設定サービスが見つかりません。"
+
+#, python-format
+msgid ""
+"_unmap_lun, vol_instance.path: %(volume)s, volumename: %(volumename)s, "
+"volume_uid: %(uid)s, aglist: %(aglist)s, Controller Configuration Service "
+"not found."
+msgstr ""
+"_unmap_lun、vol_instance.path: %(volume)s、ボリューム名: %(volumename)s、"
+"volume_uid: %(uid)s、aglist: %(aglist)s、コントローラー設定サービスが見つかり"
+"ません。"
+
+#, python-format
+msgid ""
+"_unmap_lun, volumename: %(volumename)s, volume_uid: %(volume_uid)s, "
+"AffinityGroup: %(ag)s, Return code: %(rc)lu, Error: %(errordesc)s."
+msgstr ""
+"_unmap_lun、ボリューム名 %(volumename)s、volume_uid: %(volume_uid)s、"
+"AffinityGroup: %(ag)s、戻りコード: %(rc)lu、エラー: %(errordesc)s。"
+
+#, python-format
+msgid ""
+"_unmap_lun,vol_instance.path: %(volume)s, AssociatorNames: "
+"CIM_ProtocolControllerForUnit, cannot connect to ETERNUS."
+msgstr ""
+"_unmap_lun、vol_instance.path: %(volume)s、AssociatorNames: "
+"CIM_ProtocolControllerForUnit を ETERNUS に接続できません。"
 
 msgid "_update_volume_stats: Could not get storage pool data."
 msgstr ""
