@@ -16,14 +16,14 @@
 # 笹原 昌美 <ebb0de1@jp.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev22\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev23\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-25 10:18+0000\n"
+"POT-Creation-Date: 2016-03-26 08:48+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-25 07:35+0000\n"
-"Last-Translator: 笹原 昌美 <ebb0de1@jp.ibm.com>\n"
+"PO-Revision-Date: 2016-03-27 06:16+0000\n"
+"Last-Translator: Tsutomu Kimura <ebb0de2@jp.ibm.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -117,6 +117,14 @@ msgid "%(message)s, subjectAltName: %(sanList)s."
 msgstr "%(message)s、subjectAltName: %(sanList)s。"
 
 #, python-format
+msgid ""
+"%(msg_type)s: creating NetworkPortal: ensure port %(port)d on ip %(ip)s is "
+"not in use by another service."
+msgstr ""
+"NetworkPortal の作成に関する %(msg_type)s: 他のサービスが IP %(ip)s 上のポー"
+"ト %(port)d を使用していないことを確認してください。"
+
+#, python-format
 msgid "%(name)s has a minimum character requirement of %(min_length)s."
 msgstr "%(name)s の最小文字数要件は %(min_length)s です。"
 
@@ -191,9 +199,9 @@ msgstr "%s は存在しません。"
 msgid "%s is not a directory."
 msgstr "%s はディレクトリーではありません。"
 
-#, python-format
+#, fuzzy, python-format
 msgid "%s is not a string or unicode"
-msgstr "%s がストリングでもユニコードでもありません"
+msgstr "%s が文字列でもユニコードでもありません"
 
 #, python-format
 msgid "%s is not installed"
@@ -334,7 +342,7 @@ msgstr "ボリューム状況が無効です。(状況: %(status)s)"
 
 #, python-format
 msgid "API %(name)s failed with error string %(err)s"
-msgstr "API %(name)s がエラー・ストリング %(err)s で失敗しました"
+msgstr "API %(name)s がエラー文字列 %(err)s で失敗しました"
 
 #, fuzzy, python-format
 msgid ""
@@ -650,6 +658,12 @@ msgstr ""
 msgid "Bad project format: project is not in proper format (%s)"
 msgstr "不正なプロジェクト形式: プロジェクトの形式が正しくありません (%s)"
 
+#, fuzzy, python-format
+msgid "Bad request sent to Datera cluster:Invalid args: %(args)s | %(message)s"
+msgstr ""
+"Datera クラスターに不正な要求 (無効な引数) が送信されました: %(args)s | "
+"%(message)s"
+
 msgid "Bad response from Datera API"
 msgstr "Datera API からの正しくない応答"
 
@@ -661,6 +675,48 @@ msgstr "バイナリー"
 
 msgid "Blank components"
 msgstr "空白コンポーネント"
+
+#, fuzzy
+msgid "Blockbridge API authentication scheme (token or password)"
+msgstr "Blockbridge API の認証スキーム (トークンまたはパスワード)"
+
+msgid "Blockbridge API password (for auth scheme 'password')"
+msgstr "Blockbridge API のパスワード ('password' の認証スキーム)"
+
+#, fuzzy
+msgid "Blockbridge API token (for auth scheme 'token')"
+msgstr "Blockbridge API のトークン ('token' の認証スキーム )"
+
+msgid "Blockbridge API user (for auth scheme 'password')"
+msgstr "Blockbridge API のユーザー ('password' の認証スキーム)"
+
+msgid "Blockbridge api host not configured"
+msgstr "Blockbridge API のホストが設定されていません"
+
+#, python-format
+msgid "Blockbridge configured with invalid auth scheme '%(auth_scheme)s'"
+msgstr "Blockbridge に無効な認証スキーム '%(auth_scheme)s' が設定されています"
+
+msgid "Blockbridge default pool does not exist"
+msgstr "Blockbridge のデフォルトプールが存在しません"
+
+msgid ""
+"Blockbridge password not configured (required for auth scheme 'password')"
+msgstr ""
+"Blockbridge のパスワードが設定されていません ('password' の認証スキームに必"
+"要)"
+
+msgid "Blockbridge pools not configured"
+msgstr "Blockbridge プールが設定されていません"
+
+msgid "Blockbridge token not configured (required for auth scheme 'token')"
+msgstr ""
+"Blockbridge のトークンが設定されていません ('token' の認証スキームに必要)"
+
+#, fuzzy
+msgid "Blockbridge user not configured (required for auth scheme 'password')"
+msgstr ""
+"Blockbridge のユーザーが設定されていません ('password' の認証スキームに必要)"
 
 #, python-format
 msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
@@ -747,6 +803,9 @@ msgstr "%s を整数に変換できません。"
 #, fuzzy
 msgid "Can't attach snapshot."
 msgstr "スナップショットを追加できません。"
+
+msgid "Can't decode backup record."
+msgstr "バックアップレコードを復号化できません。"
 
 #, python-format
 msgid "Can't extend replication volume, volume: %(id)s"
@@ -875,13 +934,25 @@ msgstr ""
 msgid "Can't open config file: %s"
 msgstr "構成ファイルを開くことができません: %s"
 
-#, python-format
+#, fuzzy
+msgid "Can't parse backup record."
+msgstr "バックアップレコードを解析できません。"
+
+#, fuzzy, python-format
 msgid ""
 "Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
 "has no volume type."
 msgstr ""
-"ボリューム %(volume_id)s にはボリューム・タイプがないため、このボリュームを整"
-"合性グループ %(group_id)s に追加できません。"
+"ボリューム %(volume_id)s にはボリュームタイプがないため、このボリュームを整合"
+"性グループ %(group_id)s に追加できません。"
+
+#, fuzzy, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to consistency group %(group_id)s because it "
+"is already in consistency group %(orig_group)s."
+msgstr ""
+"ボリューム %(volume_id)s が既に整合性グループ %(orig_group)s 内に存在するた"
+"め、このボリュームを整合性グループ %(group_id)s に追加することはできません。"
 
 #, python-format
 msgid ""
@@ -907,13 +978,13 @@ msgstr ""
 "ボリューム %(volume_id)s は無効な状態 %(status)s であるため、整合性グルー"
 "プ%(group_id)s に追加できません。有効な状態は %(valid)s です。"
 
-#, python-format
+#, fuzzy, python-format
 msgid ""
 "Cannot add volume %(volume_id)s to consistency group %(group_id)s because "
 "volume type %(volume_type)s is not supported by the group."
 msgstr ""
-"ボリューム・タイプ %(volume_type)s は整合性グループ %(group_id)s ではサポート"
-"されていないため、ボリューム %(volume_id)s をこの整合性グループに追加できませ"
+"ボリュームタイプ %(volume_type)s は整合性グループ %(group_id)s ではサポートさ"
+"れていないため、ボリューム %(volume_id)s をこの整合性グループに追加できませ"
 "ん。"
 
 #, python-format
@@ -952,6 +1023,14 @@ msgid ""
 msgstr ""
 "スナップショット %(snap)s は有効な状態ではないため、整合性グループ%(group)s "
 "を作成できません。有効な状態は %(valid)s です。"
+
+#, fuzzy, python-format
+msgid ""
+"Cannot create consistency group %(group)s because source volume "
+"%(source_vol)s is not in a valid state. Valid states are: %(valid)s."
+msgstr ""
+"ソースボリューム %(source_vol)s が有効な状態にないため、整合性グループ "
+"%(group)s を作成できません。有効な状態は %(valid)s です。"
 
 #, python-format
 msgid "Cannot create directory %s."
@@ -1108,6 +1187,10 @@ msgid "Cannot mount Scality SOFS, check syslog for errors"
 msgstr ""
 "Scality SOFS をマウントできません。syslog でエラーについて確認してください"
 
+#, fuzzy
+msgid "Cannot ping DRBDmanage backend"
+msgstr "DRBDmanage のバックエンドに ping を送信できません"
+
 #, python-format
 msgid "Cannot place volume %(id)s on %(host)s"
 msgstr "ボリューム %(id)s をホスト %(host)s 上に配置できません"
@@ -1178,6 +1261,10 @@ msgstr "volume_type %(id)s を更新できません"
 #, python-format
 msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr "オブジェクト %(instanceName)s の存在を確認できません。"
+
+#, fuzzy
+msgid "Cascade option is not supported."
+msgstr "カスケードオプションはサポートされていません。"
 
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
@@ -1251,9 +1338,19 @@ msgstr ""
 "クローンタイプ '%(clone_type)s' は無効です。有効な値は '%(full_clone)s' およ"
 "び '%(linked_clone)s' です。"
 
+#, fuzzy
+msgid ""
+"Cluster is not formatted. You should probably perform \"dog cluster format\"."
+msgstr ""
+"クラスターの形式が正しく設定されていません。ドッグクラスター形式を実行する必"
+"要があるかもしれません。"
+
 #, python-format
 msgid "Coho Data Cinder driver failure: %(message)s"
 msgstr "Coho Data Cinder ドライバーの失敗: %(message)s"
+
+msgid "Coho rpc port is not configured"
+msgstr "Coho の rpc ポートが設定されていません"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_a_condition: %s timeout"
@@ -1271,6 +1368,9 @@ msgstr ""
 #, python-format
 msgid "Compute cluster: %(cluster)s not found."
 msgstr "コンピュートクラスター: %(cluster)s が見つかりません。"
+
+msgid "Condition has no field."
+msgstr "条件にフィールドがありません。"
 
 #, python-format
 msgid "Config 'max_over_subscription_ratio' invalid. Must be > 0: %s"
@@ -1411,6 +1511,25 @@ msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr ""
 "%(src_type)s %(src_id)s から %(vol_id)s にメタデータをコピーしています。"
 
+#, fuzzy
+msgid ""
+"Could not determine which Keystone endpoint to use. This can either be set "
+"in the service catalog or with the cinder.conf config option "
+"'backup_swift_auth_url'."
+msgstr ""
+"どの Swift のエンドポイントを使用すべきか決定できませんでした。これを設定する"
+"には、サービスカタログまたは cinder.conf config のオプションである "
+"'backup_swift_auth_url' を使用します。"
+
+#, fuzzy
+msgid ""
+"Could not determine which Swift endpoint to use. This can either be set in "
+"the service catalog or with the cinder.conf config option 'backup_swift_url'."
+msgstr ""
+"どの Swift のエンドポイントを使用すべきか決定できませんでした。これを設定する"
+"には、サービスカタログまたは cinder.conf config のオプションである "
+"'backup_swift_url' を使用します。"
+
 #, python-format
 msgid "Could not find GPFS cluster id: %s."
 msgstr "GPFS クラスター ID が見つかりませんでした: %s。"
@@ -1490,6 +1609,14 @@ msgstr ""
 "%(code)s。理由: %(reason)s"
 
 #, python-format
+msgid "Could not restore configuration file %(file_path)s: %(exc)s"
+msgstr "設定ファイル %(file_path)s をリストアできませんでした: %(exc)s"
+
+#, python-format
+msgid "Could not save configuration to %(file_path)s: %(exc)s"
+msgstr "設定を %(file_path)s に保存できませんでした: %(exc)s"
+
+#, python-format
 msgid "Could not start consistency group snapshot %s."
 msgstr "整合性グループのスナップショット %s を開始できませんでした。"
 
@@ -1516,6 +1643,9 @@ msgstr ""
 "バックアップの作成が中止しました。予期していたボリューム状況は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
 
+msgid "Create consistency group failed."
+msgstr "整合性グループの作成に失敗しました。"
+
 #, python-format
 msgid ""
 "Create encrypted volumes with type %(type)s from image %(image)s is not "
@@ -1523,6 +1653,9 @@ msgid ""
 msgstr ""
 "イメージ %(image)s からのタイプ %(type)s の暗号化されたボリュームの作成はサ"
 "ポートされません。"
+
+msgid "Create export for volume failed."
+msgstr "ボリュームのエクスポートの作成に失敗しました。"
 
 msgid "Create hostgroup error."
 msgstr "ホストグループ作成のエラー。"
@@ -1542,6 +1675,9 @@ msgstr "LUN コピー作成のエラー。"
 
 msgid "Create lungroup error."
 msgstr "LUN グループ作成のエラー。"
+
+msgid "Create manager volume flow failed."
+msgstr "マネージャーボリュームフローの作成が失敗しました"
 
 msgid "Create port group error."
 msgstr "ポートグループ作成のエラー。"
@@ -1605,12 +1741,35 @@ msgstr ""
 msgid "DEPRECATED: Deploy v1 of the Cinder API."
 msgstr "非推奨: Cinder API の v1 をデプロイしてください。"
 
+#, fuzzy
+msgid "DEPRECATED: Deploy v2 of the Cinder API."
+msgstr "提供を終了しています: Cinder API の v2 を実装してください。"
+
+#, fuzzy, python-format
+msgid ""
+"DRBDmanage driver error: expected key \"%s\" not in answer, wrong DRBDmanage "
+"version?"
+msgstr ""
+"DRBDmanage ドライバーのエラー: 予期されたキー \"%s\" が答えに含まれていませ"
+"ん。DRBDmanage のバージョンが間違っていませんか。"
+
+#, fuzzy
+msgid ""
+"DRBDmanage driver setup error: some required libraries (dbus, drbdmanage.*) "
+"not found."
+msgstr ""
+"DRBDmanage ドライバーの設定エラー: 必要なライブラリー (dbus や drbdmanage.* "
+"など) が見つかりません。"
+
 msgid "Data ONTAP API version could not be determined."
 msgstr "データ ONTAP API バージョンを判別できませんでした。"
 
 msgid "Data ONTAP operating in 7-Mode does not support QoS policy groups."
 msgstr ""
 "7-Mode で動作する Data ONTAP は QoS ポリシーグループをサポートしません。"
+
+msgid "Database schema downgrade is not allowed."
+msgstr "データベーススキーマのダウングレードはできません。"
 
 #, python-format
 msgid "Dataset %s is not shared in Nexenta Store appliance"
@@ -1638,6 +1797,9 @@ msgstr ""
 "重複排除イネーブラーがインストールされていません。重複排除されたボリュームを"
 "作成できません"
 
+msgid "Default pool name if unspecified."
+msgstr "デフォルトのプール名 (プール名を指定していない場合)"
+
 #, python-format
 msgid ""
 "Default quota for resource: %(res)s is set by the default quota flag: quota_"
@@ -1651,6 +1813,12 @@ msgstr ""
 #, fuzzy
 msgid "Default volume type can not be found."
 msgstr "デフォルトのボリュームタイプが見つかりません。"
+
+msgid ""
+"Defines the set of exposed pools and their associated backend query strings"
+msgstr ""
+"一連の影響を受けるプールに加え関連するバックエンドのクエリー文字列を定義しま"
+"す。"
 
 msgid "Delete LUNcopy error."
 msgstr "LUN コピー削除のエラー。"
@@ -1670,6 +1838,9 @@ msgstr ""
 "バックアップの削除が中止しました。現在構成されているバックアップ・サービス "
 "[%(configured_service)s] は、このバックアップの作成に使用されたバックアップ・"
 "サービス [%(backup_service)s] ではありません。"
+
+msgid "Delete consistency group failed."
+msgstr "整合性グループの削除に失敗しました。"
 
 msgid "Delete hostgroup error."
 msgstr "ホストグループ削除のエラー。"
@@ -1720,6 +1891,9 @@ msgstr "データベースからボリュームを作成中。rpc をスキッ�
 msgid "Deleting zones failed: (command=%(cmd)s error=%(err)s)."
 msgstr "ゾーンの削除に失敗しました: (command=%(cmd)s error=%(err)s)。"
 
+msgid "Deploy v3 of the Cinder API."
+msgstr "Cinder API の v3 を実装してください。"
+
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource は管理者専用の機能です"
 
@@ -1733,6 +1907,13 @@ msgstr "宛先ホストは現行ホストと異なっていなければなりま
 
 msgid "Destination volume not mid-migration."
 msgstr "宛先ボリュームはマイグレーション中ではありません"
+
+msgid ""
+"Detach volume failed: More than one attachment, but no attachment_id "
+"provided."
+msgstr ""
+"ボリュームの切り離しが失敗しました: 2 つ以上の接続が存在するものの、"
+"attachment_id が提供されていません。"
 
 msgid "Detach volume from instance and then try again."
 msgstr "ボリュームをインスタンスから切り離して、再試行してください。"
@@ -1760,6 +1941,10 @@ msgstr ""
 "ダウン・レベル GPFS クラスターが検出されました。クラスター・デーモン・レベル "
 "%(cur)s で GPFS 複製フィーチャーが有効になっていません。レベル %(min)s 以上は"
 "必要です。"
+
+#, python-format
+msgid "Driver initialize connection failed (error: %(err)s)."
+msgstr "ドライバーの初期化接続に失敗しました (エラー: %(err)s)。"
 
 msgid "Driver must implement initialize_connection"
 msgstr "ドライバーは initialize_connection を実装する必要があります"
@@ -1812,6 +1997,15 @@ msgstr "hitachi_serial_number または hitachi_unit_name のいずれかが必�
 msgid "Element Composition Service not found on %(storageSystemName)s."
 msgstr "エレメント構成サービスが %(storageSystemName)s に見つかりません。"
 
+msgid "Enables QoS."
+msgstr "QoS を有効化します。"
+
+msgid "Enables compression."
+msgstr "圧縮を有効化します。"
+
+msgid "Enables replication."
+msgstr "レプリケーションを有効化します。"
+
 msgid "Ensure that configfs is mounted at /sys/kernel/config."
 msgstr ""
 "configfs が /sys/kernel/config でマウントされていることを確認してください。"
@@ -1830,8 +2024,8 @@ msgid ""
 "Error Adding to TargetGroup: %(targetgroup)s withIQN: %(iqn)sReturn code: "
 "%(ret.status)d Message: %(ret.data)s."
 msgstr ""
-"IQN %(iqn)s でターゲット・グループ %(targetgroup)s への追加中にエラーが発生し"
-"ました。戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
+"IQN %(iqn)s でターゲットグループ %(targetgroup)s への追加中にエラーが発生しま"
+"した。戻りコード: %(ret.status)d、メッセージ: %(ret.data)s。"
 
 #, python-format
 msgid ""
@@ -2248,6 +2442,14 @@ msgstr ""
 "プール %(pool)s での共有 %(share)s の編集中にエラーが発生しました。戻りコー"
 "ド: %(ret.status)d メッセージ: %(ret.data)s。"
 
+#, fuzzy, python-format
+msgid ""
+"Error enabling iSER for NetworkPortal: please ensure that RDMA is supported "
+"on your iSCSI port %(port)d on ip %(ip)s."
+msgstr ""
+"NetworkPortal の iSER の有効化に関するエラー:  IP %(ip)s 上の iSCSI ポート "
+"%(port)d で RDMA がサポートされていることを確認してください。"
+
 #, python-format
 msgid "Error encountered during cleanup of a failed attach: %(ex)s"
 msgstr "失敗した接続のクリーンアップ中にエラーが検出されました: %(ex)s"
@@ -2308,7 +2510,7 @@ msgstr ""
 "レプリケーションターゲットの詳細の取得中にエラーが発生しました。戻りコード: "
 "%(ret.status)d メッセージ: %(ret.data)s。"
 
-#, python-format
+#, fuzzy, python-format
 msgid ""
 "Error getting version: svc: %(svc)s.Return code: %(ret.status)d Message: "
 "%(ret.data)s."
@@ -2348,6 +2550,12 @@ msgstr ""
 "ソースプロジェクト: %(src)s からターゲットプロジェクト: %(tgt)s へのボリュー"
 "ム: %(vol)s の移動中にエラーが発生しました。戻りコード: %(ret.status)d メッ"
 "セージ: %(ret.data)s。 "
+
+msgid "Error not a KeyError."
+msgstr "KeyError ではなくエラーです。"
+
+msgid "Error not a TypeError."
+msgstr "TypeError ではなくエラーです。"
 
 #, python-format
 msgid "Error occurred when creating cgsnapshot %s."
@@ -2499,6 +2707,9 @@ msgid ""
 msgstr ""
 "ゾーンストリングでの新規ゾーンおよび cfgs の更新中にエラーが発生しました。エ"
 "ラー %(description)s。"
+
+msgid "Error writing field to database"
+msgstr "データベースへのフィールドの書き込みに失敗しました"
 
 #, python-format
 msgid ""
@@ -2682,6 +2893,11 @@ msgstr ""
 msgid "Failed to connect to array"
 msgstr "アレイへの接続に失敗しました"
 
+#, fuzzy, python-format
+msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
+msgstr ""
+"シープデーモンへの接続に失敗しました。アドレス: %(addr)s、 ポート: %(port)s"
+
 #, python-format
 msgid "Failed to copy image to volume: %(reason)s"
 msgstr "イメージをボリュームにコピーできませんでした: %(reason)s"
@@ -2689,6 +2905,13 @@ msgstr "イメージをボリュームにコピーできませんでした: %(re
 #, python-format
 msgid "Failed to copy metadata to volume: %(reason)s"
 msgstr "メタデータをボリュームにコピーできませんでした: %(reason)s"
+
+msgid "Failed to copy volume, destination device unavailable."
+msgstr "ボリュームのコピーに失敗しました。宛先デバイスが使用できません。"
+
+#, fuzzy
+msgid "Failed to copy volume, source device unavailable."
+msgstr "ボリュームのコピーに失敗しました。ソースデバイスが使用できません。"
 
 #, python-format
 msgid "Failed to create IG, %s"
@@ -2709,7 +2932,7 @@ msgstr ""
 "%(err)s)"
 
 msgid "Failed to create api volume flow."
-msgstr "API ボリューム・フローの作成に失敗しました。"
+msgstr "API ボリュームフローの作成に失敗しました。"
 
 #, python-format
 msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
@@ -2769,6 +2992,10 @@ msgstr "ボリューム %(volume_id)s の iSCSI ターゲットの作成に失�
 
 msgid "Failed to create manage existing flow."
 msgstr "既存の管理フローの作成に失敗しました。"
+
+#, fuzzy
+msgid "Failed to create manage_existing flow."
+msgstr "manage_existing フローの作成に失敗しました。"
 
 msgid "Failed to create map on mcs, no channel can map."
 msgstr ""
@@ -2836,7 +3063,7 @@ msgstr "%s のサウスバウンドコネクターの作成に失敗しました
 
 #, python-format
 msgid "Failed to create thin pool, error message was: %s"
-msgstr "シン・プールの作成に失敗しました。エラー・メッセージ: %s"
+msgstr "シン・プールの作成に失敗しました。エラーメッセージ: %s"
 
 #, python-format
 msgid "Failed to create volume %s"
@@ -2870,6 +3097,9 @@ msgid ""
 msgstr ""
 "整合性グループ %(consistencyGroupName)s の削除に失敗しました。戻りコード: "
 "%(rc)lu。エラー: %(error)s。"
+
+msgid "Failed to delete device."
+msgstr "デバイスの削除に失敗しました。"
 
 #, python-format
 msgid ""
@@ -2922,6 +3152,10 @@ msgstr ""
 msgid "Failed to detach iSCSI target for volume %(volume_id)s."
 msgstr "ボリューム %(volume_id)s の iSCSI ターゲットの切り離しに失敗しました。"
 
+#, fuzzy
+msgid "Failed to determine blockbridge API configuration"
+msgstr "Blockbridge API の設定を決定できませんでした。"
+
 msgid "Failed to disassociate qos specs."
 msgstr "qos 仕様の関連付けを解除できませんでした。"
 
@@ -2940,6 +3174,10 @@ msgstr ""
 
 msgid "Failed to establish SSC connection."
 msgstr "SSC 接続の確立に失敗しました。"
+
+#, fuzzy
+msgid "Failed to establish connection with Coho cluster"
+msgstr "Cohoクラスターとの接続に失敗しました"
 
 #, python-format
 msgid ""
@@ -3155,8 +3393,10 @@ msgid ""
 "Failed to make a request to Datera cluster endpoint due to the following "
 "reason: %s"
 msgstr ""
-"次の理由で、Datera クラスター・エンドポイントへの要求を実行できませんでした: "
-"%s"
+"次の理由で、Datera クラスターエンドポイントへの要求を実行できませんでした: %s"
+
+msgid "Failed to manage api volume flow."
+msgstr "API ボリュームフローの管理に失敗しました。"
 
 #, python-format
 msgid ""
@@ -3294,6 +3534,15 @@ msgstr ""
 " stdout: %(out)s\n"
 " stderr: %(err)s。"
 
+#, fuzzy
+msgid ""
+"Failed to parse the configuration option 'keystone_catalog_info', must be in "
+"the form <service_type>:<service_name>:<endpoint_type>"
+msgstr ""
+"設定オプションの 'keystone_catalog_info' を解析できませんでした。本オプション"
+"は、<service_type>:<service_name>:<endpoint_type> の形式を持つ必要がありま"
+"す。"
+
 msgid ""
 "Failed to parse the configuration option 'swift_catalog_info', must be in "
 "the form <service_type>:<service_name>:<endpoint_type>"
@@ -3335,7 +3584,7 @@ msgstr ""
 msgid ""
 "Failed to rename logical volume %(name)s, error message was: %(err_msg)s"
 msgstr ""
-"論理ボリューム %(name)s の名前変更に失敗しました。エラー・メッセージ: "
+"論理ボリューム %(name)s の名前変更に失敗しました。エラーメッセージ: "
 "%(err_msg)s"
 
 #, python-format
@@ -3412,6 +3661,12 @@ msgid "Failed to update qos_specs: %(specs_id)s with specs %(qos_specs)s."
 msgstr ""
 "仕様 %(qos_specs)s を使用して qos_specs %(specs_id)s を更新することができませ"
 "んでした。"
+
+msgid "Failed to update quota usage while retyping volume."
+msgstr "ボリュームのタイプを変更中にクォータの使用量を更新できませんでした。"
+
+msgid "Failed to update snapshot."
+msgstr "スナップショットの更新に失敗しました。"
 
 #, python-format
 msgid "Failed updating model with driver provided model %(model)s"
@@ -3955,8 +4210,26 @@ msgstr "名前が %s のホストグループが見つかりません"
 msgid "Host group with ref %s not found"
 msgstr "参照 %s が指定されたホストグループが見つかりません"
 
+#, fuzzy
+msgid "Host is NOT Frozen."
+msgstr "ホストは固定化されていません。"
+
+msgid "Host is already Frozen."
+msgstr "ホストは既に固定化されています。"
+
 msgid "Host not found"
 msgstr "ホストが見つかりません"
+
+#, fuzzy, python-format
+msgid "Host not found. Failed to remove %(service)s on %(host)s."
+msgstr ""
+"ホストが見つかりません。%(host)s 上で %(service)s の削除に失敗しました。"
+
+#, python-format
+msgid "Host replication_status must be %s to failover."
+msgstr ""
+"フェイルオーバーを行うにはホストの replication_status が %s である必要があり"
+"ます。"
 
 #, python-format
 msgid "Host type %s not supported."
@@ -3977,6 +4250,10 @@ msgstr ""
 
 msgid "ID"
 msgstr "ID"
+
+#, fuzzy
+msgid "IP address/hostname of Blockbridge API."
+msgstr "Blockbridge API の IP アドレスとホスト名。"
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -4031,7 +4308,7 @@ msgid "Image %(image_id)s is unacceptable: %(reason)s"
 msgstr "イメージ %(image_id)s は受け入れられません: %(reason)s"
 
 msgid "Image location not present."
-msgstr "イメージ・ロケーションが存在しません。"
+msgstr "イメージロケーションが存在しません。"
 
 #, python-format
 msgid ""
@@ -4070,9 +4347,18 @@ msgstr "このバックアップには増分バックアップが存在します
 msgid "Input volumes or snapshots are invalid."
 msgstr "入力ボリュームまたはスナップショットが無効です。"
 
+msgid "Input volumes or source volumes are invalid."
+msgstr "入力ボリュームまたはソースボリュームが無効です。"
+
 #, python-format
 msgid "Instance %(uuid)s could not be found."
 msgstr "インスタンス %(uuid)s が見つかりませんでした。"
+
+msgid "Insufficient free space available to extend volume."
+msgstr "ボリュームを拡張するために十分な空きスペースがありません。"
+
+msgid "Insufficient privileges"
+msgstr "不十分な権限"
 
 #, python-format
 msgid "Invalid 3PAR Domain: %(err)s"
@@ -4091,6 +4377,14 @@ msgstr "無効な CgSnapshot: %(reason)s"
 #, python-format
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "無効な ConsistencyGroup: %(reason)s"
+
+#, fuzzy
+msgid ""
+"Invalid ConsistencyGroup: Consistency group status must be available or "
+"error, but current status is: in-use"
+msgstr ""
+"無効な ConsistencyGroup: 整合性グループの状態は「利用可能」か「エラー」のいず"
+"れかである必要がありますが、現在の状態は「使用中」です。"
 
 #, python-format
 msgid ""
@@ -4131,6 +4425,11 @@ msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
 msgstr ""
 "XtremIO バージョン %(cur)s は無効です。バージョン %(min)s 以上が必要です"
 
+#, python-format
+msgid "Invalid allocated quotas defined for the following project quotas: %s"
+msgstr ""
+"以下のプロジェクトのクォータに定義した割り当て済みのクォータが無効です: %s"
+
 msgid "Invalid argument"
 msgstr "引数が無効です"
 
@@ -4150,6 +4449,14 @@ msgstr "認証キーが無効です: %(reason)s"
 msgid "Invalid backup: %(reason)s"
 msgstr "無効なバックアップ: %(reason)s"
 
+#, fuzzy, python-format
+msgid ""
+"Invalid barbican api url: version is required, e.g. 'http[s]://<ipaddr>|"
+"<fqdn>[:port]/<version>' url specified is: %s"
+msgstr ""
+"Barbican API の URL が無効です: バージョンが必要です ('http[s]://<ipaddr>|"
+"<fqdn>[:port]/<version>' など)。指定された URL は %s です。"
+
 msgid "Invalid cgsnapshot"
 msgstr "無効な cgsnapshot"
 
@@ -4165,6 +4472,13 @@ msgstr "ボリューム %(name)s の接続初期化応答が無効です: %(outp
 #, python-format
 msgid "Invalid content type %(content_type)s."
 msgstr "無効なコンテンツタイプ %(content_type)s。"
+
+msgid "Invalid credentials"
+msgstr "無効な認証情報"
+
+#, fuzzy, python-format
+msgid "Invalid directory: %s"
+msgstr "無効なディレクトリー: %s"
 
 #, python-format
 msgid "Invalid disk adapter type: %(invalid_type)s."
@@ -4216,6 +4530,9 @@ msgstr "イメージ ID が無効か、要求されたイメージにアクセ�
 msgid "Invalid imageRef provided."
 msgstr "無効な imageRef が指定されました。"
 
+msgid "Invalid initiator value received"
+msgstr "無効なイニシエーター値を受信しました"
+
 msgid "Invalid input"
 msgstr "無効な入力"
 
@@ -4247,6 +4564,10 @@ msgstr "無効なマウント・ポイント・ベース: %s"
 msgid "Invalid new snapCPG name for retype.  new_snap_cpg='%s'."
 msgstr "新規 snapCPG 名がタイプ変更には無効です。new_snap_cpg='%s'。"
 
+#, fuzzy, python-format
+msgid "Invalid port number %(config)s for Coho rpc port"
+msgstr "Coho の rpc ポートの無効なポート番号 %(config)s"
+
 #, python-format
 msgid ""
 "Invalid prefetch type '%s' is configured. PrefetchType must be in 0,1,2,3."
@@ -4272,12 +4593,19 @@ msgstr ""
 msgid "Invalid reservation expiration %(expire)s."
 msgstr "予約の有効期限 %(expire)s が無効です。"
 
+#, fuzzy
+msgid "Invalid response header from RPC server"
+msgstr "RPC サーバーからの無効な応答ヘッダー"
+
 #, python-format
 msgid "Invalid secondary id %s."
 msgstr "無効なセカンダリー ID %s。"
 
 msgid "Invalid service catalog json."
 msgstr "無効なサービス・カタログ JSON。"
+
+msgid "Invalid sheepdog cluster status."
+msgstr "シープドッグクラスターの状態が無効です。"
 
 #, python-format
 msgid "Invalid snapshot: %(reason)s"
@@ -4304,6 +4632,14 @@ msgstr "無効なトランスポートタイプ。"
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "無効な更新設定: '%s'"
+
+#, fuzzy, python-format
+msgid ""
+"Invalid url: must be in the form 'http[s]://<ipaddr>|<fqdn>[:port]/"
+"<version>', url specified is: %s"
+msgstr ""
+"URL が無効です: 'http[s]://<ipaddr>|<fqdn>[:port]/<version>' の形式である必要"
+"があります。指定された URL は %s です"
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -4335,6 +4671,17 @@ msgstr " 'readonly' の値 '%s' は無効です。"
 
 msgid "Invalid value for 'scheduler_max_attempts', must be >=1"
 msgstr "'scheduler_max_attempts' の値が無効です。1 以上でなければなりません"
+
+msgid "Invalid value for NetApp configuration option netapp_host_type."
+msgstr "NetApp の設定オプション netapp_host_type の値が無効です。"
+
+#, fuzzy
+msgid "Invalid value for NetApp configuration option netapp_lun_ostype."
+msgstr "NetApp の設定オプション netapp_lun_ostype の値が無効です。"
+
+#, fuzzy, python-format
+msgid "Invalid value for age, %(age)s"
+msgstr "年齢 %(age)s の値が無効です"
 
 #, python-format
 msgid "Invalid value: \"%s\""
@@ -4399,6 +4746,23 @@ msgstr "無効な volume_type が渡されました: %s。"
 
 #, python-format
 msgid ""
+"Invalid volume_type provided: %s (requested type is not compatible; either "
+"match source volume, or omit type argument)."
+msgstr ""
+"無効な volume_type が指定されました: %s (要求されるタイプはこれと互換性があり"
+"ません。ソースボリュームと合致するか、 タイプの引数を排除する必要がありま"
+"す)。"
+
+#, fuzzy, python-format
+msgid ""
+"Invalid volume_type provided: %s (requested type is not compatible; "
+"recommend omitting the type argument)."
+msgstr ""
+"無効な volume_type が指定されました: %s (要求されるタイプはこれと互換性があり"
+"ません。タイプの引数を排除することを推奨します)。"
+
+#, python-format
+msgid ""
 "Invalid volume_type provided: %s (requested type must be supported by this "
 "consistency group)."
 msgstr ""
@@ -4437,6 +4801,12 @@ msgstr ""
 #, python-format
 msgid "KeyError: %s"
 msgstr "KeyError: %s"
+
+#, fuzzy
+msgid "Keystone version 3 or greater must be used to get nested quota support."
+msgstr ""
+"ネストされたクォータを使用するには、Keystone のバージョン 3 以降を使用する必"
+"要があります。"
 
 #, python-format
 msgid "LU does not exist for volume: %s"
@@ -4503,6 +4873,26 @@ msgstr ""
 msgid "Lun migration error."
 msgstr "LUN マイグレーションのエラー。"
 
+#, fuzzy, python-format
+msgid ""
+"MD5 of object: %(object_name)s before: %(md5)s and after: %(etag)s is not "
+"same."
+msgstr ""
+"オブジェクトの MD5:  %(md5)s の前と %(etag)s の後の %(object_name)s が同じで"
+"はありません。"
+
+#, python-format
+msgid "MSG_DENIED: %r"
+msgstr "MSG_DENIED: %r"
+
+#, python-format
+msgid "MSG_DENIED: AUTH_ERROR: %r"
+msgstr "MSG_DENIED: AUTH_ERROR: %r"
+
+#, python-format
+msgid "MSG_DENIED: RPC_MISMATCH: %r"
+msgstr "MSG_DENIED: RPC_MISMATCH: %r"
+
 #, python-format
 msgid "Malformed fcns output string: %s"
 msgstr "fcns 出力ストリングの形式が誤っています: %s"
@@ -4546,8 +4936,11 @@ msgstr ""
 #, python-format
 msgid "Malformed zone status: (switch=%(switch)s zone_config=%(zone_config)s)."
 msgstr ""
-"ゾーン・ステータスの形式が誤っています: (switch=%(switch)s zone_config="
+"ゾーンステータスの形式が誤っています: (switch=%(switch)s zone_config="
 "%(zone_config)s)"
+
+msgid "Manage existing snapshot not implemented."
+msgstr "既存のスナップショットの管理が実装されていません。"
 
 #, python-format
 msgid ""
@@ -4621,23 +5014,23 @@ msgstr "メタデータ項目が見つかりませんでした。"
 
 #, python-format
 msgid "Metadata property key %s greater than 255 characters"
-msgstr "メタデータ・プロパティー・キー %s が 255 文字を超えています"
+msgstr "メタデータのプロパティーキー %s が 255 文字を超えています"
 
 #, python-format
 msgid "Metadata property key %s value greater than 255 characters"
-msgstr "メタデータ・プロパティー・キー %s 値が 255 文字を超えています"
+msgstr "メタデータのプロパティーキー %s 値が 255 文字を超えています"
 
 msgid "Metadata property key blank"
 msgstr "メタデータ・プロパティー・キーがブランクです"
 
 msgid "Metadata property key blank."
-msgstr "メタデータ・プロパティー・キーがブランクです。"
+msgstr "メタデータプロパティーのキーがブランクです。"
 
 msgid "Metadata property key greater than 255 characters."
-msgstr "メタデータ・プロパティー・キーが 255 文字を超えています。"
+msgstr "メタデータプロパティーのキーが 255 文字を超えています。"
 
 msgid "Metadata property value greater than 255 characters."
-msgstr "メタデータ・プロパティー値が 255 文字を超えています。"
+msgstr "メタデータプロパティー値が 255 文字を超えています。"
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "バージョンの非互換のため、メタデータのリストアに失敗しました"
@@ -4714,6 +5107,14 @@ msgstr "schedule_get_pools を実装する必要があります"
 msgid "Must pass wwpn or host to lsfabric."
 msgstr "wwpn またはホストを lsfabric に渡す必要があります。"
 
+msgid ""
+"Must run this command as cloud admin using a Keystone policy.json which "
+"allows cloud admin to list and get any project."
+msgstr ""
+"クラウド管理者があらゆるプロジェクトのリストと取得を行える Keystone の "
+"policy.json を使用して、クラウド管理者としてこのコマンドを実行する必要があり"
+"ます。"
+
 msgid "Must specify 'connector'"
 msgstr "'connector' を指定する必要があります"
 
@@ -4773,6 +5174,9 @@ msgid "Must specify snapshot source-name or source-id."
 msgstr ""
 "スナップショットの source-name または source-id を指定する必要があります。"
 
+msgid "Must supply a positive value for age"
+msgstr "年齢には正の値を提供する必要があります"
+
 msgid "Must supply a positive, non-zero value for age"
 msgstr "存続期間には正の非ゼロ値を指定してください"
 
@@ -4809,6 +5213,10 @@ msgstr ""
 
 msgid "Need non-zero volume size"
 msgstr "ゼロでないボリュームサイズが必要です"
+
+#, python-format
+msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
+msgstr "MSG_DENIED でも MSG_ACCEPTED でもありません: %r"
 
 msgid "NetApp Cinder Driver exception."
 msgstr "NetApp Cinder Driver 例外です。"
@@ -4896,8 +5304,9 @@ msgstr "ID %s の整合性グループは存在しません"
 msgid "No element by given name %s."
 msgstr "指定された名前 %s の要素はありません。"
 
+#, fuzzy
 msgid "No errors in logfiles!"
-msgstr "ログ・ファイル内にエラーはありません。"
+msgstr "ログファイル内にエラーはありません。"
 
 #, python-format
 msgid "No file found with %s as backing file."
@@ -5062,14 +5471,23 @@ msgstr ""
 "仮想サーバー %(vserver)s および接合パス %(junction)s を含むボリュームはクラス"
 "ターにありません"
 
+#, fuzzy
+msgid "No volume service(s) started successfully, terminating."
+msgstr "どのボリュームサービス も正常に起動しませんでした。処理を終了します。"
+
 msgid "No volume was found at CloudByte storage."
 msgstr "CloudByte ストレージでボリュームが見つかりませんでした。"
 
+#, fuzzy
 msgid "No volume_type should be provided when creating test replica."
-msgstr "テスト・レプリカの作成時に volume_type を指定してはなりません。"
+msgstr "テストレプリカの作成時に volume_type を指定してはなりません。"
 
 msgid "No volumes found in CloudByte storage."
 msgstr "ボリュームが CloudByte ストレージに見つかりません。"
+
+#, fuzzy
+msgid "No weighed hosts available"
+msgstr "重み付けを設定したホストが存在しません"
 
 #, python-format
 msgid "Not a valid string: %s"
@@ -5124,6 +5542,9 @@ msgstr ""
 msgid "Object Count"
 msgstr "オブジェクト数"
 
+msgid "Object Version"
+msgstr "オブジェクトのバージョン"
+
 msgid "Object is not a NetApp LUN."
 msgstr "オブジェクトは NetApp LUN ではありません。"
 
@@ -5134,6 +5555,15 @@ msgid ""
 msgstr ""
 "拡張操作時に複合ボリューム %(volumename)s へのボリュームの追加中にエラーが発"
 "生しました。"
+
+#, fuzzy
+msgid ""
+"One of cinder-volume services is too old to accept such request. Are you "
+"running mixed Liberty-Mitaka cinder-volumes?"
+msgstr ""
+"cinder-volume サービスの 1 つが古すぎるため、このようなリクエストを受け付ける"
+"ことができません。Liberty と Mitaka のさまざまな cinder-volumes の組み合わせ"
+"を実行していますか。"
 
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
@@ -5178,6 +5608,10 @@ msgstr "gpfs_mount_point_base オプションが正しく設定されていま�
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
 msgstr ""
 "作成元の %(res)s %(prop)s は '%(vals)s' 値のいずれかでなければなりません。"
+
+msgid "Override HTTPS port to connect to Blockbridge API server."
+msgstr ""
+"Blockbridge API サーバーにアクセスするために HTTPS ポートを上書きする。"
 
 #, python-format
 msgid "ParseException: %s"
@@ -5359,6 +5793,14 @@ msgstr "割り当て量を超過しました: code=%(code)s"
 msgid "Quota for project %(project_id)s could not be found."
 msgstr "プロジェクト %(project_id)s の割り当て量が見つかりませんでした。"
 
+#, fuzzy, python-format
+msgid ""
+"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
+"%(limit)d is less than in-use value of %(used)d"
+msgstr ""
+"リソース '%(res)s' のプロジェクト'%(proj)s' に関するクォーター上限が無効で"
+"す : %(limit)d の上限が %(used)d の使用中の値よりも小さくなっています"
+
 #, python-format
 msgid "Quota reservation %(uuid)s could not be found."
 msgstr "割り当て量の予約 %(uuid)s が見つかりませんでした。"
@@ -5375,6 +5817,14 @@ msgstr "RBD diff 操作が失敗しました: (ret=%(ret)s stderr=%(stderr)s)"
 msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 
+#, fuzzy
+msgid "RPC Version"
+msgstr "RPC のバージョン"
+
+#, fuzzy
+msgid "RPC server response is incomplete"
+msgstr "RPC サーバーの応答が完了していません"
+
 msgid "Raid did not have MCS Channel."
 msgstr "RAID に MCS チャンネルがありません。"
 
@@ -5385,6 +5835,10 @@ msgid ""
 msgstr ""
 "構成オプション max_luns_per_storage_group によって設定された制限に達しまし"
 "た。%(vol)s をストレージ・グループ %(sg)s に追加する操作は拒否されます。"
+
+#, fuzzy, python-format
+msgid "Received error string: %s"
+msgstr "エラー文字列を受信しました: %s"
 
 msgid "Reference must be for an unmanaged snapshot."
 msgstr "参照は非管理対象のスナップショットに対するものでなければなりません。"
@@ -5471,6 +5925,10 @@ msgstr "パーティションからの LUN 削除のエラー"
 
 msgid "Remove port from port group error."
 msgstr "ポートグループからのポート削除のエラー。"
+
+#, fuzzy
+msgid "Remove volume export failed."
+msgstr "ボリュームのエクスポートの削除に失敗しました。"
 
 msgid "Rename lun on array error."
 msgstr "アレイでの LUN 名前変更のエラー。"
@@ -5576,7 +6034,7 @@ msgid "Resizing clone %s failed."
 msgstr "複製 %s のリサイズが失敗しました。"
 
 msgid "Resizing image file failed."
-msgstr "イメージ・ファイルのサイズ変更が失敗しました。"
+msgstr "イメージファイルのサイズ変更が失敗しました。"
 
 msgid "Resource could not be found."
 msgstr "リソースが見つかりませんでした。"
@@ -5733,6 +6191,10 @@ msgstr ""
 "%(progress)s%%。"
 
 #, python-format
+msgid "Service %(service)s on host %(host)s removed."
+msgstr "ホスト %(host)s 上のサービス %(service)s を削除しました。"
+
+#, python-format
 msgid "Service %(service_id)s could not be found on host %(host)s."
 msgstr "ホスト %(host)s でサービス%(service_id)s が見つかりませんでした。"
 
@@ -5756,6 +6218,9 @@ msgstr "サービスが見つかりません。"
 msgid "Set pair secondary access error."
 msgstr "ペアのセカンダリーアクセス設定のエラー。"
 
+msgid "Sets thin provisioning."
+msgstr "シンプロビジョニングを設定します。"
+
 msgid ""
 "Setting LUN QoS policy group is not supported on this storage family and "
 "ONTAP version."
@@ -5778,13 +6243,13 @@ msgstr ""
 "形式が無効であるため、共有 %s は無視されました。address:/export 形式でなけれ"
 "ばなりません。nas_ip および nas_share_path の設定を確認してください。"
 
-#, python-format
+#, fuzzy, python-format
 msgid ""
 "Share at %(dir)s is not writable by the Cinder volume service. Snapshot "
 "operations will not be supported."
 msgstr ""
-"%(dir)s にある共有は、Cinder ボリューム・サービスによって書き込み可能ではあり"
-"ません。スナップショット操作はサポートされません。"
+"%(dir)s にある共有は、Cinder ボリュームサービスによって書き込み可能ではありま"
+"せん。スナップショット操作はサポートされません。"
 
 #, fuzzy
 msgid ""
@@ -5814,6 +6279,14 @@ msgstr ""
 "%(volume_size)s GB を上回っています。"
 
 #, python-format
+msgid ""
+"Snapshot %(id)s was found in state %(state)s rather than 'deleting' during "
+"cascade delete."
+msgstr ""
+"カスケードの削除中に、「削除中」ではなく %(state)s の状態でスナップショット "
+"%(id)s が見つかりました。"
+
+#, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
 msgstr "スナップショット %(snapshot_id)s が見つかりませんでした。"
 
@@ -5822,6 +6295,10 @@ msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "スナップショット %(snapshot_id)s にはキー %(metadata_key)s を持つメタデータは"
 "ありません。"
+
+#, python-format
+msgid "Snapshot %s must not be part of a consistency group."
+msgstr "スナップショット %s は整合性グループの一部であってはなりません。"
 
 #, python-format
 msgid "Snapshot '%s' doesn't exist on array."
@@ -5883,6 +6360,13 @@ msgstr "このボリューム形式では、スナップショットはサポー
 
 msgid "SolidFire Cinder Driver exception"
 msgstr "SolidFire Cinder Driver 例外"
+
+msgid "Sort direction array size exceeds sort key array size."
+msgstr "ソート方向の配列サイズがソートキーの配列サイズを超えています。"
+
+#, fuzzy
+msgid "Source CG is empty. No consistency group will be created."
+msgstr "ソース CG が空です。整合性グループは作成されません。"
 
 msgid "Source host details not found."
 msgstr "ソース・ホスト詳細が見つかりません"
@@ -5995,15 +6479,28 @@ msgstr "プール %(poolNameInStr)s のストレージ・システムが見つ�
 msgid "StorageSystem %(array)s is not found."
 msgstr "ストレージ・システム %(array)s が見つかりません。"
 
-#, python-format
+#, fuzzy, python-format
 msgid "String with params: %s"
-msgstr "パラメーターが指定されたストリング: %s"
+msgstr "パラメーターが指定された文字列: %s"
+
+#, fuzzy, python-format
+msgid ""
+"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
+"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
+"for one or more of the following projects: '%(child_ids)s'"
+msgstr ""
+"子の使用量の合計 '%(sum)s' がリソース '%(res)s' のプロジェクト'%(proj)s'  に"
+"関するクォータ '%(free)s' よりも大きくなっています。以下のプロジェクトの 1 つ"
+"以上について上限または使用量を減らしてください: '%(child_ids)s'"
 
 msgid "Switch over pair error."
 msgstr "ペア切り替えのエラー。"
 
 msgid "Sync pair error."
 msgstr "ペア同期のエラー。"
+
+msgid "Synchronizing secondary volume to primary failed."
+msgstr "2 次ボリュームの 1 次ボリュームへの同期に失敗しました。"
 
 #, python-format
 msgid "System %(id)s found with bad password status - %(pass_status)s."
@@ -6029,11 +6526,19 @@ msgstr ""
 "テンプレート・ツリーの不一致。スレーブ %(slavetag)s をマスター %(mastertag)s "
 "に追加しています"
 
+#, python-format
+msgid "Tenant ID: %s does not exist."
+msgstr "テナント ID %s が存在しません。"
+
 msgid "Terminate connection failed"
 msgstr "接続を強制終了できませんでした"
 
 msgid "Terminate connection unable to connect to backend."
 msgstr "バックエンドに接続できない接続を強制終了します。"
+
+#, python-format
+msgid "Terminate volume connection failed: %(err)s"
+msgstr "ボリューム接続の終了に失敗しました: %(err)s"
 
 #, python-format
 msgid "The %(type)s %(id)s source to be replicated was not found."
@@ -6123,6 +6628,14 @@ msgstr "failed-over ボリュームを削除することができませんでし
 msgid "The following elements are required: %s"
 msgstr "次のエレメントが必要です: %s"
 
+#, fuzzy, python-format
+msgid ""
+"The following migrations have a downgrade, which are not allowed: \n"
+"\t%s"
+msgstr ""
+"以下の移行にはダウングレードがありますが、これは許容されません: \n"
+"\t%s"
+
 msgid "The host group or iSCSI target could not be added."
 msgstr "ホスト・グループまたは iSCSI ターゲットを追加できませんでした。"
 
@@ -6165,6 +6678,9 @@ msgstr "指定された %(type)s %(id)s の論理デバイスは既に削除さ�
 msgid "The method %(method)s is timed out. (timeout value: %(timeout)s)"
 msgstr ""
 "メソッド %(method)s がタイムアウトになりました。(タイムアウト値: %(timeout)s)"
+
+msgid "The method update_migrated_volume is not implemented."
+msgstr "update_migrated_volume メソッドが実装されていません。"
 
 #, python-format
 msgid ""
@@ -6229,6 +6745,10 @@ msgstr "結果が無効です。"
 #, python-format
 msgid "The retention count must be %s or less."
 msgstr "保存数は %s 以下でなければなりません。"
+
+msgid "The snapshot cannot be created when the volume is in maintenance mode."
+msgstr ""
+"ボリュームがメンテナンスモードの場合は、スナップショットを作成できません。"
 
 msgid "The source volume for this WebDAV operation not found."
 msgstr "この WebDAV 操作のソース・ボリュームが見つかりません。"
@@ -6358,6 +6878,22 @@ msgstr ""
 msgid "The volume %(volume_id)s to be mapped was not found."
 msgstr "マップするボリューム %(volume_id)s が見つかりませんでした。"
 
+msgid "The volume cannot accept transfer in maintenance mode."
+msgstr "メンテナンスモードではボリュームを転送できません。"
+
+msgid "The volume cannot be attached in maintenance mode."
+msgstr "メンテナンスモードではボリュームを追加できません。"
+
+msgid "The volume cannot be detached in maintenance mode."
+msgstr "メンテナンスモードではボリュームを切り離すことができません。"
+
+msgid "The volume cannot be updated during maintenance."
+msgstr "メンテナンス中にはボリュームを更新することはできません。"
+
+#, fuzzy
+msgid "The volume connection cannot be initialized in maintenance mode."
+msgstr "メンテナンスモードではボリューム接続を初期化できません。"
+
 msgid "The volume driver requires the iSCSI initiator name in the connector."
 msgstr ""
 "ボリューム・ドライバーには、コネクター内の iSCSI イニシエーター名が必要です。"
@@ -6371,6 +6907,19 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "入力としてボリュームラベルが必要です。"
+
+#, fuzzy
+msgid ""
+"The volume metadata cannot be deleted when the volume is in maintenance mode."
+msgstr ""
+"ボリュームがメンテナンスモードの場合は、ボリュームのメタデータを削除できませ"
+"ん。"
+
+msgid ""
+"The volume metadata cannot be updated when the volume is in maintenance mode."
+msgstr ""
+"ボリュームがメンテナンスモードの場合、ボリュームのメタデータは更新できませ"
+"ん。"
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -6467,7 +7016,7 @@ msgstr "NFS 構成ファイルが構成されていません (%s)"
 
 msgid "Thin provisioning not supported on this version of LVM."
 msgstr ""
-"このバージョンの LVM ではシン・プロビジョニングはサポートされていません。"
+"このバージョンの LVM ではシンプロビジョニングはサポートされていません。"
 
 msgid "ThinProvisioning Enabler is not installed. Can not create thin volume"
 msgstr ""
@@ -6563,6 +7112,11 @@ msgstr ""
 "タイプ %(type_id)s は既に別の qos 仕様 %(qos_specs_id)s に関連付けられていま"
 "す"
 
+msgid "Type access modification is not applicable to public volume type."
+msgstr ""
+"パブリックなボリュームタイプでは、タイプアクセスの変更を行うことはできませ"
+"ん。"
+
 msgid "Type cannot be converted into NaElement."
 msgstr "タイプは NaElement に変換できません。"
 
@@ -6577,6 +7131,9 @@ msgstr "UUID %s が、ボリュームの追加リストと削除リストの両�
 #, python-format
 msgid "Unable to access the Storwize back-end for volume %s."
 msgstr "ボリューム %s の Storwize バックエンドにアクセスできません。"
+
+msgid "Unable to access the backend storage via file handle."
+msgstr "ファイルハンドル経由でバックエンドストレージにアクセスできません。"
 
 #, python-format
 msgid "Unable to access the backend storage via the path %(path)s."
@@ -6623,6 +7180,14 @@ msgid ""
 msgstr ""
 "ボリューム %(vol)s のターゲットボリュームを削除できません。例外: %(err)s。"
 
+#, fuzzy
+msgid ""
+"Unable to detach volume. Volume status must be 'in-use' and attach_status "
+"must be 'attached' to detach."
+msgstr ""
+"ボリュームを切り離すことができません。切り離すには、ボリューム状況が「使用"
+"中」で、attach_status が「接続済み」でなければなりません。"
+
 msgid "Unable to determine system id."
 msgstr "システム ID を判別できません。"
 
@@ -6666,8 +7231,9 @@ msgstr "ボリュームグループが見つかりません: %(vg_name)s"
 msgid "Unable to find ssh_hosts_key_file: %s"
 msgstr "ssh_hosts_key_file が見つかりません: %s"
 
+#, fuzzy
 msgid "Unable to find system log file!"
-msgstr "システム・ログ・ファイルが見つかりません。"
+msgstr "システムログファイルが見つかりません。"
 
 #, python-format
 msgid "Unable to get a block device for file '%s'"
@@ -6899,6 +7465,15 @@ msgstr "不明なサービス"
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "ソート方向が不明です。'desc' または 'asc' でなければなりません"
 
+msgid "Unknown sort direction, must be 'desc' or 'asc'."
+msgstr "ソート方向が不明です。'desc' または 'asc' でなければなりません。"
+
+msgid "Unmanage and cascade delete options are mutually exclusive."
+msgstr "削除オプションの非管理とカスケーディングを同時に行うことはできません。"
+
+msgid "Unmanage volume not implemented."
+msgstr "ボリュームの非管理が実装されていません。"
+
 msgid "Unmanaging of snapshots from 'failed-over' volumes is not allowed."
 msgstr ""
 "'failed-over'  ボリュームからのスナップショットを非管理対象にすることは許可さ"
@@ -6915,7 +7490,7 @@ msgstr "認識されない QoS キーワード: \"%s\""
 
 #, python-format
 msgid "Unrecognized backing format: %s"
-msgstr "認識されないバッキング・フォーマット: %s"
+msgstr "認識されないバッキングフォーマット: %s"
 
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
@@ -6977,6 +7552,9 @@ msgstr ""
 "クォータ処理の更新と削除を行えるのは、ユーザーが割り当てられたプロジェクトと"
 "同じ階層にあるプロジェクトに限られます。"
 
+msgid "Update list, doesn't include volume_id"
+msgstr "リストを更新します。volume_id が含まれません。"
+
 msgid "Updated At"
 msgstr "最終更新"
 
@@ -7012,6 +7590,18 @@ msgstr "ユーザー名は設定されていません。"
 msgid "UserPassword is not configured."
 msgstr "ユーザーパスワードは設定されていません。"
 
+#, fuzzy
+msgid ""
+"V2 rollback - Volume in another storage group besides default storage group."
+msgstr ""
+"V2 のロールバック。デフォルトのストレージグループとは別のストレージグループの"
+"ボリューム。"
+
+#, fuzzy
+msgid "V2 rollback, volume is not in any storage group."
+msgstr ""
+"V2 のロールバック。どのストレージグループにもボリュームが存在しません。"
+
 msgid "VF is not enabled."
 msgstr "VF は有効になっていません。"
 
@@ -7026,6 +7616,10 @@ msgstr "QoS 仕様の有効なコンシューマー: %s"
 #, python-format
 msgid "Valid control location are: %s"
 msgstr "有効な制御ロケーション: %s"
+
+#, python-format
+msgid "Validate volume connection failed (error: %(err)s)."
+msgstr "ボリューム接続の検証に失敗しました (エラー: %(err)s)."
 
 #, python-format
 msgid ""
@@ -7054,6 +7648,14 @@ msgid ""
 msgstr ""
 "バージョン %(req_ver)s はこのAPIではサポートされていません。最大値は "
 "%(min_ver)s で、最小値は %(max_ver)s です。"
+
+#, python-format
+msgid "VersionedObject %s cannot retrieve object by id."
+msgstr "VersionedObject %s が ID ごとのオブジェクトを抽出できません。"
+
+#, python-format
+msgid "VersionedObject %s does not support conditional update."
+msgstr "VersionedObject %s が条件の変更を行うことができません。"
 
 #, python-format
 msgid "Virtual volume '%s' doesn't exist on array."
@@ -7202,6 +7804,14 @@ msgstr ""
 "'<is> True'  に設定したボリューム種別のものでなければなりません。"
 
 #, python-format
+msgid ""
+"Volume %s must not be migrating, attached, belong to a consistency group or "
+"have snapshots."
+msgstr ""
+"ボリューム %s の移行と追加を行うことはできず、整合性グループに含まれることは"
+"できず、スナップショットを持つこともできません。"
+
+#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "ボリューム %s は整合性グループの一部であってはなりません。"
 
@@ -7313,6 +7923,9 @@ msgstr "整合性グループのボリュームには、まだ従属スナップ
 msgid "Volume is in-use."
 msgstr "ボリュームが使用中です。"
 
+msgid "Volume is not available."
+msgstr "ボリュームが利用できません。"
+
 msgid "Volume is not local to this node"
 msgstr "ボリュームは、このノードに対してローカルではありません"
 
@@ -7337,7 +7950,7 @@ msgid "Volume must be in the same availability zone as the snapshot"
 msgstr "ボリュームはスナップショットと同じ可用性ゾーンになければなりません"
 
 msgid "Volume must be in the same availability zone as the source volume"
-msgstr "ボリュームはソース・ボリュームと同じ可用性ゾーンになければなりません"
+msgstr "ボリュームはソースボリュームと同じ可用性ゾーンになければなりません"
 
 msgid "Volume must not be part of a consistency group."
 msgstr "ボリュームを整合性グループの一部にしないでください。"
@@ -7375,6 +7988,10 @@ msgstr "ボリュームがまだホストに割り当てられていません。
 msgid "Volume replication for %(volume_id)s could not be found."
 msgstr "%(volume_id)s のボリューム複製が見つかりませんでした。"
 
+#, fuzzy, python-format
+msgid "Volume service %s failed to start."
+msgstr "ボリュームサービス %s が起動できませんでした"
+
 #, python-format
 msgid ""
 "Volume size %(volume_size)sGB cannot be smaller than the image minDisk size "
@@ -7386,8 +8003,8 @@ msgstr ""
 #, python-format
 msgid "Volume size '%(size)s' must be an integer and greater than 0"
 msgstr ""
-"ボリューム・サイズ '%(size)s' は、整数であり、かつ 0 より大きくなければなりま"
-"せん"
+"ボリュームサイズ '%(size)s' は、整数であり、かつ 0 より大きくなければなりませ"
+"ん"
 
 #, python-format
 msgid ""
@@ -7395,8 +8012,8 @@ msgid ""
 "%(source_size)sGB. They must be >= original volume size."
 msgstr ""
 "ボリューム・サイズ「%(size)s」GB を元のボリューム・サイズ %(source_size)s GB "
-"より小さくすることはできません。このサイズは元のボリューム・サイズ以上でなけ"
-"ればなりません。"
+"より小さくすることはできません。このサイズは元のボリュームサイズ以上でなけれ"
+"ばなりません。"
 
 #, python-format
 msgid ""
@@ -7432,6 +8049,10 @@ msgstr ""
 
 msgid "Volume status must be \"available\" or \"in-use\"."
 msgstr "ボリューム状況は「使用可能」または「使用中」でなければなりません。"
+
+#, python-format
+msgid "Volume status must be %s to reserve."
+msgstr "ボリュームを予約するにはボリューム状態が %s である必要があります。"
 
 msgid "Volume status must be 'available'."
 msgstr "ボリューム状況は「使用可能」でなければなりません。"
@@ -7523,6 +8144,12 @@ msgstr "レプリカの完了を待機するタイムアウト。"
 #, python-format
 msgid "Wait synchronize failed. Running status: %s."
 msgstr "同期の待機が失敗しました。実行状態: %s。"
+
+msgid ""
+"Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
+msgstr ""
+"すべてのノードがクラスターに接続するのを待機しています。すべてのシープデーモ"
+"ンが稼働中であることを確認してください。"
 
 msgid "We should not do switch over on primary array."
 msgstr "プライマリーアレイで切り替えを行ってはなりません。"
@@ -7783,6 +8410,12 @@ msgstr "all_tenants はブール値である必要がありますが、'%s' が�
 msgid "already created"
 msgstr "既に作成済み"
 
+msgid "already_created"
+msgstr "already_created"
+
+msgid "attach snapshot from remote node"
+msgstr "リモートノードにスナップショットを追加します。"
+
 #, python-format
 msgid "attribute %s not lazy-loadable"
 msgstr "属性 %s は遅延ロードできません"
@@ -7858,6 +8491,23 @@ msgstr ""
 msgid "being attached by different mode"
 msgstr "別のモードで接続しています"
 
+#, fuzzy, python-format
+msgid "call failed: %r"
+msgstr "呼び出しが失敗しました: %r"
+
+msgid "call failed: GARBAGE_ARGS"
+msgstr "呼び出しが失敗しました: GARBAGE_ARGS"
+
+msgid "call failed: PROC_UNAVAIL"
+msgstr "呼び出しが失敗しました: PROC_UNAVAIL"
+
+#, python-format
+msgid "call failed: PROG_MISMATCH: %r"
+msgstr "呼び出しが失敗しました: PROG_MISMATCH: %r"
+
+msgid "call failed: PROG_UNAVAIL"
+msgstr "呼び出しが失敗しました: PROG_UNAVAIL"
+
 msgid "can't find the volume to extend"
 msgstr "拡張するボリュームが見つかりません"
 
@@ -7869,6 +8519,24 @@ msgstr "JSON を解釈できません"
 
 msgid "cannot understand XML"
 msgstr "XML を解釈できません"
+
+#, python-format
+msgid "cg-%s"
+msgstr "cg: %s"
+
+#, fuzzy
+msgid "cgsnapshot assigned"
+msgstr "割り当てられた cgsnapshot"
+
+msgid "cgsnapshot changed"
+msgstr "変更された cgsnapshot"
+
+msgid "cgsnapshots assigned"
+msgstr "割り当てられた cgsnapshot"
+
+#, fuzzy
+msgid "cgsnapshots changed"
+msgstr "変更された cgsnapshot"
 
 msgid ""
 "check_for_setup_error: Password or SSH private key is required for "
@@ -7889,6 +8557,12 @@ msgstr "check_hypermetro_exist エラー。"
 #, python-format
 msgid "clone depth exceeds limit of %s"
 msgstr "複製の深さが限度 %s を超えています"
+
+msgid "consistencygroup assigned"
+msgstr "割り当てられた整合性グループ"
+
+msgid "consistencygroup changed"
+msgstr "変更された整合性グループ"
 
 msgid "control_location must be defined"
 msgstr "control_location を定義する必要があります"
@@ -7987,6 +8661,10 @@ msgstr ""
 msgid "delete_hypermetro error."
 msgstr "delete_hypermetro エラー。"
 
+#, python-format
+msgid "delete_initiator: %s ACL not found. Continuing."
+msgstr "delete_initiator: %s ACL が見つかりません。処理を続行します。"
+
 msgid "delete_replication error."
 msgstr "delete_replication エラー。"
 
@@ -7997,6 +8675,9 @@ msgstr "従属ボリュームを持つスナップショット %(snapshot_name)s
 #, python-format
 msgid "deleting volume %(volume_name)s that has snapshot"
 msgstr "スナップショットを含むボリューム %(volume_name)s の削除中"
+
+msgid "detach snapshot from remote node"
+msgstr "リモートノードからスナップショットを切断します"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: 構成されたノードがありません。"
@@ -8075,6 +8756,9 @@ msgstr ""
 msgid "get_pool: Failed to get attributes for volume %s"
 msgstr "get_pool: ボリューム %s の属性の取得に失敗しました。"
 
+msgid "glance_metadata changed"
+msgstr "変更された glance_metadata"
+
 #, python-format
 msgid ""
 "gpfs_images_share_mode is set to copy_on_write, but %(vol)s and %(img)s "
@@ -8098,8 +8782,9 @@ msgstr ""
 "この操作の途中で HTTP サービスが急に無効または保守状態になった可能性がありま"
 "す。"
 
+#, fuzzy
 msgid "id cannot be None"
-msgstr "ID を「なし」にすることはできません"
+msgstr "ID を None にすることはできません"
 
 #, python-format
 msgid "image %s not found"
@@ -8177,12 +8862,33 @@ msgstr "モック"
 msgid "mount.glusterfs is not installed"
 msgstr "mount.glusterfs がインストールされていません"
 
+#, fuzzy, python-format
+msgid "multiple resources with name %s found by drbdmanage"
+msgstr "drbdmanage が名前 %s を持つ複数のリソースを発見しました"
+
+#, fuzzy, python-format
+msgid "multiple resources with snapshot ID %s found"
+msgstr "スナップショット ID %s を持つ複数のリソースが見つかりました"
+
+#, fuzzy
 msgid "name cannot be None"
-msgstr "名前を「なし」にすることはできません"
+msgstr "名前を None に設定することはできません"
 
 #, python-format
 msgid "naviseccli_path: Could not find NAVISECCLI tool %(path)s."
 msgstr "naviseccli_path: NAVISECCLI ツール %(path)s が見つかりませんでした。"
+
+#, python-format
+msgid "no REPLY but %r"
+msgstr "REPLY がないものの %r があります"
+
+#, fuzzy, python-format
+msgid "no snapshot with id %s found in drbdmanage"
+msgstr "drbdmanage で ID %s を持つスナップショットが見つかりません"
+
+#, fuzzy, python-format
+msgid "not exactly one volume with id %s"
+msgstr "ID %s を持つボリュームは 1 つだけではありません"
 
 #, python-format
 msgid "obj missing quotes %s"
@@ -8205,8 +8911,8 @@ msgid ""
 "qemu-img %(minimum_version)s or later is required by this volume driver. "
 "Current qemu-img version: %(current_version)s"
 msgstr ""
-"qemu-img %(minimum_version)s 以降がこのボリューム・ドライバーに必要です。現"
-"行 qemu-img バージョン: %(current_version)s"
+"qemu-img %(minimum_version)s 以降がこのボリュームドライバーに必要です。現在"
+"の qemu-img バージョン: %(current_version)s"
 
 #, python-format
 msgid ""
@@ -8275,6 +8981,12 @@ msgstr ""
 msgid "root element selecting a list"
 msgstr "ルート・エレメントのリスト選択"
 
+#, python-format
+msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
+msgstr ""
+"rtslib_fb にメンバー %s がありません: より新しい python-rtslib-fb が必要かも"
+"しれません。"
+
 msgid "san_ip is not set."
 msgstr "san_ip が設定されていません。"
 
@@ -8306,6 +9018,16 @@ msgid "snapshot id:%s not found"
 msgstr "スナップショット ID %s が見つかりません"
 
 #, python-format
+msgid "snapshot-%s"
+msgstr "スナップショット: %s"
+
+msgid "snapshots assigned"
+msgstr "割り当てられたスナップショット"
+
+msgid "snapshots changed"
+msgstr "変更されたスナップショット"
+
+#, python-format
 msgid "source vol id:%s not found"
 msgstr "ソースボリューム ID %s が見つかりません"
 
@@ -8320,6 +9042,10 @@ msgstr "source-name は空にできません。"
 msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
 msgstr ""
 "source-name 形式は 'vmdk_path@vm_inventory_path' でなければなりません。"
+
+#, python-format
+msgid "status must be %s and"
+msgstr "状態は %s である必要があります"
 
 msgid "status must be available"
 msgstr "状況は「使用可能」でなければなりません"
@@ -8338,6 +9064,14 @@ msgstr "sync_hypermetro エラー。"
 
 msgid "sync_replica not implemented."
 msgstr "sync_replica が実装されていません。"
+
+#, python-format
+msgid ""
+"targetcli not installed and could not create default directory "
+"(%(default_path)s): %(exc)s"
+msgstr ""
+"targetcli がインストールされておらず、デフォルトのディレクトリー "
+"(%(default_path)s) を作成できませんでした: %(exc)s"
 
 msgid "terminate_connection: Failed to get host name from connector."
 msgstr "terminate_connection: コネクターからホスト名を取得できませんでした。"
@@ -8380,6 +9114,10 @@ msgstr "vdisk %s が定義されていません。"
 msgid "vmemclient python library not found"
 msgstr "vmemclient python ライブラリーが見つかりません"
 
+#, fuzzy, python-format
+msgid "volume %s not found in drbdmanage"
+msgstr "drbdmanage でボリューム %s が見つかりません"
+
 msgid "volume assigned"
 msgstr "割り当てられたボリューム"
 
@@ -8406,6 +9144,10 @@ msgstr ""
 msgid "volume size %d is invalid."
 msgstr "ボリュームサイズ %d は無効です。"
 
+#, fuzzy
+msgid "volume_type cannot be None"
+msgstr "volume_type に None を設定することはできません"
+
 msgid ""
 "volume_type must be provided when creating a volume in a consistency group."
 msgstr ""
@@ -8413,7 +9155,7 @@ msgstr ""
 "ます。"
 
 msgid "volume_type_id cannot be None"
-msgstr "volume_type_id を「なし」にすることはできません"
+msgstr "volume_type_id を None に設定することはできません"
 
 #, python-format
 msgid "volume_types must be provided to create consistency group %(name)s."
@@ -8425,6 +9167,12 @@ msgstr ""
 msgid "volume_types must be provided to create consistency group %s."
 msgstr ""
 "整合性グループ %s を作成するには、volume_types を指定する必要があります。"
+
+msgid "volumes assigned"
+msgstr "割り当てられたボリューム"
+
+msgid "volumes changed"
+msgstr "変更されたボリューム"
 
 #, python-format
 msgid "wait_for_condition: %s timed out."
