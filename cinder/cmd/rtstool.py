@@ -82,14 +82,15 @@ def create(backing_device, name, userid, password, iser_enabled,
 
     # If no ips are given we'll bind to all IPv4 and v6
     if not portals_ips:
-        portals_ips = ('0.0.0.0', '::0')
+        portals_ips = ('0.0.0.0', '[::0]')
         # TODO(emh): Binding to IPv6 fails sometimes -- let pass for now.
-        ips_allow_fail = ('::0',)
+        ips_allow_fail = ('[::0]',)
 
     for ip in portals_ips:
         try:
-            portal = rtslib_fb.NetworkPortal(tpg_new, ip, portals_port,
-                                             mode='any')
+            # rtslib expects IPv6 addresses to be surrounded by brackets
+            portal = rtslib_fb.NetworkPortal(tpg_new, _canonicalize_ip(ip),
+                                             portals_port, mode='any')
         except rtslib_fb.utils.RTSLibError:
             raise_exc = ip not in ips_allow_fail
             msg_type = 'Error' if raise_exc else 'Warning'
@@ -256,6 +257,12 @@ def parse_optional_create(argv):
         else:
             optional_args['initiator_iqns'] = arg
     return optional_args
+
+
+def _canonicalize_ip(ip):
+    if ip.startswith('[') or "." in ip:
+        return ip
+    return "[" + ip + "]"
 
 
 def main(argv=None):

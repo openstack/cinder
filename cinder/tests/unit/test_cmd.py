@@ -925,11 +925,11 @@ class TestCinderRtstoolCmd(test.TestCase):
             lun.assert_called_once_with(tpg_new,
                                         storage_object=mock.sentinel.so_new)
             self.assertEqual(1, tpg_new.enable)
-            network_portal.assert_any_call(tpg_new, ip, 3260,
-                                           mode='any')
 
             if ip == '::0':
-                network_portal.assert_any_call(tpg_new, ip, 3260, mode='any')
+                ip = '[::0]'
+
+            network_portal.assert_any_call(tpg_new, ip, 3260, mode='any')
 
     def test_create_rtslib_error_network_portal_ipv4(self):
         with mock.patch('sys.stdout', new=six.StringIO()):
@@ -956,12 +956,6 @@ class TestCinderRtstoolCmd(test.TestCase):
             tpg_new = tpg.return_value
             lun.return_value = mock.sentinel.lun_new
 
-            def network_portal_exception(*args, **kwargs):
-                if set([tpg_new, '::0', 3260]).issubset(list(args)):
-                    raise rtslib_fb.utils.RTSLibError()
-                else:
-                    pass
-
             cinder_rtstool.create(mock.sentinel.backing_device,
                                   mock.sentinel.name,
                                   mock.sentinel.userid,
@@ -981,11 +975,11 @@ class TestCinderRtstoolCmd(test.TestCase):
             lun.assert_called_once_with(tpg_new,
                                         storage_object=mock.sentinel.so_new)
             self.assertEqual(1, tpg_new.enable)
-            network_portal.assert_any_call(tpg_new, ip, 3260,
-                                           mode='any')
 
             if ip == '::0':
-                network_portal.assert_any_call(tpg_new, ip, 3260, mode='any')
+                ip = '[::0]'
+
+            network_portal.assert_any_call(tpg_new, ip, 3260, mode='any')
 
     def test_create_ipv4(self):
         self._test_create('0.0.0.0')
@@ -993,11 +987,7 @@ class TestCinderRtstoolCmd(test.TestCase):
     def test_create_ipv6(self):
         self._test_create('::0')
 
-    @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
-    def test_create_ips_and_port(self, mock_rtslib):
-        port = 3261
-        ips = ['ip1', 'ip2', 'ip3']
-
+    def _test_create_ips_and_port(self, mock_rtslib, port, ips, expected_ips):
         mock_rtslib.BlockStorageObject.return_value = mock.sentinel.bso
         mock_rtslib.Target.return_value = mock.sentinel.target_new
         mock_rtslib.FabricModule.return_value = mock.sentinel.iscsi_fabric
@@ -1021,9 +1011,23 @@ class TestCinderRtstoolCmd(test.TestCase):
             storage_object=mock.sentinel.bso)
 
         mock_rtslib.NetworkPortal.assert_has_calls(
-            map(lambda ip: mock.call(tpg_new, ip, port, mode='any'), ips),
-            any_order=True
+            map(lambda ip: mock.call(tpg_new, ip, port, mode='any'),
+                expected_ips), any_order=True
         )
+
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
+    def test_create_ips_and_port_ipv4(self, mock_rtslib):
+        ips = ['10.0.0.2', '10.0.0.3', '10.0.0.4']
+        port = 3261
+        self._test_create_ips_and_port(mock_rtslib, port, ips, ips)
+
+    @mock.patch.object(cinder_rtstool, 'rtslib_fb', autospec=True)
+    def test_create_ips_and_port_ipv6(self, mock_rtslib):
+        ips = ['fe80::fc16:3eff:fecb:ad2f']
+        expected_ips = ['[fe80::fc16:3eff:fecb:ad2f]']
+        port = 3261
+        self._test_create_ips_and_port(mock_rtslib, port, ips,
+                                       expected_ips)
 
     @mock.patch.object(rtslib_fb.root, 'RTSRoot')
     def test_add_initiator_rtslib_error(self, rtsroot):
