@@ -491,7 +491,7 @@ class TestNexentaNfsDriver(test.TestCase):
            'NexentaNfsDriver._get_volroot')
     @patch('cinder.volume.drivers.nexenta.nfs.'
            'NexentaNfsDriver._get_nfs_server_version')
-    def test_create_larger_volume_from_snapshot(self, version, volroot, ensure):
+    def test_create_larger_volume_from_snap(self, version, volroot, ensure):
         version.return_value = 4
         volroot.return_value = 'volroot'
         self._create_volume_db_entry()
