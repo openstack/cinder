@@ -2072,6 +2072,30 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume, test_volume, 3)
 
+    def test_extend_nonexistent_volume(self):
+        test_volume = {
+            'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
+            'size': 2,
+            'volume_name': 'vol1',
+            'id': '21ec7341-9256-497b-97d9-ef48edcf0635'
+        }
+        self.mock_object(rest_client.RestClient,
+                         'get_lun_id_by_name',
+                         mock.Mock(return_value=None))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.extend_volume,
+                          test_volume, 3)
+
+    @ddt.data({'admin_metadata': {'huawei_lun_wwn': '1'},
+               'id': '21ec7341-9256-497b-97d9-ef48edcf0635'},
+              {'volume_admin_metadata': [{'key': 'huawei_lun_wwn',
+                                          'value': '1'}],
+               'id': '21ec7341-9256-497b-97d9-ef48edcf0635'})
+    def test_get_admin_metadata(self, volume_data):
+        expected_value = {'huawei_lun_wwn': '1'}
+        admin_metadata = huawei_utils.get_admin_metadata(volume_data)
+        self.assertEqual(expected_value, admin_metadata)
+
     def test_login_fail(self):
         self.driver.client.test_fail = True
         self.assertRaises(exception.VolumeBackendAPIException,
