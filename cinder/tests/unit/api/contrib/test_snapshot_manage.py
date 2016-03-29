@@ -96,7 +96,10 @@ class SnapshotManageTest(test.TestCase):
         # Check the create_snapshot_in_db was called with correct arguments.
         self.assertEqual(1, mock_create_snapshot.call_count)
         args = mock_create_snapshot.call_args[0]
+        named_args = mock_create_snapshot.call_args[1]
         self.assertEqual('fake_volume_id', args[1].get('id'))
+        # We should commit quota in cinder-volume layer for this operation.
+        self.assertFalse(named_args['commit_quota'])
 
         # Check the volume_rpcapi.manage_existing_snapshot was called with
         # correct arguments.

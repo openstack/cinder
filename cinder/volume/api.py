@@ -711,7 +711,8 @@ class API(base.Base):
     def create_snapshot_in_db(self, context,
                               volume, name, description,
                               force, metadata,
-                              cgsnapshot_id):
+                              cgsnapshot_id,
+                              commit_quota=True):
         check_policy(context, 'create_snapshot', volume)
 
         if volume['status'] == 'maintenance':
@@ -737,45 +738,47 @@ class API(base.Base):
                                           'vol_status': volume['status']}
             raise exception.InvalidVolume(reason=msg)
 
-        try:
-            if CONF.no_snapshot_gb_quota:
-                reserve_opts = {'snapshots': 1}
-            else:
-                reserve_opts = {'snapshots': 1, 'gigabytes': volume['size']}
-            QUOTAS.add_volume_type_opts(context,
-                                        reserve_opts,
-                                        volume.get('volume_type_id'))
-            reservations = QUOTAS.reserve(context, **reserve_opts)
-        except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            usages = e.kwargs['usages']
-            quotas = e.kwargs['quotas']
+        if commit_quota:
+            try:
+                if CONF.no_snapshot_gb_quota:
+                    reserve_opts = {'snapshots': 1}
+                else:
+                    reserve_opts = {'snapshots': 1,
+                                    'gigabytes': volume['size']}
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume.get('volume_type_id'))
+                reservations = QUOTAS.reserve(context, **reserve_opts)
+            except exception.OverQuota as e:
+                overs = e.kwargs['overs']
+                usages = e.kwargs['usages']
+                quotas = e.kwargs['quotas']
 
-            def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
+                def _consumed(name):
+                    return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            for over in overs:
-                if 'gigabytes' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "%(s_size)sG snapshot (%(d_consumed)dG of "
-                              "%(d_quota)dG already consumed).")
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      's_size': volume['size'],
-                                      'd_consumed': _consumed(over),
-                                      'd_quota': quotas[over]})
-                    raise exception.VolumeSizeExceedsAvailableQuota(
-                        requested=volume['size'],
-                        consumed=_consumed('gigabytes'),
-                        quota=quotas['gigabytes'])
-                elif 'snapshots' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "snapshot (%(d_consumed)d snapshots "
-                              "already consumed).")
+                for over in overs:
+                    if 'gigabytes' in over:
+                        msg = _LW("Quota exceeded for %(s_pid)s, tried to "
+                                  "create %(s_size)sG snapshot (%(d_consumed)d"
+                                  "G of %(d_quota)dG already consumed).")
+                        LOG.warning(msg, {'s_pid': context.project_id,
+                                          's_size': volume['size'],
+                                          'd_consumed': _consumed(over),
+                                          'd_quota': quotas[over]})
+                        raise exception.VolumeSizeExceedsAvailableQuota(
+                            requested=volume['size'],
+                            consumed=_consumed('gigabytes'),
+                            quota=quotas['gigabytes'])
+                    elif 'snapshots' in over:
+                        msg = _LW("Quota exceeded for %(s_pid)s, tried to "
+                                  "create snapshot (%(d_consumed)d snapshots "
+                                  "already consumed).")
 
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      'd_consumed': _consumed(over)})
-                    raise exception.SnapshotLimitExceeded(
-                        allowed=quotas[over])
+                        LOG.warning(msg, {'s_pid': context.project_id,
+                                          'd_consumed': _consumed(over)})
+                        raise exception.SnapshotLimitExceeded(
+                            allowed=quotas[over])
 
         self._check_metadata_properties(metadata)
 
@@ -798,14 +801,16 @@ class API(base.Base):
             snapshot = objects.Snapshot(context=context, **kwargs)
             snapshot.create()
 
-            QUOTAS.commit(context, reservations)
+            if commit_quota:
+                QUOTAS.commit(context, reservations)
         except Exception:
             with excutils.save_and_reraise_exception():
                 try:
                     if snapshot.obj_attr_is_set('id'):
                         snapshot.destroy()
                 finally:
-                    QUOTAS.rollback(context, reservations)
+                    if commit_quota:
+                        QUOTAS.rollback(context, reservations)
 
         return snapshot
 
@@ -1592,7 +1597,8 @@ class API(base.Base):
 
         snapshot_object = self.create_snapshot_in_db(context, volume, name,
                                                      description, False,
-                                                     metadata, None)
+                                                     metadata, None,
+                                                     commit_quota=False)
         self.volume_rpcapi.manage_existing_snapshot(context, snapshot_object,
                                                     ref, host)
         return snapshot_object
