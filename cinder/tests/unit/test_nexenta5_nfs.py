@@ -171,6 +171,24 @@ class TestNexentaNfsDriver(test.TestCase):
         # make sure the volume get extended!
         create.assert_has_calls(path, 2)
 
+    @patch('oslo_concurrency.processutils.execute')
+    def test_extend_volume(self, _execute):
+        self._create_volume_db_entry()
+        self.drv.extend_volume(self.TEST_VOLUME, 2)
+        _execute.assert_called_with(
+            'truncate', '-s', '2G',
+            '$state_path/mnt/4d5a3a8661b6d4b625719788bbc7279e/volume',
+            root_helper='sudo cinder-rootwrap /etc/cinder/rootwrap.conf',
+            run_as_root=True)
+        self.cfg.nexenta_sparsed_volumes = False
+        self.drv.extend_volume(self.TEST_VOLUME, 2)
+        _execute.assert_called_with(
+            'dd', 'if=/dev/zero', 'seek=1073741824',
+            'of=$state_path/mnt/4d5a3a8661b6d4b625719788bbc7279e/volume',
+            'bs=1M', 'count=1024',
+            root_helper='sudo cinder-rootwrap /etc/cinder/rootwrap.conf',
+            run_as_root=True)
+
     def test_get_capacity_info(self):
         self.nef_mock.get.return_value = {
             'bytesAvailable': 1000,

@@ -18,66 +18,56 @@
 """Utilities and helper functions."""
 
 
+import abc
 import contextlib
 import datetime
-import hashlib
+import functools
 import inspect
+import logging as py_logging
+import math
 import os
 import pyclbr
+import random
 import re
 import shutil
+import socket
 import stat
 import sys
 import tempfile
+import time
+import types
 from xml.dom import minidom
 from xml.parsers import expat
 from xml import sax
 from xml.sax import expatreader
-from xml.sax import saxutils
 
+from os_brick.initiator import connector
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_utils import encodeutils
+from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import strutils
 from oslo_utils import timeutils
 import retrying
 import six
+import webob.exc
 
-from cinder.brick.initiator import connector
 from cinder import exception
-from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LE, _LW
 
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 ISO_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S"
 PERFECT_TIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%f"
+VALID_TRACE_FLAGS = {'method', 'api'}
+TRACE_METHOD = False
+TRACE_API = False
 
 synchronized = lockutils.synchronized_with_prefix('cinder-')
-
-
-def find_config(config_path):
-    """Find a configuration file using the given hint.
-
-    :param config_path: Full or relative path to the config.
-    :returns: Full path of the config, if it exists.
-    :raises: `cinder.exception.ConfigNotFound`
-
-    """
-    possible_locations = [
-        config_path,
-        os.path.join(CONF.state_path, "etc", "cinder", config_path),
-        os.path.join(CONF.state_path, "etc", config_path),
-        os.path.join(CONF.state_path, config_path),
-        "/etc/cinder/%s" % config_path,
-    ]
-
-    for path in possible_locations:
-        if os.path.exists(path):
-            return os.path.abspath(path)
-
-    raise exception.ConfigNotFound(path=os.path.abspath(config_path))
 
 
 def as_int(obj, quiet=True):
@@ -97,14 +87,6 @@ def as_int(obj, quiet=True):
     return obj
 
 
-def is_int_like(val):
-    """Check if a value looks like an int."""
-    try:
-        return str(int(val)) == str(val)
-    except Exception:
-        return False
-
-
 def check_exclusive_options(**kwargs):
     """Checks that only one of the provided options is actually not-none.
 
@@ -118,7 +100,7 @@ def check_exclusive_options(**kwargs):
 
     pretty_keys = kwargs.pop("pretty_keys", True)
     exclusive_options = {}
-    for (k, v) in kwargs.iteritems():
+    for (k, v) in kwargs.items():
         if v is not None:
             exclusive_options[k] = True
 
@@ -176,13 +158,6 @@ def check_ssh_injection(cmd_list):
             if not result == -1:
                 if result == 0 or not arg[result - 1] == '\\':
                     raise exception.SSHInjectionThreat(command=cmd_list)
-
-
-def create_channel(client, width, height):
-    """Invoke an interactive shell session on server."""
-    channel = client.invoke_shell()
-    channel.resize_pty(width, height)
-    return channel
 
 
 def cinderdir():
@@ -277,6 +252,24 @@ def last_completed_audit_period(unit=None):
     return (begin, end)
 
 
+def list_of_dicts_to_dict(seq, key):
+    """Convert list of dicts to an indexed dict.
+
+    Takes a list of dicts, and converts it to a nested dict
+    indexed by <key>
+
+    :param seq: list of dicts
+    :parm key: key in dicts to index by
+
+    example:
+      lst = [{'id': 1, ...}, {'id': 2, ...}...]
+      key = 'id'
+      returns {1:{'id': 1, ...}, 2:{'id':2, ...}
+
+    """
+    return {d[key]: dict(d, index=d[key]) for (i, d) in enumerate(seq)}
+
+
 class ProtectedExpatParser(expatreader.ExpatParser):
     """An expat parser which disables DTD's and entities by default."""
 
@@ -312,76 +305,21 @@ def safe_minidom_parse_string(xml_string):
 
     """
     try:
+        if six.PY3 and isinstance(xml_string, bytes):
+            # On Python 3, minidom.parseString() requires Unicode when
+            # the parser parameter is used.
+            #
+            # Bet that XML used in Cinder is always encoded to UTF-8.
+            xml_string = xml_string.decode('utf-8')
         return minidom.parseString(xml_string, parser=ProtectedExpatParser())
     except sax.SAXParseException:
         raise expat.ExpatError()
 
 
-def xhtml_escape(value):
-    """Escapes a string so it is valid within XML or XHTML.
-
-    """
-    return saxutils.escape(value, {'"': '&quot;', "'": '&apos;'})
-
-
-def get_from_path(items, path):
-    """Returns a list of items matching the specified path.
-
-    Takes an XPath-like expression e.g. prop1/prop2/prop3, and for each item
-    in items, looks up items[prop1][prop2][prop3]. Like XPath, if any of the
-    intermediate results are lists it will treat each list item individually.
-    A 'None' in items or any child expressions will be ignored, this function
-    will not throw because of None (anywhere) in items.  The returned list
-    will contain no None values.
-
-    """
-    if path is None:
-        raise exception.Error('Invalid mini_xpath')
-
-    (first_token, sep, remainder) = path.partition('/')
-
-    if first_token == '':
-        raise exception.Error('Invalid mini_xpath')
-
-    results = []
-
-    if items is None:
-        return results
-
-    if not isinstance(items, list):
-        # Wrap single objects in a list
-        items = [items]
-
-    for item in items:
-        if item is None:
-            continue
-        get_method = getattr(item, 'get', None)
-        if get_method is None:
-            continue
-        child = get_method(first_token)
-        if child is None:
-            continue
-        if isinstance(child, list):
-            # Flatten intermediate lists
-            for x in child:
-                results.append(x)
-        else:
-            results.append(child)
-
-    if not sep:
-        # No more tokens
-        return results
-    else:
-        return get_from_path(results, remainder)
-
-
 def is_valid_boolstr(val):
     """Check if the provided string is a valid bool string or not."""
     val = str(val).lower()
-    return (val == 'true' or val == 'false' or
-            val == 'yes' or val == 'no' or
-            val == 'y' or val == 'n' or
-            val == '1' or val == '0')
+    return val in ('true', 'false', 'yes', 'no', 'y', 'n', '1', '0')
 
 
 def is_none_string(val):
@@ -393,7 +331,9 @@ def is_none_string(val):
 
 
 def monkey_patch():
-    """If the CONF.monkey_patch set as True,
+    """Patches decorators for all functions in a specified module.
+
+    If the CONF.monkey_patch set as True,
     this function patches a decorator
     for all functions in specified modules.
 
@@ -406,8 +346,8 @@ def monkey_patch():
     Parameters of the decorator is as follows.
     (See cinder.openstack.common.notifier.api.notify_decorator)
 
-    name - name of the function
-    function - object of the function
+    :param name: name of the function
+    :param function: object of the function
     """
     # If CONF.monkey_patch is not True, this function do nothing.
     if not CONF.monkey_patch:
@@ -424,22 +364,17 @@ def monkey_patch():
             # set the decorator for the class methods
             if isinstance(module_data[key], pyclbr.Class):
                 clz = importutils.import_class("%s.%s" % (module, key))
-                for method, func in inspect.getmembers(clz, inspect.ismethod):
+                # On Python 3, unbound methods are regular functions
+                predicate = inspect.isfunction if six.PY3 else inspect.ismethod
+                for method, func in inspect.getmembers(clz, predicate):
                     setattr(
                         clz, method,
                         decorator("%s.%s.%s" % (module, key, method), func))
             # set the decorator for the function
-            if isinstance(module_data[key], pyclbr.Function):
+            elif isinstance(module_data[key], pyclbr.Function):
                 func = importutils.import_class("%s.%s" % (module, key))
                 setattr(sys.modules[module], key,
                         decorator("%s.%s" % (module, key), func))
-
-
-def generate_glance_url():
-    """Generate the URL to glance."""
-    # TODO(jk0): This will eventually need to take SSL into consideration
-    # when supported in glance.
-    return "http://%s:%d" % (CONF.glance_host, CONF.glance_port)
 
 
 def make_dev_path(dev, partition=None, base='/dev'):
@@ -459,8 +394,12 @@ def make_dev_path(dev, partition=None, base='/dev'):
 
 def sanitize_hostname(hostname):
     """Return a hostname which conforms to RFC-952 and RFC-1123 specs."""
-    if isinstance(hostname, unicode):
+    if six.PY3:
         hostname = hostname.encode('latin-1', 'ignore')
+        hostname = hostname.decode('latin-1')
+    else:
+        if isinstance(hostname, six.text_type):
+            hostname = hostname.encode('latin-1', 'ignore')
 
     hostname = re.sub('[ _]', '-', hostname)
     hostname = re.sub('[^\w.-]+', '', hostname)
@@ -470,18 +409,12 @@ def sanitize_hostname(hostname):
     return hostname
 
 
-def hash_file(file_like_object):
-    """Generate a hash for the contents of a file."""
-    checksum = hashlib.sha1()
-    any(map(checksum.update, iter(lambda: file_like_object.read(32768), '')))
-    return checksum.hexdigest()
-
-
 def service_is_up(service):
     """Check whether a service is up based on last heartbeat."""
     last_heartbeat = service['updated_at'] or service['created_at']
     # Timestamps in DB are UTC.
-    elapsed = (timeutils.utcnow() - last_heartbeat).total_seconds()
+    elapsed = (timeutils.utcnow(with_timezone=True) -
+               last_heartbeat).total_seconds()
     return abs(elapsed) <= CONF.service_down_time
 
 
@@ -492,6 +425,49 @@ def read_file_as_root(file_path):
         return out
     except processutils.ProcessExecutionError:
         raise exception.FileNotFound(file_path=file_path)
+
+
+def robust_file_write(directory, filename, data):
+    """Robust file write.
+
+    Use "write to temp file and rename" model for writing the
+    persistence file.
+
+    :param directory: Target directory to create a file.
+    :param filename: File name to store specified data.
+    :param data: String data.
+    """
+    tempname = None
+    dirfd = None
+    try:
+        dirfd = os.open(directory, os.O_DIRECTORY)
+
+        # write data to temporary file
+        with tempfile.NamedTemporaryFile(prefix=filename,
+                                         dir=directory,
+                                         delete=False) as tf:
+            tempname = tf.name
+            tf.write(data.encode('utf-8'))
+            tf.flush()
+            os.fdatasync(tf.fileno())
+            tf.close()
+
+            # Fsync the directory to ensure the fact of the existence of
+            # the temp file hits the disk.
+            os.fsync(dirfd)
+            # If destination file exists, it will be replaced silently.
+            os.rename(tempname, os.path.join(directory, filename))
+            # Fsync the directory to ensure the rename hits the disk.
+            os.fsync(dirfd)
+    except OSError:
+        with excutils.save_and_reraise_exception():
+            LOG.error(_LE("Failed to write persistence file: %(path)s."),
+                      {'path': os.path.join(directory, filename)})
+            if os.path.isfile(tempname):
+                os.unlink(tempname)
+    finally:
+        if dirfd:
+            os.close(dirfd)
 
 
 @contextlib.contextmanager
@@ -523,7 +499,8 @@ def tempdir(**kwargs):
         try:
             shutil.rmtree(tmpdir)
         except OSError as e:
-            LOG.debug('Could not remove tmpdir: %s', e)
+            LOG.debug('Could not remove tmpdir: %s',
+                      six.text_type(e))
 
 
 def walk_class_hierarchy(clazz, encountered=None):
@@ -544,11 +521,10 @@ def get_root_helper():
 
 
 def brick_get_connector_properties(multipath=False, enforce_multipath=False):
-    """wrapper for the brick calls to automatically set
-    the root_helper needed for cinder.
+    """Wrapper to automatically set root_helper in brick calls.
 
-    :param multipath:         A boolean indicating whether the connector can
-                              support multipath.
+    :param multipath: A boolean indicating whether the connector can
+                      support multipath.
     :param enforce_multipath: If True, it raises exception when multipath=True
                               is specified but multipathd is not running.
                               If False, it falls back to multipath=False
@@ -568,6 +544,7 @@ def brick_get_connector(protocol, driver=None,
                         device_scan_attempts=3,
                         *args, **kwargs):
     """Wrapper to get a brick connector object.
+
     This automatically populates the required protocol as well
     as the root_helper needed to execute commands.
     """
@@ -593,7 +570,7 @@ def require_driver_initialized(driver):
     # we can't do anything if the driver didn't init
     if not driver.initialized:
         driver_name = driver.__class__.__name__
-        LOG.error(_LE("Volume driver %s not initialized") % driver_name)
+        LOG.error(_LE("Volume driver %s not initialized"), driver_name)
         raise exception.DriverNotInitialized()
 
 
@@ -607,8 +584,15 @@ def get_file_gid(path):
     return os.stat(path).st_gid
 
 
+def get_file_size(path):
+    """Returns the file size."""
+    return os.stat(path).st_size
+
+
 def _get_disk_of_partition(devpath, st=None):
-    """Returns a disk device path from a partition device path, and stat for
+    """Gets a disk device path and status from partition path.
+
+    Returns a disk device path from a partition device path, and stat for
     the device. If devpath is not a partition, devpath is returned as it is.
     For example, '/dev/sda' is returned for '/dev/sda1', and '/dev/disk1' is
     for '/dev/disk1p1' ('p' is prepended to the partition number if the disk
@@ -628,8 +612,20 @@ def _get_disk_of_partition(devpath, st=None):
     return (devpath, st)
 
 
+def get_bool_param(param_string, params):
+    param = params.get(param_string, False)
+    if not is_valid_boolstr(param):
+        msg = _('Value %(param)s for %(param_string)s is not a '
+                'boolean.') % {'param': param, 'param_string': param_string}
+        raise exception.InvalidParameterValue(err=msg)
+
+    return strutils.bool_from_string(param, strict=True)
+
+
 def get_blkdev_major_minor(path, lookup_for_file=True):
-    """Get the device's "major:minor" number of a block device to control
+    """Get 'major:minor' number of block device.
+
+    Get the device's 'major:minor' number of a block device to control
     I/O ratelimit of the specified path.
     If lookup_for_file is True and the path is a regular file, lookup a disk
     device which the file lies on and returns the result for the device.
@@ -655,7 +651,8 @@ def get_blkdev_major_minor(path, lookup_for_file=True):
 
 
 def check_string_length(value, name, min_length=0, max_length=None):
-    """Check the length of specified string
+    """Check the length of specified string.
+
     :param value: the value of the string
     :param name: the name of the string
     :param min_length: the min_length of the string
@@ -688,9 +685,15 @@ def add_visible_admin_metadata(volume):
     visible_admin_meta = {}
 
     if volume.get('volume_admin_metadata'):
-        for item in volume['volume_admin_metadata']:
-            if item['key'] in _visible_admin_metadata_keys:
-                visible_admin_meta[item['key']] = item['value']
+        if isinstance(volume['volume_admin_metadata'], dict):
+            volume_admin_metadata = volume['volume_admin_metadata']
+            for key in volume_admin_metadata:
+                if key in _visible_admin_metadata_keys:
+                    visible_admin_meta[key] = volume_admin_metadata[key]
+        else:
+            for item in volume['volume_admin_metadata']:
+                if item['key'] in _visible_admin_metadata_keys:
+                    visible_admin_meta[item['key']] = item['value']
     # avoid circular ref when volume is a Volume instance
     elif (volume.get('admin_metadata') and
             isinstance(volume.get('admin_metadata'), dict)):
@@ -708,7 +711,7 @@ def add_visible_admin_metadata(volume):
         for item in orig_meta:
             if item['key'] in visible_admin_meta.keys():
                 item['value'] = visible_admin_meta.pop(item['key'])
-        for key, value in visible_admin_meta.iteritems():
+        for key, value in visible_admin_meta.items():
             orig_meta.append({'key': key, 'value': value})
         volume['volume_metadata'] = orig_meta
     # avoid circular ref when vol is a Volume instance
@@ -721,9 +724,8 @@ def add_visible_admin_metadata(volume):
 
 def remove_invalid_filter_options(context, filters,
                                   allowed_search_options):
-    """Remove search options that are not valid
-    for non-admin API/context.
-    """
+    """Remove search options that are not valid for non-admin API/context."""
+
     if context.is_admin:
         # Allow all options
         return
@@ -731,8 +733,7 @@ def remove_invalid_filter_options(context, filters,
     unknown_options = [opt for opt in filters
                        if opt not in allowed_search_options]
     bad_options = ", ".join(unknown_options)
-    log_msg = "Removing options '%s' from query." % bad_options
-    LOG.debug(log_msg)
+    LOG.debug("Removing options '%s' from query.", bad_options)
     for opt in unknown_options:
         del filters[opt]
 
@@ -743,20 +744,57 @@ def is_blk_device(dev):
             return True
         return False
     except Exception:
-        LOG.debug('Path %s not found in is_blk_device check' % dev)
+        LOG.debug('Path %s not found in is_blk_device check', dev)
         return False
 
 
-def retry(exceptions, interval=1, retries=3, backoff_rate=2):
+class ComparableMixin(object):
+    def _compare(self, other, method):
+        try:
+            return method(self._cmpkey(), other._cmpkey())
+        except (AttributeError, TypeError):
+            # _cmpkey not implemented, or return different type,
+            # so I can't compare with "other".
+            return NotImplemented
+
+    def __lt__(self, other):
+        return self._compare(other, lambda s, o: s < o)
+
+    def __le__(self, other):
+        return self._compare(other, lambda s, o: s <= o)
+
+    def __eq__(self, other):
+        return self._compare(other, lambda s, o: s == o)
+
+    def __ge__(self, other):
+        return self._compare(other, lambda s, o: s >= o)
+
+    def __gt__(self, other):
+        return self._compare(other, lambda s, o: s > o)
+
+    def __ne__(self, other):
+        return self._compare(other, lambda s, o: s != o)
+
+
+def retry(exceptions, interval=1, retries=3, backoff_rate=2,
+          wait_random=False):
 
     def _retry_on_exception(e):
         return isinstance(e, exceptions)
 
     def _backoff_sleep(previous_attempt_number, delay_since_first_attempt_ms):
         exp = backoff_rate ** previous_attempt_number
-        wait_for = max(0, interval * exp)
-        LOG.debug("Sleeping for %s seconds", wait_for)
-        return wait_for * 1000.0
+        wait_for = interval * exp
+
+        if wait_random:
+            random.seed()
+            wait_val = random.randrange(interval * 1000.0, wait_for * 1000.0)
+        else:
+            wait_val = wait_for * 1000.0
+
+        LOG.debug("Sleeping for %s seconds", (wait_val / 1000.0))
+
+        return wait_val
 
     def _print_stop(previous_attempt_number, delay_since_first_attempt_ms):
         delay_since_first_attempt = delay_since_first_attempt_ms / 1000.0
@@ -781,3 +819,246 @@ def retry(exceptions, interval=1, retries=3, backoff_rate=2):
         return _wrapper
 
     return _decorator
+
+
+def convert_str(text):
+    """Convert to native string.
+
+    Convert bytes and Unicode strings to native strings:
+
+    * convert to bytes on Python 2:
+      encode Unicode using encodeutils.safe_encode()
+    * convert to Unicode on Python 3: decode bytes from UTF-8
+    """
+    if six.PY2:
+        return encodeutils.safe_encode(text)
+    else:
+        if isinstance(text, bytes):
+            return text.decode('utf-8')
+        else:
+            return text
+
+
+def trace_method(f):
+    """Decorates a function if TRACE_METHOD is true."""
+    @functools.wraps(f)
+    def trace_method_logging_wrapper(*args, **kwargs):
+        if TRACE_METHOD:
+            return trace(f)(*args, **kwargs)
+        return f(*args, **kwargs)
+    return trace_method_logging_wrapper
+
+
+def trace_api(f):
+    """Decorates a function if TRACE_API is true."""
+    @functools.wraps(f)
+    def trace_api_logging_wrapper(*args, **kwargs):
+        if TRACE_API:
+            return trace(f)(*args, **kwargs)
+        return f(*args, **kwargs)
+    return trace_api_logging_wrapper
+
+
+def trace(f):
+    """Trace calls to the decorated function.
+
+    This decorator should always be defined as the outermost decorator so it
+    is defined last. This is important so it does not interfere
+    with other decorators.
+
+    Using this decorator on a function will cause its execution to be logged at
+    `DEBUG` level with arguments, return values, and exceptions.
+
+    :returns: a function decorator
+    """
+
+    func_name = f.__name__
+
+    @functools.wraps(f)
+    def trace_logging_wrapper(*args, **kwargs):
+        if len(args) > 0:
+            maybe_self = args[0]
+        else:
+            maybe_self = kwargs.get('self', None)
+
+        if maybe_self and hasattr(maybe_self, '__module__'):
+            logger = logging.getLogger(maybe_self.__module__)
+        else:
+            logger = LOG
+
+        # NOTE(ameade): Don't bother going any further if DEBUG log level
+        # is not enabled for the logger.
+        if not logger.isEnabledFor(py_logging.DEBUG):
+            return f(*args, **kwargs)
+
+        all_args = inspect.getcallargs(f, *args, **kwargs)
+        logger.debug('==> %(func)s: call %(all_args)r',
+                     {'func': func_name, 'all_args': all_args})
+
+        start_time = time.time() * 1000
+        try:
+            result = f(*args, **kwargs)
+        except Exception as exc:
+            total_time = int(round(time.time() * 1000)) - start_time
+            logger.debug('<== %(func)s: exception (%(time)dms) %(exc)r',
+                         {'func': func_name,
+                          'time': total_time,
+                          'exc': exc})
+            raise
+        total_time = int(round(time.time() * 1000)) - start_time
+
+        logger.debug('<== %(func)s: return (%(time)dms) %(result)r',
+                     {'func': func_name,
+                      'time': total_time,
+                      'result': result})
+        return result
+    return trace_logging_wrapper
+
+
+class TraceWrapperMetaclass(type):
+    """Metaclass that wraps all methods of a class with trace_method.
+
+    This metaclass will cause every function inside of the class to be
+    decorated with the trace_method decorator.
+
+    To use the metaclass you define a class like so:
+    @six.add_metaclass(utils.TraceWrapperMetaclass)
+    class MyClass(object):
+    """
+    def __new__(meta, classname, bases, classDict):
+        newClassDict = {}
+        for attributeName, attribute in classDict.items():
+            if isinstance(attribute, types.FunctionType):
+                # replace it with a wrapped version
+                attribute = functools.update_wrapper(trace_method(attribute),
+                                                     attribute)
+            newClassDict[attributeName] = attribute
+
+        return type.__new__(meta, classname, bases, newClassDict)
+
+
+class TraceWrapperWithABCMetaclass(abc.ABCMeta, TraceWrapperMetaclass):
+    """Metaclass that wraps all methods of a class with trace."""
+    pass
+
+
+def setup_tracing(trace_flags):
+    """Set global variables for each trace flag.
+
+    Sets variables TRACE_METHOD and TRACE_API, which represent
+    whether to log method and api traces.
+
+    :param trace_flags: a list of strings
+    """
+    global TRACE_METHOD
+    global TRACE_API
+    try:
+        trace_flags = [flag.strip() for flag in trace_flags]
+    except TypeError:  # Handle when trace_flags is None or a test mock
+        trace_flags = []
+    for invalid_flag in (set(trace_flags) - VALID_TRACE_FLAGS):
+        LOG.warning(_LW('Invalid trace flag: %s'), invalid_flag)
+    TRACE_METHOD = 'method' in trace_flags
+    TRACE_API = 'api' in trace_flags
+
+
+def resolve_hostname(hostname):
+    """Resolves host name to IP address.
+
+    Resolves a host name (my.data.point.com) to an IP address (10.12.143.11).
+    This routine also works if the data passed in hostname is already an IP.
+    In this case, the same IP address will be returned.
+
+    :param hostname:  Host name to resolve.
+    :returns:         IP Address for Host name.
+    """
+    result = socket.getaddrinfo(hostname, None)[0]
+    (family, socktype, proto, canonname, sockaddr) = result
+    LOG.debug('Asked to resolve hostname %(host)s and got IP %(ip)s.',
+              {'host': hostname, 'ip': sockaddr[0]})
+    return sockaddr[0]
+
+
+def build_or_str(elements, str_format=None):
+    """Builds a string of elements joined by 'or'.
+
+    Will join strings with the 'or' word and if a str_format is provided it
+    will be used to format the resulted joined string.
+    If there are no elements an empty string will be returned.
+
+    :param elements: Elements we want to join.
+    :type elements: String or iterable of strings.
+    :param str_format: String to use to format the response.
+    :type str_format: String.
+    """
+    if not elements:
+        return ''
+
+    if not isinstance(elements, six.string_types):
+        elements = _(' or ').join(elements)
+
+    if str_format:
+        return str_format % elements
+    return elements
+
+
+def calculate_virtual_free_capacity(total_capacity,
+                                    free_capacity,
+                                    provisioned_capacity,
+                                    thin_provisioning_support,
+                                    max_over_subscription_ratio,
+                                    reserved_percentage):
+    """Calculate the virtual free capacity based on thin provisioning support.
+
+    :param total_capacity:  total_capacity_gb of a host_state or pool.
+    :param free_capacity:   free_capacity_gb of a host_state or pool.
+    :param provisioned_capacity:    provisioned_capacity_gb of a host_state
+                                    or pool.
+    :param thin_provisioning_support:   thin_provisioning_support of
+                                        a host_state or a pool.
+    :param max_over_subscription_ratio: max_over_subscription_ratio of
+                                        a host_state or a pool
+    :param reserved_percentage: reserved_percentage of a host_state or
+                                a pool.
+    :returns: the calculated virtual free capacity.
+    """
+
+    total = float(total_capacity)
+    reserved = float(reserved_percentage) / 100
+
+    if thin_provisioning_support:
+        free = (total * max_over_subscription_ratio
+                - provisioned_capacity
+                - math.floor(total * reserved))
+    else:
+        # Calculate how much free space is left after taking into
+        # account the reserved space.
+        free = free_capacity - math.floor(total * reserved)
+    return free
+
+
+def validate_integer(value, name, min_value=None, max_value=None):
+    """Make sure that value is a valid integer, potentially within range.
+
+    :param value: the value of the integer
+    :param name: the name of the integer
+    :param min_length: the min_length of the integer
+    :param max_length: the max_length of the integer
+    :returns: integer
+    """
+    try:
+        value = int(value)
+    except (TypeError, ValueError, UnicodeEncodeError):
+        raise webob.exc.HTTPBadRequest(explanation=(
+            _('%s must be an integer.') % name))
+
+    if min_value is not None and value < min_value:
+        raise webob.exc.HTTPBadRequest(
+            explanation=(_('%(value_name)s must be >= %(min_value)d') %
+                         {'value_name': name, 'min_value': min_value}))
+    if max_value is not None and value > max_value:
+        raise webob.exc.HTTPBadRequest(
+            explanation=(_('%(value_name)s must be <= %(max_value)d') %
+                         {'value_name': name, 'max_value': max_value}))
+
+    return value
