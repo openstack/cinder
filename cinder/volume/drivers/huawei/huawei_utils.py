@@ -91,6 +91,19 @@ def get_volume_metadata(volume):
     return {}
 
 
+def get_admin_metadata(volume):
+    admin_metadata = {}
+    if 'admin_metadata' in volume:
+        admin_metadata = volume['admin_metadata']
+    elif 'volume_admin_metadata' in volume:
+        metadata = volume.get('volume_admin_metadata', [])
+        admin_metadata = {item['key']: item['value'] for item in metadata}
+
+    LOG.debug("Volume ID: %(id)s, admin_metadata: %(admin_metadata)s.",
+              {"id": volume['id'], "admin_metadata": admin_metadata})
+    return admin_metadata
+
+
 def get_snapshot_metadata_value(snapshot):
     if type(snapshot) is objects.Snapshot:
         return snapshot.metadata

@@ -583,7 +583,7 @@ class ReplicaPairManager(object):
             self.rmt_driver.enable(pair_id)
 
             lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
-            admin_metadata = v['admin_metadata']
+            admin_metadata = huawei_utils.get_admin_metadata(v)
             admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
             new_drv_data = {'pair_id': pair_id,
                             'rmt_lun_id': v['provider_location']}
@@ -623,7 +623,7 @@ class ReplicaPairManager(object):
             self.rmt_driver.failover(pair_id)
 
             lun_info = self.rmt_client.get_lun_info(rmt_lun_id)
-            admin_metadata = v['admin_metadata']
+            admin_metadata = huawei_utils.get_admin_metadata(v)
             admin_metadata.update({'huawei_lun_wwn': lun_info['WWN']})
 
             new_drv_data = {'pair_id': pair_id,
