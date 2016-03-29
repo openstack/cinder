@@ -17,6 +17,7 @@
 
 .. automodule:: nexenta.iscsi
 """
+import six
 
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -214,7 +215,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.nms.zvol.create(
             self._get_zvol_name(volume['name']),
             '%sG' % (volume['size'],),
-            self.configuration.nexenta_blocksize,
+            six.text_type(self.configuration.nexenta_blocksize),
             self.configuration.nexenta_sparse)
 
     def extend_volume(self, volume, new_size):
