@@ -3102,9 +3102,6 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         data['storage_protocol'] = self.protocol
         data['pools'] = []
 
-        data['multiattach'] = (self.configuration.
-                               storwize_svc_multihostmap_enabled)
-
         backend_name = self.configuration.safe_get('volume_backend_name')
         data['volume_backend_name'] = (backend_name or
                                        self._state['system_name'])
@@ -3132,6 +3129,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                 location_info = ('StorwizeSVCDriver:%(sys_id)s:%(pool)s' %
                                  {'sys_id': self._state['system_id'],
                                   'pool': pool_data['name']})
+                multiattach = (self.configuration.
+                               storwize_svc_multihostmap_enabled)
                 pool_stats = {
                     'pool_name': pool_data['name'],
                     'total_capacity_gb': total_capacity_gb,
@@ -3143,7 +3142,8 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     'QoS_support': QoS_support,
                     'consistencygroup_support': True,
                     'location_info': location_info,
-                    'easytier_support': easy_tier
+                    'easytier_support': easy_tier,
+                    'multiattach': multiattach
                 }
             if self._replication_enabled:
                 pool_stats.update({

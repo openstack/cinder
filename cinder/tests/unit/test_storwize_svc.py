@@ -3334,10 +3334,12 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
     def test_storwize_svc_get_volume_stats(self):
         self._set_flag('reserved_percentage', 25)
+        self._set_flag('storwize_svc_multihostmap_enabled', True)
         stats = self.driver.get_volume_stats()
         for each_pool in stats['pools']:
             self.assertIn(each_pool['pool_name'],
                           self._def_flags['storwize_svc_volpool_name'])
+            self.assertTrue(each_pool['multiattach'])
             self.assertLessEqual(each_pool['free_capacity_gb'],
                                  each_pool['total_capacity_gb'])
             self.assertLessEqual(each_pool['allocated_capacity_gb'],
