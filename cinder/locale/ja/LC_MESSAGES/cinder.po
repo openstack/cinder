@@ -16,13 +16,13 @@
 # 笹原 昌美 <ebb0de1@jp.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev24\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev29\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-27 07:54+0000\n"
+"POT-Creation-Date: 2016-03-29 01:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-28 06:56+0000\n"
+"PO-Revision-Date: 2016-03-29 06:07+0000\n"
 "Last-Translator: Tsutomu Kimura <ebb0de2@jp.ibm.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1209,6 +1209,12 @@ msgid "Cannot find Replication service on system %s."
 msgstr "複製サービスがシステム %s に見つかりません。"
 
 #, python-format
+msgid "Cannot find Volume: %(id)s. unmanage operation.  Exiting..."
+msgstr ""
+"ボリュームが見つかりません: %(id)s。処理の管理を解除します。処理を終了しま"
+"す。"
+
+#, python-format
 msgid "Cannot find Volume: %(volumename)s. Extend operation.  Exiting...."
 msgstr "ボリューム: %(volumename)s が見つかりません。拡張操作。終了中..."
 
@@ -1218,6 +1224,14 @@ msgstr "ボリューム %(volumeName)s の装置番号が見つかりません�
 
 msgid "Cannot find migration task."
 msgstr "マイグレーションタスクを見つけることができません。"
+
+#, python-format
+msgid "Cannot find replication service on system %s."
+msgstr "システム %s でレプリケーションサービスが見つかりません。"
+
+#, python-format
+msgid "Cannot find source CG instance. consistencygroup_id: %s."
+msgstr "ソース CG のインスタンスが見つかりません。consistencygroup_id: %s。"
 
 #, python-format
 msgid "Cannot get mcs_id by channel id: %(channel_id)s."
@@ -2145,6 +2159,21 @@ msgstr ""
 
 #, python-format
 msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
+"(Output: %(out)s)."
+msgstr ""
+"EMC VNX Cinder ドライバーの SP が使用できない例外: %(cmd)s (戻りコード: "
+"%(rc)s)(出力: %(out)s)。"
+
+msgid ""
+"EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
+"values."
+msgstr ""
+"EcomServerIp、EcomServerPort、EcomUserName、EcomPassword に有効な値を設定する"
+"必要があります。"
+
+#, python-format
+msgid ""
 "Either 'cgsnapshot_id' or 'source_cgid' must be provided to create "
 "consistency group %(name)s from source."
 msgstr ""
@@ -2367,6 +2396,22 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Error Deleting Group: %(storageGroupName)s. Return code: %(rc)lu. Error: "
+"%(error)s"
+msgstr ""
+"グループの削除のエラー: %(storageGroupName)s。戻りコード: %(rc)lu。エラー: "
+"%(error)s"
+
+#, python-format
+msgid ""
+"Error Deleting Initiator Group: %(initiatorGroupName)s. Return code: "
+"%(rc)lu. Error: %(error)s"
+msgstr ""
+"イニシエーターグループの削除のエラー: %(initiatorGroupName)s。戻りコード: "
+"%(rc)lu。エラー: %(error)s"
+
+#, python-format
+msgid ""
 "Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
 "Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
@@ -2407,6 +2452,13 @@ msgid ""
 msgstr ""
 "レプリケーションアクション: %(id)s の削除中にエラーが発生しました。戻りコー"
 "ド: %(ret.status)d メッセージ: %(ret.data)s。"
+
+#, python-format
+msgid ""
+"Error Extend Volume: %(volumeName)s. Return code: %(rc)lu.  Error: %(error)s."
+msgstr ""
+"拡張ボリュームのエラー: %(volumeName)s。戻りコード: %(rc)lu。エラー: "
+"%(error)s。"
 
 #, python-format
 msgid ""
@@ -2608,7 +2660,7 @@ msgid "Error creating volume: %s."
 msgstr "ボリュームの作成中にエラーが発生しました: %s。"
 
 msgid "Error deleting replay profile."
-msgstr "リレープロファイルの削除でエラーが発生しました。"
+msgstr "リプレープロファイルの削除でエラーが発生しました。"
 
 #, python-format
 msgid "Error deleting volume %(ssn)s: %(volume)s"
@@ -2669,6 +2721,12 @@ msgstr "%(name)s の検索中にエラーが発生しました。"
 #, python-format
 msgid "Error finding %s."
 msgstr "%s の検索中にエラーが発生しました。"
+
+#, python-format
+msgid ""
+"Error getting ReplicationSettingData. Return code: %(rc)lu. Error: %(error)s."
+msgstr ""
+"ReplicationSettingData の取得エラー。戻りコード: %(rc)lu。エラー: %(error)s。"
 
 msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
@@ -3110,6 +3168,9 @@ msgstr ""
 msgid "FAST is not supported on this array."
 msgstr "FAST はこのアレイでサポートされていません。"
 
+msgid "FC is the protocol but wwpns are not supplied by OpenStack."
+msgstr "FC がプロトコルですが、wwpns が OpenStack によって提供されていません。"
+
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "%(volume)s の割り当て解除に失敗しました"
@@ -3175,6 +3236,14 @@ msgstr "%(vol)s の %(sg)s への追加が、%(retries)s 回の再試行後に�
 
 msgid "Failed to add the logical device."
 msgstr "論理デバイスを追加できませんでした。"
+
+#, python-format
+msgid ""
+"Failed to add volume %(volumeName)s to consistency group %(cgName)s. Return "
+"code: %(rc)lu. Error: %(error)s."
+msgstr ""
+"整合性グループ %(cgName)s に ボリューム %(volumeName)s を追加できませんでし"
+"た。戻りコード: %(rc)lu。エラー: %(error)s。"
 
 msgid "Failed to add zoning configuration."
 msgstr "ゾーニング設定の追加に失敗しました。"
@@ -3243,6 +3312,11 @@ msgid "Failed to copy volume, source device unavailable."
 msgstr "ボリュームのコピーに失敗しました。ソースデバイスが使用できません。"
 
 #, python-format
+msgid "Failed to create CG %(cgName)s from snapshot %(cgSnapshot)s."
+msgstr ""
+"スナップショット %(cgSnapshot)s から CG %(cgName)s の作成に失敗しました。"
+
+#, python-format
 msgid "Failed to create IG, %s"
 msgstr "IG を作成できませんでした。%s"
 
@@ -3302,6 +3376,10 @@ msgid ""
 msgstr ""
 "整合性グループ %(consistencyGroupName)s の作成に失敗しました。戻りコード: "
 "%(rc)lu。エラー: %(error)s。"
+
+#, python-format
+msgid "Failed to create hardware id(s) on %(storageSystemName)s."
+msgstr "%(storageSystemName)s 上でハードウェア ID を作成できませんでした。"
 
 #, python-format
 msgid ""
@@ -3396,6 +3474,10 @@ msgstr ""
 #, python-format
 msgid "Failed to create south bound connector for %s."
 msgstr "%s のサウスバウンドコネクターの作成に失敗しました。"
+
+#, python-format
+msgid "Failed to create storage group %(storageGroupName)s."
+msgstr "ストレージグループ %(storageGroupName)s を作成できませんでした。"
 
 #, python-format
 msgid "Failed to create thin pool, error message was: %s"
@@ -3945,6 +4027,19 @@ msgid "Failed to remove iscsi target for volume %(volume_id)s."
 msgstr "ボリューム %(volume_id)s の iSCSI ターゲットの削除に失敗しました。"
 
 #, python-format
+msgid ""
+"Failed to remove volume %(volumeName)s from consistency group %(cgName)s. "
+"Return code: %(rc)lu. Error: %(error)s."
+msgstr ""
+"整合性グループ %(cgName)s から ボリューム %(volumeName)s を削除できませんでし"
+"た。戻りコード: %(rc)lu。エラー: %(error)s。"
+
+#, python-format
+msgid "Failed to remove volume %(volumeName)s from default SG."
+msgstr ""
+"デフォルトの SG からボリューム %(volumeName)s を削除できませんでした。 "
+
+#, python-format
 msgid "Failed to remove volume %(volumeName)s from default SG: %(volumeName)s."
 msgstr ""
 "ボリューム %(volumeName)s をデフォルト SG %(volumeName)s から削除できませんで"
@@ -4027,6 +4122,10 @@ msgstr ""
 msgid "Failed to unmap a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
 msgstr ""
 "論理デバイスをマップ解除できませんでした。(LDEV: %(ldev)s、理由: %(reason)s)"
+
+#, python-format
+msgid "Failed to update consistency group: %(cgName)s."
+msgstr "整合性グループの更新に失敗しました: %(cgName)s。"
 
 #, python-format
 msgid "Failed to update metadata for volume: %(reason)s"
@@ -4738,6 +4837,17 @@ msgstr "要求本体の形式が正しくありません。"
 msgid "Incremental backups exist for this backup."
 msgstr "このバックアップには増分バックアップが存在します。"
 
+#, python-format
+msgid ""
+"Infortrend CLI exception: %(err)s Param: %(param)s (Return Code: %(rc)s) "
+"(Output: %(out)s)"
+msgstr ""
+"Infortrend CLI の例外: %(err)s。パラメーター: %(param)s (戻りコード: %(rc)s) "
+"(出力: %(out)s)"
+
+msgid "Initial tier: {}, policy: {} is not valid."
+msgstr "当初の層 {} のポリシー {} が無効です。"
+
 msgid "Input type {} is not supported."
 msgstr "入力タイプ {} はサポートされません。"
 
@@ -5273,6 +5383,9 @@ msgstr "すべてのチャンネルでの LUN マップのオーバーフロー�
 msgid "LUN not found with given ref %s."
 msgstr "指定された参照 %s を持つ LUN が見つかりません。"
 
+msgid "LUN number ({}) is not an integer."
+msgstr "LUN 番号 ({}) が整数ではありません。"
+
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 番号がチャンネル ID: %(ch_id)s の境界を越えています。"
@@ -5414,6 +5527,14 @@ msgstr "既存ボリュームの管理は実装されていません。"
 msgid "Manage existing volume requires 'source-id'."
 msgstr "既存のボリュームを管理するには 'source-id' が必要です。"
 
+#, python-format
+msgid ""
+"Manage volume is not supported if FAST is enable. FAST policy: "
+"%(fastPolicyName)s."
+msgstr ""
+"FAST が有効化されている場合、ボリュームの管理はサポートされません。FAST ポリ"
+"シー: %(fastPolicyName)s。"
+
 msgid "Managing of snapshots to failed-over volumes is not allowed."
 msgstr ""
 "フェイルオーバーされたボリュームへのスナップショットを管理対象にすることは許"
@@ -5547,6 +5668,13 @@ msgstr "要求本体に必須エレメント quota_class_set がありません�
 
 msgid "Missing required element snapshot in request body."
 msgstr "リクエストの本文に必要な要素のスナップショットがありません。"
+
+msgid ""
+"Multiple SerialNumbers found, when only one was expected for this operation. "
+"Please change your EMC config file."
+msgstr ""
+"この処理では 1 つの SerialNumber を予期していたものの、複数の SerialNumber が"
+"見つかりました。EMC の設定ファイルを変更してください。"
 
 #, python-format
 msgid "Multiple copies of volume %s found."
@@ -5746,6 +5874,9 @@ msgstr "ファブリックに接続された FC ポートはありません。"
 msgid "No FCP targets found"
 msgstr "FCP ターゲットが見つかりません"
 
+msgid "No Port Group elements found in config file."
+msgstr "設定ファイルにポートグループの要素が見つかりません。"
+
 msgid "No VF ID is defined in the configuration file."
 msgstr "設定ファイルに VF ID が定義されていません。"
 
@@ -5918,6 +6049,12 @@ msgstr ""
 #, python-format
 msgid "No snapshots could be found on volume %s."
 msgstr "ボリューム %s でスナップショットを見つけることができませんでした。"
+
+#, python-format
+msgid "No source snapshots provided to create consistency group %s."
+msgstr ""
+"整合性グループ %s を作成するためのソーススナップショットが提供されていませ"
+"ん。"
 
 #, python-format
 msgid "No storage path found for export path %s"
@@ -6123,6 +6260,9 @@ msgstr "gpfs_images_share_mode オプションが正しく設定されていま�
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "gpfs_mount_point_base オプションが正しく設定されていません。"
 
+msgid "Option map (cls._map) is not defined."
+msgstr "オプションマップ (cls._map) が定義されていません。"
+
 #, python-format
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
 msgstr ""
@@ -6208,6 +6348,10 @@ msgid ""
 msgstr ""
 "プール %(poolName)s は、FAST ポリシー %(fastPolicy)s のストレージ層に関連付け"
 "られていません。"
+
+#, python-format
+msgid "PoolName must be in the file %(fileName)s."
+msgstr "PoolName は %(fileName)s ファイル内に存在する必要があります。"
 
 #, python-format
 msgid "Pools %s does not exist"
@@ -6785,6 +6929,10 @@ msgstr ""
 "%(secondary)s です。"
 
 #, python-format
+msgid "SerialNumber must be in the file %(fileName)s."
+msgstr "SerialNumber は %(fileName)s ファイル内に存在する必要があります。"
+
+#, python-format
 msgid "Service %(service)s on host %(host)s removed."
 msgstr "ホスト %(host)s 上のサービス %(service)s を削除しました。"
 
@@ -6971,6 +7119,10 @@ msgstr ""
 msgid "Snapshots are not supported for this volume format: %s"
 msgstr "このボリューム形式では、スナップショットはサポートされていません: %s"
 
+#, python-format
+msgid "Socket error: %(arg)s."
+msgstr "ソケットエラー: %(arg)s。"
+
 msgid "SolidFire Cinder Driver exception"
 msgstr "SolidFire Cinder Driver 例外"
 
@@ -6982,6 +7134,9 @@ msgstr "ソース CG が空です。整合性グループは作成されませ�
 
 msgid "Source host details not found."
 msgstr "ソース・ホスト詳細が見つかりません"
+
+msgid "Source volume device ID is required."
+msgstr "ソースボリュームのデバイス ID が必要です。"
 
 msgid "Source volume not mid-migration."
 msgstr "ソース・ボリュームはマイグレーション中ではありません"
@@ -7214,6 +7369,14 @@ msgstr ""
 "す。\n"
 "このコマンドを実行する前に、'cinder-manage db sync' を使用してデータベースを"
 "作成してください。"
+
+#, python-format
+msgid ""
+"The array does not support the storage pool setting for SLO %(slo)s and "
+"workload %(workload)s.  Please check the array for valid SLOs and workloads."
+msgstr ""
+"配列が SLO %(slo)s とワークロード %(workload)s のストレージプール設置をサポー"
+"トしません。配列で有効な SLO とワークロードを確認してください。"
 
 msgid ""
 "The back-end where the volume is created does not have replication enabled."
@@ -8045,6 +8208,9 @@ msgstr ""
 msgid "Unable to get stats for backend_name: %s"
 msgstr "backend_name の統計情報を取得できません: %s"
 
+msgid "Unable to get storage volume from job."
+msgstr "ジョブからストレージボリュームを取得できません。"
+
 #, python-format
 msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
 msgstr ""
@@ -8060,6 +8226,30 @@ msgstr "ポートグループの名前を取得できません。"
 #, python-format
 msgid "Unable to get the replication relationship for volume %s."
 msgstr "ボリューム %s のレプリケーション関係を取得できません。"
+
+#, python-format
+msgid ""
+"Unable to import volume %(deviceId)s to cinder. It is the source volume of "
+"replication session %(sync)s."
+msgstr ""
+"Cinder にボリューム %(deviceId)s をインポートできません。これはレプリケーショ"
+"ンセッション %(sync)s のソースボリュームです。"
+
+#, python-format
+msgid ""
+"Unable to import volume %(deviceId)s to cinder. The external volume is not "
+"in the pool managed by current cinder host."
+msgstr ""
+"Uinder にボリューム %(deviceId)s をインポートできません。外部ボリュームは、現"
+"在の cinder ホストが管理するプールに含まれません。"
+
+#, python-format
+msgid ""
+"Unable to import volume %(deviceId)s to cinder. Volume is in masking view "
+"%(mv)s."
+msgstr ""
+"Cinder にボリューム %(deviceId)s を追加できません。マスキングビューのボリュー"
+"ムは %(mv)s です。"
 
 #, python-format
 msgid "Unable to load CA from %(cert)s %(e)s."
@@ -8084,7 +8274,7 @@ msgstr "IP アドレス「%s」を管理している SVM が見つかりませ�
 
 #, python-format
 msgid "Unable to locate specified replay profiles %s "
-msgstr "指定されたリレープロファイル %s を特定できません"
+msgstr "指定されたリプレープロファイル %s を特定できません"
 
 #, python-format
 msgid ""
@@ -8347,6 +8537,10 @@ msgstr "認識されない read_deleted 値 '%s'"
 msgid "Unset gcs options: %s"
 msgstr "gcs オプションの設定を解除します: %s"
 
+#, python-format
+msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
+msgstr "iscsiadm が正常に終了しませんでした。例外は %(ex)s です。 "
+
 msgid "Unsupported Clustered Data ONTAP version."
 msgstr "サポートされない Clustered Data ONTAP バージョンです。"
 
@@ -8447,6 +8641,9 @@ msgid "V2 rollback, volume is not in any storage group."
 msgstr ""
 "V2 のロールバック。どのストレージグループにもボリュームが存在しません。"
 
+msgid "V3 rollback"
+msgstr "V3 のロールバック"
+
 msgid "VF is not enabled."
 msgstr "VF は有効になっていません。"
 
@@ -8509,6 +8706,10 @@ msgstr "仮想ボリューム '%s' がアレイに存在しません。"
 #, python-format
 msgid "Vol copy job for dest %s failed."
 msgstr "宛先 %s のボリューム・コピー・ジョブが失敗しました。"
+
+#, python-format
+msgid "Volume %(deviceID)s not found."
+msgstr "ボリューム %(deviceID)s が見つかりません。"
 
 #, python-format
 msgid ""
@@ -9027,6 +9228,12 @@ msgid ""
 msgstr ""
 "ボリューム %(volumeName)s は連結されたボリュームではありません。拡張を実行で"
 "きる対象は、連結されたボリュームのみです。終了中..."
+
+#, python-format
+msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
+msgstr ""
+"ボリューム %(volumeName)s がストレージグループ %(sgGroupName)s に追加されませ"
+"んでした。"
 
 #, python-format
 msgid "Volume: %s could not be found."
@@ -10056,6 +10263,9 @@ msgstr ""
 "プロトコル 'iSCSI' を使用する場合、設定ファイルに iscsi_ip_address を設定しな"
 "ければなりません。"
 
+msgid "iscsiadm execution failed. "
+msgstr "iscsiadm の実行が失敗しました。"
+
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "鍵マネージャーのエラー: %(reason)s"
@@ -10462,3 +10672,6 @@ msgid ""
 msgstr ""
 "zfssa_manage_policy プロパティーは 'strict' または 'loose' に設定する必要があ"
 "ります。現在の値は %s です。"
+
+msgid "{} is not a valid option."
+msgstr "{} は有効なオプションではありません。"
