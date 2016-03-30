@@ -46,7 +46,7 @@ class QuotaUtilsTest(test.TestCase):
         self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
 
     @mock.patch('keystoneclient.client.Client')
-    @mock.patch('keystoneclient.session.Session')
+    @mock.patch('keystoneauth1.session.Session')
     def test_keystone_client_instantiation(self, ksclient_session,
                                            ksclient_class):
         quota_utils._keystone_client(self.context)

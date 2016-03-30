@@ -15,10 +15,10 @@
 from oslo_config import cfg
 from oslo_log import log as logging
 
-from keystoneclient.auth.identity.generic import token
+from keystoneauth1 import identity
+from keystoneauth1 import loading as ka_loading
 from keystoneclient import client
 from keystoneclient import exceptions
-from keystoneclient import session
 
 from cinder import db
 from cinder import exception
@@ -221,14 +221,17 @@ def _keystone_client(context, version=(3, 0)):
     :param version: version of Keystone to request
     :return: keystoneclient.client.Client object
     """
-    auth_plugin = token.Token(
+    auth_plugin = identity.Token(
         auth_url=CONF.keystone_authtoken.auth_uri,
         token=context.auth_token,
         project_id=context.project_id)
-    client_session = session.Session(auth=auth_plugin,
-                                     verify=False if
-                                     CONF.keystone_authtoken.insecure else
-                                     (CONF.keystone_authtoken.cafile or True))
+
+    client_session = ka_loading.session.Session().load_from_options(
+        auth=auth_plugin,
+        insecure=CONF.keystone_authtoken.insecure,
+        cacert=CONF.keystone_authtoken.cafile,
+        key=CONF.keystone_authtoken.keyfile,
+        cert=CONF.keystone_authtoken.certfile)
     return client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
                          session=client_session, version=version)
 
