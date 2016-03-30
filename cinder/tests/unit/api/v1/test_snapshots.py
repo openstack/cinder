@@ -432,7 +432,7 @@ class SnapshotsUnprocessableEntityTestCase(test.TestCase):
         self.controller = snapshots.SnapshotsController()
 
     def _unprocessable_snapshot_create(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/snapshots')
+        req = fakes.HTTPRequest.blank('/v1/fake/snapshots')
         req.method = 'POST'
 
         self.assertRaises(webob.exc.HTTPUnprocessableEntity,
