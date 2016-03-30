@@ -135,7 +135,7 @@ def get_api_servers(context):
         if '//' not in api_server:
             api_server = 'http://' + api_server
         url = urllib.parse.urlparse(api_server)
-        netloc = url.netloc
+        netloc = url.netloc + url.path
         use_ssl = (url.scheme == 'https')
         api_servers_info.append((netloc, use_ssl))
 
