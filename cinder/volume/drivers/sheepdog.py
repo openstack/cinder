@@ -84,7 +84,20 @@ class SheepdogClient(object):
         cmd = ('env', 'LC_ALL=C', 'LANG=C', 'dog', command, subcommand,
                '-a', self.addr, '-p', self.port) + params
         try:
-            return utils.execute(*cmd)
+            (_stdout, _stderr) = utils.execute(*cmd)
+            if _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
+                # NOTE(tishizaki)
+                # Dog command does not return error_code although
+                # dog command cannot connect to sheep process.
+                # That is a Sheepdog's bug.
+                # To avoid a Sheepdog's bug, now we need to check stderr.
+                # If Sheepdog has been fixed, this check logic is needed
+                # by old Sheepdog users.
+                reason = (_('Failed to connect to sheep daemon. '
+                          'addr: %(addr)s, port: %(port)s'),
+                          {'addr': self.addr, 'port': self.port})
+                raise exception.SheepdogError(reason=reason)
+            return (_stdout, _stderr)
         except OSError as e:
             with excutils.save_and_reraise_exception():
                 if e.errno == errno.ENOENT:
@@ -130,6 +143,12 @@ class SheepdogClient(object):
                     msg = _LE('OSError: command is %(cmd)s.')
                 LOG.error(msg, {'cmd': tuple(cmd)})
         except processutils.ProcessExecutionError as e:
+            _stderr = e.stderr
+            if self.QEMU_IMG_RESP_CONNECTION_ERROR in _stderr:
+                reason = (_('Failed to connect to sheep daemon. '
+                            'addr: %(addr)s, port: %(port)s'),
+                          {'addr': self.addr, 'port': self.port})
+                raise exception.SheepdogError(reason=reason)
             raise exception.SheepdogCmdError(
                 cmd=e.cmd,
                 exit_code=e.exit_code,
@@ -175,18 +194,6 @@ class SheepdogClient(object):
             (_stdout, _stderr) = self._run_dog('vdi', 'delete', vdiname)
             if _stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning(_LW('Volume not found. %s'), vdiname)
-            elif _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                # NOTE(tishizaki)
-                # Dog command does not return error_code although
-                # dog command cannot connect to sheep process.
-                # That is a Sheepdog's bug.
-                # To avoid a Sheepdog's bug, now we need to check stderr.
-                # If Sheepdog has been fixed, this check logic is needed
-                # by old Sheepdog users.
-                reason = (_('Failed to connect to sheep daemon. '
-                          'addr: %(addr)s, port: %(port)s'),
-                          {'addr': self.addr, 'port': self.port})
-                raise exception.SheepdogError(reason=reason)
         except exception.SheepdogCmdError as e:
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
@@ -220,18 +227,6 @@ class SheepdogClient(object):
                 LOG.warning(_LW('Snapshot "%s" not found.'), snapname)
             elif _stderr.rstrip().endswith(self.DOG_RESP_VDI_NOT_FOUND):
                 LOG.warning(_LW('Volume "%s" not found.'), vdiname)
-            elif _stderr.startswith(self.DOG_RESP_CONNECTION_ERROR):
-                # NOTE(tishizaki)
-                # Dog command does not return error_code although
-                # dog command cannot connect to sheep process.
-                # That is a Sheepdog's bug.
-                # To avoid a Sheepdog's bug, now we need to check stderr.
-                # If Sheepdog has been fixed, this check logic is needed
-                # by old Sheepdog users.
-                reason = (_('Failed to connect to sheep daemon. '
-                          'addr: %(addr)s, port: %(port)s'),
-                          {'addr': self.addr, 'port': self.port})
-                raise exception.SheepdogError(reason=reason)
         except exception.SheepdogCmdError as e:
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
@@ -250,11 +245,7 @@ class SheepdogClient(object):
             cmd = e.kwargs['cmd']
             _stderr = e.kwargs['stderr']
             with excutils.save_and_reraise_exception():
-                if self.QEMU_IMG_RESP_CONNECTION_ERROR in _stderr:
-                    LOG.error(_LE('Failed to connect to sheep daemon. '
-                                  'addr: %(addr)s, port: %(port)s'),
-                              {'addr': self.addr, 'port': self.port})
-                elif self.QEMU_IMG_RESP_ALREADY_EXISTS in _stderr:
+                if self.QEMU_IMG_RESP_ALREADY_EXISTS in _stderr:
                     LOG.error(_LE('Clone volume "%s" already exists. '
                               'Please check the results of "dog vdi list".'),
                               dst_vdiname)
