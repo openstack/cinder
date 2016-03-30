@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev19\n"
+"Project-Id-Version: cinder 8.0.0.0rc2\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-23 06:37+0000\n"
+"POT-Creation-Date: 2016-03-30 06:14+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -5268,7 +5268,7 @@ msgstr ""
 
 #: cinder/volume/drivers/dell/dell_storagecenter_common.py:834
 #: cinder/volume/drivers/dell/dell_storagecenter_common.py:853
-#: cinder/volume/drivers/huawei/huawei_driver.py:1337
+#: cinder/volume/drivers/huawei/huawei_driver.py:1333
 msgid "Must specify source-name or source-id."
 msgstr ""
 
@@ -6641,7 +6641,7 @@ msgid "iscsi portal, %s, not found"
 msgstr ""
 
 #: cinder/volume/drivers/emc/xtremio.py:387
-#: cinder/volume/drivers/emc/xtremio.py:808
+#: cinder/volume/drivers/emc/xtremio.py:821
 msgid "XtremIO not initialized correctly, no clusters found"
 msgstr ""
 
@@ -6654,22 +6654,22 @@ msgstr ""
 msgid "can't find the volume to extend"
 msgstr ""
 
-#: cinder/volume/drivers/emc/xtremio.py:656
+#: cinder/volume/drivers/emc/xtremio.py:669
 msgid ""
 "create_consistencygroup_from_src only supports a cgsnapshot source or a "
 "consistency group source. Multiple sources cannot be used."
 msgstr ""
 
-#: cinder/volume/drivers/emc/xtremio.py:758
+#: cinder/volume/drivers/emc/xtremio.py:771
 #, python-format
 msgid "Failed to create IG, %s"
 msgstr ""
 
-#: cinder/volume/drivers/emc/xtremio.py:878
+#: cinder/volume/drivers/emc/xtremio.py:891
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr ""
 
-#: cinder/volume/drivers/emc/xtremio.py:926
+#: cinder/volume/drivers/emc/xtremio.py:939
 msgid "Failed to get targets"
 msgstr ""
 
@@ -7850,39 +7850,34 @@ msgstr ""
 msgid "Volume %s does not exist on the array."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:758
-#, python-format
-msgid "Can't find lun id from db, volume: %(id)s"
-msgstr ""
-
-#: cinder/volume/drivers/huawei/huawei_driver.py:766
+#: cinder/volume/drivers/huawei/huawei_driver.py:762
 #, python-format
 msgid "Can't extend replication volume, volume: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:784
+#: cinder/volume/drivers/huawei/huawei_driver.py:780
 #, python-format
 msgid ""
 "New size should be bigger than the real size from backend storage. "
 "realsize: %(oldsize)s, newsize: %(newsize)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:805
+#: cinder/volume/drivers/huawei/huawei_driver.py:801
 #, python-format
 msgid "Can't get volume id from snapshot, snapshot: %(id)s"
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:988
+#: cinder/volume/drivers/huawei/huawei_driver.py:984
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1000
+#: cinder/volume/drivers/huawei/huawei_driver.py:996
 #, python-format
 msgid "Can't find partition name on the array, partition name is: %(name)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1140
+#: cinder/volume/drivers/huawei/huawei_driver.py:1136
 #, python-format
 msgid ""
 "An error occurred during the LUNcopy operation. LUNcopy name: "
@@ -7890,117 +7885,117 @@ msgid ""
 "%(luncopystate)s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1166
+#: cinder/volume/drivers/huawei/huawei_driver.py:1162
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a LUN group."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1173
+#: cinder/volume/drivers/huawei/huawei_driver.py:1169
 #, python-format
 msgid "Can't import LUN %s to Cinder. LUN status is not normal."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1187
+#: cinder/volume/drivers/huawei/huawei_driver.py:1183
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a HyperMetroPair."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1202
+#: cinder/volume/drivers/huawei/huawei_driver.py:1198
 msgid "Failed to get SplitMirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1209
+#: cinder/volume/drivers/huawei/huawei_driver.py:1205
 msgid "Failed to get target LUN of SplitMirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1213
+#: cinder/volume/drivers/huawei/huawei_driver.py:1209
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a SplitMirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1228
+#: cinder/volume/drivers/huawei/huawei_driver.py:1224
 msgid "Failed to get migration task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1234
+#: cinder/volume/drivers/huawei/huawei_driver.py:1230
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a migration task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1242
+#: cinder/volume/drivers/huawei/huawei_driver.py:1238
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a LUN copy task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1250
+#: cinder/volume/drivers/huawei/huawei_driver.py:1246
 #, python-format
 msgid ""
 "Can't import LUN %s to Cinder. Already exists in a remote replication "
 "task."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1257
+#: cinder/volume/drivers/huawei/huawei_driver.py:1253
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a LUN mirror."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1278
+#: cinder/volume/drivers/huawei/huawei_driver.py:1274
 #, python-format
 msgid "The specified LUN does not belong to the given pool: %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1295
+#: cinder/volume/drivers/huawei/huawei_driver.py:1291
 #, python-format
 msgid "Can't import LUN %(lun_id)s to Cinder. LUN type mismatched."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1343
+#: cinder/volume/drivers/huawei/huawei_driver.py:1339
 msgid "Can't find LUN on the array, please check the source-name or source-id."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1378
+#: cinder/volume/drivers/huawei/huawei_driver.py:1374
 msgid "Volume size must be multiple of 1 GB."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1387
+#: cinder/volume/drivers/huawei/huawei_driver.py:1383
 #, python-format
 msgid ""
 "Can't import snapshot %s to Cinder. Snapshot status is not normal or "
 "running status is not online."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1394
+#: cinder/volume/drivers/huawei/huawei_driver.py:1390
 #, python-format
 msgid "Can't import snapshot %s to Cinder. Snapshot is exposed to initiator."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1404
+#: cinder/volume/drivers/huawei/huawei_driver.py:1400
 msgid "Must specify snapshot source-name or source-id."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1410
+#: cinder/volume/drivers/huawei/huawei_driver.py:1406
 msgid "Can't find snapshot on array, please check the source-name or source-id."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1424
+#: cinder/volume/drivers/huawei/huawei_driver.py:1420
 #, python-format
 msgid "Can't import snapshot %s to Cinder. Snapshot doesn't belong to volume."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1453
+#: cinder/volume/drivers/huawei/huawei_driver.py:1449
 msgid "Snapshot size must be multiple of 1 GB."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1577
+#: cinder/volume/drivers/huawei/huawei_driver.py:1573
 #, python-format
 msgid "Invalid secondary id %s."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1855
+#: cinder/volume/drivers/huawei/huawei_driver.py:1851
 msgid "No FC initiator can be added to host."
 msgstr ""
 
-#: cinder/volume/drivers/huawei/huawei_driver.py:1938
+#: cinder/volume/drivers/huawei/huawei_driver.py:1934
 msgid "Can't find the same host id from arrays."
 msgstr ""
 
@@ -10157,7 +10152,7 @@ msgstr ""
 msgid "Volume not found on configured storage pools."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:112
+#: cinder/volume/drivers/nexenta/iscsi.py:113
 #, python-format
 msgid "Volume %s does not exist in Nexenta SA"
 msgstr ""

@@ -14,9 +14,9 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev29\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev32\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-29 01:54+0000\n"
+"POT-Creation-Date: 2016-03-29 10:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -911,12 +911,6 @@ msgstr ""
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
 msgstr "Nom de cache %(name)s introuvable sur la matrice."
-
-#, python-format
-msgid "Can't find lun id from db, volume: %(id)s"
-msgstr ""
-"ID de numéro d'unité logique (lun) introuvable à partir de la base de "
-"données,  volume : %(id)s"
 
 #, python-format
 msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
