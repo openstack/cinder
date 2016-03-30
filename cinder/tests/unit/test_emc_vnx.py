@@ -25,6 +25,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_cgsnapshot
 from cinder.tests.unit import fake_consistencygroup
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -2776,6 +2777,7 @@ Time Remaining:  0 second(s)
     def test_create_volume_snapshot_failed(self):
         test_snapshot = EMCVNXCLIDriverTestData.convert_snapshot(
             self.testData.test_snapshot1)
+
         commands = [self.testData.SNAP_CREATE_CMD(test_snapshot.name)]
         results = [FAKE_ERROR_RETURN]
         fake_cli = self.driverSetup(commands, results)
@@ -4236,7 +4238,9 @@ Time Remaining:  0 second(s)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(
             self.testData.SNAPS_IN_SNAP_GROUP())
         snapshot_obj.consistencygroup_id = cg_name
-        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot,
+        cgsnap = fake_cgsnapshot.fake_cgsnapshot_obj(
+            None, **self.testData.test_cgsnapshot)
+        self.driver.create_cgsnapshot(None, cgsnap,
                                       [snapshot_obj])
         expect_cmd = [
             mock.call(
@@ -4257,7 +4261,9 @@ Time Remaining:  0 second(s)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(
             self.testData.SNAPS_IN_SNAP_GROUP())
         snapshot_obj.consistencygroup_id = cg_name
-        self.driver.create_cgsnapshot(None, self.testData.test_cgsnapshot,
+        cgsnap = fake_cgsnapshot.fake_cgsnapshot_obj(
+            None, **self.testData.test_cgsnapshot)
+        self.driver.create_cgsnapshot(None, cgsnap,
                                       [snapshot_obj])
         expect_cmd = [
             mock.call(
@@ -4278,8 +4284,10 @@ Time Remaining:  0 second(s)
             self.testData.SNAPS_IN_SNAP_GROUP())
         cg_name = self.testData.test_cgsnapshot['consistencygroup_id']
         snapshot_obj.consistencygroup_id = cg_name
+        cg_snap = fake_cgsnapshot.fake_cgsnapshot_obj(
+            None, **self.testData.test_cgsnapshot)
         self.driver.delete_cgsnapshot(None,
-                                      self.testData.test_cgsnapshot,
+                                      cg_snap,
                                       [snapshot_obj])
         expect_cmd = [
             mock.call(
@@ -4497,7 +4505,8 @@ Time Remaining:  0 second(s)
              'id': '222222',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
-        src_cgsnap = self.testData.test_cgsnapshot
+        src_cgsnap = fake_cgsnapshot.fake_cgsnapshot_obj(
+            None, **self.testData.test_cgsnapshot)
 
         snap1_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
             self.testData.test_member_cgsnapshot)
@@ -4616,7 +4625,8 @@ Time Remaining:  0 second(s)
         new_cg = fake_consistencygroup.fake_consistencyobject_obj(
             None, **self.testData.test_cg)
         vol1_in_new_cg = self.testData.test_volume_cg
-        src_cgsnap = self.testData.test_cgsnapshot
+        src_cgsnap = fake_cgsnapshot.fake_cgsnapshot_obj(
+            None, **self.testData.test_cgsnapshot)
         snap1_in_src_cgsnap = fake_snapshot.fake_snapshot_obj(
             None, **self.testData.test_member_cgsnapshot)
         src_cg = fake_consistencygroup.fake_consistencyobject_obj(
@@ -4634,7 +4644,8 @@ Time Remaining:  0 second(s)
     def test_create_cg_from_src_failed_with_invalid_source(self):
         new_cg = fake_consistencygroup.fake_consistencyobject_obj(
             None, **self.testData.test_cg)
-        src_cgsnap = self.testData.test_cgsnapshot
+        src_cgsnap = fake_cgsnapshot.fake_cgsnapshot_obj(
+            None, **self.testData.test_cgsnapshot)
         vol1_in_new_cg = self.testData.test_volume_cg
 
         src_cg = fake_consistencygroup.fake_consistencyobject_obj(
@@ -4663,7 +4674,8 @@ Time Remaining:  0 second(s)
              'id': '222222',
              'consistencygroup_id': 'new_cg_id',
              'provider_location': None})
-        src_cgsnap = self.testData.test_cgsnapshot
+        src_cgsnap = fake_cgsnapshot.fake_cgsnapshot_obj(
+            None, **self.testData.test_cgsnapshot)
         snap1_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
             self.testData.test_member_cgsnapshot)
         snap2_in_src_cgsnap = EMCVNXCLIDriverTestData.convert_snapshot(
