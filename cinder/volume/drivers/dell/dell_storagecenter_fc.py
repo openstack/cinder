@@ -47,14 +47,16 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         2.4.0 - Added Replication V2 support.
         2.4.1 - Updated Replication support to V2.1.
         2.5.0 - ManageableSnapshotsVD implemented.
+        3.0.0 - ProviderID utilized.
     """
 
-    VERSION = '2.5.0'
+    VERSION = '3.0.0'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)
         self.backend_name =\
             self.configuration.safe_get('volume_backend_name') or 'Dell-FC'
+        self.storage_protocol = 'FC'
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
@@ -71,10 +73,12 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         # We use id to name the volume name as it is a
         # known unique name.
         volume_name = volume.get('id')
+        provider_id = volume.get('provider_id')
         LOG.debug('Initialize connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
                 # Find our server.
+                scserver = None
                 wwpns = connector.get('wwpns')
                 for wwn in wwpns:
                     scserver = api.find_server(wwn)
@@ -85,14 +89,13 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                 if scserver is None:
                     scserver = api.create_server_multiple_hbas(wwpns)
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(volume_name)
+                scvolume = api.find_volume(volume_name, provider_id)
                 if scserver is not None and scvolume is not None:
-                    mapping = api.map_volume(scvolume,
-                                             scserver)
+                    mapping = api.map_volume(scvolume, scserver)
                     if mapping is not None:
                         # Since we just mapped our volume we had best update
                         # our sc volume object.
-                        scvolume = api.find_volume(volume_name)
+                        scvolume = api.get_volume(scvolume['instanceId'])
                         lun, targets, init_targ_map = api.find_wwns(scvolume,
                                                                     scserver)
                         if lun is not None and len(targets) > 0:
@@ -118,9 +121,11 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         # Get our volume name
         volume_name = volume.get('id')
+        provider_id = volume.get('provider_id')
         LOG.debug('Terminate connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
+                scserver = None
                 wwpns = connector.get('wwpns')
                 for wwn in wwpns:
                     scserver = api.find_server(wwn)
@@ -128,10 +133,9 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                         break
 
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(volume_name)
+                scvolume = api.find_volume(volume_name, provider_id)
                 # Get our target map so we can return it to free up a zone.
-                lun, targets, init_targ_map = api.find_wwns(scvolume,
-                                                            scserver)
+                lun, targets, init_targ_map = api.find_wwns(scvolume, scserver)
                 # If we have a server and a volume lets unmap them.
                 if (scserver is not None and
                         scvolume is not None and
@@ -157,15 +161,3 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                     LOG.error(_LE('Failed to terminate connection'))
         raise exception.VolumeBackendAPIException(
             _('Terminate connection unable to connect to backend.'))
-
-    def get_volume_stats(self, refresh=False):
-        """Get volume status.
-
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self._update_volume_stats()
-            # Update our protocol to the correct one.
-            self._stats['storage_protocol'] = 'FC'
-
-        return self._stats
