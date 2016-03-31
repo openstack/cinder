@@ -3261,6 +3261,23 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
             side_effect=exception.VolumeBackendAPIException(data='err')))
         common_driver.split(replica_id)
 
+    @mock.patch.object(replication.PairOp, 'split')
+    @ddt.data(constants.REPLICA_RUNNING_STATUS_SPLIT,
+              constants.REPLICA_RUNNING_STATUS_INVALID,
+              constants.REPLICA_RUNNING_STATUS_ERRUPTED)
+    def test_replication_driver_split_already_disabled(self, mock_status,
+                                                       mock_op_split):
+        replica_id = TEST_PAIR_ID
+        op = replication.PairOp(self.driver.client)
+        common_driver = replication.ReplicaCommonDriver(self.configuration, op)
+
+        pair_info = json.loads(FAKE_GET_PAIR_NORMAL_RESPONSE)['data']
+        pair_info['RUNNINGSTATUS'] = mock_status
+        self.mock_object(rest_client.RestClient, 'get_pair_by_id', mock.Mock(
+            return_value=pair_info))
+        common_driver.split(replica_id)
+        self.assertFalse(mock_op_split.called)
+
     def test_replication_base_op(self):
         replica_id = '1'
         op = replication.AbsReplicaOp(None)
