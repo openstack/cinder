@@ -16,14 +16,14 @@
 # 笹原 昌美 <ebb0de1@jp.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev32\n"
+"Project-Id-Version: cinder 8.0.0.0rc3.dev1\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-29 10:44+0000\n"
+"POT-Creation-Date: 2016-03-30 09:22+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-30 05:04+0000\n"
-"Last-Translator: 笹原 昌美 <ebb0de1@jp.ibm.com>\n"
+"PO-Revision-Date: 2016-03-31 01:19+0000\n"
+"Last-Translator: Tsutomu Kimura <ebb0de2@jp.ibm.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -323,7 +323,7 @@ msgstr ""
 
 #, python-format
 msgid "A host group is invalid. (host group: %(gid)s)"
-msgstr "ホストグループが無効です。(ホスト・グループ: %(gid)s)"
+msgstr "ホストグループが無効です。(ホストグループ: %(gid)s)"
 
 #, python-format
 msgid "A pair cannot be deleted. (P-VOL: %(pvol)s, S-VOL: %(svol)s)"
@@ -450,7 +450,7 @@ msgstr ""
 
 #, python-format
 msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
-msgstr "SheepdogDriverでエラーが発生しました (Reason: %(reason)s)"
+msgstr "SheepdogDriver でエラーが発生しました。(理由: %(reason)s)"
 
 msgid "An error has occurred during backup operation"
 msgstr "バックアップ操作中にエラーが発生しました"
@@ -615,7 +615,8 @@ msgstr "バックエンドサーバーが NaServer ではありません。"
 
 #, python-format
 msgid "Backend service retry timeout hit: %(timeout)s sec"
-msgstr "バックエンドサービス再試行タイムアウト・ヒット: %(timeout)s 秒"
+msgstr ""
+"バックエンドサービスで再試行のタイムアウトが発生する時間: %(timeout)s 秒"
 
 msgid "Backend storage did not configure fiber channel target."
 msgstr ""
@@ -706,7 +707,7 @@ msgstr "正しくない状況表示行が返されました: %(arg)s。"
 
 #, python-format
 msgid "Bad key(s) in quota set: %s"
-msgstr "無効なキーが quota set 内にあります: %s"
+msgstr "無効なキーがクォータセット 内にあります: %s"
 
 #, python-format
 msgid ""
@@ -820,8 +821,8 @@ msgid ""
 "already mapped to a host.\n"
 "\""
 msgstr ""
-"CMMVC6071E VDisk は既にホストにマップされているため、VDisk からホストへのマッ"
-"ピングは作成されませんでした。\n"
+"CMMVC6071E VDisk は既にホストにマッピングされているため、VDisk からホストへの"
+"マッピングは作成されませんでした。\n"
 "\""
 
 msgid "CONCERTO version is not supported"
@@ -956,7 +957,7 @@ msgstr ""
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a SplitMirror."
 msgstr ""
-"Cinder に LUN %s をインポートできません。すでに SplitMirror 内に存在します。"
+"Cinder に LUN %s をインポートできません。既に SplitMirror 内に存在します。"
 
 #, python-format
 msgid "Can't import LUN %s to Cinder. Already exists in a migration task."
@@ -1186,8 +1187,8 @@ msgid ""
 "Cannot find Controller Configuration Service for storage system "
 "%(storage_system)s."
 msgstr ""
-"ストレージ・システム %(storage_system)s のコントローラー構成サービスが見つか"
-"りません。"
+"ストレージシステム %(storage_system)s のコントローラー構成サービスが見つかり"
+"ません。"
 
 #, python-format
 msgid "Cannot find Replication Service to create volume for snapshot %s."
@@ -2189,7 +2190,7 @@ msgstr "hitachi_serial_number または hitachi_unit_name のいずれかが必�
 
 #, python-format
 msgid "Element Composition Service not found on %(storageSystemName)s."
-msgstr "エレメント構成サービスが %(storageSystemName)s に見つかりません。"
+msgstr "要素構成サービスが %(storageSystemName)s に見つかりません。"
 
 msgid "Enables QoS."
 msgstr "QoS を有効化します。"
@@ -3427,7 +3428,7 @@ msgid "Failed to create replica."
 msgstr "複製の作成に失敗しました。"
 
 msgid "Failed to create scheduler manager volume flow"
-msgstr "スケジューラー・マネージャー・ボリューム・フローを作成できませんでした"
+msgstr "スケジューラーマネージャーのボリュームフローを作成できませんでした"
 
 #, python-format
 msgid "Failed to create snapshot %s"
@@ -3589,7 +3590,7 @@ msgid "Failed to establish SSC connection."
 msgstr "SSC 接続の確立に失敗しました。"
 
 msgid "Failed to establish connection with Coho cluster"
-msgstr "Cohoクラスターとの接続に失敗しました"
+msgstr "Coho クラスターとの接続に失敗しました"
 
 #, python-format
 msgid ""
@@ -3956,8 +3957,8 @@ msgid ""
 "Failed to map a logical device. (LDEV: %(ldev)s, LUN: %(lun)s, port: "
 "%(port)s, id: %(id)s)"
 msgstr ""
-"論理デバイスをマップできませんでした。(LDEV: %(ldev)s、LUN: %(lun)s、ポート: "
-"%(port)s、ID: %(id)s)"
+"論理デバイスをマッピングできませんでした。(LDEV: %(ldev)s、LUN: %(lun)s、ポー"
+"ト: %(port)s、ID: %(id)s)"
 
 msgid "Failed to migrate volume for the first time."
 msgstr "ボリュームのマイグレーションに失敗しました (初回)。"
@@ -4090,7 +4091,8 @@ msgid ""
 "Failed to specify a logical device for the volume %(volume_id)s to be "
 "unmapped."
 msgstr ""
-"マップ解除するボリューム %(volume_id)s の論理デバイスを指定できませんでした。"
+"マッピングを解除するボリューム %(volume_id)s の論理デバイスを指定できませんで"
+"した。"
 
 #, python-format
 msgid ""
@@ -4117,7 +4119,8 @@ msgstr ""
 #, python-format
 msgid "Failed to unmap a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
 msgstr ""
-"論理デバイスをマップ解除できませんでした。(LDEV: %(ldev)s、理由: %(reason)s)"
+"論理デバイスのマッピングを解除できませんでした。(LDEV: %(ldev)s、理由: "
+"%(reason)s)"
 
 #, python-format
 msgid "Failed to update consistency group: %(cgName)s."
@@ -4759,7 +4762,7 @@ msgid ""
 "Illegal value '%(prot)s' specified for flashsystem_connection_protocol: "
 "valid value(s) are %(enabled)s."
 msgstr ""
-"正しくない値「%(prot)s」が flashsystem_connection_protocol に指定されていま"
+"正しくない値 '%(prot)s' が flashsystem_connection_protocol に指定されていま"
 "す。有効な値は %(enabled)s です。"
 
 msgid "Illegal value specified for IOTYPE: 0, 1, or 2."
@@ -5207,7 +5210,7 @@ msgstr " 'bootable' の値 '%s' は無効です。"
 
 #, python-format
 msgid "Invalid value for 'force': '%s'"
-msgstr "force の値 '%s' は無効です。"
+msgstr "'force' の値 '%s' は無効です。"
 
 #, python-format
 msgid "Invalid value for 'readonly': '%s'"
@@ -5632,7 +5635,7 @@ msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
 "available."
 msgstr ""
-"「purestorage」python モジュールがありません。ライブラリーがインストールさ"
+"'purestorage' の python モジュールがありません。ライブラリーがインストールさ"
 "れ、使用可能であることを確認してください。"
 
 msgid "Missing Fibre Channel SAN configuration param - fc_fabric_names"
@@ -5647,7 +5650,7 @@ msgstr "要求本体がありません。"
 
 #, python-format
 msgid "Missing required element '%s' in request body"
-msgstr "要求本体に必須エレメント '%s' がありません"
+msgstr "要求本体に必須要素 '%s' がありません"
 
 #, python-format
 msgid "Missing required element '%s' in request body."
@@ -5660,7 +5663,7 @@ msgid "Missing required element 'host' in request body."
 msgstr "リクエストの本文に必要な要素 'host' がありません。"
 
 msgid "Missing required element quota_class_set in request body."
-msgstr "要求本体に必須エレメント quota_class_set がありません。"
+msgstr "要求本体に必須要素 quota_class_set がありません。"
 
 msgid "Missing required element snapshot in request body."
 msgstr "リクエストの本文に必要な要素のスナップショットがありません。"
@@ -5685,7 +5688,7 @@ msgid "Multiple profiles found."
 msgstr "複数のプロファイルが見つかりました。"
 
 msgid "Must implement a fallback schedule"
-msgstr "予備の(fallback)スケジューラーを実装する必要があります。"
+msgstr "フォールバックスケジューラーを実装する必要があります。"
 
 msgid "Must implement find_retype_host"
 msgstr "find_retype_host を実装する必要があります"
@@ -5852,7 +5855,7 @@ msgid "New volume type must be specified."
 msgstr "新規ボリュームタイプを指定する必要があります。"
 
 msgid "New volume type not specified in request_spec."
-msgstr "新規ボリューム・タイプが要求仕様に指定されていません。"
+msgstr "新規のボリュームタイプが要求仕様に指定されていません。"
 
 #, python-format
 msgid "New volume_type same as original: %s."
@@ -6164,7 +6167,7 @@ msgstr "CloudByte のリスト iscsi イニシエーターからヌル応答を�
 
 msgid "Null response received from CloudByte's list volume iscsi service."
 msgstr ""
-"CloudByte のリスト・ボリューム iscsi サービスからヌル応答を受け取りました。"
+"CloudByte のリストボリューム iscsi サービスからヌル応答を受け取りました。"
 
 #, python-format
 msgid "Null response received while creating volume [%s] at CloudByte storage."
@@ -6551,13 +6554,13 @@ msgstr "参照は非管理対象仮想ボリュームのボリューム名でな
 
 msgid "Reference must contain either source-id or source-name element."
 msgstr ""
-"参照には source-id または source-name のいずれかのエレメントが含まれていなけ"
-"ればなりません。"
+"参照には source-id または source-name のいずれかの要素が含まれていなければな"
+"りません。"
 
 msgid "Reference must contain either source-name or source-id element."
 msgstr ""
-"参照には source-name または source-id のいずれかのエレメントが含まれていなけ"
-"ればなりません。"
+"参照には source-name または source-id のいずれかの要素が含まれていなければな"
+"りません。"
 
 msgid "Reference must contain source-id or source-name element."
 msgstr ""
@@ -6574,7 +6577,7 @@ msgid "Reference must contain source-id."
 msgstr "参照には source-id が含まれていなければなりません。"
 
 msgid "Reference must contain source-name element."
-msgstr "参照には source-name エレメントが含まれていなければなりません。"
+msgstr "参照には source-name 要素が含まれていなければなりません。"
 
 msgid "Reference must contain source-name or source-id."
 msgstr "参照には source-name または source-id が含まれていなければなりません。"
@@ -7331,8 +7334,8 @@ msgid ""
 "The 'sort_key' and 'sort_dir' parameters are deprecated and cannot be used "
 "with the 'sort' parameter."
 msgstr ""
-"「sort_key」パラメーターおよび「sort_dir」パラメーターは非推奨であり、"
-"「sort」パラメーターと併用することはできません。"
+"'sort_key' パラメーターおよび 'sort_dir' パラメーターは非推奨であり、'sort' "
+"パラメーターと併用することはできません。"
 
 msgid "The EQL array has closed the connection."
 msgstr "EQL アレイが接続を閉じました。"
@@ -7353,8 +7356,8 @@ msgid ""
 "The WebDAV request failed. Reason: %(msg)s, Return code/reason: %(code)s, "
 "Source Volume: %(src)s, Destination Volume: %(dst)s, Method: %(method)s."
 msgstr ""
-"WebDAV 要求が失敗しました。理由: %(msg)s、戻りコード/理由: %(code)s、ソース・"
-"ボリューム: %(src)s、宛先ボリューム: %(dst)s、メソッド: %(method)s。"
+"WebDAV 要求が失敗しました。理由: %(msg)s、戻りコード/理由: %(code)s、ソースボ"
+"リューム: %(src)s、宛先ボリューム: %(dst)s、メソッド: %(method)s。"
 
 msgid ""
 "The above error may show that the database has not been created.\n"
@@ -7422,7 +7425,7 @@ msgstr "フェイルオーバーされたボリュームを削除することが
 
 #, python-format
 msgid "The following elements are required: %s"
-msgstr "次のエレメントが必要です: %s"
+msgstr "次の要素が必要です: %s"
 
 #, python-format
 msgid ""
@@ -7622,10 +7625,10 @@ msgstr ""
 "同じでなければなりません。(ボリューム: %(volume_id)s)"
 
 msgid "The specified vdisk is mapped to a host."
-msgstr "指定された vdisk はホストにマップされています。"
+msgstr "指定された vdisk はホストにマッピングされています。"
 
 msgid "The specified volume is mapped to a host."
-msgstr "指定されたボリュームはホストにマップされています。"
+msgstr "指定されたボリュームはホストにマッピングされています。"
 
 #, python-format
 msgid ""
@@ -7691,7 +7694,7 @@ msgstr ""
 
 #, python-format
 msgid "The volume %(volume_id)s to be mapped was not found."
-msgstr "マップするボリューム %(volume_id)s が見つかりませんでした。"
+msgstr "マッピングするボリューム %(volume_id)s が見つかりませんでした。"
 
 msgid "The volume cannot accept transfer in maintenance mode."
 msgstr "メンテナンスモードではボリュームを転送できません。"
@@ -7764,7 +7767,7 @@ msgstr ""
 "です。"
 
 msgid "There is no metadata in DB object."
-msgstr "DBオブジェクトの中にメタデータがありません。"
+msgstr "DB オブジェクトの中にメタデータがありません。"
 
 #, python-format
 msgid "There is no share which can host %(volume_size)sG"
@@ -7854,7 +7857,7 @@ msgstr ""
 "せん。"
 
 msgid "This request was rate-limited."
-msgstr "この要求は rate-limited でした。"
+msgstr "このリクエストは一定時間内の実行回数に制限があります。"
 
 #, python-format
 msgid ""
@@ -8161,7 +8164,7 @@ msgstr "ボリューム %s が見つかりません"
 
 #, python-format
 msgid "Unable to get a block device for file '%s'"
-msgstr "ファイル '%s' のブロック・デバイスを取得できません"
+msgstr "ファイル '%s' のブロックデバイスを取得できません"
 
 #, python-format
 msgid ""
@@ -8712,8 +8715,8 @@ msgid ""
 "Volume %(name)s not found on the array. Cannot determine if there are "
 "volumes mapped."
 msgstr ""
-"ボリューム %(name)s がアレイ上に見つかりません。マップされるボリュームがある"
-"かどうかを判別できません。"
+"ボリューム %(name)s がアレイ上に見つかりません。マッピングされるボリュームが"
+"あるかどうかを判別できません。"
 
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
@@ -8787,7 +8790,7 @@ msgstr ""
 #, python-format
 msgid "Volume %(volume_id)s is not currently mapped to host %(host)s"
 msgstr ""
-"ボリューム %(volume_id)s は現在、ホスト %(host)s にマップされていません"
+"ボリューム %(volume_id)s は現在、ホスト %(host)s にマッピングされていません"
 
 #, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
@@ -9104,9 +9107,9 @@ msgid ""
 "Volume size '%(size)s'GB cannot be smaller than original volume size  "
 "%(source_size)sGB. They must be >= original volume size."
 msgstr ""
-"ボリュームサイズ「%(size)s」GB を元のボリュームサイズ %(source_size)s GB より"
-"小さくすることはできません。このサイズは元のボリュームサイズ以上でなければな"
-"りません。"
+"ボリュームサイズ \"%(size)s\" GB を元のボリュームサイズ %(source_size)s GB よ"
+"り小さくすることはできません。このサイズは元のボリュームサイズ以上でなければ"
+"なりません。"
 
 #, python-format
 msgid ""
@@ -9613,8 +9616,8 @@ msgid ""
 "_get_vdisk_map_properties: Could not get FC connection information for the "
 "host-volume connection. Is the host configured properly for FC connections?"
 msgstr ""
-"_get_vdisk_map_properties: ホスト - ボリューム接続の FC 接続情報を取得できま"
-"せんでした。ホストが FC 接続用に正しく構成されていますか?"
+"_get_vdisk_map_properties: ホストとボリュームの接続について FC 接続情報を取得"
+"できませんでした。ホストが FC 接続用に正しく構成されていますか。"
 
 #, python-format
 msgid ""
@@ -9661,8 +9664,7 @@ msgstr ""
 "CIM_ProtocolControllerForUnit を ETERNUS に接続できません。"
 
 msgid "_update_volume_stats: Could not get storage pool data."
-msgstr ""
-"_update_volume_stats: ストレージ・プール・データを取得できませんでした。"
+msgstr "_update_volume_stats: ストレージプールデータを取得できませんでした。"
 
 #, python-format
 msgid ""
@@ -9797,7 +9799,7 @@ msgid "can't find the volume to extend"
 msgstr "拡張するボリュームが見つかりません"
 
 msgid "can't handle both name and index in req"
-msgstr "req にある名前と索引はどちらも処理できません"
+msgstr "req にある名前とインデックスはどちらも処理できません"
 
 msgid "cannot understand JSON"
 msgstr "JSON を解釈できません"
@@ -10058,7 +10060,7 @@ msgid "do_setup: No configured nodes."
 msgstr "do_setup: 構成されたノードがありません。"
 
 msgid "element is not a child"
-msgstr "エレメントは子ではありません"
+msgstr "要素は子ではありません"
 
 msgid "eqlx_cli_max_retries must be greater than or equal to 0"
 msgstr "eqlx_cli_max_retries は 0 以上でなければなりません"
@@ -10123,9 +10125,9 @@ msgid ""
 "mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
 "VDisk is already mapped to a host."
 msgstr ""
-"flashsystem_multihostmap_enabled は False に設定されています。マルチホスト・"
-"マッピングは許可されていません。CMMVC6071E VDisk は既にホストにマップされてい"
-"るため、VDisk からホストへのマッピングは作成されませんでした。"
+"flashsystem_multihostmap_enabled は False に設定されています。マルチホスト"
+"マッピングは許可されていません。CMMVC6071E VDisk は既にホストにマッピングされ"
+"ているため、VDisk からホストへのマッピングは作成されませんでした。"
 
 msgid "flush() not supported in this version of librbd"
 msgstr "このバージョンの librbd では flush() はサポートされていません"
@@ -10456,12 +10458,12 @@ msgstr ""
 "保管されているオブジェクトリストと一致しません。"
 
 msgid "root element selecting a list"
-msgstr "ルートエレメントのリスト選択"
+msgstr "ルート要素のリスト選択"
 
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
-"rtslib_fb にメンバー %s がありません: より新しい python-rtslib-fb が必要かも"
+"rtslib_fb にメンバー %s がありません。より新しい python-rtslib-fb が必要かも"
 "しれません。"
 
 msgid "san_ip is not set."
