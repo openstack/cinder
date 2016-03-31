@@ -227,6 +227,7 @@ class TestCase(testtools.TestCase):
                              group='oslo_policy')
 
         self._disable_osprofiler()
+        self._disallow_invalid_uuids()
 
         # NOTE(geguileo): This is required because common get_by_id method in
         # cinder.db.sqlalchemy.api caches get methods and if we use a mocked
@@ -248,6 +249,17 @@ class TestCase(testtools.TestCase):
         mock_decorator = mock.MagicMock(side_effect=side_effect)
         p = mock.patch("osprofiler.profiler.trace_cls",
                        return_value=mock_decorator)
+        p.start()
+
+    def _disallow_invalid_uuids(self):
+        def catch_uuid_warning(message, *args, **kwargs):
+            ovo_message = "invalid UUID. Using UUIDFields with invalid UUIDs " \
+                          "is no longer supported"
+            if ovo_message in message:
+                raise AssertionError(message)
+
+        p = mock.patch("warnings.warn",
+                       side_effect=catch_uuid_warning)
         p.start()
 
     def _common_cleanup(self):
