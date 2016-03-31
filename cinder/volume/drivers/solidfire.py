@@ -147,7 +147,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         2.0.2 - Implement secondary account
         2.0.3 - Implement cluster pairing
         2.0.4 - Implement volume replication
-
+        2.0.5 - Try and deal with the stupid retry/clear issues from objects
+                and tflow
     """
 
     VERSION = '2.0.2'
@@ -1183,12 +1184,27 @@ class SolidFireDriver(san.SanISCSIDriver):
             params['name'] = vname
             params['attributes']['migration_uuid'] = volume['id']
             params['attributes']['uuid'] = v
+
         model_update = self._do_volume_create(sf_account, params)
-        rep_settings = self._retrieve_replication_settings(volume)
-        if self.replication_enabled and rep_settings:
-            volume['volumeID'] = int(model_update['provider_id'].split()[0])
-            self._replicate_volume(volume, params,
-                                   sf_account, rep_settings)
+        try:
+            rep_settings = self._retrieve_replication_settings(volume)
+            if self.replication_enabled and rep_settings:
+                volume['volumeID'] = (
+                    int(model_update['provider_id'].split()[0]))
+                self._replicate_volume(volume, params,
+                                       sf_account, rep_settings)
+        except exception.SolidFireAPIException:
+            # NOTE(jdg): Something went wrong after the source create, due to
+            # the way TFLOW works and it's insistence on retrying the same
+            # command over and over coupled with the fact that the introduction
+            # of objects now sets host to None on failures we'll end up with an
+            # orphaned volume on the backend for every one of these segments
+            # that fail, for n-retries.  Sad Sad Panda!!  We'll just do it
+            # ourselves until we can get a general fix in Cinder further up the
+            # line
+            with excutils.save_and_reraise_exception():
+                sf_volid = int(model_update['provider_id'].split()[0])
+                self._issue_api_request('DeleteVolume', {'volumeID': sf_volid})
         return model_update
 
     def _retrieve_replication_settings(self, volume):
@@ -1316,8 +1332,9 @@ class SolidFireDriver(san.SanISCSIDriver):
                         self._issue_api_request('DeleteVolume', params,
                                                 endpoint=cluster['endpoint'])
 
-            params = {'volumeID': sf_vol['volumeID']}
-            self._issue_api_request('DeleteVolume', params)
+            if sf_vol['status'] == 'active':
+                params = {'volumeID': sf_vol['volumeID']}
+                self._issue_api_request('DeleteVolume', params)
             if volume.get('multiattach'):
                 self._remove_volume_from_vags(sf_vol['volumeID'])
         else:

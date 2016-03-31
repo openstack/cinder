@@ -272,6 +272,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             return test_qos_spec
 
         def _fake_do_volume_create(account, params):
+            params['provider_location'] = '1.1.1.1 iqn 0'
             return params
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -1789,3 +1790,24 @@ class SolidFireVolumeTestCase(test.TestCase):
                                  {'initiatorSecret': 'shhh',
                                   'targetSecret': 'dont-tell'},
                                  {}))
+
+    def test_pythons_try_except(self):
+        def _fake_retrieve_rep(vol):
+            raise exception.SolidFireAPIException
+
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        with mock.patch.object(sfv,
+                               '_get_create_account',
+                               return_value={'accountID': 5}),\
+                mock.patch.object(sfv,
+                                  '_retrieve_qos_setting',
+                                  return_value=None),\
+                mock.patch.object(sfv,
+                                  '_do_volume_create',
+                                  return_value={'provider_id': '1 2 xxxx'}),\
+                mock.patch.object(sfv,
+                                  '_retrieve_replication_settings',
+                                  side_effect=_fake_retrieve_rep):
+            self.assertRaises(exception.SolidFireAPIException,
+                              sfv.create_volume,
+                              self.mock_volume)
