@@ -146,6 +146,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         2.0.1 - Implement SolidFire Snapshots
         2.0.2 - Implement secondary account
         2.0.3 - Implement cluster pairing
+        2.0.4 - Implement volume replication
 
     """
 
@@ -178,6 +179,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         super(SolidFireDriver, self).__init__(*args, **kwargs)
+        self.failed_over_id = kwargs.get('active_backend_id', None)
         self.active_cluster_info = {}
         self.configuration.append_config_values(sf_opts)
         self.template_account_id = None
@@ -188,7 +190,17 @@ class SolidFireDriver(san.SanISCSIDriver):
         self.failed_over = False
         self.target_driver = SolidFireISCSI(solidfire_driver=self,
                                             configuration=self.configuration)
-        self._set_active_cluster_info()
+        if self.failed_over_id:
+            remote_info = self._get_remote_info_by_id(self.failed_over_id)
+            if remote_info:
+                self._set_active_cluster_info(remote_info['endpoint'])
+            else:
+                LOG.error(_LE('Failed to initialize SolidFire driver to '
+                              'a remote cluster specified at id: %s'),
+                          self.failed_over_id)
+        else:
+            self._set_active_cluster_info()
+
         try:
             self._update_cluster_status()
         except exception.SolidFireAPIException:
@@ -197,7 +209,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         if self.configuration.sf_allow_template_caching:
             account = self.configuration.sf_template_account_name
             self.template_account_id = self._create_template_account(account)
-        self._set_cluster_pairs()
+
+        if not self.failed_over_id:
+            self._set_cluster_pairs()
 
     def __getattr__(self, attr):
         if hasattr(self.target_driver, attr):
@@ -205,6 +219,18 @@ class SolidFireDriver(san.SanISCSIDriver):
         else:
             msg = _('Attribute: %s not found.') % attr
             raise NotImplementedError(msg)
+
+    def _get_remote_info_by_id(self, backend_id):
+        remote_info = None
+        for rd in self.configuration.get('replication_device', []):
+            if rd.get('backend_id', None) == backend_id:
+                remote_endpoint = self._build_endpoint_info(**rd)
+                remote_info = self._get_remote_cluster_info(remote_endpoint)
+                remote_info['endpoint'] = remote_endpoint
+                if not remote_info['endpoint']['svip']:
+                    remote_info['endpoint']['svip'] = (
+                        remote_info['svip'] + ':3260')
+        return remote_info
 
     def _create_remote_pairing(self, remote_device):
         try:
@@ -264,8 +290,12 @@ class SolidFireDriver(san.SanISCSIDriver):
             LOG.debug("Setting replication_enabled to True.")
             self.replication_enabled = True
 
-    def _set_active_cluster_info(self):
-        self.active_cluster_info['endpoint'] = self._build_endpoint_info()
+    def _set_active_cluster_info(self, endpoint=None):
+        if not endpoint:
+            self.active_cluster_info['endpoint'] = self._build_endpoint_info()
+        else:
+            self.active_cluster_info['endpoint'] = endpoint
+
         for k, v in self._issue_api_request(
                 'GetClusterInfo',
                 {})['result']['clusterInfo'].items():
