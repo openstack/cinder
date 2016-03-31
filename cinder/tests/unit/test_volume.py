@@ -5925,7 +5925,7 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
             'container_format': 'bare',
             'disk_format': 'raw'
         }
-        self.volume_id = 1
+        self.volume_id = fake.volume_id
         self.addCleanup(db.volume_destroy, self.context, self.volume_id)
 
         self.volume_attrs = {
@@ -6103,7 +6103,6 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
                               self.context,
                               saving_image_id)
 
-    @test.testtools.skip('SKIP BUG #1173266')
     @mock.patch.object(QUOTAS, 'reserve')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(vol_manager.VolumeManager, 'create_volume')
@@ -6150,7 +6149,6 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
         image = self._test_copy_volume_to_image_with_image_volume()
         self.assertIsNone(image.get('locations'))
 
-    @test.testtools.skip('SKIP BUG #1173266')
     @mock.patch.object(vol_manager.VolumeManager, 'delete_volume')
     @mock.patch.object(fake_image._FakeImageService, 'add_location',
                        side_effect=exception.Invalid)
