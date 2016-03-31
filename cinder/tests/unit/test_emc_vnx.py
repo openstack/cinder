@@ -6372,7 +6372,7 @@ class EMCVNXCLIDriverReplicationV2TestCase(DriverTestCaseBase):
             fake_remote.return_value = self.driver.cli._client
             invalid = 'invalid_backend_id'
             self.assertRaisesRegex(exception.VolumeBackendAPIException,
-                                   "Invalid secondary_backend_id specified",
+                                   "Invalid secondary_id specified",
                                    self.driver.failover_host,
                                    None,
                                    [rep_volume],

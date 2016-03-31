@@ -2920,7 +2920,8 @@ class HPE3PARCommon(object):
             raise exception.VolumeBackendAPIException(data=msg)
 
         # Check to see if the user requested to failback.
-        if secondary_backend_id == self.FAILBACK_VALUE:
+        if (secondary_backend_id and
+                secondary_backend_id == self.FAILBACK_VALUE):
             volume_update_list = self._replication_failback(volumes)
             target_id = None
         else:

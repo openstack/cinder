@@ -1403,15 +1403,15 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         return volume_types.get_volume_type(ctxt, type_id)
 
     # v2 replication methods
-    def failover_host(self, context, volumes, secondary_backend_id):
+    def failover_host(self, context, volumes, secondary_id=None):
         """Force failover to a secondary replication target."""
-        if secondary_backend_id == self.FAILBACK_VALUE:
+        if secondary_id and secondary_id == self.FAILBACK_VALUE:
             volume_update_list = self._replication_failback(volumes)
             target_id = None
         else:
             failover_target = None
             for target in self._replication_targets:
-                if target['backend_id'] == secondary_backend_id:
+                if target['backend_id'] == secondary_id:
                     failover_target = target
                     break
             if not failover_target:
