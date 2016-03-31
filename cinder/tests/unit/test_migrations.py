@@ -110,6 +110,9 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
             # is performed with the same restrictions as column addition, which
             # we of course allow.
             66,
+            # NOTE(dulek): 73 drops tables and columns we've stopped using a
+            # release ago.
+            73,
         ]
 
         # NOTE(dulek): We only started requiring things be additive in
