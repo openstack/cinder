@@ -19,6 +19,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.dell import dell_storagecenter_iscsi
 from cinder.volume import volume_types
@@ -1008,10 +1009,11 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                          mock_init):
         model_update = {'something': 'something'}
         mock_create_replications.return_value = model_update
-        volume = {'id': 'fake'}
-        snapshot = {'id': 'fake', 'volume_id': 'fake'}
+        volume = {'id': fake.volume_id, 'size': 1}
+        snapshot = {'id': fake.snapshot_id, 'volume_id': fake.volume_id,
+                    'volume_size': 1}
         res = self.driver.create_volume_from_snapshot(volume, snapshot)
-        mock_create_view_volume.assert_called_once_with('fake',
+        mock_create_view_volume.assert_called_once_with(fake.volume_id,
                                                         'fake',
                                                         None)
         self.assertTrue(mock_find_replay.called)
@@ -1019,6 +1021,53 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertFalse(mock_find_replay_profile.called)
         # This just makes sure that we created
         self.assertTrue(mock_create_replications.called)
+        self.assertEqual(model_update, res)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_create_replications')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay_profile')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc',
+                       return_value=12345)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_replay',
+                       return_value='fake')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_view_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'expand_volume',
+                       return_value=VOLUME)
+    def test_create_volume_from_snapshot_expand(self,
+                                                mock_expand_volume,
+                                                mock_create_view_volume,
+                                                mock_find_replay,
+                                                mock_find_volume,
+                                                mock_find_sc,
+                                                mock_find_replay_profile,
+                                                mock_create_replications,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        model_update = {'something': 'something'}
+        mock_create_replications.return_value = model_update
+        volume = {'id': fake.volume_id, 'size': 2}
+        snapshot = {'id': fake.snapshot_id, 'volume_id': fake.volume_id,
+                    'volume_size': 1}
+        res = self.driver.create_volume_from_snapshot(volume, snapshot)
+        mock_create_view_volume.assert_called_once_with(fake.volume_id,
+                                                        'fake',
+                                                        None)
+        self.assertTrue(mock_find_replay.called)
+        self.assertTrue(mock_find_volume.called)
+        self.assertFalse(mock_find_replay_profile.called)
+        # This just makes sure that we created
+        self.assertTrue(mock_create_replications.called)
+        mock_expand_volume.assert_called_once_with(self.VOLUME, 2)
         self.assertEqual(model_update, res)
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
@@ -1053,10 +1102,12 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                             mock_init):
         model_update = {'something': 'something'}
         mock_create_replications.return_value = model_update
-        volume = {'id': 'fake', 'consistencygroup_id': 'guid'}
-        snapshot = {'id': 'fake', 'volume_id': 'fake'}
+        volume = {'id': fake.volume_id,
+                  'consistencygroup_id': fake.consistency_group_id, 'size': 1}
+        snapshot = {'id': fake.snapshot_id, 'volume_id': fake.volume_id,
+                    'volume_size': 1}
         res = self.driver.create_volume_from_snapshot(volume, snapshot)
-        mock_create_view_volume.assert_called_once_with('fake',
+        mock_create_view_volume.assert_called_once_with(fake.volume_id,
                                                         'fake',
                                                         None)
         self.assertTrue(mock_find_replay.called)
@@ -1093,8 +1144,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                 mock_close_connection,
                                                 mock_open_connection,
                                                 mock_init):
-        volume = {'id': 'fake'}
-        snapshot = {'id': 'fake', 'volume_id': 'fake'}
+        volume = {'id': fake.volume_id}
+        snapshot = {'id': fake.snapshot_id, 'volume_id': fake.volume_id}
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           volume, snapshot)
@@ -1132,8 +1183,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             mock_init):
         mock_create_replications.side_effect = (
             exception.VolumeBackendAPIException(data='abc'))
-        volume = {'id': 'fake'}
-        snapshot = {'id': 'fake', 'volume_id': 'fake'}
+        volume = {'id': fake.volume_id, 'size': 1}
+        snapshot = {'id': fake.snapshot_id, 'volume_id': fake.volume_id,
+                    'volume_size': 1}
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           volume, snapshot)
