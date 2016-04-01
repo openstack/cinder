@@ -181,3 +181,40 @@ a shared folder.
 
 .. [#f2] See :doc:`development.environment` for more details about the use of
    virtualenv.
+
+**Running py34 tests**
+
+You will need to install:
+python3-dev
+in order to get py34 tests to run. If you do not have this, you will get the following::
+	 netifaces.c:1:20: fatal error: Python.h: No such file or directory
+	     #include <Python.h>
+				^
+	    compilation terminated.
+	    error: command 'x86_64-linux-gnu-gcc' failed with exit status 1
+
+	    ----------------------------------------
+        <snip>
+	ERROR: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
+        oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
+        .tox/py34/bin/pip install -r/opt/stack/cinder/test-requirements.txt
+         oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py34/log/py34-1.log)', 1)
+	_______________________________________________________________ summary _______________________________________________________________
+	ERROR:   py34: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
+        oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
+        .tox/py34/bin/pip install -r/opt/stack/cinder/test-requirements.txt
+        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py34/log/py34-1.log)', 1)
+
+To Fix:
+
+- On Ubuntu/Debian::
+
+    sudo apt-get install python3-dev
+
+- On Fedora 21/RHEL7/CentOS7::
+
+    sudo yum install python3-devel
+
+- On Fedora 22 and higher::
+
+    sudo dnf install python3-devel
