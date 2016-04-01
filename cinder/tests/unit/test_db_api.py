@@ -29,7 +29,7 @@ from cinder import exception
 from cinder import objects
 from cinder import quota
 from cinder import test
-from cinder.tests.unit import fake_constants
+from cinder.tests.unit import fake_constants as fake
 
 THREE = 3
 THREE_HUNDREDS = 300
@@ -1968,8 +1968,8 @@ class DBAPIBackupTestCase(BaseTest):
 
     def _get_values(self, one=False):
         base_values = {
-            'user_id': 'user',
-            'project_id': 'project',
+            'user_id': fake.USER_ID,
+            'project_id': fake.PROJECT_ID,
             'volume_id': 'volume',
             'host': 'host',
             'availability_zone': 'zone',
@@ -2013,9 +2013,9 @@ class DBAPIBackupTestCase(BaseTest):
             self._assertEqualObjects(backup, backup_get)
 
     def test_backup_get_deleted(self):
-        backup_dic = {'user_id': 'user',
-                      'project_id': 'project',
-                      'volume_id': fake_constants.volume_id,
+        backup_dic = {'user_id': fake.USER_ID,
+                      'project_id': fake.PROJECT_ID,
+                      'volume_id': fake.VOLUME_ID,
                       'size': 1,
                       'object_count': 1}
         backup = objects.Backup(self.ctxt, **backup_dic)
