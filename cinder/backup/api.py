@@ -52,6 +52,7 @@ CONF = cfg.CONF
 CONF.register_opts(backup_api_opts)
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
+IMPORT_VOLUME_ID = '00000000-0000-0000-0000-000000000000'
 
 
 def check_policy(context, action):
@@ -550,7 +551,7 @@ class API(base.Base):
         kwargs = {
             'user_id': context.user_id,
             'project_id': context.project_id,
-            'volume_id': '0000-0000-0000-0000',
+            'volume_id': IMPORT_VOLUME_ID,
             'status': fields.BackupStatus.CREATING,
         }
 

@@ -28,6 +28,7 @@ import webob
 
 # needed for stubs to work
 import cinder.backup
+from cinder.backup import api as backup_api
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -1911,7 +1912,7 @@ class BackupsAPITestCase(test.TestCase):
         db_backup = objects.Backup.get_by_id(ctx, 'id')
         self.assertEqual(ctx.project_id, db_backup.project_id)
         self.assertEqual(ctx.user_id, db_backup.user_id)
-        self.assertEqual('0000-0000-0000-0000', db_backup.volume_id)
+        self.assertEqual(backup_api.IMPORT_VOLUME_ID, db_backup.volume_id)
         self.assertEqual(fields.BackupStatus.CREATING, db_backup.status)
 
     @mock.patch('cinder.backup.api.API._list_backup_hosts')
@@ -1954,7 +1955,7 @@ class BackupsAPITestCase(test.TestCase):
         db_backup = objects.Backup.get_by_id(ctx, 'id')
         self.assertEqual(ctx.project_id, db_backup.project_id)
         self.assertEqual(ctx.user_id, db_backup.user_id)
-        self.assertEqual('0000-0000-0000-0000', db_backup.volume_id)
+        self.assertEqual(backup_api.IMPORT_VOLUME_ID, db_backup.volume_id)
         self.assertEqual(fields.BackupStatus.CREATING, db_backup.status)
 
         db.backup_destroy(context.get_admin_context(), backup_id)
@@ -1998,7 +1999,7 @@ class BackupsAPITestCase(test.TestCase):
         db_backup = objects.Backup.get_by_id(ctx, 'id')
         self.assertEqual(ctx.project_id, db_backup.project_id)
         self.assertEqual(ctx.user_id, db_backup.user_id)
-        self.assertEqual('0000-0000-0000-0000', db_backup.volume_id)
+        self.assertEqual(backup_api.IMPORT_VOLUME_ID, db_backup.volume_id)
         self.assertEqual(fields.BackupStatus.CREATING, db_backup.status)
 
         # Verify the response
