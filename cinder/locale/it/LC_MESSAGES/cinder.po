@@ -11,14 +11,14 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev32\n"
+"Project-Id-Version: cinder 8.0.0.0rc3.dev2\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-29 10:44+0000\n"
+"POT-Creation-Date: 2016-03-31 07:47+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-22 09:38+0000\n"
-"Last-Translator: Remo Mattei <remo@rm.ht>\n"
+"PO-Revision-Date: 2016-04-01 12:35+0000\n"
+"Last-Translator: Alessandra <alessandra@translated.net>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -1615,6 +1615,13 @@ msgstr ""
 "status=%(status)s."
 
 #, python-format
+msgid ""
+"Copy volume task failed: create_cloned_volume id=%(id)s, status=%(status)s."
+msgstr ""
+"Attività di copia del volume non riuscita: create_cloned_volume id=%(id)s, "
+"stato=%(status)s."
+
+#, python-format
 msgid "Copying metadata from %(src_type)s %(src_id)s to %(vol_id)s."
 msgstr "Copia dei metadati da %(src_type)s %(src_id)s a %(vol_id)s."
 
@@ -2143,6 +2150,14 @@ msgid ""
 msgstr ""
 "Eccezione EMC VNX Cinder Driver CLI: %(cmd)s (Codice di ritorno: %(rc)s) "
 "(Output: %(out)s)."
+
+#, python-format
+msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
+"(Output: %(out)s)."
+msgstr ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Codice di ritorno: "
+"%(rc)s) (Output: %(out)s)."
 
 msgid ""
 "EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
@@ -4515,6 +4530,9 @@ msgstr "Errore di richiamo della politica QoS."
 msgid "Get SplitMirror error."
 msgstr "Errore di richiamo SplitMirror."
 
+msgid "Get active client failed."
+msgstr "Acquisizione del client attivo non riuscita."
+
 msgid "Get array info error."
 msgstr "Errore di richiamo informazioni sull'array."
 
@@ -5569,6 +5587,11 @@ msgid "Managing of snapshots to failed-over volumes is not allowed."
 msgstr ""
 "La gestione di istantanee su volumi sottoposti a failover non è consentita."
 
+msgid "Map info is None due to array version not supporting hypermetro."
+msgstr ""
+"Le informazioni sulla mappa sono None a causa di una versione dell'array che "
+"non supporta hypermetro."
+
 #, python-format
 msgid ""
 "Mapping %(id)s prepare failed to complete within theallotted %(to)d seconds "
@@ -6456,6 +6479,28 @@ msgstr "Le specifiche QoS %(specs_id)s sono ancora associate alle entità."
 #, python-format
 msgid "QoS config is wrong. %s must > 0."
 msgstr "La configurazione QoS è errata. %s deve essere > 0."
+
+#, python-format
+msgid ""
+"QoS policy must specify for IOTYPE and another qos_specs, QoS policy: "
+"%(qos_policy)s."
+msgstr ""
+"La politica deve essere specificata per IOTYPE e un altro qos_specs, "
+"politica QoS: %(qos_policy)s."
+
+#, python-format
+msgid ""
+"QoS policy must specify for IOTYPE: 0, 1, or 2, QoS policy: %(qos_policy)s "
+msgstr ""
+"La politica QoS deve essere specificata per IOTYPE: 0, 1 o 2, politica QoS: "
+"%(qos_policy)s "
+
+#, python-format
+msgid ""
+"QoS policy upper_limit and lower_limit conflict, QoS policy: %(qos_policy)s."
+msgstr ""
+"Conflitto upper_limit e lower_limit della politica QoS, politica QoS: "
+"%(qos_policy)s."
 
 #, python-format
 msgid "QoS spec %(specs_id)s has no spec with key %(specs_key)s."
@@ -8901,6 +8946,14 @@ msgid ""
 msgstr ""
 "Il volume %s è online. Impostare il volume su offline per la gestione "
 "tramite OpenStack."
+
+#, python-format
+msgid ""
+"Volume %s must not be migrating, attached, belong to a consistency group or "
+"have snapshots."
+msgstr ""
+"Il volume %s non deve essere in fase di migrazione, essere collegato, far "
+"parte di un gruppo di coerenza o avere istantanee."
 
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
