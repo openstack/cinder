@@ -859,7 +859,7 @@ class BrcdHTTPFCZoneClient(object):
                      "Error: %(error)s")
                    % {'switch_id': self.switch_ip,
                       'protocol': self.protocol,
-                      'page': zone_constant.LOG_OUT_PAGE,
+                      'page': zone_constant.LOGOUT_PAGE,
                       'error': six.text_type(ex)})
             LOG.error(msg)
             raise exception.BrocadeZoningHttpException(reason=msg)
