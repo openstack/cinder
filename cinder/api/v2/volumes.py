@@ -277,11 +277,14 @@ class VolumeController(wsgi.Controller):
             if len(images) > 1:
                 msg = _("Multiple matches found for '%s', use an ID to be more"
                         " specific.") % image_ref
-                raise exc.HTTPConflict(msg)
+                raise exc.HTTPConflict(explanation=msg)
             for img in images:
                 return img['id']
+        except exc.HTTPConflict:
+            raise
         except Exception:
-            # Pass and let default not found error handling take care of it
+            # Pass the other exception and let default not found error
+            # handling take care of it
             pass
 
         msg = _("Invalid image identifier or unable to "

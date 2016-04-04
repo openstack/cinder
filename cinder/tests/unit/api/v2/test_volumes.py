@@ -423,6 +423,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_ref_not_uuid_format(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="12345")
@@ -435,6 +438,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_ref_with_empty_string(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="")
@@ -477,6 +483,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_id_not_uuid_format(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="12345")
@@ -489,6 +498,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_id_with_empty_string(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="")
@@ -533,7 +545,7 @@ class VolumeApiTest(test.TestCase):
                                         image_ref=test_id)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.create,
                           req,
                           body)
