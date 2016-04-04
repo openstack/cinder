@@ -26,25 +26,35 @@ from pylint import lint
 from pylint.reporters import text
 from six.moves import cStringIO as StringIO
 
-# Note(maoy): E1103 is error code related to partial type inference
-ignore_codes = ["E1103"]
-# Note(maoy): the error message is the pattern of E0202. It should be ignored
-# for cinder.tests modules
-# Note(fengqian): the second error message is the pattern of [E0611].
-# It should be ignored because use six module to keep py3.X compatibility.
-# Note(e0ne): the third error message is for SQLAlchemy update() calls
-# in DB schema migrations.
-# Note(xyang): the fourth and fifth error messages are for the code [E1101].
-# They should be ignored because 'sha256' and 'sha224' are functions in
-# 'hashlib'.
-# Note(aarefiev): the sixth error message is for SQLAlchemy rename calls in
-# DB migration(033_add_encryption_unique_key).
-ignore_messages = ["An attribute affected in cinder.tests",
-                   "No name 'urllib' in module '_MovedItems'",
-                   "No value passed for parameter 'dml'",
-                   "Module 'hashlib' has no 'sha256' member",
-                   "Module 'hashlib' has no 'sha224' member",
-                   "Instance of 'Table' has no 'rename' member"]
+ignore_codes = [
+    # Note(maoy): E1103 is error code related to partial type inference
+    "E1103"
+]
+
+ignore_messages = [
+    # Note(maoy): this error message is the pattern of E0202. It should be
+    # ignored for cinder.tests modules
+    "An attribute affected in cinder.tests",
+
+    # Note(fengqian): this error message is the pattern of [E0611].
+    "No name 'urllib' in module '_MovedItems'",
+
+    # Note(e0ne): this error message is for SQLAlchemy update() calls
+    # It should be ignored because use six module to keep py3.X compatibility.
+    # in DB schema migrations.
+    "No value passed for parameter 'dml'",
+
+    # Note(xyang): these error messages are for the code [E1101].
+    # They should be ignored because 'sha256' and 'sha224' are functions in
+    # 'hashlib'.
+    "Module 'hashlib' has no 'sha256' member",
+    "Module 'hashlib' has no 'sha224' member",
+
+    # Note(aarefiev): this error message is for SQLAlchemy rename calls in
+    # DB migration(033_add_encryption_unique_key).
+    "Instance of 'Table' has no 'rename' member"
+]
+
 # Note(maoy):  We ignore cinder.tests for now due to high false
 # positive rate.
 ignore_modules = ["cinder/tests/"]
