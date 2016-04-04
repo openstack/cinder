@@ -378,8 +378,7 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         # finish_volume_migration
         ignore_keys = ('id', 'provider_location', '_name_id',
                        'migration_status', 'display_description', 'status',
-                       'volume_type_id', 'volume_glance_metadata',
-                       'volume_type')
+                       'volume_glance_metadata', 'volume_type')
 
         dest_vol_dict = {k: updated_dest_volume[k] for k in
                          updated_dest_volume.keys() if k not in ignore_keys}

@@ -395,7 +395,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         # end of migration because we want to keep the original volume id
         # in the DB but now pointing to the migrated volume.
         skip = ({'id', 'provider_location', 'glance_metadata',
-                 'volume_type_id', 'volume_type'} | set(self.obj_extra_fields))
+                 'volume_type'} | set(self.obj_extra_fields))
         for key in set(dest_volume.fields.keys()) - skip:
             # Only swap attributes that are already set.  We do not want to
             # unexpectedly trigger a lazy-load.
@@ -418,6 +418,14 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
                 value_to_dst = 'migration src for ' + self.id
             elif key == 'status':
                 value_to_dst = 'deleting'
+            # Because dest_volume will be deleted soon, we can
+            # skip to copy volume_type_id and volume_type which
+            # are not keys for volume deletion.
+            elif key == 'volume_type_id':
+                # Initialize volume_type of source volume using
+                # new volume_type_id.
+                self.update({'volume_type_id': value})
+                continue
 
             setattr(self, key, value)
             setattr(dest_volume, key, value_to_dst)
