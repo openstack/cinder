@@ -8,17 +8,18 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
+# Frank Kloeker <eumel@arcor.de>, 2016. #zanata
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev274\n"
+"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 02:55+0000\n"
+"POT-Creation-Date: 2016-03-17 18:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-16 02:09+0000\n"
+"PO-Revision-Date: 2016-04-04 06:28+0000\n"
 "Last-Translator: Monika Wolf <vcomas3@de.ibm.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -1720,7 +1721,7 @@ msgstr ""
 "DRBDmanage-Zeitlimitüberschreitung beim Warten auf Datenträgererstellung: "
 "Ressource \"%(res)s\", Datenträger \"%(vol)s\""
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "DRBDmanage timeout waiting for volume size; volume ID \"%(id)s\" (res "
 "\"%(res)s\", vnr %(vnr)d)"
@@ -1958,6 +1959,14 @@ msgid ""
 msgstr ""
 "EMC-VNX-Cinder-Treiber-CLI-Ausnahme: %(cmd)s (Rückgabecode: %(rc)s) "
 "(Ausgabe: %(out)s)."
+
+#, python-format
+msgid ""
+"EMC VNX Cinder Driver SPUnavailableException: %(cmd)s (Return Code: %(rc)s) "
+"(Output: %(out)s)."
+msgstr ""
+"EMC-VNX-Cinder-Treiber-Ausnahme vom Typ 'SPUnavailableException': %(cmd)s "
+"(Rückgabecode: %(rc)s) (Ausgabe: %(out)s)."
 
 msgid ""
 "EcomServerIp, EcomServerPort, EcomUserName, EcomPassword must have valid "
@@ -3644,13 +3653,12 @@ msgstr ""
 " Standardausgabe: %(out)s\n"
 " Standardfehler: %(err)s."
 
-#, fuzzy
 msgid ""
 "Failed to parse the configuration option 'keystone_catalog_info', must be in "
 "the form <service_type>:<service_name>:<endpoint_type>"
 msgstr ""
-"Die Konfigurationsoption 'keystone_catalog_info' muss das Format "
-"<service_type>:<service_name>:<endpoint_type> haben."
+"Die Konfigurationsoption 'keystone_catalog_info' muss das Format <Diensttyp>:"
+"<Dienstname>:<Endpunkttyp> haben."
 
 msgid ""
 "Failed to parse the configuration option 'swift_catalog_info', must be in "
@@ -4218,9 +4226,9 @@ msgstr "Google-Cloudspeicher-API-Fehler: %(reason)s"
 msgid "Google Cloud Storage connection failure: %(reason)s"
 msgstr "Google-Cloudspeicherverbindungsfehler:  %(reason)s"
 
-#, fuzzy, python-format
+#, python-format
 msgid "Google Cloud Storage oauth2 failure: %(reason)s"
-msgstr "Google-Cloudspeicher-Oauth2-Fehler: %(reason)s"
+msgstr "Oauth2-Fehler in Google-Cloudspeicher: %(reason)s"
 
 #, python-format
 msgid "Got bad path information from DRBDmanage! (%s)"
@@ -4979,7 +4987,7 @@ msgstr ""
 msgid "Lun migration error."
 msgstr "Fehler bei LUN-Migration."
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "MD5 of object: %(object_name)s before: %(md5)s and after: %(etag)s is not "
 "same."
@@ -4987,7 +4995,15 @@ msgstr ""
 "MD5 von Objekt: %(object_name)s Vorher: %(md5)s und nachher: %(etag)s nicht "
 "identisch."
 
-#, fuzzy, python-format
+#, python-format
+msgid "MSG_DENIED: %r"
+msgstr "MSG_DENIED: %r"
+
+#, python-format
+msgid "MSG_DENIED: AUTH_ERROR: %r"
+msgstr "MSG_DENIED: AUTH_ERROR: %r"
+
+#, python-format
 msgid "MSG_DENIED: RPC_MISMATCH: %r"
 msgstr "MSG_DENIED: RPC_MISMATCH: %r"
 
@@ -5351,6 +5367,10 @@ msgstr ""
 
 msgid "Need non-zero volume size"
 msgstr "Datenträgergröße ungleich null erforderlich"
+
+#, python-format
+msgid "Neither MSG_DENIED nor MSG_ACCEPTED: %r"
+msgstr "Weder MSG_DENIED noch MSG_ACCEPTED: %r"
 
 msgid "NetApp Cinder Driver exception."
 msgstr "NetApp Cinder-Treiberausnahme"
@@ -5956,6 +5976,15 @@ msgid "Quota for project %(project_id)s could not be found."
 msgstr "Quote für Projekt %(project_id)s konnte nicht gefunden werden."
 
 #, python-format
+msgid ""
+"Quota limit invalid for project '%(proj)s' for resource '%(res)s': limit of "
+"%(limit)d is less than in-use value of %(used)d"
+msgstr ""
+"Kontingentgrenzwert ungültig für Projekt '%(proj)s' für die Ressource "
+"'%(res)s': Grenzwert von %(limit)d ist kleiner als der Wert von %(used)d, "
+"der im Gebrauch ist."
+
+#, python-format
 msgid "Quota reservation %(uuid)s could not be found."
 msgstr "Quotenreservierung %(uuid)s konnte nicht gefunden werden."
 
@@ -6466,6 +6495,14 @@ msgstr ""
 "Anforderung gleichzeitig gestellt."
 
 #, python-format
+msgid ""
+"Snapshot %(id)s was found in state %(state)s rather than 'deleting' during "
+"cascade delete."
+msgstr ""
+"Die Schattenkopie %(id)s wurde während des kaskadierenden Löschvorgangs im "
+"Status %(state)s und nicht im Status 'Wird gelöscht' gefunden."
+
+#, python-format
 msgid "Snapshot %(snapshot_id)s could not be found."
 msgstr "Momentaufnahme %(snapshot_id)s konnte nicht gefunden werden."
 
@@ -6474,6 +6511,10 @@ msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "Momentaufnahme %(snapshot_id)s enthält keine Metadaten mit Schlüssel "
 "%(metadata_key)s."
+
+#, python-format
+msgid "Snapshot %s must not be part of a consistency group."
+msgstr "Schattenkopie %s darf nicht Teil einer Konsistenzgruppe sein."
 
 #, python-format
 msgid "Snapshot '%s' doesn't exist on array."
@@ -6668,6 +6709,17 @@ msgstr "StorageSystem %(array)s wurde nicht gefunden. "
 #, python-format
 msgid "String with params: %s"
 msgstr "Zeichenkette mit Parameter: %s"
+
+#, python-format
+msgid ""
+"Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
+"project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
+"for one or more of the following projects: '%(child_ids)s'"
+msgstr ""
+"Die Summe der Nutzung untergeordneter Projekte '%(sum)s' ist größer als das "
+"freie Kontingent von '%(free)s' für das Projekt '%(proj)s' für die Ressource "
+"'%(res)s'. Reduzieren Sie den Grenzwert oder die Nutzung für mindestens "
+"eines der folgenden Projekte: '%(child_ids)s'"
 
 msgid "Synchronizing secondary volume to primary failed."
 msgstr ""
@@ -7384,7 +7436,7 @@ msgstr ""
 "use' lauten und 'attach_status' muss 'attached' lauten, damit das Abhängen "
 "erfolgen kann."
 
-#, fuzzy, python-format
+#, python-format
 msgid ""
 "Unable to determine secondary_array from supplied secondary: %(secondary)s."
 msgstr ""
@@ -7783,6 +7835,11 @@ msgstr "Unbekannte Sortierrichtung; muss 'desc' oder 'asc' sein"
 msgid "Unknown sort direction, must be 'desc' or 'asc'."
 msgstr "Unbekannte Sortierrichtung; muss 'desc' oder 'asc' sein."
 
+msgid "Unmanage and cascade delete options are mutually exclusive."
+msgstr ""
+"Die Optionen 'Aufheben der Verwaltung' und 'Kaskadiertes Löschen' heben sich "
+"gegenseitig auf."
+
 msgid "Unmanage volume not implemented."
 msgstr "Aufheben der Verwaltung für einen Datenträger nicht implementiert."
 
@@ -7996,6 +8053,11 @@ msgid "Volume %(vol)s could not be created in pool %(pool)s."
 msgstr "Datenträger %(vol)s konnte nicht in Pool %(pool)s erstellt werden."
 
 #, python-format
+msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
+msgstr ""
+"Datenträger %(vol1)s stimmt nicht mit snapshot.volume_id %(vol2)s überein."
+
+#, python-format
 msgid ""
 "Volume %(vol_id)s status must be available or in-use, but current status is: "
 "%(vol_status)s."
@@ -8109,6 +8171,14 @@ msgid ""
 msgstr ""
 "Der Datenträger %s ist 'online'. Setzen Sie den Datenträger für die "
 "Verwaltung mit OpenStack auf 'offline'."
+
+#, python-format
+msgid ""
+"Volume %s must not be migrating, attached, belong to a consistency group or "
+"have snapshots."
+msgstr ""
+"Der Datenträger %s darf nicht migriert oder zugeordnet sein, darf zu keiner "
+"Konsistenzgruppe gehören und keine Schattenkopien haben."
 
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
@@ -8982,6 +9052,19 @@ msgstr "Wird von anderem Modus angehängt"
 msgid "call failed: %r"
 msgstr "Aufruf fehlgeschlagen: %r"
 
+msgid "call failed: GARBAGE_ARGS"
+msgstr "Aufruf fehlgeschlagen: GARBAGE_ARGS"
+
+msgid "call failed: PROC_UNAVAIL"
+msgstr "Aufruf fehlgeschlagen: PROC_UNAVAIL"
+
+#, python-format
+msgid "call failed: PROG_MISMATCH: %r"
+msgstr "Aufruf fehlgeschlagen: PROG_MISMATCH: %r"
+
+msgid "call failed: PROG_UNAVAIL"
+msgstr "Aufruf fehlgeschlagen: PROG_UNAVAIL"
+
 #, python-format
 msgid "can't find lun-map, ig:%(ig)s vol:%(vol)s"
 msgstr "LUN-Zuordnung nicht gefunden, ig:%(ig)s vol:%(vol)s"
@@ -9676,6 +9759,10 @@ msgstr "Quellendatenträger-ID %s nicht gefunden"
 #, python-format
 msgid "source volume id:%s is not replicated"
 msgstr "Quellendatenträger-ID %s wird nicht repliziert"
+
+#, python-format
+msgid "status must be %s and"
+msgstr " Status muss %s sein und "
 
 msgid "status must be available"
 msgstr "Status muss 'available' sein"
