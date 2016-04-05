@@ -444,7 +444,7 @@ class HGSTTestCase(test.TestCase):
                     'storageserver': 'stor1:gbd0,stor2:gbd0,',
                     'size': '12'}
         self.assertDictMatch(expected, self.created)
-        # Check the returned provider, note the the provider_id is hashed
+        # Check the returned provider, note that provider_id is hashed
         expected_pid = {'provider_id': 'volume10'}
         self.assertDictMatch(expected_pid, ret)
 

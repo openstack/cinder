@@ -992,7 +992,7 @@ class RestClient(WebserviceClient):
         return api_operating_mode, about_response_dict['version']
 
     def list_backend_store(self, key):
-        """Retrieve data by key from the the persistent store on the backend.
+        """Retrieve data by key from the persistent store on the backend.
 
         Example response: {"key": "cinder-snapshots", "value": "[]"}
 

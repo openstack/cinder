@@ -1532,7 +1532,7 @@ class BaseVD(object):
     def get_pool(self, volume):
         """Return pool name where volume reside on.
 
-        :param volume: The volume hosted by the the driver.
+        :param volume: The volume hosted by the driver.
         :returns: name of the pool where given volume is in.
         """
         return None
@@ -2279,7 +2279,7 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
     def get_pool(self, volume):
         """Return pool name where volume reside on.
 
-        :param volume: The volume hosted by the the driver.
+        :param volume: The volume hosted by the driver.
         :returns: name of the pool where given volume is in.
         """
         return None

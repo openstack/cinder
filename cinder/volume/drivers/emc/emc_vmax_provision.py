@@ -50,7 +50,7 @@ class EMCVMAXProvision(object):
             extraSpecs):
         """Given the volume instance remove it from the pool.
 
-        :param conn: connection the the ecom server
+        :param conn: connection to the ecom server
         :param storageConfigservice: volume created from job
         :param volumeInstanceName: the volume instance name
         :param volumeName: the volume name (String)
@@ -191,7 +191,7 @@ class EMCVMAXProvision(object):
             self, conn, controllerConfigService, groupName, extraSpecs):
         """Create a new storage group that has no members.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param controllerConfigService: the controller configuration service
         :param groupName: the proposed group name
         :param extraSpecs: additional info
@@ -233,7 +233,7 @@ class EMCVMAXProvision(object):
             self, conn, maskingGroupDict, storageGroupName):
         """After creating a new storage group find it and return it.
 
-        :param conn: connection the ecom server
+        :param conn: connection to the ecom server
         :param maskingGroupDict: the maskingGroupDict dict
         :param storageGroupName: storage group name (String)
         :returns: maskingGroupDict['MaskingGroup']
@@ -427,7 +427,7 @@ class EMCVMAXProvision(object):
             poolInstanceName, compositeType, numMembers, extraSpecs):
         """Create a new volume using the auto meta feature.
 
-        :param conn: the connection the the ecom server
+        :param conn: connection to the ecom server
         :param elementCompositionService: the element composition service
         :param volumeSize: the size of the volume
         :param volumeName: user friendly name
@@ -503,7 +503,7 @@ class EMCVMAXProvision(object):
         Given a bound composite head and an unbound composite member
         create a new composite volume.
 
-        :param conn: the connection the the ecom server
+        :param conn: connection to the ecom server
         :param elementCompositionService: the element composition service
         :param compositeHeadInstanceName: the composite head. This can be bound
         :param compositeMemberInstanceName: the composite member. This must be
