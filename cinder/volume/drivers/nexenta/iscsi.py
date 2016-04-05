@@ -17,6 +17,7 @@
 
 .. automodule:: nexenta.iscsi
 """
+import six
 
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -214,7 +215,7 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         self.nms.zvol.create(
             self._get_zvol_name(volume['name']),
             '%sG' % (volume['size'],),
-            self.configuration.nexenta_blocksize,
+            six.text_type(self.configuration.nexenta_blocksize),
             self.configuration.nexenta_sparse)
 
     def extend_volume(self, volume, new_size):
@@ -263,7 +264,8 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
         :param src_vref: source volume reference
         """
         snapshot = {'volume_name': src_vref['name'],
-                    'name': self._get_clone_snapshot_name(volume)}
+                    'name': self._get_clone_snapshot_name(volume),
+                    'volume_size': src_vref['size']}
         LOG.debug('Creating temp snapshot of the original volume: '
                   '%(volume_name)s@%(name)s', snapshot)
         # We don't delete this snapshot, because this snapshot will be origin
@@ -479,6 +481,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             '%s@%s' % (self._get_zvol_name(snapshot['volume_name']),
                        snapshot['name']),
             self._get_zvol_name(volume['name']))
+        if (('size' in volume) and (
+                volume['size'] > snapshot['volume_size'])):
+            self.extend_volume(volume, volume['size'])
 
     def delete_snapshot(self, snapshot):
         """Delete volume's snapshot on appliance.

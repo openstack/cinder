@@ -58,7 +58,7 @@ class TestNexentaISCSIDriver(test.TestCase):
         'name': TEST_SNAPSHOT_NAME,
         'volume_name': TEST_VOLUME_NAME,
         'volume_id': '1',
-        'size': 1
+        'volume_size': 1
     }
 
     def __init__(self, method):
