@@ -13,6 +13,7 @@
 #   under the License.
 
 
+from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import encodeutils
@@ -21,6 +22,7 @@ import six
 import webob
 
 from cinder.api import extensions
+from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
@@ -30,6 +32,7 @@ from cinder import volume
 
 
 LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
 
 
 def authorize(context, action_name):
@@ -51,6 +54,11 @@ class VolumeToImageSerializer(xmlutil.TemplateBuilder):
         root.set('container_format')
         root.set('disk_format')
         root.set('image_name')
+        root.set('protected')
+        if CONF.glance_api_version == 2:
+            root.set('visibility')
+        else:
+            root.set('is_public')
         return xmlutil.MasterTemplate(root, 1)
 
 
@@ -62,7 +70,12 @@ class VolumeToImageDeserializer(wsgi.XMLDeserializer):
         action_name = action_node.tagName
 
         action_data = {}
-        attributes = ["force", "image_name", "container_format", "disk_format"]
+        attributes = ["force", "image_name", "container_format", "disk_format",
+                      "protected"]
+        if CONF.glance_api_version == 2:
+            attributes.append('visibility')
+        else:
+            attributes.append('is_public')
         for attr in attributes:
             if action_node.hasAttribute(attr):
                 action_data[attr] = action_node.getAttribute(attr)
@@ -254,6 +267,7 @@ class VolumeActionsController(wsgi.Controller):
         """Uploads the specified volume to image service."""
         context = req.environ['cinder.context']
         params = body['os-volume_upload_image']
+        req_version = req.api_version_request
         if not params.get("image_name"):
             msg = _("No image_name was specified in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
@@ -276,6 +290,24 @@ class VolumeActionsController(wsgi.Controller):
                                                          "bare"),
                           "disk_format": params.get("disk_format", "raw"),
                           "name": params["image_name"]}
+
+        if req_version >= api_version_request.APIVersionRequest('3.1'):
+
+            image_metadata['visibility'] = params.get('visibility', 'private')
+            image_metadata['protected'] = params.get('protected', 'False')
+
+            if image_metadata['visibility'] == 'public':
+                authorize(context, 'upload_public')
+
+            if CONF.glance_api_version != 2:
+                # Replace visibility with is_public for Glance V1
+                image_metadata['is_public'] = (
+                    image_metadata['visibility'] == 'public')
+                image_metadata.pop('visibility', None)
+
+            image_metadata['protected'] = (
+                utils.get_bool_param('protected', image_metadata))
+
         try:
             response = self.volume_api.copy_volume_to_image(context,
                                                             volume,

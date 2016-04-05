@@ -22,6 +22,7 @@ from oslo_serialization import jsonutils
 import webob
 
 from cinder.api.contrib import volume_actions
+from cinder.api.openstack import api_version_request as api_version
 from cinder import context
 from cinder import exception
 from cinder.image import glance
@@ -572,7 +573,6 @@ class VolumeImageActionsTest(test.TestCase):
             "disk_format": 'raw',
             "updated_at": datetime.datetime(1, 1, 1, 1, 1, 1),
             "image_name": 'image_name',
-            "is_public": False,
             "force": True}
         body = {"os-volume_upload_image": vol}
 
@@ -591,7 +591,26 @@ class VolumeImageActionsTest(test.TestCase):
             'min_ram': 0,
             'checksum': None,
             'min_disk': 0,
-            'is_public': False,
+            'deleted_at': None,
+            'properties': {u'x_billing_code_license': u'246254365'},
+            'size': 0}
+        return ret
+
+    def fake_image_service_create_3_1(self, *args):
+        ret = {
+            'status': u'queued',
+            'name': u'image_name',
+            'deleted': False,
+            'container_format': u'bare',
+            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'disk_format': u'raw',
+            'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'id': 1,
+            'min_ram': 0,
+            'checksum': None,
+            'min_disk': 0,
+            'visibility': 'public',
+            'protected': True,
             'deleted_at': None,
             'properties': {u'x_billing_code_license': u'246254365'},
             'size': 0}
@@ -815,6 +834,19 @@ class VolumeImageActionsTest(test.TestCase):
 
                         self.assertDictMatch(expected_res, res_dict)
 
+    def test_copy_volume_to_image_public_not_authorized(self):
+        """Test unauthorized create public image from volume."""
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+        req = fakes.HTTPRequest.blank('/v3/tenant1/volumes/%s/action' % id)
+        req.environ['cinder.context'].is_admin = False
+        req.headers = {'OpenStack-API-Version': 'volume 3.1'}
+        req.api_version_request = api_version.APIVersionRequest('3.1')
+        body = self._get_os_volume_upload_image()
+        body['os-volume_upload_image']['visibility'] = 'public'
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller._volume_upload_image,
+                          req, id, body)
+
     def test_copy_volume_to_image_without_glance_metadata(self):
         """Test create image from volume if volume is created without image.
 
@@ -1015,6 +1047,62 @@ class VolumeImageActionsTest(test.TestCase):
                 'container_format': u'bare',
                 'disk_format': u'raw',
                 'image_name': u'image_name'
+            }
+        }
+
+        self.assertDictMatch(expected_res, res_dict)
+
+    @mock.patch.object(volume_api.API, "get_volume_image_metadata")
+    @mock.patch.object(glance.GlanceImageService, "create")
+    @mock.patch.object(volume_api.API, "update")
+    @mock.patch.object(volume_rpcapi.VolumeAPI, "copy_volume_to_image")
+    def test_copy_volume_to_image_version_3_1(
+            self,
+            mock_copy_volume_to_image,
+            mock_update,
+            mock_create,
+            mock_get_volume_image_metadata):
+        """Test create image from volume with protected properties."""
+        id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
+
+        mock_get_volume_image_metadata.return_value = {
+            "volume_id": id,
+            "key": "x_billing_code_license",
+            "value": "246254365"}
+        mock_create.side_effect = self.fake_image_service_create_3_1
+        mock_update.side_effect = stubs.stub_volume_update
+        mock_copy_volume_to_image.side_effect = \
+            self.fake_rpc_copy_volume_to_image
+
+        self.override_config('glance_api_version', 2)
+
+        req = fakes.HTTPRequest.blank('/v3/tenant1/volumes/%s/action' % id)
+        req.environ['cinder.context'].is_admin = True
+        req.headers = {'OpenStack-API-Version': 'volume 3.1'}
+        req.api_version_request = api_version.APIVersionRequest('3.1')
+        body = self._get_os_volume_upload_image()
+        body['os-volume_upload_image']['visibility'] = 'public'
+        body['os-volume_upload_image']['protected'] = True
+        res_dict = self.controller._volume_upload_image(req,
+                                                        id,
+                                                        body)
+        expected_res = {
+            'os-volume_upload_image': {
+                'id': id,
+                'updated_at': datetime.datetime(
+                    1900, 1, 1, 1, 1, 1,
+                    tzinfo=iso8601.iso8601.Utc()),
+                'status': 'uploading',
+                'display_description': 'displaydesc',
+                'size': 1,
+                'visibility': 'public',
+                'protected': True,
+                'volume_type': fake_volume.fake_db_volume_type(
+                    name='vol_type_name'),
+                'image_id': 1,
+                'container_format': 'bare',
+                'disk_format': 'raw',
+                'image_name': 'image_name'
             }
         }
 

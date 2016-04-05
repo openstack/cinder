@@ -534,7 +534,12 @@ def _extract_attributes(image):
                         'container_format', 'status', 'id',
                         'name', 'created_at', 'updated_at',
                         'deleted', 'deleted_at', 'checksum',
-                        'min_disk', 'min_ram', 'is_public']
+                        'min_disk', 'min_ram', 'protected']
+    if CONF.glance_api_version == 2:
+        IMAGE_ATTRIBUTES.append('visibility')
+    else:
+        IMAGE_ATTRIBUTES.append('is_public')
+
     output = {}
 
     for attr in IMAGE_ATTRIBUTES:
