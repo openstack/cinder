@@ -332,7 +332,7 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
 
         :param is_new_cinder_install: bool indication of new Cinder install
         """
-        doc_html = "http://docs.openstack.org/admin-guide-cloud" \
+        doc_html = "http://docs.openstack.org/admin-guide" \
                    "/blockstorage_nfs_backend.html"
 
         self._ensure_shares_mounted()
