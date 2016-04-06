@@ -71,9 +71,3 @@ class MockAssertTestCase(test.TestCase):
         mock_call = mock.MagicMock(return_value=None)
         mock_call(1, 'foobar', a='123')
         mock_call.assert_called_once_with(1, 'foobar', a='123')
-
-    def test_invalid_assert_calls(self):
-        mock_call = mock.MagicMock()
-        self.assertRaises(AttributeError, lambda: mock_call.assert_called)
-        self.assertRaises(AttributeError,
-                          lambda: mock_call.assert_once_called_with)
