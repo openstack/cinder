@@ -656,17 +656,12 @@ class HPE3PARBaseDriver(object):
     def test_ssh_options(self):
 
         expected_hosts_key_file = "test_hosts_key_file"
-        orig_ssh_hosts_key_file = CONF.ssh_hosts_key_file
-        orig_strict_ssh_host_key_policy = CONF.strict_ssh_host_key_policy
-        CONF.ssh_hosts_key_file = expected_hosts_key_file
-        CONF.strict_ssh_host_key_policy = False
+        self.flags(ssh_hosts_key_file=expected_hosts_key_file,
+                   strict_ssh_host_key_policy=False)
 
         self.ctxt = context.get_admin_context()
         mock_client = self.setup_mock_client(
             driver=hpefcdriver.HPE3PARFCDriver)
-
-        CONF.ssh_hosts_key_file = orig_ssh_hosts_key_file
-        CONF.strict_ssh_host_key_policy = orig_strict_ssh_host_key_policy
 
         expected = [
             mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),
@@ -688,17 +683,12 @@ class HPE3PARBaseDriver(object):
     def test_ssh_options_strict(self):
 
         expected_hosts_key_file = "test_hosts_key_file"
-        orig_ssh_hosts_key_file = CONF.ssh_hosts_key_file
-        orig_strict_ssh_host_key_policy = CONF.strict_ssh_host_key_policy
-        CONF.ssh_hosts_key_file = expected_hosts_key_file
-        CONF.strict_ssh_host_key_policy = True
+        self.flags(ssh_hosts_key_file=expected_hosts_key_file,
+                   strict_ssh_host_key_policy=True)
 
         self.ctxt = context.get_admin_context()
         mock_client = self.setup_mock_client(
             driver=hpefcdriver.HPE3PARFCDriver)
-
-        CONF.ssh_hosts_key_file = orig_ssh_hosts_key_file
-        CONF.strict_ssh_host_key_policy = orig_strict_ssh_host_key_policy
 
         expected = [
             mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS),

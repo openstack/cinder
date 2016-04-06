@@ -171,14 +171,14 @@ class SSHPoolTestCase(test.TestCase):
 
         mock_ssh.assert_has_calls(expected, any_order=True)
 
-    @mock.patch('cinder.ssh_utils.CONF')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('os.path.isfile', return_value=True)
     @mock.patch('paramiko.RSAKey.from_private_key_file')
     @mock.patch('paramiko.SSHClient')
     def test_single_ssh_connect(self, mock_sshclient, mock_pkey, mock_isfile,
-                                mock_open, mock_conf):
-        mock_conf.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
+                                mock_open):
+        self.override_config(
+            'ssh_hosts_key_file', '/var/lib/cinder/ssh_known_hosts')
 
         # create with password
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
@@ -261,8 +261,8 @@ class SSHPoolTestCase(test.TestCase):
                                              mock_open):
         mock_sshclient.return_value = FakeSSHClient()
 
-        CONF.state_path = '/var/lib/cinder'
-        CONF.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
+        self.flags(state_path='/var/lib/cinder',
+                   ssh_hosts_key_file='/var/lib/cinder/ssh_known_hosts')
 
         default_file = '/var/lib/cinder/ssh_known_hosts'
 
@@ -283,9 +283,9 @@ class SSHPoolTestCase(test.TestCase):
                                         mock_isfile):
         mock_sshclient.return_value = FakeSSHClient()
 
-        CONF.ssh_hosts_key_file = '/tmp/blah'
+        self.flags(state_path='/var/lib/cinder',
+                   ssh_hosts_key_file='/tmp/blah')
 
-        self.assertNotIn(CONF.state_path, CONF.ssh_hosts_key_file)
         self.assertRaises(exception.InvalidInput,
                           ssh_utils.SSHPool,
                           "127.0.0.1", 22, 10,
@@ -322,7 +322,7 @@ class SSHPoolTestCase(test.TestCase):
                                             mock_open):
         mock_sshclient.return_value = FakeSSHClient()
 
-        CONF.strict_ssh_host_key_policy = False
+        self.override_config('strict_ssh_host_key_policy', False)
 
         # create with customized setting
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
