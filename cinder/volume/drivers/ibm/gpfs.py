@@ -1244,7 +1244,7 @@ class GPFSNFSDriver(GPFSDriver, nfs.NfsDriver, san.SanDriver):
         super(GPFSNFSDriver, self).__init__(*args, **kwargs)
         self.gpfs_execute = self._gpfs_remote_execute
         self.configuration.append_config_values(remotefs.nas_opts)
-        self.configuration.san_ip = self.configuration.nas_ip
+        self.configuration.san_ip = self.configuration.nas_host
         self.configuration.san_login = self.configuration.nas_login
         self.configuration.san_password = self.configuration.nas_password
         self.configuration.san_private_key = (

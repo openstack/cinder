@@ -253,7 +253,7 @@ class HDSNFSDriverTest(test.TestCase):
         self.configuration.nfs_shares_config = self.shares_file.name
         self.configuration.nfs_mount_point_base = '/opt/stack/cinder/mnt'
         self.configuration.nfs_mount_options = None
-        self.configuration.nas_ip = None
+        self.configuration.nas_host = None
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
 

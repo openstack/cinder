@@ -92,7 +92,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             self.TEST_MNT_POINT_BASE
         self._configuration.nas_secure_file_permissions = 'false'
         self._configuration.nas_secure_file_operations = 'false'
-        self._configuration.nas_ip = None
+        self._configuration.nas_host = None
         self._configuration.nas_share_path = None
         self._configuration.nas_mount_options = None
 

@@ -97,7 +97,7 @@ class CohoDriverTest(test.TestCase):
         self.configuration.nfs_sparsed_volumes = True
         self.configuration.nfs_mount_point_base = '/opt/stack/cinder/mnt'
         self.configuration.nfs_mount_options = None
-        self.configuration.nas_ip = None
+        self.configuration.nas_host = None
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
 

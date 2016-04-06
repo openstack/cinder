@@ -76,7 +76,7 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nexenta_user = 'user'
         self.cfg.nexenta_password = 'pass'
         self.cfg.max_over_subscription_ratio = 20.0
-        self.cfg.nas_ip = '1.1.1.1'
+        self.cfg.nas_host = '1.1.1.1'
         self.cfg.nas_share_path = 'pool/share'
         self.nef_mock = mock.Mock()
         self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
