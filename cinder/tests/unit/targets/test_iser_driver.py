@@ -14,34 +14,8 @@ import mock
 
 from cinder.tests.unit.targets import targets_fixture as tf
 from cinder import utils
-from cinder.volume.targets import iser
 from cinder.volume.targets import lio
 from cinder.volume.targets import tgt
-
-
-class TestIserAdmDriver(tf.TargetDriverFixture):
-    """Unit tests for the deprecated ISERTgtAdm flow"""
-
-    def setUp(self):
-        super(TestIserAdmDriver, self).setUp()
-        self.target = iser.ISERTgtAdm(root_helper=utils.get_root_helper(),
-                                      configuration=self.configuration)
-
-    @mock.patch.object(iser.ISERTgtAdm, '_get_iscsi_properties')
-    def test_initialize_connection(self, mock_get_iscsi):
-
-        connector = {'initiator': 'fake_init'}
-
-        # Test the normal case
-        mock_get_iscsi.return_value = {}
-        expected_return = {'driver_volume_type': 'iser',
-                           'data': {}}
-        self.assertEqual(expected_return,
-                         self.target.initialize_connection(self.testvol,
-                                                           connector))
-
-    def test_iscsi_protocol(self):
-        self.assertEqual('iser', self.target.iscsi_protocol)
 
 
 class TestIserTgtDriver(tf.TargetDriverFixture):
