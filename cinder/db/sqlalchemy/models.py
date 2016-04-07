@@ -75,10 +75,6 @@ class Service(BASE, CinderBase):
     rpc_current_version = Column(String(36))
     object_current_version = Column(String(36))
 
-    # FIXME(dulek): In M we've removed rpc_available_version and
-    # object_available_version from the model. We need to merge a DB migration
-    # that actually drops these columns from the DB in early Newton.
-
     # replication_status can be: enabled, disabled, not-capable, error,
     # failed-over or not-configured
     replication_status = Column(String(255), default="not-capable")
