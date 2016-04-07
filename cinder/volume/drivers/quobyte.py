@@ -330,7 +330,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
     def _load_shares_config(self, share_file=None):
         """Put 'quobyte_volume_url' into the 'shares' list.
 
-        :param share_file: string, Not used because the user has to specify the
+        :param share_file: string, Not used because the user has to specify
                                    the Quobyte volume directly.
         """
         self.shares = {}
