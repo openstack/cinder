@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev93\n"
+"Project-Id-Version: cinder 8.0.1.dev58\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-05 06:15+0000\n"
+"POT-Creation-Date: 2016-04-08 06:15+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -2251,6 +2251,10 @@ msgid ""
 " stderr: %(err)s"
 msgstr ""
 
+#: cinder/cmd/all.py:66
+msgid "cinder-all is deprecated in Newton and will be removed in Ocata."
+msgstr ""
+
 #: cinder/cmd/manage.py:172
 msgid ""
 "The above error may show that the database has not been created.\n"
@@ -2707,7 +2711,7 @@ msgid ""
 msgstr ""
 
 #: cinder/image/image_utils.py:204 cinder/image/image_utils.py:314
-#: cinder/volume/drivers/solidfire.py:654
+#: cinder/volume/drivers/solidfire.py:658
 msgid "'qemu-img info' parsing failed."
 msgstr ""
 
@@ -2737,12 +2741,12 @@ msgid ""
 msgstr ""
 
 #: cinder/image/image_utils.py:321 cinder/image/image_utils.py:384
-#: cinder/volume/drivers/solidfire.py:661
+#: cinder/volume/drivers/solidfire.py:665
 #, python-format
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
 msgstr ""
 
-#: cinder/image/image_utils.py:340 cinder/volume/drivers/solidfire.py:706
+#: cinder/image/image_utils.py:340 cinder/volume/drivers/solidfire.py:710
 #, python-format
 msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
 msgstr ""
@@ -4776,52 +4780,57 @@ msgstr ""
 msgid "Retry count exceeded for command: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:330
-#: cinder/volume/drivers/solidfire.py:499
+#: cinder/volume/drivers/solidfire.py:201
+#, python-format
+msgid "Attribute: %s not found."
+msgstr ""
+
+#: cinder/volume/drivers/solidfire.py:334
+#: cinder/volume/drivers/solidfire.py:503
 #, python-format
 msgid "API response: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:518
+#: cinder/volume/drivers/solidfire.py:522
 msgid "Failed to get model update from clone"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:753
+#: cinder/volume/drivers/solidfire.py:757
 msgid "Failed to create SolidFire Image-Volume"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:813
+#: cinder/volume/drivers/solidfire.py:817
 msgid "Volumes/account exceeded on both primary and secondary SolidFire accounts."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1199
+#: cinder/volume/drivers/solidfire.py:1203
 #, python-format
 msgid ""
 "Retrieved a different amount of SolidFire volumes for the provided Cinder"
 " volumes. Retrieved: %(ret)s Desired: %(des)s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1240
+#: cinder/volume/drivers/solidfire.py:1244
 #, python-format
 msgid "Failed to find group snapshot named: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1319
+#: cinder/volume/drivers/solidfire.py:1323
 #, python-format
 msgid ""
 "Retrieved a different amount of SolidFire volumes for the provided Cinder"
 " snapshots. Retrieved: %(ret)s Desired: %(des)s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1549
+#: cinder/volume/drivers/solidfire.py:1553
 msgid "Manage existing volume requires 'source-id'."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1591
+#: cinder/volume/drivers/solidfire.py:1595
 msgid "Manage existing get size requires 'id'."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1608
+#: cinder/volume/drivers/solidfire.py:1612
 msgid "Failed to find account for volume."
 msgstr ""
 
@@ -10158,7 +10167,7 @@ msgstr ""
 msgid "Volume not found on configured storage pools."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:112
+#: cinder/volume/drivers/nexenta/iscsi.py:113
 #, python-format
 msgid "Volume %s does not exist in Nexenta SA"
 msgstr ""
@@ -10196,12 +10205,12 @@ msgstr ""
 msgid "Dataset group %s not found at Nexenta SA"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/ns5/iscsi.py:409
+#: cinder/volume/drivers/nexenta/ns5/iscsi.py:411
 #, python-format
 msgid "LU does not exist for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/ns5/iscsi.py:424
+#: cinder/volume/drivers/nexenta/ns5/iscsi.py:426
 #, python-format
 msgid "No views found for LUN: %s"
 msgstr ""

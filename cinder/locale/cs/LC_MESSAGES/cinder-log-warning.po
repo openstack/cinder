@@ -7,9 +7,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
+"Project-Id-Version: cinder 8.0.1.dev58\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 18:05+0000\n"
+"POT-Creation-Date: 2016-04-08 04:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -242,10 +242,6 @@ msgstr ""
 msgid "Delete Snapshot id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 "ID mazaného snímku nenalezeno. Odstraňování z cinder: %(id)s Výjimka: %(msg)s"
-
-#, python-format
-msgid "Delete temp LUN after migration start failed. LUN: %s"
-msgstr "Smazání dočasného LUN po zahájení přesunu selhalo. LUN: %s"
 
 #, python-format
 msgid ""
@@ -873,14 +869,6 @@ msgstr ""
 #, python-format
 msgid "Message - %s."
 msgstr "Zpráva - %s."
-
-#, python-format
-msgid ""
-"Migration command may get network timeout. Double check whether migration in "
-"fact started successfully. Message: %(msg)s"
-msgstr ""
-"Příkazu pro přesun může vypršet časový limit sítě. Zkontrolujte, zda přesun "
-"byl opravdu úspěšně zahájen. Zpráva: %(msg)s"
 
 #, python-format
 msgid "More than one valid preset was detected, using %s"
