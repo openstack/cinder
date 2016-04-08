@@ -80,6 +80,15 @@ class AdminController(wsgi.Controller):
     @wsgi.action('os-reset_status')
     def _reset_status(self, req, id, body):
         """Reset status on the resource."""
+
+        def _clean_volume_attachment(context, id):
+            attachments = (
+                db.volume_attachment_get_used_by_volume_id(context, id))
+            for attachment in attachments:
+                db.volume_detached(context, id, attachment.id)
+            db.volume_admin_metadata_delete(context, id,
+                                            'attached_mode')
+
         context = req.environ['cinder.context']
         self.authorize(context, 'reset_status')
         update = self.validate_update(body['os-reset_status'])
@@ -94,6 +103,8 @@ class AdminController(wsgi.Controller):
 
         try:
             self._update(context, id, update)
+            if update.get('attach_status') == 'detached':
+                _clean_volume_attachment(context, id)
         except exception.VolumeNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
