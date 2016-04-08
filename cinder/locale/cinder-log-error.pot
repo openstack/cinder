@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev93\n"
+"Project-Id-Version: cinder 8.0.1.dev58\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-05 06:16+0000\n"
+"POT-Creation-Date: 2016-04-08 06:15+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -244,7 +244,7 @@ msgid "Trying to create snapshot by non-existent LV: %s"
 msgstr ""
 
 #: cinder/brick/local_dev/lvm.py:567
-#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:205
+#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:206
 msgid "Error creating snapshot"
 msgstr ""
 
@@ -264,16 +264,16 @@ msgstr ""
 msgid "Error renaming logical volume"
 msgstr ""
 
-#: cinder/cmd/all.py:78
+#: cinder/cmd/all.py:81
 msgid "Failed to load osapi_volume"
 msgstr ""
 
-#: cinder/cmd/all.py:84
+#: cinder/cmd/all.py:87
 #, python-format
 msgid "Failed to load %s"
 msgstr ""
 
-#: cinder/cmd/all.py:106
+#: cinder/cmd/all.py:109
 msgid "Failed to load conder-volume"
 msgstr ""
 
@@ -964,32 +964,32 @@ msgstr ""
 msgid "Failed to create volume from snapshot \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/eqlx.py:497
+#: cinder/volume/drivers/eqlx.py:502
 #, python-format
 msgid "Failed to create clone of volume \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/eqlx.py:507
+#: cinder/volume/drivers/eqlx.py:512
 #, python-format
 msgid "Failed to delete snapshot %(snap)s of volume %(vol)s."
 msgstr ""
 
-#: cinder/volume/drivers/eqlx.py:528
+#: cinder/volume/drivers/eqlx.py:533
 #, python-format
 msgid "Failed to initialize connection to volume \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/eqlx.py:543
+#: cinder/volume/drivers/eqlx.py:548
 #, python-format
 msgid "Failed to terminate connection to volume \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/eqlx.py:569
+#: cinder/volume/drivers/eqlx.py:574
 #, python-format
 msgid "Failed to ensure export of volume \"%s\"."
 msgstr ""
 
-#: cinder/volume/drivers/eqlx.py:588
+#: cinder/volume/drivers/eqlx.py:598
 #, python-format
 msgid ""
 "Failed to extend_volume %(name)s from %(current_size)sGB to "
@@ -1052,7 +1052,7 @@ msgstr ""
 msgid "Volume migration failed due to exception: %(reason)s."
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:155 cinder/volume/drivers/nexenta/nfs.py:695
+#: cinder/volume/drivers/nfs.py:155 cinder/volume/drivers/nexenta/nfs.py:700
 #, python-format
 msgid "Mount failure for %(share)s after %(count)d attempts."
 msgstr ""
@@ -1255,80 +1255,80 @@ msgstr ""
 msgid "Failed to create cloned volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:432
+#: cinder/volume/drivers/solidfire.py:436
 #, python-format
 msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:627
+#: cinder/volume/drivers/solidfire.py:631
 #, python-format
 msgid "Volume %s, not found on SF Cluster."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:630
+#: cinder/volume/drivers/solidfire.py:634
 #, python-format
 msgid "Found %(count)s volumes mapped to id: %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:712
+#: cinder/volume/drivers/solidfire.py:716
 #, python-format
 msgid "Failed image conversion during cache creation: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1107
+#: cinder/volume/drivers/solidfire.py:1111
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting delete_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1110
+#: cinder/volume/drivers/solidfire.py:1114
 msgid "This usually means the volume was never successfully created."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1127
+#: cinder/volume/drivers/solidfire.py:1131
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "delete_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1157
+#: cinder/volume/drivers/solidfire.py:1161
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting create_snapshot operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1369
+#: cinder/volume/drivers/solidfire.py:1373
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "extend_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1436
+#: cinder/volume/drivers/solidfire.py:1440
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "attach_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1462
+#: cinder/volume/drivers/solidfire.py:1466
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "detach_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1484
+#: cinder/volume/drivers/solidfire.py:1488
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "accept_transfer operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1605
+#: cinder/volume/drivers/solidfire.py:1609
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
@@ -3234,14 +3234,14 @@ msgstr ""
 msgid "Vol copy job status %s."
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:278
-#: cinder/volume/drivers/nexenta/nfs.py:420
+#: cinder/volume/drivers/nexenta/iscsi.py:280
+#: cinder/volume/drivers/nexenta/nfs.py:425
 #: cinder/volume/drivers/nexenta/ns5/nfs.py:326
 #, python-format
 msgid "Volume creation failed, deleting created snapshot %(volume_name)s@%(name)s"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/iscsi.py:457
+#: cinder/volume/drivers/nexenta/iscsi.py:459
 #: cinder/volume/drivers/nexenta/nfs.py:308
 #, python-format
 msgid "Error trying to change %(opt)s from %(old)s to %(new)s"
@@ -3271,27 +3271,23 @@ msgstr ""
 msgid "Error creating volume"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:168
-msgid "Error deleting volume"
-msgstr ""
-
-#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:178
+#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:179
 msgid "Error extending volume"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:192
+#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:193
 msgid "Error cloning volume"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:218
+#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:219
 msgid "Error deleting snapshot"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:238
+#: cinder/volume/drivers/nexenta/nexentaedge/iscsi.py:239
 msgid "Error creating cloned volume"
 msgstr ""
 
-#: cinder/volume/drivers/nexenta/ns5/iscsi.py:348
+#: cinder/volume/drivers/nexenta/ns5/iscsi.py:350
 #, python-format
 msgid "Volume creation failed, deleting created snapshot %s"
 msgstr ""
