@@ -1216,6 +1216,15 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         try:
+            values = {'per_volume_gigabytes': new_size}
+            QUOTAS.limit_check(context, project_id=context.project_id,
+                               **values)
+        except exception.OverQuota as e:
+            quotas = e.kwargs['quotas']
+            raise exception.VolumeSizeExceedsLimit(
+                size=new_size, limit=quotas['per_volume_gigabytes'])
+
+        try:
             reserve_opts = {'gigabytes': size_increase}
             QUOTAS.add_volume_type_opts(context, reserve_opts,
                                         volume.volume_type_id)
