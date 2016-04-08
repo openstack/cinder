@@ -5,16 +5,17 @@
 # Translators:
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Alessandra <alessandra@translated.net>, 2016. #zanata
+# Remo Mattei <remo@rm.ht>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev10\n"
+"Project-Id-Version: cinder 8.0.0.0rc3.dev3\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 18:05+0000\n"
+"POT-Creation-Date: 2016-04-02 08:11+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-14 12:54+0000\n"
-"Last-Translator: Alessandra <alessandra@translated.net>\n"
+"PO-Revision-Date: 2016-04-07 03:39+0000\n"
+"Last-Translator: Remo Mattei <remo@rm.ht>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -3339,6 +3340,12 @@ msgid ""
 msgstr ""
 "Volume %(name)s non trovato sull'array. Nessun volume da migrare utilizzando "
 "la riscrittura."
+
+#, python-format
+msgid "Volume %(vol)s in the consistency group could not be deleted."
+msgstr ""
+"Il volume %(vol)s ha un problema di consistenza del gruppo e non è possibile "
+"cancellarlo. "
 
 #, python-format
 msgid ""
