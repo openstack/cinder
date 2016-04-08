@@ -3856,8 +3856,9 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'fake2': {'key3': 'value3', 'key4': 'value4'}}
         self.assertEqual(expect_results, results)
 
+    @mock.patch.object(QUOTAS, 'limit_check')
     @mock.patch.object(QUOTAS, 'reserve')
-    def test_extend_volume(self, reserve):
+    def test_extend_volume(self, reserve, limit_check):
         """Test volume can be extended at API level."""
         # create a volume and assign to host
         volume = tests_utils.create_volume(self.context, size=2,
@@ -3905,6 +3906,12 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                           {'reserved': 5,
                                                            'in_use': 15}})
         self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
+                          volume_api.extend, self.context,
+                          volume, 3)
+
+        limit_check.side_effect = exception.OverQuota(
+            overs=['per_volume_gigabytes'], quotas={'per_volume_gigabytes': 2})
+        self.assertRaises(exception.VolumeSizeExceedsLimit,
                           volume_api.extend, self.context,
                           volume, 3)
 
