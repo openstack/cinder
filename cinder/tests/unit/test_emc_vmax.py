@@ -1172,7 +1172,8 @@ class FakeEcomConnection(object):
         else:
             jobinstance['JobState'] = 7
             jobinstance['ErrorCode'] = 0
-            jobinstance['ErrorDescription'] = ''
+            jobinstance['ErrorDescription'] = None
+            jobinstance['OperationalStatus'] = (2, 17)
         return jobinstance
 
     def _getinstance_policycapabilities(self, policycapabilitypath):
@@ -2316,8 +2317,9 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
         self.driver.utils._is_job_finished = mock.Mock(
             return_value=True)
-        rc = self.driver.utils._wait_for_job_complete(conn, myjob)
-        self.assertIsNone(rc)
+        rc, errordesc = self.driver.utils.wait_for_job_complete(conn, myjob)
+        self.assertEqual(0, rc)
+        self.assertIsNone(errordesc)
         self.driver.utils._is_job_finished.assert_called_once_with(
             conn, myjob)
         self.assertTrue(self.driver.utils._is_job_finished.return_value)
@@ -2326,12 +2328,30 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         # Save the original state and restore it after this test
         loopingcall_orig = loopingcall.FixedIntervalLoopingCall
         loopingcall.FixedIntervalLoopingCall = mock.Mock()
-        rc = self.driver.utils._wait_for_job_complete(conn, myjob)
-        self.assertIsNone(rc)
+        rc, errordesc = self.driver.utils.wait_for_job_complete(conn, myjob)
+        self.assertEqual(0, rc)
+        self.assertIsNone(errordesc)
         loopingcall.FixedIntervalLoopingCall.assert_called_once_with(
             mock.ANY)
         loopingcall.FixedIntervalLoopingCall.reset_mock()
         loopingcall.FixedIntervalLoopingCall = loopingcall_orig
+
+    def test_wait_for_job_complete_bad_job_state(self):
+        myjob = SE_ConcreteJob()
+        myjob.classname = 'SE_ConcreteJob'
+        myjob['InstanceID'] = '9999'
+        myjob['status'] = 'success'
+        myjob['type'] = 'type'
+        myjob['CreationClassName'] = 'SE_ConcreteJob'
+        myjob['Job'] = myjob
+        conn = self.fake_ecom_connection()
+        self.driver.utils._is_job_finished = mock.Mock(
+            return_value=True)
+        self.driver.utils._verify_job_state = mock.Mock(
+            return_value=(-1, 'Job finished with an error'))
+        rc, errordesc = self.driver.utils.wait_for_job_complete(conn, myjob)
+        self.assertEqual(-1, rc)
+        self.assertEqual('Job finished with an error', errordesc)
 
     def test_wait_for_sync(self):
         mysync = 'fakesync'
@@ -3069,6 +3089,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.delete_volume(notfound_delete_vol)
 
     @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'wait_for_job_complete',
+        return_value=(-1, 'error'))
+    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
@@ -3077,7 +3101,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def test_delete_volume_failed(
-            self, _mock_volume_type, mock_storage_system):
+            self, _mock_volume_type, mock_storage_system, mock_wait):
         self.driver.create_volume(self.data.failed_delete_vol)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume,
@@ -4040,6 +4064,10 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         self.driver.delete_volume(notfound_delete_vol)
 
     @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'wait_for_job_complete',
+        return_value=(-1, 'error'))
+    @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'get_pool_associated_to_policy',
         return_value=1)
@@ -4057,7 +4085,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSIFAST'})
     def test_delete_volume_fast_failed(
             self, _mock_volume_type, _mock_storage_group,
-            mock_storage_system, mock_policy_pool):
+            mock_storage_system, mock_policy_pool, mock_wait):
         self.driver.create_volume(self.data.failed_delete_vol)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume,
@@ -4643,6 +4671,10 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         self.driver.delete_volume(notfound_delete_vol)
 
     @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'wait_for_job_complete',
+        return_value=(-1, 'error'))
+    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
@@ -4651,7 +4683,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'FCNoFAST'})
     def test_delete_volume_failed(
-            self, _mock_volume_type, mock_storage_system):
+            self, _mock_volume_type, mock_storage_system, mock_wait):
         self.driver.create_volume(self.data.failed_delete_vol)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume,
@@ -5229,6 +5261,10 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         self.driver.delete_volume(notfound_delete_vol)
 
     @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'wait_for_job_complete',
+        return_value=(-1, 'error'))
+    @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'get_pool_associated_to_policy',
         return_value=1)
@@ -5246,7 +5282,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'FCFAST'})
     def test_delete_volume_fast_failed(
             self, _mock_volume_type, mock_wrapper,
-            mock_storage_system, mock_pool_policy):
+            mock_storage_system, mock_pool_policy, mock_wait):
         self.driver.create_volume(self.data.failed_delete_vol)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume,

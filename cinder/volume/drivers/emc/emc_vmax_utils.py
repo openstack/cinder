@@ -283,67 +283,50 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param job: the job dict
         :param extraSpecs: the extraSpecs dict. Defaults to None
-        :returns: int -- the return code
-        :returns: errorDesc - the error description string
-        """
-
-        jobInstanceName = job['Job']
-        if extraSpecs and (INTERVAL in extraSpecs or RETRIES in extraSpecs):
-            self._wait_for_job_complete(conn, job, extraSpecs)
-        else:
-            self._wait_for_job_complete(conn, job)
-        jobinstance = conn.GetInstance(jobInstanceName,
-                                       LocalOnly=False)
-        rc = jobinstance['ErrorCode']
-        errorDesc = jobinstance['ErrorDescription']
-        LOG.debug("Return code is: %(rc)lu. "
-                  "Error Description is: %(errorDesc)s.",
-                  {'rc': rc,
-                   'errorDesc': errorDesc})
-
-        return rc, errorDesc
-
-    def _wait_for_job_complete(self, conn, job, extraSpecs=None):
-        """Given the job wait for it to complete.
-
-        :param conn: connection to the ecom server
-        :param job: the job dict
-        :param extraSpecs: the extraSpecs dict. Defaults to None
-        :raises: loopingcall.LoopingCallDone
         :raises: VolumeBackendAPIException
         """
 
         def _wait_for_job_complete():
             # Called at an interval until the job is finished.
-            maxJobRetries = self._get_max_job_retries(extraSpecs)
             retries = kwargs['retries']
-            wait_for_job_called = kwargs['wait_for_job_called']
-            if self._is_job_finished(conn, job):
-                raise loopingcall.LoopingCallDone()
-            if retries > maxJobRetries:
-                LOG.error(_LE("_wait_for_job_complete "
-                              "failed after %(retries)d "
-                              "tries."),
-                          {'retries': retries})
-
-                raise loopingcall.LoopingCallDone()
             try:
                 kwargs['retries'] = retries + 1
-                if not wait_for_job_called:
+                if not kwargs['wait_for_job_called']:
                     if self._is_job_finished(conn, job):
+                        kwargs['rc'], kwargs['errordesc'] = (
+                            self._verify_job_state(conn, job))
                         kwargs['wait_for_job_called'] = True
             except Exception:
                 exceptionMessage = (_("Issue encountered waiting for job."))
                 LOG.exception(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
+            if retries > maxJobRetries:
+                kwargs['rc'], kwargs['errordesc'] = (
+                    self._verify_job_state(conn, job))
+                LOG.error(_LE("_wait_for_job_complete "
+                              "failed after %(retries)d "
+                              "tries."),
+                          {'retries': retries})
+
+                raise loopingcall.LoopingCallDone()
+            if kwargs['wait_for_job_called']:
+                raise loopingcall.LoopingCallDone()
+        maxJobRetries = self._get_max_job_retries(extraSpecs)
         kwargs = {'retries': 0,
-                  'wait_for_job_called': False}
+                  'wait_for_job_called': False,
+                  'rc': 0,
+                  'errordesc': None}
 
         intervalInSecs = self._get_interval_in_secs(extraSpecs)
 
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_job_complete)
         timer.start(interval=intervalInSecs).wait()
+        LOG.debug("Return code is: %(rc)lu. "
+                  "Error Description is: %(errordesc)s.",
+                  {'rc': kwargs['rc'],
+                   'errordesc': kwargs['errordesc']})
+        return kwargs['rc'], kwargs['errordesc']
 
     def _get_max_job_retries(self, extraSpecs):
         """Get max job retries either default or user defined
@@ -392,6 +375,43 @@ class EMCVMAXUtils(object):
             return False
         else:
             return True
+
+    def _verify_job_state(self, conn, job):
+        """Check if the job is finished.
+
+        :param conn: connection to the ecom server
+        :param job: the job dict
+        :returns: boolean -- True if finished; False if not finished;
+        """
+        jobstatedict = {2: 'New',
+                        3: 'Starting',
+                        4: 'Running',
+                        5: 'Suspended',
+                        6: 'Shutting Down',
+                        7: 'Completed',
+                        8: 'Terminated',
+                        9: 'Killed',
+                        10: 'Exception',
+                        11: 'Service',
+                        32767: 'Queue Pending',
+                        32768: 'DMTF Reserved',
+                        65535: 'Vendor Reserved'}
+        jobInstanceName = job['Job']
+        jobinstance = conn.GetInstance(jobInstanceName,
+                                       LocalOnly=False)
+        operationalstatus = jobinstance['OperationalStatus']
+        if not operationalstatus:
+            jobstate = jobinstance['JobState']
+            errordescription = (_(
+                "The job has not completed and is in a %(state)s "
+                "state.")
+                % {'state': jobstatedict[int(jobstate)]})
+            LOG.error(errordescription)
+            errorcode = -1
+        else:
+            errordescription = jobinstance['ErrorDescription']
+            errorcode = jobinstance['ErrorCode']
+        return errorcode, errordescription
 
     def wait_for_sync(self, conn, syncName, extraSpecs=None):
         """Given the sync name wait for it to fully synchronize.

@@ -67,6 +67,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - Getting iscsi ip from port in existing masking view
               - Replacement of EMCGetTargetEndpoints api (bug #1512791)
               - VMAX3 snapvx improvements (bug #1522821)
+              - Operations and timeout issues (bug #1538214)
     """
 
     VERSION = "2.3.0"
