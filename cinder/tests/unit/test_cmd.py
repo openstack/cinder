@@ -122,6 +122,7 @@ class TestCinderAllCmd(test.TestCase):
     def tearDown(self):
         super(TestCinderAllCmd, self).tearDown()
 
+    @mock.patch('oslo_log.versionutils.report_deprecated_feature')
     @mock.patch('cinder.rpc.init')
     @mock.patch('cinder.service.Service.create')
     @mock.patch('cinder.service.WSGIService')
@@ -130,7 +131,7 @@ class TestCinderAllCmd(test.TestCase):
     @mock.patch('oslo_log.log.getLogger')
     @mock.patch('oslo_log.log.setup')
     def test_main(self, log_setup, get_logger, monkey_patch, process_launcher,
-                  wsgi_service, service_create, rpc_init):
+                  wsgi_service, service_create, rpc_init, mock_log_utils):
         CONF.set_override('enabled_backends', None)
         launcher = process_launcher.return_value
         server = wsgi_service.return_value
@@ -139,6 +140,7 @@ class TestCinderAllCmd(test.TestCase):
 
         cinder_all.main()
 
+        self.assertTrue(mock_log_utils.called)
         self.assertEqual('cinder', CONF.project)
         self.assertEqual(CONF.version, version.version_string())
         log_setup.assert_called_once_with(CONF, "cinder")
