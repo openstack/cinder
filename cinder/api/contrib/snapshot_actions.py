@@ -12,13 +12,13 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo_log import log as logging
 import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder import db
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LI
+from cinder import objects
 
 LOG = logging.getLogger(__name__)
 
@@ -45,7 +45,7 @@ class SnapshotActionsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context, 'update_snapshot_status')
 
-        LOG.debug("body: %s" % body)
+        LOG.debug("body: %s", body)
         try:
             status = body['os-update_snapshot_status']['status']
         except KeyError:
@@ -56,19 +56,19 @@ class SnapshotActionsController(wsgi.Controller):
         status_map = {'creating': ['creating', 'available', 'error'],
                       'deleting': ['deleting', 'error_deleting']}
 
-        current_snapshot = db.snapshot_get(context, id)
+        current_snapshot = objects.Snapshot.get_by_id(context, id)
 
-        if current_snapshot['status'] not in status_map:
+        if current_snapshot.status not in status_map:
             msg = _("Snapshot status %(cur)s not allowed for "
                     "update_snapshot_status") % {
-                        'cur': current_snapshot['status']}
+                        'cur': current_snapshot.status}
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if status not in status_map[current_snapshot['status']]:
+        if status not in status_map[current_snapshot.status]:
             msg = _("Provided snapshot status %(provided)s not allowed for "
                     "snapshot with status %(current)s.") % \
                 {'provided': status,
-                 'current': current_snapshot['status']}
+                 'current': current_snapshot.status}
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         update_dict = {'id': id,
@@ -87,10 +87,11 @@ class SnapshotActionsController(wsgi.Controller):
 
             update_dict.update({'progress': progress})
 
-        LOG.info("Updating snapshot %(id)s with info %(dict)s" %
+        LOG.info(_LI("Updating snapshot %(id)s with info %(dict)s"),
                  {'id': id, 'dict': update_dict})
 
-        db.snapshot_update(context, id, update_dict)
+        current_snapshot.update(update_dict)
+        current_snapshot.save()
         return webob.Response(status_int=202)
 
 

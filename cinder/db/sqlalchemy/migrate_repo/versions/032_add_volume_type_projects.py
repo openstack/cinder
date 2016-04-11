@@ -13,11 +13,6 @@
 from sqlalchemy import Boolean, Column, DateTime, UniqueConstraint
 from sqlalchemy import Integer, MetaData, String, Table, ForeignKey
 
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
-
 
 def upgrade(migrate_engine):
     meta = MetaData()
@@ -25,13 +20,9 @@ def upgrade(migrate_engine):
     volume_types = Table('volume_types', meta, autoload=True)
     is_public = Column('is_public', Boolean)
 
-    try:
-        volume_types.create_column(is_public)
-        # pylint: disable=E1120
-        volume_types.update().values(is_public=True).execute()
-    except Exception:
-        LOG.error(_("Column |%s| not created!"), repr(is_public))
-        raise
+    volume_types.create_column(is_public)
+    # pylint: disable=E1120
+    volume_types.update().values(is_public=True).execute()
 
     volume_type_projects = Table(
         'volume_type_projects', meta,
@@ -47,28 +38,4 @@ def upgrade(migrate_engine):
         mysql_engine='InnoDB',
     )
 
-    try:
-        volume_type_projects.create()
-    except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(volume_type_projects))
-        raise
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volume_types = Table('volume_types', meta, autoload=True)
-    is_public = volume_types.columns.is_public
-    try:
-        volume_types.drop_column(is_public)
-    except Exception:
-        LOG.error(_("volume_types.is_public column not dropped"))
-        raise
-
-    volume_type_projects = Table('volume_type_projects', meta, autoload=True)
-    try:
-        volume_type_projects.drop()
-    except Exception:
-        LOG.error(_("volume_type_projects table not dropped"))
-        raise
+    volume_type_projects.create()

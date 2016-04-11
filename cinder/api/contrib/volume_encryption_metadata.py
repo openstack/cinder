@@ -19,7 +19,6 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import db
-from cinder.volume import volume_types
 
 authorize = extensions.extension_authorizer('volume',
                                             'volume_encryption_metadata')
@@ -34,29 +33,12 @@ class VolumeEncryptionMetadataTemplate(xmlutil.TemplateBuilder):
 class VolumeEncryptionMetadataController(wsgi.Controller):
     """The volume encryption metadata API extension."""
 
-    def _get_volume_encryption_metadata(self, context, volume_id):
-        return db.volume_encryption_metadata_get(context, volume_id)
-
-    def _is_volume_type_encrypted(self, context, volume_id):
-        volume_ref = db.volume_get(context, volume_id)
-        volume_type_id = volume_ref['volume_type_id']
-        return volume_types.is_encrypted(context, volume_type_id)
-
-    def _get_metadata(self, req, volume_id):
-        context = req.environ['cinder.context']
-        authorize(context)
-        if self._is_volume_type_encrypted(context, volume_id):
-            return self._get_volume_encryption_metadata(context, volume_id)
-        else:
-            return {
-                'encryption_key_id': None,
-                # Additional metadata defaults could go here.
-            }
-
     @wsgi.serializers(xml=VolumeEncryptionMetadataTemplate)
     def index(self, req, volume_id):
         """Returns the encryption metadata for a given volume."""
-        return self._get_metadata(req, volume_id)
+        context = req.environ['cinder.context']
+        authorize(context)
+        return db.volume_encryption_metadata_get(context, volume_id)
 
     @wsgi.serializers(xml=VolumeEncryptionMetadataTemplate)
     def show(self, req, volume_id, id):

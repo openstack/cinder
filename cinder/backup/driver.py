@@ -18,14 +18,14 @@
 import abc
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 import six
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LI, _LE, _LW
+from cinder.i18n import _, _LI, _LW
 from cinder import keymgr
-from cinder.openstack.common import log as logging
 
 service_opts = [
     cfg.IntOpt('backup_metadata_version', default=2,
@@ -64,7 +64,7 @@ class BackupMetadataAPI(base.Base):
         try:
             jsonutils.dumps(value)
         except TypeError:
-            LOG.info(_LI("Value with type=%s is not serializable") %
+            LOG.info(_LI("Value with type=%s is not serializable"),
                      type(value))
             return False
 
@@ -77,7 +77,7 @@ class BackupMetadataAPI(base.Base):
         save them in the provided container dictionary.
         """
         type_tag = self.TYPE_TAG_VOL_BASE_META
-        LOG.debug("Getting metadata type '%s'" % type_tag)
+        LOG.debug("Getting metadata type '%s'", type_tag)
         meta = self.db.volume_get(self.context, volume_id)
         if meta:
             container[type_tag] = {}
@@ -85,7 +85,7 @@ class BackupMetadataAPI(base.Base):
                 # Exclude fields that are "not JSON serializable"
                 if not self._is_serializable(value):
                     LOG.info(_LI("Unable to serialize field '%s' - excluding "
-                                 "from backup") % (key))
+                                 "from backup"), key)
                     continue
                 # Copy the encryption key uuid for backup
                 if key is 'encryption_key_id' and value is not None:
@@ -93,9 +93,9 @@ class BackupMetadataAPI(base.Base):
                     LOG.debug("Copying encryption key uuid for backup.")
                 container[type_tag][key] = value
 
-            LOG.debug("Completed fetching metadata type '%s'" % type_tag)
+            LOG.debug("Completed fetching metadata type '%s'", type_tag)
         else:
-            LOG.debug("No metadata type '%s' available" % type_tag)
+            LOG.debug("No metadata type '%s' available", type_tag)
 
     def _save_vol_meta(self, container, volume_id):
         """Save volume metadata to container.
@@ -104,7 +104,7 @@ class BackupMetadataAPI(base.Base):
         volume_id and save them in the provided container dictionary.
         """
         type_tag = self.TYPE_TAG_VOL_META
-        LOG.debug("Getting metadata type '%s'" % type_tag)
+        LOG.debug("Getting metadata type '%s'", type_tag)
         meta = self.db.volume_metadata_get(self.context, volume_id)
         if meta:
             container[type_tag] = {}
@@ -112,13 +112,13 @@ class BackupMetadataAPI(base.Base):
                 # Exclude fields that are "not JSON serializable"
                 if not self._is_serializable(meta[entry]):
                     LOG.info(_LI("Unable to serialize field '%s' - excluding "
-                                 "from backup") % (entry))
+                                 "from backup"), entry)
                     continue
                 container[type_tag][entry] = meta[entry]
 
-            LOG.debug("Completed fetching metadata type '%s'" % type_tag)
+            LOG.debug("Completed fetching metadata type '%s'", type_tag)
         else:
-            LOG.debug("No metadata type '%s' available" % type_tag)
+            LOG.debug("No metadata type '%s' available", type_tag)
 
     def _save_vol_glance_meta(self, container, volume_id):
         """Save volume Glance metadata to container.
@@ -127,7 +127,7 @@ class BackupMetadataAPI(base.Base):
         volume_id and save them in the provided container dictionary.
         """
         type_tag = self.TYPE_TAG_VOL_GLANCE_META
-        LOG.debug("Getting metadata type '%s'" % type_tag)
+        LOG.debug("Getting metadata type '%s'", type_tag)
         try:
             meta = self.db.volume_glance_metadata_get(self.context, volume_id)
             if meta:
@@ -136,13 +136,13 @@ class BackupMetadataAPI(base.Base):
                     # Exclude fields that are "not JSON serializable"
                     if not self._is_serializable(entry.value):
                         LOG.info(_LI("Unable to serialize field '%s' - "
-                                     "excluding from backup") % (entry))
+                                     "excluding from backup"), entry)
                         continue
                     container[type_tag][entry.key] = entry.value
 
-            LOG.debug("Completed fetching metadata type '%s'" % type_tag)
+            LOG.debug("Completed fetching metadata type '%s'", type_tag)
         except exception.GlanceMetadataNotFound:
-            LOG.debug("No metadata type '%s' available" % type_tag)
+            LOG.debug("No metadata type '%s' available", type_tag)
 
     @staticmethod
     def _filter(metadata, fields):
@@ -150,7 +150,7 @@ class BackupMetadataAPI(base.Base):
 
         If fields is empty list, the full set is returned.
         """
-        if fields == []:
+        if not fields:
             return metadata
 
         subset = {}
@@ -158,7 +158,7 @@ class BackupMetadataAPI(base.Base):
             if field in metadata:
                 subset[field] = metadata[field]
             else:
-                LOG.debug("Excluding field '%s'" % (field))
+                LOG.debug("Excluding field '%s'", field)
 
         return subset
 
@@ -197,8 +197,8 @@ class BackupMetadataAPI(base.Base):
                     LOG.debug("Volume type of source volume has been "
                               "deleted. Encrypted backup restore has "
                               "failed.")
-                    msg = _LE("The source volume type '%s' is not "
-                              "available.") % (src_volume_type_id)
+                    msg = _("The source volume type '%s' is not "
+                            "available.") % (src_volume_type_id)
                     raise exception.EncryptedBackupOperationFailed(msg)
                 # Update dest volume with src volume's volume_type_id.
                 LOG.debug("The volume type of the destination volume "
@@ -209,13 +209,13 @@ class BackupMetadataAPI(base.Base):
             else:
                 # Volume type id's do not match, and destination volume
                 # has a volume type. Throw exception.
-                LOG.warn(_LW("Destination volume type is different from "
-                             "source volume type for an encrypted volume. "
-                             "Encrypted backup restore has failed."))
-                msg = _LE("The source volume type '%(src)s' is different "
-                          "than the destination volume type '%(dest)s'.") % \
-                    {'src': src_volume_type_id,
-                     'dest': dest_vol['volume_type_id']}
+                LOG.warning(_LW("Destination volume type is different from "
+                                "source volume type for an encrypted volume. "
+                                "Encrypted backup restore has failed."))
+                msg = (_("The source volume type '%(src)s' is different "
+                         "than the destination volume type '%(dest)s'.") %
+                       {'src': src_volume_type_id,
+                        'dest': dest_vol['volume_type_id']})
                 raise exception.EncryptedBackupOperationFailed(msg)
 
     def _restore_vol_meta(self, metadata, volume_id, fields):
@@ -247,7 +247,7 @@ class BackupMetadataAPI(base.Base):
 
         Returns a dictionary of the form:
 
-            {<type tag>: (<fields list>, <restore function>)}
+            {<type tag>: (<restore function>, <fields list>)}
 
         Empty field list indicates that all backed up fields should be
         restored.
@@ -262,7 +262,7 @@ class BackupMetadataAPI(base.Base):
 
         Returns a dictionary of the form:
 
-            {<type tag>: (<fields list>, <restore function>)}
+            {<type tag>: (<restore function>, <fields list>)}
 
         Empty field list indicates that all backed up fields should be
         restored.
@@ -313,8 +313,7 @@ class BackupMetadataAPI(base.Base):
             if type in meta_container:
                 func(meta_container[type], volume_id, fields)
             else:
-                msg = "No metadata of type '%s' to restore" % (type)
-                LOG.debug(msg)
+                LOG.debug("No metadata of type '%s' to restore", type)
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -324,6 +323,10 @@ class BackupDriver(base.Base):
         super(BackupDriver, self).__init__(db_driver)
         self.context = context
         self.backup_meta_api = BackupMetadataAPI(context, db_driver)
+        # This flag indicates if backup driver supports force
+        # deletion. So it should be set to True if the driver that inherits
+        # from BackupDriver supports the force deletion function.
+        self.support_force_delete = False
 
     def get_metadata(self, volume_id):
         return self.backup_meta_api.get(volume_id)
@@ -347,28 +350,37 @@ class BackupDriver(base.Base):
         return
 
     def export_record(self, backup):
-        """Export backup record.
+        """Export driver specific backup record information.
 
-        Default backup driver implementation.
-        Serialize the backup record describing the backup into a string.
+        If backup backend needs additional driver specific information to
+        import backup record back into the system it must overwrite this method
+        and return it here as a dictionary so it can be serialized into a
+        string.
 
-        :param backup: backup entry to export
-        :returns backup_url - a string describing the backup record
+        Default backup driver implementation has no extra information.
+
+        :param backup: backup object to export
+        :returns: driver_info - dictionary with extra information
         """
-        retval = jsonutils.dumps(backup)
-        return retval.encode("base64")
+        return {}
 
-    def import_record(self, backup_url):
-        """Import and verify backup record.
+    def import_record(self, backup, driver_info):
+        """Import driver specific backup record information.
 
-        Default backup driver implementation.
-        De-serialize the backup record into a dictionary, so we can
-        update the database.
+        If backup backend needs additional driver specific information to
+        import backup record back into the system it must overwrite this method
+        since it will be called with the extra information that was provided by
+        export_record when exporting the backup.
 
-        :param backup_url: driver specific backup record string
-        :returns dictionary object with database updates
+        Default backup driver implementation does nothing since it didn't
+        export any specific data in export_record.
+
+        :param backup: backup object to export
+        :param driver_info: dictionary with driver specific backup record
+                            information
+        :returns: nothing
         """
-        return jsonutils.loads(backup_url.decode("base64"))
+        return
 
 
 @six.add_metaclass(abc.ABCMeta)

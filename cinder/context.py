@@ -19,14 +19,26 @@
 
 import copy
 
+from oslo_config import cfg
 from oslo_context import context
+from oslo_log import log as logging
 from oslo_utils import timeutils
+import six
 
-from cinder.i18n import _
-from cinder.openstack.common import local
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LW
 from cinder import policy
 
+context_opts = [
+    cfg.StrOpt('cinder_internal_tenant_project_id',
+               help='ID of the project which will be used as the Cinder '
+                    'internal tenant.'),
+    cfg.StrOpt('cinder_internal_tenant_user_id',
+               help='ID of the user to be used in volume operations as the '
+                    'Cinder internal tenant.'),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(context_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -63,25 +75,25 @@ class RequestContext(context.RequestContext):
                                              user_domain=user_domain,
                                              project_domain=project_domain,
                                              is_admin=is_admin,
-                                             request_id=request_id)
+                                             request_id=request_id,
+                                             overwrite=overwrite)
         self.roles = roles or []
         self.project_name = project_name
         self.read_deleted = read_deleted
         self.remote_address = remote_address
         if not timestamp:
             timestamp = timeutils.utcnow()
-        if isinstance(timestamp, basestring):
-            timestamp = timeutils.parse_strtime(timestamp)
+        elif isinstance(timestamp, six.string_types):
+            timestamp = timeutils.parse_isotime(timestamp)
         self.timestamp = timestamp
         self.quota_class = quota_class
-        if overwrite or not hasattr(local.store, 'context'):
-            self.update_store()
 
         if service_catalog:
             # Only include required parts of service_catalog
             self.service_catalog = [s for s in service_catalog
                                     if s.get('type') in
-                                    ('identity', 'compute', 'object-store')]
+                                    ('identity', 'compute', 'object-store',
+                                     'image')]
         else:
             # if list is empty or none
             self.service_catalog = []
@@ -90,7 +102,7 @@ class RequestContext(context.RequestContext):
         # when policy.check_is_admin invokes request logging
         # to make it loggable.
         if self.is_admin is None:
-            self.is_admin = policy.check_is_admin(self.roles)
+            self.is_admin = policy.check_is_admin(self.roles, self)
         elif self.is_admin and 'admin' not in self.roles:
             self.roles.append('admin')
 
@@ -109,22 +121,20 @@ class RequestContext(context.RequestContext):
     read_deleted = property(_get_read_deleted, _set_read_deleted,
                             _del_read_deleted)
 
-    def update_store(self):
-        local.store.context = self
-
     def to_dict(self):
-        default = super(RequestContext, self).to_dict()
-        extra = {'user_id': self.user_id,
-                 'project_id': self.project_id,
-                 'project_name': self.project_name,
-                 'domain': self.domain,
-                 'read_deleted': self.read_deleted,
-                 'roles': self.roles,
-                 'remote_address': self.remote_address,
-                 'timestamp': timeutils.strtime(self.timestamp),
-                 'quota_class': self.quota_class,
-                 'service_catalog': self.service_catalog}
-        return dict(default.items() + extra.items())
+        result = super(RequestContext, self).to_dict()
+        result['user_id'] = self.user_id
+        result['project_id'] = self.project_id
+        result['project_name'] = self.project_name
+        result['domain'] = self.domain
+        result['read_deleted'] = self.read_deleted
+        result['roles'] = self.roles
+        result['remote_address'] = self.remote_address
+        result['timestamp'] = self.timestamp.isoformat()
+        result['quota_class'] = self.quota_class
+        result['service_catalog'] = self.service_catalog
+        result['request_id'] = self.request_id
+        return result
 
     @classmethod
     def from_dict(cls, values):
@@ -175,3 +185,23 @@ def get_admin_context(read_deleted="no"):
                           is_admin=True,
                           read_deleted=read_deleted,
                           overwrite=False)
+
+
+def get_internal_tenant_context():
+    """Build and return the Cinder internal tenant context object
+
+    This request context will only work for internal Cinder operations. It will
+    not be able to make requests to remote services. To do so it will need to
+    use the keystone client to get an auth_token.
+    """
+    project_id = CONF.cinder_internal_tenant_project_id
+    user_id = CONF.cinder_internal_tenant_user_id
+
+    if project_id and user_id:
+        return RequestContext(user_id=user_id,
+                              project_id=project_id,
+                              is_admin=True)
+    else:
+        LOG.warning(_LW('Unable to get internal tenant context: Missing '
+                        'required config parameters.'))
+        return None

@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Alex Meade.  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -18,13 +19,13 @@ Unified driver for NetApp storage systems.
 Supports multiple storage systems of different families and protocols.
 """
 
+from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
-from cinder.volume.drivers.netapp.options import netapp_proxy_opts
+from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -49,12 +50,13 @@ NETAPP_UNIFIED_DRIVER_REGISTRY = {
     },
     'eseries':
     {
-        'iscsi': ESERIES_PATH + '.iscsi.NetAppEseriesISCSIDriver'
+        'iscsi': ESERIES_PATH + '.iscsi_driver.NetAppEseriesISCSIDriver',
+        'fc': ESERIES_PATH + '.fc_driver.NetAppEseriesFibreChannelDriver'
     }}
 
 
 class NetAppDriver(driver.ProxyVD):
-    """"NetApp unified block storage driver.
+    """NetApp unified block storage driver.
 
        Acts as a factory to create NetApp storage drivers based on the
        storage family and protocol configured.
@@ -69,12 +71,12 @@ class NetAppDriver(driver.ProxyVD):
             raise exception.InvalidInput(
                 reason=_('Required configuration not found'))
 
-        config.append_config_values(netapp_proxy_opts)
+        config.append_config_values(options.netapp_proxy_opts)
         na_utils.check_flags(NetAppDriver.REQUIRED_FLAGS, config)
 
         app_version = na_utils.OpenStackInfo().info()
-        LOG.info(_LI('OpenStack OS Version Info: %(info)s') % {
-            'info': app_version})
+        LOG.info(_LI('OpenStack OS Version Info: %(info)s'),
+                 {'info': app_version})
         kwargs['app_version'] = app_version
 
         return NetAppDriver.create_driver(config.netapp_storage_family,
@@ -83,7 +85,7 @@ class NetAppDriver(driver.ProxyVD):
 
     @staticmethod
     def create_driver(storage_family, storage_protocol, *args, **kwargs):
-        """"Creates an appropriate driver based on family and protocol."""
+        """Creates an appropriate driver based on family and protocol."""
 
         storage_family = storage_family.lower()
         storage_protocol = storage_protocol.lower()
@@ -91,7 +93,7 @@ class NetAppDriver(driver.ProxyVD):
         fmt = {'storage_family': storage_family,
                'storage_protocol': storage_protocol}
         LOG.info(_LI('Requested unified config: %(storage_family)s and '
-                     '%(storage_protocol)s.') % fmt)
+                     '%(storage_protocol)s.'), fmt)
 
         family_meta = NETAPP_UNIFIED_DRIVER_REGISTRY.get(storage_family)
         if family_meta is None:
@@ -109,5 +111,5 @@ class NetAppDriver(driver.ProxyVD):
         kwargs['netapp_mode'] = 'proxy'
         driver = importutils.import_object(driver_loc, *args, **kwargs)
         LOG.info(_LI('NetApp driver of family %(storage_family)s and protocol '
-                     '%(storage_protocol)s loaded.') % fmt)
+                     '%(storage_protocol)s loaded.'), fmt)
         return driver

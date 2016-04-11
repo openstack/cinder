@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Navneet Singh.  All rights reserved.
 # Copyright (c) 2014 Glenn Gobeli.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Alex Meade.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,18 +22,25 @@ Contains classes required to issue API calls to Data ONTAP and OnCommand DFM.
 """
 
 import copy
-import urllib2
+from eventlet import greenthread
+from eventlet import semaphore
 
 from lxml import etree
+from oslo_log import log as logging
+import random
 import six
+from six.moves import urllib
 
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder import ssh_utils
+from cinder import utils
 
 LOG = logging.getLogger(__name__)
 
+EAPINOTFOUND = '13005'
 ESIS_CLONE_NOT_LICENSED = '14956'
+ESNAPSHOTNOTALLOWED = '13023'
 
 
 class NaServer(object):
@@ -62,7 +70,7 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
-        LOG.debug('Using NetApp controller: %s' % self._host)
+        LOG.debug('Using NetApp controller: %s', self._host)
 
     def get_transport_type(self):
         """Get the transport type protocol."""
@@ -73,6 +81,8 @@ class NaServer(object):
 
         Supports http and https transport types.
         """
+        if not transport_type:
+            raise ValueError('No transport type specified')
         if transport_type.lower() not in (
                 NaServer.TRANSPORT_TYPE_HTTP,
                 NaServer.TRANSPORT_TYPE_HTTPS):
@@ -193,11 +203,15 @@ class NaServer(object):
         self._password = password
         self._refresh_conn = True
 
-    def invoke_elem(self, na_element, enable_tunneling=False):
+    @utils.trace_api
+    def send_http_request(self, na_element, enable_tunneling=False):
         """Invoke the API on the server."""
-        if na_element and not isinstance(na_element, NaElement):
-            ValueError('NaElement must be supplied to invoke API')
-        request = self._create_request(na_element, enable_tunneling)
+        if not na_element or not isinstance(na_element, NaElement):
+            raise ValueError('NaElement must be supplied to invoke API')
+
+        request, request_element = self._create_request(na_element,
+                                                        enable_tunneling)
+
         if not hasattr(self, '_opener') or not self._opener \
                 or self._refresh_conn:
             self._build_opener()
@@ -206,12 +220,15 @@ class NaServer(object):
                 response = self._opener.open(request, timeout=self._timeout)
             else:
                 response = self._opener.open(request)
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             raise NaApiError(e.code, e.msg)
-        except Exception as e:
-            raise NaApiError('Unexpected error', e)
-        xml = response.read()
-        return self._get_result(xml)
+        except Exception:
+            raise NaApiError('Unexpected error')
+
+        response_xml = response.read()
+        response_element = self._get_result(response_xml)
+
+        return response_element
 
     def invoke_successfully(self, na_element, enable_tunneling=False):
         """Invokes API and checks execution status as success.
@@ -221,7 +238,7 @@ class NaServer(object):
         tunneling. The vserver or vfiler should be set before this call
         otherwise tunneling remains disabled.
         """
-        result = self.invoke_elem(na_element, enable_tunneling)
+        result = self.send_http_request(na_element, enable_tunneling)
         if result.has_attr('status') and result.get_attr('status') == 'passed':
             return result
         code = result.get_attr('errno')\
@@ -245,10 +262,10 @@ class NaServer(object):
             self._enable_tunnel_request(netapp_elem)
         netapp_elem.add_child_elem(na_element)
         request_d = netapp_elem.to_string()
-        request = urllib2.Request(
+        request = urllib.request.Request(
             self._get_url(), data=request_d,
             headers={'Content-Type': 'text/xml', 'charset': 'utf-8'})
-        return request
+        return request, netapp_elem
 
     def _enable_tunnel_request(self, netapp_elem):
         """Enables vserver or vfiler tunneling."""
@@ -292,21 +309,21 @@ class NaServer(object):
             auth_handler = self._create_basic_auth_handler()
         else:
             auth_handler = self._create_certificate_auth_handler()
-        opener = urllib2.build_opener(auth_handler)
+        opener = urllib.request.build_opener(auth_handler)
         self._opener = opener
 
     def _create_basic_auth_handler(self):
-        password_man = urllib2.HTTPPasswordMgrWithDefaultRealm()
+        password_man = urllib.request.HTTPPasswordMgrWithDefaultRealm()
         password_man.add_password(None, self._get_url(), self._username,
                                   self._password)
-        auth_handler = urllib2.HTTPBasicAuthHandler(password_man)
+        auth_handler = urllib.request.HTTPBasicAuthHandler(password_man)
         return auth_handler
 
     def _create_certificate_auth_handler(self):
         raise NotImplementedError()
 
     def __str__(self):
-        return "server: %s" % (self._host)
+        return "server: %s" % self._host
 
 
 class NaElement(object):
@@ -378,10 +395,10 @@ class NaElement(object):
     def get_attr_names(self):
         """Returns the list of attribute names."""
         attributes = self._element.attrib or {}
-        return attributes.keys()
+        return list(attributes.keys())
 
     def add_new_child(self, name, content, convert=False):
-        """Add child with tag name and context.
+        """Add child with tag name and content.
 
            Convert replaces entity refs to chars.
         """
@@ -416,6 +433,21 @@ class NaElement(object):
         return etree.tostring(self._element, method=method, encoding=encoding,
                               pretty_print=pretty)
 
+    def __str__(self):
+        xml = self.to_string(pretty=True)
+        if six.PY3:
+            xml = xml.decode('utf-8')
+        return xml
+
+    def __eq__(self, other):
+        return str(self) == str(other)
+
+    def __hash__(self):
+        return hash(str(self))
+
+    def __repr__(self):
+        return str(self)
+
     def __getitem__(self, key):
         """Dict getter method for NaElement.
 
@@ -445,7 +477,7 @@ class NaElement(object):
                     child = NaElement(key)
                     child.add_child_elem(value)
                     self.add_child_elem(child)
-                elif isinstance(value, (str, int, float, long)):
+                elif isinstance(value, six.integer_types + (str, float)):
                     self.add_new_child(key, six.text_type(value))
                 elif isinstance(value, (list, tuple, dict)):
                     child = NaElement(key)
@@ -596,3 +628,84 @@ def create_api_request(api_name, query=None, des_result=None,
     if tag:
         api_el.add_new_child('tag', tag, True)
     return api_el
+
+
+class SSHUtil(object):
+    """Encapsulates connection logic and command execution for SSH client."""
+
+    MAX_CONCURRENT_SSH_CONNECTIONS = 5
+    RECV_TIMEOUT = 3
+    CONNECTION_KEEP_ALIVE = 600
+    WAIT_ON_STDOUT_TIMEOUT = 3
+
+    def __init__(self, host, username, password, port=22):
+        self.ssh_pool = self._init_ssh_pool(host, port, username, password)
+
+        # Note(cfouts) Number of SSH connections made to the backend need to be
+        # limited. Use of SSHPool allows connections to be cached and reused
+        # instead of creating a new connection each time a command is executed
+        # via SSH.
+        self.ssh_connect_semaphore = semaphore.Semaphore(
+            self.MAX_CONCURRENT_SSH_CONNECTIONS)
+
+    def _init_ssh_pool(self, host, port, username, password):
+        return ssh_utils.SSHPool(host,
+                                 port,
+                                 self.CONNECTION_KEEP_ALIVE,
+                                 username,
+                                 password)
+
+    def execute_command(self, client, command_text, timeout=RECV_TIMEOUT):
+        LOG.debug("execute_command() - Sending command.")
+        stdin, stdout, stderr = client.exec_command(command_text)
+        stdin.close()
+        self._wait_on_stdout(stdout, timeout)
+        output = stdout.read()
+        LOG.debug("Output of length %(size)d received.",
+                  {'size': len(output)})
+        stdout.close()
+        stderr.close()
+        return output
+
+    def execute_command_with_prompt(self,
+                                    client,
+                                    command,
+                                    expected_prompt_text,
+                                    prompt_response,
+                                    timeout=RECV_TIMEOUT):
+        LOG.debug("execute_command_with_prompt() - Sending command.")
+        stdin, stdout, stderr = client.exec_command(command)
+        self._wait_on_stdout(stdout, timeout)
+        response = stdout.channel.recv(999)
+        if response.strip() != expected_prompt_text:
+            msg = _("Unexpected output. Expected [%(expected)s] but "
+                    "received [%(output)s]") % {
+                'expected': expected_prompt_text,
+                'output': response.strip(),
+            }
+            LOG.error(msg)
+            stdin.close()
+            stdout.close()
+            stderr.close()
+            raise exception.VolumeBackendAPIException(msg)
+        else:
+            LOG.debug("execute_command_with_prompt() - Sending answer")
+            stdin.write(prompt_response + '\n')
+            stdin.flush()
+        stdin.close()
+        stdout.close()
+        stderr.close()
+
+    def _wait_on_stdout(self, stdout, timeout=WAIT_ON_STDOUT_TIMEOUT):
+        wait_time = 0.0
+        # NOTE(cfouts): The server does not always indicate when EOF is reached
+        # for stdout. The timeout exists for this reason and an attempt is made
+        # to read from stdout.
+        while not stdout.channel.exit_status_ready():
+            # period is 10 - 25 centiseconds
+            period = random.randint(10, 25) / 100.0
+            greenthread.sleep(period)
+            wait_time += period
+            if wait_time > timeout:
+                LOG.debug("Timeout exceeded while waiting for exit status.")
+                break

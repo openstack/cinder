@@ -18,6 +18,7 @@
 from xml.parsers import expat
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 import webob.exc
 
@@ -27,7 +28,7 @@ from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
+from cinder import objects
 from cinder import utils
 from cinder.volume import api as volume_api
 
@@ -96,9 +97,10 @@ class HostDeserializer(wsgi.XMLDeserializer):
 
 def _list_hosts(req, service=None):
     """Returns a summary list of hosts."""
-    curr_time = timeutils.utcnow()
+    curr_time = timeutils.utcnow(with_timezone=True)
     context = req.environ['cinder.context']
-    services = db.service_get_all(context, False)
+    filters = {'disabled': False}
+    services = objects.ServiceList.get_all(context, filters)
     zone = ''
     if 'zone' in req.GET:
         zone = req.GET['zone']
@@ -106,23 +108,27 @@ def _list_hosts(req, service=None):
         services = [s for s in services if s['availability_zone'] == zone]
     hosts = []
     for host in services:
-        delta = curr_time - (host['updated_at'] or host['created_at'])
+        delta = curr_time - (host.updated_at or host.created_at)
         alive = abs(delta.total_seconds()) <= CONF.service_down_time
         status = (alive and "available") or "unavailable"
         active = 'enabled'
-        if host['disabled']:
+        if host.disabled:
             active = 'disabled'
-        LOG.debug('status, active and update: %s, %s, %s' %
-                  (status, active, host['updated_at']))
-        hosts.append({'host_name': host['host'],
-                      'service': host['topic'],
-                      'zone': host['availability_zone'],
+        LOG.debug('status, active and update: %s, %s, %s',
+                  status, active, host.updated_at)
+        updated_at = host.updated_at
+        if updated_at:
+            updated_at = timeutils.normalize_time(updated_at)
+        hosts.append({'host_name': host.host,
+                      'service': host.topic,
+                      'zone': host.availability_zone,
                       'service-status': status,
                       'service-state': active,
-                      'last-update': host['updated_at']})
+                      'last-update': updated_at,
+                      })
     if service:
         hosts = [host for host in hosts
-                 if host["service"] == service]
+                 if host['service'] == service]
     return hosts
 
 
@@ -156,7 +162,7 @@ class HostController(wsgi.Controller):
     def update(self, req, id, body):
         authorize(req.environ['cinder.context'])
         update_values = {}
-        for raw_key, raw_val in body.iteritems():
+        for raw_key, raw_val in body.items():
             key = raw_key.lower().strip()
             val = raw_val.lower().strip()
             if key == "status":
@@ -170,7 +176,7 @@ class HostController(wsgi.Controller):
                 raise webob.exc.HTTPBadRequest(explanation=explanation)
         update_setters = {'status': self._set_enabled_status}
         result = {}
-        for key, value in update_values.iteritems():
+        for key, value in update_values.items():
             result.update(update_setters[key](req, id, value))
         return result
 
@@ -208,17 +214,16 @@ class HostController(wsgi.Controller):
             raise webob.exc.HTTPForbidden(explanation=msg)
 
         try:
-            host_ref = db.service_get_by_host_and_topic(context,
-                                                        host,
-                                                        CONF.volume_topic)
+            host_ref = objects.Service.get_by_host_and_topic(
+                context, host, CONF.volume_topic)
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound(explanation=_("Host not found"))
 
         # Getting total available/used resource
         # TODO(jdg): Add summary info for Snapshots
-        volume_refs = db.volume_get_all_by_host(context, host_ref['host'])
+        volume_refs = db.volume_get_all_by_host(context, host_ref.host)
         (count, sum) = db.volume_data_get_for_host(context,
-                                                   host_ref['host'])
+                                                   host_ref.host)
 
         snap_count_total = 0
         snap_sum_total = 0
@@ -232,9 +237,9 @@ class HostController(wsgi.Controller):
         project_ids = list(set(project_ids))
         for project_id in project_ids:
             (count, sum) = db.volume_data_get_for_project(context, project_id)
-            (snap_count, snap_sum) = db.snapshot_data_get_for_project(
-                context,
-                project_id)
+            (snap_count, snap_sum) = (
+                objects.Snapshot.snapshot_data_get_for_project(context,
+                                                               project_id))
             resources.append(
                 {'resource':
                     {'host': host,

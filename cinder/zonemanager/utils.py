@@ -17,28 +17,26 @@
 Utility functions related to the Zone Manager.
 
 """
-import logging
+from oslo_log import log
 
 from cinder.i18n import _LI, _LW
-from cinder.openstack.common import log
-from cinder.volume.configuration import Configuration
+from cinder.volume import configuration
 from cinder.volume import manager
 from cinder.zonemanager import fc_san_lookup_service
 from cinder.zonemanager import fc_zone_manager
 
 LOG = log.getLogger(__name__)
-LOG.logger.setLevel(logging.DEBUG)
 
 
 def create_zone_manager():
     """If zoning is enabled, build the Zone Manager."""
-    config = Configuration(manager.volume_manager_opts)
-    LOG.debug("zoning mode %s" % config.safe_get('zoning_mode'))
+    config = configuration.Configuration(manager.volume_manager_opts)
+    LOG.debug("Zoning mode: %s.", config.safe_get('zoning_mode'))
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Zone Manager enabled.")
-        zm = fc_zone_manager.ZoneManager(configuration=config)
+        zm = fc_zone_manager.ZoneManager()
         LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
-                     " Driver %(drv_name)s %(drv_version)s.") %
+                     " Driver %(drv_name)s %(drv_version)s."),
                  {'zm_version': zm.get_version(),
                   'drv_name': zm.driver.__class__.__name__,
                   'drv_version': zm.driver.get_version()})
@@ -49,12 +47,12 @@ def create_zone_manager():
 
 
 def create_lookup_service():
-    config = Configuration(manager.volume_manager_opts)
-    LOG.debug("zoning mode %s" % config.safe_get('zoning_mode'))
+    config = configuration.Configuration(manager.volume_manager_opts)
+    LOG.debug("Zoning mode: %s.", config.safe_get('zoning_mode'))
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Lookup Service enabled.")
-        lookup = fc_san_lookup_service.FCSanLookupService(configuration=config)
-        LOG.info(_LI("Using FC lookup service %s") % lookup.lookup_service)
+        lookup = fc_san_lookup_service.FCSanLookupService()
+        LOG.info(_LI("Using FC lookup service %s."), lookup.lookup_service)
         return lookup
     else:
         LOG.debug("FC Lookup Service not enabled in cinder.conf.")
@@ -72,23 +70,22 @@ def get_formatted_wwn(wwn_str):
 
 def AddFCZone(initialize_connection):
     """Decorator to add a FC Zone."""
+
     def decorator(self, *args, **kwargs):
         conn_info = initialize_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_LW("Driver didn't return connection info, "
-                         "can't add zone."))
+            LOG.warning(_LW("Driver didn't return connection info, "
+                            "can't add zone."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)
         if vol_type == 'fibre_channel':
-
             if 'initiator_target_map' in conn_info['data']:
-                init_target_map = conn_info['data']['initiator_target_map']
                 zm = create_zone_manager()
                 if zm:
-                    LOG.debug("Add FC Zone for mapping '%s'." %
-                              init_target_map)
-                    zm.add_connection(init_target_map)
+                    LOG.debug("AddFCZone connection info: %(conninfo)s.",
+                              {'conninfo': conn_info})
+                    zm.add_connection(conn_info)
 
         return conn_info
 
@@ -97,23 +94,22 @@ def AddFCZone(initialize_connection):
 
 def RemoveFCZone(terminate_connection):
     """Decorator for FC drivers to remove zone."""
+
     def decorator(self, *args, **kwargs):
         conn_info = terminate_connection(self, *args, **kwargs)
         if not conn_info:
-            LOG.warn(_LW("Driver didn't return connection info from "
-                         "terminate_connection call."))
+            LOG.warning(_LW("Driver didn't return connection info from "
+                            "terminate_connection call."))
             return None
 
         vol_type = conn_info.get('driver_volume_type', None)
         if vol_type == 'fibre_channel':
-
             if 'initiator_target_map' in conn_info['data']:
-                init_target_map = conn_info['data']['initiator_target_map']
                 zm = create_zone_manager()
                 if zm:
-                    LOG.debug("Remove FC Zone for mapping '%s'." %
-                              init_target_map)
-                    zm.delete_connection(init_target_map)
+                    LOG.debug("RemoveFCZone connection info: %(conninfo)s.",
+                              {'conninfo': conn_info})
+                    zm.delete_connection(conn_info)
 
         return conn_info
 

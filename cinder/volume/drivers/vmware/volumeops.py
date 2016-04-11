@@ -17,22 +17,22 @@
 Implements operations on volumes residing on VMware datastores.
 """
 
-import urllib
 
+from oslo_log import log as logging
 from oslo_utils import units
 from oslo_vmware import exceptions
+from oslo_vmware import pbm
 from oslo_vmware import vim_util
+import six
+from six.moves import urllib
 
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
 LOG = logging.getLogger(__name__)
 LINKED_CLONE_TYPE = 'linked'
 FULL_CLONE_TYPE = 'full'
-ALREADY_EXISTS = 'AlreadyExists'
-FILE_ALREADY_EXISTS = 'FileAlreadyExists'
 
 
 def split_datastore_path(datastore_path):
@@ -273,6 +273,7 @@ class VMwareVolumeOps(object):
     def __init__(self, session, max_objects):
         self._session = session
         self._max_objects = max_objects
+        self._folder_cache = {}
 
     def get_backing(self, name):
         """Get the backing based on name.
@@ -320,6 +321,23 @@ class VMwareVolumeOps(object):
         return self._session.invoke_api(vim_util, 'get_object_property',
                                         self._session.vim, instance,
                                         'runtime.host')
+
+    def is_host_usable(self, host):
+        """Check if the given ESX host is usable.
+
+        A host is usable if it is connected to vCenter server and not in
+        maintenance mode.
+
+        :param host: Managed object reference to the ESX host
+        :return: True if host is usable, False otherwise
+        """
+        runtime_info = self._session.invoke_api(vim_util,
+                                                'get_object_property',
+                                                self._session.vim,
+                                                host,
+                                                'runtime')
+        return (runtime_info.connectionState == 'connected' and
+                not runtime_info.inMaintenanceMode)
 
     def get_hosts(self):
         """Get all host from the inventory.
@@ -391,6 +409,15 @@ class VMwareVolumeOps(object):
                 connected_hosts.append(host_mount.key.value)
 
         return connected_hosts
+
+    def is_datastore_accessible(self, datastore, host):
+        """Check if the datastore is accessible to the given host.
+
+        :param datastore: datastore reference
+        :return: True if the datastore is accessible
+        """
+        hosts = self.get_connected_hosts(datastore)
+        return host.value in hosts
 
     def _in_maintenance(self, summary):
         """Check if a datastore is entering maintenance or in maintenance.
@@ -505,6 +532,26 @@ class VMwareVolumeOps(object):
                                         self._session.vim, datacenter,
                                         'vmFolder')
 
+    def _get_child_folder(self, parent_folder, child_folder_name):
+        # Get list of child entities for the parent folder
+        prop_val = self._session.invoke_api(vim_util, 'get_object_property',
+                                            self._session.vim, parent_folder,
+                                            'childEntity')
+
+        if prop_val and hasattr(prop_val, 'ManagedObjectReference'):
+            child_entities = prop_val.ManagedObjectReference
+
+            # Return if the child folder with input name is already present
+            for child_entity in child_entities:
+                if child_entity._type != 'Folder':
+                    continue
+                child_entity_name = self.get_entity_name(child_entity)
+                if (child_entity_name
+                    and (urllib.parse.unquote(child_entity_name)
+                         == child_folder_name)):
+                    LOG.debug("Child folder: %s exists.", child_folder_name)
+                    return child_entity
+
     def create_folder(self, parent_folder, child_folder_name):
         """Creates child folder with given name under the given parent folder.
 
@@ -522,44 +569,66 @@ class VMwareVolumeOps(object):
                   {'child_folder_name': child_folder_name,
                    'parent_folder': parent_folder})
 
-        # Get list of child entities for the parent folder
-        prop_val = self._session.invoke_api(vim_util, 'get_object_property',
-                                            self._session.vim, parent_folder,
-                                            'childEntity')
-
-        if prop_val and hasattr(prop_val, 'ManagedObjectReference'):
-            child_entities = prop_val.ManagedObjectReference
-
-            # Return if the child folder with input name is already present
-            for child_entity in child_entities:
-                if child_entity._type != 'Folder':
-                    continue
-                child_entity_name = self.get_entity_name(child_entity)
-                if child_entity_name and (urllib.unquote(child_entity_name) ==
-                                          child_folder_name):
-                    LOG.debug("Child folder: %s already present.",
-                              child_folder_name)
-                    return child_entity
-
-        # Need to create the child folder
-        child_folder = self._session.invoke_api(self._session.vim,
-                                                'CreateFolder', parent_folder,
-                                                name=child_folder_name)
-        LOG.debug("Created child folder: %s.", child_folder)
+        child_folder = self._get_child_folder(parent_folder, child_folder_name)
+        if not child_folder:
+            # Need to create the child folder.
+            try:
+                child_folder = self._session.invoke_api(self._session.vim,
+                                                        'CreateFolder',
+                                                        parent_folder,
+                                                        name=child_folder_name)
+                LOG.debug("Created child folder: %s.", child_folder)
+            except exceptions.DuplicateName:
+                # Another thread is trying to create the same folder, ignore
+                # the exception.
+                child_folder = self._get_child_folder(parent_folder,
+                                                      child_folder_name)
         return child_folder
 
-    def extend_virtual_disk(self, requested_size_in_gb, name, dc_ref,
+    def create_vm_inventory_folder(self, datacenter, path_comp):
+        """Create and return a VM inventory folder.
+
+        This method caches references to inventory folders returned.
+
+        :param datacenter: Reference to datacenter
+        :param path_comp: Path components as a list
+        """
+        LOG.debug("Creating inventory folder: %(path_comp)s under VM folder "
+                  "of datacenter: %(datacenter)s.",
+                  {'path_comp': path_comp,
+                   'datacenter': datacenter})
+        path = "/" + datacenter.value
+        parent = self._folder_cache.get(path)
+        if not parent:
+            parent = self.get_vmfolder(datacenter)
+            self._folder_cache[path] = parent
+
+        folder = None
+        for folder_name in path_comp:
+            path = "/".join([path, folder_name])
+            folder = self._folder_cache.get(path)
+            if not folder:
+                folder = self.create_folder(parent, folder_name)
+                self._folder_cache[path] = folder
+            parent = folder
+
+        LOG.debug("Inventory folder for path: %(path)s is %(folder)s.",
+                  {'path': path,
+                   'folder': folder})
+        return folder
+
+    def extend_virtual_disk(self, requested_size_in_gb, path, dc_ref,
                             eager_zero=False):
         """Extend the virtual disk to the requested size.
 
         :param requested_size_in_gb: Size of the volume in GB
-        :param name: Name of the backing
-        :param dc_ref: Reference datacenter
+        :param path: Datastore path of the virtual disk to extend
+        :param dc_ref: Reference to datacenter
         :param eager_zero: Boolean determining if the free space
         is zeroed out
         """
-        LOG.debug("Extending the volume %(name)s to %(size)s GB.",
-                  {'name': name, 'size': requested_size_in_gb})
+        LOG.debug("Extending virtual disk: %(path)s to %(size)s GB.",
+                  {'path': path, 'size': requested_size_in_gb})
         diskMgr = self._session.vim.service_content.virtualDiskManager
 
         # VMWare API needs the capacity unit to be in KB, so convert the
@@ -568,14 +637,14 @@ class VMwareVolumeOps(object):
         task = self._session.invoke_api(self._session.vim,
                                         "ExtendVirtualDisk_Task",
                                         diskMgr,
-                                        name=name,
+                                        name=path,
                                         datacenter=dc_ref,
                                         newCapacityKb=size_in_kb,
                                         eagerZero=eager_zero)
         self._session.wait_for_task(task)
-        LOG.info(_LI("Successfully extended the volume %(name)s to "
+        LOG.info(_LI("Successfully extended virtual disk: %(path)s to "
                      "%(size)s GB."),
-                 {'name': name, 'size': requested_size_in_gb})
+                 {'path': path, 'size': requested_size_in_gb})
 
     def _create_controller_config_spec(self, adapter_type):
         """Returns config spec for adding a disk controller."""
@@ -662,12 +731,28 @@ class VMwareVolumeOps(object):
             specs.append(controller_spec)
         return specs
 
-    def _get_create_spec_disk_less(self, name, ds_name, profileId=None):
+    def _get_extra_config_option_values(self, extra_config):
+
+        cf = self._session.vim.client.factory
+        option_values = []
+
+        for key, value in six.iteritems(extra_config):
+            opt = cf.create('ns0:OptionValue')
+            opt.key = key
+            opt.value = value
+            option_values.append(opt)
+
+        return option_values
+
+    def _get_create_spec_disk_less(self, name, ds_name, profileId=None,
+                                   extra_config=None):
         """Return spec for creating disk-less backing.
 
         :param name: Name of the backing
         :param ds_name: Datastore name where the disk is to be provisioned
-        :param profileId: storage profile ID for the backing
+        :param profileId: Storage profile ID for the backing
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Spec for creation
         """
         cf = self._session.vim.client.factory
@@ -691,10 +776,15 @@ class VMwareVolumeOps(object):
             vmProfile.profileId = profileId
             create_spec.vmProfile = [vmProfile]
 
+        if extra_config:
+            create_spec.extraConfig = self._get_extra_config_option_values(
+                extra_config)
+
         return create_spec
 
     def get_create_spec(self, name, size_kb, disk_type, ds_name,
-                        profileId=None, adapter_type='lsiLogic'):
+                        profileId=None, adapter_type='lsiLogic',
+                        extra_config=None):
         """Return spec for creating backing with a single disk.
 
         :param name: name of the backing
@@ -703,9 +793,12 @@ class VMwareVolumeOps(object):
         :param ds_name: datastore name where the disk is to be provisioned
         :param profileId: storage profile ID for the backing
         :param adapter_type: disk adapter type
+        :param extra_config: key-value pairs to be written to backing's
+                             extra-config
         :return: spec for creation
         """
-        create_spec = self._get_create_spec_disk_less(name, ds_name, profileId)
+        create_spec = self._get_create_spec_disk_less(
+            name, ds_name, profileId=profileId, extra_config=extra_config)
         create_spec.deviceChange = self._create_specs_for_disk_add(
             size_kb, disk_type, adapter_type)
         return create_spec
@@ -722,7 +815,8 @@ class VMwareVolumeOps(object):
         return backing
 
     def create_backing(self, name, size_kb, disk_type, folder, resource_pool,
-                       host, ds_name, profileId=None, adapter_type='lsiLogic'):
+                       host, ds_name, profileId=None, adapter_type='lsiLogic',
+                       extra_config=None):
         """Create backing for the volume.
 
         Creates a VM with one VMDK based on the given inputs.
@@ -734,8 +828,10 @@ class VMwareVolumeOps(object):
         :param resource_pool: Resource pool reference
         :param host: Host reference
         :param ds_name: Datastore name where the disk is to be provisioned
-        :param profileId: storage profile ID to be associated with backing
+        :param profileId: Storage profile ID to be associated with backing
         :param adapter_type: Disk adapter type
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Reference to the created backing entity
         """
         LOG.debug("Creating volume backing with name: %(name)s "
@@ -748,13 +844,15 @@ class VMwareVolumeOps(object):
                    'ds_name': ds_name, 'profile': profileId, 'host': host,
                    'adapter_type': adapter_type})
 
-        create_spec = self.get_create_spec(name, size_kb, disk_type, ds_name,
-                                           profileId, adapter_type)
+        create_spec = self.get_create_spec(
+            name, size_kb, disk_type, ds_name, profileId=profileId,
+            adapter_type=adapter_type, extra_config=extra_config)
         return self._create_backing_int(folder, resource_pool, host,
                                         create_spec)
 
     def create_backing_disk_less(self, name, folder, resource_pool,
-                                 host, ds_name, profileId=None):
+                                 host, ds_name, profileId=None,
+                                 extra_config=None):
         """Create disk-less volume backing.
 
         This type of backing is useful for creating volume from image. The
@@ -767,6 +865,8 @@ class VMwareVolumeOps(object):
         :param host: Host reference
         :param ds_name: Name of the datastore used for VM storage
         :param profileId: Storage profile ID to be associated with backing
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Reference to the created backing entity
         """
         LOG.debug("Creating disk-less volume backing with name: %(name)s "
@@ -777,7 +877,8 @@ class VMwareVolumeOps(object):
                    'resource_pool': resource_pool, 'host': host,
                    'ds_name': ds_name})
 
-        create_spec = self._get_create_spec_disk_less(name, ds_name, profileId)
+        create_spec = self._get_create_spec_disk_less(
+            name, ds_name, profileId=profileId, extra_config=extra_config)
         return self._create_backing_int(folder, resource_pool, host,
                                         create_spec)
 
@@ -1003,7 +1104,8 @@ class VMwareVolumeOps(object):
         return self._get_parent(backing, 'Folder')
 
     def _get_clone_spec(self, datastore, disk_move_type, snapshot, backing,
-                        disk_type, host=None):
+                        disk_type, host=None, resource_pool=None,
+                        extra_config=None):
         """Get the clone spec.
 
         :param datastore: Reference to datastore
@@ -1012,6 +1114,9 @@ class VMwareVolumeOps(object):
         :param backing: Source backing VM
         :param disk_type: Disk type of clone
         :param host: Target host
+        :param resource_pool: Target resource pool
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
         :return: Clone spec
         """
         if disk_type is not None:
@@ -1019,7 +1124,7 @@ class VMwareVolumeOps(object):
         else:
             disk_device = None
 
-        relocate_spec = self._get_relocate_spec(datastore, None, host,
+        relocate_spec = self._get_relocate_spec(datastore, resource_pool, host,
                                                 disk_move_type, disk_type,
                                                 disk_device)
         cf = self._session.vim.client.factory
@@ -1029,11 +1134,18 @@ class VMwareVolumeOps(object):
         clone_spec.template = False
         clone_spec.snapshot = snapshot
 
+        if extra_config:
+            config_spec = cf.create('ns0:VirtualMachineConfigSpec')
+            config_spec.extraConfig = self._get_extra_config_option_values(
+                extra_config)
+            clone_spec.config = config_spec
+
         LOG.debug("Spec for cloning the backing: %s.", clone_spec)
         return clone_spec
 
     def clone_backing(self, name, backing, snapshot, clone_type, datastore,
-                      disk_type=None, host=None):
+                      disk_type=None, host=None, resource_pool=None,
+                      extra_config=None, folder=None):
         """Clone backing.
 
         If the clone_type is 'full', then a full clone of the source volume
@@ -1047,21 +1159,30 @@ class VMwareVolumeOps(object):
         :param datastore: Reference to the datastore entity
         :param disk_type: Disk type of the clone
         :param host: Target host
+        :param resource_pool: Target resource pool
+        :param extra_config: Key-value pairs to be written to backing's
+                             extra-config
+        :param folder: The location of the clone
         """
         LOG.debug("Creating a clone of backing: %(back)s, named: %(name)s, "
                   "clone type: %(type)s from snapshot: %(snap)s on "
-                  "host: %(host)s, datastore: %(ds)s with disk type: "
-                  "%(disk_type)s.",
+                  "resource pool: %(resource_pool)s, host: %(host)s, "
+                  "datastore: %(ds)s with disk type: %(disk_type)s.",
                   {'back': backing, 'name': name, 'type': clone_type,
                    'snap': snapshot, 'ds': datastore, 'disk_type': disk_type,
-                   'host': host})
-        folder = self._get_folder(backing)
+                   'host': host, 'resource_pool': resource_pool})
+
+        if folder is None:
+            # Use source folder as the location of the clone.
+            folder = self._get_folder(backing)
+
         if clone_type == LINKED_CLONE_TYPE:
             disk_move_type = 'createNewChildDiskBacking'
         else:
             disk_move_type = 'moveAllDiskBackingsAndDisallowSharing'
-        clone_spec = self._get_clone_spec(datastore, disk_move_type, snapshot,
-                                          backing, disk_type, host)
+        clone_spec = self._get_clone_spec(
+            datastore, disk_move_type, snapshot, backing, disk_type, host=host,
+            resource_pool=resource_pool, extra_config=extra_config)
         task = self._session.invoke_api(self._session.vim, 'CloneVM_Task',
                                         backing, folder=folder, name=name,
                                         spec=clone_spec)
@@ -1112,6 +1233,26 @@ class VMwareVolumeOps(object):
         self._reconfigure_backing(backing, reconfig_spec)
         LOG.debug("Backing VM: %s reconfigured with new disk.", backing)
 
+    def _create_spec_for_disk_remove(self, disk_device):
+        cf = self._session.vim.client.factory
+        disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')
+        disk_spec.operation = 'remove'
+        disk_spec.device = disk_device
+        return disk_spec
+
+    def detach_disk_from_backing(self, backing, disk_device):
+        """Detach the given disk from backing."""
+
+        LOG.debug("Reconfiguring backing VM: %(backing)s to remove disk: "
+                  "%(disk_device)s.",
+                  {'backing': backing, 'disk_device': disk_device})
+
+        cf = self._session.vim.client.factory
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        spec = self._create_spec_for_disk_remove(disk_device)
+        reconfig_spec.deviceChange = [spec]
+        self._reconfigure_backing(backing, reconfig_spec)
+
     def rename_backing(self, backing, new_name):
         """Rename backing VM.
 
@@ -1157,6 +1298,34 @@ class VMwareVolumeOps(object):
                   {'backing': backing,
                    'profile': profile_id})
 
+    def update_backing_disk_uuid(self, backing, disk_uuid):
+        """Update backing VM's disk UUID.
+
+        :param backing: Reference to backing VM
+        :param disk_uuid: New disk UUID
+        """
+        LOG.debug("Reconfiguring backing VM: %(backing)s to change disk UUID "
+                  "to: %(disk_uuid)s.",
+                  {'backing': backing,
+                   'disk_uuid': disk_uuid})
+
+        disk_device = self._get_disk_device(backing)
+        disk_device.backing.uuid = disk_uuid
+
+        cf = self._session.vim.client.factory
+        disk_spec = cf.create('ns0:VirtualDeviceConfigSpec')
+        disk_spec.device = disk_device
+        disk_spec.operation = 'edit'
+
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        reconfig_spec.deviceChange = [disk_spec]
+        self._reconfigure_backing(backing, reconfig_spec)
+
+        LOG.debug("Backing VM: %(backing)s reconfigured with new disk UUID: "
+                  "%(disk_uuid)s.",
+                  {'backing': backing,
+                   'disk_uuid': disk_uuid})
+
     def delete_file(self, file_path, datacenter=None):
         """Delete file or folder on the datastore.
 
@@ -1173,6 +1342,28 @@ class VMwareVolumeOps(object):
         LOG.debug("Initiated deletion via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Successfully deleted file: %s."), file_path)
+
+    def create_datastore_folder(self, ds_name, folder_path, datacenter):
+        """Creates a datastore folder.
+
+        This method returns silently if the folder already exists.
+
+        :param ds_name: datastore name
+        :param folder_path: path of folder to create
+        :param datacenter: datacenter of target datastore
+        """
+        fileManager = self._session.vim.service_content.fileManager
+        ds_folder_path = "[%s] %s" % (ds_name, folder_path)
+        LOG.debug("Creating datastore folder: %s.", ds_folder_path)
+        try:
+            self._session.invoke_api(self._session.vim,
+                                     'MakeDirectory',
+                                     fileManager,
+                                     name=ds_folder_path,
+                                     datacenter=datacenter)
+            LOG.info(_LI("Created datastore folder: %s."), folder_path)
+        except exceptions.FileAlreadyExistsException:
+            LOG.debug("Datastore folder: %s already exists.", folder_path)
 
     def get_path_name(self, backing):
         """Get path name of the backing.
@@ -1299,30 +1490,61 @@ class VMwareVolumeOps(object):
         LOG.debug("Created descriptor: %s.",
                   path.get_descriptor_ds_file_path())
 
-    def copy_vmdk_file(self, dc_ref, src_vmdk_file_path, dest_vmdk_file_path):
+    def copy_vmdk_file(self, src_dc_ref, src_vmdk_file_path,
+                       dest_vmdk_file_path, dest_dc_ref=None):
         """Copy contents of the src vmdk file to dest vmdk file.
 
-        During the copy also coalesce snapshots of src if present.
-        dest_vmdk_file_path will be created if not already present.
-
-        :param dc_ref: Reference to datacenter containing src and dest
+        :param src_dc_ref: Reference to datacenter containing src datastore
         :param src_vmdk_file_path: Source vmdk file path
         :param dest_vmdk_file_path: Destination vmdk file path
+        :param dest_dc_ref: Reference to datacenter of dest datastore.
+                            If unspecified, source datacenter is used.
         """
-        LOG.debug('Copying disk data before snapshot of the VM')
+        LOG.debug('Copying disk: %(src)s to %(dest)s.',
+                  {'src': src_vmdk_file_path,
+                   'dest': dest_vmdk_file_path})
+
+        dest_dc_ref = dest_dc_ref or src_dc_ref
         diskMgr = self._session.vim.service_content.virtualDiskManager
         task = self._session.invoke_api(self._session.vim,
                                         'CopyVirtualDisk_Task',
                                         diskMgr,
                                         sourceName=src_vmdk_file_path,
-                                        sourceDatacenter=dc_ref,
+                                        sourceDatacenter=src_dc_ref,
                                         destName=dest_vmdk_file_path,
-                                        destDatacenter=dc_ref,
+                                        destDatacenter=dest_dc_ref,
                                         force=True)
+
         LOG.debug("Initiated copying disk data via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Successfully copied disk at: %(src)s to: %(dest)s."),
                  {'src': src_vmdk_file_path, 'dest': dest_vmdk_file_path})
+
+    def move_vmdk_file(self, src_dc_ref, src_vmdk_file_path,
+                       dest_vmdk_file_path, dest_dc_ref=None):
+        """Move the given vmdk file to another datastore location.
+
+        :param src_dc_ref: Reference to datacenter containing src datastore
+        :param src_vmdk_file_path: Source vmdk file path
+        :param dest_vmdk_file_path: Destination vmdk file path
+        :param dest_dc_ref: Reference to datacenter of dest datastore.
+                            If unspecified, source datacenter is used.
+        """
+        LOG.debug('Moving disk: %(src)s to %(dest)s.',
+                  {'src': src_vmdk_file_path, 'dest': dest_vmdk_file_path})
+
+        dest_dc_ref = dest_dc_ref or src_dc_ref
+        diskMgr = self._session.vim.service_content.virtualDiskManager
+        task = self._session.invoke_api(self._session.vim,
+                                        'MoveVirtualDisk_Task',
+                                        diskMgr,
+                                        sourceName=src_vmdk_file_path,
+                                        sourceDatacenter=src_dc_ref,
+                                        destName=dest_vmdk_file_path,
+                                        destDatacenter=dest_dc_ref,
+                                        force=True)
+
+        self._session.wait_for_task(task)
 
     def delete_vmdk_file(self, vmdk_file_path, dc_ref):
         """Delete given vmdk files.
@@ -1340,3 +1562,105 @@ class VMwareVolumeOps(object):
         LOG.debug("Initiated deleting vmdk file via task: %s.", task)
         self._session.wait_for_task(task)
         LOG.info(_LI("Deleted vmdk file: %s."), vmdk_file_path)
+
+    def get_profile(self, backing):
+        """Query storage profile associated with the given backing.
+
+        :param backing: backing reference
+        :return: profile name
+        """
+        profile_ids = pbm.get_profiles(self._session, backing)
+        if profile_ids:
+            return pbm.get_profiles_by_ids(self._session, profile_ids)[0].name
+
+    def _get_all_clusters(self):
+        clusters = {}
+        retrieve_result = self._session.invoke_api(vim_util, 'get_objects',
+                                                   self._session.vim,
+                                                   'ClusterComputeResource',
+                                                   self._max_objects)
+        while retrieve_result:
+            if retrieve_result.objects:
+                for cluster in retrieve_result.objects:
+                    name = urllib.parse.unquote(cluster.propSet[0].val)
+                    clusters[name] = cluster.obj
+            retrieve_result = self.continue_retrieval(retrieve_result)
+        return clusters
+
+    def get_cluster_refs(self, names):
+        """Get references to given clusters.
+
+        :param names: list of cluster names
+        :return: Dictionary of cluster names to references
+        """
+        clusters_ref = {}
+        clusters = self._get_all_clusters()
+        for name in names:
+            if name not in clusters:
+                LOG.error(_LE("Compute cluster: %s not found."), name)
+                raise vmdk_exceptions.ClusterNotFoundException(cluster=name)
+            clusters_ref[name] = clusters[name]
+
+        return clusters_ref
+
+    def get_cluster_hosts(self, cluster):
+        """Get hosts in the given cluster.
+
+        :param cluster: cluster reference
+        :return: references to hosts in the cluster
+        """
+        hosts = self._session.invoke_api(vim_util,
+                                         'get_object_property',
+                                         self._session.vim,
+                                         cluster,
+                                         'host')
+
+        host_refs = []
+        if hosts and hosts.ManagedObjectReference:
+            host_refs.extend(hosts.ManagedObjectReference)
+
+        return host_refs
+
+    def get_entity_by_inventory_path(self, path):
+        """Returns the managed object identified by the given inventory path.
+
+        :param path: Inventory path
+        :return: Reference to the managed object
+        """
+        return self._session.invoke_api(
+            self._session.vim,
+            "FindByInventoryPath",
+            self._session.vim.service_content.searchIndex,
+            inventoryPath=path)
+
+    def _get_disk_devices(self, vm):
+        disk_devices = []
+        hardware_devices = self._session.invoke_api(vim_util,
+                                                    'get_object_property',
+                                                    self._session.vim,
+                                                    vm,
+                                                    'config.hardware.device')
+
+        if hardware_devices.__class__.__name__ == "ArrayOfVirtualDevice":
+            hardware_devices = hardware_devices.VirtualDevice
+
+        for device in hardware_devices:
+            if device.__class__.__name__ == "VirtualDisk":
+                disk_devices.append(device)
+
+        return disk_devices
+
+    def get_disk_device(self, vm, vmdk_path):
+        """Get the disk device of the VM which corresponds to the given path.
+
+        :param vm: VM reference
+        :param vmdk_path: Datastore path of virtual disk
+        :return: Matching disk device
+        """
+        disk_devices = self._get_disk_devices(vm)
+
+        for disk_device in disk_devices:
+            backing = disk_device.backing
+            if (backing.__class__.__name__ == "VirtualDiskFlatVer2BackingInfo"
+                    and backing.fileName == vmdk_path):
+                return disk_device

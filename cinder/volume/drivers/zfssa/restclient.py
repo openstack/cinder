@@ -1,4 +1,4 @@
-# Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2014, 2015, Oracle and/or its affiliates. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -15,14 +15,16 @@
 ZFS Storage Appliance REST API Client Programmatic Interface
 """
 
-import httplib
 import json
-import StringIO
+import ssl
 import time
-import urllib2
+
+from oslo_log import log
+import six
+from six.moves import http_client
+from six.moves import urllib
 
 from cinder.i18n import _LE, _LI
-from cinder.openstack.common import log
 
 LOG = log.getLogger(__name__)
 
@@ -34,46 +36,47 @@ class Status(object):
         pass
 
     #: Request return OK
-    OK = httplib.OK
+    OK = http_client.OK
 
     #: New resource created successfully
-    CREATED = httplib.CREATED
+    CREATED = http_client.CREATED
 
     #: Command accepted
-    ACCEPTED = httplib.ACCEPTED
+    ACCEPTED = http_client.ACCEPTED
 
     #: Command returned OK but no data will be returned
-    NO_CONTENT = httplib.NO_CONTENT
+    NO_CONTENT = http_client.NO_CONTENT
 
     #: Bad Request
-    BAD_REQUEST = httplib.BAD_REQUEST
+    BAD_REQUEST = http_client.BAD_REQUEST
 
     #: User is not authorized
-    UNAUTHORIZED = httplib.UNAUTHORIZED
+    UNAUTHORIZED = http_client.UNAUTHORIZED
 
     #: The request is not allowed
-    FORBIDDEN = httplib.FORBIDDEN
+    FORBIDDEN = http_client.FORBIDDEN
 
     #: The requested resource was not found
-    NOT_FOUND = httplib.NOT_FOUND
+    NOT_FOUND = http_client.NOT_FOUND
 
     #: The request is not allowed
-    NOT_ALLOWED = httplib.METHOD_NOT_ALLOWED
+    NOT_ALLOWED = http_client.METHOD_NOT_ALLOWED
 
     #: Request timed out
-    TIMEOUT = httplib.REQUEST_TIMEOUT
+    TIMEOUT = http_client.REQUEST_TIMEOUT
 
     #: Invalid request
-    CONFLICT = httplib.CONFLICT
+    CONFLICT = http_client.CONFLICT
 
     #: Service Unavailable
-    BUSY = httplib.SERVICE_UNAVAILABLE
+    BUSY = http_client.SERVICE_UNAVAILABLE
 
 
 class RestResult(object):
     """Result from a REST API operation"""
     def __init__(self, response=None, err=None):
-        """Initialize a RestResult containing the results from a REST call
+        """Initialize a RestResult containing the results from a REST call.
+
         :param response: HTTP response
         """
         self.response = response
@@ -89,10 +92,10 @@ class RestResult(object):
 
         if self.error:
             self.status = self.error.code
-            self.data = httplib.responses[self.status]
+            self.data = http_client.responses[self.status]
 
-        LOG.debug('Response code: %s' % self.status)
-        LOG.debug('Response data: %s' % self.data)
+        LOG.debug('Response code: %s', self.status)
+        LOG.debug('Response data: %s', self.data)
 
     def get_header(self, name):
         """Get an HTTP header with the given name from the results
@@ -120,15 +123,15 @@ class RestClientError(Exception):
         self.code = status
         self.name = name
         self.msg = message
-        if status in httplib.responses:
-            self.msg = httplib.responses[status]
+        if status in http_client.responses:
+            self.msg = http_client.responses[status]
 
     def __str__(self):
         return "%d %s %s" % (self.code, self.name, self.msg)
 
 
 class RestClientURL(object):
-    """ZFSSA urllib2 client"""
+    """ZFSSA urllib client"""
     def __init__(self, url, **kwargs):
         """Initialize a REST client.
 
@@ -172,21 +175,21 @@ class RestClientURL(object):
         try:
             result = self.post("/access/v1")
             del self.headers['authorization']
-            if result.status == httplib.CREATED:
+            if result.status == http_client.CREATED:
                 self.headers['x-auth-session'] = \
                     result.get_header('x-auth-session')
                 self.do_logout = True
-                LOG.info(_LI('ZFSSA version: %s') %
+                LOG.info(_LI('ZFSSA version: %s'),
                          result.get_header('x-zfssa-version'))
 
-            elif result.status == httplib.NOT_FOUND:
+            elif result.status == http_client.NOT_FOUND:
                 raise RestClientError(result.status, name="ERR_RESTError",
                                       message="REST Not Available: \
                                       Please Upgrade")
 
-        except RestClientError as err:
+        except RestClientError:
             del self.headers['authorization']
-            raise err
+            raise
 
     def login(self, auth_str):
         """Login to an appliance using a user name and password.
@@ -225,7 +228,7 @@ class RestClientURL(object):
         :cmd_params args: The path part
         :cmd_params kwargs: The query part
         """
-        buf = StringIO.StringIO()
+        buf = six.StringIO()
         query = "?"
         for arg in args:
             buf.write("/")
@@ -261,41 +264,52 @@ class RestClientURL(object):
             out_hdrs['content-length'] = len(body)
 
         zfssaurl = self._path(path, kwargs.get("base_path"))
-        req = urllib2.Request(zfssaurl, body, out_hdrs)
+        req = urllib.request.Request(zfssaurl, body, out_hdrs)
         req.get_method = lambda: request
         maxreqretries = kwargs.get("maxreqretries", 10)
         retry = 0
         response = None
 
-        LOG.debug('Request: %s %s' % (request, zfssaurl))
-        LOG.debug('Out headers: %s' % out_hdrs)
+        LOG.debug('Request: %(request)s %(url)s',
+                  {'request': request, 'url': zfssaurl})
+        LOG.debug('Out headers: %s', out_hdrs)
         if body and body != '':
-            LOG.debug('Body: %s' % body)
+            LOG.debug('Body: %s', body)
+
+        context = None
+        if hasattr(ssl, '_create_unverified_context'):
+            context = ssl._create_unverified_context()
+        else:
+            context = None
 
         while retry < maxreqretries:
             try:
-                response = urllib2.urlopen(req, timeout=self.timeout)
-            except urllib2.HTTPError as err:
-                if err.code == httplib.NOT_FOUND:
-                    LOG.debug('REST Not Found: %s' % err.code)
+                if context:
+                    response = urllib.request.urlopen(req,
+                                                      timeout=self.timeout,
+                                                      context=context)
                 else:
-                    LOG.error(_LE('REST Not Available: %s') % err.code)
+                    response = urllib.request.urlopen(req,
+                                                      timeout=self.timeout)
+            except urllib.error.HTTPError as err:
+                if err.code == http_client.NOT_FOUND:
+                    LOG.debug('REST Not Found: %s', err.code)
+                else:
+                    LOG.error(_LE('REST Not Available: %s'), err.code)
 
-                if err.code == httplib.SERVICE_UNAVAILABLE and \
+                if err.code == http_client.SERVICE_UNAVAILABLE and \
                    retry < maxreqretries:
                     retry += 1
                     time.sleep(1)
-                    LOG.error(_LE('Server Busy retry request: %s') % retry)
+                    LOG.error(_LE('Server Busy retry request: %s'), retry)
                     continue
-                if (err.code == httplib.UNAUTHORIZED or
-                    err.code == httplib.INTERNAL_SERVER_ERROR) and \
+                if (err.code == http_client.UNAUTHORIZED or
+                    err.code == http_client.INTERNAL_SERVER_ERROR) and \
                    '/access/v1' not in zfssaurl:
                     try:
-                        LOG.error(_LE('Authorizing request: '
-                                      '%(zfssaurl)s'
-                                      'retry: %(retry)d .')
-                                  % {'zfssaurl': zfssaurl,
-                                     'retry': retry})
+                        LOG.error(_LE('Authorizing request: %(zfssaurl)s '
+                                      'retry: %(retry)d .'),
+                                  {'zfssaurl': zfssaurl, 'retry': retry})
                         self._authorize()
                         req.add_header('x-auth-session',
                                        self.headers['x-auth-session'])
@@ -307,15 +321,16 @@ class RestClientURL(object):
 
                 return RestResult(err=err)
 
-            except urllib2.URLError as err:
-                LOG.error(_LE('URLError: %s') % err.reason)
+            except urllib.error.URLError as err:
+                LOG.error(_LE('URLError: %s'), err.reason)
                 raise RestClientError(-1, name="ERR_URLError",
                                       message=err.reason)
 
             break
 
-        if response and response.getcode() == httplib.SERVICE_UNAVAILABLE and \
-           retry >= maxreqretries:
+        if (response and
+            (response.getcode() == http_client.SERVICE_UNAVAILABLE and
+                retry >= maxreqretries)):
             raise RestClientError(response.getcode(), name="ERR_HTTPError",
                                   message="REST Not Available: Disabled")
 

@@ -18,6 +18,7 @@
 Tests for the IBM Storwize family and SVC volume driver.
 """
 
+import ddt
 import paramiko
 import random
 import re
@@ -81,6 +82,7 @@ class StorwizeSVCManagementSimulator(object):
             'rmfcmap': '',
             'lslicense': '',
             'lsguicapabilities': '',
+            'lshost': '',
         }
         self._errors = {
             'CMMVC5701E': ('', 'CMMVC5701E No object ID was specified.'),
@@ -1009,6 +1011,9 @@ port_speed!N/A
             else:
                 return ('', '')
         else:
+            if self._next_cmd_error['lshost'] == 'missing_host':
+                self._next_cmd_error['lshost'] == ''
+                return self._errors['CMMVC5754E']
             host_name = kwargs['obj'].strip('\'\"')
             if host_name not in self._hosts_list:
                 return self._errors['CMMVC5754E']
@@ -1915,6 +1920,48 @@ class StorwizeSVCISCSIDriverTestCase(test.TestCase):
         self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
         self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
 
+    @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
+                       '_do_terminate_connection')
+    @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
+                       '_do_initialize_connection')
+    def test_storwize_do_terminate_iscsi_connection(self, init_conn,
+                                                    term_conn):
+        # create a iSCSI volume
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.iscsi_driver.initialize_connection(volume_iSCSI, connector)
+        self.iscsi_driver.terminate_connection(volume_iSCSI, connector)
+        init_conn.assert_called_once_with(volume_iSCSI, connector)
+        term_conn.assert_called_once_with(volume_iSCSI, connector)
+
+    @mock.patch.object(storwize_svc_iscsi.StorwizeSVCISCSIDriver,
+                       '_do_terminate_connection')
+    def test_storwize_initialize_iscsi_connection_failure(self, term_conn):
+        # create a iSCSI volume
+        volume_iSCSI = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> iSCSI'}
+        vol_type_iSCSI = volume_types.create(self.ctxt, 'iSCSI', extra_spec)
+        volume_iSCSI['volume_type_id'] = vol_type_iSCSI['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.iscsi_driver._state['storage_nodes'] = {}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.iscsi_driver.initialize_connection,
+                          volume_iSCSI, connector)
+        term_conn.assert_called_once_with(volume_iSCSI, connector)
+
     def test_storwize_svc_iscsi_host_maps(self):
         # Create two volumes to be used in mappings
 
@@ -2237,6 +2284,19 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         self.assertIsNotNone(host_name)
 
+    def test_storwize_get_host_from_connector_with_lshost_failure(self):
+        # Create a FC host
+        del self._connector['initiator']
+        helper = self.fc_driver._helpers
+        host_name = helper.create_host(self._connector)
+
+        # tell lshost to fail while calling get_host_from_connector
+        if self.USESIM:
+            self.sim.error_injection('lshost', 'missing_host')
+        host_name = helper.get_host_from_connector(self._connector)
+
+        self.assertIsNotNone(host_name)
+
     def test_storwize_initiator_multiple_wwpns_connected(self):
 
         # Generate us a test volume
@@ -2306,6 +2366,48 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
 
         self.fc_driver.initialize_connection(volume_fc, connector)
         self.fc_driver.terminate_connection(volume_fc, connector)
+
+    @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
+                       '_do_terminate_connection')
+    @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
+                       '_do_initialize_connection')
+    def test_storwize_do_terminate_fc_connection(self, init_conn,
+                                                 term_conn):
+        # create a FC volume
+        volume_fc = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver.initialize_connection(volume_fc, connector)
+        self.fc_driver.terminate_connection(volume_fc, connector)
+        init_conn.assert_called_once_with(volume_fc, connector)
+        term_conn.assert_called_once_with(volume_fc, connector)
+
+    @mock.patch.object(storwize_svc_fc.StorwizeSVCFCDriver,
+                       '_do_terminate_connection')
+    def test_storwize_initialize_fc_connection_failure(self, term_conn):
+        # create a FC volume
+        volume_fc = self._create_volume()
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver._state['storage_nodes'] = {}
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.fc_driver.initialize_connection,
+                          volume_fc, connector)
+        term_conn.assert_called_once_with(volume_fc, connector)
 
     def test_storwize_initiator_target_map(self):
         # Generate us a test volume
@@ -2578,6 +2680,7 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.fc_driver.add_vdisk_copy(volume['name'], 'fake-pool', None)
 
 
+@ddt.ddt
 class StorwizeSVCCommonDriverTestCase(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def setUp(self, mock_sleep):
@@ -3332,17 +3435,27 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.delete_volume(clone)
         self._assert_vol_exists(clone['name'], False)
 
-    def test_storwize_svc_get_volume_stats(self):
+    @ddt.data((True, None), (True, 5), (False, -1), (False, 100))
+    @ddt.unpack
+    def test_storwize_svc_get_volume_stats(
+            self, is_thin_provisioning_enabled, rsize):
         self._set_flag('reserved_percentage', 25)
+        self._set_flag('storwize_svc_multihostmap_enabled', True)
+        self._set_flag('storwize_svc_vol_rsize', rsize)
         stats = self.driver.get_volume_stats()
         for each_pool in stats['pools']:
             self.assertIn(each_pool['pool_name'],
                           self._def_flags['storwize_svc_volpool_name'])
+            self.assertTrue(each_pool['multiattach'])
             self.assertLessEqual(each_pool['free_capacity_gb'],
                                  each_pool['total_capacity_gb'])
             self.assertLessEqual(each_pool['allocated_capacity_gb'],
                                  each_pool['total_capacity_gb'])
             self.assertEqual(25, each_pool['reserved_percentage'])
+            self.assertEqual(is_thin_provisioning_enabled,
+                             each_pool['thin_provisioning_support'])
+            self.assertEqual(not is_thin_provisioning_enabled,
+                             each_pool['thick_provisioning_support'])
         if self.USESIM:
             expected = 'storwize-svc-sim'
             self.assertEqual(expected, stats['volume_backend_name'])
@@ -3353,6 +3466,9 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                 self.assertAlmostEqual(3287.5, each_pool['free_capacity_gb'])
                 self.assertAlmostEqual(25.0,
                                        each_pool['allocated_capacity_gb'])
+                if is_thin_provisioning_enabled:
+                    self.assertAlmostEqual(
+                        1576.96, each_pool['provisioned_capacity_gb'])
 
     def test_get_pool(self):
         ctxt = testutils.get_test_admin_context()

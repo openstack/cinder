@@ -16,18 +16,16 @@
 """The QoS Specs Implementation"""
 
 
-from oslo_config import cfg
 from oslo_db import exception as db_exc
+from oslo_log import log as logging
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume import volume_types
 
 
-CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 CONTROL_LOCATION = ['front-end', 'back-end', 'both']
@@ -77,12 +75,16 @@ def create(context, name, specs=None):
 
     values = dict(name=name, qos_specs=specs)
 
-    LOG.debug("Dict for qos_specs: %s" % values)
+    LOG.debug("Dict for qos_specs: %s", values)
 
     try:
         qos_specs_ref = db.qos_specs_create(context, values)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
+    except db_exc.DBDataError:
+        msg = _('Error writing field to database')
+        LOG.exception(msg)
+        raise exception.Invalid(msg)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.QoSSpecsCreateFailed(name=name,
                                              qos_specs=specs)
     return qos_specs_ref
@@ -102,8 +104,8 @@ def update(context, qos_specs_id, specs):
     LOG.debug('qos_specs.update(): specs %s' % specs)
     try:
         res = db.qos_specs_update(context, qos_specs_id, specs)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.QoSSpecsUpdateFailed(specs_id=qos_specs_id,
                                              qos_specs=specs)
 
@@ -152,11 +154,11 @@ def get_associations(context, specs_id):
     try:
         # query returns a list of volume types associated with qos specs
         associates = db.qos_specs_associations_get(context, specs_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         msg = _('Failed to get all associations of '
                 'qos specs %s') % specs_id
-        LOG.warn(msg)
+        LOG.warning(msg)
         raise exception.CinderException(message=msg)
 
     result = []
@@ -194,11 +196,11 @@ def associate_qos_with_type(context, specs_id, type_id):
                 raise exception.InvalidVolumeType(reason=msg)
         else:
             db.qos_specs_associate(context, specs_id, type_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
-        LOG.warn(_LW('Failed to associate qos specs '
-                     '%(id)s with type: %(vol_type_id)s') %
-                 dict(id=specs_id, vol_type_id=type_id))
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
+        LOG.warning(_LW('Failed to associate qos specs '
+                        '%(id)s with type: %(vol_type_id)s'),
+                    dict(id=specs_id, vol_type_id=type_id))
         raise exception.QoSSpecsAssociateFailed(specs_id=specs_id,
                                                 type_id=type_id)
 
@@ -208,11 +210,11 @@ def disassociate_qos_specs(context, specs_id, type_id):
     try:
         get_qos_specs(context, specs_id)
         db.qos_specs_disassociate(context, specs_id, type_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
-        LOG.warn(_LW('Failed to disassociate qos specs '
-                     '%(id)s with type: %(vol_type_id)s') %
-                 dict(id=specs_id, vol_type_id=type_id))
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
+        LOG.warning(_LW('Failed to disassociate qos specs '
+                        '%(id)s with type: %(vol_type_id)s'),
+                    dict(id=specs_id, vol_type_id=type_id))
         raise exception.QoSSpecsDisassociateFailed(specs_id=specs_id,
                                                    type_id=type_id)
 
@@ -222,49 +224,19 @@ def disassociate_all(context, specs_id):
     try:
         get_qos_specs(context, specs_id)
         db.qos_specs_disassociate_all(context, specs_id)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % e)
-        LOG.warn(_LW('Failed to disassociate qos specs %s.') % specs_id)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
+        LOG.warning(_LW('Failed to disassociate qos specs %s.'), specs_id)
         raise exception.QoSSpecsDisassociateFailed(specs_id=specs_id,
                                                    type_id=None)
 
 
-def get_all_specs(context, inactive=False, search_opts=None):
-    """Get all non-deleted qos specs.
-
-    Pass inactive=True as argument and deleted volume types would return
-    as well.
-    """
-    search_opts = search_opts or {}
-    qos_specs = db.qos_specs_get_all(context, inactive)
-
-    if search_opts:
-        LOG.debug("Searching by: %s" % search_opts)
-
-        def _check_specs_match(qos_specs, searchdict):
-            for k, v in searchdict.iteritems():
-                if ((k not in qos_specs['specs'].keys() or
-                     qos_specs['specs'][k] != v)):
-                    return False
-            return True
-
-        # search_option to filter_name mapping.
-        filter_mapping = {'qos_specs': _check_specs_match}
-
-        result = {}
-        for name, args in qos_specs.iteritems():
-            # go over all filters in the list
-            for opt, values in search_opts.iteritems():
-                try:
-                    filter_func = filter_mapping[opt]
-                except KeyError:
-                    # no such filter - ignore it, go to next filter
-                    continue
-                else:
-                    if filter_func(args, values):
-                        result[name] = args
-                        break
-        qos_specs = result
+def get_all_specs(context, filters=None, marker=None, limit=None, offset=None,
+                  sort_keys=None, sort_dirs=None):
+    """Get all non-deleted qos specs."""
+    qos_specs = db.qos_specs_get_all(context, filters=filters, marker=marker,
+                                     limit=limit, offset=offset,
+                                     sort_keys=sort_keys, sort_dirs=sort_dirs)
     return qos_specs
 
 

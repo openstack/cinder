@@ -16,7 +16,7 @@ variable-rgx=[a-z_][a-z0-9_]{0,30}$
 argument-rgx=[a-z_][a-z0-9_]{1,30}$
 
 # Method names should be at least 3 characters long
-# and be lowecased with underscores
+# and be lowercased with underscores
 method-rgx=([a-z_][a-z0-9_]{2,50}|setUp|tearDown)$
 
 # Module names matching cinder-* are ok (files in bin/)
@@ -33,3 +33,9 @@ max-args=6
 [Variables]
 
 dummy-variables-rgx=_
+
+[Typecheck]
+# Disable warnings on the HTTPSConnection classes because pylint doesn't
+# support importing from six.moves yet, see:
+# https://bitbucket.org/logilab/pylint/issue/550/
+ignored-classes=HTTPSConnection

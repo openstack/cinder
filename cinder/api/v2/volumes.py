@@ -16,8 +16,8 @@
 """The volumes api."""
 
 
-import ast
-
+from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import uuidutils
 import webob
 from webob import exc
@@ -30,12 +30,12 @@ from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import glance
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
 
+CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 SCHEDULER_HINTS_NAMESPACE =\
@@ -44,6 +44,7 @@ SCHEDULER_HINTS_NAMESPACE =\
 
 def make_attachment(elem):
     elem.set('id')
+    elem.set('attachment_id')
     elem.set('server_id')
     elem.set('host_name')
     elem.set('volume_id')
@@ -63,6 +64,7 @@ def make_volume(elem):
     elem.set('snapshot_id')
     elem.set('source_volid')
     elem.set('consistencygroup_id')
+    elem.set('multiattach')
 
     attachments = xmlutil.SubTemplateElement(elem, 'attachments')
     attachment = xmlutil.SubTemplateElement(attachments, 'attachment',
@@ -173,9 +175,8 @@ class VolumeController(wsgi.Controller):
         try:
             vol = self.volume_api.get(context, id, viewable_admin_meta=True)
             req.cache_db_volume(vol)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         utils.add_visible_admin_metadata(vol)
 
@@ -185,17 +186,15 @@ class VolumeController(wsgi.Controller):
         """Delete a volume."""
         context = req.environ['cinder.context']
 
+        cascade = utils.get_bool_param('cascade', req.params)
+
         LOG.info(_LI("Delete volume with id: %s"), id, context=context)
 
         try:
             volume = self.volume_api.get(context, id)
-            self.volume_api.delete(context, volume)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
-        except exception.VolumeAttached:
-            msg = _("Volume cannot be deleted while in attached state")
-            raise exc.HTTPBadRequest(explanation=msg)
+            self.volume_api.delete(context, volume, cascade=cascade)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=VolumesTemplate)
@@ -214,11 +213,8 @@ class VolumeController(wsgi.Controller):
         context = req.environ['cinder.context']
 
         params = req.params.copy()
-        marker = params.pop('marker', None)
-        limit = params.pop('limit', None)
-        sort_key = params.pop('sort_key', 'created_at')
-        sort_dir = params.pop('sort_dir', 'desc')
-        params.pop('offset', None)
+        marker, limit, offset = common.get_pagination_params(params)
+        sort_keys, sort_dirs = common.get_sort_params(params)
         filters = params
 
         utils.remove_invalid_filter_options(context,
@@ -226,32 +222,30 @@ class VolumeController(wsgi.Controller):
                                             self._get_volume_filter_options())
 
         # NOTE(thingee): v2 API allows name instead of display_name
+        if 'name' in sort_keys:
+            sort_keys[sort_keys.index('name')] = 'display_name'
+
         if 'name' in filters:
             filters['display_name'] = filters['name']
             del filters['name']
 
-        for k, v in filters.iteritems():
-            try:
-                filters[k] = ast.literal_eval(v)
-            except (ValueError, SyntaxError):
-                LOG.debug('Could not evaluate value %s, assuming string', v)
-
-        volumes = self.volume_api.get_all(context, marker, limit, sort_key,
-                                          sort_dir, filters,
-                                          viewable_admin_meta=True)
-
-        volumes = [dict(vol.iteritems()) for vol in volumes]
+        self.volume_api.check_volume_filters(filters)
+        volumes = self.volume_api.get_all(context, marker, limit,
+                                          sort_keys=sort_keys,
+                                          sort_dirs=sort_dirs,
+                                          filters=filters,
+                                          viewable_admin_meta=True,
+                                          offset=offset)
 
         for volume in volumes:
             utils.add_visible_admin_metadata(volume)
 
-        limited_list = common.limited(volumes, req)
-        req.cache_db_volumes(limited_list)
+        req.cache_db_volumes(volumes.objects)
 
         if is_detail:
-            volumes = self._view_builder.detail_list(req, limited_list)
+            volumes = self._view_builder.detail_list(req, volumes)
         else:
-            volumes = self._view_builder.summary_list(req, limited_list)
+            volumes = self._view_builder.summary_list(req, volumes)
         return volumes
 
     def _image_uuid_from_ref(self, image_ref, context):
@@ -283,11 +277,14 @@ class VolumeController(wsgi.Controller):
             if len(images) > 1:
                 msg = _("Multiple matches found for '%s', use an ID to be more"
                         " specific.") % image_ref
-                raise exc.HTTPConflict(msg)
+                raise exc.HTTPConflict(explanation=msg)
             for img in images:
                 return img['id']
+        except exc.HTTPConflict:
+            raise
         except Exception:
-            # Pass and let default not found error handling take care of it
+            # Pass the other exception and let default not found error
+            # handling take care of it
             pass
 
         msg = _("Invalid image identifier or unable to "
@@ -299,26 +296,23 @@ class VolumeController(wsgi.Controller):
     @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Creates a new volume."""
-        if not self.is_valid_body(body, 'volume'):
-            msg = _("Missing required element '%s' in request body") % 'volume'
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'volume')
 
         LOG.debug('Create volume request body: %s', body)
         context = req.environ['cinder.context']
         volume = body['volume']
 
         kwargs = {}
+        self.validate_name_and_description(volume)
 
         # NOTE(thingee): v2 API allows name instead of display_name
-        if volume.get('name'):
-            volume['display_name'] = volume.get('name')
-            del volume['name']
+        if 'name' in volume:
+            volume['display_name'] = volume.pop('name')
 
         # NOTE(thingee): v2 API allows description instead of
         #                display_description
-        if volume.get('description'):
-            volume['display_description'] = volume.get('description')
-            del volume['description']
+        if 'description' in volume:
+            volume['display_description'] = volume.pop('description')
 
         if 'image_id' in volume:
             volume['imageRef'] = volume.get('image_id')
@@ -334,9 +328,8 @@ class VolumeController(wsgi.Controller):
                 else:
                     kwargs['volume_type'] = volume_types.get_volume_type(
                         context, req_volume_type)
-            except exception.VolumeTypeNotFound:
-                msg = _("Volume type not found.")
-                raise exc.HTTPNotFound(explanation=msg)
+            except exception.VolumeTypeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
 
         kwargs['metadata'] = volume.get('metadata', None)
 
@@ -345,9 +338,8 @@ class VolumeController(wsgi.Controller):
             try:
                 kwargs['snapshot'] = self.volume_api.get_snapshot(context,
                                                                   snapshot_id)
-            except exception.NotFound:
-                explanation = _('snapshot id:%s not found') % snapshot_id
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.SnapshotNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['snapshot'] = None
 
@@ -357,9 +349,8 @@ class VolumeController(wsgi.Controller):
                 kwargs['source_volume'] = \
                     self.volume_api.get_volume(context,
                                                source_volid)
-            except exception.NotFound:
-                explanation = _('source volume id:%s not found') % source_volid
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.VolumeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['source_volume'] = None
 
@@ -370,13 +361,11 @@ class VolumeController(wsgi.Controller):
                                                      source_replica)
                 if src_vol['replication_status'] == 'disabled':
                     explanation = _('source volume id:%s is not'
-                                    ' replicated') % source_volid
-                    raise exc.HTTPNotFound(explanation=explanation)
+                                    ' replicated') % source_replica
+                    raise exc.HTTPBadRequest(explanation=explanation)
                 kwargs['source_replica'] = src_vol
-            except exception.NotFound:
-                explanation = (_('replica source volume id:%s not found') %
-                               source_replica)
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.VolumeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['source_replica'] = None
 
@@ -386,10 +375,8 @@ class VolumeController(wsgi.Controller):
                 kwargs['consistencygroup'] = \
                     self.consistencygroup_api.get(context,
                                                   consistencygroup_id)
-            except exception.NotFound:
-                explanation = _('Consistency group id:%s not found') % \
-                    consistencygroup_id
-                raise exc.HTTPNotFound(explanation=explanation)
+            except exception.ConsistencyGroupNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['consistencygroup'] = None
 
@@ -411,6 +398,8 @@ class VolumeController(wsgi.Controller):
 
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['scheduler_hints'] = volume.get('scheduler_hints', None)
+        multiattach = volume.get('multiattach', False)
+        kwargs['multiattach'] = multiattach
 
         new_volume = self.volume_api.create(context,
                                             size,
@@ -418,17 +407,13 @@ class VolumeController(wsgi.Controller):
                                             volume.get('display_description'),
                                             **kwargs)
 
-        # TODO(vish): Instance should be None at db layer instead of
-        #             trying to lazy load, but for now we turn it into
-        #             a dict to avoid an error.
-        new_volume = dict(new_volume.iteritems())
         retval = self._view_builder.detail(req, new_volume)
 
         return retval
 
     def _get_volume_filter_options(self):
         """Return volume search options allowed by non-admin."""
-        return ('name', 'status', 'metadata')
+        return CONF.query_volume_filters
 
     @wsgi.serializers(xml=VolumeTemplate)
     def update(self, req, id, body):
@@ -458,24 +443,24 @@ class VolumeController(wsgi.Controller):
             if key in volume:
                 update_dict[key] = volume[key]
 
-        # NOTE(thingee): v2 API allows name instead of display_name
-        if 'name' in update_dict:
-            update_dict['display_name'] = update_dict['name']
-            del update_dict['name']
+        self.validate_name_and_description(update_dict)
 
         # NOTE(thingee): v2 API allows name instead of display_name
+        if 'name' in update_dict:
+            update_dict['display_name'] = update_dict.pop('name')
+
+        # NOTE(thingee): v2 API allows description instead of
+        #                display_description
         if 'description' in update_dict:
-            update_dict['display_description'] = update_dict['description']
-            del update_dict['description']
+            update_dict['display_description'] = update_dict.pop('description')
 
         try:
             volume = self.volume_api.get(context, id, viewable_admin_meta=True)
             volume_utils.notify_about_volume_usage(context, volume,
                                                    'update.start')
             self.volume_api.update(context, volume, update_dict)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         volume.update(update_dict)
 

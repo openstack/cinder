@@ -1,5 +1,6 @@
-# Copyright (c) 2014 FUJITSU LIMITED
-# Copyright (c) 2012 - 2014 EMC Corporation.
+# Copyright (c) 2015 FUJITSU LIMITED
+# Copyright (c) 2012 EMC Corporation.
+# Copyright (c) 2012 OpenStack Foundation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,1449 +14,2122 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Common class for SMI-S based FUJITSU ETERNUS DX volume drivers.
-
-This common class is for FUJITSU ETERNUS DX volume drivers based on SMI-S.
+#
 
 """
-
+Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
+"""
+import ast
 import base64
 import hashlib
-import time
-from xml.dom.minidom import parseString
-
-from oslo_config import cfg
-from oslo_utils import units
 import six
+import time
+from xml.etree.ElementTree import parse
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import loopingcall
-from cinder.volume import volume_types
+from oslo_concurrency import lockutils
+from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_service import loopingcall
+from oslo_utils import units
 
 LOG = logging.getLogger(__name__)
-
 CONF = cfg.CONF
 
 try:
     import pywbem
+    pywbemAvailable = True
 except ImportError:
-    pass
+    pywbemAvailable = False
 
-CINDER_CONFIG_FILE = '/etc/cinder/cinder_fujitsu_eternus_dx.xml'
-SMIS_ROOT = 'root/eternus'
-PROVISIONING = 'storagetype:provisioning'
-POOL = 'storagetype:pool'
-STOR_CONF_SVC = 'FUJITSU_StorageConfigurationService'
-SCSI_PROT_CTR = 'FUJITSU_AffinityGroupController'
-STOR_HWID = 'FUJITSU_StorageHardwareID'
-CTRL_CONF_SVC = 'FUJITSU_ControllerConfigurationService'
-STOR_HWID_MNG_SVC = 'FUJITSU_StorageHardwareIDManagementService'
-STOR_VOL = 'FUJITSU_StorageVolume'
-REPL_SVC = 'FUJITSU_ReplicationService'
-STOR_POOLS = ['FUJITSU_ThinProvisioningPool', 'FUJITSU_RAIDStoragePool']
-AUTH_PRIV = 'FUJITSU_AuthorizedPrivilege'
-STOR_SYNC = 'FUJITSU_StorageSynchronized'
-VOL_PREFIX = 'FJosv_'
-
-drv_opts = [
-    cfg.StrOpt('cinder_smis_config_file',
-               default=CINDER_CONFIG_FILE,
-               help='The configuration file for the Cinder '
-                    'SMI-S driver'), ]
-
-CONF.register_opts(drv_opts)
-
-BROKEN = 5
+VOL_PREFIX = "FJosv_"
+RAIDGROUP = 2
+TPPOOL = 5
 SNAPOPC = 4
 OPC = 5
 RETURN_TO_RESOURCEPOOL = 19
 DETACH = 8
+INITIALIZED = 2
+UNSYNCHRONIZED = 3
+BROKEN = 5
+PREPARED = 11
+REPL = "FUJITSU_ReplicationService"
+STOR_CONF = "FUJITSU_StorageConfigurationService"
+CTRL_CONF = "FUJITSU_ControllerConfigurationService"
+STOR_HWID = "FUJITSU_StorageHardwareIDManagementService"
+
+UNDEF_MSG = 'Undefined Error!!'
 JOB_RETRIES = 60
-INTERVAL_10_SEC = 10
+JOB_INTERVAL_SEC = 10
 
-OPERATION_dic = {SNAPOPC: RETURN_TO_RESOURCEPOOL,
-                 OPC: DETACH
-                 }
+# Error code keyword.
+VOLUMENAME_IN_USE = 32788
+COPYSESSION_NOT_EXIST = 32793
+LUNAME_IN_USE = 4102
+LUNAME_NOT_EXIST = 4097  # Only for InvokeMethod(HidePaths).
+EC_REC = 3
+FJ_ETERNUS_DX_OPT_opts = [
+    cfg.StrOpt('cinder_eternus_config_file',
+               default='/etc/cinder/cinder_fujitsu_eternus_dx.xml',
+               help='config file for cinder eternus_dx volume driver'),
+]
 
-RETCODE_dic = {'0': 'Success',
-               '1': 'Method Not Supported',
-               '4': 'Failed',
-               '5': 'Invalid Parameter',
-               '4097': 'Size Not Supported',
-               '32769': 'Maximum number of Logical Volume in'
-                        ' a RAID group has been reached',
-               '32770': 'Maximum number of Logical Volume in'
-                        ' the storage device has been reached',
-               '32771': 'Maximum number of registered Host WWN'
-                        ' has been reached',
-               '32772': 'Maximum number of affinity group has been reached',
-               '32773': 'Maximum number of host affinity has been reached',
-               '32785': 'The RAID group is in busy state',
-               '32786': 'The Logical Volume is in busy state',
-               '32787': 'The device is in busy state',
-               '32788': 'Element Name is in use',
-               '32792': 'No Copy License',
-               '32796': 'Quick Format Error',
-               '32801': 'The CA port is in invalid setting',
-               '32802': 'The Logical Volume is Mainframe volume',
-               '32803': 'The RAID group is not operative',
-               '32804': 'The Logical Volume is not operative',
-               '32808': 'No Thin Provisioning License',
-               '32809': 'The Logical Element is ODX volume',
-               '32811': 'This operation cannot be performed'
-                        ' to the NAS resources',
-               '32812': 'This operation cannot be performed'
-                        ' to the Storage'
-                        ' Cluster resources',
-               '32816': 'Fatal error generic',
-               '35302': 'Invalid LogicalElement',
-               '35304': 'LogicalElement state error',
-               '35316': 'Multi-hop error',
-               '35318': 'Maximum number of multi-hop has been reached',
-               '35324': 'RAID is broken',
-               '35331': 'Maximum number of session has been reached'
-                        '(per device)',
-               '35333': 'Maximum number of session has been reached'
-                        '(per SourceElement)',
-               '35334': 'Maximum number of session has been reached'
-                        '(per TargetElement)',
-               '35335': 'Maximum number of Snapshot generation has been'
-                        ' reached (per SourceElement)',
-               '35346': 'Copy table size is not setup',
-               '35347': 'Copy table size is not enough'
-               }
+POOL_TYPE_dic = {
+    RAIDGROUP: 'RAID_GROUP',
+    TPPOOL: 'Thinporvisioning_POOL',
+}
+
+OPERATION_dic = {
+    SNAPOPC: RETURN_TO_RESOURCEPOOL,
+    OPC: DETACH,
+    EC_REC: DETACH,
+}
+
+RETCODE_dic = {
+    '0': 'Success',
+    '1': 'Method Not Supported',
+    '4': 'Failed',
+    '5': 'Invalid Parameter',
+    '4096': 'Method Parameters Checked - Job Started',
+    '4097': 'Size Not Supported',
+    '4101': 'Target/initiator combination already exposed',
+    '4102': 'Requested logical unit number in use',
+    '32769': 'Maximum number of Logical Volume in a RAID group '
+             'has been reached',
+    '32770': 'Maximum number of Logical Volume in the storage device '
+             'has been reached',
+    '32771': 'Maximum number of registered Host WWN '
+             'has been reached',
+    '32772': 'Maximum number of affinity group has been reached',
+    '32773': 'Maximum number of host affinity has been reached',
+    '32785': 'The RAID group is in busy state',
+    '32786': 'The Logical Volume is in busy state',
+    '32787': 'The device is in busy state',
+    '32788': 'Element Name is in use',
+    '32792': 'No Copy License',
+    '32793': 'Session is not exist',
+    '32796': 'Quick Format Error',
+    '32801': 'The CA port is in invalid setting',
+    '32802': 'The Logical Volume is Mainframe volume',
+    '32803': 'The RAID group is not operative',
+    '32804': 'The Logical Volume is not operative',
+    '32808': 'No Thin Provisioning License',
+    '32809': 'The Logical Element is ODX volume',
+    '32811': 'This operation cannot be performed to the NAS resources',
+    '32812': 'This operation cannot be performed to the Storage Cluster '
+             'resources',
+    '32816': 'Fatal error generic',
+    '35302': 'Invalid LogicalElement',
+    '35304': 'LogicalElement state error',
+    '35316': 'Multi-hop error',
+    '35318': 'Maximum number of multi-hop has been reached',
+    '35324': 'RAID is broken',
+    '35331': 'Maximum number of session has been reached(per device)',
+    '35333': 'Maximum number of session has been reached(per SourceElement)',
+    '35334': 'Maximum number of session has been reached(per TargetElement)',
+    '35335': 'Maximum number of Snapshot generation has been reached '
+             '(per SourceElement)',
+    '35346': 'Copy table size is not setup',
+    '35347': 'Copy table size is not enough',
+}
+
+CONF.register_opts(FJ_ETERNUS_DX_OPT_opts)
 
 
 class FJDXCommon(object):
-    """Common code that can be used by ISCSI and FC drivers."""
+    """Common code that does not depend on protocol."""
 
-    stats = {'driver_version': '1.2',
-             'free_capacity_gb': 0,
-             'reserved_percentage': 0,
-             'storage_protocol': None,
-             'total_capacity_gb': 0,
-             'vendor_name': 'FUJITSU',
-             'volume_backend_name': None}
+    VERSION = "1.3.0"
+    stats = {
+        'driver_version': VERSION,
+        'free_capacity_gb': 0,
+        'reserved_percentage': 0,
+        'storage_protocol': None,
+        'total_capacity_gb': 0,
+        'vendor_name': 'FUJITSU',
+        'QoS_support': False,
+        'volume_backend_name': None,
+    }
 
     def __init__(self, prtcl, configuration=None):
 
+        if not pywbemAvailable:
+            LOG.error(_LE('import pywbem failed!! '
+                          'pywbem is necessary for this volume driver.'))
+
         self.protocol = prtcl
         self.configuration = configuration
-        self.configuration.append_config_values(drv_opts)
+        self.configuration.append_config_values(FJ_ETERNUS_DX_OPT_opts)
 
-        ip, port = self._get_ecom_server()
-        self.user, self.passwd = self._get_ecom_cred()
-        self.url = 'http://' + ip + ':' + port
-        self.conn = self._get_ecom_connection()
+        if prtcl == 'iSCSI':
+            # Get iSCSI ipaddress from driver configuration file.
+            self.configuration.iscsi_ip_address = (
+                self._get_drvcfg('EternusISCSIIP'))
 
     def create_volume(self, volume):
-        """Creates a volume."""
-        LOG.debug('Entering create_volume.')
+        """Create volume on ETERNUS."""
+        LOG.debug('create_volume, '
+                  'volume id: %(vid)s, volume size: %(vsize)s.',
+                  {'vid': volume['id'], 'vsize': volume['size']})
+
+        self.conn = self._get_eternus_connection()
         volumesize = int(volume['size']) * units.Gi
         volumename = self._create_volume_name(volume['id'])
 
-        LOG.info(_LI('Create Volume: %(volume)s  Size: %(size)lu')
-                 % {'volume': volumename,
-                    'size': volumesize})
+        LOG.debug('create_volume, volumename: %(volumename)s, '
+                  'volumesize: %(volumesize)u.',
+                  {'volumename': volumename,
+                   'volumesize': volumesize})
 
-        self.conn = self._get_ecom_connection()
+        # get poolname from driver configuration file
+        eternus_pool = self._get_drvcfg('EternusPool')
+        # Existence check the pool
+        pool = self._find_pool(eternus_pool)
 
-        storage_type = self._get_storage_type(volume)
+        if 'RSP' in pool['InstanceID']:
+            pooltype = RAIDGROUP
+        else:
+            pooltype = TPPOOL
 
-        LOG.debug('Create Volume: %(volume)s  '
-                  'Storage type: %(storage_type)s'
-                  % {'volume': volumename,
-                     'storage_type': storage_type})
-
-        pool, storage_system = self._find_pool(storage_type[POOL])
-
-        LOG.debug('Create Volume: %(volume)s  Pool: %(pool)s  '
-                  'Storage System: %(storage_system)s'
-                  % {'volume': volumename,
-                     'pool': pool,
-                     'storage_system': storage_system})
-
-        configservice = self._find_storage_configuration_service(
-            storage_system)
+        configservice = self._find_eternus_service(STOR_CONF)
         if configservice is None:
-            exception_message = (_("Error Create Volume: %(volumename)s. "
-                                   "Storage Configuration Service not found "
-                                   "for pool %(storage_type)s.")
-                                 % {'volumename': volumename,
-                                    'storage_type': storage_type})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            msg = (_('create_volume, volume: %(volume)s, '
+                     'volumename: %(volumename)s, '
+                     'eternus_pool: %(eternus_pool)s, '
+                     'Storage Configuration Service not found.')
+                   % {'volume': volume,
+                      'volumename': volumename,
+                      'eternus_pool': eternus_pool})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
-        provisioning = self._get_provisioning(storage_type)
+        LOG.debug('create_volume, '
+                  'CreateOrModifyElementFromStoragePool, '
+                  'ConfigService: %(service)s, '
+                  'ElementName: %(volumename)s, '
+                  'InPool: %(eternus_pool)s, '
+                  'ElementType: %(pooltype)u, '
+                  'Size: %(volumesize)u.',
+                  {'service': configservice,
+                   'volumename': volumename,
+                   'eternus_pool': eternus_pool,
+                   'pooltype': pooltype,
+                   'volumesize': volumesize})
 
-        LOG.debug('Create Volume: %(name)s  Method: '
-                  'CreateOrModifyElementFromStoragePool  ConfigServicie: '
-                  '%(service)s  ElementName: %(name)s  InPool: %(pool)s  '
-                  'ElementType: %(provisioning)s  Size: %(size)lu'
-                  % {'service': configservice,
-                     'name': volumename,
-                     'pool': pool,
-                     'provisioning': provisioning,
-                     'size': volumesize})
-
-        rc, job = self.conn.InvokeMethod(
+        # Invoke method for create volume
+        rc, errordesc, job = self._exec_eternus_service(
             'CreateOrModifyElementFromStoragePool',
-            configservice, ElementName=volumename, InPool=pool,
-            ElementType=self._getnum(provisioning, '16'),
-            Size=self._getnum(volumesize, '64'))
+            configservice,
+            ElementName=volumename,
+            InPool=pool,
+            ElementType=self._pywbem_uint(pooltype, '16'),
+            Size=self._pywbem_uint(volumesize, '64'))
 
-        LOG.debug('Create Volume: %(volumename)s  Return code: %(rc)lu'
-                  % {'volumename': volumename,
-                     'rc': rc})
+        if rc == VOLUMENAME_IN_USE:  # Element Name is in use
+            LOG.warning(_LW('create_volume, '
+                            'volumename: %(volumename)s, '
+                            'Element Name is in use.'),
+                        {'volumename': volumename})
+            vol_instance = self._find_lun(volume)
+            element = vol_instance
+        elif rc != 0:
+            msg = (_('create_volume, '
+                     'volumename: %(volumename)s, '
+                     'poolname: %(eternus_pool)s, '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s.')
+                   % {'volumename': volumename,
+                      'eternus_pool': eternus_pool,
+                      'rc': rc,
+                      'errordesc': errordesc})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            element = job['TheElement']
 
-        if rc == 5L:
-            # for DX S2
-            # retry with 16 digit of volume name
-            volumename = volumename[:16]
-            LOG.debug('Retry with 16 digit of volume name.'
-                      'Create Volume: %(name)s  Method: '
-                      'CreateOrModifyElementFromStoragePool'
-                      '  ConfigServicie: %(service)s'
-                      '  ElementName: %(name)s  InPool: %(pool)s  '
-                      'ElementType: %(provisioning)s  Size: %(size)lu'
-                      % {'service': configservice,
-                         'name': volumename,
-                         'pool': pool,
-                         'provisioning': provisioning,
-                         'size': volumesize})
+        # Get eternus model name
+        try:
+            systemnamelist = (
+                self._enum_eternus_instances('FUJITSU_StorageProduct'))
+        except Exception:
+            msg = (_('create_volume, '
+                     'volume: %(volume)s, '
+                     'EnumerateInstances, '
+                     'cannot connect to ETERNUS.')
+                   % {'volume': volume})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
-            rc, job = self.conn.InvokeMethod(
-                'CreateOrModifyElementFromStoragePool',
-                configservice, ElementName=volumename, InPool=pool,
-                ElementType=self._getnum(provisioning, '16'),
-                Size=self._getnum(volumesize, '64'))
+        LOG.debug('create_volume, '
+                  'volumename: %(volumename)s, '
+                  'Return code: %(rc)lu, '
+                  'Error: %(errordesc)s, '
+                  'Backend: %(backend)s, '
+                  'Pool Name: %(eternus_pool)s, '
+                  'Pool Type: %(pooltype)s.',
+                  {'volumename': volumename,
+                   'rc': rc,
+                   'errordesc': errordesc,
+                   'backend': systemnamelist[0]['IdentifyingNumber'],
+                   'eternus_pool': eternus_pool,
+                   'pooltype': POOL_TYPE_dic[pooltype]})
 
-            LOG.debug('Create Volume: %(volumename)s  Return code: %(rc)lu'
-                      % {'volumename': volumename,
-                         'rc': rc})
+        # Create return value.
+        element_path = {
+            'classname': element.classname,
+            'keybindings': {
+                'CreationClassName': element['CreationClassName'],
+                'SystemName': element['SystemName'],
+                'DeviceID': element['DeviceID'],
+                'SystemCreationClassName': element['SystemCreationClassName']
+            }
+        }
 
-        if rc != 0L:
-            if "job" in job:
-                rc, errordesc = self._wait_for_job_complete(self.conn, job)
-            else:
-                errordesc = RETCODE_dic[six.text_type(rc)]
+        volume_no = "0x" + element['DeviceID'][24:28]
 
-            if rc != 0L:
-                LOG.error(_LE('Error Create Volume: %(volumename)s.  '
-                              'Return code: %(rc)lu.  Error: %(error)s')
-                          % {'volumename': volumename,
-                             'rc': rc,
-                             'error': errordesc})
-                raise exception.VolumeBackendAPIException(data=errordesc)
+        metadata = {'FJ_Backend': systemnamelist[0]['IdentifyingNumber'],
+                    'FJ_Volume_Name': volumename,
+                    'FJ_Volume_No': volume_no,
+                    'FJ_Pool_Name': eternus_pool,
+                    'FJ_Pool_Type': POOL_TYPE_dic[pooltype]}
 
-        # Find the newly created volume
-        if "job" in job:
-            associators = self.conn.Associators(
-                job['Job'],
-                resultClass=STOR_VOL)
-            volpath = associators[0].path
-        else:  # for ETERNUS DX
-            volpath = job['TheElement']
-
-        name = {}
-        name['classname'] = volpath.classname
-        keys = {}
-        keys['CreationClassName'] = volpath['CreationClassName']
-        keys['SystemName'] = volpath['SystemName']
-        keys['DeviceID'] = volpath['DeviceID']
-        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
-        name['keybindings'] = keys
-
-        LOG.debug('Leaving create_volume: %(volumename)s  '
-                  'Return code: %(rc)lu '
-                  'volume instance: %(name)s'
-                  % {'volumename': volumename,
-                     'rc': rc,
-                     'name': name})
-
-        return name
+        return (element_path, metadata)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-
-        LOG.debug('Entering create_volume_from_snapshot.')
-
-        snapshotname = snapshot['name']
-        volumename = self._create_volume_name(volume['id'])
-        vol_instance = None
-
-        LOG.info(_LI('Create Volume from Snapshot: Volume: %(volumename)s  '
-                     'Snapshot: %(snapshotname)s')
-                 % {'volumename': volumename,
-                    'snapshotname': snapshotname})
-
-        self.conn = self._get_ecom_connection()
-
-        snapshot_instance = self._find_lun(snapshot)
-        storage_system = snapshot_instance['SystemName']
-
-        LOG.debug('Create Volume from Snapshot: Volume: %(volumename)s  '
-                  'Snapshot: %(snapshotname)s  Snapshot Instance: '
-                  '%(snapshotinstance)s  Storage System: %(storage_system)s.'
-                  % {'volumename': volumename,
-                     'snapshotname': snapshotname,
-                     'snapshotinstance': snapshot_instance.path,
-                     'storage_system': storage_system})
-
-        repservice = self._find_replication_service(storage_system)
-        if repservice is None:
-            exception_message = (_('Error Create Volume from Snapshot: '
-                                   'Volume: %(volumename)s  Snapshot: '
-                                   '%(snapshotname)s. Cannot find Replication '
-                                   'Service to create volume from snapshot.')
-                                 % {'volumename': volumename,
-                                    'snapshotname': snapshotname})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        LOG.debug('Create Volume from Snapshot: Volume: %(volumename)s  '
-                  'Snapshot: %(snapshotname)s  Method: CreateElementReplica  '
-                  'ReplicationService: %(service)s  ElementName: '
-                  '%(elementname)s  SyncType: 8  SourceElement: '
-                  '%(sourceelement)s'
-                  % {'volumename': volumename,
-                     'snapshotname': snapshotname,
-                     'service': repservice,
-                     'elementname': volumename,
-                     'sourceelement': snapshot_instance.path})
-
-        # Create a Clone from snapshot
-        name = self.create_volume(volume)
-        instancename = self._getinstancename(name['classname'],
-                                             name['keybindings'])
-        vol_instance = self.conn.GetInstance(instancename)
-
-        rc, job = self.conn.InvokeMethod(
-            'CreateElementReplica', repservice,
-            ElementName=volumename,
-            SyncType=self._getnum(8, '16'),
-            SourceElement=snapshot_instance.path,
-            TargetElement=vol_instance.path)
-
-        if rc != 0L:
-            if "job" in job:
-                rc, errordesc = self._wait_for_job_complete(self.conn, job)
-            else:
-                errordesc = RETCODE_dic[six.text_type(rc)]
-
-            if rc != 0L:
-                exception_message = (_('Error Create Volume from Snapshot: '
-                                       'Volume: %(volumename)s  Snapshot:'
-                                       '%(snapshotname)s.  '
-                                       'Return code: %(rc)lu.'
-                                       'Error: %(error)s')
-                                     % {'volumename': volumename,
-                                        'snapshotname': snapshotname,
-                                        'rc': rc,
-                                        'error': errordesc})
-                LOG.error(exception_message)
-                volume['provider_location'] = six.text_type(name)
-                self.delete_volume(volume)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        # Find the newly created volume
-        if "job" in job:
-            associators = self.conn.Associators(
-                job['Job'],
-                resultClass=STOR_VOL)
-            volpath = associators[0].path
-        else:  # for ETERNUS DX
-            volpath = job['TargetElement']
-
-        name = {}
-        name['classname'] = volpath.classname
-        keys = {}
-        keys['CreationClassName'] = volpath['CreationClassName']
-        keys['SystemName'] = volpath['SystemName']
-        keys['DeviceID'] = volpath['DeviceID']
-        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
-        name['keybindings'] = keys
-
-        LOG.debug('Leaving create_volume_from_snapshot: Volume: '
-                  '%(volumename)s Snapshot: %(snapshotname)s  '
-                  'Return code: %(rc)lu.'
-                  % {'volumename': volumename,
-                     'snapshotname': snapshotname,
-                     'rc': rc})
-
-        return name
-
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        LOG.debug('Entering create_cloned_volume.')
-
-        srcname = self._create_volume_name(src_vref['id'])
-        volumename = self._create_volume_name(volume['id'])
-
-        LOG.info(_LI('Create a Clone from Volume: Volume: %(volumename)s  '
-                     'Source Volume: %(srcname)s')
-                 % {'volumename': volumename,
-                    'srcname': srcname})
-
-        self.conn = self._get_ecom_connection()
-
-        src_instance = self._find_lun(src_vref)
-        storage_system = src_instance['SystemName']
-
-        LOG.debug('Create Cloned Volume: Volume: %(volumename)s  '
-                  'Source Volume: %(srcname)s  Source Instance: '
-                  '%(src_instance)s  Storage System: %(storage_system)s.'
-                  % {'volumename': volumename,
-                     'srcname': srcname,
-                     'src_instance': src_instance.path,
-                     'storage_system': storage_system})
-
-        repservice = self._find_replication_service(storage_system)
-        if repservice is None:
-            exception_message = (_('Error Create Cloned Volume: '
-                                   'Volume: %(volumename)s  Source Volume: '
-                                   '%(srcname)s. Cannot find Replication '
-                                   'Service to create cloned volume.')
-                                 % {'volumename': volumename,
-                                    'srcname': srcname})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        LOG.debug('Create Cloned Volume: Volume: %(volumename)s  '
-                  'Source Volume: %(srcname)s  Method: CreateElementReplica  '
-                  'ReplicationService: %(service)s  ElementName: '
-                  '%(elementname)s  SyncType: 8  SourceElement: '
-                  '%(sourceelement)s'
-                  % {'volumename': volumename,
-                     'srcname': srcname,
-                     'service': repservice,
-                     'elementname': volumename,
-                     'sourceelement': src_instance.path})
-
-        # Create a Clone from source volume
-        name = self.create_volume(volume)
-        instancename = self._getinstancename(name['classname'],
-                                             name['keybindings'])
-        vol_instance = self.conn.GetInstance(instancename)
-
-        rc, job = self.conn.InvokeMethod(
-            'CreateElementReplica', repservice,
-            ElementName=volumename,
-            SyncType=self._getnum(8, '16'),
-            SourceElement=src_instance.path,
-            TargetElement=vol_instance.path)
-
-        if rc != 0L:
-            if "job" in job:
-                rc, errordesc = self._wait_for_job_complete(self.conn, job)
-            else:
-                errordesc = RETCODE_dic[six.text_type(rc)]
-
-            if rc != 0L:
-                exception_message = (_('Error Create Cloned Volume: '
-                                       'Volume: %(volumename)s  Source Volume:'
-                                       '%(srcname)s.  Return code: %(rc)lu.'
-                                       'Error: %(error)s')
-                                     % {'volumename': volumename,
-                                        'srcname': srcname,
-                                        'rc': rc,
-                                        'error': errordesc})
-                LOG.error(exception_message)
-                volume['provider_location'] = six.text_type(name)
-                self.delete_volume(volume)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        # Find the newly created volume
-        if "job" in job:
-            associators = self.conn.Associators(
-                job['Job'],
-                resultClass=STOR_VOL)
-            volpath = associators[0].path
-        else:  # for ETERNUS DX
-            volpath = job['TargetElement']
-        name = {}
-        name['classname'] = volpath.classname
-        keys = {}
-        keys['CreationClassName'] = volpath['CreationClassName']
-        keys['SystemName'] = volpath['SystemName']
-        keys['DeviceID'] = volpath['DeviceID']
-        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
-        name['keybindings'] = keys
-
-        LOG.debug('Leaving create_cloned_volume: Volume: '
-                  '%(volumename)s Source Volume: %(srcname)s  '
-                  'Return code: %(rc)lu.'
-                  % {'volumename': volumename,
-                     'srcname': srcname,
-                     'rc': rc})
-
-        return name
-
-    def delete_volume(self, volume):
-        """Deletes an volume."""
-        LOG.debug('Entering delete_volume.')
-        volumename = self._create_volume_name(volume['id'])
-        LOG.info(_LI('Delete Volume: %(volume)s')
-                 % {'volume': volumename})
-
-        self.conn = self._get_ecom_connection()
-
-        cpsession, storage_system = self._find_copysession(volume)
-        if cpsession is not None:
-            LOG.debug('delete_volume,volumename:%(volumename)s,'
-                      'volume is using by copysession[%(cpsession)s].'
-                      'delete copysession.'
-                      % {'volumename': volumename,
-                         'cpsession': cpsession})
-            self._delete_copysession(storage_system, cpsession)
-
-        vol_instance = self._find_lun(volume)
-        if vol_instance is None:
-            LOG.error(_LE('Volume %(name)s not found on the array. '
-                          'No volume to delete.')
-                      % {'name': volumename})
-            return
-
-        configservice =\
-            self._find_storage_configuration_service(storage_system)
-        if configservice is None:
-            exception_message = (_("Error Delete Volume: %(volumename)s. "
-                                   "Storage Configuration Service not found.")
-                                 % {'volumename': volumename})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        device_id = vol_instance['DeviceID']
-
-        LOG.debug('Delete Volume: %(name)s  DeviceID: %(deviceid)s'
-                  % {'name': volumename,
-                     'deviceid': device_id})
-
-        LOG.debug('Delete Volume: %(name)s  Method: ReturnToStoragePool '
-                  'ConfigServic: %(service)s  TheElement: %(vol_instance)s'
-                  % {'service': configservice,
-                     'name': volumename,
-                     'vol_instance': vol_instance.path})
-
-        rc, job =\
-            self.conn.InvokeMethod('ReturnToStoragePool',
-                                   configservice,
-                                   TheElement=vol_instance.path)
-
-        if rc != 0L:
-            if "job" in job:
-                rc, errordesc = self._wait_for_job_complete(self.conn, job)
-            else:
-                errordesc = RETCODE_dic[six.text_type(rc)]
-            if rc != 0L:
-                exception_message = (_('Error Delete Volume: %(volumename)s.  '
-                                       'Return code: %(rc)lu.  '
-                                       'Error: %(error)s')
-                                     % {'volumename': volumename,
-                                        'rc': rc,
-                                        'error': errordesc})
-                LOG.error(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        LOG.debug('Leaving delete_volume: %(volumename)s  Return code: '
-                  '%(rc)lu'
-                  % {'volumename': volumename,
-                     'rc': rc})
-
-    def create_snapshot(self, snapshot, volume):
-        """Creates a snapshot."""
-        LOG.debug('Entering create_snapshot.')
-
-        snapshotname = self._create_volume_name(snapshot['id'])
-        volumename = snapshot['volume_name']
-        LOG.info(_LI('Create snapshot: %(snapshot)s: volume: %(volume)s')
-                 % {'snapshot': snapshotname,
-                    'volume': volumename})
-
-        self.conn = self._get_ecom_connection()
-
-        vol_instance = self._find_lun(volume)
-
-        device_id = vol_instance['DeviceID']
-        snappool = self._get_snappool_conffile()
-        pool, storage_system = self._find_pool(snappool)
-
-        LOG.debug('Device ID: %(deviceid)s: Storage System: '
-                  '%(storagesystem)s'
-                  % {'deviceid': device_id,
-                     'storagesystem': storage_system})
-
-        repservice = self._find_replication_service(storage_system)
-        if repservice is None:
-            LOG.error(_LE("Cannot find Replication Service to create snapshot "
-                          "for volume %s.") % volumename)
-            exception_message = (_("Cannot find Replication Service to "
-                                   "create snapshot for volume %s.")
-                                 % volumename)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        LOG.debug("Create Snapshot:  Method: CreateElementReplica: "
-                  "Target: %(snapshot)s  Source: %(volume)s  Replication "
-                  "Service: %(service)s  ElementName: %(elementname)s  Sync "
-                  "Type: 7  SourceElement: %(sourceelement)s."
-                  % {'snapshot': snapshotname,
-                     'volume': volumename,
-                     'service': repservice,
-                     'elementname': snapshotname,
-                     'sourceelement': vol_instance.path})
-
-        rc, job =\
-            self.conn.InvokeMethod('CreateElementReplica', repservice,
-                                   ElementName=snapshotname,
-                                   SyncType=self._getnum(7, '16'),
-                                   TargetPool=pool,
-                                   SourceElement=vol_instance.path)
-
-        LOG.debug('Create Snapshot: Volume: %(volumename)s  '
-                  'Snapshot: %(snapshotname)s  Return code: %(rc)lu'
-                  % {'volumename': volumename,
-                     'snapshotname': snapshotname,
-                     'rc': rc})
-
-        if rc == 5L:
-            # for DX S2
-            # retry by CreateReplica
-            snapshotname = snapshotname[:16]
-            LOG.debug('retry Create Snapshot: '
-                      'snapshotname:%(snapshotname)s,'
-                      'source volume name:%(volumename)s,'
-                      'vol_instance.path:%(vol_instance)s,'
-                      'Invoke CreateReplica'
-                      % {'snapshotname': snapshotname,
-                         'volumename': volumename,
-                         'vol_instance': six.text_type(vol_instance.path)})
-
-            configservice = self._find_storage_configuration_service(
-                storage_system)
-            if configservice is None:
-                exception_message = (_("Create Snapshot: %(snapshotname)s. "
-                                       "Storage Configuration Service "
-                                       "not found")
-                                     % {'snapshotname': snapshotname})
-                LOG.error(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-            # Invoke method for create snapshot
-            rc, job = self.conn.InvokeMethod(
-                'CreateReplica',
-                configservice,
-                ElementName=snapshotname,
-                TargetPool=pool,
-                CopyType=self._getnum(4, '16'),
-                SourceElement=vol_instance.path)
-
-        if rc != 0L:
-            if "job" in job:
-                rc, errordesc = self._wait_for_job_complete(self.conn, job)
-            else:
-                errordesc = RETCODE_dic[six.text_type(rc)]
-            if rc != 0L:
-                exception_message = (_('Error Create Snapshot: %(snapshot)s '
-                                       'Volume: %(volume)s '
-                                       'Error: %(errordesc)s')
-                                     % {'snapshot': snapshotname,
-                                        'volume': volumename,
-                                        'errordesc': errordesc})
-                LOG.error(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        # Find the newly created volume
-        if "job" in job:
-            associators = self.conn.Associators(
-                job['Job'],
-                resultClass=STOR_VOL)
-            volpath = associators[0].path
-        else:  # for ETERNUS DX
-            volpath = job['TargetElement']
-
-        name = {}
-        name['classname'] = volpath.classname
-        keys = {}
-        keys['CreationClassName'] = volpath['CreationClassName']
-        keys['SystemName'] = volpath['SystemName']
-        keys['DeviceID'] = volpath['DeviceID']
-        keys['SystemCreationClassName'] = volpath['SystemCreationClassName']
-        name['keybindings'] = keys
-
-        LOG.debug('Leaving create_snapshot: Snapshot: %(snapshot)s '
-                  'Volume: %(volume)s  Return code: %(rc)lu.' %
-                  {'snapshot': snapshotname, 'volume': volumename, 'rc': rc})
-
-        return name
-
-    def delete_snapshot(self, snapshot, volume):
-        """Deletes a snapshot."""
-        LOG.debug('Entering delete_snapshot.')
-
-        snapshotname = snapshot['name']
-        volumename = snapshot['volume_name']
-        LOG.info(_LI('Delete Snapshot: %(snapshot)s: volume: %(volume)s')
-                 % {'snapshot': snapshotname,
-                    'volume': volumename})
-
-        self.conn = self._get_ecom_connection()
-
-        LOG.debug('Delete Snapshot: %(snapshot)s: volume: %(volume)s. '
-                  'Finding StorageSychronization_SV_SV.'
-                  % {'snapshot': snapshotname,
-                     'volume': volumename})
-
-        sync_name, storage_system =\
-            self._find_storage_sync_sv_sv(snapshot, volume, False)
-        if sync_name is None:
-            LOG.error(_LE('Snapshot: %(snapshot)s: volume: %(volume)s '
-                          'not found on the array. No snapshot to delete.')
-                      % {'snapshot': snapshotname,
-                         'volume': volumename})
-            return
-
-        repservice = self._find_replication_service(storage_system)
-        if repservice is None:
-            exception_message = (_("Cannot find Replication Service to "
-                                   "create snapshot for volume %s.")
-                                 % volumename)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        # Delete snapshot - deletes both the target element
-        # and the snap session
-        LOG.debug("Delete Snapshot: Target: %(snapshot)s  "
-                  "Source: %(volume)s.  Method: "
-                  "ModifyReplicaSynchronization:  "
-                  "Replication Service: %(service)s  Operation: 19  "
-                  "Synchronization: %(sync_name)s."
-                  % {'snapshot': snapshotname,
-                     'volume': volumename,
-                     'service': repservice,
-                     'sync_name': sync_name})
-
-        rc, job =\
-            self.conn.InvokeMethod('ModifyReplicaSynchronization',
-                                   repservice,
-                                   Operation=self._getnum(19, '16'),
-                                   Synchronization=sync_name)
-
-        LOG.debug('Delete Snapshot: Volume: %(volumename)s  Snapshot: '
-                  '%(snapshotname)s  Return code: %(rc)lu'
-                  % {'volumename': volumename,
-                     'snapshotname': snapshotname,
-                     'rc': rc})
-
-        if rc != 0L:
-            rc, errordesc = self._wait_for_job_complete(self.conn, job)
-            if rc != 0L:
-                exception_message = (_('Error Delete Snapshot: Volume: '
-                                       '%(volumename)s  Snapshot: '
-                                       '%(snapshotname)s. '
-                                       'Return code: %(rc)lu.'
-                                       ' Error: %(error)s')
-                                     % {'volumename': volumename,
-                                        'snapshotname': snapshotname,
-                                        'rc': rc,
-                                        'error': errordesc})
-                LOG.error(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        # It takes a while for the relationship between the snapshot
-        # and the source volume gets cleaned up.  Needs to wait until
-        # it is cleaned up.  Otherwise, the source volume can't be
-        # deleted immediately after the snapshot deletion because it
-        # still has snapshot.
-        wait_timeout = int(self._get_timeout())
-        wait_interval = 10
-        start = int(time.time())
-
-        def _wait_for_job():
-            try:
-                sync_name, storage_system =\
-                    self._find_storage_sync_sv_sv(snapshot, volume, False)
-                if sync_name is None:
-                    LOG.info(_LI('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                                 'Snapshot is deleted.')
-                             % {'snapshot': snapshotname,
-                                'volume': volumename})
-                    raise loopingcall.LoopingCallDone()
-                if int(time.time()) - start >= wait_timeout:
-                    LOG.warn(_LW('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                                 'Snapshot deleted but cleanup timed out.')
-                             % {'snapshot': snapshotname,
-                                'volume': volumename})
-                    raise loopingcall.LoopingCallDone()
-            except Exception as ex:
-                if ex.args[0] == 6:
-                    # 6 means object not found, so snapshot is deleted cleanly
-                    LOG.info(_LI('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                                 'Snapshot is deleted.')
-                             % {'snapshot': snapshotname,
-                                'volume': volumename})
-                else:
-                    LOG.warn(_LW('Snapshot: %(snapshot)s: volume: %(volume)s. '
-                                 'Snapshot deleted but error during cleanup. '
-                                 'Error: %(error)s')
-                             % {'snapshot': snapshotname,
-                                'volume': volumename,
-                                'error': six.text_type(ex.args)})
-                raise loopingcall.LoopingCallDone()
-
-        timer = loopingcall.FixedIntervalLoopingCall(
-            _wait_for_job)
-        timer.start(interval=wait_interval)
-
-        LOG.debug('Leaving delete_snapshot: Volume: %(volumename)s  '
-                  'Snapshot: %(snapshotname)s  Return code: %(rc)lu.'
-                  % {'volumename': volumename,
-                     'snapshotname': snapshotname,
-                     'rc': rc})
-
-    # Mapping method
-    def _expose_paths(self, configservice, vol_instance,
-                      connector):
-        """This method maps a volume to a host.
-
-        It adds a volume and initiator to a Storage Group
-        and therefore maps the volume to the host.
-        """
-        results = []
-        volumename = vol_instance['ElementName']
-        lun_name = vol_instance['Name']
-        initiators = self._find_initiator_names(connector)
-        storage_system = vol_instance['SystemName']
-        lunmask_ctrls = self._find_lunmasking_scsi_protocol_controller(
-            storage_system, connector)
-        targets = self.get_target_portid(connector)
-
-        if len(lunmask_ctrls) == 0:
-            # create new lunmasking
-            for target in targets:
-                LOG.debug('ExposePaths: %(vol)s  ConfigServicie: %(service)s  '
-                          'LUNames: %(lun_name)s  '
-                          'InitiatorPortIDs: %(initiator)s  '
-                          'TargetPortIDs: %(target)s  DeviceAccesses: 2'
-                          % {'vol': vol_instance.path,
-                             'service': configservice,
-                             'lun_name': lun_name,
-                             'initiator': initiators,
-                             'target': target})
-
-                rc, controller =\
-                    self.conn.InvokeMethod('ExposePaths',
-                                           configservice, LUNames=[lun_name],
-                                           InitiatorPortIDs=initiators,
-                                           TargetPortIDs=[target],
-                                           DeviceAccesses=[self._getnum(2, '16'
-                                                                        )])
-                results.append(rc)
-                if rc != 0L:
-                    msg = (_('Error mapping volume %(volumename)s.rc:%(rc)lu')
-                           % {'volumename': volumename, 'rc': rc})
-                    LOG.warn(msg)
-
-        else:
-            # add lun to lunmasking
-            for lunmask_ctrl in lunmask_ctrls:
-                LOG.debug('ExposePaths parameter '
-                          'LunMaskingSCSIProtocolController: '
-                          '%(lunmasking)s'
-                          % {'lunmasking': lunmask_ctrl})
-                rc, controller =\
-                    self.conn.InvokeMethod('ExposePaths',
-                                           configservice, LUNames=[lun_name],
-                                           DeviceAccesses=[
-                                               self._getnum(2, '16')],
-                                           ProtocolControllers=[lunmask_ctrl])
-                results.append(rc)
-                if rc != 0L:
-                    msg = (_('Error mapping volume %(volumename)s.rc:%(rc)lu')
-                           % {'volumename': volumename, 'rc': rc})
-                    LOG.warn(msg)
-
-        if 0L not in results:
-            msg = (_('Error mapping volume %(volumename)s:%(results)s.')
-                   % {'volumename': volumename, 'results': results})
+        LOG.debug('create_volume_from_snapshot, '
+                  'volume id: %(vid)s, volume size: %(vsize)s, '
+                  'snapshot id: %(sid)s.',
+                  {'vid': volume['id'], 'vsize': volume['size'],
+                   'sid': snapshot['id']})
+
+        self.conn = self._get_eternus_connection()
+        source_volume_instance = self._find_lun(snapshot)
+
+        # Check the existence of source volume.
+        if source_volume_instance is None:
+            msg = _('create_volume_from_snapshot, '
+                    'Source Volume does not exist in ETERNUS.')
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug('ExposePaths for volume %s completed successfully.'
-                  % volumename)
+        # Create volume for the target volume.
+        (element_path, metadata) = self.create_volume(volume)
+        target_volume_instancename = self._create_eternus_instance_name(
+            element_path['classname'], element_path['keybindings'])
 
-    # Unmapping method
-    def _hide_paths(self, configservice, vol_instance,
-                    connector):
-        """This method unmaps a volume from the host.
+        try:
+            target_volume_instance = (
+                self._get_eternus_instance(target_volume_instancename))
+        except Exception:
+            msg = (_('create_volume_from_snapshot, '
+                     'target volume instancename: %(volume_instancename)s, '
+                     'Get Instance Failed.')
+                   % {'volume_instancename': target_volume_instancename})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
-        Removes a volume from the Storage Group
-        and therefore unmaps the volume from the host.
-        """
+        self._create_local_cloned_volume(target_volume_instance,
+                                         source_volume_instance)
+
+        return (element_path, metadata)
+
+    def create_cloned_volume(self, volume, src_vref):
+        """Create clone of the specified volume."""
+        LOG.debug('create_cloned_volume, '
+                  'tgt: (%(tid)s, %(tsize)s), src: (%(sid)s, %(ssize)s).',
+                  {'tid': volume['id'], 'tsize': volume['size'],
+                   'sid': src_vref['id'], 'ssize': src_vref['size']})
+
+        self.conn = self._get_eternus_connection()
+        source_volume_instance = self._find_lun(src_vref)
+
+        if source_volume_instance is None:
+            msg = _('create_cloned_volume, '
+                    'Source Volume does not exist in ETERNUS.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        (element_path, metadata) = self.create_volume(volume)
+        target_volume_instancename = self._create_eternus_instance_name(
+            element_path['classname'], element_path['keybindings'])
+
+        try:
+            target_volume_instance = (
+                self._get_eternus_instance(target_volume_instancename))
+        except Exception:
+            msg = (_('create_cloned_volume, '
+                     'target volume instancename: %(volume_instancename)s, '
+                     'Get Instance Failed.')
+                   % {'volume_instancename': target_volume_instancename})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        self._create_local_cloned_volume(target_volume_instance,
+                                         source_volume_instance)
+
+        return (element_path, metadata)
+
+    @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
+    def _create_local_cloned_volume(self, tgt_vol_instance, src_vol_instance):
+        """Create local clone of the specified volume."""
+        s_volumename = src_vol_instance['ElementName']
+        t_volumename = tgt_vol_instance['ElementName']
+
+        LOG.debug('_create_local_cloned_volume, '
+                  'tgt volume name: %(t_volumename)s, '
+                  'src volume name: %(s_volumename)s, ',
+                  {'t_volumename': t_volumename,
+                   's_volumename': s_volumename})
+
+        # Get replicationservice for CreateElementReplica.
+        repservice = self._find_eternus_service(REPL)
+
+        if repservice is None:
+            msg = _('_create_local_cloned_volume, '
+                    'Replication Service not found.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Invoke method for create cloned volume from volume.
+        rc, errordesc, job = self._exec_eternus_service(
+            'CreateElementReplica',
+            repservice,
+            SyncType=self._pywbem_uint(8, '16'),
+            SourceElement=src_vol_instance.path,
+            TargetElement=tgt_vol_instance.path)
+
+        if rc != 0:
+            msg = (_('_create_local_cloned_volume, '
+                     'volumename: %(volumename)s, '
+                     'sourcevolumename: %(sourcevolumename)s, '
+                     'source volume instance: %(source_volume)s, '
+                     'target volume instance: %(target_volume)s, '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s.')
+                   % {'volumename': t_volumename,
+                      'sourcevolumename': s_volumename,
+                      'source_volume': src_vol_instance.path,
+                      'target_volume': tgt_vol_instance.path,
+                      'rc': rc,
+                      'errordesc': errordesc})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_create_local_cloned_volume, out: %(rc)s, %(job)s.',
+                  {'rc': rc, 'job': job})
+
+    def delete_volume(self, volume):
+        """Delete volume on ETERNUS."""
+        LOG.debug('delete_volume, volume id: %s.', volume['id'])
+
+        self.conn = self._get_eternus_connection()
+        vol_exist = self._delete_volume_setting(volume)
+
+        if not vol_exist:
+            LOG.debug('delete_volume, volume not found in 1st check.')
+            return False
+
+        # Check volume existence on ETERNUS again
+        # because volume is deleted when SnapOPC copysession is deleted.
+        vol_instance = self._find_lun(volume)
+        if vol_instance is None:
+            LOG.debug('delete_volume, volume not found in 2nd check, '
+                      'but no problem.')
+            return True
+
+        self._delete_volume(vol_instance)
+        return True
+
+    @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
+    def _delete_volume_setting(self, volume):
+        """Delete volume setting (HostAffinity, CopySession) on ETERNUS."""
+        LOG.debug('_delete_volume_setting, volume id: %s.', volume['id'])
+
+        # Check the existence of volume.
+        volumename = self._create_volume_name(volume['id'])
+        vol_instance = self._find_lun(volume)
+
+        if vol_instance is None:
+            LOG.info(_LI('_delete_volume_setting, volumename:%(volumename)s, '
+                         'volume not found on ETERNUS. '),
+                     {'volumename': volumename})
+            return False
+
+        # Delete host-affinity setting remained by unexpected error.
+        self._unmap_lun(volume, None, force=True)
+
+        # Check copy session relating to target volume.
+        cpsessionlist = self._find_copysession(vol_instance)
+        delete_copysession_list = []
+        wait_copysession_list = []
+
+        for cpsession in cpsessionlist:
+            LOG.debug('_delete_volume_setting, '
+                      'volumename: %(volumename)s, '
+                      'cpsession: %(cpsession)s.',
+                      {'volumename': volumename,
+                       'cpsession': cpsession})
+
+            if cpsession['SyncedElement'] == vol_instance.path:
+                # Copy target : other_volume --(copy)--> vol_instance
+                delete_copysession_list.append(cpsession)
+            elif cpsession['SystemElement'] == vol_instance.path:
+                # Copy source : vol_instance --(copy)--> other volume
+                wait_copysession_list.append(cpsession)
+
+        LOG.debug('_delete_volume_setting, '
+                  'wait_cpsession: %(wait_cpsession)s, '
+                  'delete_cpsession: %(delete_cpsession)s.',
+                  {'wait_cpsession': wait_copysession_list,
+                   'delete_cpsession': delete_copysession_list})
+
+        for cpsession in wait_copysession_list:
+            self._wait_for_copy_complete(cpsession)
+
+        for cpsession in delete_copysession_list:
+            self._delete_copysession(cpsession)
+
+        LOG.debug('_delete_volume_setting, '
+                  'wait_cpsession: %(wait_cpsession)s, '
+                  'delete_cpsession: %(delete_cpsession)s, complete.',
+                  {'wait_cpsession': wait_copysession_list,
+                   'delete_cpsession': delete_copysession_list})
+        return True
+
+    @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
+    def _delete_volume(self, vol_instance):
+        """Delete volume on ETERNUS."""
+        LOG.debug('_delete_volume, volume name: %s.',
+                  vol_instance['ElementName'])
+
         volumename = vol_instance['ElementName']
-        lun_name = vol_instance['Name']
-        lunmask_ctrls =\
-            self._find_lunmasking_scsi_protocol_controller_for_vol(
-                vol_instance, connector)
 
-        for lunmask_ctrl in lunmask_ctrls:
-            LOG.debug('HidePaths: %(vol)s  ConfigServicie: %(service)s  '
-                      'LUNames: %(lun_name)s'
-                      '  LunMaskingSCSIProtocolController: '
-                      '%(lunmasking)s'
-                      % {'vol': vol_instance.path,
-                         'service': configservice,
-                         'lun_name': lun_name,
-                         'lunmasking': lunmask_ctrl})
+        configservice = self._find_eternus_service(STOR_CONF)
+        if configservice is None:
+            msg = (_('_delete_volume, volumename: %(volumename)s, '
+                     'Storage Configuration Service not found.')
+                   % {'volumename': volumename})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
-            rc, controller = self.conn.InvokeMethod(
-                'HidePaths', configservice,
-                LUNames=[lun_name], ProtocolControllers=[lunmask_ctrl])
+        LOG.debug('_delete_volume, volumename: %(volumename)s, '
+                  'vol_instance: %(vol_instance)s, '
+                  'Method: ReturnToStoragePool.',
+                  {'volumename': volumename,
+                   'vol_instance': vol_instance.path})
 
-            if rc != 0L:
-                msg = (_('Error unmapping volume %(volumename)s.rc:%(rc)lu')
-                       % {'volumename': volumename, 'rc': rc})
+        # Invoke method for delete volume
+        rc, errordesc, job = self._exec_eternus_service(
+            'ReturnToStoragePool',
+            configservice,
+            TheElement=vol_instance.path)
+
+        if rc != 0:
+            msg = (_('_delete_volume, volumename: %(volumename)s, '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s.')
+                   % {'volumename': volumename,
+                      'rc': rc,
+                      'errordesc': errordesc})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_delete_volume, volumename: %(volumename)s, '
+                  'Return code: %(rc)lu, '
+                  'Error: %(errordesc)s.',
+                  {'volumename': volumename,
+                   'rc': rc,
+                   'errordesc': errordesc})
+
+    @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
+    def create_snapshot(self, snapshot):
+        """Create snapshot using SnapOPC."""
+        LOG.debug('create_snapshot, '
+                  'snapshot id: %(sid)s, volume id: %(vid)s.',
+                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
+
+        self.conn = self._get_eternus_connection()
+        snapshotname = snapshot['name']
+        volumename = snapshot['volume_name']
+        vol_id = snapshot['volume_id']
+        volume = snapshot['volume']
+        d_volumename = self._create_volume_name(snapshot['id'])
+        s_volumename = self._create_volume_name(vol_id)
+        vol_instance = self._find_lun(volume)
+        repservice = self._find_eternus_service(REPL)
+
+        # Check the existence of volume.
+        if vol_instance is None:
+            # Volume not found on ETERNUS.
+            msg = (_('create_snapshot, '
+                     'volumename: %(s_volumename)s, '
+                     'source volume not found on ETERNUS.')
+                   % {'s_volumename': s_volumename})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        if repservice is None:
+            msg = (_('create_snapshot, '
+                     'volumename: %(volumename)s, '
+                     'Replication Service not found.')
+                   % {'volumename': volumename})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Get poolname from driver configuration file.
+        eternus_pool = self._get_drvcfg('EternusSnapPool')
+        # Check the existence of pool
+        pool = self._find_pool(eternus_pool)
+        if pool is None:
+            msg = (_('create_snapshot, '
+                     'eternus_pool: %(eternus_pool)s, '
+                     'pool not found.')
+                   % {'eternus_pool': eternus_pool})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('create_snapshot, '
+                  'snapshotname: %(snapshotname)s, '
+                  'source volume name: %(volumename)s, '
+                  'vol_instance.path: %(vol_instance)s, '
+                  'dest_volumename: %(d_volumename)s, '
+                  'pool: %(pool)s, '
+                  'Invoke CreateElementReplica.',
+                  {'snapshotname': snapshotname,
+                   'volumename': volumename,
+                   'vol_instance': vol_instance.path,
+                   'd_volumename': d_volumename,
+                   'pool': pool})
+
+        # Invoke method for create snapshot
+        rc, errordesc, job = self._exec_eternus_service(
+            'CreateElementReplica',
+            repservice,
+            ElementName=d_volumename,
+            TargetPool=pool,
+            SyncType=self._pywbem_uint(7, '16'),
+            SourceElement=vol_instance.path)
+
+        if rc != 0:
+            msg = (_('create_snapshot, '
+                     'snapshotname: %(snapshotname)s, '
+                     'source volume name: %(volumename)s, '
+                     'vol_instance.path: %(vol_instance)s, '
+                     'dest volume name: %(d_volumename)s, '
+                     'pool: %(pool)s, '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s.')
+                   % {'snapshotname': snapshotname,
+                      'volumename': volumename,
+                      'vol_instance': vol_instance.path,
+                      'd_volumename': d_volumename,
+                      'pool': pool,
+                      'rc': rc,
+                      'errordesc': errordesc})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        else:
+            element = job['TargetElement']
+
+        LOG.debug('create_snapshot, '
+                  'volumename:%(volumename)s, '
+                  'Return code:%(rc)lu, '
+                  'Error:%(errordesc)s.',
+                  {'volumename': volumename,
+                   'rc': rc,
+                   'errordesc': errordesc})
+
+        # Create return value.
+        element_path = {
+            'classname': element.classname,
+            'keybindings': {
+                'CreationClassName': element['CreationClassName'],
+                'SystemName': element['SystemName'],
+                'DeviceID': element['DeviceID'],
+                'SystemCreationClassName': element['SystemCreationClassName']
+            }
+        }
+
+        sdv_no = "0x" + element['DeviceID'][24:28]
+        metadata = {'FJ_SDV_Name': d_volumename,
+                    'FJ_SDV_No': sdv_no,
+                    'FJ_Pool_Name': eternus_pool}
+        return (element_path, metadata)
+
+    def delete_snapshot(self, snapshot):
+        """Delete snapshot."""
+        LOG.debug('delete_snapshot, '
+                  'snapshot id: %(sid)s, volume id: %(vid)s.',
+                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
+
+        vol_exist = self.delete_volume(snapshot)
+        LOG.debug('delete_snapshot, vol_exist: %s.', vol_exist)
+        return vol_exist
+
+    def initialize_connection(self, volume, connector):
+        """Allow connection to connector and return connection info."""
+        LOG.debug('initialize_connection, '
+                  'volume id: %(vid)s, protocol: %(prtcl)s.',
+                  {'vid': volume['id'], 'prtcl': self.protocol})
+
+        self.conn = self._get_eternus_connection()
+        vol_instance = self._find_lun(volume)
+        # Check the existence of volume
+        if vol_instance is None:
+            # Volume not found
+            msg = (_('initialize_connection, '
+                     'volume: %(volume)s, '
+                     'Volume not found.')
+                   % {'volume': volume['name']})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        target_portlist = self._get_target_port()
+        mapdata = self._get_mapdata(vol_instance, connector, target_portlist)
+
+        if mapdata:
+            # volume is already mapped
+            target_lun = mapdata.get('target_lun', None)
+            target_luns = mapdata.get('target_luns', None)
+
+            LOG.info(_LI('initialize_connection, '
+                         'volume: %(volume)s, '
+                         'target_lun: %(target_lun)s, '
+                         'target_luns: %(target_luns)s, '
+                         'Volume is already mapped.'),
+                     {'volume': volume['name'],
+                      'target_lun': target_lun,
+                      'target_luns': target_luns})
+        else:
+            self._map_lun(vol_instance, connector, target_portlist)
+            mapdata = self._get_mapdata(vol_instance,
+                                        connector, target_portlist)
+
+        mapdata['target_discovered'] = True
+        mapdata['volume_id'] = volume['id']
+
+        if self.protocol == 'fc':
+            device_info = {'driver_volume_type': 'fibre_channel',
+                           'data': mapdata}
+        elif self.protocol == 'iSCSI':
+            device_info = {'driver_volume_type': 'iscsi',
+                           'data': mapdata}
+
+        LOG.debug('initialize_connection, '
+                  'device_info:%(info)s.',
+                  {'info': device_info})
+        return device_info
+
+    def terminate_connection(self, volume, connector, force=False, **kwargs):
+        """Disallow connection from connector."""
+        LOG.debug('terminate_connection, '
+                  'volume id: %(vid)s, protocol: %(prtcl)s, force: %(frc)s.',
+                  {'vid': volume['id'], 'prtcl': self.protocol, 'frc': force})
+
+        self.conn = self._get_eternus_connection()
+        map_exist = self._unmap_lun(volume, connector)
+
+        LOG.debug('terminate_connection, map_exist: %s.', map_exist)
+        return map_exist
+
+    def build_fc_init_tgt_map(self, connector, target_wwn=None):
+        """Build parameter for Zone Manager"""
+        LOG.debug('build_fc_init_tgt_map, target_wwn: %s.', target_wwn)
+
+        initiatorlist = self._find_initiator_names(connector)
+
+        if target_wwn is None:
+            target_wwn = []
+            target_portlist = self._get_target_port()
+            for target_port in target_portlist:
+                target_wwn.append(target_port['Name'])
+
+        init_tgt_map = {initiator: target_wwn for initiator in initiatorlist}
+
+        LOG.debug('build_fc_init_tgt_map, '
+                  'initiator target mapping: %s.', init_tgt_map)
+        return init_tgt_map
+
+    def check_attached_volume_in_zone(self, connector):
+        """Check Attached Volume in Same FC Zone or not"""
+        LOG.debug('check_attached_volume_in_zone, connector: %s.', connector)
+
+        aglist = self._find_affinity_group(connector)
+        if not aglist:
+            attached = False
+        else:
+            attached = True
+
+        LOG.debug('check_attached_volume_in_zone, attached: %s.', attached)
+        return attached
+
+    @lockutils.synchronized('ETERNUS-vol', 'cinder-', True)
+    def extend_volume(self, volume, new_size):
+        """Extend volume on ETERNUS."""
+        LOG.debug('extend_volume, volume id: %(vid)s, '
+                  'size: %(size)s, new_size: %(nsize)s.',
+                  {'vid': volume['id'],
+                   'size': volume['size'], 'nsize': new_size})
+
+        self.conn = self._get_eternus_connection()
+        volumesize = new_size * units.Gi
+        volumename = self._create_volume_name(volume['id'])
+
+        # Get source volume instance.
+        vol_instance = self._find_lun(volume)
+        if vol_instance is None:
+            msg = (_('extend_volume, '
+                     'volumename: %(volumename)s, '
+                     'volume not found.')
+                   % {'volumename': volumename})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('extend_volume, volumename: %(volumename)s, '
+                  'volumesize: %(volumesize)u, '
+                  'volume instance: %(vol_instance)s.',
+                  {'volumename': volumename,
+                   'volumesize': volumesize,
+                   'vol_instance': vol_instance.path})
+
+        # Get poolname from driver configuration file.
+        eternus_pool = self._get_drvcfg('EternusPool')
+        # Check the existence of volume.
+        pool = self._find_pool(eternus_pool)
+        if pool is None:
+            msg = (_('extend_volume, '
+                     'eternus_pool: %(eternus_pool)s, '
+                     'pool not found.')
+                   % {'eternus_pool': eternus_pool})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Set pooltype.
+        if 'RSP' in pool['InstanceID']:
+            pooltype = RAIDGROUP
+        else:
+            pooltype = TPPOOL
+
+        configservice = self._find_eternus_service(STOR_CONF)
+        if configservice is None:
+            msg = (_('extend_volume, volume: %(volume)s, '
+                     'volumename: %(volumename)s, '
+                     'eternus_pool: %(eternus_pool)s, '
+                     'Storage Configuration Service not found.')
+                   % {'volume': volume,
+                      'volumename': volumename,
+                      'eternus_pool': eternus_pool})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('extend_volume, '
+                  'CreateOrModifyElementFromStoragePool, '
+                  'ConfigService: %(service)s, '
+                  'ElementName: %(volumename)s, '
+                  'InPool: %(eternus_pool)s, '
+                  'ElementType: %(pooltype)u, '
+                  'Size: %(volumesize)u, '
+                  'TheElement: %(vol_instance)s.',
+                  {'service': configservice,
+                   'volumename': volumename,
+                   'eternus_pool': eternus_pool,
+                   'pooltype': pooltype,
+                   'volumesize': volumesize,
+                   'vol_instance': vol_instance.path})
+
+        # Invoke method for extend volume
+        rc, errordesc, job = self._exec_eternus_service(
+            'CreateOrModifyElementFromStoragePool',
+            configservice,
+            ElementName=volumename,
+            InPool=pool,
+            ElementType=self._pywbem_uint(pooltype, '16'),
+            Size=self._pywbem_uint(volumesize, '64'),
+            TheElement=vol_instance.path)
+
+        if rc != 0:
+            msg = (_('extend_volume, '
+                     'volumename: %(volumename)s, '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s, '
+                     'PoolType: %(pooltype)s.')
+                   % {'volumename': volumename,
+                      'rc': rc,
+                      'errordesc': errordesc,
+                      'pooltype': POOL_TYPE_dic[pooltype]})
+
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('extend_volume, '
+                  'volumename: %(volumename)s, '
+                  'Return code: %(rc)lu, '
+                  'Error: %(errordesc)s, '
+                  'Pool Name: %(eternus_pool)s, '
+                  'Pool Type: %(pooltype)s.',
+                  {'volumename': volumename,
+                   'rc': rc,
+                   'errordesc': errordesc,
+                   'eternus_pool': eternus_pool,
+                   'pooltype': POOL_TYPE_dic[pooltype]})
+
+        return eternus_pool
+
+    @lockutils.synchronized('ETERNUS-update', 'cinder-', True)
+    def update_volume_stats(self):
+        """get pool capacity."""
+
+        self.conn = self._get_eternus_connection()
+        eternus_pool = self._get_drvcfg('EternusPool')
+
+        LOG.debug('update_volume_stats, pool name: %s.', eternus_pool)
+
+        pool = self._find_pool(eternus_pool, True)
+        if pool:
+            # pool is found
+            self.stats['total_capacity_gb'] = (
+                pool['TotalManagedSpace'] / units.Gi)
+
+            self.stats['free_capacity_gb'] = (
+                pool['RemainingManagedSpace'] / units.Gi)
+        else:
+            # if pool information is unknown, set 0 GB to capacity information
+            LOG.warning(_LW('update_volume_stats, '
+                            'eternus_pool:%(eternus_pool)s, '
+                            'specified pool is not found.'),
+                        {'eternus_pool': eternus_pool})
+            self.stats['total_capacity_gb'] = 0
+            self.stats['free_capacity_gb'] = 0
+
+        self.stats['multiattach'] = True
+
+        LOG.debug('update_volume_stats, '
+                  'eternus_pool:%(eternus_pool)s, '
+                  'total capacity[%(total)s], '
+                  'free capacity[%(free)s].',
+                  {'eternus_pool': eternus_pool,
+                   'total': self.stats['total_capacity_gb'],
+                   'free': self.stats['free_capacity_gb']})
+
+        return (self.stats, eternus_pool)
+
+    def _get_mapdata(self, vol_instance, connector, target_portlist):
+        """return mapping information."""
+        mapdata = None
+        multipath = connector.get('multipath', False)
+
+        LOG.debug('_get_mapdata, volume name: %(vname)s, '
+                  'protocol: %(prtcl)s, multipath: %(mpath)s.',
+                  {'vname': vol_instance['ElementName'],
+                   'prtcl': self.protocol, 'mpath': multipath})
+
+        # find affinity group
+        # attach the connector and include the volume
+        aglist = self._find_affinity_group(connector, vol_instance)
+        if not aglist:
+            LOG.debug('_get_mapdata, ag_list:%s.', aglist)
+        else:
+            if self.protocol == 'fc':
+                mapdata = self._get_mapdata_fc(aglist, vol_instance,
+                                               target_portlist)
+            elif self.protocol == 'iSCSI':
+                mapdata = self._get_mapdata_iscsi(aglist, vol_instance,
+                                                  multipath)
+
+        LOG.debug('_get_mapdata, mapdata: %s.', mapdata)
+        return mapdata
+
+    def _get_mapdata_fc(self, aglist, vol_instance, target_portlist):
+        """_get_mapdata for FibreChannel."""
+        target_wwn = []
+
+        try:
+            ag_volmaplist = self._reference_eternus_names(
+                aglist[0],
+                ResultClass='CIM_ProtocolControllerForUnit')
+            vo_volmaplist = self._reference_eternus_names(
+                vol_instance.path,
+                ResultClass='CIM_ProtocolControllerForUnit')
+        except pywbem.CIM_Error:
+            msg = (_('_get_mapdata_fc, '
+                     'getting host-affinity from aglist/vol_instance failed, '
+                     'affinitygroup: %(ag)s, '
+                     'ReferenceNames, '
+                     'cannot connect to ETERNUS.')
+                   % {'ag': aglist[0]})
+            LOG.exception(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        volmap = None
+        for vo_volmap in vo_volmaplist:
+            if vo_volmap in ag_volmaplist:
+                volmap = vo_volmap
+                break
+
+        try:
+            volmapinstance = self._get_eternus_instance(
+                volmap,
+                LocalOnly=False)
+        except pywbem.CIM_Error:
+            msg = (_('_get_mapdata_fc, '
+                     'getting host-affinity instance failed, '
+                     'volmap: %(volmap)s, '
+                     'GetInstance, '
+                     'cannot connect to ETERNUS.')
+                   % {'volmap': volmap})
+            LOG.exception(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        target_lun = int(volmapinstance['DeviceNumber'], 16)
+
+        for target_port in target_portlist:
+            target_wwn.append(target_port['Name'])
+
+        mapdata = {'target_wwn': target_wwn,
+                   'target_lun': target_lun}
+        LOG.debug('_get_mapdata_fc, mapdata: %s.', mapdata)
+        return mapdata
+
+    def _get_mapdata_iscsi(self, aglist, vol_instance, multipath):
+        """_get_mapdata for iSCSI."""
+        target_portals = []
+        target_iqns = []
+        target_luns = []
+
+        try:
+            vo_volmaplist = self._reference_eternus_names(
+                vol_instance.path,
+                ResultClass='CIM_ProtocolControllerForUnit')
+        except Exception:
+            msg = (_('_get_mapdata_iscsi, '
+                     'vol_instance: %(vol_instance)s, '
+                     'ReferenceNames: CIM_ProtocolControllerForUnit, '
+                     'cannot connect to ETERNUS.')
+                   % {'vol_instance': vol_instance})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        target_properties_list = self._get_eternus_iscsi_properties()
+        target_list = [prop[0] for prop in target_properties_list]
+        properties_list = (
+            [(prop[1], prop[2]) for prop in target_properties_list])
+
+        for ag in aglist:
+            try:
+                iscsi_endpointlist = (
+                    self._assoc_eternus_names(
+                        ag,
+                        AssocClass='FUJITSU_SAPAvailableForElement',
+                        ResultClass='FUJITSU_iSCSIProtocolEndpoint'))
+            except Exception:
+                msg = (_('_get_mapdata_iscsi, '
+                         'Associators: FUJITSU_SAPAvailableForElement, '
+                         'cannot connect to ETERNUS.'))
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug('HidePaths for volume %s completed successfully.'
-                  % volumename)
+            iscsi_endpoint = iscsi_endpointlist[0]
+            if iscsi_endpoint not in target_list:
+                continue
 
-    def _map_lun(self, volume, connector):
-        """Maps a volume to the host."""
-        volumename = self._create_volume_name(volume['id'])
-        LOG.info(_LI('Map volume: %(volume)s')
-                 % {'volume': volumename})
+            idx = target_list.index(iscsi_endpoint)
+            target_portal, target_iqn = properties_list[idx]
 
-        vol_instance = self._find_lun(volume)
-        storage_system = vol_instance['SystemName']
+            try:
+                ag_volmaplist = self._reference_eternus_names(
+                    ag,
+                    ResultClass='CIM_ProtocolControllerForUnit')
+            except Exception:
+                msg = (_('_get_mapdata_iscsi, '
+                         'affinitygroup: %(ag)s, '
+                         'ReferenceNames, '
+                         'cannot connect to ETERNUS.')
+                       % {'ag': ag})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-        configservice = self._find_controller_configuration_service(
-            storage_system)
-        if configservice is None:
-            exception_message = (_("Cannot find Controller Configuration "
-                                   "Service for storage system %s")
-                                 % storage_system)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            volmap = None
+            for vo_volmap in vo_volmaplist:
+                if vo_volmap in ag_volmaplist:
+                    volmap = vo_volmap
+                    break
 
-        self._expose_paths(configservice, vol_instance, connector)
+            if volmap is None:
+                continue
 
-    def _unmap_lun(self, volume, connector):
-        """Unmaps a volume from the host."""
-        volumename = self._create_volume_name(volume['id'])
-        LOG.info(_LI('Unmap volume: %(volume)s')
-                 % {'volume': volumename})
+            try:
+                volmapinstance = self._get_eternus_instance(
+                    volmap,
+                    LocalOnly=False)
+            except Exception:
+                msg = (_('_get_mapdata_iscsi, '
+                         'volmap: %(volmap)s, '
+                         'GetInstance, '
+                         'cannot connect to ETERNUS.')
+                       % {'volmap': volmap})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-        device_info = self.find_device_number(volume, connector)
-        device_number = device_info['hostlunid']
-        if device_number is None:
-            LOG.info(_LI("Volume %s is not mapped. No volume to unmap.")
-                     % (volumename))
-            return
+            target_lun = int(volmapinstance['DeviceNumber'], 16)
 
-        vol_instance = self._find_lun(volume)
-        storage_system = vol_instance['SystemName']
+            target_portals.append(target_portal)
+            target_iqns.append(target_iqn)
+            target_luns.append(target_lun)
 
-        configservice = self._find_controller_configuration_service(
-            storage_system)
-        if configservice is None:
-            exception_message = (_("Cannot find Controller Configuration "
-                                   "Service for storage system %s")
-                                 % storage_system)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-        self._hide_paths(configservice, vol_instance, connector)
-
-    def initialize_connection(self, volume, connector):
-        """Initializes the connection and returns connection info."""
-        volumename = self._create_volume_name(volume['id'])
-        LOG.info(_LI('Initialize connection: %(volume)s')
-                 % {'volume': volumename})
-        self.conn = self._get_ecom_connection()
-        device_info = self.find_device_number(volume, connector)
-        device_number = device_info['hostlunid']
-        if device_number is not None:
-            LOG.info(_LI("Volume %s is already mapped.")
-                     % (volumename))
+        if multipath:
+            mapdata = {'target_portals': target_portals,
+                       'target_iqns': target_iqns,
+                       'target_luns': target_luns}
         else:
-            self._map_lun(volume, connector)
-            # Find host lun id again after the volume is exported to the host
-            device_info = self.find_device_number(volume, connector)
+            mapdata = {'target_portal': target_portals[0],
+                       'target_iqn': target_iqns[0],
+                       'target_lun': target_luns[0]}
 
-        return device_info
+        LOG.debug('_get_mapdata_iscsi, mapdata: %s.', mapdata)
+        return mapdata
 
-    def terminate_connection(self, volume, connector):
-        """Disallow connection from connector."""
-        volumename = self._create_volume_name(volume['id'])
-        LOG.info(_LI('Terminate connection: %(volume)s')
-                 % {'volume': volumename})
-        self.conn = self._get_ecom_connection()
-        self._unmap_lun(volume, connector)
-
-        vol_instance = self._find_lun(volume)
-        storage_system = vol_instance['SystemName']
-        ctrl = self._find_lunmasking_scsi_protocol_controller(
-            storage_system, connector)
-        return ctrl
-
-    def extend_volume(self, volume, new_size):
-        """Extends an existing  volume."""
-        LOG.debug('Entering extend_volume.')
-        volumesize = int(new_size) * units.Gi
-        volumename = self._create_volume_name(volume['id'])
-
-        LOG.info(_LI('Extend Volume: %(volume)s  New size: %(size)lu')
-                 % {'volume': volumename,
-                    'size': volumesize})
-
-        self.conn = self._get_ecom_connection()
-
-        storage_type = self._get_storage_type(volume)
-
-        vol_instance = self._find_lun(volume)
-
-        device_id = vol_instance['DeviceID']
-        storage_system = vol_instance['SystemName']
-        LOG.debug('Device ID: %(deviceid)s: Storage System: '
-                  '%(storagesystem)s'
-                  % {'deviceid': device_id,
-                     'storagesystem': storage_system})
-
-        configservice = self._find_storage_configuration_service(
-            storage_system)
-        if configservice is None:
-            exception_message = (_("Error Extend Volume: %(volumename)s. "
-                                   "Storage Configuration Service not found.")
-                                 % {'volumename': volumename})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        provisioning = self._get_provisioning(storage_type)
-
-        LOG.debug('Extend Volume: %(name)s  Method: '
-                  'CreateOrModifyElementFromStoragePool  ConfigServicie: '
-                  '%(service)s ElementType: %(provisioning)s  Size: %(size)lu'
-                  'Volume path: %(volumepath)s'
-                  % {'service': configservice,
-                     'name': volumename,
-                     'provisioning': provisioning,
-                     'size': volumesize,
-                     'volumepath': vol_instance.path})
-
-        rc, job = self.conn.InvokeMethod(
-            'CreateOrModifyElementFromStoragePool',
-            configservice,
-            ElementType=self._getnum(provisioning, '16'),
-            Size=self._getnum(volumesize, '64'),
-            TheElement=vol_instance.path)
-
-        LOG.debug('Extend Volume: %(volumename)s  Return code: %(rc)lu'
-                  % {'volumename': volumename,
-                     'rc': rc})
-
-        if rc != 0L:
-            if "job" in job:
-                rc, errordesc = self._wait_for_job_complete(self.conn, job)
-            else:
-                errordesc = RETCODE_dic[six.text_type(rc)]
-
-            if rc != 0L:
-                exception_message = (_('Error Extend Volume: %(volumename)s.  '
-                                       'Return code: %(rc)lu.  '
-                                       'Error: %(error)s')
-                                     % {'volumename': volumename,
-                                        'rc': rc,
-                                        'error': errordesc})
-                LOG.error(exception_message)
-                raise exception.VolumeBackendAPIException(
-                    data=exception_message)
-
-        LOG.debug('Leaving extend_volume: %(volumename)s  '
-                  'Return code: %(rc)lu '
-                  % {'volumename': volumename,
-                     'rc': rc})
-
-    def update_volume_stats(self):
-        """Retrieve stats info."""
-        LOG.debug("Updating volume stats")
-        self.stats['total_capacity_gb'] = 'unknown'
-        self.stats['free_capacity_gb'] = 'unknown'
-
-        return self.stats
-
-    def _get_storage_type(self, volume, filename=None):
-        """Get storage type.
-
-        Look for user input volume type first.
-        If not available, fall back to finding it in conf file.
-        """
-        specs = self._get_volumetype_extraspecs(volume)
-        if not specs:
-            specs = self._get_storage_type_conffile()
-        LOG.debug("Storage Type: %s" % (specs))
-        return specs
-
-    def _get_storage_type_conffile(self, filename=None):
-        """Get the storage type from the config file."""
+    def _get_drvcfg(self, tagname, filename=None, multiple=False):
+        """read from driver configuration file."""
         if filename is None:
-            filename = self.configuration.cinder_smis_config_file
+            # set default configuration file name
+            filename = self.configuration.cinder_eternus_config_file
 
-        file = open(filename, 'r')
-        data = file.read()
-        file.close()
-        dom = parseString(data)
-        storageTypes = dom.getElementsByTagName('StorageType')
-        if storageTypes is not None and len(storageTypes) > 0:
-            storageType = storageTypes[0].toxml()
-            storageType = storageType.replace('<StorageType>', '')
-            storageType = storageType.replace('</StorageType>', '')
-            LOG.debug("Found Storage Type in config file: %s"
-                      % (storageType))
-            specs = {}
-            specs[POOL] = storageType
-            return specs
+        LOG.debug("_get_drvcfg, input[%(filename)s][%(tagname)s].",
+                  {'filename': filename, 'tagname': tagname})
+
+        tree = parse(filename)
+        elem = tree.getroot()
+
+        ret = None
+        if not multiple:
+            ret = elem.findtext(".//" + tagname)
         else:
-            exception_message = (_("Storage type not found."))
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
+            ret = []
+            for e in elem.findall(".//" + tagname):
+                if (e.text is not None) and (e.text not in ret):
+                    ret.append(e.text)
 
-    def _get_snappool_conffile(self, filename=None):
-        """Get the snap pool from the config file."""
-        snappool = None
-        if filename is None:
-            filename = self.configuration.cinder_smis_config_file
-
-        file = open(filename, 'r')
-        data = file.read()
-        file.close()
-        dom = parseString(data)
-        snappools = dom.getElementsByTagName('SnapPool')
-        if snappools is not None and len(snappools) > 0:
-            snappool = snappools[0].toxml()
-            snappool = snappool.replace('<SnapPool>', '')
-            snappool = snappool.replace('</SnapPool>', '')
-            LOG.debug("Found Snap Pool in config file: [%s]"
-                      % (snappool))
-            return snappool
-        else:
-            exception_message = (_("Snap pool not found."))
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-    def _get_timeout(self, filename=None):
-        if filename is None:
-            filename = self.configuration.cinder_smis_config_file
-
-        file = open(filename, 'r')
-        data = file.read()
-        file.close()
-        dom = parseString(data)
-        timeouts = dom.getElementsByTagName('Timeout')
-        if timeouts is not None and len(timeouts) > 0:
-            timeout = timeouts[0].toxml().replace('<Timeout>', '')
-            timeout = timeout.replace('</Timeout>', '')
-            LOG.debug("Found Timeout: %s" % (timeout))
-            return timeout
-        else:
-            LOG.debug("Timeout not specified.")
-            return 10
-
-    def _get_ecom_cred(self, filename=None):
-        if filename is None:
-            filename = self.configuration.cinder_smis_config_file
-
-        file = open(filename, 'r')
-        data = file.read()
-        file.close()
-        dom = parseString(data)
-        ecomUsers = dom.getElementsByTagName('EcomUserName')
-        if ecomUsers is not None and len(ecomUsers) > 0:
-            ecomUser = ecomUsers[0].toxml().replace('<EcomUserName>', '')
-            ecomUser = ecomUser.replace('</EcomUserName>', '')
-        ecomPasswds = dom.getElementsByTagName('EcomPassword')
-        if ecomPasswds is not None and len(ecomPasswds) > 0:
-            ecomPasswd = ecomPasswds[0].toxml().replace('<EcomPassword>', '')
-            ecomPasswd = ecomPasswd.replace('</EcomPassword>', '')
-        if ecomUser is not None and ecomPasswd is not None:
-            return ecomUser, ecomPasswd
-        else:
-            LOG.debug("Ecom user not found.")
-            return None
-
-    def _get_ecom_server(self, filename=None):
-        if filename is None:
-            filename = self.configuration.cinder_smis_config_file
-
-        file = open(filename, 'r')
-        data = file.read()
-        file.close()
-        dom = parseString(data)
-        ecomIps = dom.getElementsByTagName('EcomServerIp')
-        if ecomIps is not None and len(ecomIps) > 0:
-            ecomIp = ecomIps[0].toxml().replace('<EcomServerIp>', '')
-            ecomIp = ecomIp.replace('</EcomServerIp>', '')
-        ecomPorts = dom.getElementsByTagName('EcomServerPort')
-        if ecomPorts is not None and len(ecomPorts) > 0:
-            ecomPort = ecomPorts[0].toxml().replace('<EcomServerPort>', '')
-            ecomPort = ecomPort.replace('</EcomServerPort>', '')
-        if ecomIp is not None and ecomPort is not None:
-            LOG.debug("Ecom IP: %(ecomIp)s Port: %(ecomPort)s",
-                      {'ecomIp': ecomIp, 'ecomPort': ecomPort})
-            return ecomIp, ecomPort
-        else:
-            LOG.debug("Ecom server not found.")
-            return None
-
-    def _get_ecom_connection(self, filename=None):
-        conn = pywbem.WBEMConnection(self.url, (self.user, self.passwd),
-                                     default_namespace=SMIS_ROOT)
-        if conn is None:
-            exception_message = (_("Cannot connect to ECOM server"))
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        return conn
-
-    def _find_replication_service(self, storage_system):
-        foundRepService = None
-        repservices = self.conn.EnumerateInstanceNames(
-            REPL_SVC)
-        for repservice in repservices:
-            if storage_system == repservice['SystemName']:
-                foundRepService = repservice
-                LOG.debug("Found Replication Service: %s"
-                          % (repservice))
-                break
-
-        return foundRepService
-
-    def _find_storage_configuration_service(self, storage_system):
-        foundConfigService = None
-        configservices = self.conn.EnumerateInstanceNames(
-            STOR_CONF_SVC)
-        for configservice in configservices:
-            if storage_system == configservice['SystemName']:
-                foundConfigService = configservice
-                LOG.debug("Found Storage Configuration Service: %s"
-                          % (configservice))
-                break
-
-        return foundConfigService
-
-    def _find_controller_configuration_service(self, storage_system):
-        foundConfigService = None
-        configservices = self.conn.EnumerateInstanceNames(
-            CTRL_CONF_SVC)
-        for configservice in configservices:
-            if storage_system == configservice['SystemName']:
-                foundConfigService = configservice
-                LOG.debug("Found Controller Configuration Service: %s"
-                          % (configservice))
-                break
-
-        return foundConfigService
-
-    def _find_storage_hardwareid_service(self, storage_system):
-        foundConfigService = None
-        configservices = self.conn.EnumerateInstanceNames(
-            STOR_HWID_MNG_SVC)
-        for configservice in configservices:
-            if storage_system == configservice['SystemName']:
-                foundConfigService = configservice
-                LOG.debug("Found Storage Hardware ID Management Service: %s"
-                          % (configservice))
-                break
-
-        return foundConfigService
-
-    # Find pool based on storage_type
-    def _find_pool(self, storage_type, details=False):
-        foundPool = None
-        systemname = None
-        poolinstanceid = None
-        # Only get instance names if details flag is False;
-        # Otherwise get the whole instances
-
-        systemname, port = self._get_ecom_server()
-        poolinstanceid = self._get_pool_instance_id(storage_type)
-
-        if details is False:
-            pools = self.conn.EnumerateInstanceNames(
-                'CIM_StoragePool')
-        else:
-            pools = self.conn.EnumerateInstances(
-                'CIM_StoragePool')
-
-        for pool in pools:
-            if six.text_type(pool['InstanceID']) == six.text_type(
-                    poolinstanceid):
-                foundPool = pool
-                break
-
-        if foundPool is None:
-            exception_message = (_("Pool %(storage_type)s is not found.")
-                                 % {'storage_type': storage_type})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        if systemname is None:
-            exception_message = (_("Storage system not found for pool "
-                                   "%(storage_type)s.")
-                                 % {'storage_type': storage_type})
-            LOG.error(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        LOG.debug("Pool: %(pool)s  SystemName: %(systemname)s."
-                  % {'pool': foundPool,
-                     'systemname': systemname})
-        return foundPool, systemname
-
-    def _find_lun(self, volume):
-        foundinstance = None
-
-        volumename = self._create_volume_name(volume['id'])
-        loc = volume['provider_location']
-        try:
-            name = eval(loc)
-            instancename = self._getinstancename(name['classname'],
-                                                 name['keybindings'])
-            foundinstance = self.conn.GetInstance(instancename)
-        except Exception:
-            foundinstance = None
-
-        if foundinstance is None:
-            LOG.debug("Volume %(volumename)s not found on the array."
-                      "volume instance is None."
-                      % {'volumename': volumename})
-        else:
-            LOG.debug("Volume name: %(volumename)s  Volume instance: "
-                      "%(vol_instance)s."
-                      % {'volumename': volumename,
-                         'vol_instance': foundinstance.path})
-
-        return foundinstance
-
-    def _find_storage_sync_sv_sv(self, snapshot, volume,
-                                 waitforsync=True):
-        foundsyncname = None
-        storage_system = None
-
-        snapshotname = self._create_volume_name(snapshot['id'])
-        volumename = self._create_volume_name(volume['id'])
-        LOG.debug("Source: %(volumename)s  Target: %(snapshotname)s."
-                  % {'volumename': volumename, 'snapshotname': snapshotname})
-
-        snapshot_instance = self._find_lun(snapshot)
-        volume_instance = self._find_lun(volume)
-        if snapshot_instance is None or volume_instance is None:
-            LOG.info(_LI('Snapshot Volume %(snapshotname)s, '
-                         'Source Volume %(volumename)s not '
-                         'found on the array.')
-                     % {'snapshotname': snapshotname,
-                        'volumename': volumename})
-            return None, None
-
-        storage_system = volume_instance['SystemName']
-        classname = STOR_SYNC
-        bindings = {'SyncedElement': snapshot_instance.path,
-                    'SystemElement': volume_instance.path}
-        foundsyncname = self._getinstancename(classname, bindings)
-
-        if foundsyncname is None:
-            LOG.debug("Source: %(volumename)s  Target: %(snapshotname)s. "
-                      "Storage Synchronized not found. "
-                      % {'volumename': volumename,
-                         'snapshotname': snapshotname})
-        else:
-            LOG.debug("Storage system: %(storage_system)s  "
-                      "Storage Synchronized instance: %(sync)s."
-                      % {'storage_system': storage_system,
-                         'sync': foundsyncname})
-            # Wait for SE_StorageSynchronized_SV_SV to be fully synced
-            if waitforsync:
-                self.wait_for_sync(self.conn, foundsyncname)
-
-        return foundsyncname, storage_system
-
-    def _find_initiator_names(self, connector):
-        foundinitiatornames = []
-        iscsi = 'iscsi'
-        fc = 'fc'
-        name = 'initiator name'
-        if self.protocol.lower() == iscsi and connector['initiator']:
-            foundinitiatornames.append(connector['initiator'])
-        elif self.protocol.lower() == fc and connector['wwpns']:
-            for wwn in connector['wwpns']:
-                foundinitiatornames.append(wwn)
-            name = 'world wide port names'
-
-        if foundinitiatornames is None or len(foundinitiatornames) == 0:
-            msg = (_('Error finding %s.') % name)
+        if not ret:
+            msg = (_('_get_drvcfg, '
+                     'filename: %(filename)s, '
+                     'tagname: %(tagname)s, '
+                     'data is None!! '
+                     'Please edit driver configuration file and correct.')
+                   % {'filename': filename,
+                      'tagname': tagname})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        LOG.debug("Found %(name)s: %(initiator)s."
-                  % {'name': name,
-                     'initiator': foundinitiatornames})
-        return foundinitiatornames
+        return ret
+
+    def _get_eternus_connection(self, filename=None):
+        """return WBEM connection."""
+        LOG.debug('_get_eternus_connection, filename: %s.', filename)
+
+        ip = self._get_drvcfg('EternusIP', filename)
+        port = self._get_drvcfg('EternusPort', filename)
+        user = self._get_drvcfg('EternusUser', filename)
+        passwd = self._get_drvcfg('EternusPassword', filename)
+        url = 'http://' + ip + ':' + port
+
+        conn = pywbem.WBEMConnection(url, (user, passwd),
+                                     default_namespace='root/eternus')
+
+        if conn is None:
+            msg = (_('_get_eternus_connection, '
+                     'filename: %(filename)s, '
+                     'ip: %(ip)s, '
+                     'port: %(port)s, '
+                     'user: %(user)s, '
+                     'passwd: ****, '
+                     'url: %(url)s, '
+                     'FAILED!!.')
+                   % {'filename': filename,
+                      'ip': ip,
+                      'port': port,
+                      'user': user,
+                      'url': url})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_get_eternus_connection, conn: %s.', conn)
+        return conn
+
+    def _create_volume_name(self, id_code):
+        """create volume_name on ETERNUS from id on OpenStack."""
+        LOG.debug('_create_volume_name, id_code: %s.', id_code)
+
+        if id_code is None:
+            msg = _('_create_volume_name, id_code is None.')
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        m = hashlib.md5()
+        m.update(id_code.encode('utf-8'))
+
+        # pylint: disable=E1121
+        volumename = base64.urlsafe_b64encode(m.digest()).decode()
+        ret = VOL_PREFIX + six.text_type(volumename)
+
+        LOG.debug('_create_volume_name, ret: %s', ret)
+        return ret
+
+    def _find_pool(self, eternus_pool, detail=False):
+        """find Instance or InstanceName of pool by pool name on ETERNUS."""
+        LOG.debug('_find_pool, pool name: %s.', eternus_pool)
+
+        tppoollist = []
+        rgpoollist = []
+
+        # Get pools info form CIM instance(include info about instance path).
+        try:
+            tppoollist = self._enum_eternus_instances(
+                'FUJITSU_ThinProvisioningPool')
+            rgpoollist = self._enum_eternus_instances(
+                'FUJITSU_RAIDStoragePool')
+        except Exception:
+            msg = (_('_find_pool, '
+                     'eternus_pool:%(eternus_pool)s, '
+                     'EnumerateInstances, '
+                     'cannot connect to ETERNUS.')
+                   % {'eternus_pool': eternus_pool})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Make total pools list.
+        poollist = tppoollist + rgpoollist
+
+        # One eternus backend has only one special pool name
+        # so just use pool name can get the target pool.
+        for pool in poollist:
+            if pool['ElementName'] == eternus_pool:
+                poolinstance = pool
+                break
+        else:
+            poolinstance = None
+
+        if poolinstance is None:
+            ret = None
+        elif detail is True:
+            ret = poolinstance
+        else:
+            ret = poolinstance.path
+
+        LOG.debug('_find_pool, pool: %s.', ret)
+        return ret
+
+    def _find_eternus_service(self, classname):
+        """find CIM instance about service information."""
+        LOG.debug('_find_eternus_service, '
+                  'classname: %s.', classname)
+
+        try:
+            services = self._enum_eternus_instance_names(
+                six.text_type(classname))
+        except Exception:
+            msg = (_('_find_eternus_service, '
+                     'classname: %(classname)s, '
+                     'EnumerateInstanceNames, '
+                     'cannot connect to ETERNUS.')
+                   % {'classname': classname})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        ret = services[0]
+        LOG.debug('_find_eternus_service, '
+                  'classname: %(classname)s, '
+                  'ret: %(ret)s.',
+                  {'classname': classname, 'ret': ret})
+        return ret
+
+    @lockutils.synchronized('ETERNUS-SMIS-exec', 'cinder-', True)
+    def _exec_eternus_service(self, classname, instanceNameList, **param_dict):
+        """Execute SMI-S Method."""
+        LOG.debug('_exec_eternus_service, '
+                  'classname: %(a)s, '
+                  'instanceNameList: %(b)s, '
+                  'parameters: %(c)s.',
+                  {'a': classname,
+                   'b': instanceNameList,
+                   'c': param_dict})
+
+        # Use InvokeMethod.
+        try:
+            rc, retdata = self.conn.InvokeMethod(
+                classname,
+                instanceNameList,
+                **param_dict)
+        except Exception:
+            if rc is None:
+                msg = (_('_exec_eternus_service, '
+                         'classname: %(classname)s, '
+                         'InvokeMethod, '
+                         'cannot connect to ETERNUS.')
+                       % {'classname': classname})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        # If the result has job information, wait for job complete
+        if "Job" in retdata:
+            rc = self._wait_for_job_complete(self.conn, retdata)
+
+        errordesc = RETCODE_dic.get(six.text_type(rc), UNDEF_MSG)
+
+        ret = (rc, errordesc, retdata)
+
+        LOG.debug('_exec_eternus_service, '
+                  'classname: %(a)s, '
+                  'instanceNameList: %(b)s, '
+                  'parameters: %(c)s, '
+                  'Return code: %(rc)s, '
+                  'Error: %(errordesc)s, '
+                  'Retrun data: %(retdata)s.',
+                  {'a': classname,
+                   'b': instanceNameList,
+                   'c': param_dict,
+                   'rc': rc,
+                   'errordesc': errordesc,
+                   'retdata': retdata})
+        return ret
+
+    @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    def _enum_eternus_instances(self, classname):
+        """Enumerate Instances."""
+        LOG.debug('_enum_eternus_instances, classname: %s.', classname)
+
+        ret = self.conn.EnumerateInstances(classname)
+
+        LOG.debug('_enum_eternus_instances, enum %d instances.', len(ret))
+        return ret
+
+    @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    def _enum_eternus_instance_names(self, classname):
+        """Enumerate Instance Names."""
+        LOG.debug('_enum_eternus_instance_names, classname: %s.', classname)
+
+        ret = self.conn.EnumerateInstanceNames(classname)
+
+        LOG.debug('_enum_eternus_instance_names, enum %d names.', len(ret))
+        return ret
+
+    @lockutils.synchronized('ETERNUS-SMIS-getinstance', 'cinder-', True)
+    def _get_eternus_instance(self, classname, **param_dict):
+        """Get Instance."""
+        LOG.debug('_get_eternus_instance, '
+                  'classname: %(cls)s, param: %(param)s.',
+                  {'cls': classname, 'param': param_dict})
+
+        ret = self.conn.GetInstance(classname, **param_dict)
+
+        LOG.debug('_get_eternus_instance, ret: %s.', ret)
+        return ret
+
+    @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    def _assoc_eternus(self, classname, **param_dict):
+        """Associator."""
+        LOG.debug('_assoc_eternus, '
+                  'classname: %(cls)s, param: %(param)s.',
+                  {'cls': classname, 'param': param_dict})
+
+        ret = self.conn.Associators(classname, **param_dict)
+
+        LOG.debug('_assoc_eternus, enum %d instances.', len(ret))
+        return ret
+
+    @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    def _assoc_eternus_names(self, classname, **param_dict):
+        """Associator Names."""
+        LOG.debug('_assoc_eternus_names, '
+                  'classname: %(cls)s, param: %(param)s.',
+                  {'cls': classname, 'param': param_dict})
+
+        ret = self.conn.AssociatorNames(classname, **param_dict)
+
+        LOG.debug('_assoc_eternus_names, enum %d names.', len(ret))
+        return ret
+
+    @lockutils.synchronized('ETERNUS-SMIS-other', 'cinder-', True)
+    def _reference_eternus_names(self, classname, **param_dict):
+        """Refference Names."""
+        LOG.debug('_reference_eternus_names, '
+                  'classname: %(cls)s, param: %(param)s.',
+                  {'cls': classname, 'param': param_dict})
+
+        ret = self.conn.ReferenceNames(classname, **param_dict)
+
+        LOG.debug('_reference_eternus_names, enum %d names.', len(ret))
+        return ret
+
+    def _create_eternus_instance_name(self, classname, bindings):
+        """create CIM InstanceName from classname and bindings."""
+        LOG.debug('_create_eternus_instance_name, '
+                  'classname: %(cls)s, bindings: %(bind)s.',
+                  {'cls': classname, 'bind': bindings})
+
+        instancename = None
+
+        try:
+            instancename = pywbem.CIMInstanceName(
+                classname,
+                namespace='root/eternus',
+                keybindings=bindings)
+        except NameError:
+            instancename = None
+
+        LOG.debug('_create_eternus_instance_name, ret: %s.', instancename)
+        return instancename
+
+    def _find_lun(self, volume):
+        """find lun instance from volume class or volumename on ETERNUS."""
+        LOG.debug('_find_lun, volume id: %s.', volume['id'])
+        volumeinstance = None
+        volumename = self._create_volume_name(volume['id'])
+
+        try:
+            location = ast.literal_eval(volume['provider_location'])
+            classname = location['classname']
+            bindings = location['keybindings']
+
+            if classname and bindings:
+                LOG.debug('_find_lun, '
+                          'classname: %(classname)s, '
+                          'bindings: %(bindings)s.',
+                          {'classname': classname,
+                           'bindings': bindings})
+                volume_instance_name = (
+                    self._create_eternus_instance_name(classname, bindings))
+
+                LOG.debug('_find_lun, '
+                          'volume_insatnce_name: %(volume_instance_name)s.',
+                          {'volume_instance_name': volume_instance_name})
+
+                vol_instance = (
+                    self._get_eternus_instance(volume_instance_name))
+
+                if vol_instance['ElementName'] == volumename:
+                    volumeinstance = vol_instance
+        except Exception:
+            volumeinstance = None
+            LOG.debug('_find_lun, '
+                      'Cannot get volume instance from provider location, '
+                      'Search all volume using EnumerateInstanceNames.')
+
+        if volumeinstance is None:
+            # for old version
+
+            LOG.debug('_find_lun, '
+                      'volumename: %(volumename)s.',
+                      {'volumename': volumename})
+
+            # get volume instance from volumename on ETERNUS
+            try:
+                namelist = self._enum_eternus_instance_names(
+                    'FUJITSU_StorageVolume')
+            except Exception:
+                msg = (_('_find_lun, '
+                         'volumename: %(volumename)s, '
+                         'EnumerateInstanceNames, '
+                         'cannot connect to ETERNUS.')
+                       % {'volumename': volumename})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            for name in namelist:
+                try:
+                    vol_instance = self._get_eternus_instance(name)
+
+                    if vol_instance['ElementName'] == volumename:
+                        volumeinstance = vol_instance
+                        path = volumeinstance.path
+
+                        LOG.debug('_find_lun, '
+                                  'volumename: %(volumename)s, '
+                                  'vol_instance: %(vol_instance)s.',
+                                  {'volumename': volumename,
+                                   'vol_instance': path})
+                        break
+                except Exception:
+                    continue
+            else:
+                LOG.debug('_find_lun, '
+                          'volumename: %(volumename)s, '
+                          'volume not found on ETERNUS.',
+                          {'volumename': volumename})
+
+        LOG.debug('_find_lun, ret: %s.', volumeinstance)
+        return volumeinstance
+
+    def _find_copysession(self, vol_instance):
+        """find copysession from volumename on ETERNUS."""
+        LOG.debug('_find_copysession, volume name: %s.',
+                  vol_instance['ElementName'])
+
+        try:
+            cpsessionlist = self.conn.ReferenceNames(
+                vol_instance.path,
+                ResultClass='FUJITSU_StorageSynchronized')
+        except Exception:
+            msg = (_('_find_copysession, '
+                     'ReferenceNames, '
+                     'vol_instance: %(vol_instance_path)s, '
+                     'Cannot connect to ETERNUS.')
+                   % {'vol_instance_path': vol_instance.path})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_find_copysession, '
+                  'cpsessionlist: %(cpsessionlist)s.',
+                  {'cpsessionlist': cpsessionlist})
+
+        LOG.debug('_find_copysession, ret: %s.', cpsessionlist)
+        return cpsessionlist
+
+    def _wait_for_copy_complete(self, cpsession):
+        """Wait for the completion of copy."""
+        LOG.debug('_wait_for_copy_complete, cpsession: %s.', cpsession)
+
+        cpsession_instance = None
+
+        while True:
+            try:
+                cpsession_instance = self.conn.GetInstance(
+                    cpsession,
+                    LocalOnly=False)
+            except Exception:
+                cpsession_instance = None
+
+            # if copy session is none,
+            # it means copy session was finished,break and return
+            if cpsession_instance is None:
+                break
+
+            LOG.debug('_wait_for_copy_complete, '
+                      'find target copysession, '
+                      'wait for end of copysession.')
+
+            if cpsession_instance['CopyState'] == BROKEN:
+                msg = (_('_wait_for_copy_complete, '
+                         'cpsession: %(cpsession)s, '
+                         'copysession state is BROKEN.')
+                       % {'cpsession': cpsession})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            time.sleep(10)
+
+    def _delete_copysession(self, cpsession):
+        """delete copysession."""
+        LOG.debug('_delete_copysession: cpssession: %s.', cpsession)
+
+        try:
+            cpsession_instance = self._get_eternus_instance(
+                cpsession, LocalOnly=False)
+        except Exception:
+            LOG.info(_LI('_delete_copysession, '
+                         'The copysession was already completed.'))
+            return
+
+        copytype = cpsession_instance['CopyType']
+
+        # set oparation code
+        # SnapOPC: 19 (Return To ResourcePool)
+        # OPC:8 (Detach)
+        # EC/REC:8 (Detach)
+        operation = OPERATION_dic.get(copytype, None)
+        if operation is None:
+            msg = (_('_delete_copysession, '
+                     'copy session type is undefined! '
+                     'copy session: %(cpsession)s, '
+                     'copy type: %(copytype)s.')
+                   % {'cpsession': cpsession,
+                      'copytype': copytype})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        repservice = self._find_eternus_service(REPL)
+        if repservice is None:
+            msg = (_('_delete_copysession, '
+                     'Cannot find Replication Service'))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        # Invoke method for delete copysession
+        rc, errordesc, job = self._exec_eternus_service(
+            'ModifyReplicaSynchronization',
+            repservice,
+            Operation=self._pywbem_uint(operation, '16'),
+            Synchronization=cpsession,
+            Force=True,
+            WaitForCopyState=self._pywbem_uint(15, '16'))
+
+        LOG.debug('_delete_copysession, '
+                  'copysession: %(cpsession)s, '
+                  'operation: %(operation)s, '
+                  'Return code: %(rc)lu, '
+                  'Error: %(errordesc)s.',
+                  {'cpsession': cpsession,
+                   'operation': operation,
+                   'rc': rc,
+                   'errordesc': errordesc})
+
+        if rc == COPYSESSION_NOT_EXIST:
+            LOG.debug('_delete_copysession, '
+                      'cpsession: %(cpsession)s, '
+                      'copysession is not exist.',
+                      {'cpsession': cpsession})
+        elif rc != 0:
+            msg = (_('_delete_copysession, '
+                     'copysession: %(cpsession)s, '
+                     'operation: %(operation)s, '
+                     'Return code: %(rc)lu, '
+                     'Error: %(errordesc)s.')
+                   % {'cpsession': cpsession,
+                      'operation': operation,
+                      'rc': rc,
+                      'errordesc': errordesc})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def _get_target_port(self):
+        """return target portid."""
+        LOG.debug('_get_target_port, protocol: %s.', self.protocol)
+
+        target_portlist = []
+        if self.protocol == 'fc':
+            prtcl_endpoint = 'FUJITSU_SCSIProtocolEndpoint'
+            connection_type = 2
+        elif self.protocol == 'iSCSI':
+            prtcl_endpoint = 'FUJITSU_iSCSIProtocolEndpoint'
+            connection_type = 7
+
+        try:
+            tgtportlist = self._enum_eternus_instances(prtcl_endpoint)
+        except Exception:
+            msg = (_('_get_target_port, '
+                     'EnumerateInstances, '
+                     'cannot connect to ETERNUS.'))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        for tgtport in tgtportlist:
+            # Check : protocol of tgtport
+            if tgtport['ConnectionType'] != connection_type:
+                continue
+
+            # Check : if port is for remote copy, continue
+            if (tgtport['RAMode'] & 0x7B) != 0x00:
+                continue
+
+            # Check : if port is for StorageCluster, continue
+            if 'SCGroupNo' in tgtport:
+                continue
+
+            target_portlist.append(tgtport)
+
+            LOG.debug('_get_target_port, '
+                      'connection type: %(cont)s, '
+                      'ramode: %(ramode)s.',
+                      {'cont': tgtport['ConnectionType'],
+                       'ramode': tgtport['RAMode']})
+
+        LOG.debug('_get_target_port, '
+                  'target port: %(target_portid)s.',
+                  {'target_portid': target_portlist})
+
+        if len(target_portlist) == 0:
+            msg = (_('_get_target_port, '
+                     'protcol: %(protocol)s, '
+                     'target_port not found.')
+                   % {'protocol': self.protocol})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_get_target_port, ret: %s.', target_portlist)
+        return target_portlist
+
+    @lockutils.synchronized('ETERNUS-connect', 'cinder-', True)
+    def _map_lun(self, vol_instance, connector, targetlist=None):
+        """map volume to host."""
+        volumename = vol_instance['ElementName']
+        LOG.debug('_map_lun, '
+                  'volume name: %(vname)s, connector: %(connector)s.',
+                  {'vname': volumename, 'connector': connector})
+
+        volume_uid = vol_instance['Name']
+        initiatorlist = self._find_initiator_names(connector)
+        aglist = self._find_affinity_group(connector)
+        configservice = self._find_eternus_service(CTRL_CONF)
+
+        if targetlist is None:
+            targetlist = self._get_target_port()
+
+        if configservice is None:
+            msg = (_('_map_lun, '
+                     'vol_instance.path:%(vol)s, '
+                     'volumename: %(volumename)s, '
+                     'volume_uid: %(uid)s, '
+                     'initiator: %(initiator)s, '
+                     'target: %(tgt)s, '
+                     'aglist: %(aglist)s, '
+                     'Storage Configuration Service not found.')
+                   % {'vol': vol_instance.path,
+                      'volumename': volumename,
+                      'uid': volume_uid,
+                      'initiator': initiatorlist,
+                      'tgt': targetlist,
+                      'aglist': aglist})
+
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_map_lun, '
+                  'vol_instance.path: %(vol_instance)s, '
+                  'volumename:%(volumename)s, '
+                  'initiator:%(initiator)s, '
+                  'target:%(tgt)s.',
+                  {'vol_instance': vol_instance.path,
+                   'volumename': [volumename],
+                   'initiator': initiatorlist,
+                   'tgt': targetlist})
+
+        if not aglist:
+            # Create affinity group and set host-affinity.
+            for target in targetlist:
+                LOG.debug('_map_lun, '
+                          'lun_name: %(volume_uid)s, '
+                          'Initiator: %(initiator)s, '
+                          'target: %(target)s.',
+                          {'volume_uid': [volume_uid],
+                           'initiator': initiatorlist,
+                           'target': target['Name']})
+
+                rc, errordesc, job = self._exec_eternus_service(
+                    'ExposePaths',
+                    configservice,
+                    LUNames=[volume_uid],
+                    InitiatorPortIDs=initiatorlist,
+                    TargetPortIDs=[target['Name']],
+                    DeviceAccesses=[self._pywbem_uint(2, '16')])
+
+                LOG.debug('_map_lun, '
+                          'Error: %(errordesc)s, '
+                          'Return code: %(rc)lu, '
+                          'Create affinitygroup and set host-affinity.',
+                          {'errordesc': errordesc,
+                           'rc': rc})
+
+                if rc != 0 and rc != LUNAME_IN_USE:
+                    LOG.warning(_LW('_map_lun, '
+                                    'lun_name: %(volume_uid)s, '
+                                    'Initiator: %(initiator)s, '
+                                    'target: %(target)s, '
+                                    'Return code: %(rc)lu, '
+                                    'Error: %(errordesc)s.'),
+                                {'volume_uid': [volume_uid],
+                                 'initiator': initiatorlist,
+                                 'target': target['Name'],
+                                 'rc': rc,
+                                 'errordesc': errordesc})
+        else:
+            # Add lun to affinity group
+            for ag in aglist:
+                LOG.debug('_map_lun, '
+                          'ag: %(ag)s, lun_name: %(volume_uid)s.',
+                          {'ag': ag,
+                           'volume_uid': volume_uid})
+
+                rc, errordesc, job = self._exec_eternus_service(
+                    'ExposePaths',
+                    configservice, LUNames=[volume_uid],
+                    DeviceAccesses=[self._pywbem_uint(2, '16')],
+                    ProtocolControllers=[ag])
+
+                LOG.debug('_map_lun, '
+                          'Error: %(errordesc)s, '
+                          'Return code: %(rc)lu, '
+                          'Add lun to affinity group.',
+                          {'errordesc': errordesc,
+                           'rc': rc})
+
+                if rc != 0 and rc != LUNAME_IN_USE:
+                    LOG.warning(_LW('_map_lun, '
+                                    'lun_name: %(volume_uid)s, '
+                                    'Initiator: %(initiator)s, '
+                                    'ag: %(ag)s, '
+                                    'Return code: %(rc)lu, '
+                                    'Error: %(errordesc)s.'),
+                                {'volume_uid': [volume_uid],
+                                 'initiator': initiatorlist,
+                                 'ag': ag,
+                                 'rc': rc,
+                                 'errordesc': errordesc})
+
+    def _find_initiator_names(self, connector):
+        """return initiator names."""
+
+        initiatornamelist = []
+
+        if self.protocol == 'fc' and connector['wwpns']:
+            LOG.debug('_find_initiator_names, wwpns: %s.',
+                      connector['wwpns'])
+            initiatornamelist = connector['wwpns']
+        elif self.protocol == 'iSCSI' and connector['initiator']:
+            LOG.debug('_find_initiator_names, initiator: %s.',
+                      connector['initiator'])
+            initiatornamelist.append(connector['initiator'])
+
+        if not initiatornamelist:
+            msg = (_('_find_initiator_names, '
+                     'connector: %(connector)s, '
+                     'initiator not found.')
+                   % {'connector': connector})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_find_initiator_names, '
+                  'initiator list: %(initiator)s.',
+                  {'initiator': initiatornamelist})
+
+        return initiatornamelist
+
+    def _find_affinity_group(self, connector, vol_instance=None):
+        """find affinity group from connector."""
+        LOG.debug('_find_affinity_group, vol_instance: %s.', vol_instance)
+
+        affinity_grouplist = []
+        initiatorlist = self._find_initiator_names(connector)
+
+        if vol_instance is None:
+            try:
+                aglist = self._enum_eternus_instance_names(
+                    'FUJITSU_AffinityGroupController')
+            except Exception:
+                msg = (_('_find_affinity_group, '
+                         'connector: %(connector)s, '
+                         'EnumerateInstanceNames, '
+                         'cannot connect to ETERNUS.')
+                       % {'connector': connector})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            LOG.debug('_find_affinity_group,'
+                      'affinity_groups:%s', aglist)
+        else:
+            try:
+                aglist = self._assoc_eternus_names(
+                    vol_instance.path,
+                    AssocClass='FUJITSU_ProtocolControllerForUnit',
+                    ResultClass='FUJITSU_AffinityGroupController')
+            except Exception:
+                msg = (_('_find_affinity_group,'
+                         'connector: %(connector)s,'
+                         'AssocNames: FUJITSU_ProtocolControllerForUnit, '
+                         'cannot connect to ETERNUS.')
+                       % {'connector': connector})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            LOG.debug('_find_affinity_group, '
+                      'vol_instance.path: %(volume)s, '
+                      'affinity_groups: %(aglist)s.',
+                      {'volume': vol_instance.path,
+                       'aglist': aglist})
+
+        for ag in aglist:
+            try:
+                hostaglist = self._assoc_eternus(
+                    ag,
+                    AssocClass='FUJITSU_AuthorizedTarget',
+                    ResultClass='FUJITSU_AuthorizedPrivilege')
+            except Exception:
+                msg = (_('_find_affinity_group, '
+                         'connector: %(connector)s, '
+                         'Associators: FUJITSU_AuthorizedTarget, '
+                         'cannot connect to ETERNUS.')
+                       % {'connector': connector})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            for hostag in hostaglist:
+                for initiator in initiatorlist:
+                    if initiator.lower() not in hostag['InstanceID'].lower():
+                        continue
+
+                    LOG.debug('_find_affinity_group, '
+                              'AffinityGroup: %(ag)s.', {'ag': ag})
+                    affinity_grouplist.append(ag)
+                    break
+                break
+
+        LOG.debug('_find_affinity_group, '
+                  'initiators: %(initiator)s, '
+                  'affinity_group: %(affinity_group)s.',
+                  {'initiator': initiatorlist,
+                   'affinity_group': affinity_grouplist})
+        return affinity_grouplist
+
+    @lockutils.synchronized('ETERNUS-connect', 'cinder-', True)
+    def _unmap_lun(self, volume, connector, force=False):
+        """unmap volume from host."""
+        LOG.debug('_map_lun, volume id: %(vid)s, '
+                  'connector: %(connector)s, force: %(frc)s.',
+                  {'vid': volume['id'],
+                   'connector': connector, 'frc': force})
+
+        volumename = self._create_volume_name(volume['id'])
+        vol_instance = self._find_lun(volume)
+        if vol_instance is None:
+            LOG.info(_LI('_unmap_lun, '
+                         'volumename:%(volumename)s, '
+                         'volume not found.'),
+                     {'volumename': volumename})
+            return False
+
+        volume_uid = vol_instance['Name']
+
+        if not force:
+            aglist = self._find_affinity_group(connector, vol_instance)
+            if not aglist:
+                LOG.info(_LI('_unmap_lun, '
+                             'volumename: %(volumename)s, '
+                             'volume is not mapped.'),
+                         {'volumename': volumename})
+                return False
+        else:
+            try:
+                aglist = self._assoc_eternus_names(
+                    vol_instance.path,
+                    AssocClass='CIM_ProtocolControllerForUnit',
+                    ResultClass='FUJITSU_AffinityGroupController')
+            except Exception:
+                msg = (_('_unmap_lun,'
+                         'vol_instance.path: %(volume)s, '
+                         'AssociatorNames: CIM_ProtocolControllerForUnit, '
+                         'cannot connect to ETERNUS.')
+                       % {'volume': vol_instance.path})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            LOG.debug('_unmap_lun, '
+                      'vol_instance.path: %(volume)s, '
+                      'affinity_groups: %(aglist)s.',
+                      {'volume': vol_instance.path,
+                       'aglist': aglist})
+
+        configservice = self._find_eternus_service(CTRL_CONF)
+        if configservice is None:
+            msg = (_('_unmap_lun, '
+                     'vol_instance.path: %(volume)s, '
+                     'volumename: %(volumename)s, '
+                     'volume_uid: %(uid)s, '
+                     'aglist: %(aglist)s, '
+                     'Controller Configuration Service not found.')
+                   % {'vol': vol_instance.path,
+                      'volumename': [volumename],
+                      'uid': [volume_uid],
+                      'aglist': aglist})
+
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        for ag in aglist:
+            LOG.debug('_unmap_lun, '
+                      'volumename: %(volumename)s, '
+                      'volume_uid: %(volume_uid)s, '
+                      'AffinityGroup: %(ag)s.',
+                      {'volumename': volumename,
+                       'volume_uid': volume_uid,
+                       'ag': ag})
+
+            rc, errordesc, job = self._exec_eternus_service(
+                'HidePaths',
+                configservice,
+                LUNames=[volume_uid],
+                ProtocolControllers=[ag])
+
+            LOG.debug('_unmap_lun, '
+                      'Error: %(errordesc)s, '
+                      'Return code: %(rc)lu.',
+                      {'errordesc': errordesc,
+                       'rc': rc})
+
+            if rc == LUNAME_NOT_EXIST:
+                LOG.debug('_unmap_lun, '
+                          'volumename: %(volumename)s, '
+                          'Invalid LUNames.',
+                          {'volumename': volumename})
+            elif rc != 0:
+                msg = (_('_unmap_lun, '
+                         'volumename: %(volumename)s, '
+                         'volume_uid: %(volume_uid)s, '
+                         'AffinityGroup: %(ag)s, '
+                         'Return code: %(rc)lu, '
+                         'Error: %(errordesc)s.')
+                       % {'volumename': volumename,
+                          'volume_uid': volume_uid,
+                          'ag': ag,
+                          'rc': rc,
+                          'errordesc': errordesc})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.debug('_unmap_lun, '
+                  'volumename: %(volumename)s.',
+                  {'volumename': volumename})
+        return True
+
+    def _get_eternus_iscsi_properties(self):
+        """get target port iqns and target_portals."""
+
+        iscsi_properties_list = []
+        iscsiip_list = self._get_drvcfg('EternusISCSIIP', multiple=True)
+        iscsi_port = self.configuration.iscsi_port
+
+        LOG.debug('_get_eternus_iscsi_properties, iplist: %s.', iscsiip_list)
+
+        try:
+            ip_endpointlist = self._enum_eternus_instance_names(
+                'FUJITSU_IPProtocolEndpoint')
+        except Exception:
+            msg = (_('_get_eternus_iscsi_properties, '
+                     'iscsiip: %(iscsiip)s, '
+                     'EnumerateInstanceNames, '
+                     'cannot connect to ETERNUS.')
+                   % {'iscsiip': iscsiip_list})
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        for ip_endpoint in ip_endpointlist:
+            try:
+                ip_endpoint_instance = self._get_eternus_instance(
+                    ip_endpoint)
+                ip_address = ip_endpoint_instance['IPv4Address']
+                LOG.debug('_get_eternus_iscsi_properties, '
+                          'instanceip: %(ip)s, '
+                          'iscsiip: %(iscsiip)s.',
+                          {'ip': ip_address,
+                           'iscsiip': iscsiip_list})
+            except Exception:
+                msg = (_('_get_eternus_iscsi_properties, '
+                         'iscsiip: %(iscsiip)s, '
+                         'GetInstance, '
+                         'cannot connect to ETERNUS.')
+                       % {'iscsiip': iscsiip_list})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            if ip_address not in iscsiip_list:
+                continue
+
+            LOG.debug('_get_eternus_iscsi_properties, '
+                      'find iscsiip: %(ip)s.', {'ip': ip_address})
+            try:
+                tcp_endpointlist = self._assoc_eternus_names(
+                    ip_endpoint,
+                    AssocClass='CIM_BindsTo',
+                    ResultClass='FUJITSU_TCPProtocolEndpoint')
+            except Exception:
+                msg = (_('_get_eternus_iscsi_properties, '
+                         'iscsiip: %(iscsiip)s, '
+                         'AssociatorNames: CIM_BindsTo, '
+                         'cannot connect to ETERNUS.')
+                       % {'iscsiip': ip_address})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+
+            for tcp_endpoint in tcp_endpointlist:
+                try:
+                    iscsi_endpointlist = (
+                        self._assoc_eternus(tcp_endpoint,
+                                            AssocClass='CIM_BindsTo',
+                                            ResultClass='FUJITSU_iSCSI'
+                                            'ProtocolEndpoint'))
+                except Exception:
+                    msg = (_('_get_eternus_iscsi_properties, '
+                             'iscsiip: %(iscsiip)s, '
+                             'AssociatorNames: CIM_BindsTo, '
+                             'cannot connect to ETERNUS.')
+                           % {'iscsiip': ip_address})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+
+                for iscsi_endpoint in iscsi_endpointlist:
+                    target_portal = "%s:%s" % (ip_address, iscsi_port)
+                    iqn = iscsi_endpoint['Name'].split(',')[0]
+                    iscsi_properties_list.append((iscsi_endpoint.path,
+                                                  target_portal,
+                                                  iqn))
+                    LOG.debug('_get_eternus_iscsi_properties, '
+                              'target_portal: %(target_portal)s, '
+                              'iqn: %(iqn)s.',
+                              {'target_portal': target_portal,
+                               'iqn': iqn})
+
+        if len(iscsi_properties_list) == 0:
+            msg = (_('_get_eternus_iscsi_properties, '
+                     'iscsiip list: %(iscsiip_list)s, '
+                     'iqn not found.')
+                   % {'iscsiip_list': iscsiip_list})
+
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        LOG.debug('_get_eternus_iscsi_properties, '
+                  'iscsi_properties_list: %(iscsi_properties_list)s.',
+                  {'iscsi_properties_list': iscsi_properties_list})
+
+        return iscsi_properties_list
 
     def _wait_for_job_complete(self, conn, job):
-        """Given the job wait for it to complete.
-
-        :param conn: connection the ecom server
-        :param job: the job dict
-        """
+        """Given the job wait for it to complete."""
+        self.retries = 0
+        self.wait_for_job_called = False
 
         def _wait_for_job_complete():
-            """Called at an interval until the job is finished"""
+            """Called at an interval until the job is finished."""
             if self._is_job_finished(conn, job):
                 raise loopingcall.LoopingCallDone()
             if self.retries > JOB_RETRIES:
-                LOG.error(_LE("_wait_for_job_complete failed after %(retries)d"
-                          " tries") % {'retries': self.retries})
+                LOG.error(_LE("_wait_for_job_complete, "
+                              "failed after %(retries)d tries."),
+                          {'retries': self.retries})
                 raise loopingcall.LoopingCallDone()
+
             try:
                 self.retries += 1
                 if not self.wait_for_job_called:
                     if self._is_job_finished(conn, job):
                         self.wait_for_job_called = True
             except Exception as e:
-                LOG.error(_LE("Exception: %s") % six.text_type(e))
-                exceptionMessage = (_("Issue encountered waiting for job."))
+                LOG.error(_LE("Exception: %s"), e)
+                exceptionMessage = _("Issue encountered waiting for job.")
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(exceptionMessage)
 
-        self.retries = 0
         self.wait_for_job_called = False
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_job_complete)
-        timer.start(interval=INTERVAL_10_SEC).wait()
+        timer.start(interval=JOB_INTERVAL_SEC).wait()
 
         jobInstanceName = job['Job']
         jobinstance = conn.GetInstance(jobInstanceName,
                                        LocalOnly=False)
-        rc = jobinstance['ErrorCode']
-        errordesc = jobinstance['ErrorDescription']
 
-        return rc, errordesc
+        rc = jobinstance['ErrorCode']
+
+        LOG.debug('_wait_for_job_complete, rc: %s.', rc)
+        return rc
 
     def _is_job_finished(self, conn, job):
-        """Check if the job is finished.
-        :param conn: connection the ecom server
-        :param job: the job dict
-
-        :returns: True if finished; False if not finished;
-        """
+        """Check if the job is finished."""
         jobInstanceName = job['Job']
         jobinstance = conn.GetInstance(jobInstanceName,
                                        LocalOnly=False)
         jobstate = jobinstance['JobState']
+        LOG.debug('_is_job_finished,'
+                  'state: %(state)s', {'state': jobstate})
         # From ValueMap of JobState in CIM_ConcreteJob
-        # 2L=New, 3L=Starting, 4L=Running, 32767L=Queue Pending
+        # 2=New, 3=Starting, 4=Running, 32767=Queue Pending
         # ValueMap("2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13..32767,
         # 32768..65535"),
         # Values("New, Starting, Running, Suspended, Shutting Down,
@@ -1464,231 +2138,16 @@ class FJDXCommon(object):
         # NOTE(deva): string matching based on
         #             http://ipmitool.cvs.sourceforge.net/
         #               viewvc/ipmitool/ipmitool/lib/ipmi_chassis.c
-        if jobstate in [2L, 3L, 4L, 32767L]:
-            return False
+
+        if jobstate in [2, 3, 4]:
+            job_finished = False
         else:
-            return True
+            job_finished = True
 
-    def wait_for_sync(self, conn, syncName):
-        """Given the sync name wait for it to fully synchronize.
-        :param conn: connection the ecom server
-        :param syncName: the syncName
-        """
+        LOG.debug('_is_job_finished, finish: %s.', job_finished)
+        return job_finished
 
-        def _wait_for_sync():
-            """Called at an interval until the synchronization is finished"""
-            if self._is_sync_complete(conn, syncName):
-                raise loopingcall.LoopingCallDone()
-            if self.retries > JOB_RETRIES:
-                LOG.error(_LE("_wait_for_sync failed after %(retries)d tries")
-                          % {'retries': self.retries})
-                raise loopingcall.LoopingCallDone()
-            try:
-                self.retries += 1
-                if not self.wait_for_sync_called:
-                    if self._is_sync_complete(conn, syncName):
-                        self.wait_for_sync_called = True
-            except Exception as e:
-                LOG.error(_LE("Exception: %s") % six.text_type(e))
-                exceptionMessage = (_("Issue encountered waiting for "
-                                      "synchronization."))
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(exceptionMessage)
-
-        self.retries = 0
-        self.wait_for_sync_called = False
-        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_sync)
-        timer.start(interval=INTERVAL_10_SEC).wait()
-
-    def _is_sync_complete(self, conn, syncName):
-        """Check if the job is finished.
-        :param conn: connection the ecom server
-        :param syncName: the sync name
-
-        :returns: True if fully synchronized; False if not;
-        """
-        syncInstance = conn.GetInstance(syncName,
-                                        LocalOnly=False)
-        percentSynced = syncInstance['PercentSynced']
-
-        if percentSynced < 100:
-            return False
-        else:
-            return True
-
-    # Find LunMaskingSCSIProtocolController for the local host on the
-    # specified storage system
-    def _find_lunmasking_scsi_protocol_controller(self, storage_system,
-                                                  connector):
-        foundCtrls = []
-        initiators = self._find_initiator_names(connector)
-        controllers = self.conn.EnumerateInstanceNames(
-            SCSI_PROT_CTR)
-        for ctrl in controllers:
-            if storage_system != ctrl['SystemName']:
-                continue
-            associators =\
-                self.conn.Associators(ctrl,
-                                      ResultClass=AUTH_PRIV)
-            for assoc in associators:
-                for initiator in initiators:
-                    if initiator.lower() not in assoc['InstanceID'].lower():
-                        continue
-
-                    LOG.debug('_find_lunmasking_scsi_protocol_controller,'
-                              'AffinityGroup:%(ag)s'
-                              % {'ag': ctrl})
-                    foundCtrls.append(ctrl)
-                    break
-                break
-
-        LOG.debug("LunMaskingSCSIProtocolController for storage system "
-                  "%(storage_system)s and initiator %(initiator)s is  "
-                  "%(ctrl)s."
-                  % {'storage_system': storage_system,
-                     'initiator': initiators,
-                     'ctrl': foundCtrls})
-        return foundCtrls
-
-    # Find LunMaskingSCSIProtocolController for the local host and the
-    # specified storage volume
-    def _find_lunmasking_scsi_protocol_controller_for_vol(self, vol_instance,
-                                                          connector):
-        foundCtrls = []
-        initiators = self._find_initiator_names(connector)
-        controllers =\
-            self.conn.AssociatorNames(
-                vol_instance.path,
-                ResultClass=SCSI_PROT_CTR)
-        LOG.debug('_find_lunmasking_scsi_protocol_controller_for_vol:'
-                  'controllers:%(controllers)s'
-                  % {'controllers': controllers})
-        for ctrl in controllers:
-            associators =\
-                self.conn.Associators(
-                    ctrl,
-                    ResultClass=AUTH_PRIV)
-            foundCtrl = None
-            for assoc in associators:
-                for initiator in initiators:
-                    if initiator.lower() not in assoc['InstanceID'].lower():
-                        continue
-
-                    LOG.debug('_find_lunmasking_scsi_protocol_controller'
-                              '_for_vol,'
-                              'AffinityGroup:%(ag)s'
-                              % {'ag': ctrl})
-                    foundCtrl = ctrl
-                    foundCtrls.append(foundCtrl)
-                    break
-                if foundCtrl is not None:
-                    break
-
-        LOG.debug("LunMaskingSCSIProtocolController for storage volume "
-                  "%(vol)s and initiator %(initiator)s is  %(ctrl)s."
-                  % {'vol': vol_instance.path,
-                     'initiator': initiators,
-                     'ctrl': foundCtrls})
-        return foundCtrls
-
-    # Find out how many volumes are mapped to a host
-    # assoociated to the LunMaskingSCSIProtocolController
-    def get_num_volumes_mapped(self, volume, connector):
-        numVolumesMapped = 0
-        volumename = volume['name']
-        vol_instance = self._find_lun(volume)
-        if vol_instance is None:
-            msg = (_('Volume %(name)s not found on the array. '
-                     'Cannot determine if there are volumes mapped.')
-                   % {'name': volumename})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        storage_system = vol_instance['SystemName']
-
-        ctrl = self._find_lunmasking_scsi_protocol_controller(
-            storage_system,
-            connector)
-
-        LOG.debug("LunMaskingSCSIProtocolController for storage system "
-                  "%(storage)s and %(connector)s is %(ctrl)s."
-                  % {'storage': storage_system,
-                     'connector': connector,
-                     'ctrl': ctrl})
-
-        associators = self.conn.Associators(
-            ctrl,
-            resultClass=STOR_VOL)
-
-        numVolumesMapped = len(associators)
-
-        LOG.debug("Found %(numVolumesMapped)d volumes on storage system "
-                  "%(storage)s mapped to %(connector)s."
-                  % {'numVolumesMapped': numVolumesMapped,
-                     'storage': storage_system,
-                     'connector': connector})
-        return numVolumesMapped
-
-    # Find a device number that a host can see for a volume
-    def find_device_number(self, volume, connector):
-        out_num_device_number = None
-
-        volumename = self._create_volume_name(volume['id'])
-        vol_instance = self._find_lun(volume)
-        storage_system = vol_instance['SystemName']
-        sp = None
-
-        ctrls = self._find_lunmasking_scsi_protocol_controller_for_vol(
-            vol_instance,
-            connector)
-
-        LOG.debug("LunMaskingSCSIProtocolController for "
-                  "volume %(vol)s and connector %(connector)s "
-                  "is %(ctrl)s."
-                  % {'vol': vol_instance.path,
-                     'connector': connector,
-                     'ctrl': ctrls})
-
-        if len(ctrls) != 0:
-            unitnames = self.conn.ReferenceNames(
-                vol_instance.path,
-                ResultClass='CIM_ProtocolControllerForUnit')
-
-            for unitname in unitnames:
-                controller = unitname['Antecedent']
-                classname = controller['CreationClassName']
-                index = classname.find(SCSI_PROT_CTR)
-                if index > -1:
-                    if ctrls[0]['DeviceID'] != controller['DeviceID']:
-                        continue
-                    # Get an instance of CIM_ProtocolControllerForUnit
-                    unitinstance = self.conn.GetInstance(unitname,
-                                                         LocalOnly=False)
-                    numDeviceNumber = int(unitinstance['DeviceNumber'], 16)
-                    out_num_device_number = numDeviceNumber
-                    break
-
-        if out_num_device_number is None:
-            LOG.info(_LI("Device number not found for volume "
-                         "%(volumename)s %(vol_instance)s.")
-                     % {'volumename': volumename,
-                        'vol_instance': vol_instance.path})
-        else:
-            LOG.debug("Found device number %(device)d for volume "
-                      "%(volumename)s %(vol_instance)s." %
-                      {'device': out_num_device_number,
-                       'volumename': volumename,
-                       'vol_instance': vol_instance.path})
-
-        data = {'hostlunid': out_num_device_number,
-                'storagesystem': storage_system,
-                'owningsp': sp}
-
-        LOG.debug("Device info: %(data)s." % {'data': data})
-
-        return data
-
-    def _getnum(self, num, datatype):
+    def _pywbem_uint(self, num, datatype):
         try:
             result = {
                 '8': pywbem.Uint8(num),
@@ -1701,460 +2160,3 @@ class FJDXCommon(object):
             result = num
 
         return result
-
-    def _getinstancename(self, classname, bindings):
-        instancename = None
-        try:
-            instancename = pywbem.CIMInstanceName(
-                classname,
-                namespace=SMIS_ROOT,
-                keybindings=bindings)
-        except NameError:
-            instancename = None
-
-        return instancename
-
-    # Find Storage Hardware IDs
-    def _find_storage_hardwareids(self, connector):
-        foundInstances = []
-        wwpns = self._find_initiator_names(connector)
-        hardwareids = self.conn.EnumerateInstances(
-            STOR_HWID)
-        for hardwareid in hardwareids:
-            storid = hardwareid['StorageID']
-            for wwpn in wwpns:
-                if wwpn.lower() == storid.lower():
-                    foundInstances.append(hardwareid.path)
-
-        LOG.debug("Storage Hardware IDs for %(wwpns)s is "
-                  "%(foundInstances)s."
-                  % {'wwpns': wwpns,
-                     'foundInstances': foundInstances})
-
-        return foundInstances
-
-    def _get_volumetype_extraspecs(self, volume):
-        specs = {}
-        type_id = volume['volume_type_id']
-        if type_id is not None:
-            specs = volume_types.get_volume_type_extra_specs(type_id)
-            # If specs['storagetype:pool'] not defined,
-            # set specs to {} so we can ready from config file later
-            if POOL not in specs:
-                specs = {}
-
-        return specs
-
-    def _get_provisioning(self, storage_type):
-        # provisioning is thin (5) by default
-        provisioning = 5
-        thick_str = 'thick'
-        try:
-            type_prov = storage_type[PROVISIONING]
-            if type_prov.lower() == thick_str.lower():
-                provisioning = 2
-        except KeyError:
-            # Default to thin if not defined
-            pass
-
-        return provisioning
-
-    def _create_volume_name(self, id_code):
-        """create volume_name on ETERNUS from id on OpenStack."""
-
-        LOG.debug('_create_volume_name [%s],Enter method.'
-                  % id_code)
-
-        if id_code is None:
-            msg = (_('_create_volume_name,'
-                     'id_code is None.'))
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # pylint: disable=E1101
-        m = hashlib.md5()
-        m.update(id_code)
-        # pylint: disable=E1121
-        volname = base64.urlsafe_b64encode((m.digest()))
-        ret = VOL_PREFIX + six.text_type(volname)
-
-        LOG.debug('_create_volume_name:  '
-                  '  id:%(id)s'
-                  '  volumename:%(ret)s'
-                  '  Exit method.'
-                  % {'id': id_code, 'ret': ret})
-
-        return ret
-
-    def _get_pool_instance_id(self, poolname):
-        """get pool instacne_id from pool name"""
-        LOG.debug('_get_pool_instance_id,'
-                  'Enter method,poolname:%s'
-                  % (poolname))
-
-        poolinstanceid = None
-        pool = None
-        pools = []
-        msg = None
-
-        try:
-            pools = self.conn.EnumerateInstances(
-                'CIM_StoragePool')
-        except Exception:
-            msg = (_('_get_pool_instance_id,'
-                     'poolname:%(poolname)s,'
-                     'EnumerateInstances,'
-                     'cannot connect to ETERNUS.')
-                   % {'poolname': poolname})
-
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        for pool in pools:
-            pool_elementname = pool['ElementName']
-            poolclass = pool.path.classname
-            LOG.debug('poolname from file or VolumeType:%s'
-                      '  poolname from smis:%s'
-                      '  poolclass from smis:%s'
-                      % (poolname, pool_elementname, poolclass))
-
-            if six.text_type(poolname) == six.text_type(pool_elementname):
-                if poolclass in STOR_POOLS:
-                    poolinstanceid = pool['InstanceID']
-                    break
-
-        if poolinstanceid is None:
-            msg = (_('_get_pool_instance_id,'
-                     'poolname:%(poolname)s,'
-                     'poolinstanceid is None.')
-                   % {'poolname': poolname})
-            LOG.info(msg)
-
-        LOG.debug('_get_pool_instance_id,'
-                  'Exit method,poolinstanceid:%s'
-                  % (poolinstanceid))
-
-        return poolinstanceid
-
-    def get_target_portid(self, connector):
-        """return target_portid"""
-
-        LOG.debug('get_target_portid,Enter method')
-
-        target_portidlist = []
-        tgtportlist = []
-        tgtport = None
-        conn_type = {'fc': 2, 'iscsi': 7}
-
-        try:
-            tgtportlist = self.conn.EnumerateInstances(
-                'CIM_SCSIProtocolEndpoint')
-        except Exception:
-            msg = (_('get_target_portid,'
-                     'connector:%(connector)s,'
-                     'EnumerateInstances,'
-                     'cannot connect to ETERNUS.')
-                   % {'connector': connector})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        for tgtport in tgtportlist:
-            if tgtport['ConnectionType'] == conn_type[self.protocol.lower()]:
-                target_portidlist.append(tgtport['Name'])
-
-                LOG.debug('get_target_portid,'
-                          'portid:%(portid)s,'
-                          'connection type:%(cont)s,'
-                          % {'portid': tgtport['Name'],
-                             'cont': tgtport['ConnectionType']})
-
-        LOG.debug('get_target_portid,'
-                  'target portid: %(target_portid)s '
-                  % {'target_portid': target_portidlist})
-
-        if len(target_portidlist) == 0:
-            msg = (_('get_target_portid,'
-                     'protcol:%(protocol)s,'
-                     'connector:%(connector)s,'
-                     'target_portid does not found.')
-                   % {'protocol': self.protocol,
-                      'connector': connector})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        LOG.debug('get_target_portid,Exit method')
-
-        return target_portidlist
-
-    def _find_copysession(self, volume):
-        """find copysession from volumename on ETERNUS"""
-        LOG.debug('_find_copysession, Enter method')
-
-        cpsession = None
-        vol_instance = None
-        repservice = None
-        rc = 0
-        replicarellist = None
-        replicarel = None
-        snapshot_vol_instance = None
-        msg = None
-        errordesc = None
-
-        vol_instance = self._find_lun(volume)
-        if vol_instance is None:
-            return None, None
-
-        volumename = vol_instance['ElementName']
-        storage_system = vol_instance['SystemName']
-        if vol_instance is not None:
-            # find target_volume
-
-            # get copysession list
-            repservice = self._find_replication_service(storage_system)
-            if repservice is None:
-                msg = (_('_find_copysession,'
-                         'Cannot find Replication Service to '
-                         'find copysession'))
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-            def _wait_for_job(repservice):
-                cpsession_instance = None
-                LOG.debug('_find_copysession,source_volume'
-                          ' while copysession')
-                cpsession = None
-
-                rc, replicarellist = self.conn.InvokeMethod(
-                    'GetReplicationRelationships',
-                    repservice,
-                    Type=self._getnum(2, '16'),
-                    Mode=self._getnum(2, '16'),
-                    Locality=self._getnum(2, '16'))
-                errordesc = RETCODE_dic[six.text_type(rc)]
-
-                if rc != 0L:
-                    msg = (_('_find_copysession,'
-                             'source_volumename:%(volumename)s,'
-                             'Return code:%(rc)lu,'
-                             'Error:%(errordesc)s')
-                           % {'volumename': volumename,
-                              'rc': rc,
-                              'errordesc': errordesc})
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
-
-                for replicarel in replicarellist['Synchronizations']:
-                    LOG.debug('_find_copysession,'
-                              'source_volume,'
-                              'replicarel:%(replicarel)s'
-                              % {'replicarel': replicarel})
-                    try:
-                        snapshot_vol_instance = self.conn.GetInstance(
-                            replicarel['SystemElement'],
-                            LocalOnly=False)
-                    except Exception:
-                        msg = (_('_find_copysession,'
-                                 'source_volumename:%(volumename)s,'
-                                 'GetInstance,'
-                                 'cannot connect to ETERNUS.')
-                               % {'volumename': volumename})
-                        LOG.error(msg)
-                        raise exception.VolumeBackendAPIException(data=msg)
-
-                    LOG.debug('_find_copysession,'
-                              'snapshot ElementName:%(elementname)s,'
-                              'source_volumename:%(volumename)s'
-                              % {'elementname':
-                                 snapshot_vol_instance['ElementName'],
-                                 'volumename': volumename})
-
-                    if volumename == snapshot_vol_instance['ElementName']:
-                        # find copysession
-                        cpsession = replicarel
-                        LOG.debug('_find_copysession,'
-                                  'volumename:%(volumename)s,'
-                                  'Storage Synchronized instance:%(sync)s'
-                                  % {'volumename': volumename,
-                                     'sync': six.text_type(cpsession)})
-                        msg = (_('_find_copy_session,'
-                                 'source_volumename:%(volumename)s,'
-                                 'wait for end of copysession')
-                               % {'volumename': volumename})
-                        LOG.info(msg)
-
-                        try:
-                            cpsession_instance = self.conn.GetInstance(
-                                replicarel)
-                        except Exception:
-                            break
-
-                        LOG.debug('_find_copysession,'
-                                  'status:%(status)s'
-                                  % {'status':
-                                     cpsession_instance['CopyState']})
-                        if cpsession_instance['CopyState'] == BROKEN:
-                            msg = (_('_find_copysession,'
-                                     'source_volumename:%(volumename)s,'
-                                     'copysession state is BROKEN')
-                                   % {'volumename': volumename})
-                            LOG.error(msg)
-                            raise exception.VolumeBackendAPIException(data=msg)
-                        break
-                else:
-                    LOG.debug('_find_copysession,'
-                              'volumename:%(volumename)s,'
-                              'Storage Synchronized not found.'
-                              % {'volumename': volumename})
-
-                if cpsession is None:
-                    raise loopingcall.LoopingCallDone()
-
-            timer = loopingcall.FixedIntervalLoopingCall(
-                _wait_for_job, repservice)
-            timer.start(interval=10).wait()
-
-            rc, replicarellist = self.conn.InvokeMethod(
-                'GetReplicationRelationships',
-                repservice,
-                Type=self._getnum(2, '16'),
-                Mode=self._getnum(2, '16'),
-                Locality=self._getnum(2, '16'))
-            errordesc = RETCODE_dic[six.text_type(rc)]
-
-            if rc != 0L:
-                msg = (_('_find_copysession,'
-                         'source_volumename:%(volumename)s,'
-                         'Return code:%(rc)lu,'
-                         'Error:%(errordesc)s')
-                       % {'volumename': volumename,
-                          'rc': rc,
-                          'errordesc': errordesc})
-                LOG.error(msg)
-                raise exception.VolumeBackendAPIException(data=msg)
-
-            # find copysession for target_volume
-            for replicarel in replicarellist['Synchronizations']:
-                LOG.debug('_find_copysession,'
-                          'replicarel:%(replicarel)s'
-                          % {'replicarel': replicarel})
-
-                # target volume
-                try:
-                    snapshot_vol_instance = self.conn.GetInstance(
-                        replicarel['SyncedElement'],
-                        LocalOnly=False)
-                except Exception:
-                    msg = (_('_find_copysession,'
-                             'target_volumename:%(volumename)s,'
-                             'GetInstance,'
-                             'cannot connect to ETERNUS.')
-                           % {'volumename': volumename})
-                    LOG.error(msg)
-                    raise exception.VolumeBackendAPIException(data=msg)
-                LOG.debug('_find_copysession,'
-                          'snapshot ElementName:%(elementname)s,'
-                          'volumename:%(volumename)s'
-                          % {'elementname':
-                             snapshot_vol_instance['ElementName'],
-                             'volumename': volumename})
-
-                if volumename == snapshot_vol_instance['ElementName']:
-                    # find copysession
-                    cpsession = replicarel
-                    LOG.debug('_find_copysession,'
-                              'volumename:%(volumename)s,'
-                              'Storage Synchronized instance:%(sync)s'
-                              % {'volumename': volumename,
-                                 'sync': six.text_type(cpsession)})
-                    break
-
-            else:
-                LOG.debug('_find_copysession,'
-                          'volumename:%(volumename)s,'
-                          'Storage Synchronized not found.'
-                          % {'volumename': volumename})
-
-        else:
-            # does not find target_volume of copysession
-            msg = (_('_find_copysession,'
-                     'volumename:%(volumename)s,'
-                     'not found.')
-                   % {'volumename': volumename})
-            LOG.info(msg)
-
-        LOG.debug('_find_copysession,Exit method')
-
-        return cpsession, storage_system
-
-    def _delete_copysession(self, storage_system, cpsession):
-        """delete copysession"""
-        LOG.debug('_delete_copysession,Entering')
-        LOG.debug('_delete_copysession,[%s]' % cpsession)
-
-        snapshot_instance = None
-        msg = None
-        errordesc = None
-
-        try:
-            snapshot_instance = self.conn.GetInstance(
-                cpsession,
-                LocalOnly=False)
-        except Exception:
-            msg = (_('_delete_copysession, '
-                     'copysession:%(cpsession)s,'
-                     'GetInstance,'
-                     'cannot connect to ETERNUS.')
-                   % {'cpsession': cpsession})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        copytype = snapshot_instance['CopyType']
-
-        # set oparation code
-        operation = OPERATION_dic[copytype]
-
-        repservice = self._find_replication_service(storage_system)
-        if repservice is None:
-            msg = (_('_delete_copysession,'
-                     'Cannot find Replication Service to '
-                     'delete copysession'))
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        # Invoke method for delete copysession
-        rc, job = self.conn.InvokeMethod(
-            'ModifyReplicaSynchronization',
-            repservice,
-            Operation=self._getnum(operation, '16'),
-            Synchronization=cpsession,
-            Force=True,
-            WaitForCopyState=self._getnum(15, '16'))
-
-        errordesc = RETCODE_dic[six.text_type(rc)]
-
-        LOG.debug('_delete_copysession,'
-                  'copysession:%(cpsession)s,'
-                  'operation:%(operation)s,'
-                  'Return code:%(rc)lu,'
-                  'Error:%(errordesc)s,'
-                  'Exit method'
-                  % {'cpsession': cpsession,
-                     'operation': operation,
-                     'rc': rc,
-                     'errordesc': errordesc})
-
-        if rc != 0L:
-            msg = (_('_delete_copysession,'
-                     'copysession:%(cpsession)s,'
-                     'operation:%(operation)s,'
-                     'Return code:%(rc)lu,'
-                     'Error:%(errordesc)s')
-                   % {'cpsession': cpsession,
-                      'operation': operation,
-                      'rc': rc,
-                      'errordesc': errordesc})
-
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        return

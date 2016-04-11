@@ -1,0 +1,3 @@
+---
+upgrade:
+  - The VMware VMDK driver for ESX server has been removed.

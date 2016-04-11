@@ -1,0 +1,3 @@
+---
+features:
+  - Added support for API microversions, as well as /v3 API endpoint.

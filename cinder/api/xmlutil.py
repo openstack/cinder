@@ -17,6 +17,7 @@ import os.path
 import re
 
 from lxml import etree
+import six
 
 from cinder.i18n import _
 from cinder import utils
@@ -207,7 +208,7 @@ class TemplateElement(object):
     def __getitem__(self, idx):
         """Retrieve a child node by index or name."""
 
-        if isinstance(idx, basestring):
+        if isinstance(idx, six.string_types):
             # Allow access by node name
             return self._childmap[idx]
         else:
@@ -338,12 +339,12 @@ class TemplateElement(object):
 
         # Start with the text...
         if self.text is not None:
-            elem.text = unicode(self.text(obj))
+            elem.text = six.text_type(self.text(obj))
 
         # Now set up all the attributes...
         for key, value in self.attrib.items():
             try:
-                elem.set(key, unicode(value(obj, True)))
+                elem.set(key, six.text_type(value(obj, True)))
             except KeyError:
                 # Attribute has no value, so don't include it
                 pass
@@ -351,7 +352,7 @@ class TemplateElement(object):
     def getAttrib(self, obj):
         """Get attribute."""
         tmpattrib = {}
-        #Now set up all the attributes...
+        # Now set up all the attributes...
         for key, value in self.attrib.items():
             try:
                 tmpattrib[key] = value(obj)
@@ -393,13 +394,13 @@ class TemplateElement(object):
         tagnameList = self._splitTagName(tagname)
         insertIndex = 0
 
-        #If parent is not none and has same tagname
+        # If parent is not none and has same tagname
         if parent is not None:
             for i in range(0, len(tagnameList)):
                 tmpInsertPos = parent.find(tagnameList[i])
                 if tmpInsertPos is None:
                     break
-                elif not cmp(parent.attrib, tmpattrib) == 0:
+                elif parent.attrib != tmpattrib:
                     break
                 parent = tmpInsertPos
                 insertIndex = i + 1
@@ -407,19 +408,19 @@ class TemplateElement(object):
         if insertIndex >= len(tagnameList):
             insertIndex = insertIndex - 1
 
-        #Create root elem
+        # Create root elem
         elem = etree.Element(tagnameList[insertIndex], nsmap=nsmap)
         rootelem = elem
         subelem = elem
 
-        #Create subelem
+        # Create subelem
         for i in range((insertIndex + 1), len(tagnameList)):
             subelem = etree.SubElement(elem, tagnameList[i])
             elem = subelem
 
         # If we have a parent, append the node to the parent
         if parent is not None:
-            #If we can merge this element, then insert
+            # If we can merge this element, then insert
             if insertIndex > 0:
                 parent.insert(len(list(parent)), rootelem)
             else:

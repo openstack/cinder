@@ -32,6 +32,7 @@ from cinder.tests.unit.api.contrib import test_backups
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
 from cinder.tests.unit import cast_as_call
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.volume import api as volume_api
 
@@ -688,12 +689,12 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.volume_api.reserve_volume(self.ctx, volume)
         mountpoint = '/dev/vbd'
-        attachment = self.volume_api.attach(self.ctx, volume, stubs.FAKE_UUID,
+        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
                                             None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
-        self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
+        self.assertEqual(stubs.fake.instance_id, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
@@ -792,12 +793,12 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.volume_api.reserve_volume(self.ctx, volume)
         mountpoint = '/dev/vbd'
-        attachment = self.volume_api.attach(self.ctx, volume, stubs.FAKE_UUID,
+        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
                                             None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
-        self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
+        self.assertEqual(fake.instance_id, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
@@ -874,12 +875,12 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.volume_api.reserve_volume(self.ctx, volume)
         mountpoint = '/dev/vbd'
-        attachment = self.volume_api.attach(self.ctx, volume, stubs.FAKE_UUID,
+        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
                                             None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
-        self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
+        self.assertEqual(fake.instance_id, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
@@ -982,10 +983,10 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                                         {"attached_mode": 'rw'}, False)
         mountpoint = '/dev/vbd'
         attachment = self.volume_api.attach(self.ctx, volume,
-                                            stubs.FAKE_UUID, None,
+                                            fake.instance_id, None,
                                             mountpoint, 'rw')
 
-        self.assertEqual(stubs.FAKE_UUID, attachment['instance_uuid'])
+        self.assertEqual(fake.instance_id, attachment['instance_uuid'])
         self.assertEqual(volume['id'], attachment['volume_id'], volume['id'])
         self.assertEqual('attached', attachment['attach_status'])
 

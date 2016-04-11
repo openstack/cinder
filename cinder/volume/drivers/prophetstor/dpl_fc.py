@@ -15,10 +15,10 @@
 
 import errno
 
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.prophetstor import dplcommon
 from cinder.zonemanager import utils as fczm_utils
@@ -32,14 +32,15 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         super(DPLFCDriver, self).__init__(*args, **kwargs)
 
     def _get_fc_channel(self):
-        """return :
-                fcInfos[uuid]
-                    fcInfo[uuid]['display_name']
-                    fcInfo[uuid]['display_description']
-                    fcInfo[uuid]['hardware_address']
-                    fcInfo[uuid]['type']
-                    fcInfo[uuid]['speed']
-                    fcInfo[uuid]['state']
+        """Get FibreChannel info.
+
+        :returns: fcInfos[uuid]
+                  fcInfo[uuid]['display_name']
+                  fcInfo[uuid]['display_description']
+                  fcInfo[uuid]['hardware_address']
+                  fcInfo[uuid]['type']
+                  fcInfo[uuid]['speed']
+                  fcInfo[uuid]['state']
         """
         output = None
         fcInfos = {}
@@ -60,11 +61,12 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
         return fcInfos
 
     def _get_targets(self):
-        """return::
-                targetInfos[uuid] = targetInfo
-                targetInfo['targetUuid']
-                targetInfo['targetName']
-                targetInfo['targetAddr']
+        """Get targets.
+
+        :returns: targetInfos[uuid] = targetInfo
+                  targetInfo['targetUuid']
+                  targetInfo['targetName']
+                  targetInfo['targetAddr']
         """
         output = None
         targetInfos = {}
@@ -135,10 +137,9 @@ class DPLFCDriver(dplcommon.DPLCOMMONDriver,
     def _export_fc(self, volumeid, targetwwpns, initiatorwwpns, volumename):
         ret = 0
         output = ''
-        msg = _('Export fc: %(volume)s, %(wwpns)s, %(iqn)s, %(volumename)s') \
-            % {'volume': volumeid, 'wwpns': targetwwpns,
-               'iqn': initiatorwwpns, 'volumename': volumename}
-        LOG.debug(msg)
+        LOG.debug('Export fc: %(volume)s, %(wwpns)s, %(iqn)s, %(volumename)s',
+                  {'volume': volumeid, 'wwpns': targetwwpns,
+                   'iqn': initiatorwwpns, 'volumename': volumename})
         try:
             ret, output = self.dpl.assign_vdev_fc(
                 self._conver_uuid2hex(volumeid), targetwwpns,

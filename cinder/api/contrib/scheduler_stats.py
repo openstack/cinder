@@ -14,10 +14,11 @@
 
 """The Scheduler Stats extension"""
 
+from oslo_log import log as logging
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import scheduler_stats as scheduler_stats_view
-from cinder.openstack.common import log as logging
 from cinder.scheduler import rpcapi
 
 
@@ -43,7 +44,7 @@ class SchedulerStatsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context, 'get_pools')
 
-        #TODO(zhiteng) Add filters support
+        # TODO(zhiteng) Add filters support
         detail = req.params.get('detail', False)
         pools = self.scheduler_api.get_pools(context, filters=None)
 

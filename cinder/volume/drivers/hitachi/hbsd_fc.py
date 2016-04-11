@@ -16,17 +16,16 @@ Fibre channel Cinder volume driver for Hitachi storage.
 
 """
 
-from contextlib import nested
 import os
 import threading
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
 from cinder import exception
-from cinder.i18n import _LW
-from cinder.openstack.common import log as logging
+from cinder.i18n import _LI, _LW
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
@@ -84,8 +83,8 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             for opt in volume_opts:
                 if not opt.secret:
                     value = getattr(self.configuration, opt.name)
-                    LOG.info('\t%-35s%s' %
-                             (opt.name + ': ', six.text_type(value)))
+                    LOG.info(_LI('\t%(name)-35s : %(value)s'),
+                             {'name': opt.name, 'value': value})
             self.common.command.output_param_to_log(self.configuration)
 
     def _add_wwn(self, hgs, port, gid, wwns):
@@ -95,7 +94,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             detected = self.common.command.is_detected(port, wwn)
             hgs.append({'port': port, 'gid': gid, 'initiator_wwn': wwn,
                         'detected': detected})
-        LOG.debug('Create host group for %s' % hgs)
+        LOG.debug('Create host group for %s', hgs)
 
     def _add_lun(self, hostgroups, ldev):
         if hostgroups is self.pair_hostgroups:
@@ -108,8 +107,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         try:
             self.common.command.comm_delete_lun(hostgroups, ldev)
         except exception.HBSDNotFound:
-            msg = basic_lib.set_msg(301, ldev=ldev)
-            LOG.warning(msg)
+            LOG.warning(basic_lib.set_msg(301, ldev=ldev))
 
     def _get_hgname_gid(self, port, host_grp_name):
         return self.common.command.get_hgname_gid(port, host_grp_name)
@@ -128,9 +126,9 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
     def _fill_group(self, hgs, port, host_grp_name, wwns):
         added_hostgroup = False
         LOG.debug('Create host group (hgs: %(hgs)s port: %(port)s '
-                  'name: %(name)s wwns: %(wwns)s)'
-                  % {'hgs': hgs, 'port': port,
-                     'name': host_grp_name, 'wwns': wwns})
+                  'name: %(name)s wwns: %(wwns)s)',
+                  {'hgs': hgs, 'port': port,
+                   'name': host_grp_name, 'wwns': wwns})
         gid = self._get_hgname_gid(port, host_grp_name)
         if gid is None:
             for retry_cnt in basic_lib.DEFAULT_TRY_RANGE:
@@ -140,13 +138,12 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
                     added_hostgroup = True
                 except exception.HBSDNotFound:
                     gid = None
-                    msg = basic_lib.set_msg(312, resource='GID')
-                    LOG.warning(msg)
+                    LOG.warning(basic_lib.set_msg(312, resource='GID'))
                     continue
                 else:
                     LOG.debug('Completed to add host target'
-                              '(port: %(port)s gid: %(gid)d)'
-                              % {'port': port, 'gid': gid})
+                              '(port: %(port)s gid: %(gid)d)',
+                              {'port': port, 'gid': gid})
                     break
             else:
                 msg = basic_lib.output_err(641)
@@ -181,15 +178,12 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
                     try:
                         self._fill_group(hgs, port, host_grp_name, wwns_copy)
                     except Exception as ex:
-                        LOG.warning(_LW('Failed to add host group: %s') %
-                                    six.text_type(ex))
-                        msg = basic_lib.set_msg(
-                            308, port=port, name=host_grp_name)
-                        LOG.warning(msg)
+                        LOG.warning(_LW('Failed to add host group: %s'), ex)
+                        LOG.warning(basic_lib.set_msg(
+                            308, port=port, name=host_grp_name))
 
         if not hgs:
-            msg = basic_lib.output_err(649)
-            raise exception.HBSDError(message=msg)
+            raise exception.HBSDError(message=basic_lib.output_err(649))
 
     def add_hostgroup_pair(self, pair_hostgroups):
         if self.configuration.hitachi_unit_name:
@@ -233,7 +227,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         if 'wwpns' not in properties:
             msg = basic_lib.output_err(650, resource='HBA')
             raise exception.HBSDError(message=msg)
-        LOG.debug("wwpns: %s" % properties['wwpns'])
+        LOG.debug("wwpns: %s", properties['wwpns'])
 
         hostgroups = []
         security_ports = self._get_hostgroup_info(
@@ -255,9 +249,8 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             self.common.command.comm_del_hostgrp(port, gid, host_grp_name)
         except Exception:
             with excutils.save_and_reraise_exception():
-                msg = basic_lib.set_msg(
-                    306, port=port, gid=gid, name=host_grp_name)
-                LOG.warning(msg)
+                LOG.warning(basic_lib.set_msg(
+                    306, port=port, gid=gid, name=host_grp_name))
 
     def _check_volume_mapping(self, hostgroup):
         port = hostgroup['port']
@@ -373,8 +366,8 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
 
     def _initialize_connection(self, ldev, connector, src_hgs=None):
         LOG.debug("Call _initialize_connection "
-                  "(config_group: %(group)s ldev: %(ldev)d)"
-                  % {'group': self.configuration.config_group, 'ldev': ldev})
+                  "(config_group: %(group)s ldev: %(ldev)d)",
+                  {'group': self.configuration.config_group, 'ldev': ldev})
         if src_hgs is self.pair_hostgroups:
             hostgroups = src_hgs
         else:
@@ -388,8 +381,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             try:
                 self._add_lun(hostgroups, ldev)
             except exception.HBSDNotFound:
-                msg = basic_lib.set_msg(311, ldev=ldev)
-                LOG.warning(msg)
+                LOG.warning(basic_lib.set_msg(311, ldev=ldev))
                 for i in range(self.max_hostgroups + 1):
                     self.pair_hostnum += 1
                     pair_hostgroups = []
@@ -416,22 +408,22 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             msg = basic_lib.output_err(619, volume_id=volume['id'])
             raise exception.HBSDError(message=msg)
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             hostgroups = self._initialize_connection(ldev, connector)
             properties = self._get_properties(volume, hostgroups)
-            LOG.debug('Initialize volume_info: %s'
-                      % self.common.volume_info)
+            LOG.debug('Initialize volume_info: %s',
+                      self.common.volume_info)
 
-        LOG.debug('HFCDrv: properties=%s' % properties)
+        LOG.debug('HFCDrv: properties=%s', properties)
         return {
             'driver_volume_type': 'fibre_channel',
             'data': properties
         }
 
     def _terminate_connection(self, ldev, connector, src_hgs):
-        LOG.debug("Call _terminate_connection(config_group: %s)"
-                  % self.configuration.config_group)
+        LOG.debug("Call _terminate_connection(config_group: %s)",
+                  self.configuration.config_group)
         hostgroups = src_hgs[:]
         self._delete_lun(hostgroups, ldev)
         LOG.debug("*** _terminate_ ***")
@@ -441,8 +433,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
         self.do_setup_status.wait()
         ldev = self.common.get_ldev(volume)
         if ldev is None:
-            msg = basic_lib.set_msg(302, volume_id=volume['id'])
-            LOG.warning(msg)
+            LOG.warning(basic_lib.set_msg(302, volume_id=volume['id']))
             return
 
         if 'wwpns' not in connector:
@@ -457,12 +448,12 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
             raise exception.HBSDError(message=msg)
 
         self.common.add_volinfo(ldev, volume['id'])
-        with nested(self.common.volume_info[ldev]['lock'],
-                    self.common.volume_info[ldev]['in_use']):
+        with self.common.volume_info[ldev]['lock'],\
+                self.common.volume_info[ldev]['in_use']:
             self._terminate_connection(ldev, connector, hostgroups)
             properties = self._get_properties(volume, hostgroups,
                                               terminate=True)
-            LOG.debug('Terminate volume_info: %s' % self.common.volume_info)
+            LOG.debug('Terminate volume_info: %s', self.common.volume_info)
 
         return {
             'driver_volume_type': 'fibre_channel',
@@ -482,7 +473,7 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
     def discard_zero_page(self, volume):
         self.common.command.discard_zero_page(self.common.get_ldev(volume))
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         pass
 
     def ensure_export(self, context, volume):
@@ -490,12 +481,6 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
 
     def remove_export(self, context, volume):
         pass
-
-    def copy_volume_data(self, context, src_vol, dest_vol, remote=None):
-        self.do_setup_status.wait()
-        super(HBSDFCDriver, self).copy_volume_data(context, src_vol,
-                                                   dest_vol, remote)
-        self.discard_zero_page(dest_vol)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         self.do_setup_status.wait()
@@ -506,13 +491,29 @@ class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         self.do_setup_status.wait()
-        if (volume['instance_uuid'] or volume['attached_host']):
+        if volume['volume_attachment']:
             desc = 'volume %s' % volume['id']
             msg = basic_lib.output_err(660, desc=desc)
             raise exception.HBSDError(message=msg)
         super(HBSDFCDriver, self).copy_volume_to_image(context, volume,
                                                        image_service,
                                                        image_meta)
+
+    def before_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions before copyvolume data.
+
+        This method will be called before _copy_volume_data during volume
+        migration
+        """
+        self.do_setup_status.wait()
+
+    def after_volume_copy(self, context, src_vol, dest_vol, remote=None):
+        """Driver-specific actions after copyvolume data.
+
+        This method will be called after _copy_volume_data during volume
+        migration
+        """
+        self.discard_zero_page(dest_vol)
 
     def restore_backup(self, context, backup, volume, backup_service):
         self.do_setup_status.wait()

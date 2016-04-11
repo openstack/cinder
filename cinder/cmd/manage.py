@@ -55,16 +55,16 @@
 from __future__ import print_function
 
 
+import logging as python_logging
 import os
 import sys
-import warnings
 
-warnings.simplefilter('once', DeprecationWarning)
-
-from oslo import messaging
 from oslo_config import cfg
+from oslo_db import exception as db_exc
 from oslo_db.sqlalchemy import migration
-from oslo_utils import uuidutils
+from oslo_log import log as logging
+import oslo_messaging as messaging
+from oslo_utils import timeutils
 
 from cinder import i18n
 i18n.enable_lazy()
@@ -75,11 +75,13 @@ from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
 from cinder.db.sqlalchemy import api as db_api
+from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder import version
+from cinder.volume import utils as vutils
 
 
 CONF = cfg.CONF
@@ -91,22 +93,6 @@ def args(*args, **kwargs):
         func.__dict__.setdefault('args', []).insert(0, (args, kwargs))
         return func
     return _decorator
-
-
-def param2id(object_id):
-    """Helper function to convert various id types to internal id.
-    args: [object_id], e.g. 'vol-0000000a' or 'volume-0000000a' or '10'
-    """
-    if uuidutils.is_uuid_like(object_id):
-        return object_id
-    elif '-' in object_id:
-        # FIXME(ja): mapping occurs in nova?
-        pass
-    else:
-        try:
-            return int(object_id)
-        except ValueError:
-            return object_id
 
 
 class ShellCommands(object):
@@ -178,9 +164,7 @@ class ShellCommands(object):
 
     @args('--path', required=True, help='Script path')
     def script(self, path):
-        """Runs the script from the specified path with flags set properly.
-        arguments: path
-        """
+        """Runs the script from the specified path with flags set properly."""
         exec(compile(open(path).read(), path, 'exec'), locals(), globals())
 
 
@@ -189,7 +173,7 @@ def _db_error(caught_exception):
     print(_("The above error may show that the database has not "
             "been created.\nPlease create a database using "
             "'cinder-manage db sync' before running this command."))
-    exit(1)
+    sys.exit(1)
 
 
 class HostCommands(object):
@@ -198,14 +182,16 @@ class HostCommands(object):
     @args('zone', nargs='?', default=None,
           help='Availability Zone (default: %(default)s)')
     def list(self, zone=None):
-        """Show a list of all physical hosts. Filter by zone.
+        """Show a list of all physical hosts.
+
+        Can be filtered by zone.
         args: [zone]
         """
         print(_("%(host)-25s\t%(zone)-15s") % {'host': 'host', 'zone': 'zone'})
         ctxt = context.get_admin_context()
-        services = db.service_get_all(ctxt)
+        services = objects.ServiceList.get_all(ctxt)
         if zone:
-            services = [s for s in services if s['availability_zone'] == zone]
+            services = [s for s in services if s.availability_zone == zone]
         hosts = []
         for srv in services:
             if not [h for h in hosts if h['host'] == srv['host']]:
@@ -242,9 +228,15 @@ class DbCommands(object):
         age_in_days = int(age_in_days)
         if age_in_days <= 0:
             print(_("Must supply a positive, non-zero value for age"))
-            exit(1)
+            sys.exit(1)
         ctxt = context.get_admin_context()
-        db.purge_deleted_rows(ctxt, age_in_days)
+
+        try:
+            db.purge_deleted_rows(ctxt, age_in_days)
+        except db_exc.DBReferenceError:
+            print(_("Purge command failed, check cinder-manage "
+                    "logs for more details."))
+            sys.exit(1)
 
 
 class VersionCommands(object):
@@ -266,37 +258,37 @@ class VolumeCommands(object):
     def __init__(self):
         self._client = None
 
-    def rpc_client(self):
+    def _rpc_client(self):
         if self._client is None:
             if not rpc.initialized():
                 rpc.init(CONF)
                 target = messaging.Target(topic=CONF.volume_topic)
-                self._client = rpc.get_client(target)
+                serializer = objects.base.CinderObjectSerializer()
+                self._client = rpc.get_client(target, serializer=serializer)
+
         return self._client
 
     @args('volume_id',
           help='Volume ID to be deleted')
     def delete(self, volume_id):
-        """Delete a volume, bypassing the check that it
-        must be available.
-        """
+        """Delete a volume, bypassing the check that it must be available."""
         ctxt = context.get_admin_context()
-        volume = db.volume_get(ctxt, param2id(volume_id))
-        host = volume['host']
+        volume = objects.Volume.get_by_id(ctxt, volume_id)
+        host = vutils.extract_host(volume.host) if volume.host else None
 
         if not host:
             print(_("Volume not yet assigned to host."))
             print(_("Deleting volume from database and skipping rpc."))
-            db.volume_destroy(ctxt, param2id(volume_id))
+            volume.destroy()
             return
 
-        if volume['status'] == 'in-use':
+        if volume.status == 'in-use':
             print(_("Volume is in-use."))
             print(_("Detach volume from instance and then try again."))
             return
 
-        cctxt = self.rpc_client().prepare(server=host)
-        cctxt.cast(ctxt, "delete_volume", volume_id=volume['id'])
+        cctxt = self._rpc_client().prepare(server=host)
+        cctxt.cast(ctxt, "delete_volume", volume_id=volume.id, volume=volume)
 
     @args('--currenthost', required=True, help='Existing volume host name')
     @args('--newhost', required=True, help='New volume host name')
@@ -335,7 +327,7 @@ class ConfigCommands(object):
         if param:
             print('%s = %s' % (param, CONF.get(param)))
         else:
-            for key, value in CONF.iteritems():
+            for key, value in CONF.items():
                 print('%s = %s' % (key, value))
 
 
@@ -395,11 +387,13 @@ class BackupCommands(object):
     """Methods for managing backups."""
 
     def list(self):
-        """List all backups (including ones in progress) and the host
+        """List all backups.
+
+        List all backups (including ones in progress) and the host
         on which the backup operation is running.
         """
         ctxt = context.get_admin_context()
-        backups = db.backup_get_all(ctxt)
+        backups = objects.BackupList.get_all(ctxt)
 
         hdr = "%-32s\t%-32s\t%-32s\t%-24s\t%-24s\t%-12s\t%-12s\t%-12s\t%-12s"
         print(hdr % (_('ID'),
@@ -427,30 +421,71 @@ class BackupCommands(object):
                          backup['size'],
                          object_count))
 
+    @args('--currenthost', required=True, help='Existing backup host name')
+    @args('--newhost', required=True, help='New backup host name')
+    def update_backup_host(self, currenthost, newhost):
+        """Modify the host name associated with a backup.
+
+        Particularly to recover from cases where one has moved
+        their Cinder Backup node, and not set backup_use_same_backend.
+        """
+        ctxt = context.get_admin_context()
+        backups = objects.BackupList.get_all_by_host(ctxt, currenthost)
+        for bk in backups:
+            bk.host = newhost
+            bk.save()
+
 
 class ServiceCommands(object):
     """Methods for managing services."""
     def list(self):
         """Show a list of all cinder services."""
         ctxt = context.get_admin_context()
-        services = db.service_get_all(ctxt)
-        print_format = "%-16s %-36s %-16s %-10s %-5s %-10s"
+        services = objects.ServiceList.get_all(ctxt)
+        print_format = "%-16s %-36s %-16s %-10s %-5s %-20s %-12s %-15s"
         print(print_format % (_('Binary'),
                               _('Host'),
                               _('Zone'),
                               _('Status'),
                               _('State'),
-                              _('Updated At')))
+                              _('Updated At'),
+                              _('RPC Version'),
+                              _('Object Version')))
         for svc in services:
             alive = utils.service_is_up(svc)
             art = ":-)" if alive else "XXX"
             status = 'enabled'
-            if svc['disabled']:
+            if svc.disabled:
                 status = 'disabled'
-            print(print_format % (svc['binary'], svc['host'].partition('.')[0],
-                                  svc['availability_zone'], status, art,
-                                  svc['updated_at']))
+            updated_at = svc.updated_at
+            if updated_at:
+                updated_at = timeutils.normalize_time(updated_at)
+            rpc_version = (svc.rpc_current_version or
+                           rpc.LIBERTY_RPC_VERSIONS.get(svc.binary, ''))
+            object_version = (svc.object_current_version or 'liberty')
+            print(print_format % (svc.binary, svc.host.partition('.')[0],
+                                  svc.availability_zone, status, art,
+                                  updated_at, rpc_version,
+                                  object_version))
 
+    @args('binary', type=str,
+          help='Service to delete from the host.')
+    @args('host_name', type=str,
+          help='Host from which to remove the service.')
+    def remove(self, binary, host_name):
+        """Completely removes a service."""
+        ctxt = context.get_admin_context()
+        try:
+            svc = objects.Service.get_by_args(ctxt, host_name, binary)
+            svc.destroy()
+        except exception.ServiceNotFound as e:
+            print(_("Host not found. Failed to remove %(service)s"
+                    " on %(host)s.") %
+                  {'service': binary, 'host': host_name})
+            print (u"%s" % e.args)
+            return 2
+        print(_("Service %(service)s on host %(host)s removed.") %
+              {'service': binary, 'host': host_name})
 
 CATEGORIES = {
     'backup': BackupCommands,
@@ -466,8 +501,10 @@ CATEGORIES = {
 
 
 def methods_of(obj):
-    """Get all callable methods of an object that don't start with underscore
-    returns a list of tuples of the form (method_name, method)
+    """Return non-private methods from an object.
+
+    Get all callable methods of an object that don't start with underscore
+    :return: a list of tuples of the form (method_name, method)
     """
     result = []
     for i in dir(obj):
@@ -511,7 +548,7 @@ def get_arg_string(args):
             # This is long optional arg
             arg = args[2:]
         else:
-            arg = args[3:]
+            arg = args[1:]
     else:
         arg = args
 
@@ -528,6 +565,7 @@ def fetch_func_args(func):
 
 
 def main():
+    objects.register_all()
     """Parse options and call the appropriate class/method."""
     CONF.register_cli_opt(category_opt)
     script_name = sys.argv[0]
@@ -543,7 +581,11 @@ def main():
     try:
         CONF(sys.argv[1:], project='cinder',
              version=version.version_string())
-        logging.setup("cinder")
+        logging.setup(CONF, "cinder")
+        python_logging.captureWarnings(True)
+    except cfg.ConfigDirNotFoundError as details:
+        print(_("Invalid directory: %s") % details)
+        sys.exit(2)
     except cfg.ConfigFilesNotFoundError:
         cfgfile = CONF.config_file[-1] if CONF.config_file else None
         if cfgfile and not os.access(cfgfile, os.R_OK):

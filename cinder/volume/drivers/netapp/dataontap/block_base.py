@@ -5,6 +5,10 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Dustin Schoenbrun. All rights reserved.
+# Copyright (c) 2016 Chuck Fouts. All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,22 +25,25 @@
 Volume driver library for NetApp 7/C-mode block storage systems.
 """
 
+import copy
+import math
 import sys
 import uuid
 
+from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import excutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
-from cinder.openstack.common import log as logging
-from cinder.volume.drivers.netapp.dataontap.client.api import NaApiError
+from cinder import utils
+from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
-
 
 LOG = logging.getLogger(__name__)
 
@@ -55,23 +62,32 @@ class NetAppLun(object):
         if prop in self.metadata:
             return self.metadata[prop]
         name = self.name
-        msg = _("No metadata property %(prop)s defined for the LUN %(name)s")
-        msg_fmt = {'prop': prop, 'name': name}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("No metadata property %(prop)s defined for the LUN %(name)s",
+                  {'prop': prop, 'name': name})
 
     def __str__(self, *args, **kwargs):
-        return 'NetApp Lun[handle:%s, name:%s, size:%s, metadata:%s]'\
-               % (self.handle, self.name, self.size, self.metadata)
+        return 'NetApp LUN [handle:%s, name:%s, size:%s, metadata:%s]' % (
+               self.handle, self.name, self.size, self.metadata)
 
 
+@six.add_metaclass(utils.TraceWrapperMetaclass)
 class NetAppBlockStorageLibrary(object):
     """NetApp block storage library for Data ONTAP."""
 
     # do not increment this as it may be used in volume type definitions
     VERSION = "1.0.0"
-    IGROUP_PREFIX = 'openstack-'
     REQUIRED_FLAGS = ['netapp_login', 'netapp_password',
                       'netapp_server_hostname']
+    ALLOWED_LUN_OS_TYPES = ['linux', 'aix', 'hpux', 'image', 'windows',
+                            'windows_2008', 'windows_gpt', 'solaris',
+                            'solaris_efi', 'netware', 'openvms', 'hyper_v']
+    ALLOWED_IGROUP_HOST_TYPES = ['linux', 'aix', 'hpux', 'windows', 'solaris',
+                                 'netware', 'default', 'vmware', 'openvms',
+                                 'xen', 'hyper_v']
+    DEFAULT_LUN_OS = 'linux'
+    DEFAULT_HOST_TYPE = 'linux'
+    DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'
+    DEFAULT_GOODNESS_FUNCTION = '100 - capabilities.utilization'
 
     def __init__(self, driver_name, driver_protocol, **kwargs):
 
@@ -82,6 +98,9 @@ class NetAppBlockStorageLibrary(object):
         self.zapi_client = None
         self._stats = {}
         self.lun_table = {}
+        self.lun_ostype = None
+        self.host_type = None
+        self.lun_space_reservation = 'true'
         self.lookup_service = fczm_utils.create_lookup_service()
         self.app_version = kwargs.get("app_version", "unknown")
 
@@ -91,16 +110,59 @@ class NetAppBlockStorageLibrary(object):
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(
             na_opts.netapp_provisioning_opts)
+        self.configuration.append_config_values(na_opts.netapp_san_opts)
+        self.max_over_subscription_ratio = (
+            self.configuration.max_over_subscription_ratio)
+        self.reserved_percentage = self._get_reserved_percentage()
+
+    def _get_reserved_percentage(self):
+        # If the legacy config option if it is set to the default
+        # value, use the more general configuration option.
+        if self.configuration.netapp_size_multiplier == (
+                na_opts.NETAPP_SIZE_MULTIPLIER_DEFAULT):
+            return self.configuration.reserved_percentage
+
+        # If the legacy config option has a non-default value,
+        # honor it for one release.  Note that the "size multiplier"
+        # actually acted as a divisor in the code and didn't apply
+        # to the file size (as the help message for this option suggest),
+        # but rather to total and free size for the pool.
+        divisor = self.configuration.netapp_size_multiplier
+        reserved_ratio = round(1 - (1 / divisor), 2)
+        reserved_percentage = 100 * int(reserved_ratio)
+        msg = _LW('The "netapp_size_multiplier" configuration option is '
+                  'deprecated and will be removed in the Mitaka release. '
+                  'Please set "reserved_percentage = %d" instead.') % (
+                      reserved_percentage)
+        versionutils.report_deprecated_feature(LOG, msg)
+        return reserved_percentage
 
     def do_setup(self, context):
         na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
+        self.lun_ostype = (self.configuration.netapp_lun_ostype
+                           or self.DEFAULT_LUN_OS)
+        self.host_type = (self.configuration.netapp_host_type
+                          or self.DEFAULT_HOST_TYPE)
+        if self.configuration.netapp_lun_space_reservation == 'enabled':
+            self.lun_space_reservation = 'true'
+        else:
+            self.lun_space_reservation = 'false'
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate.
 
         Discovers the LUNs on the NetApp server.
         """
-
+        if self.lun_ostype not in self.ALLOWED_LUN_OS_TYPES:
+            msg = _("Invalid value for NetApp configuration"
+                    " option netapp_lun_ostype.")
+            LOG.error(msg)
+            raise exception.NetAppDriverException(msg)
+        if self.host_type not in self.ALLOWED_IGROUP_HOST_TYPES:
+            msg = _("Invalid value for NetApp configuration"
+                    " option netapp_host_type.")
+            LOG.error(msg)
+            raise exception.NetAppDriverException(msg)
         lun_list = self.zapi_client.get_lun_list()
         self._extract_and_populate_luns(lun_list)
         LOG.debug("Success getting list of LUNs from server.")
@@ -118,54 +180,71 @@ class NetAppBlockStorageLibrary(object):
     def create_volume(self, volume):
         """Driver entry point for creating a new volume (Data ONTAP LUN)."""
 
-        LOG.debug('create_volume on %s' % volume['host'])
+        LOG.debug('create_volume on %s', volume['host'])
 
         # get Data ONTAP volume name as pool name
-        ontap_volume_name = volume_utils.extract_host(volume['host'],
-                                                      level='pool')
+        pool_name = volume_utils.extract_host(volume['host'], level='pool')
 
-        if ontap_volume_name is None:
+        if pool_name is None:
             msg = _("Pool is not available in the volume host field.")
             raise exception.InvalidHost(reason=msg)
 
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+
         lun_name = volume['name']
 
-        # start with default size, get requested size
-        default_size = units.Mi * 100  # 100 MB
-        size = default_size if not int(volume['size'])\
-            else int(volume['size']) * units.Gi
+        size = int(volume['size']) * units.Gi
 
-        metadata = {'OsType': 'linux', 'SpaceReserved': 'true'}
+        metadata = {'OsType': self.lun_ostype,
+                    'SpaceReserved': self.lun_space_reservation,
+                    'Path': '/vol/%s/%s' % (pool_name, lun_name)}
 
-        extra_specs = na_utils.get_volume_extra_specs(volume)
-        qos_policy_group = extra_specs.pop('netapp:qos_policy_group', None) \
-            if extra_specs else None
+        qos_policy_group_info = self._setup_qos_for_volume(volume, extra_specs)
+        qos_policy_group_name = (
+            na_utils.get_qos_policy_group_name_from_info(
+                qos_policy_group_info))
 
-        # warn on obsolete extra specs
-        na_utils.log_extra_spec_warnings(extra_specs)
+        try:
+            self._create_lun(pool_name, lun_name, size, metadata,
+                             qos_policy_group_name)
+        except Exception:
+            LOG.exception(_LE("Exception creating LUN %(name)s in pool "
+                              "%(pool)s."),
+                          {'name': lun_name, 'pool': pool_name})
+            self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
+            msg = _("Volume %s could not be created.")
+            raise exception.VolumeBackendAPIException(data=msg % (
+                volume['name']))
+        LOG.debug('Created LUN with name %(name)s and QoS info %(qos)s',
+                  {'name': lun_name, 'qos': qos_policy_group_info})
 
-        self._create_lun(ontap_volume_name, lun_name, size,
-                         metadata, qos_policy_group)
-        LOG.debug('Created LUN with name %s' % lun_name)
-
-        metadata['Path'] = '/vol/%s/%s' % (ontap_volume_name, lun_name)
-        metadata['Volume'] = ontap_volume_name
+        metadata['Path'] = '/vol/%s/%s' % (pool_name, lun_name)
+        metadata['Volume'] = pool_name
         metadata['Qtree'] = None
 
         handle = self._create_lun_handle(metadata)
         self._add_lun_to_table(NetAppLun(handle, lun_name, size, metadata))
 
+    def _setup_qos_for_volume(self, volume, extra_specs):
+        return None
+
+    def _mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
+        return
+
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
-        name = volume['name']
-        metadata = self._get_lun_attr(name, 'metadata')
-        if not metadata:
-            msg = _LW("No entry in LUN table for volume/snapshot %(name)s.")
-            msg_fmt = {'name': name}
-            LOG.warning(msg % msg_fmt)
-            return
-        self.zapi_client.destroy_lun(metadata['Path'])
-        self.lun_table.pop(name)
+        self._delete_lun(volume['name'])
+
+    def _delete_lun(self, lun_name):
+        """Helper method to delete LUN backing a volume or snapshot."""
+
+        metadata = self._get_lun_attr(lun_name, 'metadata')
+        if metadata:
+            self.zapi_client.destroy_lun(metadata['Path'])
+            self.lun_table.pop(lun_name)
+        else:
+            LOG.warning(_LW("No entry in LUN table for volume/snapshot"
+                            " %(name)s."), {'name': lun_name})
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
@@ -196,36 +275,68 @@ class NetAppBlockStorageLibrary(object):
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
         lun = self._get_lun_from_table(vol_name)
-        self._clone_lun(lun.name, snapshot_name, 'false')
+        self._clone_lun(lun.name, snapshot_name, space_reserved='false')
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
-        self.delete_volume(snapshot)
-        LOG.debug("Snapshot %s deletion successful" % snapshot['name'])
+        self._delete_lun(snapshot['name'])
+        LOG.debug("Snapshot %s deletion successful", snapshot['name'])
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        """Driver entry point for creating a new volume from a snapshot.
+        source = {'name': snapshot['name'], 'size': snapshot['volume_size']}
+        return self._clone_source_to_destination(source, volume)
 
-        Many would call this "cloning" and in fact we use cloning to implement
-        this feature.
-        """
+    def create_cloned_volume(self, volume, src_vref):
+        src_lun = self._get_lun_from_table(src_vref['name'])
+        source = {'name': src_lun.name, 'size': src_vref['size']}
+        return self._clone_source_to_destination(source, volume)
 
-        vol_size = volume['size']
-        snap_size = snapshot['volume_size']
-        snapshot_name = snapshot['name']
-        new_name = volume['name']
-        self._clone_lun(snapshot_name, new_name, 'true')
-        if vol_size != snap_size:
-            try:
-                self.extend_volume(volume, volume['size'])
-            except Exception:
-                with excutils.save_and_reraise_exception():
-                    LOG.error(
-                        _LE("Resizing %s failed. Cleaning volume."), new_name)
-                    self.delete_volume(volume)
+    def _clone_source_to_destination(self, source, destination_volume):
+        source_size = source['size']
+        destination_size = destination_volume['size']
+
+        source_name = source['name']
+        destination_name = destination_volume['name']
+
+        extra_specs = na_utils.get_volume_extra_specs(destination_volume)
+
+        qos_policy_group_info = self._setup_qos_for_volume(
+            destination_volume, extra_specs)
+        qos_policy_group_name = (
+            na_utils.get_qos_policy_group_name_from_info(
+                qos_policy_group_info))
+
+        try:
+            self._clone_lun(source_name, destination_name,
+                            space_reserved=self.lun_space_reservation,
+                            qos_policy_group_name=qos_policy_group_name)
+
+            if destination_size != source_size:
+
+                try:
+                    self._extend_volume(destination_volume,
+                                        destination_size,
+                                        qos_policy_group_name)
+                except Exception:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error(
+                            _LE("Resizing %s failed. Cleaning volume."),
+                            destination_volume['id'])
+                        self.delete_volume(destination_volume)
+
+        except Exception:
+            LOG.exception(_LE("Exception cloning volume %(name)s from source "
+                          "volume %(source)s."),
+                          {'name': destination_name, 'source': source_name})
+
+            self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
+
+            msg = _("Volume %s could not be created from source volume.")
+            raise exception.VolumeBackendAPIException(
+                data=msg % destination_name)
 
     def _create_lun(self, volume_name, lun_name, size,
-                    metadata, qos_policy_group=None):
+                    metadata, qos_policy_group_name=None):
         """Creates a LUN, handling Data ONTAP differences as needed."""
         raise NotImplementedError()
 
@@ -233,39 +344,46 @@ class NetAppBlockStorageLibrary(object):
         """Returns LUN handle based on filer type."""
         raise NotImplementedError()
 
+    def _extract_lun_info(self, lun):
+        """Extracts the LUNs from API and populates the LUN table."""
+
+        meta_dict = self._create_lun_meta(lun)
+        path = lun.get_child_content('path')
+        (_rest, _splitter, name) = path.rpartition('/')
+        handle = self._create_lun_handle(meta_dict)
+        size = lun.get_child_content('size')
+        return NetAppLun(handle, name, size, meta_dict)
+
     def _extract_and_populate_luns(self, api_luns):
         """Extracts the LUNs from API and populates the LUN table."""
 
         for lun in api_luns:
-            meta_dict = self._create_lun_meta(lun)
-            path = lun.get_child_content('path')
-            (_rest, _splitter, name) = path.rpartition('/')
-            handle = self._create_lun_handle(meta_dict)
-            size = lun.get_child_content('size')
-            discovered_lun = NetAppLun(handle, name, size, meta_dict)
+            discovered_lun = self._extract_lun_info(lun)
             self._add_lun_to_table(discovered_lun)
 
     def _map_lun(self, name, initiator_list, initiator_type, lun_id=None):
         """Maps LUN to the initiator(s) and returns LUN ID assigned."""
         metadata = self._get_lun_attr(name, 'metadata')
-        os = metadata['OsType']
         path = metadata['Path']
-        if self._check_allowed_os(os):
-            os = os
-        else:
-            os = 'default'
-        igroup_name = self._get_or_create_igroup(initiator_list,
-                                                 initiator_type, os)
+        igroup_name, ig_host_os, ig_type = self._get_or_create_igroup(
+            initiator_list, initiator_type, self.host_type)
+        if ig_host_os != self.host_type:
+            LOG.warning(_LW("LUN misalignment may occur for current"
+                            " initiator group %(ig_nm)s) with host OS type"
+                            " %(ig_os)s. Please configure initiator group"
+                            " manually according to the type of the"
+                            " host OS."),
+                        {'ig_nm': igroup_name, 'ig_os': ig_host_os})
         try:
             return self.zapi_client.map_lun(path, igroup_name, lun_id=lun_id)
-        except NaApiError:
+        except netapp_api.NaApiError:
             exc_info = sys.exc_info()
             (_igroup, lun_id) = self._find_mapped_lun_igroup(path,
                                                              initiator_list)
             if lun_id is not None:
                 return lun_id
             else:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                six.reraise(*exc_info)
 
     def _unmap_lun(self, path, initiator_list):
         """Unmaps a LUN from given initiator."""
@@ -281,38 +399,36 @@ class NetAppBlockStorageLibrary(object):
         """Checks whether any LUNs are mapped to the given initiator(s)."""
         return self.zapi_client.has_luns_mapped_to_initiators(initiator_list)
 
-    def _get_or_create_igroup(self, initiator_list, initiator_type,
-                              os='default'):
+    def _get_or_create_igroup(self, initiator_list, initiator_group_type,
+                              host_os_type):
         """Checks for an igroup for a set of one or more initiators.
 
-        Creates igroup if not found.
+        Creates igroup if not already present with given host os type,
+        igroup type and adds initiators.
         """
-
         igroups = self.zapi_client.get_igroup_by_initiators(initiator_list)
-
         igroup_name = None
-        for igroup in igroups:
-            if igroup['initiator-group-os-type'] == os:
-                if igroup['initiator-group-type'] == initiator_type or \
-                        igroup['initiator-group-type'] == 'mixed':
-                    if igroup['initiator-group-name'].startswith(
-                            self.IGROUP_PREFIX):
-                        igroup_name = igroup['initiator-group-name']
-                        break
-        if not igroup_name:
-            igroup_name = self.IGROUP_PREFIX + six.text_type(uuid.uuid4())
-            self.zapi_client.create_igroup(igroup_name, initiator_type, os)
-            for initiator in initiator_list:
-                self.zapi_client.add_igroup_initiator(igroup_name, initiator)
-        return igroup_name
 
-    def _check_allowed_os(self, os):
-        """Checks if the os type supplied is NetApp supported."""
-        if os in ['linux', 'aix', 'hpux', 'windows', 'solaris',
-                  'netware', 'vmware', 'openvms', 'xen', 'hyper_v']:
-            return True
-        else:
-            return False
+        if igroups:
+            igroup = igroups[0]
+            igroup_name = igroup['initiator-group-name']
+            host_os_type = igroup['initiator-group-os-type']
+            initiator_group_type = igroup['initiator-group-type']
+
+        if not igroup_name:
+            igroup_name = self._create_igroup_add_initiators(
+                initiator_group_type, host_os_type, initiator_list)
+        return igroup_name, host_os_type, initiator_group_type
+
+    def _create_igroup_add_initiators(self, initiator_group_type,
+                                      host_os_type, initiator_list):
+        """Creates igroup and adds initiators."""
+        igroup_name = na_utils.OPENSTACK_PREFIX + six.text_type(uuid.uuid4())
+        self.zapi_client.create_igroup(igroup_name, initiator_group_type,
+                                       host_os_type)
+        for initiator in initiator_list:
+            self.zapi_client.add_igroup_initiator(igroup_name, initiator)
+        return igroup_name
 
     def _add_lun_to_table(self, lun):
         """Adds LUN to cache table."""
@@ -336,7 +452,8 @@ class NetAppBlockStorageLibrary(object):
         return lun
 
     def _clone_lun(self, name, new_name, space_reserved='true',
-                   src_block=0, dest_block=0, block_count=0):
+                   qos_policy_group_name=None, src_block=0, dest_block=0,
+                   block_count=0, source_snapshot=None):
         """Clone LUN with the given name to the new name."""
         raise NotImplementedError()
 
@@ -348,8 +465,7 @@ class NetAppBlockStorageLibrary(object):
         except exception.VolumeNotFound as e:
             LOG.error(_LE("Message: %s"), e.msg)
         except Exception as e:
-            LOG.error(_LE("Error getting LUN attribute. Exception: %s"),
-                      e.__str__())
+            LOG.error(_LE("Error getting LUN attribute. Exception: %s"), e)
         return None
 
     def _create_lun_meta(self, lun):
@@ -358,37 +474,53 @@ class NetAppBlockStorageLibrary(object):
     def _get_fc_target_wwpns(self, include_partner=True):
         raise NotImplementedError()
 
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        vol_size = volume['size']
-        src_vol = self._get_lun_from_table(src_vref['name'])
-        src_vol_size = src_vref['size']
-        new_name = volume['name']
-        self._clone_lun(src_vol.name, new_name, 'true')
-        if vol_size != src_vol_size:
-            try:
-                self.extend_volume(volume, volume['size'])
-            except Exception:
-                with excutils.save_and_reraise_exception():
-                    LOG.error(
-                        _LE("Resizing %s failed. Cleaning volume."), new_name)
-                    self.delete_volume(volume)
-
-    def get_volume_stats(self, refresh=False):
+    def get_volume_stats(self, refresh=False, filter_function=None,
+                         goodness_function=None):
         """Get volume stats.
 
-        If 'refresh' is True, run update the stats first.
+        If 'refresh' is True, update the stats first.
         """
 
         if refresh:
-            self._update_volume_stats()
-
+            self._update_volume_stats(filter_function=filter_function,
+                                      goodness_function=goodness_function)
         return self._stats
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self, filter_function=None,
+                             goodness_function=None):
         raise NotImplementedError()
 
+    def get_default_filter_function(self):
+        """Get the default filter_function string."""
+        return self.DEFAULT_FILTER_FUNCTION
+
+    def get_default_goodness_function(self):
+        """Get the default goodness_function string."""
+        return self.DEFAULT_GOODNESS_FUNCTION
+
     def extend_volume(self, volume, new_size):
+        """Driver entry point to increase the size of a volume."""
+
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+
+        # Create volume copy with new size for size-dependent QOS specs
+        volume_copy = copy.copy(volume)
+        volume_copy['size'] = new_size
+
+        qos_policy_group_info = self._setup_qos_for_volume(volume_copy,
+                                                           extra_specs)
+        qos_policy_group_name = (
+            na_utils.get_qos_policy_group_name_from_info(
+                qos_policy_group_info))
+
+        try:
+            self._extend_volume(volume, new_size, qos_policy_group_name)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                # If anything went wrong, revert QoS settings
+                self._setup_qos_for_volume(volume, extra_specs)
+
+    def _extend_volume(self, volume, new_size, qos_policy_group_name):
         """Extend an existing volume to the new size."""
         name = volume['name']
         lun = self._get_lun_from_table(name)
@@ -404,7 +536,9 @@ class NetAppBlockStorageLibrary(object):
                     int(new_size_bytes)):
                 self.zapi_client.do_direct_resize(path, new_size_bytes)
             else:
-                self._do_sub_clone_resize(path, new_size_bytes)
+                self._do_sub_clone_resize(
+                    path, new_size_bytes,
+                    qos_policy_group_name=qos_policy_group_name)
             self.lun_table[name].size = new_size_bytes
         else:
             LOG.info(_LI("No need to extend volume %s"
@@ -420,41 +554,42 @@ class NetAppBlockStorageLibrary(object):
                 break
         return value
 
-    def _do_sub_clone_resize(self, path, new_size_bytes):
-        """Does sub LUN clone after verification.
+    def _do_sub_clone_resize(self, lun_path, new_size_bytes,
+                             qos_policy_group_name=None):
+        """Resize a LUN beyond its original geometry using sub-LUN cloning.
 
-            Clones the block ranges and swaps
-            the LUNs also deletes older LUN
-            after a successful clone.
+        Clones the block ranges, swaps the LUNs, and deletes the source LUN.
         """
-        seg = path.split("/")
-        LOG.info(_LI("Resizing LUN %s to new size using clone operation."),
-                 seg[-1])
-        name = seg[-1]
+        seg = lun_path.split("/")
+        LOG.info(_LI("Resizing LUN %s using clone operation."), seg[-1])
+        lun_name = seg[-1]
         vol_name = seg[2]
-        lun = self._get_lun_from_table(name)
+        lun = self._get_lun_from_table(lun_name)
         metadata = lun.metadata
+
         compression = self._get_vol_option(vol_name, 'compression')
         if compression == "on":
             msg = _('%s cannot be resized using clone operation'
                     ' as it is hosted on compressed volume')
-            raise exception.VolumeBackendAPIException(data=msg % name)
-        else:
-            block_count = self._get_lun_block_count(path)
-            if block_count == 0:
-                msg = _('%s cannot be resized using clone operation'
-                        ' as it contains no blocks.')
-                raise exception.VolumeBackendAPIException(data=msg % name)
-            new_lun = 'new-%s' % name
-            self.zapi_client.create_lun(vol_name, new_lun, new_size_bytes,
-                                        metadata)
-            try:
-                self._clone_lun(name, new_lun, block_count=block_count)
-                self._post_sub_clone_resize(path)
-            except Exception:
-                with excutils.save_and_reraise_exception():
-                    new_path = '/vol/%s/%s' % (vol_name, new_lun)
-                    self.zapi_client.destroy_lun(new_path)
+            raise exception.VolumeBackendAPIException(data=msg % lun_name)
+
+        block_count = self._get_lun_block_count(lun_path)
+        if block_count == 0:
+            msg = _('%s cannot be resized using clone operation'
+                    ' as it contains no blocks.')
+            raise exception.VolumeBackendAPIException(data=msg % lun_name)
+
+        new_lun_name = 'new-%s' % lun_name
+        self.zapi_client.create_lun(
+            vol_name, new_lun_name, new_size_bytes, metadata,
+            qos_policy_group_name=qos_policy_group_name)
+        try:
+            self._clone_lun(lun_name, new_lun_name, block_count=block_count)
+            self._post_sub_clone_resize(lun_path)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                new_lun_path = '/vol/%s/%s' % (vol_name, new_lun_name)
+                self.zapi_client.destroy_lun(new_lun_path)
 
     def _post_sub_clone_resize(self, path):
         """Try post sub clone resize in a transactional manner."""
@@ -485,7 +620,7 @@ class NetAppBlockStorageLibrary(object):
                 else:
                     LOG.error(_LE("Unknown exception in"
                                   " post clone resize LUN %s."), seg[-1])
-                    LOG.error(_LE("Exception details: %s") % (e.__str__()))
+                    LOG.error(_LE("Exception details: %s"), e)
 
     def _get_lun_block_count(self, path):
         """Gets block counts for the LUN."""
@@ -500,6 +635,103 @@ class NetAppBlockStorageLibrary(object):
         ls = int(lun_info.get_child_content('size'))
         block_count = ls / bs
         return block_count
+
+    def _check_volume_type_for_lun(self, volume, lun, existing_ref,
+                                   extra_specs):
+        """Checks if lun satifies the volume type."""
+        raise NotImplementedError()
+
+    def manage_existing(self, volume, existing_ref):
+        """Brings an existing storage object under Cinder management.
+
+        existing_ref can contain source-id or source-name or both.
+        source-id: lun uuid.
+        source-name: complete lun path eg. /vol/vol0/lun.
+        """
+        lun = self._get_existing_vol_with_manage_ref(existing_ref)
+
+        extra_specs = na_utils.get_volume_extra_specs(volume)
+
+        self._check_volume_type_for_lun(volume, lun, existing_ref, extra_specs)
+
+        qos_policy_group_info = self._setup_qos_for_volume(volume, extra_specs)
+        qos_policy_group_name = (
+            na_utils.get_qos_policy_group_name_from_info(
+                qos_policy_group_info))
+
+        path = lun.get_metadata_property('Path')
+        if lun.name == volume['name']:
+            new_path = path
+            LOG.info(_LI("LUN with given ref %s need not be renamed "
+                         "during manage operation."), existing_ref)
+        else:
+            (rest, splitter, name) = path.rpartition('/')
+            new_path = '%s/%s' % (rest, volume['name'])
+            self.zapi_client.move_lun(path, new_path)
+            lun = self._get_existing_vol_with_manage_ref(
+                {'source-name': new_path})
+        if qos_policy_group_name is not None:
+            self.zapi_client.set_lun_qos_policy_group(new_path,
+                                                      qos_policy_group_name)
+        self._add_lun_to_table(lun)
+        LOG.info(_LI("Manage operation completed for LUN with new path"
+                     " %(path)s and uuid %(uuid)s."),
+                 {'path': lun.get_metadata_property('Path'),
+                  'uuid': lun.get_metadata_property('UUID')})
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        When calculating the size, round up to the next GB.
+        """
+        lun = self._get_existing_vol_with_manage_ref(existing_ref)
+        return int(math.ceil(float(lun.size) / units.Gi))
+
+    def _get_existing_vol_with_manage_ref(self, existing_ref):
+        """Get the corresponding LUN from the storage server."""
+        uuid = existing_ref.get('source-id')
+        path = existing_ref.get('source-name')
+        if not (uuid or path):
+            reason = _('Reference must contain either source-id'
+                       ' or source-name element.')
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=reason)
+        lun_info = {}
+        lun_info.setdefault('path', path if path else None)
+        if hasattr(self, 'vserver') and uuid:
+            lun_info['uuid'] = uuid
+        luns = self.zapi_client.get_lun_by_args(**lun_info)
+        if luns:
+            for lun in luns:
+                netapp_lun = self._extract_lun_info(lun)
+                storage_valid = self._is_lun_valid_on_storage(netapp_lun)
+                uuid_valid = True
+                if uuid:
+                    if netapp_lun.get_metadata_property('UUID') == uuid:
+                        uuid_valid = True
+                    else:
+                        uuid_valid = False
+                if storage_valid and uuid_valid:
+                    return netapp_lun
+        raise exception.ManageExistingInvalidReference(
+            existing_ref=existing_ref,
+            reason=(_('LUN not found with given ref %s.') % existing_ref))
+
+    def _is_lun_valid_on_storage(self, lun):
+        """Validate lun specific to storage system."""
+        return True
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+           Does not delete the underlying backend storage object.
+        """
+        managed_lun = self._get_lun_from_table(volume['name'])
+        LOG.info(_LI("Unmanaged LUN with current path %(path)s and uuid "
+                     "%(uuid)s."),
+                 {'path': managed_lun.get_metadata_property('Path'),
+                  'uuid': managed_lun.get_metadata_property('UUID')
+                  or 'unknown'})
 
     def initialize_connection_iscsi(self, volume, connector):
         """Driver entry point to attach a volume to an instance.
@@ -516,31 +748,26 @@ class NetAppBlockStorageLibrary(object):
         initiator_name = connector['initiator']
         name = volume['name']
         lun_id = self._map_lun(name, [initiator_name], 'iscsi', None)
-        msg = _("Mapped LUN %(name)s to the initiator %(initiator_name)s")
-        msg_fmt = {'name': name, 'initiator_name': initiator_name}
-        LOG.debug(msg % msg_fmt)
-        target_details_list = self.zapi_client.get_iscsi_target_details()
-        msg = _("Successfully fetched target details for LUN %(name)s and "
-                "initiator %(initiator_name)s")
-        msg_fmt = {'name': name, 'initiator_name': initiator_name}
-        LOG.debug(msg % msg_fmt)
 
-        if not target_details_list:
-            msg = _('Failed to get LUN target details for the LUN %s')
-            raise exception.VolumeBackendAPIException(data=msg % name)
-        target_details = None
-        for tgt_detail in target_details_list:
-            if tgt_detail.get('interface-enabled', 'true') == 'true':
-                target_details = tgt_detail
-                break
-        if not target_details:
-            target_details = target_details_list[0]
+        LOG.debug("Mapped LUN %(name)s to the initiator %(initiator_name)s",
+                  {'name': name, 'initiator_name': initiator_name})
 
-        (address, port) = (target_details['address'], target_details['port'])
+        target_list = self.zapi_client.get_iscsi_target_details()
+        if not target_list:
+            raise exception.VolumeBackendAPIException(
+                data=_('Failed to get LUN target list for the LUN %s') % name)
 
-        if not target_details['address'] and target_details['port']:
+        LOG.debug("Successfully fetched target list for LUN %(name)s and "
+                  "initiator %(initiator_name)s",
+                  {'name': name, 'initiator_name': initiator_name})
+
+        preferred_target = self._get_preferred_target_from_list(
+            target_list)
+        if preferred_target is None:
             msg = _('Failed to get target portal for the LUN %s')
             raise exception.VolumeBackendAPIException(data=msg % name)
+        (address, port) = (preferred_target['address'],
+                           preferred_target['port'])
 
         iqn = self.zapi_client.get_iscsi_service_details()
         if not iqn:
@@ -551,7 +778,43 @@ class NetAppBlockStorageLibrary(object):
                                                               iqn, address,
                                                               port)
 
+        if self.configuration.use_chap_auth:
+            chap_username, chap_password = self._configure_chap(initiator_name)
+            self._add_chap_properties(properties, chap_username, chap_password)
+
         return properties
+
+    def _configure_chap(self, initiator_name):
+        password = volume_utils.generate_password(na_utils.CHAP_SECRET_LENGTH)
+        username = na_utils.DEFAULT_CHAP_USER_NAME
+
+        self.zapi_client.set_iscsi_chap_authentication(initiator_name,
+                                                       username,
+                                                       password)
+        LOG.debug("Set iSCSI CHAP authentication.")
+
+        return username, password
+
+    def _add_chap_properties(self, properties, username, password):
+        properties['data']['auth_method'] = 'CHAP'
+        properties['data']['auth_username'] = username
+        properties['data']['auth_password'] = password
+        properties['data']['discovery_auth_method'] = 'CHAP'
+        properties['data']['discovery_auth_username'] = username
+        properties['data']['discovery_auth_password'] = password
+
+    def _get_preferred_target_from_list(self, target_details_list,
+                                        filter=None):
+        preferred_target = None
+        for target in target_details_list:
+            if filter and target['address'] not in filter:
+                continue
+            if target.get('interface-enabled', 'true') == 'true':
+                preferred_target = target
+                break
+        if preferred_target is None and len(target_details_list) > 0:
+            preferred_target = target_details_list[0]
+        return preferred_target
 
     def terminate_connection_iscsi(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance.
@@ -565,9 +828,9 @@ class NetAppBlockStorageLibrary(object):
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
         self._unmap_lun(path, [initiator_name])
-        msg = _("Unmapped LUN %(name)s from the initiator %(initiator_name)s")
-        msg_fmt = {'name': name, 'initiator_name': initiator_name}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Unmapped LUN %(name)s from the initiator "
+                  "%(initiator_name)s",
+                  {'name': name, 'initiator_name': initiator_name})
 
     def initialize_connection_fc(self, volume, connector):
         """Initializes the connection and returns connection info.
@@ -585,7 +848,6 @@ class NetAppBlockStorageLibrary(object):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '500a098280feeba5',
-                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '21000024ff406cc3': ['500a098280feeba5'],
                         '21000024ff406cc2': ['500a098280feeba5']
@@ -602,7 +864,6 @@ class NetAppBlockStorageLibrary(object):
                     'target_lun': 1,
                     'target_wwn': ['500a098280feeba5', '500a098290feeba5',
                                    '500a098190feeba5', '500a098180feeba5'],
-                    'access_mode': 'rw',
                     'initiator_target_map': {
                         '21000024ff406cc3': ['500a098280feeba5',
                                              '500a098290feeba5'],
@@ -619,27 +880,25 @@ class NetAppBlockStorageLibrary(object):
 
         lun_id = self._map_lun(volume_name, initiators, 'fcp', None)
 
-        msg = _("Mapped LUN %(name)s to the initiator(s) %(initiators)s")
-        msg_fmt = {'name': volume_name, 'initiators': initiators}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Mapped LUN %(name)s to the initiator(s) %(initiators)s",
+                  {'name': volume_name, 'initiators': initiators})
 
-        target_wwpns, initiator_target_map, num_paths = \
-            self._build_initiator_target_map(connector)
+        target_wwpns, initiator_target_map, num_paths = (
+            self._build_initiator_target_map(connector))
 
         if target_wwpns:
-            msg = _("Successfully fetched target details for LUN %(name)s "
-                    "and initiator(s) %(initiators)s")
-            msg_fmt = {'name': volume_name, 'initiators': initiators}
-            LOG.debug(msg % msg_fmt)
+            LOG.debug("Successfully fetched target details for LUN %(name)s "
+                      "and initiator(s) %(initiators)s",
+                      {'name': volume_name, 'initiators': initiators})
         else:
-            msg = _('Failed to get LUN target details for the LUN %s')
-            raise exception.VolumeBackendAPIException(data=msg % volume_name)
+            raise exception.VolumeBackendAPIException(
+                data=_('Failed to get LUN target details for '
+                       'the LUN %s') % volume_name)
 
         target_info = {'driver_volume_type': 'fibre_channel',
                        'data': {'target_discovered': True,
                                 'target_lun': int(lun_id),
                                 'target_wwn': target_wwpns,
-                                'access_mode': 'rw',
                                 'initiator_target_map': initiator_target_map}}
 
         return target_info
@@ -665,9 +924,8 @@ class NetAppBlockStorageLibrary(object):
 
         self._unmap_lun(path, initiators)
 
-        msg = _("Unmapped LUN %(name)s from the initiator %(initiators)s")
-        msg_fmt = {'name': name, 'initiators': initiators}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Unmapped LUN %(name)s from the initiator %(initiators)s",
+                  {'name': name, 'initiators': initiators})
 
         info = {'driver_volume_type': 'fibre_channel',
                 'data': {}}
@@ -677,8 +935,8 @@ class NetAppBlockStorageLibrary(object):
             LOG.info(_LI("Need to remove FC Zone, building initiator "
                          "target map"))
 
-            target_wwpns, initiator_target_map, num_paths = \
-                self._build_initiator_target_map(connector)
+            target_wwpns, initiator_target_map, num_paths = (
+                self._build_initiator_target_map(connector))
 
             info['data'] = {'target_wwn': target_wwpns,
                             'initiator_target_map': initiator_target_map}
@@ -723,3 +981,143 @@ class NetAppBlockStorageLibrary(object):
                 init_targ_map[initiator] = target_wwpns
 
         return target_wwpns, init_targ_map, num_paths
+
+    def create_consistencygroup(self, group):
+        """Driver entry point for creating a consistency group.
+
+        ONTAP does not maintain an actual CG construct. As a result, no
+        communication to the backend is necessary for consistency group
+        creation.
+
+        :return: Hard-coded model update for consistency group model.
+        """
+        model_update = {'status': 'available'}
+        return model_update
+
+    def delete_consistencygroup(self, group, volumes):
+        """Driver entry point for deleting a consistency group.
+
+        :return: Updated consistency group model and list of volume models
+        for the volumes that were deleted.
+        """
+        model_update = {'status': 'deleted'}
+        volumes_model_update = []
+        for volume in volumes:
+            try:
+                self._delete_lun(volume['name'])
+                volumes_model_update.append(
+                    {'id': volume['id'], 'status': 'deleted'})
+            except Exception:
+                volumes_model_update.append(
+                    {'id': volume['id'], 'status': 'error_deleting'})
+                LOG.exception(_LE("Volume %(vol)s in the consistency group "
+                                  "could not be deleted."), {'vol': volume})
+        return model_update, volumes_model_update
+
+    def update_consistencygroup(self, group, add_volumes=None,
+                                remove_volumes=None):
+        """Driver entry point for updating a consistency group.
+
+        Since no actual CG construct is ever created in ONTAP, it is not
+        necessary to update any metadata on the backend. Since this is a NO-OP,
+        there is guaranteed to be no change in any of the volumes' statuses.
+        """
+        return None, None, None
+
+    def create_cgsnapshot(self, cgsnapshot, snapshots):
+        """Creates a Cinder cgsnapshot object.
+
+        The Cinder cgsnapshot object is created by making use of an
+        ephemeral ONTAP CG in order to provide write-order consistency for a
+        set of flexvol snapshots. First, a list of the flexvols backing the
+        given Cinder CG must be gathered. An ONTAP cg-snapshot of these
+        flexvols will create a snapshot copy of all the Cinder volumes in the
+        CG group. For each Cinder volume in the CG, it is then necessary to
+        clone its backing LUN from the ONTAP cg-snapshot. The naming convention
+        used for the clones is what indicates the clone's role as a Cinder
+        snapshot and its inclusion in a Cinder CG. The ONTAP CG-snapshot of
+        the flexvols is no longer required after having cloned the LUNs
+        backing the Cinder volumes in the Cinder CG.
+
+        :return: An implicit update for cgsnapshot and snapshots models that
+        is interpreted by the manager to set their models to available.
+        """
+        flexvols = set()
+        for snapshot in snapshots:
+            flexvols.add(volume_utils.extract_host(snapshot['volume']['host'],
+                                                   level='pool'))
+
+        self.zapi_client.create_cg_snapshot(flexvols, cgsnapshot['id'])
+
+        for snapshot in snapshots:
+            self._clone_lun(snapshot['volume']['name'], snapshot['name'],
+                            source_snapshot=cgsnapshot['id'])
+
+        for flexvol in flexvols:
+            self._handle_busy_snapshot(flexvol, cgsnapshot['id'])
+            self.zapi_client.delete_snapshot(flexvol, cgsnapshot['id'])
+
+        return None, None
+
+    @utils.retry(exception.SnapshotIsBusy)
+    def _handle_busy_snapshot(self, flexvol, snapshot_name):
+        """Checks for and handles a busy snapshot.
+
+        If a snapshot is not busy, take no action.  If a snapshot is busy for
+        reasons other than a clone dependency, raise immediately.  Otherwise,
+        since we always start a clone split operation after cloning a share,
+        wait up to a minute for a clone dependency to clear before giving up.
+        """
+        snapshot = self.zapi_client.get_snapshot(flexvol, snapshot_name)
+        if not snapshot['busy']:
+            LOG.info(_LI("Backing consistency group snapshot %s "
+                         "available for deletion"), snapshot_name)
+            return
+        else:
+            LOG.debug('Snapshot %(snap)s for vol %(vol)s is busy, waiting '
+                      'for volume clone dependency to clear.',
+                      {'snap': snapshot_name, 'vol': flexvol})
+
+            raise exception.SnapshotIsBusy(snapshot_name=snapshot_name)
+
+    def delete_cgsnapshot(self, cgsnapshot, snapshots):
+        """Delete LUNs backing each snapshot in the cgsnapshot.
+
+        :return: An implicit update for snapshots models that is interpreted
+        by the manager to set their models to deleted.
+        """
+        for snapshot in snapshots:
+            self._delete_lun(snapshot['name'])
+            LOG.debug("Snapshot %s deletion successful", snapshot['name'])
+
+        return None, None
+
+    def create_consistencygroup_from_src(self, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        """Creates a CG from a either a cgsnapshot or group of cinder vols.
+
+        :return: An implicit update for the volumes model that is
+        interpreted by the manager as a successful operation.
+        """
+        LOG.debug("VOLUMES %s ", [dict(vol) for vol in volumes])
+
+        if cgsnapshot:
+            vols = zip(volumes, snapshots)
+
+            for volume, snapshot in vols:
+                source = {
+                    'name': snapshot['name'],
+                    'size': snapshot['volume_size'],
+                }
+                self._clone_source_to_destination(source, volume)
+
+        else:
+            vols = zip(volumes, source_vols)
+
+            for volume, old_src_vref in vols:
+                src_lun = self._get_lun_from_table(old_src_vref['name'])
+                source = {'name': src_lun.name, 'size': old_src_vref['size']}
+                self._clone_source_to_destination(source, volume)
+
+        return None, None

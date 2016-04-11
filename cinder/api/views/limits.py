@@ -15,8 +15,6 @@
 
 import datetime
 
-from oslo_utils import timeutils
-
 
 class ViewBuilder(object):
     """OpenStack API base limits view builder."""
@@ -57,7 +55,7 @@ class ViewBuilder(object):
             "injected_file_content_bytes": ["maxPersonalitySize"],
         }
         limits = {}
-        for name, value in absolute_limits.iteritems():
+        for name, value in absolute_limits.items():
             if name in limit_names and value is not None:
                 for name in limit_names[name]:
                     limits[name] = value
@@ -97,5 +95,5 @@ class ViewBuilder(object):
             "value": rate_limit["value"],
             "remaining": int(rate_limit["remaining"]),
             "unit": rate_limit["unit"],
-            "next-available": timeutils.isotime(at=next_avail),
+            "next-available": next_avail.isoformat(),
         }

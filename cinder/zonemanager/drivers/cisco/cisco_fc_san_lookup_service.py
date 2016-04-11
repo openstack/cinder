@@ -19,23 +19,23 @@ import random
 
 from eventlet import greenthread
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 from oslo_utils import excutils
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
-import cinder.zonemanager.drivers.cisco.fc_zone_constants as ZoneConstant
-from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
-from cinder.zonemanager.utils import get_formatted_wwn
+import cinder.zonemanager.drivers.cisco.fc_zone_constants as zone_constant
+from cinder.zonemanager import fc_san_lookup_service as fc_service
+from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
 
 
-class CiscoFCSanLookupService(FCSanLookupService):
+class CiscoFCSanLookupService(fc_service.FCSanLookupService):
     """The SAN lookup service that talks to Cisco switches.
 
     Version History:
@@ -82,7 +82,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
 
         :param initiator_wwn_list: List of initiator port WWN
         :param target_wwn_list: List of target port WWN
-        :returns List -- device wwn map in following format
+        :returns: List -- device wwn map in following format
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -91,7 +91,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
                     ('100000051e55a100', '100000051e55a121'..)
                 }
             }
-        :raises Exception when connection to fabric is failed
+        :raises: Exception when connection to fabric is failed
         """
         device_map = {}
         formatted_target_list = []
@@ -109,10 +109,10 @@ class CiscoFCSanLookupService(FCSanLookupService):
         LOG.debug("FC Fabric List: %s", fabrics)
         if fabrics:
             for t in target_wwn_list:
-                formatted_target_list.append(get_formatted_wwn(t))
+                formatted_target_list.append(zm_utils.get_formatted_wwn(t))
 
             for i in initiator_wwn_list:
-                formatted_initiator_list.append(get_formatted_wwn(i))
+                formatted_initiator_list.append(zm_utils.get_formatted_wwn(i))
 
             for fabric_name in fabrics:
                 self.switch_ip = self.fabric_configs[fabric_name].safe_get(
@@ -137,10 +137,10 @@ class CiscoFCSanLookupService(FCSanLookupService):
                           formatted_initiator_list)
                 LOG.debug("Lookup service:target list from caller-%s",
                           formatted_target_list)
-                visible_targets = filter(lambda x: x in formatted_target_list,
-                                         nsinfo)
-                visible_initiators = filter(lambda x: x in
-                                            formatted_initiator_list, nsinfo)
+                visible_targets = [x for x in nsinfo
+                                   if x in formatted_target_list]
+                visible_initiators = [x for x in nsinfo
+                                      if x in formatted_initiator_list]
 
                 if visible_targets:
                     LOG.debug("Filtered targets is: %s", visible_targets)
@@ -177,7 +177,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
         cli_output = None
         nsinfo_list = []
         try:
-            cmd = ([ZoneConstant.FCNS_SHOW, fabric_vsan, ' | no-more'])
+            cmd = ([zone_constant.FCNS_SHOW, fabric_vsan, ' | no-more'])
             cli_output = self._get_switch_info(cmd)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
@@ -193,7 +193,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
         stdout, stderr, sw_data = None, None, None
         try:
             stdout, stderr = self._run_ssh(cmd_list, True, 1)
-            LOG.debug("CLI output from ssh - output:%s", stdout)
+            LOG.debug("CLI output from ssh - output: %s", stdout)
             if (stdout):
                 sw_data = stdout.splitlines()
             return sw_data
@@ -209,7 +209,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
 
         Parses nameserver raw data and adds the device port wwns to the list
 
-        :returns list of device port wwn from ns info
+        :returns: list of device port wwn from ns info
         """
         nsinfo_list = []
         for line in switch_data:
@@ -266,7 +266,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s"), command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
@@ -294,7 +294,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
                                              min_size=1,
                                              max_size=5)
         stdin, stdout, stderr = None, None, None
-        LOG.debug("Executing command via ssh: %s" % command)
+        LOG.debug("Executing command via ssh: %s", command)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:
@@ -308,7 +308,7 @@ class CiscoFCSanLookupService(FCSanLookupService):
                         LOG.debug("Exit Status from ssh:%s", exit_status)
                         # exit_status == -1 if no exit code was returned
                         if exit_status != -1:
-                            LOG.debug('Result was %s' % exit_status)
+                            LOG.debug('Result was %s', exit_status)
                             if check_exit_code and exit_status != 0:
                                 raise processutils.ProcessExecutionError(
                                     exit_code=exit_status,

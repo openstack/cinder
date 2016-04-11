@@ -21,8 +21,7 @@ from cinder.keymgr import key_mgr
 
 
 class NotImplementedKeyManager(key_mgr.KeyManager):
-    """Key Manager Interface that raises NotImplementedError for all operations
-    """
+    """Key Manager interface that raises NotImplementedError"""
 
     def create_key(self, ctxt, algorithm='AES', length=256, expiration=None,
                    **kwargs):

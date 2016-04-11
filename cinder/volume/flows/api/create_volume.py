@@ -12,6 +12,7 @@
 
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 from oslo_utils import units
 import taskflow.engines
@@ -20,12 +21,13 @@ from taskflow.types import failure as ft
 
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LE, _LW
+from cinder import objects
 from cinder import policy
 from cinder import quota
 from cinder import utils
 from cinder.volume.flows import common
+from cinder.volume import utils as vol_utils
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -40,8 +42,9 @@ QUOTAS = quota.QUOTAS
 # from, 'error' being the common example.
 SNAPSHOT_PROCEED_STATUS = ('available',)
 SRC_VOL_PROCEED_STATUS = ('available', 'in-use',)
-REPLICA_PROCEED_STATUS = ('active', 'active-stopped')
-CG_PROCEED_STATUS = ('available',)
+REPLICA_PROCEED_STATUS = ('active', 'active-stopped',)
+CG_PROCEED_STATUS = ('available', 'creating',)
+CGSNAPSHOT_PROCEED_STATUS = ('available',)
 
 
 class ExtractVolumeRequestTask(flow_utils.CinderTask):
@@ -61,7 +64,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
     default_provides = set(['availability_zone', 'size', 'snapshot_id',
                             'source_volid', 'volume_type', 'volume_type_id',
                             'encryption_key_id', 'source_replicaid',
-                            'consistencygroup_id'])
+                            'consistencygroup_id', 'cgsnapshot_id',
+                            'qos_specs'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
@@ -70,99 +74,64 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         self.availability_zones = availability_zones
 
     @staticmethod
-    def _extract_consistencygroup(consistencygroup):
-        """Extracts the consistencygroup id from the provided consistencygroup.
+    def _extract_resource(resource, allowed_vals, exc, resource_name,
+                          props=('status',)):
+        """Extracts the resource id from the provided resource.
 
-        This function validates the input consistencygroup dict and checks that
-        the status of that consistencygroup is valid for creating a volume in.
+        This method validates the input resource dict and checks that the
+        properties which names are passed in `props` argument match
+        corresponding lists in `allowed` argument. In case of mismatch
+        exception of type exc is raised.
+
+        :param resource: Resource dict.
+        :param allowed_vals: Tuple of allowed values lists.
+        :param exc: Exception type to raise.
+        :param resource_name: Name of resource - used to construct log message.
+        :param props: Tuple of resource properties names to validate.
+        :return: Id of a resource.
         """
 
-        consistencygroup_id = None
-        if consistencygroup is not None:
-            if consistencygroup['status'] not in CG_PROCEED_STATUS:
-                msg = _("Originating consistencygroup status must be one"
-                        " of '%s' values")
-                msg = msg % (", ".join(CG_PROCEED_STATUS))
-                raise exception.InvalidConsistencyGroup(reason=msg)
-            consistencygroup_id = consistencygroup['id']
-        return consistencygroup_id
+        resource_id = None
+        if resource:
+            for prop, allowed_states in zip(props, allowed_vals):
+                if resource[prop] not in allowed_states:
+                    msg = _("Originating %(res)s %(prop)s must be one of "
+                            "'%(vals)s' values")
+                    msg = msg % {'res': resource_name,
+                                 'prop': prop,
+                                 'vals': ', '.join(allowed_states)}
+                    # TODO(harlowja): what happens if the status changes after
+                    # this initial resource status check occurs??? Seems like
+                    # someone could delete the resource after this check passes
+                    # but before the volume is officially created?
+                    raise exc(reason=msg)
+                resource_id = resource['id']
+        return resource_id
 
-    @staticmethod
-    def _extract_snapshot(snapshot):
-        """Extracts the snapshot id from the provided snapshot (if provided).
+    def _extract_consistencygroup(self, consistencygroup):
+        return self._extract_resource(consistencygroup, (CG_PROCEED_STATUS,),
+                                      exception.InvalidConsistencyGroup,
+                                      'consistencygroup')
 
-        This function validates the input snapshot dict and checks that the
-        status of that snapshot is valid for creating a volume from.
-        """
+    def _extract_cgsnapshot(self, cgsnapshot):
+        return self._extract_resource(cgsnapshot, (CGSNAPSHOT_PROCEED_STATUS,),
+                                      exception.InvalidCgSnapshot,
+                                      'CGSNAPSHOT')
 
-        snapshot_id = None
-        if snapshot is not None:
-            if snapshot['status'] not in SNAPSHOT_PROCEED_STATUS:
-                msg = _("Originating snapshot status must be one"
-                        " of %s values")
-                msg = msg % (", ".join(SNAPSHOT_PROCEED_STATUS))
-                # TODO(harlowja): what happens if the status changes after this
-                # initial snapshot status check occurs??? Seems like someone
-                # could delete the snapshot after this check passes but before
-                # the volume is officially created?
-                raise exception.InvalidSnapshot(reason=msg)
-            snapshot_id = snapshot['id']
-        return snapshot_id
+    def _extract_snapshot(self, snapshot):
+        return self._extract_resource(snapshot, (SNAPSHOT_PROCEED_STATUS,),
+                                      exception.InvalidSnapshot, 'snapshot')
 
-    @staticmethod
-    def _extract_source_volume(source_volume):
-        """Extracts the volume id from the provided volume (if provided).
+    def _extract_source_volume(self, source_volume):
+        return self._extract_resource(source_volume, (SRC_VOL_PROCEED_STATUS,),
+                                      exception.InvalidVolume, 'source volume')
 
-        This function validates the input source_volume dict and checks that
-        the status of that source_volume is valid for creating a volume from.
-        """
-
-        source_volid = None
-        if source_volume is not None:
-            if source_volume['status'] not in SRC_VOL_PROCEED_STATUS:
-                msg = _("Unable to create a volume from an originating source"
-                        " volume when its status is not one of %s"
-                        " values")
-                msg = msg % (", ".join(SRC_VOL_PROCEED_STATUS))
-                # TODO(harlowja): what happens if the status changes after this
-                # initial volume status check occurs??? Seems like someone
-                # could delete the volume after this check passes but before
-                # the volume is officially created?
-                raise exception.InvalidVolume(reason=msg)
-            source_volid = source_volume['id']
-        return source_volid
-
-    @staticmethod
-    def _extract_source_replica(source_replica):
-        """Extracts the volume id from the provided replica (if provided).
-
-        This function validates the input replica_volume dict and checks that
-        the status of that replica_volume is valid for creating a volume from.
-        """
-
-        source_replicaid = None
-        if source_replica is not None:
-            if source_replica['status'] not in SRC_VOL_PROCEED_STATUS:
-                msg = _("Unable to create a volume from an originating source"
-                        " volume when its status is not one of %s"
-                        " values")
-                msg = msg % (", ".join(SRC_VOL_PROCEED_STATUS))
-                # TODO(harlowja): what happens if the status changes after this
-                # initial volume status check occurs??? Seems like someone
-                # could delete the volume after this check passes but before
-                # the volume is officially created?
-                raise exception.InvalidVolume(reason=msg)
-            replication_status = source_replica['replication_status']
-            if replication_status not in REPLICA_PROCEED_STATUS:
-                msg = _("Unable to create a volume from a replica"
-                        " when replication status is not one of %s"
-                        " values")
-                msg = msg % (", ".join(REPLICA_PROCEED_STATUS))
-                # TODO(ronenkat): what happens if the replication status
-                # changes after this initial volume status check occurs???
-                raise exception.InvalidVolume(reason=msg)
-            source_replicaid = source_replica['id']
-        return source_replicaid
+    def _extract_source_replica(self, source_replica):
+        return self._extract_resource(source_replica, (SRC_VOL_PROCEED_STATUS,
+                                                       REPLICA_PROCEED_STATUS),
+                                      exception.InvalidVolume,
+                                      'replica', ('status',
+                                                  'replication_status'))
 
     @staticmethod
     def _extract_size(size, source_volume, snapshot):
@@ -174,12 +143,12 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         """
 
         def validate_snap_size(size):
-            if snapshot and size < snapshot['volume_size']:
+            if snapshot and size < snapshot.volume_size:
                 msg = _("Volume size '%(size)s'GB cannot be smaller than"
                         " the snapshot size %(snap_size)sGB. "
                         "They must be >= original snapshot size.")
                 msg = msg % {'size': size,
-                             'snap_size': snapshot['volume_size']}
+                             'snap_size': snapshot.volume_size}
                 raise exception.InvalidInput(reason=msg)
 
         def validate_source_size(size):
@@ -209,7 +178,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         if not size and source_volume:
             size = source_volume['size']
         elif not size and snapshot:
-            size = snapshot['volume_size']
+            size = snapshot.volume_size
 
         size = utils.as_int(size)
         LOG.debug("Validating volume '%(size)s' using %(functors)s" %
@@ -231,7 +200,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # exist, this is expected as it signals that the image_id is missing.
         image_meta = self.image_service.show(context, image_id)
 
-        #check whether image is active
+        # check whether image is active
         if image_meta['status'] != 'active':
             msg = _('Image %(image_id)s is not active.')\
                 % {'image_id': image_id}
@@ -239,7 +208,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
         # Check image size is not larger than volume size.
         image_size = utils.as_int(image_meta['size'], quiet=False)
-        image_size_in_gb = (image_size + GB - 1) / GB
+        image_size_in_gb = (image_size + GB - 1) // GB
         if image_size_in_gb > size:
             msg = _('Size of specified image %(image_size)sGB'
                     ' is larger than volume size %(volume_size)sGB.')
@@ -254,6 +223,49 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             msg = msg % {'volume_size': size, 'min_disk': min_disk}
             raise exception.InvalidInput(reason=msg)
 
+    def _get_image_volume_type(self, context, image_id):
+        """Get cinder_img_volume_type property from the image metadata."""
+
+        # Check image existence
+        if image_id is None:
+            return None
+
+        image_meta = self.image_service.show(context, image_id)
+
+        # check whether image is active
+        if image_meta['status'] != 'active':
+            msg = (_('Image %(image_id)s is not active.') %
+                   {'image_id': image_id})
+            raise exception.InvalidInput(reason=msg)
+
+        # Retrieve 'cinder_img_volume_type' property from glance image
+        # metadata.
+        image_volume_type = "cinder_img_volume_type"
+        properties = image_meta.get('properties')
+        if properties:
+            try:
+                img_vol_type = properties.get(image_volume_type)
+                if img_vol_type is None:
+                    return None
+                volume_type = volume_types.get_volume_type_by_name(
+                    context,
+                    img_vol_type)
+            except exception.VolumeTypeNotFoundByName:
+                LOG.warning(_LW("Failed to retrieve volume_type from image "
+                                "metadata. '%(img_vol_type)s' doesn't match "
+                                "any volume types."),
+                            {'img_vol_type': img_vol_type})
+                return None
+
+            LOG.debug("Retrieved volume_type from glance image metadata. "
+                      "image_id: %(image_id)s, "
+                      "image property: %(image_volume_type)s, "
+                      "volume_type: %(volume_type)s." %
+                      {'image_id': image_id,
+                       'image_volume_type': image_volume_type,
+                       'volume_type': volume_type})
+            return volume_type
+
     @staticmethod
     def _check_metadata_properties(metadata=None):
         """Checks that the volume metadata properties are valid."""
@@ -261,20 +273,20 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         if not metadata:
             metadata = {}
 
-        for (k, v) in metadata.iteritems():
+        for (k, v) in metadata.items():
             if len(k) == 0:
                 msg = _("Metadata property key blank")
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadata(reason=msg)
             if len(k) > 255:
                 msg = _("Metadata property key %s greater than 255 "
                         "characters") % k
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
             if len(v) > 255:
                 msg = _("Metadata property key %s value greater than"
                         " 255 characters") % k
-                LOG.warn(msg)
+                LOG.warning(msg)
                 raise exception.InvalidVolumeMetadataSize(reason=msg)
 
     def _extract_availability_zone(self, availability_zone, snapshot,
@@ -308,10 +320,22 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             else:
                 # For backwards compatibility use the storage_availability_zone
                 availability_zone = CONF.storage_availability_zone
+
         if availability_zone not in self.availability_zones:
-            msg = _("Availability zone '%s' is invalid") % (availability_zone)
-            LOG.warn(msg)
-            raise exception.InvalidInput(reason=msg)
+            if CONF.allow_availability_zone_fallback:
+                original_az = availability_zone
+                availability_zone = (
+                    CONF.default_availability_zone or
+                    CONF.storage_availability_zone)
+                LOG.warning(_LW("Availability zone '%(s_az)s' "
+                                "not found, falling back to "
+                                "'%(s_fallback_az)s'."),
+                            {'s_az': original_az,
+                             's_fallback_az': availability_zone})
+            else:
+                msg = _("Availability zone '%(s_az)s' is invalid.")
+                msg = msg % {'s_az': availability_zone}
+                raise exception.InvalidInput(reason=msg)
 
         # If the configuration only allows cloning to the same availability
         # zone then we need to enforce that.
@@ -359,27 +383,22 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         return encryption_key_id
 
     def _get_volume_type_id(self, volume_type, source_volume, snapshot):
-        volume_type_id = None
         if not volume_type and source_volume:
-            volume_type_id = source_volume['volume_type_id']
+            return source_volume['volume_type_id']
         elif snapshot is not None:
             if volume_type:
                 current_volume_type_id = volume_type.get('id')
-                if (current_volume_type_id !=
-                        snapshot['volume_type_id']):
-                    msg = _("Volume type will be changed to "
-                            "be the same as the source volume.")
-                    LOG.warn(msg)
-            volume_type_id = snapshot['volume_type_id']
+                if current_volume_type_id != snapshot['volume_type_id']:
+                    msg = _LW("Volume type will be changed to "
+                              "be the same as the source volume.")
+                    LOG.warning(msg)
+            return snapshot['volume_type_id']
         else:
-            volume_type_id = volume_type.get('id')
-
-        return volume_type_id
+            return volume_type.get('id')
 
     def execute(self, context, size, snapshot, image_id, source_volume,
-                availability_zone, volume_type, metadata,
-                key_manager, source_replica,
-                consistencygroup):
+                availability_zone, volume_type, metadata, key_manager,
+                source_replica, consistencygroup, cgsnapshot):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -393,6 +412,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         source_replicaid = self._extract_source_replica(source_replica)
         size = self._extract_size(size, source_volume, snapshot)
         consistencygroup_id = self._extract_consistencygroup(consistencygroup)
+        cgsnapshot_id = self._extract_cgsnapshot(cgsnapshot)
 
         self._check_image_metadata(context, image_id, size)
 
@@ -404,10 +424,12 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         # their volume type matches the source volume is too convoluted. We
         # should copy encryption metadata from the encrypted volume type to the
         # volume upon creation and propagate that information to each snapshot.
-        # This strategy avoid any dependency upon the encrypted volume type.
+        # This strategy avoids any dependency upon the encrypted volume type.
         def_vol_type = volume_types.get_default_volume_type()
         if not volume_type and not source_volume and not snapshot:
-            volume_type = def_vol_type
+            image_volume_type = self._get_image_volume_type(context, image_id)
+            volume_type = (image_volume_type if image_volume_type else
+                           def_vol_type)
 
         # When creating a clone of a replica (replication test), we can't
         # use the volume type of the replica, therefore, we use the default.
@@ -418,6 +440,13 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         volume_type_id = self._get_volume_type_id(volume_type,
                                                   source_volume, snapshot)
 
+        if image_id and volume_types.is_encrypted(context, volume_type_id):
+            msg = _('Create encrypted volumes with type %(type)s '
+                    'from image %(image)s is not supported.')
+            msg = msg % {'type': volume_type_id,
+                         'image': image_id, }
+            raise exception.InvalidInput(reason=msg)
+
         encryption_key_id = self._get_encryption_key_id(key_manager,
                                                         context,
                                                         volume_type_id,
@@ -427,7 +456,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         specs = {}
         if volume_type_id:
             qos_specs = volume_types.get_volume_type_qos_specs(volume_type_id)
-            specs = qos_specs['qos_specs']
+            if qos_specs['qos_specs']:
+                specs = qos_specs['qos_specs'].get('specs', {})
         if not specs:
             # to make sure we don't pass empty dict
             specs = None
@@ -445,6 +475,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'qos_specs': specs,
             'source_replicaid': source_replicaid,
             'consistencygroup_id': consistencygroup_id,
+            'cgsnapshot_id': cgsnapshot_id,
         }
 
 
@@ -460,11 +491,11 @@ class EntryCreateTask(flow_utils.CinderTask):
         requires = ['availability_zone', 'description', 'metadata',
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
-                    'source_replicaid', 'consistencygroup_id', ]
+                    'source_replicaid', 'consistencygroup_id',
+                    'cgsnapshot_id', 'multiattach', 'qos_specs']
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
-        self.provides.update()
 
     def execute(self, context, optional_args, **kwargs):
         """Creates a database entry for the given inputs and returns details.
@@ -487,12 +518,14 @@ class EntryCreateTask(flow_utils.CinderTask):
             'display_description': kwargs.pop('description'),
             'display_name': kwargs.pop('name'),
             'replication_status': 'disabled',
+            'multiattach': kwargs.pop('multiattach'),
         }
 
         # Merge in the other required arguments which should provide the rest
         # of the volume property fields (if applicable).
         volume_properties.update(kwargs)
-        volume = self.db.volume_create(context, volume_properties)
+        volume = objects.Volume(context=context, **volume_properties)
+        volume.create()
 
         return {
             'volume_id': volume['id'],
@@ -509,24 +542,25 @@ class EntryCreateTask(flow_utils.CinderTask):
         }
 
     def revert(self, context, result, optional_args, **kwargs):
-        # We never produced a result and therefore can't destroy anything.
         if isinstance(result, ft.Failure):
+            # We never produced a result and therefore can't destroy anything.
             return
 
         if optional_args['is_quota_committed']:
-            # Committed quota doesn't rollback as the volume has already been
-            # created at this point, and the quota has already been absorbed.
+            # If quota got committed we shouldn't rollback as the volume has
+            # already been created and the quota has already been absorbed.
             return
-        vol_id = result['volume_id']
+
+        volume = result['volume']
         try:
-            self.db.volume_destroy(context.elevated(), vol_id)
+            volume.destroy()
         except exception.CinderException:
             # We are already reverting, therefore we should silence this
             # exception since a second exception being active will be bad.
             #
             # NOTE(harlowja): Being unable to destroy a volume is pretty
             # bad though!!
-            LOG.exception(_LE("Failed destroying volume entry %s"), vol_id)
+            LOG.exception(_LE("Failed destroying volume entry %s"), volume.id)
 
 
 class QuotaReserveTask(flow_utils.CinderTask):
@@ -550,6 +584,15 @@ class QuotaReserveTask(flow_utils.CinderTask):
 
     def execute(self, context, size, volume_type_id, optional_args):
         try:
+            values = {'per_volume_gigabytes': size}
+            QUOTAS.limit_check(context, project_id=context.project_id,
+                               **values)
+        except exception.OverQuota as e:
+            quotas = e.kwargs['quotas']
+            raise exception.VolumeSizeExceedsLimit(
+                size=size, limit=quotas['per_volume_gigabytes'])
+
+        try:
             reserve_opts = {'volumes': 1, 'gigabytes': size}
             QUOTAS.add_volume_type_opts(context, reserve_opts, volume_type_id)
             reservations = QUOTAS.reserve(context, **reserve_opts)
@@ -562,33 +605,45 @@ class QuotaReserveTask(flow_utils.CinderTask):
             usages = e.kwargs['usages']
 
             def _consumed(name):
-                return (usages[name]['reserved'] + usages[name]['in_use'])
+                usage = usages[name]
+                return usage['reserved'] + usage['in_use'] + usage.get(
+                    'allocated', 0)
 
-            def _is_over(name):
+            def _get_over(name):
                 for over in overs:
                     if name in over:
-                        return True
-                return False
+                        return over
+                return None
 
-            if _is_over('gigabytes'):
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG volume (%(d_consumed)dG "
-                        "of %(d_quota)dG already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                's_size': size,
-                                'd_consumed': _consumed('gigabytes'),
-                                'd_quota': quotas['gigabytes']})
+            over_name = _get_over('gigabytes')
+            exceeded_vol_limit_name = _get_over('volumes')
+            if over_name:
+                # TODO(mc_nair): improve error message for child -1 limit
+                msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                          "%(s_size)sG volume (%(d_consumed)dG "
+                          "of %(d_quota)dG already consumed)")
+                LOG.warning(msg, {'s_pid': context.project_id,
+                                  's_size': size,
+                                  'd_consumed': _consumed(over_name),
+                                  'd_quota': quotas[over_name]})
                 raise exception.VolumeSizeExceedsAvailableQuota(
+                    name=over_name,
                     requested=size,
-                    consumed=_consumed('gigabytes'),
-                    quota=quotas['gigabytes'])
-            elif _is_over('volumes'):
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                'd_consumed': _consumed('volumes')})
-                raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
+                    consumed=_consumed(over_name),
+                    quota=quotas[over_name])
+            elif exceeded_vol_limit_name:
+                msg = _LW("Quota %(s_name)s exceeded for %(s_pid)s, tried "
+                          "to create volume (%(d_consumed)d volume(s) "
+                          "already consumed).")
+                LOG.warning(msg,
+                            {'s_name': exceeded_vol_limit_name,
+                             's_pid': context.project_id,
+                             'd_consumed':
+                             _consumed(exceeded_vol_limit_name)})
+                # TODO(mc_nair): improve error message for child -1 limit
+                raise exception.VolumeLimitExceeded(
+                    allowed=quotas[exceeded_vol_limit_name],
+                    name=exceeded_vol_limit_name)
             else:
                 # If nothing was reraised, ensure we reraise the initial error
                 raise
@@ -643,6 +698,7 @@ class QuotaCommitTask(flow_utils.CinderTask):
         # We never produced a result and therefore can't destroy anything.
         if isinstance(result, ft.Failure):
             return
+
         volume = result['volume_properties']
         try:
             reserve_opts = {'volumes': -1, 'gigabytes': -volume['size']}
@@ -663,17 +719,18 @@ class QuotaCommitTask(flow_utils.CinderTask):
 class VolumeCastTask(flow_utils.CinderTask):
     """Performs a volume create cast to the scheduler or to the volume manager.
 
-    This which will signal a transition of the api workflow to another child
-    and/or related workflow on another component.
+    This will signal a transition of the api workflow to another child and/or
+    related workflow on another component.
 
-    Reversion strategy: N/A
+    Reversion strategy: rollback source volume status and error out newly
+    created volume.
     """
 
     def __init__(self, scheduler_rpcapi, volume_rpcapi, db):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
-                    'source_volid', 'volume_id', 'volume_type',
+                    'source_volid', 'volume_id', 'volume', 'volume_type',
                     'volume_properties', 'source_replicaid',
-                    'consistencygroup_id']
+                    'consistencygroup_id', 'cgsnapshot_id', ]
         super(VolumeCastTask, self).__init__(addons=[ACTION],
                                              requires=requires)
         self.volume_rpcapi = volume_rpcapi
@@ -684,31 +741,41 @@ class VolumeCastTask(flow_utils.CinderTask):
         source_volid = request_spec['source_volid']
         source_replicaid = request_spec['source_replicaid']
         volume_id = request_spec['volume_id']
+        volume = request_spec['volume']
         snapshot_id = request_spec['snapshot_id']
         image_id = request_spec['image_id']
-        group_id = request_spec['consistencygroup_id']
+        cgroup_id = request_spec['consistencygroup_id']
         host = None
+        cgsnapshot_id = request_spec['cgsnapshot_id']
 
-        if group_id:
-            group = self.db.consistencygroup_get(context, group_id)
-            if group:
-                host = group.get('host', None)
+        if cgroup_id:
+            # If cgroup_id existed, we should cast volume to the scheduler
+            # to choose a proper pool whose backend is same as CG's backend.
+            cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
+            # FIXME(wanghao): CG_backend got added before request_spec was
+            # converted to versioned objects. We should make sure that this
+            # will be handled by object version translations once we add
+            # RequestSpec object.
+            request_spec['CG_backend'] = vol_utils.extract_host(cgroup.host)
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #
-            # If snapshot_id is set, make the call create volume directly to
-            # the volume host where the snapshot resides instead of passing it
-            # through the scheduler. So snapshot can be copy to new volume.
-            snapshot_ref = self.db.snapshot_get(context, snapshot_id)
-            source_volume_ref = self.db.volume_get(context,
-                                                   snapshot_ref['volume_id'])
-            host = source_volume_ref['host']
+            # If snapshot_id is set and CONF.snapshot_same_host is True, make
+            # the call create volume directly to the volume host where the
+            # snapshot resides instead of passing it through the scheduler, so
+            # snapshot can be copied to the new volume.
+            snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         snapshot.volume_id)
+            host = source_volume_ref.host
         elif source_volid:
-            source_volume_ref = self.db.volume_get(context, source_volid)
-            host = source_volume_ref['host']
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         source_volid)
+            host = source_volume_ref.host
         elif source_replicaid:
-            source_volume_ref = self.db.volume_get(context, source_replicaid)
-            host = source_volume_ref['host']
+            source_volume_ref = objects.Volume.get_by_id(context,
+                                                         source_replicaid)
+            host = source_volume_ref.host
 
         if not host:
             # Cast to the scheduler and let it handle whatever is needed
@@ -720,25 +787,22 @@ class VolumeCastTask(flow_utils.CinderTask):
                 snapshot_id=snapshot_id,
                 image_id=image_id,
                 request_spec=request_spec,
-                filter_properties=filter_properties)
+                filter_properties=filter_properties,
+                volume=volume)
         else:
             # Bypass the scheduler and send the request directly to the volume
             # manager.
-            now = timeutils.utcnow()
-            values = {'host': host, 'scheduled_at': now}
-            volume_ref = self.db.volume_update(context, volume_id, values)
-            self.volume_rpcapi.create_volume(
-                context,
-                volume_ref,
-                volume_ref['host'],
-                request_spec,
-                filter_properties,
-                allow_reschedule=False,
-                snapshot_id=snapshot_id,
-                image_id=image_id,
-                source_volid=source_volid,
-                source_replicaid=source_replicaid,
-                consistencygroup_id=group_id)
+            volume.host = host
+            volume.scheduled_at = timeutils.utcnow()
+            volume.save()
+            if not cgsnapshot_id:
+                self.volume_rpcapi.create_volume(
+                    context,
+                    volume,
+                    volume.host,
+                    request_spec,
+                    filter_properties,
+                    allow_reschedule=False)
 
     def execute(self, context, **kwargs):
         scheduler_hints = kwargs.pop('scheduler_hints', None)
@@ -763,9 +827,8 @@ class VolumeCastTask(flow_utils.CinderTask):
         LOG.error(_LE('Unexpected build error:'), exc_info=exc_info)
 
 
-def get_flow(scheduler_rpcapi, volume_rpcapi, db_api,
-             image_service_api, availability_zones,
-             create_what):
+def get_flow(db_api, image_service_api, availability_zones, create_what,
+             scheduler_rpcapi=None, volume_rpcapi=None):
     """Constructs and returns the api entrypoint flow.
 
     This flow will do the following:
@@ -791,9 +854,10 @@ def get_flow(scheduler_rpcapi, volume_rpcapi, db_api,
                  EntryCreateTask(db_api),
                  QuotaCommitTask())
 
-    # This will cast it out to either the scheduler or volume manager via
-    # the rpc apis provided.
-    api_flow.add(VolumeCastTask(scheduler_rpcapi, volume_rpcapi, db_api))
+    if scheduler_rpcapi and volume_rpcapi:
+        # This will cast it out to either the scheduler or volume manager via
+        # the rpc apis provided.
+        api_flow.add(VolumeCastTask(scheduler_rpcapi, volume_rpcapi, db_api))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(api_flow, store=create_what)

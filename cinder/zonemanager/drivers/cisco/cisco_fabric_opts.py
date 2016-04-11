@@ -15,7 +15,7 @@
 #
 from oslo_config import cfg
 
-from cinder.volume.configuration import Configuration
+from cinder.volume import configuration
 
 cisco_zone_opts = [
     cfg.StrOpt('cisco_fc_fabric_address',
@@ -28,9 +28,9 @@ cisco_zone_opts = [
                default='',
                help='Password for user',
                secret=True),
-    cfg.IntOpt('cisco_fc_fabric_port',
-               default=22,
-               help='Connecting port'),
+    cfg.PortOpt('cisco_fc_fabric_port',
+                default=22,
+                help='Connecting port'),
     cfg.StrOpt('cisco_zoning_policy',
                default='initiator-target',
                help='overridden zoning policy'),
@@ -38,21 +38,19 @@ cisco_zone_opts = [
                 default=True,
                 help='overridden zoning activation state'),
     cfg.StrOpt('cisco_zone_name_prefix',
-               default=None,
                help='overridden zone name prefix'),
     cfg.StrOpt('cisco_zoning_vsan',
-               default=None,
                help='VSAN of the Fabric'),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(cisco_zone_opts, 'CISCO_FABRIC_EXAMPLE')
+CONF.register_opts(cisco_zone_opts, group='CISCO_FABRIC_EXAMPLE')
 
 
 def load_fabric_configurations(fabric_names):
     fabric_configs = {}
     for fabric_name in fabric_names:
-        config = Configuration(cisco_zone_opts, fabric_name)
+        config = configuration.Configuration(cisco_zone_opts, fabric_name)
         fabric_configs[fabric_name] = config
 
     return fabric_configs

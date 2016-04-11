@@ -1,0 +1,6 @@
+---
+features:
+  - Added support for creating, deleting, and updating consistency groups for
+    NetApp 7mode and CDOT backends.
+  - Added support for taking, deleting, and restoring a cgsnapshot for NetApp
+    7mode and CDOT backends.

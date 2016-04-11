@@ -1,0 +1,3 @@
+---
+upgrade:
+  - The deprecated HP CLIQ proxy driver has now been removed.

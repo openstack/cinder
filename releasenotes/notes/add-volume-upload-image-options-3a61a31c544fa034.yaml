@@ -1,0 +1,4 @@
+---
+fixes:
+  - Added the options ``visibility`` and ``protected`` to
+    the os-volume_upload_image REST API call.

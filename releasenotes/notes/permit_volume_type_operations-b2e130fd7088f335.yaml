@@ -1,0 +1,14 @@
+---
+fixes:
+  - |
+    Enabled a cloud operator to correctly manage policy for
+    volume type operations. To permit volume type operations
+    for specific user, you can for example do as follows.
+
+     * Add ``storage_type_admin`` role.
+     * Add ``admin_or_storage_type_admin`` rule to ``policy.json``, e.g.
+           ``"admin_or_storage_type_admin": "is_admin:True or role:storage_type_admin",``
+     * Modify rule for types_manage and volume_type_access, e.g.
+           ``"volume_extension:types_manage": "rule:admin_or_storage_type_admin",
+           "volume_extension:volume_type_access:addProjectAccess": "rule:admin_or_storage_type_admin",
+           "volume_extension:volume_type_access:removeProjectAccess": "rule:admin_or_storage_type_admin",``

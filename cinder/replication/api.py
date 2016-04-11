@@ -17,18 +17,16 @@ Handles all requests relating to volume replication.
 """
 import functools
 
-from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import policy
 from cinder import volume as cinder_volume
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 
-CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 

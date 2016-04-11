@@ -14,11 +14,6 @@
 
 from sqlalchemy import Index, MetaData, Table
 
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
-
 
 def _get_deleted_expire_index(table):
     members = sorted(['deleted', 'expire'])
@@ -33,8 +28,6 @@ def upgrade(migrate_engine):
 
     reservations = Table('reservations', meta, autoload=True)
     if _get_deleted_expire_index(reservations):
-        LOG.info(_('Skipped adding reservations_deleted_expire_idx '
-                   'because an equivalent index already exists.'))
         return
 
     # Based on expire_reservations query
@@ -43,17 +36,3 @@ def upgrade(migrate_engine):
                   reservations.c.deleted, reservations.c.expire)
 
     index.create(migrate_engine)
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    reservations = Table('reservations', meta, autoload=True)
-
-    index = _get_deleted_expire_index(reservations)
-    if index:
-        index.drop(migrate_engine)
-    else:
-        LOG.info(_('Skipped removing reservations_deleted_expire_idx '
-                   'because index does not exist.'))

@@ -16,22 +16,24 @@
 #    under the License.
 #
 
-
+from oslo_concurrency import processutils
+from oslo_log import log as logging
 from oslo_utils import excutils
-import paramiko
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
+from cinder import ssh_utils
 from cinder import utils
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as fabric_opts
-import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
-from cinder.zonemanager.fc_san_lookup_service import FCSanLookupService
+import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
+from cinder.zonemanager import fc_san_lookup_service as fc_service
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
 
-class BrcdFCSanLookupService(FCSanLookupService):
+class BrcdFCSanLookupService(fc_service.FCSanLookupService):
     """The SAN lookup service that talks to Brocade switches.
 
     Version History:
@@ -46,7 +48,6 @@ class BrcdFCSanLookupService(FCSanLookupService):
         super(BrcdFCSanLookupService, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
         self.create_configuration()
-        self.client = self.create_ssh_client(**kwargs)
 
     def create_configuration(self):
         """Configuration specific to SAN context values."""
@@ -61,19 +62,6 @@ class BrcdFCSanLookupService(FCSanLookupService):
             self.fabric_configs = fabric_opts.load_fabric_configurations(
                 fabric_names)
 
-    def create_ssh_client(self, **kwargs):
-        ssh_client = paramiko.SSHClient()
-        known_hosts_file = kwargs.get('known_hosts_file', None)
-        if known_hosts_file is None:
-            ssh_client.load_system_host_keys()
-        else:
-            ssh_client.load_host_keys(known_hosts_file)
-        missing_key_policy = kwargs.get('missing_key_policy', None)
-        if missing_key_policy is None:
-            missing_key_policy = paramiko.WarningPolicy()
-        ssh_client.set_missing_host_key_policy(missing_key_policy)
-        return ssh_client
-
     def get_device_mapping_from_network(self,
                                         initiator_wwn_list,
                                         target_wwn_list):
@@ -84,7 +72,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
 
         :param initiator_wwn_list: List of initiator port WWN
         :param target_wwn_list: List of target port WWN
-        :returns List -- device wwn map in following format
+        :returns: List -- device wwn map in following format
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -93,7 +81,7 @@ class BrcdFCSanLookupService(FCSanLookupService):
                     ('100000051e55a100', '100000051e55a121'..)
                 }
             }
-        :raises Exception when connection to fabric is failed
+        :raises: Exception when connection to fabric is failed
         """
         device_map = {}
         formatted_target_list = []
@@ -110,10 +98,10 @@ class BrcdFCSanLookupService(FCSanLookupService):
         LOG.debug("FC Fabric List: %s", fabrics)
         if fabrics:
             for t in target_wwn_list:
-                formatted_target_list.append(self.get_formatted_wwn(t))
+                formatted_target_list.append(fczm_utils.get_formatted_wwn(t))
 
             for i in initiator_wwn_list:
-                formatted_initiator_list.append(self.
+                formatted_initiator_list.append(fczm_utils.
                                                 get_formatted_wwn(i))
 
             for fabric_name in fabrics:
@@ -126,36 +114,36 @@ class BrcdFCSanLookupService(FCSanLookupService):
                 fabric_port = self.fabric_configs[fabric_name].safe_get(
                     'fc_fabric_port')
 
+                ssh_pool = ssh_utils.SSHPool(fabric_ip, fabric_port, None,
+                                             fabric_user, password=fabric_pwd)
+
                 # Get name server data from fabric and find the targets
                 # logged in
                 nsinfo = ''
                 try:
                     LOG.debug("Getting name server data for "
                               "fabric %s", fabric_ip)
-                    self.client.connect(
-                        fabric_ip, fabric_port, fabric_user, fabric_pwd)
-                    nsinfo = self.get_nameserver_info()
+                    nsinfo = self.get_nameserver_info(ssh_pool)
                 except exception.FCSanLookupServiceException:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_LE("Failed collecting name server info from"
-                                      " fabric %s") % fabric_ip)
+                                      " fabric %s"), fabric_ip)
                 except Exception as e:
                     msg = _("SSH connection failed "
                             "for %(fabric)s with error: %(err)s"
                             ) % {'fabric': fabric_ip, 'err': e}
                     LOG.error(msg)
                     raise exception.FCSanLookupServiceException(message=msg)
-                finally:
-                    self.client.close()
+
                 LOG.debug("Lookup service:nsinfo-%s", nsinfo)
                 LOG.debug("Lookup service:initiator list from "
                           "caller-%s", formatted_initiator_list)
                 LOG.debug("Lookup service:target list from "
                           "caller-%s", formatted_target_list)
-                visible_targets = filter(lambda x: x in formatted_target_list,
-                                         nsinfo)
-                visible_initiators = filter(lambda x: x in
-                                            formatted_initiator_list, nsinfo)
+                visible_targets = [x for x in nsinfo
+                                   if x in formatted_target_list]
+                visible_initiators = [x for x in nsinfo
+                                      if x in formatted_initiator_list]
 
                 if visible_targets:
                     LOG.debug("Filtered targets is: %s", visible_targets)
@@ -184,23 +172,28 @@ class BrcdFCSanLookupService(FCSanLookupService):
         LOG.debug("Device map for SAN context: %s", device_map)
         return device_map
 
-    def get_nameserver_info(self):
+    def get_nameserver_info(self, ssh_pool):
         """Get name server data from fabric.
 
         This method will return the connected node port wwn list(local
         and remote) for the given switch fabric
+
+        :param ssh_pool: SSH connections for the current fabric
         """
         cli_output = None
         nsinfo_list = []
         try:
-            cli_output = self._get_switch_data(ZoneConstant.NS_SHOW)
+            cli_output = self._get_switch_data(ssh_pool,
+                                               zone_constant.NS_SHOW)
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed collecting nsshow info for fabric"))
         if cli_output:
             nsinfo_list = self._parse_ns_output(cli_output)
         try:
-            cli_output = self._get_switch_data(ZoneConstant.NS_CAM_SHOW)
+            cli_output = self._get_switch_data(ssh_pool,
+                                               zone_constant.NS_CAM_SHOW)
+
         except exception.FCSanLookupServiceException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed collecting nscamshow"))
@@ -209,26 +202,19 @@ class BrcdFCSanLookupService(FCSanLookupService):
         LOG.debug("Connector returning nsinfo-%s", nsinfo_list)
         return nsinfo_list
 
-    def _get_switch_data(self, cmd):
-        stdin, stdout, stderr = None, None, None
+    def _get_switch_data(self, ssh_pool, cmd):
         utils.check_ssh_injection([cmd])
-        try:
-            stdin, stdout, stderr = self.client.exec_command(cmd)
-            switch_data = stdout.readlines()
-        except paramiko.SSHException as e:
-            msg = (_("SSH Command failed with error '%(err)s' "
-                     "'%(command)s'") % {'err': e,
-                                         'command': cmd})
-            LOG.error(msg)
-            raise exception.FCSanLookupServiceException(message=msg)
-        finally:
-            if (stdin):
-                stdin.flush()
-                stdin.close()
-            if (stdout):
-                stdout.close()
-            if (stderr):
-                stderr.close()
+
+        with ssh_pool.item() as ssh:
+            try:
+                switch_data, err = processutils.ssh_execute(ssh, cmd)
+            except processutils.ProcessExecutionError as e:
+                msg = (_("SSH Command failed with error: '%(err)s', Command: "
+                         "'%(command)s'") % {'err': six.text_type(e),
+                                             'command': cmd})
+                LOG.error(msg)
+                raise exception.FCSanLookupServiceException(message=msg)
+
         return switch_data
 
     def _parse_ns_output(self, switch_data):
@@ -236,26 +222,19 @@ class BrcdFCSanLookupService(FCSanLookupService):
 
         Parses nameserver raw data and adds the device port wwns to the list
 
-        :returns list of device port wwn from ns info
+        :returns: list of device port wwn from ns info
         """
         nsinfo_list = []
-        for line in switch_data:
+        lines = switch_data.split('\n')
+        for line in lines:
             if not(" NL " in line or " N " in line):
                 continue
             linesplit = line.split(';')
             if len(linesplit) > 2:
-                node_port_wwn = linesplit[2]
+                node_port_wwn = linesplit[2].strip()
                 nsinfo_list.append(node_port_wwn)
             else:
                 msg = _("Malformed nameserver string: %s") % line
                 LOG.error(msg)
                 raise exception.InvalidParameterValue(err=msg)
         return nsinfo_list
-
-    def get_formatted_wwn(self, wwn_str):
-        """Utility API that formats WWN to insert ':'."""
-        if (len(wwn_str) != 16):
-            return wwn_str.lower()
-        else:
-            return (':'.join([wwn_str[i:i + 2]
-                              for i in range(0, len(wwn_str), 2)])).lower()

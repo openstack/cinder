@@ -12,13 +12,13 @@
 
 import os
 
+from oslo_log import log as logging
 # For more information please visit: https://wiki.openstack.org/wiki/TaskFlow
 from taskflow.listeners import base
 from taskflow.listeners import logging as logging_listener
 from taskflow import task
 
 from cinder import exception
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
@@ -40,9 +40,11 @@ class CinderTask(task.Task):
     """
 
     def __init__(self, addons=None, **kwargs):
-        super(CinderTask, self).__init__(_make_task_name(self.__class__,
-                                                         addons),
-                                         **kwargs)
+        super(CinderTask, self).__init__(self.make_name(addons), **kwargs)
+
+    @classmethod
+    def make_name(cls, addons=None):
+        return _make_task_name(cls, addons)
 
 
 class DynamicLogListener(logging_listener.DynamicLoggingListener):

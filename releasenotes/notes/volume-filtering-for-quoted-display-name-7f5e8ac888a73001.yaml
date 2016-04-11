@@ -1,0 +1,5 @@
+---
+fixes:
+  - Filtering volumes by their display name now
+    correctly handles display names with single and
+    double quotes.

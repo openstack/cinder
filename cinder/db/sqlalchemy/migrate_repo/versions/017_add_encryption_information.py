@@ -16,12 +16,6 @@
 from sqlalchemy import Column, ForeignKey, MetaData, Table
 from sqlalchemy import Boolean, DateTime, Integer, String
 
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
-
-
-LOG = logging.getLogger(__name__)
-
 
 def upgrade(migrate_engine):
     meta = MetaData(bind=migrate_engine)
@@ -29,26 +23,14 @@ def upgrade(migrate_engine):
     # encryption key UUID -- must be stored per volume
     volumes = Table('volumes', meta, autoload=True)
     encryption_key = Column('encryption_key_id', String(36))
-    try:
-        volumes.create_column(encryption_key)
-    except Exception:
-        LOG.error(_("Column |%s| not created!"), repr(encryption_key))
-        raise
+    volumes.create_column(encryption_key)
 
     # encryption key UUID and volume type id -- must be stored per snapshot
     snapshots = Table('snapshots', meta, autoload=True)
     encryption_key = Column('encryption_key_id', String(36))
-    try:
-        snapshots.create_column(encryption_key)
-    except Exception:
-        LOG.error(_("Column |%s| not created!"), repr(encryption_key))
-        raise
+    snapshots.create_column(encryption_key)
     volume_type = Column('volume_type_id', String(36))
-    try:
-        snapshots.create_column(volume_type)
-    except Exception:
-        LOG.error(_("Column |%s| not created!"), repr(volume_type))
-        raise
+    snapshots.create_column(volume_type)
 
     volume_types = Table('volume_types', meta, autoload=True)
 
@@ -75,41 +57,4 @@ def upgrade(migrate_engine):
         mysql_charset='utf8'
     )
 
-    try:
-        encryption.create()
-    except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(encryption))
-        raise
-
-
-def downgrade(migrate_engine):
-    meta = MetaData(bind=migrate_engine)
-
-    # drop encryption key UUID for volumes
-    volumes = Table('volumes', meta, autoload=True)
-    try:
-        volumes.c.encryption_key_id.drop()
-    except Exception:
-        LOG.error(_("encryption_key_id column not dropped from volumes"))
-        raise
-
-    # drop encryption key UUID and volume type id for snapshots
-    snapshots = Table('snapshots', meta, autoload=True)
-    try:
-        snapshots.c.encryption_key_id.drop()
-    except Exception:
-        LOG.error(_("encryption_key_id column not dropped from snapshots"))
-        raise
-    try:
-        snapshots.c.volume_type_id.drop()
-    except Exception:
-        LOG.error(_("volume_type_id column not dropped from snapshots"))
-        raise
-
-    # drop encryption types table
-    encryption = Table('encryption', meta, autoload=True)
-    try:
-        encryption.drop()
-    except Exception:
-        LOG.error(_("encryption table not dropped"))
-        raise
+    encryption.create()

@@ -1,5 +1,6 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -18,18 +19,21 @@ import copy
 import math
 import time
 
+from oslo_log import log as logging
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
+from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 
+from oslo_utils import strutils
 
 LOG = logging.getLogger(__name__)
 
 
+@six.add_metaclass(utils.TraceWrapperMetaclass)
 class Client(client_base.Client):
 
     def __init__(self, volume_list=None, **kwargs):
@@ -41,6 +45,15 @@ class Client(client_base.Client):
         self.connection.set_api_version(major, minor)
 
         self.volume_list = volume_list
+        self._init_features()
+
+    def _init_features(self):
+        super(Client, self)._init_features()
+
+        ontapi_version = self.get_ontapi_version()   # major, minor
+
+        ontapi_1_20 = ontapi_version >= (1, 20)
+        self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_20)
 
     def _invoke_vfiler_api(self, na_element, vfiler):
         server = copy.copy(self.connection)
@@ -98,6 +111,18 @@ class Client(client_base.Client):
                 tgt_list.append(d)
         return tgt_list
 
+    def check_iscsi_initiator_exists(self, iqn):
+        """Returns True if initiator exists."""
+        initiator_exists = True
+        try:
+            auth_list = netapp_api.NaElement('iscsi-initiator-auth-list-info')
+            auth_list.add_new_child('initiator', iqn)
+            self.connection.invoke_successfully(auth_list, True)
+        except netapp_api.NaApiError:
+            initiator_exists = False
+
+        return initiator_exists
+
     def get_fc_target_wwpns(self):
         """Gets the FC target details."""
         wwpns = []
@@ -116,6 +141,31 @@ class Client(client_base.Client):
         result = self.connection.invoke_successfully(iscsi_service_iter, True)
         return result.get_child_content('node-name')
 
+    def set_iscsi_chap_authentication(self, iqn, username, password):
+        """Provides NetApp host's CHAP credentials to the backend."""
+
+        command = ("iscsi security add -i %(iqn)s -s CHAP "
+                   "-p %(password)s -n %(username)s") % {
+            'iqn': iqn,
+            'password': password,
+            'username': username,
+        }
+
+        LOG.debug('Updating CHAP authentication for %(iqn)s.', {'iqn': iqn})
+
+        try:
+            ssh_pool = self.ssh_client.ssh_pool
+            with ssh_pool.item() as ssh:
+                self.ssh_client.execute_command(ssh, command)
+        except Exception as e:
+            msg = _('Failed to set CHAP authentication for target IQN '
+                    '%(iqn)s. Details: %(ex)s') % {
+                'iqn': iqn,
+                'ex': e,
+            }
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
     def get_lun_list(self):
         """Gets the list of LUNs on filer."""
         lun_list = []
@@ -127,7 +177,7 @@ class Client(client_base.Client):
                         lun_list.extend(luns)
                 except netapp_api.NaApiError:
                     LOG.warning(_LW("Error finding LUNs for volume %s."
-                                    " Verify volume exists.") % vol)
+                                    " Verify volume exists."), vol)
         else:
             luns = self._get_vol_luns(None)
             lun_list.extend(luns)
@@ -180,7 +230,7 @@ class Client(client_base.Client):
 
     def clone_lun(self, path, clone_path, name, new_name,
                   space_reserved='true', src_block=0,
-                  dest_block=0, block_count=0):
+                  dest_block=0, block_count=0, source_snapshot=None):
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
         # zAPI can only handle 32 block ranges per call
@@ -196,10 +246,16 @@ class Client(client_base.Client):
                 zbc -= z_limit
             else:
                 block_count = zbc
+
+            zapi_args = {
+                'source-path': path,
+                'destination-path': clone_path,
+                'no-snap': 'true',
+            }
+            if source_snapshot:
+                zapi_args['snapshot-name'] = source_snapshot
             clone_start = netapp_api.NaElement.create_node_with_children(
-                'clone-start', **{'source-path': path,
-                                  'destination-path': clone_path,
-                                  'no-snap': 'true'})
+                'clone-start', **zapi_args)
             if block_count > 0:
                 block_ranges = netapp_api.NaElement("block-ranges")
                 # zAPI can only handle 2^24 block ranges
@@ -262,10 +318,10 @@ class Client(client_base.Client):
                 if clone_ops_info.get_child_content('clone-state')\
                         == 'completed':
                     LOG.debug("Clone operation with src %(name)s"
-                              " and dest %(new_name)s completed" % fmt)
+                              " and dest %(new_name)s completed", fmt)
                 else:
                     LOG.debug("Clone operation with src %(name)s"
-                              " and dest %(new_name)s failed" % fmt)
+                              " and dest %(new_name)s failed", fmt)
                     raise netapp_api.NaApiError(
                         clone_ops_info.get_child_content('error'),
                         clone_ops_info.get_child_content('reason'))
@@ -312,9 +368,8 @@ class Client(client_base.Client):
                                  % (export_path))
 
     def clone_file(self, src_path, dest_path):
-        msg_fmt = {'src_path': src_path, 'dest_path': dest_path}
-        LOG.debug("""Cloning with src %(src_path)s, dest %(dest_path)s"""
-                  % msg_fmt)
+        LOG.debug("Cloning with src %(src_path)s, dest %(dest_path)s",
+                  {'src_path': src_path, 'dest_path': dest_path})
         clone_start = netapp_api.NaElement.create_node_with_children(
             'clone-start',
             **{'source-path': src_path,
@@ -333,7 +388,7 @@ class Client(client_base.Client):
             except netapp_api.NaApiError as e:
                 if e.code != 'UnknownCloneId':
                     self._clear_clone(clone_id)
-                raise e
+                raise
 
     def _wait_for_clone_finish(self, clone_op_id, vol_uuid):
         """Waits till a clone operation is complete or errored out."""
@@ -392,10 +447,139 @@ class Client(client_base.Client):
             'file-usage-get', **{'path': path})
         res = self.connection.invoke_successfully(file_use)
         bytes = res.get_child_content('unique-bytes')
-        LOG.debug('file-usage for path %(path)s is %(bytes)s'
-                  % {'path': path, 'bytes': bytes})
+        LOG.debug('file-usage for path %(path)s is %(bytes)s',
+                  {'path': path, 'bytes': bytes})
         return bytes
 
     def get_ifconfig(self):
         ifconfig = netapp_api.NaElement('net-ifconfig-get')
         return self.connection.invoke_successfully(ifconfig)
+
+    def get_flexvol_capacity(self, flexvol_path):
+        """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        api_args = {'volume': flexvol_path, 'verbose': 'false'}
+
+        result = self.send_request('volume-list-info', api_args)
+
+        flexvol_info_list = result.get_child_by_name('volumes')
+        flexvol_info = flexvol_info_list.get_children()[0]
+
+        total_bytes = float(
+            flexvol_info.get_child_content('size-total'))
+        available_bytes = float(
+            flexvol_info.get_child_content('size-available'))
+
+        return total_bytes, available_bytes
+
+    def get_performance_instance_names(self, object_name):
+        """Get names of performance instances for a node."""
+
+        api_args = {'objectname': object_name}
+
+        result = self.send_request('perf-object-instance-list-info',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        instance_names = []
+
+        instances = result.get_child_by_name(
+            'instances') or netapp_api.NaElement('None')
+
+        for instance_info in instances.get_children():
+            instance_names.append(instance_info.get_child_content('name'))
+
+        return instance_names
+
+    def get_performance_counters(self, object_name, instance_names,
+                                 counter_names):
+        """Gets or or more 7-mode Data ONTAP performance counters."""
+
+        api_args = {
+            'objectname': object_name,
+            'instances': [
+                {'instance': instance} for instance in instance_names
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+
+        result = self.send_request('perf-object-get-instances',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        counter_data = []
+
+        timestamp = result.get_child_content('timestamp')
+
+        instances = result.get_child_by_name(
+            'instances') or netapp_api.NaElement('None')
+        for instance in instances.get_children():
+
+            instance_name = instance.get_child_content('name')
+
+            counters = instance.get_child_by_name(
+                'counters') or netapp_api.NaElement('None')
+            for counter in counters.get_children():
+
+                counter_name = counter.get_child_content('name')
+                counter_value = counter.get_child_content('value')
+
+                counter_data.append({
+                    'instance-name': instance_name,
+                    'timestamp': timestamp,
+                    counter_name: counter_value,
+                })
+
+        return counter_data
+
+    def get_system_name(self):
+        """Get the name of the 7-mode Data ONTAP controller."""
+
+        result = self.send_request('system-get-info',
+                                   {},
+                                   enable_tunneling=False)
+
+        system_info = result.get_child_by_name('system-info')
+        system_name = system_info.get_child_content('system-name')
+        return system_name
+
+    def get_snapshot(self, volume_name, snapshot_name):
+        """Gets a single snapshot."""
+        snapshot_list_info = netapp_api.NaElement('snapshot-list-info')
+        snapshot_list_info.add_new_child('volume', volume_name)
+        result = self.connection.invoke_successfully(snapshot_list_info,
+                                                     enable_tunneling=True)
+
+        snapshots = result.get_child_by_name('snapshots')
+        if not snapshots:
+            msg = _('No snapshots could be found on volume %s.')
+            raise exception.VolumeBackendAPIException(data=msg % volume_name)
+        snapshot_list = snapshots.get_children()
+        snapshot = None
+        for s in snapshot_list:
+            if (snapshot_name == s.get_child_content('name')) and (snapshot
+                                                                   is None):
+                snapshot = {
+                    'name': s.get_child_content('name'),
+                    'volume': s.get_child_content('volume'),
+                    'busy': strutils.bool_from_string(
+                        s.get_child_content('busy')),
+                }
+                snapshot_owners_list = s.get_child_by_name(
+                    'snapshot-owners-list') or netapp_api.NaElement('none')
+                snapshot_owners = set([snapshot_owner.get_child_content(
+                    'owner') for snapshot_owner in
+                    snapshot_owners_list.get_children()])
+                snapshot['owners'] = snapshot_owners
+            elif (snapshot_name == s.get_child_content('name')) and (
+                    snapshot is not None):
+                msg = _('Could not find unique snapshot %(snap)s on '
+                        'volume %(vol)s.')
+                msg_args = {'snap': snapshot_name, 'vol': volume_name}
+                raise exception.VolumeBackendAPIException(data=msg % msg_args)
+        if not snapshot:
+            raise exception.SnapshotNotFound(snapshot_id=snapshot_name)
+
+        return snapshot

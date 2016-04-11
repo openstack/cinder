@@ -1,0 +1,5 @@
+---
+upgrade:
+  - Users of the ibmnas driver should switch to using the IBM GPFS driver to enable Cinder access to IBM NAS resources.  For details configuring the IBM GPFS driver, see the GPFS config reference. - http://docs.openstack.org/liberty/config-reference/content/GPFS-driver.html
+other:
+  - Due to the ibmnas (SONAS) driver being rendered redundant by the addition of NFS capabilities to the IBM GPFS driver, the ibmnas driver is being removed in the Mitaka release.

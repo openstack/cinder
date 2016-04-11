@@ -17,33 +17,27 @@ import errno
 import os
 import stat
 
+from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_utils import fileutils
 from oslo_utils import units
 
-from cinder.brick.remotefs import remotefs as remotefs_brick
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder import utils
+from cinder.volume import driver
 from cinder.volume.drivers import remotefs as remotefs_drv
 
 LOG = logging.getLogger(__name__)
+
 
 volume_opts = [
     cfg.StrOpt('glusterfs_shares_config',
                default='/etc/cinder/glusterfs_shares',
                help='File with the list of available gluster shares'),
-    cfg.BoolOpt('glusterfs_sparsed_volumes',
-                default=True,
-                help=('Create volumes as sparsed files which take no space.'
-                      'If set to False volume is created as regular file.'
-                      'In such case volume creation takes a lot of time.')),
-    cfg.BoolOpt('glusterfs_qcow2_volumes',
-                default=False,
-                help=('Create volumes as QCOW2 files rather than raw files.')),
     cfg.StrOpt('glusterfs_mount_point_base',
                default='$state_path/mnt',
                help='Base dir containing mount points for gluster shares.'),
@@ -52,52 +46,12 @@ volume_opts = [
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
-lock_tag = 'glusterfs'
 
+class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
+                      driver.ExtendVD):
+    """Gluster based cinder driver.
 
-def locked_volume_id_operation(f, external=False):
-    """Lock decorator for volume operations.
-
-       Takes a named lock prior to executing the operation. The lock is named
-       with the id of the volume. This lock can then be used
-       by other operations to avoid operation conflicts on shared volumes.
-
-       May be applied to methods of signature:
-          method(<self>, volume, *, **)
-    """
-
-    def lvo_inner1(inst, volume, *args, **kwargs):
-        @utils.synchronized('%s-%s' % (lock_tag, volume['id']),
-                            external=external)
-        def lvo_inner2(*_args, **_kwargs):
-            return f(*_args, **_kwargs)
-        return lvo_inner2(inst, volume, *args, **kwargs)
-    return lvo_inner1
-
-
-def locked_volume_id_snapshot_operation(f, external=False):
-    """Lock decorator for volume operations that use snapshot objects.
-
-       Takes a named lock prior to executing the operation. The lock is named
-       with the id of the volume. This lock can then be used
-       by other operations to avoid operation conflicts on shared volumes.
-
-       May be applied to methods of signature:
-          method(<self>, snapshot, *, **)
-    """
-
-    def lso_inner1(inst, snapshot, *args, **kwargs):
-        @utils.synchronized('%s-%s' % (lock_tag, snapshot['volume']['id']),
-                            external=external)
-        def lso_inner2(*_args, **_kwargs):
-            return f(*_args, **_kwargs)
-        return lso_inner2(inst, snapshot, *args, **kwargs)
-    return lso_inner1
-
-
-class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
-    """Gluster based cinder driver. Creates file on Gluster share for using it
-    as block device on hypervisor.
+    Creates file on Gluster share for using it as block device on hypervisor.
 
     Operations such as create/delete/extend volume/snapshot use locking on a
     per-process basis to prevent multiple threads from modifying qcow2 chains
@@ -107,24 +61,19 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     driver_volume_type = 'glusterfs'
     driver_prefix = 'glusterfs'
     volume_backend_name = 'GlusterFS'
-    VERSION = '1.2.0'
+    VERSION = '1.3.0'
 
     def __init__(self, execute=processutils.execute, *args, **kwargs):
         self._remotefsclient = None
         super(GlusterfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)
+        root_helper = utils.get_root_helper()
         self.base = getattr(self.configuration,
                             'glusterfs_mount_point_base',
                             CONF.glusterfs_mount_point_base)
         self._remotefsclient = remotefs_brick.RemoteFsClient(
-            'glusterfs',
-            execute,
+            'glusterfs', root_helper, execute,
             glusterfs_mount_point_base=self.base)
-
-    def set_execute(self, execute):
-        super(GlusterfsDriver, self).set_execute(execute)
-        if self._remotefsclient:
-            self._remotefsclient.set_execute(execute)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
@@ -134,12 +83,12 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         if not config:
             msg = (_("There's no Gluster config file configured (%s)") %
                    'glusterfs_shares_config')
-            LOG.warn(msg)
+            LOG.warning(msg)
             raise exception.GlusterfsException(msg)
         if not os.path.exists(config):
             msg = (_("Gluster config file at %(config)s doesn't exist") %
                    {'config': config})
-            LOG.warn(msg)
+            LOG.warning(msg)
             raise exception.GlusterfsException(msg)
 
         self.shares = {}
@@ -161,7 +110,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             try:
                 self._do_umount(True, share)
             except Exception as exc:
-                LOG.warning(_LE('Exception during unmounting %s') % (exc))
+                LOG.warning(_LW('Exception during unmounting %s'), exc)
 
     def _do_umount(self, ignore_not_mounted, share):
         mount_path = self._get_mount_point_for_share(share)
@@ -181,8 +130,8 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
             self._unmount_shares()
         except processutils.ProcessExecutionError as exc:
             if 'target is busy' in exc.stderr:
-                LOG.warn(_LW("Failed to refresh mounts, reason=%s") %
-                         exc.stderr)
+                LOG.warning(_LW("Failed to refresh mounts, reason=%s"),
+                            exc.stderr)
             else:
                 raise
 
@@ -202,12 +151,35 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                           hashed)
         return path
 
-    @locked_volume_id_operation
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        self._create_cloned_volume(volume, src_vref)
+    def _active_volume_path(self, volume):
+        volume_dir = self._local_volume_dir(volume)
+        path = os.path.join(volume_dir,
+                            self.get_active_image_from_info(volume))
+        return path
 
-    @locked_volume_id_operation
+    def _update_volume_stats(self):
+        """Retrieve stats info from volume group."""
+        super(GlusterfsDriver, self)._update_volume_stats()
+        data = self._stats
+
+        global_capacity = data['total_capacity_gb']
+        global_free = data['free_capacity_gb']
+
+        thin_enabled = self.configuration.nas_volume_prov_type == 'thin'
+        if thin_enabled:
+            provisioned_capacity = self._get_provisioned_capacity()
+        else:
+            provisioned_capacity = round(global_capacity - global_free, 2)
+
+        data['provisioned_capacity_gb'] = provisioned_capacity
+        data['max_over_subscription_ratio'] = (
+            self.configuration.max_over_subscription_ratio)
+        data['thin_provisioning_support'] = thin_enabled
+        data['thick_provisioning_support'] = not thin_enabled
+
+        self._stats = data
+
+    @remotefs_drv.locked_volume_id_operation
     def create_volume(self, volume):
         """Creates a volume."""
 
@@ -215,15 +187,11 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         volume['provider_location'] = self._find_share(volume['size'])
 
-        LOG.info(_LI('casted to %s') % volume['provider_location'])
+        LOG.info(_LI('casted to %s'), volume['provider_location'])
 
         self._do_create_volume(volume)
 
         return {'provider_location': volume['provider_location']}
-
-    @locked_volume_id_operation
-    def create_volume_from_snapshot(self, volume, snapshot):
-        self._create_volume_from_snapshot(volume, snapshot)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume.
@@ -233,10 +201,10 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, "
-                  "volume_size: %(size)s"
-                  % {'snap': snapshot['id'],
-                     'vol': volume['id'],
-                     'size': volume_size})
+                  "volume_size: %(size)s",
+                  {'snap': snapshot['id'],
+                   'vol': volume['id'],
+                   'size': volume_size})
 
         info_path = self._local_path_volume_info(snapshot['volume'])
         snap_info = self._read_info_file(info_path)
@@ -252,9 +220,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         path_to_new_vol = self._local_path_volume(volume)
 
-        LOG.debug("will copy from snapshot at %s" % path_to_snap_img)
+        LOG.debug("will copy from snapshot at %s", path_to_snap_img)
 
-        if self.configuration.glusterfs_qcow2_volumes:
+        if self.configuration.nas_volume_prov_type == 'thin':
             out_format = 'qcow2'
         else:
             out_format = 'raw'
@@ -265,21 +233,19 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self._set_rw_permissions_for_all(path_to_new_vol)
 
-    @locked_volume_id_operation
+    @remotefs_drv.locked_volume_id_operation
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
         if not volume['provider_location']:
-            LOG.warn(_LW('Volume %s does not have '
-                         'provider_location specified, '
-                         'skipping'), volume['name'])
+            LOG.warning(_LW('Volume %s does not have '
+                            'provider_location specified, '
+                            'skipping'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
 
-        volume_dir = self._local_volume_dir(volume)
-        mounted_path = os.path.join(volume_dir,
-                                    self.get_active_image_from_info(volume))
+        mounted_path = self._active_volume_path(volume)
 
         self._execute('rm', '-f', mounted_path, run_as_root=True)
 
@@ -291,27 +257,16 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         info_path = self._local_path_volume_info(volume)
         fileutils.delete_if_exists(info_path)
 
-    @locked_volume_id_snapshot_operation
-    def create_snapshot(self, snapshot):
-        """Apply locking to the create snapshot operation."""
-
-        return self._create_snapshot(snapshot)
-
     def _get_matching_backing_file(self, backing_chain, snapshot_file):
         return next(f for f in backing_chain
                     if f.get('backing-filename', '') == snapshot_file)
-
-    @locked_volume_id_snapshot_operation
-    def delete_snapshot(self, snapshot):
-        """Apply locking to the delete snapshot operation."""
-        self._delete_snapshot(snapshot)
 
     def ensure_export(self, ctx, volume):
         """Synchronously recreates an export for a logical volume."""
 
         self._ensure_share_mounted(volume['provider_location'])
 
-    def create_export(self, ctx, volume):
+    def create_export(self, ctx, volume, connector):
         """Exports the volume."""
         pass
 
@@ -323,7 +278,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
     def validate_connector(self, connector):
         pass
 
-    @locked_volume_id_operation
+    @remotefs_drv.locked_volume_id_operation
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
 
@@ -355,39 +310,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """Disallow connection from connector."""
         pass
 
-    def copy_volume_to_image(self, context, volume, image_service, image_meta):
-        """Copy the volume to the specified image.
-
-           Warning: parameter order is non-standard to assist with locking
-           decorators.
-        """
-
-        return self._copy_volume_to_image_with_lock(volume,
-                                                    context,
-                                                    image_service,
-                                                    image_meta)
-
-    @locked_volume_id_operation
-    def _copy_volume_to_image_with_lock(self, volume, context,
-                                        image_service, image_meta):
-        """Call private method for this, which handles per-volume locking."""
-
-        return self._copy_volume_to_image(context,
-                                          volume,
-                                          image_service,
-                                          image_meta)
-
-    @locked_volume_id_operation
+    @remotefs_drv.locked_volume_id_operation
     def extend_volume(self, volume, size_gb):
-        volume_path = self.local_path(volume)
-        volume_filename = os.path.basename(volume_path)
-
-        # Ensure no snapshots exist for the volume
-        active_image = self.get_active_image_from_info(volume)
-        if volume_filename != active_image:
-            msg = _('Extend volume is only supported for this'
-                    ' driver when no snapshots exist.')
-            raise exception.InvalidVolume(msg)
+        volume_path = self._active_volume_path(volume)
 
         info = self._qemu_img_info(volume_path, volume['name'])
         backing_fmt = info.file_format
@@ -408,20 +333,27 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
         volume_path = self.local_path(volume)
         volume_size = volume['size']
 
-        LOG.debug("creating new volume at %s" % volume_path)
+        LOG.debug("creating new volume at %s", volume_path)
 
         if os.path.exists(volume_path):
             msg = _('file already exists at %s') % volume_path
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        if self.configuration.glusterfs_qcow2_volumes:
+        if self.configuration.nas_volume_prov_type == 'thin':
             self._create_qcow2_file(volume_path, volume_size)
         else:
-            if self.configuration.glusterfs_sparsed_volumes:
-                self._create_sparsed_file(volume_path, volume_size)
-            else:
-                self._create_regular_file(volume_path, volume_size)
+            try:
+                self._fallocate(volume_path, volume_size)
+            except processutils.ProcessExecutionError as exc:
+                if 'Operation not supported' in exc.stderr:
+                    LOG.warning(_LW('Fallocate not supported by current '
+                                    'version of glusterfs. So falling '
+                                    'back to dd.'))
+                    self._create_regular_file(volume_path, volume_size)
+                else:
+                    fileutils.delete_if_exists(volume_path)
+                    raise
 
         self._set_rw_permissions_for_all(volume_path)
 
@@ -437,16 +369,17 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
             except Exception as exc:
-                LOG.error(_LE('Exception during mounting %s') % (exc,))
+                LOG.error(_LE('Exception during mounting %s'), exc)
 
-        LOG.debug('Available shares: %s' % self._mounted_shares)
+        LOG.debug('Available shares: %s', self._mounted_shares)
 
     def _ensure_share_mounted(self, glusterfs_share):
         """Mount GlusterFS share.
+
         :param glusterfs_share: string
         """
         mount_path = self._get_mount_point_for_share(glusterfs_share)
-        self._mount_glusterfs(glusterfs_share, mount_path, ensure=True)
+        self._mount_glusterfs(glusterfs_share)
 
         # Ensure we can write to this share
         group_id = os.getegid()
@@ -465,6 +398,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def _find_share(self, volume_size_for):
         """Choose GlusterFS share among available ones for given volume size.
+
         Current implementation looks for greatest capacity.
         :param volume_size_for: int size in GB
         """
@@ -486,17 +420,17 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 volume_size=volume_size_for)
         return greatest_share
 
-    def _mount_glusterfs(self, glusterfs_share, mount_path, ensure=False):
+    def _mount_glusterfs(self, glusterfs_share):
         """Mount GlusterFS share to mount path."""
-        # TODO(eharney): make this fs-agnostic and factor into remotefs
-        self._execute('mkdir', '-p', mount_path)
-
-        command = ['mount', '-t', 'glusterfs', glusterfs_share,
-                   mount_path]
+        mnt_flags = []
         if self.shares.get(glusterfs_share) is not None:
-            command.extend(self.shares[glusterfs_share].split())
-
-        self._do_mount(command, ensure, glusterfs_share)
+            mnt_flags = self.shares[glusterfs_share].split()
+        try:
+            self._remotefsclient.mount(glusterfs_share, mnt_flags)
+        except processutils.ProcessExecutionError:
+            LOG.error(_LE("Mount failure for %(share)s."),
+                      {'share': glusterfs_share})
+            raise
 
     def backup_volume(self, context, backup, backup_service):
         """Create a new backup from an existing volume.
@@ -516,19 +450,15 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         volume = self.db.volume_get(context, backup['volume_id'])
 
-        volume_dir = self._local_volume_dir(volume)
-        active_file_path = os.path.join(
-            volume_dir,
-            self.get_active_image_from_info(volume))
+        active_file_path = self._active_volume_path(volume)
 
         info = self._qemu_img_info(active_file_path, volume['name'])
 
         if info.backing_file is not None:
-            msg = _('No snapshots found in database, but '
-                    '%(path)s has backing file '
-                    '%(backing_file)s!') % {'path': active_file_path,
-                                            'backing_file': info.backing_file}
-            LOG.error(msg)
+            LOG.error(_LE('No snapshots found in database, but %(path)s has '
+                          'backing file %(backing_file)s!'),
+                      {'path': active_file_path,
+                       'backing_file': info.backing_file})
             raise exception.InvalidVolume(snap_error_msg)
 
         if info.file_format != 'raw':

@@ -13,11 +13,6 @@
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import Integer, MetaData, String, Table, ForeignKey
 
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
-
 
 def upgrade(migrate_engine):
     meta = MetaData()
@@ -41,21 +36,4 @@ def upgrade(migrate_engine):
         mysql_charset='utf8'
     )
 
-    try:
-        volume_admin_metadata.create()
-    except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(volume_admin_metadata))
-        raise
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    volume_admin_metadata = Table('volume_admin_metadata',
-                                  meta,
-                                  autoload=True)
-    try:
-        volume_admin_metadata.drop()
-    except Exception:
-        LOG.error(_("volume_admin_metadata table not dropped"))
-        raise
+    volume_admin_metadata.create()

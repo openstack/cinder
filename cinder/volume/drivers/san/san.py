@@ -16,7 +16,7 @@
 Default Driver for san-stored volumes.
 
 The unique thing about a SAN is that we don't expect that we can run the volume
-controller on the SAN hardware.  We expect to access it over SSH or some API.
+controller on the SAN hardware. We expect to access it over SSH or some API.
 """
 
 import random
@@ -24,11 +24,11 @@ import random
 from eventlet import greenthread
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
 from cinder.volume import driver
@@ -55,9 +55,9 @@ san_opts = [
     cfg.StrOpt('san_clustername',
                default='',
                help='Cluster name to use for creating volumes'),
-    cfg.IntOpt('san_ssh_port',
-               default=22,
-               help='SSH port to use with SAN'),
+    cfg.PortOpt('san_ssh_port',
+                default=22,
+                help='SSH port to use with SAN'),
     cfg.BoolOpt('san_is_local',
                 default=False,
                 help='Execute commands locally instead of over SSH; '
@@ -77,7 +77,7 @@ CONF = cfg.CONF
 CONF.register_opts(san_opts)
 
 
-class SanDriver(driver.VolumeDriver):
+class SanDriver(driver.BaseVD):
     """Base class for SAN-style storage volumes
 
     A SAN-style storage value is 'different' because the volume controller
@@ -98,8 +98,7 @@ class SanDriver(driver.VolumeDriver):
             return utils.execute(*cmd, **kwargs)
         else:
             check_exit_code = kwargs.pop('check_exit_code', None)
-            command = ' '.join(cmd)
-            return self._run_ssh(command, check_exit_code)
+            return self._run_ssh(cmd, check_exit_code)
 
     def _run_ssh(self, cmd_list, check_exit_code=True, attempts=1):
         utils.check_ssh_injection(cmd_list)
@@ -148,13 +147,13 @@ class SanDriver(driver.VolumeDriver):
 
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s"), command)
 
     def ensure_export(self, context, volume):
         """Synchronously recreates an export for a logical volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Exports the volume."""
         pass
 

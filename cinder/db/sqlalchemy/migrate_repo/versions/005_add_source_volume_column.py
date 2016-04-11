@@ -10,13 +10,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
 from sqlalchemy import Column
 from sqlalchemy import MetaData, String, Table
-
-from cinder.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
 
 
 def upgrade(migrate_engine):
@@ -28,13 +23,3 @@ def upgrade(migrate_engine):
     source_volid = Column('source_volid', String(36))
     volumes.create_column(source_volid)
     volumes.update().values(source_volid=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove source volume id column to volumes."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volumes = Table('volumes', meta, autoload=True)
-    source_volid = Column('source_volid', String(36))
-    volumes.drop_column(source_volid)

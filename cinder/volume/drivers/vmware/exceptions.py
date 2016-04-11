@@ -40,3 +40,18 @@ class VirtualDiskNotFoundException(exceptions.VMwareDriverException):
 class ProfileNotFoundException(exceptions.VMwareDriverException):
     """Thrown when the given storage profile cannot be found."""
     msg_fmt = _("Storage profile: %(storage_profile)s not found.")
+
+
+class NoValidDatastoreException(exceptions.VMwareDriverException):
+    """Thrown when there are no valid datastores."""
+    msg_fmt = _("There are no valid datastores.")
+
+
+class ClusterNotFoundException(exceptions.VMwareDriverException):
+    """Thrown when the given cluster cannot be found."""
+    msg_fmt = _("Compute cluster: %(cluster)s not found.")
+
+
+class NoValidHostException(exceptions.VMwareDriverException):
+    """Thrown when there are no valid ESX hosts."""
+    msg_fmt = _("There are no valid ESX hosts.")

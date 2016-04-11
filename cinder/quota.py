@@ -16,18 +16,21 @@
 
 """Quotas for volumes."""
 
-
+from collections import deque
 import datetime
 
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+import six
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
+from cinder import quota_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -63,12 +66,15 @@ quota_opts = [
                default=0,
                help='Number of seconds between subsequent usage refreshes'),
     cfg.StrOpt('quota_driver',
-               default='cinder.quota.DbQuotaDriver',
+               default="cinder.quota.DbQuotaDriver",
                help='Default driver to use for quota checks'),
     cfg.BoolOpt('use_default_quota_class',
                 default=True,
                 help='Enables or disables use of default quota class '
-                     'with default quota.'), ]
+                     'with default quota.'),
+    cfg.IntOpt('per_volume_size_limit',
+               default=-1,
+               help='Max size allowed per volume, in gigabytes'), ]
 
 CONF = cfg.CONF
 CONF.register_opts(quota_opts)
@@ -92,13 +98,12 @@ class DbQuotaDriver(object):
 
         return db.quota_class_get(context, quota_class, resource_name)
 
-    def get_default(self, context, resource):
+    def get_default(self, context, resource, project_id):
         """Get a specific default quota for a resource."""
-
         default_quotas = db.quota_class_get_default(context)
         return default_quotas.get(resource.name, resource.default)
 
-    def get_defaults(self, context, resources):
+    def get_defaults(self, context, resources, project_id=None):
         """Given a list of resources, retrieve the default quotas.
 
         Use the class quotas named `_DEFAULT_QUOTA_NAME` as default quotas,
@@ -106,6 +111,7 @@ class DbQuotaDriver(object):
 
         :param context: The request context, for access checks.
         :param resources: A dictionary of the registered resources.
+        :param project_id: The id of the current project
         """
 
         quotas = {}
@@ -114,15 +120,16 @@ class DbQuotaDriver(object):
             default_quotas = db.quota_class_get_default(context)
 
         for resource in resources.values():
-            if resource.name not in default_quotas:
-                LOG.deprecated(_("Default quota for resource: %(res)s is set "
-                                 "by the default quota flag: quota_%(res)s, "
-                                 "it is now deprecated. Please use the "
-                                 "default quota class for default "
-                                 "quota.") % {'res': resource.name})
+            if default_quotas:
+                if resource.name not in default_quotas:
+                    versionutils.report_deprecated_feature(LOG, _(
+                        "Default quota for resource: %(res)s is set "
+                        "by the default quota flag: quota_%(res)s, "
+                        "it is now deprecated. Please use the "
+                        "default quota class for default "
+                        "quota.") % {'res': resource.name})
             quotas[resource.name] = default_quotas.get(resource.name,
                                                        resource.default)
-
         return quotas
 
     def get_class_quotas(self, context, resources, quota_class,
@@ -157,7 +164,9 @@ class DbQuotaDriver(object):
     def get_project_quotas(self, context, resources, project_id,
                            quota_class=None, defaults=True,
                            usages=True):
-        """Given a list of resources, retrieve the quotas for the given
+        """Retrieve quotas for a project.
+
+        Given a list of resources, retrieve the quotas for the given
         project.
 
         :param context: The request context, for access checks.
@@ -172,15 +181,19 @@ class DbQuotaDriver(object):
                          default value, if there is no value from the
                          quota class) will be reported if there is no
                          specific value for the resource.
-        :param usages: If True, the current in_use and reserved counts
-                       will also be returned.
+        :param usages: If True, the current in_use, reserved and allocated
+                       counts will also be returned.
         """
 
         quotas = {}
         project_quotas = db.quota_get_all_by_project(context, project_id)
+        allocated_quotas = None
         if usages:
             project_usages = db.quota_usage_get_all_by_project(context,
                                                                project_id)
+            allocated_quotas = db.quota_allocated_get_all_by_project(
+                context, project_id)
+            allocated_quotas.pop('project_id')
 
         # Get the quotas for the appropriate class.  If the project ID
         # matches the one in the context, we use the quota_class from
@@ -193,7 +206,8 @@ class DbQuotaDriver(object):
         else:
             class_quotas = {}
 
-        default_quotas = self.get_defaults(context, resources)
+        # TODO(mc_nair): change this to be lazy loaded
+        default_quotas = self.get_defaults(context, resources, project_id)
 
         for resource in resources.values():
             # Omit default/quota class values
@@ -215,7 +229,9 @@ class DbQuotaDriver(object):
                 quotas[resource.name].update(
                     in_use=usage.get('in_use', 0),
                     reserved=usage.get('reserved', 0), )
-
+            if allocated_quotas:
+                quotas[resource.name].update(
+                    allocated=allocated_quotas.get(resource.name, 0), )
         return quotas
 
     def _get_quotas(self, context, resources, keys, has_sync, project_id=None):
@@ -242,8 +258,8 @@ class DbQuotaDriver(object):
         else:
             sync_filt = lambda x: not hasattr(x, 'sync')
         desired = set(keys)
-        sub_resources = dict((k, v) for k, v in resources.items()
-                             if k in desired and sync_filt(v))
+        sub_resources = {k: v for k, v in resources.items()
+                         if k in desired and sync_filt(v)}
 
         # Make sure we accounted for all of them...
         if len(keys) != len(sub_resources):
@@ -255,7 +271,7 @@ class DbQuotaDriver(object):
                                          project_id,
                                          context.quota_class, usages=False)
 
-        return dict((k, v['limit']) for k, v in quotas.items())
+        return {k: v['limit'] for k, v in quotas.items()}
 
     def limit_check(self, context, resources, values, project_id=None):
         """Check simple quota limits.
@@ -341,7 +357,7 @@ class DbQuotaDriver(object):
         # Set up the reservation expiration
         if expire is None:
             expire = CONF.reservation_expire
-        if isinstance(expire, (int, long)):
+        if isinstance(expire, six.integer_types):
             expire = datetime.timedelta(seconds=expire)
         if isinstance(expire, datetime.timedelta):
             expire = timeutils.utcnow() + expire
@@ -358,7 +374,10 @@ class DbQuotaDriver(object):
         #            quotas, but that's a pretty rare thing.
         quotas = self._get_quotas(context, resources, deltas.keys(),
                                   has_sync=True, project_id=project_id)
+        return self._reserve(context, resources, quotas, deltas, expire,
+                             project_id)
 
+    def _reserve(self, context, resources, quotas, deltas, expire, project_id):
         # NOTE(Vek): Most of the work here has to be done in the DB
         #            API, because we have to do it in a transaction,
         #            which means access to the session.  Since the
@@ -400,16 +419,15 @@ class DbQuotaDriver(object):
 
         db.reservation_rollback(context, reservations, project_id=project_id)
 
-    def destroy_all_by_project(self, context, project_id):
-        """Destroy all that is associated with a project.
+    def destroy_by_project(self, context, project_id):
+        """Destroy all limit quotas associated with a project.
 
-        This includes quotas, usages and reservations.
+        Leave usage and reservation quotas intact.
 
         :param context: The request context, for access checks.
         :param project_id: The ID of the project being deleted.
         """
-
-        db.quota_destroy_all_by_project(context, project_id)
+        db.quota_destroy_by_project(context, project_id)
 
     def expire(self, context):
         """Expire reservations.
@@ -423,20 +441,223 @@ class DbQuotaDriver(object):
         db.reservation_expire(context)
 
 
+class NestedDbQuotaDriver(DbQuotaDriver):
+    def validate_nested_setup(self, ctxt, resources, project_tree,
+                              fix_allocated_quotas=False):
+        """Ensures project_tree has quotas that make sense as nested quotas.
+
+        Validates the following:
+          * No parent project has child_projects who have more combined quota
+            than the parent's quota limit
+          * No child quota has a larger in-use value than it's current limit
+            (could happen before because child default values weren't enforced)
+          * All parent projects' "allocated" quotas match the sum of the limits
+            of its children projects
+
+        TODO(mc_nair): need a better way to "flip the switch" to use nested
+                       quotas to make this less race-ee
+        """
+        self._allocated = {}
+        project_queue = deque(project_tree.items())
+        borked_allocated_quotas = {}
+
+        while project_queue:
+            # Tuple of (current root node, subtree)
+            cur_proj_id, project_subtree = project_queue.popleft()
+
+            # If we're on a leaf node, no need to do validation on it, and in
+            # order to avoid complication trying to get its children, skip it.
+            if not project_subtree:
+                continue
+
+            cur_project_quotas = self.get_project_quotas(
+                ctxt, resources, cur_proj_id)
+
+            # Validate each resource when compared to it's child quotas
+            for resource in cur_project_quotas.keys():
+                parent_quota = cur_project_quotas[resource]
+                parent_limit = parent_quota['limit']
+                parent_usage = (parent_quota['in_use'] +
+                                parent_quota['reserved'])
+
+                cur_parent_allocated = parent_quota.get('allocated', 0)
+                calc_parent_allocated = self._get_cur_project_allocated(
+                    ctxt, resources[resource], {cur_proj_id: project_subtree})
+
+                if parent_limit > 0:
+                    parent_free_quota = parent_limit - parent_usage
+                    if parent_free_quota < calc_parent_allocated:
+                        msg = _("Sum of child usage '%(sum)s' is greater "
+                                "than free quota of '%(free)s' for project "
+                                "'%(proj)s' for resource '%(res)s'. Please "
+                                "lower the limit or usage for one or more of "
+                                "the following projects: '%(child_ids)s'") % {
+                            'sum': calc_parent_allocated,
+                            'free': parent_free_quota,
+                            'proj': cur_proj_id, 'res': resource,
+                            'child_ids': ', '.join(project_subtree.keys())
+                        }
+                        raise exception.InvalidNestedQuotaSetup(reason=msg)
+
+                # If "allocated" value wasn't right either err or fix DB
+                if calc_parent_allocated != cur_parent_allocated:
+                    if fix_allocated_quotas:
+                        try:
+                            db.quota_allocated_update(ctxt, cur_proj_id,
+                                                      resource,
+                                                      calc_parent_allocated)
+                        except exception.ProjectQuotaNotFound:
+                            # If it was default quota create DB entry for it
+                            db.quota_create(
+                                ctxt, cur_proj_id, resource,
+                                parent_limit, allocated=calc_parent_allocated)
+                    else:
+                        if cur_proj_id not in borked_allocated_quotas:
+                            borked_allocated_quotas[cur_proj_id] = {}
+
+                        borked_allocated_quotas[cur_proj_id][resource] = {
+                            'db_allocated_quota': cur_parent_allocated,
+                            'expected_allocated_quota': calc_parent_allocated}
+
+            project_queue.extend(project_subtree.items())
+
+        if borked_allocated_quotas:
+            msg = _("Invalid allocated quotas defined for the following "
+                    "project quotas: %s") % borked_allocated_quotas
+            raise exception.InvalidNestedQuotaSetup(message=msg)
+
+    def _get_cur_project_allocated(self, ctxt, resource, project_tree):
+        """Recursively calculates the allocated value of a project
+
+        :param ctxt: context used to retrieve DB values
+        :param resource: the resource to calculate allocated value for
+        :param project_tree: the project tree used to calculate allocated
+                e.g. {'A': {'B': {'D': None}, 'C': None}}
+
+        A project's "allocated" value depends on:
+            1) the quota limits which have been "given" to it's children, in
+               the case those limits are not unlimited (-1)
+            2) the current quota being used by a child plus whatever the child
+               has given to it's children, in the case of unlimited (-1) limits
+
+        Scenario #2 requires recursively calculating allocated, and in order
+        to efficiently calculate things we will save off any previously
+        calculated allocated values.
+
+        NOTE: this currently leaves a race condition when a project's allocated
+        value has been calculated (with a -1 limit), but then a child project
+        gets a volume created, thus changing the in-use value and messing up
+        the child's allocated value. We should look into updating the allocated
+        values as we're going along and switching to NestedQuotaDriver with
+        flip of a switch.
+        """
+        # Grab the current node
+        cur_project_id = list(project_tree)[0]
+        project_subtree = project_tree[cur_project_id]
+        res_name = resource.name
+
+        if cur_project_id not in self._allocated:
+            self._allocated[cur_project_id] = {}
+
+        if res_name not in self._allocated[cur_project_id]:
+            # Calculate the allocated value for this resource since haven't yet
+            cur_project_allocated = 0
+            child_proj_ids = project_subtree.keys() if project_subtree else {}
+            res_dict = {res_name: resource}
+            child_project_quotas = {child_id: self.get_project_quotas(
+                ctxt, res_dict, child_id) for child_id in child_proj_ids}
+
+            for child_id, child_quota in child_project_quotas.items():
+                child_limit = child_quota[res_name]['limit']
+                # Non-unlimited quota is easy, anything explicitly given to a
+                # child project gets added into allocated value
+                if child_limit != -1:
+                    if child_quota[res_name].get('in_use', 0) > child_limit:
+                        msg = _("Quota limit invalid for project '%(proj)s' "
+                                "for resource '%(res)s': limit of %(limit)d "
+                                "is less than in-use value of %(used)d") % {
+                            'proj': child_id, 'res': res_name,
+                            'limit': child_limit,
+                            'used': child_quota[res_name]['in_use']
+                        }
+                        raise exception.InvalidNestedQuotaSetup(reason=msg)
+
+                    cur_project_allocated += child_limit
+                # For -1, take any quota being eaten up by child, as well as
+                # what the child itself has given up to its children
+                else:
+                    child_in_use = child_quota[res_name].get('in_use', 0)
+                    # Recursively calculate child's allocated
+                    child_alloc = self._get_cur_project_allocated(
+                        ctxt, resource, {child_id: project_subtree[child_id]})
+                    cur_project_allocated += child_in_use + child_alloc
+
+            self._allocated[cur_project_id][res_name] = cur_project_allocated
+
+        return self._allocated[cur_project_id][res_name]
+
+    def get_default(self, context, resource, project_id):
+        """Get a specific default quota for a resource."""
+        resource = super(NestedDbQuotaDriver, self).get_default(
+            context, resource, project_id)
+
+        return 0 if quota_utils.get_parent_project_id(
+            context, project_id) else resource.default
+
+    def get_defaults(self, context, resources, project_id=None):
+        defaults = super(NestedDbQuotaDriver, self).get_defaults(
+            context, resources, project_id)
+        # All defaults are 0 for child project
+        if quota_utils.get_parent_project_id(context, project_id):
+            for key in defaults.keys():
+                defaults[key] = 0
+        return defaults
+
+    def _reserve(self, context, resources, quotas, deltas, expire, project_id):
+        reserved = []
+        # As to not change the exception behavior, flag every res that would
+        # be over instead of failing on first OverQuota
+        resources_failed_to_update = []
+        failed_usages = {}
+        for res in deltas.keys():
+            try:
+                reserved += db.quota_reserve(
+                    context, resources, quotas, {res: deltas[res]},
+                    expire, CONF.until_refresh, CONF.max_age, project_id)
+                if quotas[res] == -1:
+                    reserved += quota_utils.update_alloc_to_next_hard_limit(
+                        context, resources, deltas, res, expire, project_id)
+            except exception.OverQuota as e:
+                resources_failed_to_update.append(res)
+                failed_usages.update(e.kwargs['usages'])
+
+        if resources_failed_to_update:
+            db.reservation_rollback(context, reserved, project_id)
+            # We change OverQuota to OverVolumeLimit in other places and expect
+            # to find all of the OverQuota kwargs
+            raise exception.OverQuota(overs=sorted(resources_failed_to_update),
+                                      quotas=quotas, usages=failed_usages)
+
+        return reserved
+
+
 class BaseResource(object):
     """Describe a single resource for quota checking."""
 
-    def __init__(self, name, flag=None):
+    def __init__(self, name, flag=None, parent_project_id=None):
         """Initializes a Resource.
 
         :param name: The name of the resource, i.e., "volumes".
         :param flag: The name of the flag or configuration option
                      which specifies the default value of the quota
                      for this resource.
+        :param parent_project_id: The id of the current project's parent,
+                                  if any.
         """
 
         self.name = name
         self.flag = flag
+        self.parent_project_id = parent_project_id
 
     def quota(self, driver, context, **kwargs):
         """Given a driver and context, obtain the quota for this resource.
@@ -481,11 +702,15 @@ class BaseResource(object):
                 pass
 
         # OK, return the default
-        return driver.get_default(context, self)
+        return driver.get_default(context, self,
+                                  parent_project_id=self.parent_project_id)
 
     @property
     def default(self):
         """Return the default value of the quota."""
+
+        if self.parent_project_id:
+            return 0
 
         return CONF[self.flag] if self.flag else -1
 
@@ -522,7 +747,8 @@ class ReservableResource(BaseResource):
         """
 
         super(ReservableResource, self).__init__(name, flag=flag)
-        self.sync = sync
+        if sync:
+            self.sync = sync
 
 
 class AbsoluteResource(BaseResource):
@@ -589,14 +815,31 @@ class QuotaEngine(object):
     def __init__(self, quota_driver_class=None):
         """Initialize a Quota object."""
 
-        if not quota_driver_class:
-            quota_driver_class = CONF.quota_driver
-
-        if isinstance(quota_driver_class, basestring):
-            quota_driver_class = importutils.import_object(quota_driver_class)
-
         self._resources = {}
-        self._driver = quota_driver_class
+        self._quota_driver_class = quota_driver_class
+        self._driver_class = None
+
+    @property
+    def _driver(self):
+        # Lazy load the driver so we give a chance for the config file to
+        # be read before grabbing the config for which QuotaDriver to use
+        if self._driver_class:
+            return self._driver_class
+
+        if not self._quota_driver_class:
+            # Grab the current driver class from CONF
+            self._quota_driver_class = CONF.quota_driver
+
+        if isinstance(self._quota_driver_class, six.string_types):
+            self._quota_driver_class = importutils.import_object(
+                self._quota_driver_class)
+
+        self._driver_class = self._quota_driver_class
+        return self._driver_class
+
+    def using_nested_quotas(self):
+        """Returns true if nested quotas are being used"""
+        return isinstance(self._driver, NestedDbQuotaDriver)
 
     def __contains__(self, resource):
         return resource in self.resources
@@ -614,26 +857,42 @@ class QuotaEngine(object):
 
     def get_by_project(self, context, project_id, resource_name):
         """Get a specific quota by project."""
-
         return self._driver.get_by_project(context, project_id, resource_name)
+
+    def get_by_project_or_default(self, context, project_id, resource_name):
+        """Get specific quota by project or default quota if doesn't exists."""
+        try:
+            val = self.get_by_project(
+                context, project_id, resource_name).hard_limit
+        except exception.ProjectQuotaNotFound:
+            val = self.get_defaults(context, project_id)[resource_name]
+
+        return val
 
     def get_by_class(self, context, quota_class, resource_name):
         """Get a specific quota by quota class."""
 
         return self._driver.get_by_class(context, quota_class, resource_name)
 
-    def get_default(self, context, resource):
-        """Get a specific default quota for a resource."""
+    def get_default(self, context, resource, parent_project_id=None):
+        """Get a specific default quota for a resource.
 
-        return self._driver.get_default(context, resource)
+        :param parent_project_id: The id of the current project's parent,
+                                  if any.
+        """
 
-    def get_defaults(self, context):
+        return self._driver.get_default(context, resource,
+                                        parent_project_id=parent_project_id)
+
+    def get_defaults(self, context, project_id=None):
         """Retrieve the default quotas.
 
         :param context: The request context, for access checks.
+        :param project_id: The id of the current project
         """
 
-        return self._driver.get_defaults(context, self.resources)
+        return self._driver.get_defaults(context, self.resources,
+                                         project_id)
 
     def get_class_quotas(self, context, quota_class, defaults=True):
         """Retrieve the quotas for the given quota class.
@@ -662,10 +921,9 @@ class QuotaEngine(object):
                          default value, if there is no value from the
                          quota class) will be reported if there is no
                          specific value for the resource.
-        :param usages: If True, the current in_use and reserved counts
-                       will also be returned.
+        :param usages: If True, the current in_use, reserved and
+                       allocated counts will also be returned.
         """
-
         return self._driver.get_project_quotas(context, self.resources,
                                                project_id,
                                                quota_class=quota_class,
@@ -758,7 +1016,7 @@ class QuotaEngine(object):
                                             expire=expire,
                                             project_id=project_id)
 
-        LOG.debug("Created reservations %s" % reservations)
+        LOG.debug("Created reservations %s", reservations)
 
         return reservations
 
@@ -781,7 +1039,7 @@ class QuotaEngine(object):
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
             LOG.exception(_LE("Failed to commit "
-                              "reservations %s") % reservations)
+                              "reservations %s"), reservations)
 
     def rollback(self, context, reservations, project_id=None):
         """Roll back reservations.
@@ -802,17 +1060,16 @@ class QuotaEngine(object):
             # mechanisms will resolve the issue.  The exception is
             # logged, however, because this is less than optimal.
             LOG.exception(_LE("Failed to roll back reservations "
-                              "%s") % reservations)
+                              "%s"), reservations)
 
-    def destroy_all_by_project(self, context, project_id):
-        """Destroy all quotas, usages, and reservations associated with a
-        project.
+    def destroy_by_project(self, context, project_id):
+        """Destroy all quota limits associated with a project.
 
         :param context: The request context, for access checks.
         :param project_id: The ID of the project being deleted.
         """
 
-        self._driver.destroy_all_by_project(context, project_id)
+        self._driver.destroy_by_project(context, project_id)
 
     def expire(self, context):
         """Expire reservations.
@@ -869,6 +1126,7 @@ class VolumeTypeQuotaEngine(QuotaEngine):
         result = {}
         # Global quotas.
         argses = [('volumes', '_sync_volumes', 'quota_volumes'),
+                  ('per_volume_gigabytes', None, 'per_volume_size_limit'),
                   ('snapshots', '_sync_snapshots', 'quota_snapshots'),
                   ('gigabytes', '_sync_gigabytes', 'quota_gigabytes'),
                   ('backups', '_sync_backups', 'quota_backups'),
@@ -892,6 +1150,30 @@ class VolumeTypeQuotaEngine(QuotaEngine):
 
     def register_resources(self, resources):
         raise NotImplementedError(_("Cannot register resources"))
+
+    def update_quota_resource(self, context, old_type_name, new_type_name):
+        """Update resource in quota.
+
+        This is to update resource in quotas, quota_classes, and
+        quota_usages once the name of a volume type is changed.
+
+        :param context: The request context, for access checks.
+        :param old_type_name: old name of volume type.
+        :param new_type_name: new name of volume type.
+        """
+
+        for quota in ('volumes', 'gigabytes', 'snapshots'):
+            old_res = "%s_%s" % (quota, old_type_name)
+            new_res = "%s_%s" % (quota, new_type_name)
+            db.quota_usage_update_resource(context,
+                                           old_res,
+                                           new_res)
+            db.quota_class_update_resource(context,
+                                           old_res,
+                                           new_res)
+            db.quota_update_resource(context,
+                                     old_res,
+                                     new_res)
 
 
 class CGQuotaEngine(QuotaEngine):

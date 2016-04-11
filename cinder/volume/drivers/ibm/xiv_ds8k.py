@@ -23,10 +23,11 @@ Unified Volume driver for IBM XIV and DS8K Storage Systems.
 """
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
-from cinder.openstack.common import log as logging
+from cinder.volume import driver
 from cinder.volume.drivers.san import san
 
 xiv_ds8k_opts = [
@@ -37,13 +38,18 @@ xiv_ds8k_opts = [
     cfg.StrOpt(
         'xiv_ds8k_connection_type',
         default='iscsi',
-        help='Connection type to the IBM Storage Array'
-        ' (fibre_channel|iscsi)'),
+        choices=['fibre_channel', 'iscsi'],
+        help='Connection type to the IBM Storage Array'),
     cfg.StrOpt(
         'xiv_chap',
         default='disabled',
+        choices=['disabled', 'enabled'],
         help='CHAP authentication mode, effective only for iscsi'
         ' (disabled|enabled)'),
+    cfg.StrOpt(
+        'management_ips',
+        default='',
+        help='List of Management IP addresses (separated by commas)'),
 ]
 
 CONF = cfg.CONF
@@ -52,7 +58,14 @@ CONF.register_opts(xiv_ds8k_opts)
 LOG = logging.getLogger(__name__)
 
 
-class XIVDS8KDriver(san.SanDriver):
+class XIVDS8KDriver(san.SanDriver,
+                    driver.ManageableVD,
+                    driver.ExtendVD,
+                    driver.SnapshotVD,
+                    driver.MigrateVD,
+                    driver.ConsistencyGroupVD,
+                    driver.CloneableImageVD,
+                    driver.TransferVD):
     """Unified IBM XIV and DS8K volume driver."""
 
     def __init__(self, *args, **kwargs):
@@ -63,6 +76,8 @@ class XIVDS8KDriver(san.SanDriver):
         self.configuration.append_config_values(xiv_ds8k_opts)
 
         proxy = importutils.import_class(self.configuration.xiv_ds8k_proxy)
+
+        active_backend_id = kwargs.get('active_backend_id', None)
 
         # NOTE: All Array specific configurations are prefixed with:
         # "xiv_ds8k_array_"
@@ -77,11 +92,13 @@ class XIVDS8KDriver(san.SanDriver):
                 "xiv_ds8k_vol_pool": self.configuration.san_clustername,
                 "xiv_ds8k_connection_type":
                 self.configuration.xiv_ds8k_connection_type,
-                "xiv_chap": self.configuration.xiv_chap
+                "xiv_chap": self.configuration.xiv_chap,
+                "management_ips": self.configuration.management_ips
             },
             LOG,
             exception,
-            driver=self)
+            driver=self,
+            active_backend_id=active_backend_id)
 
     def do_setup(self, context):
         """Setup and verify IBM XIV and DS8K Storage connection."""
@@ -93,7 +110,7 @@ class XIVDS8KDriver(san.SanDriver):
 
         return self.xiv_ds8k_proxy.ensure_export(context, volume)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Create an export."""
 
         return self.xiv_ds8k_proxy.create_export(context, volume)
@@ -202,27 +219,67 @@ class XIVDS8KDriver(san.SanDriver):
 
         return self.xiv_ds8k_proxy.unmanage_volume(volume)
 
-    def reenable_replication(self, context, volume):
-        """Re-enable volume replication. """
+    def freeze_backend(self, context):
+        """Notify the backend that it's frozen. """
 
-        return self.xiv_ds8k_proxy.reenable_replication(context, volume)
+        return self.xiv_ds8k_proxy.freeze_backend(context)
+
+    def thaw_backend(self, context):
+        """Notify the backend that it's unfrozen/thawed. """
+
+        return self.xiv_ds8k_proxy.thaw_backend(context)
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover a backend to a secondary replication target. """
+
+        return self.xiv_ds8k_proxy.failover_host(
+            context, volumes, secondary_id)
 
     def get_replication_status(self, context, volume):
         """Return replication status."""
 
         return self.xiv_ds8k_proxy.get_replication_status(context, volume)
 
-    def promote_replica(self, context, volume):
-        """Promote the replica to be the primary volume."""
-
-        return self.xiv_ds8k_proxy.promote_replica(context, volume)
-
-    def create_replica_test_volume(self, volume, src_vref):
-        """Creates a test replica clone of the specified replicated volume."""
-
-        return self.xiv_ds8k_proxy.create_replica_test_volume(volume, src_vref)
-
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
 
         return self.xiv_ds8k_proxy.retype(ctxt, volume, new_type, diff, host)
+
+    def create_consistencygroup(self, context, group):
+        """Creates a consistency group."""
+
+        return self.xiv_ds8k_proxy.create_consistencygroup(context, group)
+
+    def delete_consistencygroup(self, context, group, volumes):
+        """Deletes a consistency group."""
+
+        return self.xiv_ds8k_proxy.delete_consistencygroup(
+            context, group, volumes)
+
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Creates a consistency group snapshot."""
+
+        return self.xiv_ds8k_proxy.create_cgsnapshot(
+            context, cgsnapshot, snapshots)
+
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Deletes a consistency group snapshot."""
+
+        return self.xiv_ds8k_proxy.delete_cgsnapshot(
+            context, cgsnapshot, snapshots)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes, remove_volumes):
+        """Adds or removes volume(s) to/from an existing consistency group."""
+
+        return self.xiv_ds8k_proxy.update_consistencygroup(
+            context, group, add_volumes, remove_volumes)
+
+    def create_consistencygroup_from_src(
+            self, context, group, volumes, cgsnapshot, snapshots,
+            source_cg=None, source_vols=None):
+        """Creates a consistencygroup from source."""
+
+        return self.xiv_ds8k_proxy.create_consistencygroup_from_src(
+            context, group, volumes, cgsnapshot, snapshots,
+            source_cg, source_vols)

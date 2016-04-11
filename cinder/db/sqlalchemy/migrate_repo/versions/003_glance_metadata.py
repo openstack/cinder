@@ -15,11 +15,6 @@
 from sqlalchemy import Column, DateTime, Text, Boolean
 from sqlalchemy import MetaData, Integer, String, Table, ForeignKey
 
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
-
 
 def upgrade(migrate_engine):
     meta = MetaData()
@@ -56,20 +51,5 @@ def upgrade(migrate_engine):
     try:
         volume_glance_metadata.create()
     except Exception:
-        LOG.exception(_("Exception while creating table "
-                        "'volume_glance_metadata'"))
         meta.drop_all(tables=[volume_glance_metadata])
-        raise
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volume_glance_metadata = Table('volume_glance_metadata',
-                                   meta, autoload=True)
-    try:
-        volume_glance_metadata.drop()
-    except Exception:
-        LOG.error(_("volume_glance_metadata table not dropped"))
         raise

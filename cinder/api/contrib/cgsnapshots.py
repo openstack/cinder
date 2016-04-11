@@ -15,7 +15,7 @@
 
 """The cgsnapshots api."""
 
-
+from oslo_log import log as logging
 import webob
 from webob import exc
 
@@ -27,7 +27,6 @@ from cinder.api import xmlutil
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 
 LOG = logging.getLogger(__name__)
@@ -117,9 +116,8 @@ class CgsnapshotsController(wsgi.Controller):
                 context,
                 cgsnapshot_id=id)
             self.cgsnapshot_api.delete_cgsnapshot(context, cgsnapshot)
-        except exception.CgSnapshotNotFound:
-            msg = _("Cgsnapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.CgSnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidCgSnapshot:
             msg = _("Invalid cgsnapshot")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -157,16 +155,11 @@ class CgsnapshotsController(wsgi.Controller):
     def create(self, req, body):
         """Create a new cgsnapshot."""
         LOG.debug('Creating new cgsnapshot %s', body)
-        if not self.is_valid_body(body, 'cgsnapshot'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'cgsnapshot')
 
         context = req.environ['cinder.context']
-
-        try:
-            cgsnapshot = body['cgsnapshot']
-        except KeyError:
-            msg = _("Incorrect request body format")
-            raise exc.HTTPBadRequest(explanation=msg)
+        cgsnapshot = body['cgsnapshot']
+        self.validate_name_and_description(cgsnapshot)
 
         try:
             group_id = cgsnapshot['consistencygroup_id']
@@ -176,9 +169,8 @@ class CgsnapshotsController(wsgi.Controller):
 
         try:
             group = self.cgsnapshot_api.get(context, group_id)
-        except exception.NotFound:
-            msg = _("Consistency group could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         name = cgsnapshot.get('name', None)
         description = cgsnapshot.get('description', None)
@@ -195,9 +187,7 @@ class CgsnapshotsController(wsgi.Controller):
         except exception.CgSnapshotNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
 
-        retval = self._view_builder.summary(
-            req,
-            dict(new_cgsnapshot.iteritems()))
+        retval = self._view_builder.summary(req, new_cgsnapshot)
 
         return retval
 

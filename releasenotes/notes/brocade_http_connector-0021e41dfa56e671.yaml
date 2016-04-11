@@ -1,0 +1,10 @@
+---
+features:
+  - HTTP connector for the Cinder Brocade FC Zone plugin.
+    This connector allows for communication
+    between the Brocade FC zone plugin and the switch
+    to be over HTTP or HTTPs.  To make use of this
+    connector, the user would add a configuration
+    setting in the fabric block for a Brocade switch
+    with the name as 'fc_southbound_protocol' with
+    a value as 'HTTP' or 'HTTPS'.

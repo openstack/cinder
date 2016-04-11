@@ -12,7 +12,8 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from oslo_utils import strutils
+from oslo_log import log as logging
+import oslo_messaging as messaging
 import webob
 from webob import exc
 
@@ -22,8 +23,9 @@ from cinder import backup
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder import objects
 from cinder import rpc
+from cinder import utils
 from cinder import volume
 
 
@@ -81,7 +83,7 @@ class AdminController(wsgi.Controller):
         context = req.environ['cinder.context']
         self.authorize(context, 'reset_status')
         update = self.validate_update(body['os-reset_status'])
-        msg = _("Updating %(resource)s '%(id)s' with '%(update)r'")
+        msg = "Updating %(resource)s '%(id)s' with '%(update)r'"
         LOG.debug(msg, {'resource': self.resource_name, 'id': id,
                         'update': update})
 
@@ -92,7 +94,7 @@ class AdminController(wsgi.Controller):
 
         try:
             self._update(context, id, update)
-        except exception.NotFound as e:
+        except exception.VolumeNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
 
         notifier.info(context, self.collection + '.reset_status.end',
@@ -107,8 +109,8 @@ class AdminController(wsgi.Controller):
         self.authorize(context, 'force_delete')
         try:
             resource = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         self._delete(context, resource, force=True)
         return webob.Response(status_int=202)
 
@@ -125,12 +127,12 @@ class VolumeAdminController(AdminController):
     # Perhaps we don't even want any definitions in the abstract
     # parent class?
     valid_status = AdminController.valid_status.union(
-        set(['attaching', 'in-use', 'detaching']))
+        ('attaching', 'in-use', 'detaching', 'maintenance'))
 
-    valid_attach_status = set(['detached', 'attached', ])
-    valid_migration_status = set(['migrating', 'error',
-                                  'completing', 'none',
-                                  'starting', ])
+    valid_attach_status = ('detached', 'attached',)
+    valid_migration_status = ('migrating', 'error',
+                              'success', 'completing',
+                              'none', 'starting',)
 
     def _update(self, *args, **kwargs):
         db.volume_update(*args, **kwargs)
@@ -181,11 +183,36 @@ class VolumeAdminController(AdminController):
         self.authorize(context, 'force_detach')
         try:
             volume = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
-        self.volume_api.terminate_connection(context, volume,
-                                             {}, force=True)
-        self.volume_api.detach(context, volume)
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
+        try:
+            connector = body['os-force_detach'].get('connector', None)
+        except KeyError:
+            raise webob.exc.HTTPBadRequest(
+                explanation=_("Must specify 'connector'."))
+        try:
+            self.volume_api.terminate_connection(context, volume, connector)
+        except exception.VolumeBackendAPIException as error:
+            msg = _("Unable to terminate volume connection from backend.")
+            raise webob.exc.HTTPInternalServerError(explanation=msg)
+
+        attachment_id = body['os-force_detach'].get('attachment_id', None)
+
+        try:
+            self.volume_api.detach(context, volume, attachment_id)
+        except messaging.RemoteError as error:
+            if error.exc_type in ['VolumeAttachmentNotFound',
+                                  'InvalidVolume']:
+                msg = "Error force detaching volume - %(err_type)s: " \
+                      "%(err_msg)s" % {'err_type': error.exc_type,
+                                       'err_msg': error.value}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            else:
+                # There are also few cases where force-detach call could fail
+                # due to db or volume driver errors. These errors shouldn't
+                # be exposed to the user and in such cases it should raise
+                # 500 error.
+                raise
         return webob.Response(status_int=202)
 
     @wsgi.action('os-migrate_volume')
@@ -195,25 +222,17 @@ class VolumeAdminController(AdminController):
         self.authorize(context, 'migrate_volume')
         try:
             volume = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         params = body['os-migrate_volume']
         try:
             host = params['host']
         except KeyError:
-            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'"))
-        force_host_copy = params.get('force_host_copy', False)
-        if isinstance(force_host_copy, basestring):
-            try:
-                force_host_copy = strutils.bool_from_string(force_host_copy,
-                                                            strict=True)
-            except ValueError:
-                raise exc.HTTPBadRequest(
-                    explanation=_("Bad value for 'force_host_copy'"))
-        elif not isinstance(force_host_copy, bool):
-            raise exc.HTTPBadRequest(
-                explanation=_("'force_host_copy' not string or bool"))
-        self.volume_api.migrate_volume(context, volume, host, force_host_copy)
+            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'."))
+        force_host_copy = utils.get_bool_param('force_host_copy', params)
+        lock_volume = utils.get_bool_param('lock_volume', params)
+        self.volume_api.migrate_volume(context, volume, host, force_host_copy,
+                                       lock_volume)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-migrate_volume_completion')
@@ -223,8 +242,8 @@ class VolumeAdminController(AdminController):
         self.authorize(context, 'migrate_volume_completion')
         try:
             volume = self._get(context, id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         params = body['os-migrate_volume_completion']
         try:
             new_volume_id = params['new_volume']
@@ -233,8 +252,8 @@ class VolumeAdminController(AdminController):
                 explanation=_("Must specify 'new_volume'"))
         try:
             new_volume = self._get(context, new_volume_id)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        except exception.VolumeNotFound as e:
+            raise exc.HTTPNotFound(explanation=e.msg)
         error = params.get('error', False)
         ret = self.volume_api.migrate_volume_completion(context, volume,
                                                         new_volume, error)
@@ -247,7 +266,12 @@ class SnapshotAdminController(AdminController):
     collection = 'snapshots'
 
     def _update(self, *args, **kwargs):
-        db.snapshot_update(*args, **kwargs)
+        context = args[0]
+        snapshot_id = args[1]
+        fields = args[2]
+        snapshot = objects.Snapshot.get_by_id(context, snapshot_id)
+        snapshot.update(fields)
+        snapshot.save()
 
     def _get(self, *args, **kwargs):
         return self.volume_api.get_snapshot(*args, **kwargs)
@@ -264,6 +288,12 @@ class BackupAdminController(AdminController):
     valid_status = set(['available',
                         'error'
                         ])
+
+    def _get(self, *args, **kwargs):
+        return self.backup_api.get(*args, **kwargs)
+
+    def _delete(self, *args, **kwargs):
+        return self.backup_api.delete(*args, **kwargs)
 
     @wsgi.action('os-reset_status')
     def _reset_status(self, req, id, body):
@@ -283,7 +313,7 @@ class BackupAdminController(AdminController):
         try:
             self.backup_api.reset_status(context=context, backup_id=id,
                                          status=update['status'])
-        except exception.NotFound as e:
+        except exception.BackupNotFound as e:
             raise exc.HTTPNotFound(explanation=e.msg)
         return webob.Response(status_int=202)
 

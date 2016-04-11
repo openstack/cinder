@@ -15,17 +15,18 @@
 
 """The QoS specs extension"""
 
+from oslo_log import log as logging
 from oslo_utils import strutils
 import six
 import webob
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import qos_specs as view_qos_specs
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import rpc
 from cinder import utils
 from cinder.volume import qos_specs
@@ -95,7 +96,7 @@ class AssociationsTemplate(xmlutil.TemplateBuilder):
 def _check_specs(context, specs_id):
     try:
         qos_specs.get_qos_specs(context, specs_id)
-    except exception.NotFound as ex:
+    except exception.QoSSpecsNotFound as ex:
         raise webob.exc.HTTPNotFound(explanation=six.text_type(ex))
 
 
@@ -115,7 +116,20 @@ class QoSSpecsController(wsgi.Controller):
         """Returns the list of qos_specs."""
         context = req.environ['cinder.context']
         authorize(context)
-        specs = qos_specs.get_all_specs(context)
+
+        params = req.params.copy()
+
+        marker, limit, offset = common.get_pagination_params(params)
+        sort_keys, sort_dirs = common.get_sort_params(params)
+        filters = params
+        allowed_search_options = ('id', 'name', 'consumer')
+        utils.remove_invalid_filter_options(context, filters,
+                                            allowed_search_options)
+
+        specs = qos_specs.get_all_specs(context, filters=filters,
+                                        marker=marker, limit=limit,
+                                        offset=offset, sort_keys=sort_keys,
+                                        sort_dirs=sort_dirs)
         return self._view_builder.summary_list(req, specs)
 
     @wsgi.serializers(xml=QoSSpecsTemplate)
@@ -123,23 +137,26 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'qos_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'qos_specs')
 
         specs = body['qos_specs']
         name = specs.get('name', None)
-        if name is None or name == "":
+        if name is None:
             msg = _("Please specify a name for QoS specs.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        self.validate_string_length(name, 'name', min_length=1,
+                                    max_length=255, remove_whitespaces=True)
+        name = name.strip()
 
         try:
             qos_specs.create(context, name, specs)
             spec = qos_specs.get_qos_specs_by_name(context, name)
             notifier_info = dict(name=name, specs=specs)
             rpc.get_notifier('QoSSpecs').info(context,
-                                              'QoSSpecs.create',
+                                              'qos_specs.create',
                                               notifier_info)
-        except exception.InvalidInput as err:
+        except exception.InvalidQoSSpecs as err:
             notifier_err = dict(name=name, error_message=err)
             self._notify_qos_specs_error(context,
                                          'qos_specs.create',
@@ -166,8 +183,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'qos_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'qos_specs')
         specs = body['qos_specs']
         try:
             qos_specs.update(context, id, specs)
@@ -217,9 +233,9 @@ class QoSSpecsController(wsgi.Controller):
 
         force = req.params.get('force', None)
 
-        #convert string to bool type in strict manner
+        # Convert string to bool type in strict manner
         force = strutils.bool_from_string(force)
-        LOG.debug("Delete qos_spec: %(id)s, force: %(force)s" %
+        LOG.debug("Delete qos_spec: %(id)s, force: %(force)s",
                   {'id': id, 'force': force})
 
         try:
@@ -258,14 +274,14 @@ class QoSSpecsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest()
 
         keys = body['keys']
-        LOG.debug("Delete_key spec: %(id)s, keys: %(keys)s" %
+        LOG.debug("Delete_key spec: %(id)s, keys: %(keys)s",
                   {'id': id, 'keys': keys})
 
         try:
             qos_specs.delete_keys(context, id, keys)
             notifier_info = dict(id=id)
-            rpc.get_notifier().info(context, 'qos_specs.delete_keys',
-                                    notifier_info)
+            rpc.get_notifier('QoSSpecs').info(context, 'qos_specs.delete_keys',
+                                              notifier_info)
         except exception.QoSSpecsNotFound as err:
             notifier_err = dict(id=id, error_message=err)
             self._notify_qos_specs_error(context,
@@ -287,7 +303,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.debug("Get associations for qos_spec id: %s" % id)
+        LOG.debug("Get associations for qos_spec id: %s", id)
 
         try:
             associates = qos_specs.get_associations(context, id)
@@ -325,7 +341,7 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.delete',
                                          notifier_err)
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        LOG.debug("Associate qos_spec: %(id)s with type: %(type_id)s" %
+        LOG.debug("Associate qos_spec: %(id)s with type: %(type_id)s",
                   {'id': id, 'type_id': type_id})
 
         try:
@@ -379,7 +395,7 @@ class QoSSpecsController(wsgi.Controller):
                                          'qos_specs.delete',
                                          notifier_err)
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        LOG.debug("Disassociate qos_spec: %(id)s from type: %(type_id)s" %
+        LOG.debug("Disassociate qos_spec: %(id)s from type: %(type_id)s",
                   {'id': id, 'type_id': type_id})
 
         try:
@@ -415,7 +431,7 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.debug("Disassociate qos_spec: %s from all." % id)
+        LOG.debug("Disassociate qos_spec: %s from all.", id)
 
         try:
             qos_specs.disassociate_all(context, id)

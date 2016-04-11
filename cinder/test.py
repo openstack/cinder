@@ -21,6 +21,7 @@ inline callbacks.
 
 """
 
+import copy
 import logging
 import os
 import shutil
@@ -28,35 +29,32 @@ import uuid
 
 import fixtures
 import mock
-import mox
-from oslo.messaging import conffixture as messaging_conffixture
 from oslo_concurrency import lockutils
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
+from oslo_log.fixture import logging_error as log_fixture
+from oslo_log import log
+from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
-import stubout
+from oslotest import moxstubout
 import testtools
 
 from cinder.common import config  # noqa Need to register global_opts
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
-from cinder.openstack.common import log as oslo_logging
+from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder import service
-from cinder.tests import conf_fixture
-from cinder.tests import fake_notifier
+from cinder.tests import fixtures as cinder_fixtures
+from cinder.tests.unit import conf_fixture
+from cinder.tests.unit import fake_notifier
 
-test_opts = [
-    cfg.StrOpt('sqlite_clean_db',
-               default='clean.sqlite',
-               help='File name of clean sqlite db'), ]
 
 CONF = cfg.CONF
-CONF.register_opts(test_opts)
 
-LOG = oslo_logging.getLogger(__name__)
+LOG = log.getLogger(__name__)
 
 _DB_CACHE = None
 
@@ -72,6 +70,10 @@ class Database(fixtures.Fixture):
         self.sql_connection = sql_connection
         self.sqlite_db = sqlite_db
         self.sqlite_clean_db = sqlite_clean_db
+
+        # Suppress logging for test runs
+        migrate_logger = logging.getLogger('migrate')
+        migrate_logger.setLevel(logging.WARNING)
 
         self.engine = db_api.get_engine()
         self.engine.dispose()
@@ -102,9 +104,25 @@ class Database(fixtures.Fixture):
 class TestCase(testtools.TestCase):
     """Test case base class for all unit tests."""
 
+    def _get_joined_notifier(self, *args, **kwargs):
+        # We create a new fake notifier but we join the notifications with
+        # the default notifier
+        notifier = fake_notifier.get_fake_notifier(*args, **kwargs)
+        notifier.notifications = self.notifier.notifications
+        return notifier
+
     def setUp(self):
         """Run before each test method to initialize test environment."""
         super(TestCase, self).setUp()
+
+        # Create default notifier
+        self.notifier = fake_notifier.get_fake_notifier()
+
+        # Mock rpc get notifier with fake notifier method that joins all
+        # notifications with the default notifier
+        p = mock.patch('cinder.rpc.get_notifier',
+                       side_effect=self._get_joined_notifier)
+        p.start()
 
         # Unit tests do not need to use lazy gettext
         i18n.enable_lazy(False)
@@ -128,17 +146,11 @@ class TestCase(testtools.TestCase):
         if environ_enabled('OS_STDERR_CAPTURE'):
             stderr = self.useFixture(fixtures.StringStream('stderr')).stream
             self.useFixture(fixtures.MonkeyPatch('sys.stderr', stderr))
-        if environ_enabled('OS_LOG_CAPTURE'):
-            log_format = '%(levelname)s [%(name)s] %(message)s'
-            if environ_enabled('OS_DEBUG'):
-                level = logging.DEBUG
-            else:
-                level = logging.INFO
-            self.useFixture(fixtures.LoggerFixture(nuke_handlers=False,
-                                                   format=log_format,
-                                                   level=level))
 
-        rpc.add_extra_exmods("cinder.tests")
+        self.useFixture(log_fixture.get_logging_handle_error_fixture())
+        self.useFixture(cinder_fixtures.StandardLogging())
+
+        rpc.add_extra_exmods("cinder.tests.unit")
         self.addCleanup(rpc.clear_extra_exmods)
         self.addCleanup(rpc.cleanup)
 
@@ -147,6 +159,14 @@ class TestCase(testtools.TestCase):
         self.messaging_conf.response_timeout = 15
         self.useFixture(self.messaging_conf)
         rpc.init(CONF)
+
+        # NOTE(geguileo): This is required because _determine_obj_version_cap
+        # and _determine_rpc_version_cap functions in cinder.rpc.RPCAPI cache
+        # versions in LAST_RPC_VERSIONS and LAST_OBJ_VERSIONS so we may have
+        # weird interactions between tests if we don't clear them before each
+        # test.
+        rpc.LAST_OBJ_VERSIONS = {}
+        rpc.LAST_RPC_VERSIONS = {}
 
         conf_fixture.set_defaults(CONF)
         CONF([], default_config_files=[])
@@ -164,18 +184,23 @@ class TestCase(testtools.TestCase):
             _DB_CACHE = Database(sqla_api, migration,
                                  sql_connection=CONF.database.connection,
                                  sqlite_db=CONF.database.sqlite_db,
-                                 sqlite_clean_db=CONF.sqlite_clean_db)
+                                 sqlite_clean_db='clean.sqlite')
         self.useFixture(_DB_CACHE)
+
+        # NOTE(danms): Make sure to reset us back to non-remote objects
+        # for each test to avoid interactions. Also, backup the object
+        # registry.
+        objects_base.CinderObject.indirection_api = None
+        self._base_test_obj_backup = copy.copy(
+            objects_base.CinderObjectRegistry._registry._obj_classes)
+        self.addCleanup(self._restore_obj_registry)
 
         # emulate some of the mox stuff, we can't use the metaclass
         # because it screws with our generators
-        self.mox = mox.Mox()
-        self.stubs = stubout.StubOutForTesting()
+        mox_fixture = self.useFixture(moxstubout.MoxStubout())
+        self.mox = mox_fixture.mox
+        self.stubs = mox_fixture.stubs
         self.addCleanup(CONF.reset)
-        self.addCleanup(self.mox.UnsetStubs)
-        self.addCleanup(self.stubs.UnsetAll)
-        self.addCleanup(self.stubs.SmartUnsetAll)
-        self.addCleanup(self.mox.VerifyAll)
         self.addCleanup(self._common_cleanup)
         self.injected = []
         self._services = []
@@ -198,7 +223,32 @@ class TestCase(testtools.TestCase):
                                          '..',
                                      )
                                  ),
-                                 'cinder/tests/policy.json'))
+                                 'cinder/tests/unit/policy.json'),
+                             group='oslo_policy')
+
+        self._disable_osprofiler()
+
+        # NOTE(geguileo): This is required because common get_by_id method in
+        # cinder.db.sqlalchemy.api caches get methods and if we use a mocked
+        # get method in one test it would carry on to the next test.  So we
+        # clear out the cache.
+        sqla_api._GET_METHODS = {}
+
+    def _restore_obj_registry(self):
+        objects_base.CinderObjectRegistry._registry._obj_classes = \
+            self._base_test_obj_backup
+
+    def _disable_osprofiler(self):
+        """Disable osprofiler.
+
+        osprofiler should not run for unit tests.
+        """
+
+        side_effect = lambda value: value
+        mock_decorator = mock.MagicMock(side_effect=side_effect)
+        p = mock.patch("osprofiler.profiler.trace_cls",
+                       return_value=mock_decorator)
+        p.start()
 
     def _common_cleanup(self):
         """Runs after each test method to tear down test environment."""
@@ -230,13 +280,8 @@ class TestCase(testtools.TestCase):
 
     def flags(self, **kw):
         """Override CONF variables for a test."""
-        for k, v in kw.iteritems():
+        for k, v in kw.items():
             self.override_config(k, v)
-
-    def log_level(self, level):
-        """Set logging level to the specified value."""
-        log_root = logging.getLogger(None).logger
-        log_root.setLevel(level)
 
     def start_service(self, name, host=None, **kwargs):
         host = host and host or uuid.uuid4().hex

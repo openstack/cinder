@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Backend driver for Scality SRB has been removed.

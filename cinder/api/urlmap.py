@@ -14,12 +14,15 @@
 #    under the License.
 
 import re
-import urllib2
 
+from oslo_log import log as logging
 import paste.urlmap
+try:
+    from urllib.request import parse_http_list   # pylint: disable=E0611
+except ImportError:
+    from urllib2 import parse_http_list   # Python 2
 
 from cinder.api.openstack import wsgi
-from cinder.openstack.common import log as logging
 
 
 _quoted_string_re = r'"[^"\\]*(?:\\.[^"\\]*)*"'
@@ -33,6 +36,7 @@ LOG = logging.getLogger(__name__)
 
 def unquote_header_value(value):
     """Unquotes a header value.
+
     This does not use the real unquoting but what browsers are actually
     using for quoting.
 
@@ -64,7 +68,7 @@ def parse_list_header(value):
     :return: :class:`list`
     """
     result = []
-    for item in urllib2.parse_http_list(value):
+    for item in parse_http_list(value):
         if item[:1] == item[-1:] == '"':
             item = unquote_header_value(item[1:-1])
         result.append(item)
@@ -72,7 +76,9 @@ def parse_list_header(value):
 
 
 def parse_options_header(value):
-    """Parse a ``Content-Type`` like header into a tuple with the content
+    """Parse 'Content-Type'-like header into a tuple.
+
+    Parse a ``Content-Type`` like header into a tuple with the content
     type and the options:
 
     >>> parse_options_header('Content-Type: text/html; mimetype=text/html')
@@ -93,7 +99,7 @@ def parse_options_header(value):
         return '', {}
 
     parts = _tokenize(';' + value)
-    name = parts.next()[0]
+    name = next(parts)[0]
     extra = dict(parts)
     return name, extra
 

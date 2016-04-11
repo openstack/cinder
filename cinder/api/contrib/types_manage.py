@@ -25,6 +25,7 @@ from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
 from cinder import rpc
+from cinder import utils
 from cinder.volume import volume_types
 
 
@@ -53,8 +54,7 @@ class VolumeTypesManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume_type'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'volume_type')
 
         vol_type = body['volume_type']
         name = vol_type.get('name', None)
@@ -64,6 +64,18 @@ class VolumeTypesManageController(wsgi.Controller):
 
         if name is None or len(name.strip()) == 0:
             msg = _("Volume type name can not be empty.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        utils.check_string_length(name, 'Type name',
+                                  min_length=1, max_length=255)
+
+        if description is not None:
+            utils.check_string_length(description, 'Type description',
+                                      min_length=0, max_length=255)
+
+        if not utils.is_valid_boolstr(is_public):
+            msg = _("Invalid value '%s' for is_public. Accepted values: "
+                    "True or False.") % is_public
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
@@ -81,10 +93,10 @@ class VolumeTypesManageController(wsgi.Controller):
             self._notify_volume_type_error(
                 context, 'volume_type.create', err, volume_type=vol_type)
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
-        except exception.NotFound as err:
+        except exception.VolumeTypeNotFoundByName as err:
             self._notify_volume_type_error(
                 context, 'volume_type.create', err, name=name)
-            raise webob.exc.HTTPNotFound()
+            raise webob.exc.HTTPNotFound(explanation=err.msg)
 
         return self._view_builder.show(req, vol_type)
 
@@ -95,21 +107,41 @@ class VolumeTypesManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume_type'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'volume_type')
 
         vol_type = body['volume_type']
-        description = vol_type.get('description', None)
+        description = vol_type.get('description')
+        name = vol_type.get('name')
+        is_public = vol_type.get('is_public')
 
-        if description is None:
-            msg = _("Specify the description to update.")
+        # Name and description can not be both None.
+        # If name specified, name can not be empty.
+        if name and len(name.strip()) == 0:
+            msg = _("Volume type name can not be empty.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
+        if name is None and description is None and is_public is None:
+            msg = _("Specify volume type name, description, is_public or "
+                    "a combination thereof.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if is_public is not None and not utils.is_valid_boolstr(is_public):
+            msg = _("Invalid value '%s' for is_public. Accepted values: "
+                    "True or False.") % is_public
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if name:
+            utils.check_string_length(name, 'Type name',
+                                      min_length=1, max_length=255)
+
+        if description is not None:
+            utils.check_string_length(description, 'Type description',
+                                      min_length=0, max_length=255)
+
         try:
-            # check it exists
-            vol_type = volume_types.get_volume_type(context, id)
-            volume_types.update(context, id, description)
-            # get the updated
+            volume_types.update(context, id, name, description,
+                                is_public=is_public)
+            # Get the updated
             vol_type = volume_types.get_volume_type(context, id)
             req.cache_resource(vol_type, name='types')
             self._notify_volume_type_info(
@@ -147,10 +179,10 @@ class VolumeTypesManageController(wsgi.Controller):
                 context, 'volume_type.delete', err, volume_type=vol_type)
             msg = _('Target volume type is still in use.')
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        except exception.NotFound as err:
+        except exception.VolumeTypeNotFound as err:
             self._notify_volume_type_error(
                 context, 'volume_type.delete', err, id=id)
-            raise webob.exc.HTTPNotFound()
+            raise webob.exc.HTTPNotFound(explanation=err.msg)
 
         return webob.Response(status_int=202)
 

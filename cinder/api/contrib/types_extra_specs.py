@@ -42,7 +42,7 @@ class VolumeTypeExtraSpecTemplate(xmlutil.TemplateBuilder):
 
         def extraspec_sel(obj, do_raise=False):
             # Have to extract the key and value for later use...
-            key, value = obj.items()[0]
+            key, value = list(obj.items())[0]
             return dict(key=key, value=value)
 
         root = xmlutil.TemplateElement(tagname, selector=extraspec_sel)
@@ -56,14 +56,14 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
     def _get_extra_specs(self, context, type_id):
         extra_specs = db.volume_type_extra_specs_get(context, type_id)
         specs_dict = {}
-        for key, value in extra_specs.iteritems():
+        for key, value in extra_specs.items():
             specs_dict[key] = value
         return dict(extra_specs=specs_dict)
 
     def _check_type(self, context, type_id):
         try:
             volume_types.get_volume_type(context, type_id)
-        except exception.NotFound as ex:
+        except exception.VolumeTypeNotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
     @wsgi.serializers(xml=VolumeTypeExtraSpecsTemplate)
@@ -74,17 +74,29 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         return self._get_extra_specs(context, type_id)
 
+    def _validate_extra_specs(self, specs):
+        """Validating key and value of extra specs."""
+        for key, value in specs.items():
+            if key is not None:
+                self.validate_string_length(key, 'Key "%s"' % key,
+                                            min_length=1, max_length=255)
+
+            if value is not None:
+                self.validate_string_length(value, 'Value for key "%s"' % key,
+                                            min_length=0, max_length=255)
+
     @wsgi.serializers(xml=VolumeTypeExtraSpecsTemplate)
     def create(self, req, type_id, body=None):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'extra_specs'):
-            raise webob.exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'extra_specs')
 
         self._check_type(context, type_id)
         specs = body['extra_specs']
         self._check_key_names(specs.keys())
+        self._validate_extra_specs(specs)
+
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     specs)
@@ -108,6 +120,9 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if len(body) > 1:
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
+        self._check_key_names(body.keys())
+        self._validate_extra_specs(body)
+
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
                                                     body)
@@ -128,7 +143,9 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if id in specs['extra_specs']:
             return {id: specs['extra_specs'][id]}
         else:
-            raise webob.exc.HTTPNotFound()
+            msg = _("Volume Type %(type_id)s has no extra spec with key "
+                    "%(id)s.") % ({'type_id': type_id, 'id': id})
+            raise webob.exc.HTTPNotFound(explanation=msg)
 
     def delete(self, req, type_id, id):
         """Deletes an existing extra spec."""

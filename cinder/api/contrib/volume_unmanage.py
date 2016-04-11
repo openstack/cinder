@@ -12,14 +12,14 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo_log import log as logging
 import webob
 from webob import exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import exception
-from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
+from cinder.i18n import _LI
 from cinder import volume
 
 LOG = logging.getLogger(__name__)
@@ -56,12 +56,8 @@ class VolumeUnmanageController(wsgi.Controller):
         try:
             vol = self.volume_api.get(context, id)
             self.volume_api.delete(context, vol, unmanage_only=True)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
-        except exception.VolumeAttached:
-            msg = _("Volume cannot be deleted while in attached state")
-            raise exc.HTTPBadRequest(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=202)
 
 

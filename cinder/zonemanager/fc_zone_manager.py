@@ -32,13 +32,16 @@ detach operation.
 """
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import importutils
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
+import cinder.zonemanager.fczm_constants as zone_constant
+
 
 LOG = logging.getLogger(__name__)
 
@@ -49,53 +52,54 @@ zone_manager_opts = [
                help='FC Zone Driver responsible for zone management'),
     cfg.StrOpt('zoning_policy',
                default='initiator-target',
-               help='Zoning policy configured by user'),
+               help='Zoning policy configured by user; valid values include '
+               '"initiator-target" or "initiator"'),
     cfg.StrOpt('fc_fabric_names',
-               default=None,
-               help='Comma separated list of fibre channel fabric names.'
+               help='Comma separated list of Fibre Channel fabric names.'
                ' This list of names is used to retrieve other SAN credentials'
                ' for connecting to each SAN fabric'),
     cfg.StrOpt('fc_san_lookup_service',
                default='cinder.zonemanager.drivers.brocade'
                '.brcd_fc_san_lookup_service.BrcdFCSanLookupService',
-               help='FC San Lookup Service'),
+               help='FC SAN Lookup Service')
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(zone_manager_opts, 'fc-zone-manager')
+CONF.register_opts(zone_manager_opts, group='fc-zone-manager')
 
 
 class ZoneManager(fc_common.FCCommon):
+
     """Manages Connection control during attach/detach.
 
        Version History:
            1.0 - Initial version
            1.0.1 - Added __new__ for singleton
+           1.0.2 - Added friendly zone name
 
     """
 
-    VERSION = "1.0.1"
+    VERSION = "1.0.2"
     driver = None
     fabric_names = []
 
     def __new__(class_, *args, **kwargs):
         if not hasattr(class_, "_instance"):
-            class_._instance = object.__new__(class_, *args, **kwargs)
+            class_._instance = object.__new__(class_)
         return class_._instance
 
     def __init__(self, **kwargs):
         """Load the driver from the one specified in args, or from flags."""
         super(ZoneManager, self).__init__(**kwargs)
 
-        self.configuration = kwargs.get('configuration', None)
-        if self.configuration:
-            self.configuration.append_config_values(zone_manager_opts)
-
+        self.configuration = config.Configuration(zone_manager_opts,
+                                                  'fc-zone-manager')
         self._build_driver()
 
     def _build_driver(self):
         zone_driver = self.configuration.zone_driver
-        LOG.debug("Zone Driver from config: {%s}", zone_driver)
+        LOG.debug("Zone driver from config: %(driver)s",
+                  {'driver': zone_driver})
 
         zm_config = config.Configuration(zone_manager_opts, 'fc-zone-manager')
         # Initialize vendor specific implementation of  FCZoneDriver
@@ -114,7 +118,7 @@ class ZoneManager(fc_common.FCCommon):
         # check the state for I-T pair
         return count
 
-    def add_connection(self, initiator_target_map):
+    def add_connection(self, conn_info):
         """Add connection control.
 
         Adds connection control for the given initiator target map.
@@ -126,14 +130,33 @@ class ZoneManager(fc_common.FCCommon):
         }
         """
         connected_fabric = None
+        host_name = None
+        storage_system = None
+
         try:
+            initiator_target_map = (
+                conn_info[zone_constant.DATA][zone_constant.IT_MAP])
+
+            if zone_constant.HOST in conn_info[zone_constant.DATA]:
+                host_name = conn_info[
+                    zone_constant.DATA][
+                    zone_constant.HOST].replace(" ", "_")
+
+            if zone_constant.STORAGE in conn_info[zone_constant.DATA]:
+                storage_system = (
+                    conn_info[
+                        zone_constant.DATA][
+                        zone_constant.STORAGE].replace(" ", "_"))
+
             for initiator in initiator_target_map.keys():
                 target_list = initiator_target_map[initiator]
-                LOG.debug("Target List :%s", {initiator: target_list})
+                LOG.debug("Target list : %(targets)s",
+                          {'targets': target_list})
 
                 # get SAN context for the target list
                 fabric_map = self.get_san_context(target_list)
-                LOG.debug("Fabric Map after context lookup:%s", fabric_map)
+                LOG.debug("Fabric map after context lookup: %(fabricmap)s",
+                          {'fabricmap': fabric_map})
                 # iterate over each SAN and apply connection control
                 for fabric in fabric_map.keys():
                     connected_fabric = fabric
@@ -142,22 +165,23 @@ class ZoneManager(fc_common.FCCommon):
                     i_t_map = {initiator: t_list}
                     valid_i_t_map = self.get_valid_initiator_target_map(
                         i_t_map, True)
-                    LOG.info(_LI("Final filtered map for fabric: %s"),
-                             {fabric: valid_i_t_map})
+                    LOG.info(_LI("Final filtered map for fabric: %(i_t_map)s"),
+                             {'i_t_map': valid_i_t_map})
 
                     # Call driver to add connection control
-                    self.driver.add_connection(fabric, valid_i_t_map)
+                    self.driver.add_connection(fabric, valid_i_t_map,
+                                               host_name, storage_system)
 
-            LOG.info(_LI("Add Connection: Finished iterating "
+            LOG.info(_LI("Add connection: finished iterating "
                          "over all target list"))
         except Exception as e:
             msg = _("Failed adding connection for fabric=%(fabric)s: "
-                    "Error:%(err)s") % {'fabric': connected_fabric,
-                                        'err': e}
+                    "Error: %(err)s") % {'fabric': connected_fabric,
+                                         'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.ZoneManagerException(reason=msg)
 
-    def delete_connection(self, initiator_target_map):
+    def delete_connection(self, conn_info):
         """Delete connection.
 
         Updates/deletes connection control for the given initiator target map.
@@ -169,16 +193,31 @@ class ZoneManager(fc_common.FCCommon):
         }
         """
         connected_fabric = None
+        host_name = None
+        storage_system = None
+
         try:
+            initiator_target_map = (
+                conn_info[zone_constant.DATA][zone_constant.IT_MAP])
+
+            if zone_constant.HOST in conn_info[zone_constant.DATA]:
+                host_name = conn_info[zone_constant.DATA][zone_constant.HOST]
+
+            if zone_constant.STORAGE in conn_info[zone_constant.DATA]:
+                storage_system = (
+                    conn_info[
+                        zone_constant.DATA][
+                        zone_constant.STORAGE].replace(" ", "_"))
+
             for initiator in initiator_target_map.keys():
                 target_list = initiator_target_map[initiator]
-                LOG.info(_LI("Delete connection Target List:%s"),
-                         {initiator: target_list})
+                LOG.info(_LI("Delete connection target list: %(targets)s"),
+                         {'targets': target_list})
 
                 # get SAN context for the target list
                 fabric_map = self.get_san_context(target_list)
-                LOG.debug("Delete connection Fabric Map from SAN "
-                          "context: %s", fabric_map)
+                LOG.debug("Delete connection fabric map from SAN "
+                          "context: %(fabricmap)s", {'fabricmap': fabric_map})
 
                 # iterate over each SAN and apply connection control
                 for fabric in fabric_map.keys():
@@ -188,19 +227,22 @@ class ZoneManager(fc_common.FCCommon):
                     i_t_map = {initiator: t_list}
                     valid_i_t_map = self.get_valid_initiator_target_map(
                         i_t_map, False)
-                    LOG.info(_LI("Final filtered map for delete "
-                                 "connection: %s"), valid_i_t_map)
+                    LOG.info(_LI("Final filtered map for delete connection: "
+                                 "%(i_t_map)s"), {'i_t_map': valid_i_t_map})
 
                     # Call driver to delete connection control
                     if len(valid_i_t_map) > 0:
-                        self.driver.delete_connection(fabric, valid_i_t_map)
+                        self.driver.delete_connection(fabric,
+                                                      valid_i_t_map,
+                                                      host_name,
+                                                      storage_system)
 
-            LOG.debug("Delete Connection - Finished iterating over all"
+            LOG.debug("Delete connection - finished iterating over all"
                       " target list")
         except Exception as e:
             msg = _("Failed removing connection for fabric=%(fabric)s: "
-                    "Error:%(err)s") % {'fabric': connected_fabric,
-                                        'err': e}
+                    "Error: %(err)s") % {'fabric': connected_fabric,
+                                         'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.ZoneManagerException(reason=msg)
 
@@ -211,7 +253,7 @@ class ZoneManager(fc_common.FCCommon):
         to list of target WWNs visible to the fabric.
         """
         fabric_map = self.driver.get_san_context(target_wwn_list)
-        LOG.debug("Got SAN context:%s", fabric_map)
+        LOG.debug("Got SAN context: %(fabricmap)s", {'fabricmap': fabric_map})
         return fabric_map
 
     def get_valid_initiator_target_map(self, initiator_target_map,
@@ -240,5 +282,6 @@ class ZoneManager(fc_common.FCCommon):
                 filtered_i_t_map[initiator] = t_list
             else:
                 LOG.info(_LI("No targets to add or remove connection for "
-                             "I: %s"), initiator)
+                             "initiator: %(init_wwn)s"),
+                         {'init_wwn': initiator})
         return filtered_i_t_map

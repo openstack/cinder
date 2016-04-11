@@ -66,18 +66,6 @@ class ExecuteTestCase(test.TestCase):
 
 
 class GenericUtilsTestCase(test.TestCase):
-
-    @mock.patch('os.path.exists', return_value=True)
-    def test_find_config(self, mock_exists):
-        path = '/etc/cinder/cinder.conf'
-        cfgpath = utils.find_config(path)
-        self.assertEqual(path, cfgpath)
-
-        mock_exists.return_value = False
-        self.assertRaises(exception.ConfigNotFound,
-                          utils.find_config,
-                          path)
-
     def test_as_int(self):
         test_obj_int = '2'
         test_obj_float = '2.2'

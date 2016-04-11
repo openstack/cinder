@@ -5,8 +5,10 @@
 # cinder/volume/iscsi.py: iscsi_helper '--op' ...
 ietadm: CommandFilter, ietadm, root
 tgtadm: CommandFilter, tgtadm, root
+iscsictl: CommandFilter, iscsictl, root
 tgt-admin: CommandFilter, tgt-admin, root
 cinder-rtstool: CommandFilter, cinder-rtstool, root
+scstadmin: CommandFilter, scstadmin, root
 
 # LVM related show commands
 pvs: EnvFilter, env, root, LC_ALL=C, pvs
@@ -20,22 +22,24 @@ vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, vgs
 lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvs
 lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
 
-# cinder/volumes/drivers/srb.py: 'pvresize', '--setphysicalvolumesize', sizestr, pvname
-pvresize: CommandFilter, pvresize, root
+# os-brick library commands
+# os_brick.privileged.run_as_root oslo.privsep context
+# This line ties the superuser privs with the config files, context name,
+# and (implicitly) the actual python code invoked.
+privsep-rootwrap: RegExpFilter, privsep-helper, root, privsep-helper, --config-file, /etc/(?!\.\.).*, --privsep_context, os_brick.privileged.default, --privsep_sock_path, /tmp/.*
+# The following and any cinder/brick/* entries should all be obsoleted
+# by privsep, and may be removed once the os-brick version requirement
+# is updated appropriately.
+scsi_id: CommandFilter, /lib/udev/scsi_id, root
+drbdadm: CommandFilter, drbdadm, root
 
 # cinder/brick/local_dev/lvm.py: 'vgcreate', vg_name, pv_list
 vgcreate: CommandFilter, vgcreate, root
 
-# cinder/volumes/drivers/srb.py: 'vgremove', '-f', vgname
-vgremove: CommandFilter, vgremove, root
-
-# cinder/volumes/drivers/srb.py: 'vgchange', '-an', vgname
-# cinder/volumes/drivers/srb.py: 'vgchange', '-ay', vgname
-vgchange: CommandFilter, vgchange, root
-
-# cinder/volume/driver.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
-# cinder/volume/driver.py: 'lvcreate', '-L', ...
-lvcreate: CommandFilter, lvcreate, root
+# cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', sizestr, '-n', volume_name,..
+# cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
+lvcreate: EnvFilter, env, root, LC_ALL=C, lvcreate
+lvcreate_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvcreate
 
 # cinder/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
 dd: CommandFilter, dd, root
@@ -46,12 +50,16 @@ lvremove: CommandFilter, lvremove, root
 # cinder/volume/driver.py: 'lvrename', '%(vg)s', '%(orig)s' '(new)s'...
 lvrename: CommandFilter, lvrename, root
 
-# cinder/volume/driver.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
-# cinder/volume/driver.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
-lvextend: CommandFilter, lvextend, root
+# cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(lv_name)s' ...
+# cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
+lvextend: EnvFilter, env, root, LC_ALL=C, lvextend
+lvextend_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvextend
 
 # cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
 lvchange: CommandFilter, lvchange, root
+
+# cinder/brick/local_dev/lvm.py: 'lvconvert', '--merge', snapshot_name
+lvconvert: CommandFilter, lvconvert, root
 
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'discovery', '-t',...
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
@@ -101,6 +109,7 @@ netapp_nfs_find: RegExpFilter, find, root, find, ^[/]*([^/\0]+(/+)?)*$, -maxdept
 # cinder/volume/drivers/glusterfs.py
 chgrp: CommandFilter, chgrp, root
 umount: CommandFilter, umount, root
+fallocate: CommandFilter, fallocate, root
 
 # cinder/volumes/drivers/hds/hds.py:
 hus-cmd: CommandFilter, hus-cmd, root
@@ -120,7 +129,11 @@ systool: CommandFilter, systool, root
 blockdev: CommandFilter, blockdev, root
 
 # cinder/volume/drivers/ibm/gpfs.py
+# cinder/volume/drivers/tintri.py
 mv: CommandFilter, mv, root
+
+# cinder/volume/drivers/ibm/gpfs.py
+cp: CommandFilter, cp, root
 mmgetstate: CommandFilter, /usr/lpp/mmfs/bin/mmgetstate, root
 mmclone: CommandFilter, /usr/lpp/mmfs/bin/mmclone, root
 mmlsattr: CommandFilter, /usr/lpp/mmfs/bin/mmlsattr, root
@@ -129,6 +142,12 @@ mmlsconfig: CommandFilter, /usr/lpp/mmfs/bin/mmlsconfig, root
 mmlsfs: CommandFilter, /usr/lpp/mmfs/bin/mmlsfs, root
 mmlspool: CommandFilter, /usr/lpp/mmfs/bin/mmlspool, root
 mkfs: CommandFilter, mkfs, root
+mmcrfileset: CommandFilter, /usr/lpp/mmfs/bin/mmcrfileset, root
+mmlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmlinkfileset, root
+mmunlinkfileset: CommandFilter, /usr/lpp/mmfs/bin/mmunlinkfileset, root
+mmdelfileset: CommandFilter, /usr/lpp/mmfs/bin/mmdelfileset, root
+mmcrsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmcrsnapshot, root
+mmdelsnapshot: CommandFilter, /usr/lpp/mmfs/bin/mmdelsnapshot, root
 
 # cinder/volume/drivers/ibm/gpfs.py
 # cinder/volume/drivers/ibm/ibmnas.py
@@ -176,3 +195,13 @@ auiscsi: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_R
 audppool: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/audppool
 aureplicationlocal: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aureplicationlocal
 aureplicationmon: EnvFilter, env, root, LANG=, STONAVM_HOME=, LD_LIBRARY_PATH=, STONAVM_RSP_PASS=, STONAVM_ACT=, /usr/stonavm/aureplicationmon
+
+# cinder/volume/drivers/hgst.py
+vgc-cluster: CommandFilter, vgc-cluster, root
+
+# cinder/volume/drivers/vzstorage.py
+pstorage-mount: CommandFilter, pstorage-mount, root
+pstorage: CommandFilter, pstorage, root
+
+# initiator/connector.py:
+drv_cfg: CommandFilter, /opt/emc/scaleio/sdc/bin/drv_cfg, root, /opt/emc/scaleio/sdc/bin/drv_cfg, --query_guid

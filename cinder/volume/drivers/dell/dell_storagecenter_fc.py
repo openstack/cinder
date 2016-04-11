@@ -1,4 +1,4 @@
-#    Copyright 2014 Dell Inc.
+#    Copyright 2015 Dell Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -12,13 +12,13 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-'''Volume driver for Dell Storage Center.'''
+"""Volume driver for Dell Storage Center."""
 
+from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_common
 from cinder.zonemanager import utils as fczm_utils
@@ -26,16 +26,30 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
-class DellStorageCenterFCDriver(driver.FibreChannelDriver,
-                                dell_storagecenter_common.DellCommonDriver):
+class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
+                                driver.FibreChannelDriver):
 
-    '''Implements commands for Dell EqualLogic SAN ISCSI management.
+    """Implements commands for Dell EqualLogic SAN ISCSI management.
 
     To enable the driver add the following line to the cinder configuration:
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterFCDriver
-    '''
 
-    VERSION = '1.0.1'
+    Version history:
+        1.0.0 - Initial driver
+        1.1.0 - Added extra spec support for Storage Profile selection
+        1.2.0 - Added consistency group support.
+        2.0.0 - Switched to inheriting functional objects rather than volume
+                driver.
+        2.1.0 - Added support for ManageableVD.
+        2.2.0 - Driver retype support for switching volume's Storage Profile
+        2.3.0 - Added Legacy Port Mode Support
+        2.3.1 - Updated error handling.
+        2.4.0 - Added Replication V2 support.
+        2.4.1 - Updated Replication support to V2.1.
+        2.5.0 - ManageableSnapshotsVD implemented.
+    """
+
+    VERSION = '2.5.0'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)
@@ -44,7 +58,7 @@ class DellStorageCenterFCDriver(driver.FibreChannelDriver,
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
-        '''Initializes the connection and returns connection info.
+        """Initializes the connection and returns connection info.
 
         Assign any created volume to a compute node/host so that it can be
         used from that host.
@@ -52,7 +66,7 @@ class DellStorageCenterFCDriver(driver.FibreChannelDriver,
         The  driver returns a driver_volume_type of 'fibre_channel'.
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
-        '''
+        """
 
         # We use id to name the volume name as it is a
         # known unique name.
@@ -60,32 +74,25 @@ class DellStorageCenterFCDriver(driver.FibreChannelDriver,
         LOG.debug('Initialize connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
                 # Find our server.
                 wwpns = connector.get('wwpns')
                 for wwn in wwpns:
-                    scserver = api.find_server(ssn,
-                                               wwn)
+                    scserver = api.find_server(wwn)
                     if scserver is not None:
                         break
 
                 # No? Create it.
                 if scserver is None:
-                    server_folder = self.configuration.dell_sc_server_folder
-                    scserver = api.create_server_multiple_hbas(ssn,
-                                                               server_folder,
-                                                               wwpns)
+                    scserver = api.create_server_multiple_hbas(wwpns)
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+                scvolume = api.find_volume(volume_name)
                 if scserver is not None and scvolume is not None:
                     mapping = api.map_volume(scvolume,
                                              scserver)
                     if mapping is not None:
                         # Since we just mapped our volume we had best update
                         # our sc volume object.
-                        scvolume = api.find_volume(ssn,
-                                                   volume_name)
+                        scvolume = api.find_volume(volume_name)
                         lun, targets, init_targ_map = api.find_wwns(scvolume,
                                                                     scserver)
                         if lun is not None and len(targets) > 0:
@@ -94,19 +101,18 @@ class DellStorageCenterFCDriver(driver.FibreChannelDriver,
                                              'target_discovered': True,
                                              'target_wwn': targets,
                                              'initiator_target_map':
-                                             init_targ_map}}
-                            LOG.debug('Return FC data:')
-                            LOG.debug(data)
+                                             init_targ_map,
+                                             'discard': True}}
+                            LOG.debug('Return FC data: %s', data)
                             return data
                         LOG.error(_LE('Lun mapping returned null!'))
 
             except Exception:
                 with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Failed to initialize connection '))
+                    LOG.error(_LE('Failed to initialize connection.'))
 
         # We get here because our mapping is none so blow up.
-        raise exception.VolumeBackendAPIException(
-            _('unable to map volume'))
+        raise exception.VolumeBackendAPIException(_('Unable to map volume.'))
 
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, force=False, **kwargs):
@@ -115,17 +121,14 @@ class DellStorageCenterFCDriver(driver.FibreChannelDriver,
         LOG.debug('Terminate connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                ssn = api.find_sc(self.configuration.dell_sc_ssn)
                 wwpns = connector.get('wwpns')
                 for wwn in wwpns:
-                    scserver = api.find_server(ssn,
-                                               wwn)
+                    scserver = api.find_server(wwn)
                     if scserver is not None:
                         break
 
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(ssn,
-                                           volume_name)
+                scvolume = api.find_volume(volume_name)
                 # Get our target map so we can return it to free up a zone.
                 lun, targets, init_targ_map = api.find_wwns(scvolume,
                                                             scserver)
@@ -156,10 +159,10 @@ class DellStorageCenterFCDriver(driver.FibreChannelDriver,
             _('Terminate connection unable to connect to backend.'))
 
     def get_volume_stats(self, refresh=False):
-        '''Get volume status.
+        """Get volume status.
 
         If 'refresh' is True, run update the stats first.
-        '''
+        """
         if refresh:
             self._update_volume_stats()
             # Update our protocol to the correct one.

@@ -12,7 +12,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
-from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import uuidutils
 from webob import exc
 
@@ -22,13 +22,11 @@ from cinder.api.v2.views import volumes as volume_views
 from cinder.api.v2 import volumes
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import volume as cinder_volume
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
-CONF = cfg.CONF
 authorize = extensions.extension_authorizer('volume', 'volume_manage')
 
 
@@ -96,11 +94,10 @@ class VolumeManageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not self.is_valid_body(body, 'volume'):
-            msg = _("Missing required element '%s' in request body") % 'volume'
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'volume')
 
         volume = body['volume']
+        self.validate_name_and_description(volume)
 
         # Check that the required keys are present, return an error if they
         # are not.
@@ -125,9 +122,8 @@ class VolumeManageController(wsgi.Controller):
                 else:
                     kwargs['volume_type'] = volume_types.get_volume_type(
                         context, req_volume_type)
-            except exception.VolumeTypeNotFound:
-                msg = _("Volume type not found.")
-                raise exc.HTTPNotFound(explanation=msg)
+            except exception.VolumeTypeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
         else:
             kwargs['volume_type'] = {}
 
@@ -145,7 +141,6 @@ class VolumeManageController(wsgi.Controller):
             msg = _("Service not found.")
             raise exc.HTTPNotFound(explanation=msg)
 
-        new_volume = dict(new_volume.iteritems())
         utils.add_visible_admin_metadata(new_volume)
 
         return self._view_builder.detail(req, new_volume)

@@ -17,18 +17,19 @@
 Manage hosts in the current zone.
 """
 
-import UserDict
+import collections
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import timeutils
 
-from cinder import db
+from cinder import context as cinder_context
 from cinder import exception
-from cinder.i18n import _LI, _LW
-from cinder.openstack.common import log as logging
-from cinder.openstack.common.scheduler import filters
-from cinder.openstack.common.scheduler import weights
+from cinder import objects
 from cinder import utils
+from cinder.i18n import _LI, _LW
+from cinder.scheduler import filters
+from cinder.scheduler import weights
 from cinder.volume import utils as vol_utils
 
 
@@ -56,36 +57,25 @@ CONF.import_opt('max_over_subscription_ratio', 'cinder.volume.driver')
 LOG = logging.getLogger(__name__)
 
 
-class ReadOnlyDict(UserDict.IterableUserDict):
+class ReadOnlyDict(collections.Mapping):
     """A read-only dict."""
     def __init__(self, source=None):
-        self.data = {}
-        self.update(source)
-
-    def __setitem__(self, key, item):
-        raise TypeError
-
-    def __delitem__(self, key):
-        raise TypeError
-
-    def clear(self):
-        raise TypeError
-
-    def pop(self, key, *args):
-        raise TypeError
-
-    def popitem(self):
-        raise TypeError
-
-    def update(self, source=None):
-        if source is None:
-            return
-        elif isinstance(source, UserDict.UserDict):
-            self.data = source.data
-        elif isinstance(source, type({})):
-            self.data = source
+        if source is not None:
+            self.data = dict(source)
         else:
-            raise TypeError
+            self.data = {}
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    def __iter__(self):
+        return iter(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self.data)
 
 
 class HostState(object):
@@ -118,6 +108,9 @@ class HostState(object):
         self.max_over_subscription_ratio = 1.0
         self.thin_provisioning_support = False
         self.thick_provisioning_support = False
+        # Does this backend support attaching a volume to more than
+        # once host/instance?
+        self.multiattach = False
 
         # PoolState for all pools
         self.pools = {}
@@ -228,7 +221,7 @@ class HostState(object):
                 self._append_backend_info(capability)
                 self.pools[pool_name] = single_pool
             else:
-                # this is a update from legacy driver
+                # this is an update from legacy driver
                 try:
                     single_pool = self.pools[pool_name]
                 except KeyError:
@@ -243,8 +236,8 @@ class HostState(object):
         nonactive_pools = set(self.pools.keys()) - active_pools
         for pool in nonactive_pools:
             LOG.debug("Removing non-active pool %(pool)s @ %(host)s "
-                      "from scheduler cache." % {'pool': pool,
-                                                 'host': self.host})
+                      "from scheduler cache.", {'pool': pool,
+                                                'host': self.host})
             del self.pools[pool]
 
     def _append_backend_info(self, pool_cap):
@@ -272,7 +265,7 @@ class HostState(object):
         self.updated = capability['timestamp']
 
     def consume_from_volume(self, volume):
-        """Incrementally update host state from an volume."""
+        """Incrementally update host state from a volume."""
         volume_gb = volume['size']
         self.allocated_capacity_gb += volume_gb
         self.provisioned_capacity_gb += volume_gb
@@ -331,6 +324,7 @@ class PoolState(HostState):
                 'thin_provisioning_support', False)
             self.thick_provisioning_support = capability.get(
                 'thick_provisioning_support', False)
+            self.multiattach = capability.get('multiattach', False)
 
     def update_pools(self, capability):
         # Do nothing, since we don't have pools within pool, yet
@@ -352,22 +346,8 @@ class HostManager(object):
                                                         'weights')
         self.weight_classes = self.weight_handler.get_all_classes()
 
-        default_filters = ['AvailabilityZoneFilter',
-                           'CapacityFilter',
-                           'CapabilitiesFilter']
-        chance = 'cinder.scheduler.chance.ChanceScheduler'
-        simple = 'cinder.scheduler.simple.SimpleScheduler'
-        if CONF.scheduler_driver == simple:
-            CONF.set_override('scheduler_default_filters', default_filters)
-            CONF.set_override('scheduler_default_weighers',
-                              ['AllocatedCapacityWeigher'])
-        elif CONF.scheduler_driver == chance:
-            CONF.set_override('scheduler_default_filters', default_filters)
-            CONF.set_override('scheduler_default_weighers',
-                              ['ChanceWeigher'])
-        else:
-            # Do nothing when some other scheduler is configured
-            pass
+        self._no_capabilities_hosts = set()  # Hosts having no capabilities
+        self._update_host_state_map(cinder_context.get_admin_context())
 
     def _choose_host_filters(self, filter_cls_names):
         """Return a list of available filter names.
@@ -392,8 +372,8 @@ class HostManager(object):
             if not found_class:
                 bad_filters.append(filter_name)
         if bad_filters:
-            msg = ", ".join(bad_filters)
-            raise exception.SchedulerHostFilterNotFound(filter_name=msg)
+            raise exception.SchedulerHostFilterNotFound(
+                filter_name=", ".join(bad_filters))
         return good_filters
 
     def _choose_host_weighers(self, weight_cls_names):
@@ -420,8 +400,8 @@ class HostManager(object):
             if not found_class:
                 bad_weighers.append(weigher_name)
         if bad_weighers:
-            msg = ", ".join(bad_weighers)
-            raise exception.SchedulerHostWeigherNotFound(weigher_name=msg)
+            raise exception.SchedulerHostWeigherNotFound(
+                weigher_name=", ".join(bad_weighers))
         return good_weighers
 
     def get_filtered_hosts(self, hosts, filter_properties,
@@ -454,42 +434,54 @@ class HostManager(object):
         self.service_states[host] = capab_copy
 
         LOG.debug("Received %(service_name)s service update from "
-                  "%(host)s: %(cap)s" %
+                  "%(host)s: %(cap)s",
                   {'service_name': service_name, 'host': host,
                    'cap': capabilities})
+
+        self._no_capabilities_hosts.discard(host)
+
+    def has_all_capabilities(self):
+        return len(self._no_capabilities_hosts) == 0
 
     def _update_host_state_map(self, context):
 
         # Get resource usage across the available volume nodes:
         topic = CONF.volume_topic
-        volume_services = db.service_get_all_by_topic(context,
-                                                      topic,
-                                                      disabled=False)
+        volume_services = objects.ServiceList.get_all_by_topic(context,
+                                                               topic,
+                                                               disabled=False)
         active_hosts = set()
-        for service in volume_services:
-            host = service['host']
+        no_capabilities_hosts = set()
+        for service in volume_services.objects:
+            host = service.host
             if not utils.service_is_up(service):
-                LOG.warn(_LW("volume service is down. (host: %s)") % host)
+                LOG.warning(_LW("volume service is down. (host: %s)"), host)
                 continue
             capabilities = self.service_states.get(host, None)
+            if capabilities is None:
+                no_capabilities_hosts.add(host)
+                continue
+
             host_state = self.host_state_map.get(host)
             if not host_state:
                 host_state = self.host_state_cls(host,
                                                  capabilities=capabilities,
                                                  service=
-                                                 dict(service.iteritems()))
+                                                 dict(service))
                 self.host_state_map[host] = host_state
             # update capabilities and attributes in host_state
             host_state.update_from_volume_capability(capabilities,
                                                      service=
-                                                     dict(service.iteritems()))
+                                                     dict(service))
             active_hosts.add(host)
+
+        self._no_capabilities_hosts = no_capabilities_hosts
 
         # remove non-active hosts from host_state_map
         nonactive_hosts = set(self.host_state_map.keys()) - active_hosts
         for host in nonactive_hosts:
             LOG.info(_LI("Removing non-active host: %(host)s from "
-                         "scheduler cache.") % {'host': host})
+                         "scheduler cache."), {'host': host})
             del self.host_state_map[host]
 
     def get_all_host_states(self, context):
@@ -513,7 +505,7 @@ class HostManager(object):
                 pool_key = '.'.join([host, pool.pool_name])
                 all_pools[pool_key] = pool
 
-        return all_pools.itervalues()
+        return all_pools.values()
 
     def get_pools(self, context):
         """Returns a dict of all pools on all hosts HostManager knows about."""

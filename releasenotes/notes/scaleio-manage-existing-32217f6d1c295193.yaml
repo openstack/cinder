@@ -1,0 +1,3 @@
+---
+features:
+  - Added support for manage/unmanage volume in the ScaleIO driver.

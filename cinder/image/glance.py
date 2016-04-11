@@ -28,13 +28,15 @@ import time
 
 import glanceclient.exc
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
-import six.moves.urllib.parse as urlparse
+import six
+from six.moves import range
+from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LE, _LW
 
 
 glance_opts = [
@@ -43,8 +45,14 @@ glance_opts = [
                 help='A list of url schemes that can be downloaded directly '
                      'via the direct_url.  Currently supported schemes: '
                      '[file].'),
+    cfg.StrOpt('glance_catalog_info',
+               default='image:glance:publicURL',
+               help='Info to match when looking for glance in the service '
+                    'catalog. Format is: separated values of the form: '
+                    '<service_type>:<service_name>:<endpoint_type> - '
+                    'Only used if glance_api_servers are not provided.'),
 ]
-glance_core_properties = [
+glance_core_properties_opts = [
     cfg.ListOpt('glance_core_properties',
                 default=['checksum', 'container_format',
                          'disk_format', 'image_name', 'image_id',
@@ -53,7 +61,7 @@ glance_core_properties = [
 ]
 CONF = cfg.CONF
 CONF.register_opts(glance_opts)
-CONF.register_opts(glance_core_properties)
+CONF.register_opts(glance_core_properties_opts)
 CONF.import_opt('glance_api_version', 'cinder.common.config')
 
 LOG = logging.getLogger(__name__)
@@ -67,15 +75,14 @@ def _parse_image_ref(image_href):
     :raises ValueError
 
     """
-    url = urlparse.urlparse(image_href)
+    url = urllib.parse.urlparse(image_href)
     netloc = url.netloc
     image_id = url.path.split('/')[-1]
     use_ssl = (url.scheme == 'https')
     return (image_id, netloc, use_ssl)
 
 
-def _create_glance_client(context, netloc, use_ssl,
-                          version=CONF.glance_api_version):
+def _create_glance_client(context, netloc, use_ssl, version=None):
     """Instantiate a new glanceclient.Client object."""
     if version is None:
         version = CONF.glance_api_version
@@ -96,23 +103,44 @@ def _create_glance_client(context, netloc, use_ssl,
     return glanceclient.Client(str(version), endpoint, **params)
 
 
-def get_api_servers():
+def get_api_servers(context):
     """Return Iterable over shuffled api servers.
 
-    Shuffle a list of CONF.glance_api_servers and return an iterator
+    Shuffle a list of glance_api_servers and return an iterator
     that will cycle through the list, looping around to the beginning
-    if necessary.
+    if necessary. If CONF.glance_api_servers is None then they will
+    be retrieved from the catalog.
     """
     api_servers = []
-    for api_server in CONF.glance_api_servers:
+    api_servers_info = []
+
+    if CONF.glance_api_servers is None:
+        info = CONF.glance_catalog_info
+        try:
+            service_type, service_name, endpoint_type = info.split(':')
+        except ValueError:
+            raise exception.InvalidConfigurationValue(_(
+                "Failed to parse the configuration option "
+                "'glance_catalog_info', must be in the form "
+                "<service_type>:<service_name>:<endpoint_type>"))
+        for entry in context.service_catalog:
+            if entry.get('type') == service_type:
+                api_servers.append(
+                    entry.get('endpoints')[0].get(endpoint_type))
+    else:
+        for api_server in CONF.glance_api_servers:
+            api_servers.append(api_server)
+
+    for api_server in api_servers:
         if '//' not in api_server:
             api_server = 'http://' + api_server
-        url = urlparse.urlparse(api_server)
-        netloc = url.netloc
+        url = urllib.parse.urlparse(api_server)
+        netloc = url.netloc + url.path
         use_ssl = (url.scheme == 'https')
-        api_servers.append((netloc, use_ssl))
-    random.shuffle(api_servers)
-    return itertools.cycle(api_servers)
+        api_servers_info.append((netloc, use_ssl))
+
+    random.shuffle(api_servers_info)
+    return itertools.cycle(api_servers_info)
 
 
 class GlanceClientWrapper(object):
@@ -148,8 +176,8 @@ class GlanceClientWrapper(object):
     def _create_onetime_client(self, context, version):
         """Create a client that will be used for one call."""
         if self.api_servers is None:
-            self.api_servers = get_api_servers()
-        self.netloc, self.use_ssl = self.api_servers.next()
+            self.api_servers = get_api_servers(context)
+        self.netloc, self.use_ssl = next(self.api_servers)
         return _create_glance_client(context,
                                      self.netloc,
                                      self.use_ssl, version)
@@ -160,40 +188,36 @@ class GlanceClientWrapper(object):
         If we get a connection error,
         retry the request according to CONF.glance_num_retries.
         """
-        version = self.version
-        if version in kwargs:
-            version = kwargs['version']
+        version = kwargs.pop('version', self.version)
 
         retry_excs = (glanceclient.exc.ServiceUnavailable,
                       glanceclient.exc.InvalidEndpoint,
                       glanceclient.exc.CommunicationError)
         num_attempts = 1 + CONF.glance_num_retries
 
-        for attempt in xrange(1, num_attempts + 1):
+        for attempt in range(1, num_attempts + 1):
             client = self.client or self._create_onetime_client(context,
                                                                 version)
             try:
-                return getattr(client.images, method)(*args, **kwargs)
+                controller = getattr(client,
+                                     kwargs.pop('controller', 'images'))
+                return getattr(controller, method)(*args, **kwargs)
             except retry_excs as e:
                 netloc = self.netloc
                 extra = "retrying"
-                error_msg = _("Error contacting glance server "
-                              "'%(netloc)s' for '%(method)s', "
-                              "%(extra)s.") % {'netloc': netloc,
-                                               'method': method,
-                                               'extra': extra,
-                                               }
+                error_msg = _LE("Error contacting glance server "
+                                "'%(netloc)s' for '%(method)s', "
+                                "%(extra)s.")
                 if attempt == num_attempts:
                     extra = 'done trying'
-                    error_msg = _("Error contacting glance server "
-                                  "'%(netloc)s' for '%(method)s', "
-                                  "%(extra)s.") % {'netloc': netloc,
-                                                   'method': method,
-                                                   'extra': extra,
-                                                   }
-                    LOG.exception(error_msg)
+                    LOG.exception(error_msg, {'netloc': netloc,
+                                              'method': method,
+                                              'extra': extra})
                     raise exception.GlanceConnectionFailed(reason=e)
-                LOG.exception(error_msg)
+
+                LOG.exception(error_msg, {'netloc': netloc,
+                                          'method': method,
+                                          'extra': extra})
                 time.sleep(1)
 
 
@@ -202,6 +226,8 @@ class GlanceImageService(object):
 
     def __init__(self, client=None):
         self._client = client or GlanceClientWrapper()
+        self._image_schema = None
+        self.temp_images = None
 
     def detail(self, context, **kwargs):
         """Calls out to Glance for a list of detailed image information."""
@@ -214,7 +240,7 @@ class GlanceImageService(object):
         _images = []
         for image in images:
             if self._is_image_available(context, image):
-                _images.append(self._translate_from_glance(image))
+                _images.append(self._translate_from_glance(context, image))
 
         return _images
 
@@ -243,12 +269,15 @@ class GlanceImageService(object):
         if not self._is_image_available(context, image):
             raise exception.ImageNotFound(image_id=image_id)
 
-        base_image_meta = self._translate_from_glance(image)
+        base_image_meta = self._translate_from_glance(context, image)
         return base_image_meta
 
     def get_location(self, context, image_id):
-        """Returns the direct url representing the backend storage location,
-        or None if this attribute is not shown by Glance.
+        """Get backend storage location url.
+
+        Returns a tuple containing the direct url and locations representing
+        the backend storage location, or (None, None) if these attributes are
+        not shown by Glance.
         """
         if CONF.glance_api_version == 1:
             # image location not available in v1
@@ -269,18 +298,46 @@ class GlanceImageService(object):
         return (getattr(image_meta, 'direct_url', None),
                 getattr(image_meta, 'locations', None))
 
+    def add_location(self, context, image_id, url, metadata):
+        """Add a backend location url to an image.
+
+        Returns a dict containing image metadata on success.
+        """
+        if CONF.glance_api_version != 2:
+            raise exception.Invalid("Image API version 2 is disabled.")
+        client = GlanceClientWrapper(version=2)
+        try:
+            return client.call(context, 'add_location',
+                               image_id, url, metadata)
+        except Exception:
+            _reraise_translated_image_exception(image_id)
+
+    def delete_locations(self, context, image_id, url_set):
+        """Delete backend location urls from an image."""
+        if CONF.glance_api_version != 2:
+            raise exception.Invalid("Image API version 2 is disabled.")
+        client = GlanceClientWrapper(version=2)
+        try:
+            return client.call(context, 'delete_locations', image_id, url_set)
+        except Exception:
+            _reraise_translated_image_exception(image_id)
+
     def download(self, context, image_id, data=None):
         """Calls out to Glance for data and writes data."""
-        if 'file' in CONF.allowed_direct_url_schemes:
-            location = self.get_location(context, image_id)
-            o = urlparse.urlparse(location)
-            if o.scheme == "file":
-                with open(o.path, "r") as f:
+        if data and 'file' in CONF.allowed_direct_url_schemes:
+            direct_url, locations = self.get_location(context, image_id)
+            urls = [direct_url] + [loc.get('url') for loc in locations or []]
+            for url in urls:
+                if url is None:
+                    continue
+                parsed_url = urllib.parse.urlparse(url)
+                if parsed_url.scheme == "file":
                     # a system call to cp could have significant performance
                     # advantages, however we do not have the path to files at
                     # this point in the abstraction.
-                    shutil.copyfileobj(f, data)
-                return
+                    with open(parsed_url.path, "r") as f:
+                        shutil.copyfileobj(f, data)
+                    return
 
         try:
             image_chunks = self._client.call(context, 'data', image_id)
@@ -303,32 +360,32 @@ class GlanceImageService(object):
         recv_service_image_meta = self._client.call(context, 'create',
                                                     **sent_service_image_meta)
 
-        return self._translate_from_glance(recv_service_image_meta)
+        return self._translate_from_glance(context, recv_service_image_meta)
 
     def update(self, context, image_id,
                image_meta, data=None, purge_props=True):
         """Modify the given image with the new data."""
         image_meta = self._translate_to_glance(image_meta)
-        #NOTE(dosaboy): see comment in bug 1210467
+        # NOTE(dosaboy): see comment in bug 1210467
         if CONF.glance_api_version == 1:
             image_meta['purge_props'] = purge_props
-        #NOTE(bcwaldon): id is not an editable field, but it is likely to be
+        # NOTE(bcwaldon): id is not an editable field, but it is likely to be
         # passed in by calling code. Let's be nice and ignore it.
         image_meta.pop('id', None)
         if data:
             image_meta['data'] = data
         try:
-            #NOTE(dosaboy): the v2 api separates update from upload
+            # NOTE(dosaboy): the v2 api separates update from upload
             if data and CONF.glance_api_version > 1:
-                image_meta = self._client.call(context, 'upload', image_id,
-                                               image_meta['data'])
+                self._client.call(context, 'upload', image_id, data)
+                image_meta = self._client.call(context, 'get', image_id)
             else:
                 image_meta = self._client.call(context, 'update', image_id,
                                                **image_meta)
         except Exception:
             _reraise_translated_image_exception(image_id)
         else:
-            return self._translate_from_glance(image_meta)
+            return self._translate_from_glance(context, image_meta)
 
     def delete(self, context, image_id):
         """Delete the given image.
@@ -343,17 +400,54 @@ class GlanceImageService(object):
             raise exception.ImageNotFound(image_id=image_id)
         return True
 
+    def _translate_from_glance(self, context, image):
+        """Get image metadata from glance image.
+
+        Extract metadata from image and convert it's properties
+        to type cinder expected.
+
+        :param image: glance image object
+        :return: image metadata dictionary
+        """
+        if CONF.glance_api_version == 2:
+            if self._image_schema is None:
+                self._image_schema = self._client.call(context, 'get',
+                                                       controller='schemas',
+                                                       schema_name='image',
+                                                       version=2)
+            # NOTE(aarefiev): get base image property, store image 'schema'
+            #                 is redundant, so ignore it.
+            image_meta = {key: getattr(image, key)
+                          for key in image.keys()
+                          if self._image_schema.is_base_property(key) is True
+                          and key != 'schema'}
+
+            # NOTE(aarefiev): nova is expected that all image properties
+            # (custom or defined in schema-image.json) stores in
+            # 'properties' key.
+            image_meta['properties'] = {
+                key: getattr(image, key) for key in image.keys()
+                if self._image_schema.is_base_property(key) is False}
+        else:
+            image_meta = _extract_attributes(image)
+
+        image_meta = _convert_timestamps_to_datetimes(image_meta)
+        image_meta = _convert_from_string(image_meta)
+        return image_meta
+
     @staticmethod
     def _translate_to_glance(image_meta):
         image_meta = _convert_to_string(image_meta)
         image_meta = _remove_read_only(image_meta)
-        return image_meta
 
-    @staticmethod
-    def _translate_from_glance(image):
-        image_meta = _extract_attributes(image)
-        image_meta = _convert_timestamps_to_datetimes(image_meta)
-        image_meta = _convert_from_string(image_meta)
+        # NOTE(tsekiyama): From the Image API v2, custom properties must
+        # be stored in image_meta directly, instead of the 'properties' key.
+        if CONF.glance_api_version >= 2:
+            properties = image_meta.get('properties')
+            if properties:
+                image_meta.update(properties)
+                del image_meta['properties']
+
         return image_meta
 
     @staticmethod
@@ -398,13 +492,13 @@ def _convert_timestamps_to_datetimes(image_meta):
 # NOTE(bcwaldon): used to store non-string data in glance metadata
 def _json_loads(properties, attr):
     prop = properties[attr]
-    if isinstance(prop, basestring):
+    if isinstance(prop, six.string_types):
         properties[attr] = jsonutils.loads(prop)
 
 
 def _json_dumps(properties, attr):
     prop = properties[attr]
-    if not isinstance(prop, basestring):
+    if not isinstance(prop, six.string_types):
         properties[attr] = jsonutils.dumps(prop)
 
 
@@ -431,7 +525,7 @@ def _convert_to_string(metadata):
 
 
 def _extract_attributes(image):
-    #NOTE(hdd): If a key is not found, base.Resource.__getattr__() may perform
+    # NOTE(hdd): If a key is not found, base.Resource.__getattr__() may perform
     # a get(), resulting in a useless request back to glance. This list is
     # therefore sorted, with dependent attributes as the end
     # 'deleted_at' depends on 'deleted'
@@ -440,7 +534,12 @@ def _extract_attributes(image):
                         'container_format', 'status', 'id',
                         'name', 'created_at', 'updated_at',
                         'deleted', 'deleted_at', 'checksum',
-                        'min_disk', 'min_ram', 'is_public']
+                        'min_disk', 'min_ram', 'protected']
+    if CONF.glance_api_version == 2:
+        IMAGE_ATTRIBUTES.append('visibility')
+    else:
+        IMAGE_ATTRIBUTES.append('is_public')
+
     output = {}
 
     for attr in IMAGE_ATTRIBUTES:
@@ -452,6 +551,17 @@ def _extract_attributes(image):
             output[attr] = getattr(image, attr, None)
 
     output['properties'] = getattr(image, 'properties', {})
+
+    # NOTE(jbernard): Update image properties for API version 2.  For UEC
+    # images stored in glance, the necessary boot information is stored in the
+    # properties dict in version 1 so there is nothing more to do.  However, in
+    # version 2 these are standalone fields in the GET response.  This bit of
+    # code moves them back into the properties dict as the caller expects, thus
+    # producing a volume with correct metadata for booting.
+    for attr in ('kernel_id', 'ramdisk_id'):
+        value = getattr(image, attr, None)
+        if value:
+            output['properties'][attr] = value
 
     return output
 
@@ -469,14 +579,14 @@ def _reraise_translated_image_exception(image_id):
     """Transform the exception for the image but keep its traceback intact."""
     _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_image_exception(image_id, exc_value)
-    raise new_exc, None, exc_trace
+    six.reraise(type(new_exc), new_exc, exc_trace)
 
 
 def _reraise_translated_exception():
     """Transform the exception but keep its traceback intact."""
     _exc_type, exc_value, exc_trace = sys.exc_info()
     new_exc = _translate_plain_exception(exc_value)
-    raise new_exc, None, exc_trace
+    six.reraise(type(new_exc), new_exc, exc_trace)
 
 
 def _translate_image_exception(image_id, exc_value):
@@ -513,7 +623,7 @@ def get_remote_image_service(context, image_href):
     :returns: a tuple of the form (image_service, image_id)
 
     """
-    #NOTE(bcwaldon): If image_href doesn't look like a URI, assume its a
+    # NOTE(bcwaldon): If image_href doesn't look like a URI, assume its a
     # standalone image ID
     if '/' not in str(image_href):
         image_service = get_default_image_service()

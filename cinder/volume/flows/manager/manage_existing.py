@@ -12,13 +12,13 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+from oslo_log import log as logging
 import taskflow.engines
 from taskflow.patterns import linear_flow
 
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder.volume.flows.api import create_volume as create_api
 from cinder.volume.flows import common as flow_common
 from cinder.volume.flows.manager import create_volume as create_mgr
@@ -79,8 +79,8 @@ class ManageExistingTask(flow_utils.CinderTask):
             model_update = {}
         model_update.update({'size': size})
         try:
-            volume_ref = self.db.volume_update(context, volume_ref['id'],
-                                               model_update)
+            volume_ref.update(model_update)
+            volume_ref.save()
         except exception.CinderException:
             LOG.exception(_LE("Failed updating model of volume %(volume_id)s"
                               " with creation provided model %(model)s") %
@@ -114,7 +114,8 @@ def get_flow(context, db, driver, host, volume_id, ref):
                     create_api.QuotaReserveTask(),
                     ManageExistingTask(db, driver),
                     create_api.QuotaCommitTask(),
-                    create_mgr.CreateVolumeOnFinishTask(db, "create.end"))
+                    create_mgr.CreateVolumeOnFinishTask(db,
+                                                        "manage_existing.end"))
 
     # Now load (but do not run) the flow using the provided initial data.
     return taskflow.engines.load(volume_flow, store=create_what)

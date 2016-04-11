@@ -37,15 +37,48 @@ ignore_codes = ["E1103"]
 # Note(xyang): the fourth and fifth error messages are for the code [E1101].
 # They should be ignored because 'sha256' and 'sha224' are functions in
 # 'hashlib'.
+# Note(aarefiev): the sixth error message is for SQLAlchemy rename calls in
+# DB migration(033_add_encryption_unique_key).
 ignore_messages = ["An attribute affected in cinder.tests",
                    "No name 'urllib' in module '_MovedItems'",
                    "No value passed for parameter 'dml'",
                    "Module 'hashlib' has no 'sha256' member",
-                   "Module 'hashlib' has no 'sha224' member"]
-# Note(maoy): we ignore all errors in openstack.common because it should be
-# checked elsewhere. We also ignore cinder.tests for now due to high false
+                   "Module 'hashlib' has no 'sha224' member",
+                   "Instance of 'Table' has no 'rename' member"]
+# Note(maoy):  We ignore cinder.tests for now due to high false
 # positive rate.
-ignore_modules = ["cinder/openstack/common/", "cinder/tests/"]
+ignore_modules = ["cinder/tests/"]
+
+# Note(thangp): E0213, E1101, and E1102 should be ignored for only
+# cinder.object modules. E0213 and E1102 are error codes related to
+# the first argument of a method, but should be ignored because the method
+# is a remotable class method. E1101 is error code related to accessing a
+# non-existent member of an object, but should be ignored because the object
+# member is created dynamically.
+objects_ignore_codes = ["E0213", "E1101", "E1102"]
+# Note(thangp): The error messages are for codes [E1120, E1101] appearing in
+# the cinder code base using objects. E1120 is an error code related no value
+# passed for a parameter in function call, but should be ignored because it is
+# reporting false positives. E1101 is error code related to accessing a
+# non-existent member of an object, but should be ignored because the object
+# member is created dynamically.
+objects_ignore_messages = [
+    "No value passed for parameter 'id' in function call",
+    "Module 'cinder.objects' has no 'Backup' member",
+    "Module 'cinder.objects' has no 'BackupImport' member",
+    "Module 'cinder.objects' has no 'BackupList' member",
+    "Module 'cinder.objects' has no 'CGSnapshot' member",
+    "Module 'cinder.objects' has no 'CGSnapshotList' member",
+    "Module 'cinder.objects' has no 'ConsistencyGroup' member",
+    "Module 'cinder.objects' has no 'ConsistencyGroupList' member",
+    "Module 'cinder.objects' has no 'Service' member",
+    "Module 'cinder.objects' has no 'ServiceList' member",
+    "Module 'cinder.objects' has no 'Snapshot' member",
+    "Module 'cinder.objects' has no 'SnapshotList' member",
+    "Module 'cinder.objects' has no 'Volume' member",
+    "Module 'cinder.objects' has no 'VolumeList' member",
+]
+objects_ignore_modules = ["cinder/objects/"]
 
 KNOWN_PYLINT_EXCEPTIONS_FILE = "tools/pylint_exceptions"
 
@@ -99,7 +132,16 @@ class LintOutput(object):
             return True
         if any(self.filename.startswith(name) for name in ignore_modules):
             return True
-        if any(msg in self.message for msg in ignore_messages):
+        if any(msg in self.message for msg in
+               (ignore_messages + objects_ignore_messages)):
+            return True
+        if (self.code in objects_ignore_codes and
+            any(self.filename.startswith(name)
+                for name in objects_ignore_modules)):
+            return True
+        if (self.code in objects_ignore_codes and
+            any(self.filename.startswith(name)
+                for name in objects_ignore_modules)):
             return True
         return False
 

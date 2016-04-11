@@ -19,28 +19,25 @@ import os
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
-import xattr
+from oslo_log import log as logging
+from oslo_utils import fileutils
 
 from cinder import compute
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
-from cinder.openstack.common import fileutils
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
-VERSION = '1.0'
+VERSION = '1.1'
 
 LOG = logging.getLogger(__name__)
 
 volume_opts = [
     cfg.StrOpt('quobyte_volume_url',
-               default=None,
                help=('URL to the Quobyte volume e.g.,'
                      ' quobyte://<DIR host>/<volume name>')),
     cfg.StrOpt('quobyte_client_cfg',
-               default=None,
                help=('Path to a Quobyte Client configuration file.')),
     cfg.BoolOpt('quobyte_sparsed_volumes',
                 default=True,
@@ -79,6 +76,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
     Version history:
         1.0   - Initial driver.
+        1.1   - Adds optional insecure NAS settings
     """
 
     driver_volume_type = 'quobyte'
@@ -95,18 +93,18 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
-        self.set_nas_security_options(is_new_cinder_install=False)
         super(QuobyteDriver, self).do_setup(context)
 
+        self.set_nas_security_options(is_new_cinder_install=False)
         self.shares = {}  # address : options
         self._nova = compute.API()
 
     def check_for_setup_error(self):
         if not self.configuration.quobyte_volume_url:
-            msg = (_LW("There's no Quobyte volume configured (%s). Example:"
-                       " quobyte://<DIR host>/<volume name>") %
+            msg = (_("There's no Quobyte volume configured (%s). Example:"
+                     " quobyte://<DIR host>/<volume name>") %
                    'quobyte_volume_url')
-            LOG.warn(msg)
+            LOG.warning(msg)
             raise exception.VolumeDriverException(msg)
 
         # Check if mount.quobyte is installed
@@ -118,12 +116,49 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                 raise exception.VolumeDriverException(
                     'mount.quobyte is not installed')
             else:
-                raise exc
+                raise
 
     def set_nas_security_options(self, is_new_cinder_install):
-        self.configuration.nas_secure_file_operations = 'true'
-        self.configuration.nas_secure_file_permissions = 'true'
         self._execute_as_root = False
+
+        LOG.debug("nas_secure_file_* settings are %(ops)s and %(perm)s",
+                  {'ops': self.configuration.nas_secure_file_operations,
+                   'perm': self.configuration.nas_secure_file_permissions}
+                  )
+
+        if self.configuration.nas_secure_file_operations == 'auto':
+            """Note (kaisers): All previous Quobyte driver versions ran with
+            secure settings hardcoded to 'True'. Therefore the default 'auto'
+            setting can safely be mapped to the same, secure, setting.
+            """
+            LOG.debug("Mapping 'auto' value to 'true' for"
+                      " nas_secure_file_operations.")
+            self.configuration.nas_secure_file_operations = 'true'
+
+        if self.configuration.nas_secure_file_permissions == 'auto':
+            """Note (kaisers): All previous Quobyte driver versions ran with
+            secure settings hardcoded to 'True'. Therefore the default 'auto'
+            setting can safely be mapped to the same, secure, setting.
+            """
+            LOG.debug("Mapping 'auto' value to 'true' for"
+                      " nas_secure_file_permissions.")
+            self.configuration.nas_secure_file_permissions = 'true'
+
+        if self.configuration.nas_secure_file_operations == 'false':
+            LOG.warning(_LW("The NAS file operations will be run as "
+                            "root, allowing root level access at the storage "
+                            "backend."))
+            self._execute_as_root = True
+        else:
+            LOG.info(_LI("The NAS file operations will be run as"
+                         " non privileged user in secure mode. Please"
+                         " ensure your libvirtd settings have been configured"
+                         " accordingly (see section 'OpenStack' in the Quobyte"
+                         " Manual."))
+
+        if self.configuration.nas_secure_file_permissions == 'false':
+            LOG.warning(_LW("The NAS file permissions mode will be 666 "
+                            "(allowing other/world read & write access)."))
 
     def _qemu_img_info(self, path, volume_name):
         return super(QuobyteDriver, self)._qemu_img_info_base(
@@ -149,11 +184,10 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
         qcow2.
         """
 
-        LOG.debug("snapshot: %(snap)s, volume: %(vol)s, "
-                  "volume_size: %(size)s"
-                  % {'snap': snapshot['id'],
-                     'vol': volume['id'],
-                     'size': volume_size})
+        LOG.debug("snapshot: %(snap)s, volume: %(vol)s, ",
+                  {'snap': snapshot['id'],
+                   'vol': volume['id'],
+                   'size': volume_size})
 
         info_path = self._local_path_volume_info(snapshot['volume'])
         snap_info = self._read_info_file(info_path)
@@ -169,7 +203,7 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
         path_to_new_vol = self._local_path_volume(volume)
 
-        LOG.debug("will copy from snapshot at %s" % path_to_snap_img)
+        LOG.debug("will copy from snapshot at %s", path_to_snap_img)
 
         if self.configuration.quobyte_qcow2_volumes:
             out_format = 'qcow2'
@@ -188,8 +222,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
         """Deletes a logical volume."""
 
         if not volume['provider_location']:
-            LOG.warn(_LW('Volume %s does not have provider_location '
-                     'specified, skipping'), volume['name'])
+            LOG.warning(_LW('Volume %s does not have provider_location '
+                            'specified, skipping'), volume['name'])
             return
 
         self._ensure_share_mounted(volume['provider_location'])
@@ -295,7 +329,8 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def _load_shares_config(self, share_file=None):
         """Put 'quobyte_volume_url' into the 'shares' list.
-        :param share_file: string, Not used because the user has to specify the
+
+        :param share_file: string, Not used because the user has to specify
                                    the Quobyte volume directly.
         """
         self.shares = {}
@@ -309,15 +344,17 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
 
         self.shares[url] = None  # None = No extra mount options.
 
-        LOG.debug("Quobyte Volume URL set to: %s" % str(self.shares))
+        LOG.debug("Quobyte Volume URL set to: %s", self.shares)
 
     def _ensure_share_mounted(self, quobyte_volume):
         """Mount Quobyte volume.
+
         :param quobyte_volume: string
         """
         mount_path = self._get_mount_point_for_share(quobyte_volume)
         self._mount_quobyte(quobyte_volume, mount_path, ensure=True)
 
+    @utils.synchronized('quobyte_ensure', external=False)
     def _ensure_shares_mounted(self):
         """Mount the Quobyte volume.
 
@@ -332,9 +369,9 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                 self._ensure_share_mounted(share)
                 self._mounted_shares.append(share)
             except Exception as exc:
-                LOG.warning(_LW('Exception during mounting %s') % (exc,))
+                LOG.warning(_LW('Exception during mounting %s'), exc)
 
-        LOG.debug('Available shares %s' % str(self._mounted_shares))
+        LOG.debug('Available shares %s', self._mounted_shares)
 
     def _find_share(self, volume_size_in_gib):
         """Returns the mounted Quobyte volume.
@@ -355,12 +392,13 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
             ' one Quobyte volume.'
         target_volume = self._mounted_shares[0]
 
-        LOG.debug('Selected %s as target Quobyte volume.' % target_volume)
+        LOG.debug('Selected %s as target Quobyte volume.', target_volume)
 
         return target_volume
 
     def _get_mount_point_for_share(self, quobyte_volume):
         """Return mount point for Quobyte volume.
+
         :param quobyte_volume: Example: storage-host/openstack-volumes
         """
         return os.path.join(self.configuration.quobyte_mount_point_base,
@@ -387,16 +425,17 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                     mounted = False
                     try:
                         LOG.info(_LI('Fixing previous mount %s which was not'
-                                     ' unmounted correctly.') % mount_path)
+                                     ' unmounted correctly.'), mount_path)
                         self._execute('umount.quobyte', mount_path,
-                                      run_as_root=False)
+                                      run_as_root=self._execute_as_root)
                     except processutils.ProcessExecutionError as exc:
-                        LOG.warn(_LW("Failed to unmount previous mount: %s"),
-                                 exc)
+                        LOG.warning(_LW("Failed to unmount previous mount: "
+                                        "%s"), exc)
                 else:
                     # TODO(quobyte): Extend exc analysis in here?
-                    LOG.warn(_LW("Unknown error occurred while checking mount"
-                                 " point: %s Trying to continue."), exc)
+                    LOG.warning(_LW("Unknown error occurred while checking "
+                                    "mount point: %s Trying to continue."),
+                                exc)
 
         if not mounted:
             if not os.path.isdir(mount_path):
@@ -407,24 +446,30 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
                 command.extend(['-c', self.configuration.quobyte_client_cfg])
 
             try:
-                LOG.info(_LI('Mounting volume: %s ...') % quobyte_volume)
-                self._execute(*command, run_as_root=False)
-                LOG.info(_LI('Mounting volume: %s succeeded') % quobyte_volume)
+                LOG.info(_LI('Mounting volume: %s ...'), quobyte_volume)
+                self._execute(*command, run_as_root=self._execute_as_root)
+                LOG.info(_LI('Mounting volume: %s succeeded'), quobyte_volume)
                 mounted = True
             except processutils.ProcessExecutionError as exc:
                 if ensure and 'already mounted' in exc.stderr:
-                    LOG.warn(_LW("%s is already mounted"), quobyte_volume)
+                    LOG.warning(_LW("%s is already mounted"), quobyte_volume)
                 else:
                     raise
 
         if mounted:
-            try:
-                xattr.getxattr(mount_path, 'quobyte.info')
-            except Exception as exc:
-                msg = _LE("The mount %(mount_path)s is not a valid"
-                          " Quobyte USP volume. Error: %(exc)s") \
-                    % {'mount_path': mount_path, 'exc': exc}
-                raise exception.VolumeDriverException(msg)
-            if not os.access(mount_path, os.W_OK | os.X_OK):
-                LOG.warn(_LW("Volume is not writable. Please broaden the file"
-                             " permissions. Mount: %s"), mount_path)
+            self._validate_volume(mount_path)
+
+    def _validate_volume(self, mount_path):
+        """Wraps execute calls for checking validity of a Quobyte volume"""
+        command = ['getfattr', "-n", "quobyte.info", mount_path]
+        try:
+            self._execute(*command, run_as_root=self._execute_as_root)
+        except processutils.ProcessExecutionError as exc:
+            msg = (_("The mount %(mount_path)s is not a valid"
+                     " Quobyte USP volume. Error: %(exc)s")
+                   % {'mount_path': mount_path, 'exc': exc})
+            raise exception.VolumeDriverException(msg)
+
+        if not os.access(mount_path, os.W_OK | os.X_OK):
+            LOG.warning(_LW("Volume is not writable. Please broaden the file"
+                            " permissions. Mount: %s"), mount_path)

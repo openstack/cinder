@@ -1,0 +1,3 @@
+---
+features:
+  - Added backend driver for Fujitsu ETERNUS DX (iSCSI).

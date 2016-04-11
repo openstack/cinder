@@ -21,10 +21,3 @@ def upgrade(migrate_engine):
     services = Table('services', meta, autoload=True)
     reason = Column('disabled_reason', String(255))
     services.create_column(reason)
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-    services = Table('services', meta, autoload=True)
-    services.drop_column('disabled_reason')

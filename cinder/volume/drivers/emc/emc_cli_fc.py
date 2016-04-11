@@ -1,4 +1,4 @@
-# Copyright (c) 2012 - 2014 EMC Corporation, Inc.
+# Copyright (c) 2012 - 2015 EMC Corporation, Inc.
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -12,16 +12,13 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-Fibre Channel Driver for EMC VNX array based on CLI.
+"""Fibre Channel Driver for EMC VNX array based on CLI."""
 
-"""
+from oslo_log import log as logging
 
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vnx_cli
-from cinder.zonemanager.utils import AddFCZone
-from cinder.zonemanager.utils import RemoveFCZone
+from cinder.zonemanager import utils as zm_utils
 
 
 LOG = logging.getLogger(__name__)
@@ -51,14 +48,27 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                 Initiator Auto Deregistration,
                 Force Deleting LUN in Storage Groups,
                 robust enhancement
+        5.1.0 - iSCSI multipath enhancement
+        5.2.0 - Pool-aware scheduler support
+        5.3.0 - Consistency group modification support
+        6.0.0 - Over subscription support
+                Create consistency group from cgsnapshot support
+                Multiple pools support enhancement
+                Manage/unmanage volume revise
+                White list target ports support
+                Snap copy support
+                Support efficient non-disruptive backup
+        7.0.0 - Clone consistency group support
+                Replication v2 support(managed)
+                Configurable migration rate support
     """
 
     def __init__(self, *args, **kwargs):
-
         super(EMCCLIFCDriver, self).__init__(*args, **kwargs)
         self.cli = emc_vnx_cli.getEMCVnxCli(
             'FC',
-            configuration=self.configuration)
+            configuration=self.configuration,
+            active_backend_id=kwargs.get('active_backend_id'))
         self.VERSION = self.cli.VERSION
 
     def check_for_setup_error(self):
@@ -104,7 +114,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """Driver entry point to get the export info for an existing volume."""
         pass
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Driver entry point to get the export info for a new volume."""
         pass
 
@@ -116,7 +126,7 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @AddFCZone
+    @zm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info.
 
@@ -136,7 +146,6 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': '1234567890123',
-                    'access_mode': 'rw'
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123']
                     }
@@ -151,7 +160,6 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
                     'target_discovered': True,
                     'target_lun': 1,
                     'target_wwn': ['1234567890123', '0987654321321'],
-                    'access_mode': 'rw'
                     'initiator_target_map': {
                         '1122334455667788': ['1234567890123',
                                              '0987654321321']
@@ -163,17 +171,17 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         conn_info = self.cli.initialize_connection(volume,
                                                    connector)
         LOG.debug("Exit initialize_connection"
-                  " - Returning FC connection info: %(conn_info)s."
-                  % {'conn_info': conn_info})
+                  " - Returning FC connection info: %(conn_info)s.",
+                  {'conn_info': conn_info})
         return conn_info
 
-    @RemoveFCZone
+    @zm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
         conn_info = self.cli.terminate_connection(volume, connector)
         LOG.debug("Exit terminate_connection"
-                  " - Returning FC connection info: %(conn_info)s."
-                  % {'conn_info': conn_info})
+                  " - Returning FC connection info: %(conn_info)s.",
+                  {'conn_info': conn_info})
         return conn_info
 
     def get_volume_stats(self, refresh=False):
@@ -204,32 +212,96 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
+        manage_existing_ref:{
+            'source-id':<lun id in VNX>
+        }
+        or
+        manage_existing_ref:{
+            'source-name':<lun name in VNX>
         }
         """
-        LOG.debug("Reference lun id %s." % existing_ref['id'])
-        self.cli.manage_existing(volume, existing_ref)
+        return self.cli.manage_existing(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):
-        """Return size of volume to be managed by manage_existing.
-        """
+        """Return size of volume to be managed by manage_existing."""
         return self.cli.manage_existing_get_size(volume, existing_ref)
 
     def create_consistencygroup(self, context, group):
         """Creates a consistencygroup."""
         return self.cli.create_consistencygroup(context, group)
 
-    def delete_consistencygroup(self, context, group):
+    def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
         return self.cli.delete_consistencygroup(
-            self, context, group)
+            context, group, volumes)
 
-    def create_cgsnapshot(self, context, cgsnapshot):
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a cgsnapshot."""
         return self.cli.create_cgsnapshot(
-            self, context, cgsnapshot)
+            context, cgsnapshot, snapshots)
 
-    def delete_cgsnapshot(self, context, cgsnapshot):
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
-        return self.cli.delete_cgsnapshot(self, context, cgsnapshot)
+        return self.cli.delete_cgsnapshot(
+            context, cgsnapshot, snapshots)
+
+    def get_pool(self, volume):
+        """Returns the pool name of a volume."""
+        return self.cli.get_pool(volume)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes,
+                                remove_volumes):
+        """Updates LUNs in consistency group."""
+        return self.cli.update_consistencygroup(context, group,
+                                                add_volumes,
+                                                remove_volumes)
+
+    def unmanage(self, volume):
+        """Unmanages a volume."""
+        return self.cli.unmanage(volume)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        """Creates a consistency group from source."""
+        return self.cli.create_consistencygroup_from_src(context,
+                                                         group,
+                                                         volumes,
+                                                         cgsnapshot,
+                                                         snapshots,
+                                                         source_cg,
+                                                         source_vols)
+
+    def update_migrated_volume(self, context, volume, new_volume,
+                               original_volume_status=None):
+        """Returns model update for migrated volume."""
+        return self.cli.update_migrated_volume(context, volume, new_volume,
+                                               original_volume_status)
+
+    def create_export_snapshot(self, context, snapshot, connector):
+        """Creates a snapshot mount point for snapshot."""
+        return self.cli.create_export_snapshot(context, snapshot, connector)
+
+    def remove_export_snapshot(self, context, snapshot):
+        """Removes snapshot mount point for snapshot."""
+        return self.cli.remove_export_snapshot(context, snapshot)
+
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Allows connection to snapshot."""
+        return self.cli.initialize_connection_snapshot(snapshot,
+                                                       connector,
+                                                       **kwargs)
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Disallows connection to snapshot."""
+        return self.cli.terminate_connection_snapshot(snapshot,
+                                                      connector,
+                                                      **kwargs)
+
+    def backup_use_temp_snapshot(self):
+        return True
+
+    def failover_host(self, context, volumes, secondary_backend_id):
+        """Failovers volume from primary device to secondary."""
+        return self.cli.failover_host(context, volumes, secondary_backend_id)

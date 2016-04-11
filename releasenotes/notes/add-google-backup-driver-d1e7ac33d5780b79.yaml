@@ -1,0 +1,3 @@
+---
+features:
+  - Added cinder backup driver for Google Cloud Storage.

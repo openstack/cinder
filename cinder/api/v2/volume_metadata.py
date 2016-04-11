@@ -30,13 +30,17 @@ class Controller(wsgi.Controller):
         super(Controller, self).__init__()
 
     def _get_metadata(self, context, volume_id):
+        # The metadata is at the second position of the tuple returned
+        # from _get_volume_and_metadata
+        return self._get_volume_and_metadata(context, volume_id)[1]
+
+    def _get_volume_and_metadata(self, context, volume_id):
         try:
             volume = self.volume_api.get(context, volume_id)
             meta = self.volume_api.get_volume_metadata(context, volume)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise webob.exc.HTTPNotFound(explanation=msg)
-        return meta
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        return (volume, meta)
 
     @wsgi.serializers(xml=common.MetadataTemplate)
     def index(self, req, volume_id):
@@ -47,13 +51,9 @@ class Controller(wsgi.Controller):
     @wsgi.serializers(xml=common.MetadataTemplate)
     @wsgi.deserializers(xml=common.MetadataDeserializer)
     def create(self, req, volume_id, body):
-        try:
-            metadata = body['metadata']
-        except (KeyError, TypeError):
-            msg = _("Malformed request body")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-
+        self.assert_valid_body(body, 'metadata')
         context = req.environ['cinder.context']
+        metadata = body['metadata']
 
         new_metadata = self._update_volume_metadata(context,
                                                     volume_id,
@@ -65,11 +65,8 @@ class Controller(wsgi.Controller):
     @wsgi.serializers(xml=common.MetaItemTemplate)
     @wsgi.deserializers(xml=common.MetaItemDeserializer)
     def update(self, req, volume_id, id, body):
-        try:
-            meta_item = body['meta']
-        except (TypeError, KeyError):
-            expl = _('Malformed request body')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
+        self.assert_valid_body(body, 'meta')
+        meta_item = body['meta']
 
         if id not in meta_item:
             expl = _('Request body and URI mismatch')
@@ -90,13 +87,10 @@ class Controller(wsgi.Controller):
     @wsgi.serializers(xml=common.MetadataTemplate)
     @wsgi.deserializers(xml=common.MetadataDeserializer)
     def update_all(self, req, volume_id, body):
-        try:
-            metadata = body['metadata']
-        except (TypeError, KeyError):
-            expl = _('Malformed request body')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
-
+        self.assert_valid_body(body, 'metadata')
+        metadata = body['metadata']
         context = req.environ['cinder.context']
+
         new_metadata = self._update_volume_metadata(context,
                                                     volume_id,
                                                     metadata,
@@ -109,13 +103,14 @@ class Controller(wsgi.Controller):
                                 delete=False):
         try:
             volume = self.volume_api.get(context, volume_id)
-            return self.volume_api.update_volume_metadata(context,
-                                                          volume,
-                                                          metadata,
-                                                          delete)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise webob.exc.HTTPNotFound(explanation=msg)
+            return self.volume_api.update_volume_metadata(
+                context,
+                volume,
+                metadata,
+                delete,
+                meta_type=common.METADATA_TYPES.user)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         except (ValueError, AttributeError):
             msg = _("Malformed request body")
@@ -143,18 +138,20 @@ class Controller(wsgi.Controller):
         """Deletes an existing metadata."""
         context = req.environ['cinder.context']
 
-        metadata = self._get_metadata(context, volume_id)
+        volume, metadata = self._get_volume_and_metadata(context, volume_id)
 
         if id not in metadata:
             msg = _("Metadata item was not found")
             raise webob.exc.HTTPNotFound(explanation=msg)
 
         try:
-            volume = self.volume_api.get(context, volume_id)
-            self.volume_api.delete_volume_metadata(context, volume, id)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise webob.exc.HTTPNotFound(explanation=msg)
+            self.volume_api.delete_volume_metadata(
+                context,
+                volume,
+                id,
+                meta_type=common.METADATA_TYPES.user)
+        except exception.VolumeNotFound as error:
+            raise webob.exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=200)
 
 

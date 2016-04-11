@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Removed force_delete option from ScaleIO configuration.

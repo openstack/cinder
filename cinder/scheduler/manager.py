@@ -19,10 +19,13 @@
 Scheduler Service
 """
 
-from oslo import messaging
+import eventlet
 from oslo_config import cfg
+from oslo_log import log as logging
+import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
+import six
 
 from cinder import context
 from cinder import db
@@ -30,7 +33,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
 from cinder import manager
-from cinder.openstack.common import log as logging
+from cinder import objects
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
@@ -53,7 +56,7 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
-    RPC_API_VERSION = '1.7'
+    RPC_API_VERSION = '2.0'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -61,22 +64,21 @@ class SchedulerManager(manager.Manager):
                  *args, **kwargs):
         if not scheduler_driver:
             scheduler_driver = CONF.scheduler_driver
-        if scheduler_driver in ['cinder.scheduler.chance.ChanceScheduler',
-                                'cinder.scheduler.simple.SimpleScheduler']:
-            scheduler_driver = ('cinder.scheduler.filter_scheduler.'
-                                'FilterScheduler')
-            LOG.deprecated(_('ChanceScheduler and SimpleScheduler have been '
-                             'deprecated due to lack of support for advanced '
-                             'features like: volume types, volume encryption,'
-                             ' QoS etc. These two schedulers can be fully '
-                             'replaced by FilterScheduler with certain '
-                             'combination of filters and weighers.'))
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
+        self.additional_endpoints.append(_SchedulerV1Proxy(self))
+        self._startup_delay = True
 
-    def init_host(self):
+    def init_host_with_rpc(self):
         ctxt = context.get_admin_context()
         self.request_service_capabilities(ctxt)
+
+        eventlet.sleep(CONF.periodic_interval)
+        self._startup_delay = False
+
+    def reset(self):
+        super(SchedulerManager, self).reset()
+        self.driver.reset()
 
     def update_service_capabilities(self, context, service_name=None,
                                     host=None, capabilities=None, **kwargs):
@@ -87,47 +89,61 @@ class SchedulerManager(manager.Manager):
                                                 host,
                                                 capabilities)
 
+    def _wait_for_scheduler(self):
+        # NOTE(dulek): We're waiting for scheduler to announce that it's ready
+        # or CONF.periodic_interval seconds from service startup has passed.
+        while self._startup_delay and not self.driver.is_ready():
+            eventlet.sleep(1)
+
     def create_consistencygroup(self, context, topic,
-                                group_id,
+                                group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
+
+        self._wait_for_scheduler()
         try:
             self.driver.schedule_create_consistencygroup(
-                context, group_id,
+                context, group,
                 request_spec_list,
                 filter_properties_list)
         except exception.NoValidHost:
-            msg = (_("Could not find a host for consistency group "
-                     "%(group_id)s.") %
-                   {'group_id': group_id})
-            LOG.error(msg)
-            db.consistencygroup_update(context, group_id,
-                                       {'status': 'error'})
+            LOG.error(_LE("Could not find a host for consistency group "
+                          "%(group_id)s."),
+                      {'group_id': group.id})
+            group.status = 'error'
+            group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE("Failed to create consistency group "
                                   "%(group_id)s."),
-                              {'group_id': group_id})
-                db.consistencygroup_update(context, group_id,
-                                           {'status': 'error'})
+                              {'group_id': group.id})
+                group.status = 'error'
+                group.save()
 
     def create_volume(self, context, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
-                      filter_properties=None):
+                      filter_properties=None, volume=None):
+
+        self._wait_for_scheduler()
+
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the
+            # volume by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
 
         try:
             flow_engine = create_volume.get_flow(context,
                                                  db, self.driver,
                                                  request_spec,
                                                  filter_properties,
-                                                 volume_id,
+                                                 volume,
                                                  snapshot_id,
                                                  image_id)
         except Exception:
-            LOG.exception(_LE("Failed to create scheduler "
-                              "manager volume flow"))
-            raise exception.CinderException(
-                _("Failed to create scheduler manager volume flow"))
+            msg = _("Failed to create scheduler manager volume flow")
+            LOG.exception(msg)
+            raise exception.CinderException(msg)
 
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
@@ -137,11 +153,25 @@ class SchedulerManager(manager.Manager):
 
     def migrate_volume_to_host(self, context, topic, volume_id, host,
                                force_host_copy, request_spec,
-                               filter_properties=None):
+                               filter_properties=None, volume=None):
         """Ensure that the host exists and can accept the volume."""
 
+        self._wait_for_scheduler()
+
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the
+            # volume by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         def _migrate_volume_set_error(self, context, ex, request_spec):
-            volume_state = {'volume_state': {'migration_status': None}}
+            if volume.status == 'maintenance':
+                previous_status = (
+                    volume.previous_status or 'maintenance')
+                volume_state = {'volume_state': {'migration_status': 'error',
+                                                 'status': previous_status}}
+            else:
+                volume_state = {'volume_state': {'migration_status': 'error'}}
             self._set_volume_state_and_notify('migrate_volume_to_host',
                                               volume_state,
                                               context, ex, request_spec)
@@ -156,13 +186,12 @@ class SchedulerManager(manager.Manager):
             with excutils.save_and_reraise_exception():
                 _migrate_volume_set_error(self, context, ex, request_spec)
         else:
-            volume_ref = db.volume_get(context, volume_id)
-            volume_rpcapi.VolumeAPI().migrate_volume(context, volume_ref,
+            volume_rpcapi.VolumeAPI().migrate_volume(context, volume,
                                                      tgt_host,
                                                      force_host_copy)
 
     def retype(self, context, topic, volume_id,
-               request_spec, filter_properties=None):
+               request_spec, filter_properties=None, volume=None):
         """Schedule the modification of a volume's type.
 
         :param context: the request context
@@ -170,28 +199,35 @@ class SchedulerManager(manager.Manager):
         :param volume_id: the ID of the volume to retype
         :param request_spec: parameters for this retype request
         :param filter_properties: parameters to filter by
+        :param volume: the volume object to retype
         """
+
+        self._wait_for_scheduler()
+
+        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the
+            # volume by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         def _retype_volume_set_error(self, context, ex, request_spec,
                                      volume_ref, msg, reservations):
             if reservations:
                 QUOTAS.rollback(context, reservations)
-            if (volume_ref['instance_uuid'] is None and
-                    volume_ref['attached_host'] is None):
-                orig_status = 'available'
-            else:
-                orig_status = 'in-use'
-            volume_state = {'volume_state': {'status': orig_status}}
+            previous_status = (
+                volume_ref.previous_status or volume_ref.status)
+            volume_state = {'volume_state': {'status': previous_status}}
             self._set_volume_state_and_notify('retype', volume_state,
                                               context, ex, request_spec, msg)
 
-        volume_ref = db.volume_get(context, volume_id)
         reservations = request_spec.get('quota_reservations')
+        old_reservations = request_spec.get('old_reservations', None)
         new_type = request_spec.get('volume_type')
         if new_type is None:
             msg = _('New volume type not specified in request_spec.')
             ex = exception.ParameterNotFound(param='volume_type')
             _retype_volume_set_error(self, context, ex, request_spec,
-                                     volume_ref, msg, reservations)
+                                     volume, msg, reservations)
 
         # Default migration policy is 'never'
         migration_policy = request_spec.get('migration_policy')
@@ -205,21 +241,25 @@ class SchedulerManager(manager.Manager):
         except exception.NoValidHost as ex:
             msg = (_("Could not find a host for volume %(volume_id)s with "
                      "type %(type_id)s.") %
-                   {'type_id': new_type['id'], 'volume_id': volume_id})
+                   {'type_id': new_type['id'], 'volume_id': volume.id})
             _retype_volume_set_error(self, context, ex, request_spec,
-                                     volume_ref, msg, reservations)
+                                     volume, msg, reservations)
         except Exception as ex:
             with excutils.save_and_reraise_exception():
                 _retype_volume_set_error(self, context, ex, request_spec,
-                                         volume_ref, None, reservations)
+                                         volume, None, reservations)
         else:
-            volume_rpcapi.VolumeAPI().retype(context, volume_ref,
+            volume_rpcapi.VolumeAPI().retype(context, volume,
                                              new_type['id'], tgt_host,
-                                             migration_policy, reservations)
+                                             migration_policy,
+                                             reservations,
+                                             old_reservations)
 
     def manage_existing(self, context, topic, volume_id,
                         request_spec, filter_properties=None):
         """Ensure that the host exists and can accept the volume."""
+
+        self._wait_for_scheduler()
 
         def _manage_existing_set_error(self, context, ex, request_spec):
             volume_state = {'volume_state': {'status': 'error'}}
@@ -242,15 +282,20 @@ class SchedulerManager(manager.Manager):
                                                       request_spec.get('ref'))
 
     def get_pools(self, context, filters=None):
-        """Get active pools from scheduler's cache."""
+        """Get active pools from scheduler's cache.
+
+        NOTE(dulek): There's no self._wait_for_scheduler() because get_pools is
+        an RPC call (is blocking for the c-api). Also this is admin-only API
+        extension so it won't hurt the user much to retry the request manually.
+        """
         return self.driver.get_pools(context, filters)
 
     def _set_volume_state_and_notify(self, method, updates, context, ex,
                                      request_spec, msg=None):
         # TODO(harlowja): move into a task that just does this later.
         if not msg:
-            msg = (_("Failed to schedule_%(method)s: %(ex)s") %
-                   {'method': method, 'ex': ex})
+            msg = (_LE("Failed to schedule_%(method)s: %(ex)s") %
+                   {'method': method, 'ex': six.text_type(ex)})
         LOG.error(msg)
 
         volume_state = updates['volume_state']
@@ -271,3 +316,59 @@ class SchedulerManager(manager.Manager):
         rpc.get_notifier("scheduler").error(context,
                                             'scheduler.' + method,
                                             payload)
+
+
+# TODO(dulek): This goes away immediately in Newton and is just present in
+# Mitaka so that we can receive v1.x and v2.0 messages.
+class _SchedulerV1Proxy(object):
+
+    target = messaging.Target(version='1.11')
+
+    def __init__(self, manager):
+        self.manager = manager
+
+    def update_service_capabilities(self, context, service_name=None,
+                                    host=None, capabilities=None, **kwargs):
+        return self.manager.update_service_capabilities(
+            context, service_name=service_name, host=host,
+            capabilities=capabilities, **kwargs)
+
+    def create_consistencygroup(self, context, topic, group,
+                                request_spec_list=None,
+                                filter_properties_list=None):
+        return self.manager.create_consistencygroup(
+            context, topic, group, request_spec_list=request_spec_list,
+            filter_properties_list=None)
+
+    def create_volume(self, context, topic, volume_id, snapshot_id=None,
+                      image_id=None, request_spec=None, filter_properties=None,
+                      volume=None):
+        return self.manager.create_volume(
+            context, topic, volume_id, snapshot_id=snapshot_id,
+            image_id=image_id, request_spec=request_spec,
+            filter_properties=filter_properties, volume=volume)
+
+    def request_service_capabilities(self, context):
+        return self.manager.request_service_capabilities(context)
+
+    def migrate_volume_to_host(self, context, topic, volume_id, host,
+                               force_host_copy, request_spec,
+                               filter_properties=None, volume=None):
+        return self.manager.migrate_volume_to_host(
+            context, topic, volume_id, host, force_host_copy, request_spec,
+            filter_properties=filter_properties, volume=volume)
+
+    def retype(self, context, topic, volume_id, request_spec,
+               filter_properties=None, volume=None):
+        return self.manager.retype(context, topic, volume_id, request_spec,
+                                   filter_properties=filter_properties,
+                                   volume=volume)
+
+    def manage_existing(self, context, topic, volume_id, request_spec,
+                        filter_properties=None):
+        return self.manager.manage_existing(
+            context, topic, volume_id, request_spec,
+            filter_properties=filter_properties)
+
+    def get_pools(self, context, filters=None):
+        return self.manager.get_pools(context, filters=filters)

@@ -19,15 +19,15 @@
 """Utilities related to SSH connection management."""
 
 import os
-import string
 
 from eventlet import pools
 from oslo_config import cfg
+from oslo_log import log as logging
 import paramiko
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 
 LOG = logging.getLogger(__name__)
 
@@ -80,12 +80,12 @@ class SSHPool(pools.Pool):
         if 'hosts_key_file' in kwargs.keys():
             self.hosts_key_file = kwargs.pop('hosts_key_file')
             LOG.info(_LI("Secondary ssh hosts key file %(kwargs)s will be "
-                         "loaded along with %(conf)s from /etc/cinder.conf.") %
+                         "loaded along with %(conf)s from /etc/cinder.conf."),
                      {'kwargs': self.hosts_key_file,
                       'conf': CONF.ssh_hosts_key_file})
 
         LOG.debug("Setting strict_ssh_host_key_policy to '%(policy)s' "
-                  "using ssh_hosts_key_file '%(key_file)s'." %
+                  "using ssh_hosts_key_file '%(key_file)s'.",
                   {'policy': CONF.strict_ssh_host_key_policy,
                    'key_file': CONF.ssh_hosts_key_file})
 
@@ -102,7 +102,7 @@ class SSHPool(pools.Pool):
         try:
             ssh = paramiko.SSHClient()
             if ',' in self.hosts_key_file:
-                files = string.split(self.hosts_key_file, ',')
+                files = self.hosts_key_file.split(',')
                 for f in files:
                     ssh.load_host_keys(f)
             else:
@@ -148,7 +148,7 @@ class SSHPool(pools.Pool):
                 transport.set_keepalive(self.conn_timeout)
             return ssh
         except Exception as e:
-            msg = _("Error connecting via ssh: %s") % e
+            msg = _("Error connecting via ssh: %s") % six.text_type(e)
             LOG.error(msg)
             raise paramiko.SSHException(msg)
 
@@ -171,8 +171,7 @@ class SSHPool(pools.Pool):
     def remove(self, ssh):
         """Close an ssh client and remove it from free_items."""
         ssh.close()
-        ssh = None
         if ssh in self.free_items:
-            self.free_items.pop(ssh)
-        if self.current_size > 0:
-            self.current_size -= 1
+            self.free_items.remove(ssh)
+            if self.current_size > 0:
+                self.current_size -= 1

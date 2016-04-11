@@ -13,21 +13,26 @@
 #   under the License.
 
 
-from oslo import messaging
+from oslo_config import cfg
+from oslo_log import log as logging
+import oslo_messaging as messaging
+from oslo_utils import encodeutils
 from oslo_utils import strutils
+import six
 import webob
 
 from cinder.api import extensions
+from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import volume
 
 
 LOG = logging.getLogger(__name__)
+CONF = cfg.CONF
 
 
 def authorize(context, action_name):
@@ -49,6 +54,11 @@ class VolumeToImageSerializer(xmlutil.TemplateBuilder):
         root.set('container_format')
         root.set('disk_format')
         root.set('image_name')
+        root.set('protected')
+        if CONF.glance_api_version == 2:
+            root.set('visibility')
+        else:
+            root.set('is_public')
         return xmlutil.MasterTemplate(root, 1)
 
 
@@ -60,7 +70,12 @@ class VolumeToImageDeserializer(wsgi.XMLDeserializer):
         action_name = action_node.tagName
 
         action_data = {}
-        attributes = ["force", "image_name", "container_format", "disk_format"]
+        attributes = ["force", "image_name", "container_format", "disk_format",
+                      "protected"]
+        if CONF.glance_api_version == 2:
+            attributes.append('visibility')
+        else:
+            attributes.append('is_public')
         for attr in attributes:
             if action_node.hasAttribute(attr):
                 action_data[attr] = action_node.getAttribute(attr)
@@ -97,15 +112,7 @@ class VolumeActionsController(wsgi.Controller):
         else:
             mode = 'rw'
 
-        if instance_uuid and host_name:
-            msg = _("Invalid request to attach volume to an "
-                    "instance %(instance_uuid)s and a "
-                    "host %(host_name)s simultaneously") % {
-                'instance_uuid': instance_uuid,
-                'host_name': host_name,
-            }
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-        elif instance_uuid is None and host_name is None:
+        if instance_uuid is None and host_name is None:
             msg = _("Invalid request to attach volume to an invalid target")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
@@ -113,9 +120,21 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Invalid request to attach volume with an invalid mode. "
                     "Attaching mode should be 'rw' or 'ro'")
             raise webob.exc.HTTPBadRequest(explanation=msg)
+        try:
+            self.volume_api.attach(context, volume,
+                                   instance_uuid, host_name, mountpoint, mode)
+        except messaging.RemoteError as error:
+            if error.exc_type in ['InvalidVolume', 'InvalidUUID',
+                                  'InvalidVolumeAttachMode']:
+                msg = "Error attaching volume - %(err_type)s: %(err_msg)s" % {
+                      'err_type': error.exc_type, 'err_msg': error.value}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            else:
+                # There are also few cases where attach call could fail due to
+                # db or volume driver errors. These errors shouldn't be exposed
+                # to the user and in such cases it should raise 500 error.
+                raise
 
-        self.volume_api.attach(context, volume,
-                               instance_uuid, host_name, mountpoint, mode)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-detach')
@@ -127,7 +146,23 @@ class VolumeActionsController(wsgi.Controller):
         except exception.VolumeNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
-        self.volume_api.detach(context, volume)
+        attachment_id = None
+        if body['os-detach']:
+            attachment_id = body['os-detach'].get('attachment_id', None)
+
+        try:
+            self.volume_api.detach(context, volume, attachment_id)
+        except messaging.RemoteError as error:
+            if error.exc_type in ['VolumeAttachmentNotFound', 'InvalidVolume']:
+                msg = "Error detaching volume - %(err_type)s: %(err_msg)s" % \
+                      {'err_type': error.exc_type, 'err_msg': error.value}
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+            else:
+                # There are also few cases where detach call could fail due to
+                # db or volume driver errors. These errors shouldn't be exposed
+                # to the user and in such cases it should raise 500 error.
+                raise
+
         return webob.Response(status_int=202)
 
     @wsgi.action('os-reserve')
@@ -232,19 +267,17 @@ class VolumeActionsController(wsgi.Controller):
         """Uploads the specified volume to image service."""
         context = req.environ['cinder.context']
         params = body['os-volume_upload_image']
+        req_version = req.api_version_request
         if not params.get("image_name"):
             msg = _("No image_name was specified in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        force = params.get('force', False)
-        if isinstance(force, basestring):
-            try:
-                force = strutils.bool_from_string(force, strict=False)
-            except ValueError:
-                msg = _("Bad value for 'force' parameter.")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-        elif not isinstance(force, bool):
-            msg = _("'force' is not string or bool.")
+        force = params.get('force', 'False')
+        try:
+            force = strutils.bool_from_string(force, strict=True)
+        except ValueError as error:
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'force': '%s'") % err_msg
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         try:
@@ -257,6 +290,24 @@ class VolumeActionsController(wsgi.Controller):
                                                          "bare"),
                           "disk_format": params.get("disk_format", "raw"),
                           "name": params["image_name"]}
+
+        if req_version >= api_version_request.APIVersionRequest('3.1'):
+
+            image_metadata['visibility'] = params.get('visibility', 'private')
+            image_metadata['protected'] = params.get('protected', 'False')
+
+            if image_metadata['visibility'] == 'public':
+                authorize(context, 'upload_public')
+
+            if CONF.glance_api_version != 2:
+                # Replace visibility with is_public for Glance V1
+                image_metadata['is_public'] = (
+                    image_metadata['visibility'] == 'public')
+                image_metadata.pop('visibility', None)
+
+            image_metadata['protected'] = (
+                utils.get_bool_param('protected', image_metadata))
+
         try:
             response = self.volume_api.copy_volume_to_image(context,
                                                             volume,
@@ -265,13 +316,13 @@ class VolumeActionsController(wsgi.Controller):
         except exception.InvalidVolume as error:
             raise webob.exc.HTTPBadRequest(explanation=error.msg)
         except ValueError as error:
-            raise webob.exc.HTTPBadRequest(explanation=unicode(error))
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(error))
         except messaging.RemoteError as error:
             msg = "%(err_type)s: %(err_msg)s" % {'err_type': error.exc_type,
                                                  'err_msg': error.value}
             raise webob.exc.HTTPBadRequest(explanation=msg)
         except Exception as error:
-            raise webob.exc.HTTPBadRequest(explanation=unicode(error))
+            raise webob.exc.HTTPBadRequest(explanation=six.text_type(error))
         return {'os-volume_upload_image': response}
 
     @wsgi.action('os-extend')
@@ -290,7 +341,11 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         size = int(body['os-extend']['new_size'])
-        self.volume_api.extend(context, volume, size)
+        try:
+            self.volume_api.extend(context, volume, size)
+        except exception.InvalidVolume as error:
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
+
         return webob.Response(status_int=202)
 
     @wsgi.action('os-update_readonly_flag')
@@ -308,16 +363,12 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Must specify readonly in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if isinstance(readonly_flag, basestring):
-            try:
-                readonly_flag = strutils.bool_from_string(readonly_flag,
-                                                          strict=True)
-            except ValueError:
-                msg = _("Bad value for 'readonly'")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        elif not isinstance(readonly_flag, bool):
-            msg = _("'readonly' not string or bool")
+        try:
+            readonly_flag = strutils.bool_from_string(readonly_flag,
+                                                      strict=True)
+        except ValueError as error:
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'readonly': '%s'") % err_msg
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         self.volume_api.update_readonly_flag(context, volume, readonly_flag)
@@ -353,16 +404,12 @@ class VolumeActionsController(wsgi.Controller):
             msg = _("Must specify bootable in request.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        if isinstance(bootable, basestring):
-            try:
-                bootable = strutils.bool_from_string(bootable,
-                                                     strict=True)
-            except ValueError:
-                msg = _("Bad value for 'bootable'")
-                raise webob.exc.HTTPBadRequest(explanation=msg)
-
-        elif not isinstance(bootable, bool):
-            msg = _("'bootable' not string or bool")
+        try:
+            bootable = strutils.bool_from_string(bootable,
+                                                 strict=True)
+        except ValueError as error:
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'bootable': '%s'") % err_msg
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         update_dict = {'bootable': bootable}
@@ -372,8 +419,7 @@ class VolumeActionsController(wsgi.Controller):
 
 
 class Volume_actions(extensions.ExtensionDescriptor):
-    """Enable volume actions
-    """
+    """Enable volume actions."""
 
     name = "VolumeActions"
     alias = "os-volume-actions"

@@ -243,6 +243,20 @@ class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid)s.")
 
 
+class InvalidAPIVersionString(Invalid):
+    message = _("API Version String %(version)s is of invalid format. Must "
+                "be of format MajorNum.MinorNum.")
+
+
+class VersionNotFoundForAPIMethod(Invalid):
+    message = _("API version %(version)s is not supported on this method.")
+
+
+class InvalidGlobalAPIVersion(Invalid):
+    message = _("Version %(req_ver)s is not supported by the API. Minimum "
+                "is %(min_ver)s and maximum is %(max_ver)s.")
+
+
 class APIException(CinderException):
     message = _("Error while requesting %(service)s API.")
 
@@ -254,6 +268,12 @@ class APIException(CinderException):
 
 class APITimeout(APIException):
     message = _("Timeout while requesting %(service)s API.")
+
+
+class RPCTimeout(CinderException):
+    message = _("Timeout while requesting capabilities from backend "
+                "%(service)s.")
+    code = 502
 
 
 class NotFound(CinderException):
@@ -348,7 +368,18 @@ class ImageNotFound(NotFound):
 
 
 class ServiceNotFound(NotFound):
-    message = _("Service %(service_id)s could not be found.")
+
+    def __init__(self, message=None, **kwargs):
+        if kwargs.get('host', None):
+            self.message = _("Service %(service_id)s could not be "
+                             "found on host %(host)s.")
+        else:
+            self.message = _("Service %(service_id)s could not be found.")
+        super(ServiceNotFound, self).__init__(None, **kwargs)
+
+
+class ServiceTooOld(Invalid):
+    message = _("Service is too old to fulfil this request.")
 
 
 class HostNotFound(NotFound):
@@ -363,10 +394,6 @@ class SchedulerHostWeigherNotFound(NotFound):
     message = _("Scheduler Host Weigher %(weigher_name)s could not be found.")
 
 
-class HostBinaryNotFound(NotFound):
-    message = _("Could not find binary %(binary)s on host %(host)s.")
-
-
 class InvalidReservationExpiration(Invalid):
     message = _("Invalid reservation expiration %(expire)s.")
 
@@ -374,6 +401,11 @@ class InvalidReservationExpiration(Invalid):
 class InvalidQuotaValue(Invalid):
     message = _("Change would make usage less than 0 for the following "
                 "resources: %(unders)s")
+
+
+class InvalidNestedQuotaSetup(CinderException):
+    message = _("Project quotas are not properly setup for nested quotas: "
+                "%(reason)s.")
 
 
 class QuotaNotFound(NotFound):
@@ -678,6 +710,15 @@ class ManageExistingAlreadyManaged(CinderException):
                 "Volume %(volume_ref)s already managed.")
 
 
+class InvalidReplicationTarget(Invalid):
+    message = _("Invalid Replication Target: %(reason)s")
+
+
+class UnableToFailOver(CinderException):
+    message = _("Unable to failover to replication target:"
+                "%(reason)s).")
+
+
 class ReplicationError(CinderException):
     message = _("Volume %(volume_id)s replication "
                 "error: %(reason)s")
@@ -699,6 +740,14 @@ class ExtendVolumeError(CinderException):
 
 class EvaluatorParseException(Exception):
     message = _("Error during evaluator parsing: %(reason)s")
+
+
+class LockCreationFailed(CinderException):
+    message = _('Unable to create lock. Coordination backend not started.')
+
+
+class LockingFailed(CinderException):
+    message = _('Lock acquisition failed.')
 
 
 UnsupportedObjectError = obj_exc.UnsupportedObjectError
@@ -757,6 +806,11 @@ class Invalid3PARDomain(VolumeDriverException):
 # RemoteFS drivers
 class RemoteFSException(VolumeDriverException):
     message = _("Unknown RemoteFS exception")
+
+
+class RemoteFSConcurrentRequest(RemoteFSException):
+    message = _("A concurrent, possibly contradictory, request "
+                "has been made.")
 
 
 class RemoteFSNoSharesMounted(RemoteFSException):
@@ -834,11 +888,15 @@ class FCSanLookupServiceException(CinderException):
 
 
 class BrocadeZoningCliException(CinderException):
-    message = _("Fibre Channel Zoning CLI error: %(reason)s")
+    message = _("Brocade Fibre Channel Zoning CLI error: %(reason)s")
+
+
+class BrocadeZoningHttpException(CinderException):
+    message = _("Brocade Fibre Channel Zoning HTTP error: %(reason)s")
 
 
 class CiscoZoningCliException(CinderException):
-    message = _("Fibre Channel Zoning CLI error: %(reason)s")
+    message = _("Cisco Fibre Channel Zoning CLI error: %(reason)s")
 
 
 class NetAppDriverException(VolumeDriverException):
@@ -847,6 +905,11 @@ class NetAppDriverException(VolumeDriverException):
 
 class EMCVnxCLICmdError(VolumeBackendAPIException):
     message = _("EMC VNX Cinder Driver CLI exception: %(cmd)s "
+                "(Return Code: %(rc)s) (Output: %(out)s).")
+
+
+class EMCSPUnavailableException(EMCVnxCLICmdError):
+    message = _("EMC VNX Cinder Driver SPUnavailableException: %(cmd)s "
                 "(Return Code: %(rc)s) (Output: %(out)s).")
 
 
@@ -962,6 +1025,10 @@ class XtremIOArrayBusy(CinderException):
     message = _("System is busy, retry operation.")
 
 
+class XtremIOSnapshotsLimitExceeded(CinderException):
+    message = _("Exceeded the limit of snapshots per volume")
+
+
 # Infortrend EonStor DS Driver
 class InfortrendCliException(CinderException):
     message = _("Infortrend CLI exception: %(err)s Param: %(param)s "
@@ -1019,11 +1086,29 @@ class HNASConnError(CinderException):
     message = _("%(message)s")
 
 
+# Coho drivers
+class CohoException(VolumeDriverException):
+    message = _("Coho Data Cinder driver failure: %(message)s")
+
+
+# Tegile Storage drivers
+class TegileAPIException(VolumeBackendAPIException):
+    message = _("Unexpected response from Tegile IntelliFlash API")
+
+
 # NexentaStor driver exception
 class NexentaException(VolumeDriverException):
     message = _("%(message)s")
 
 
-class VersionNotFoundForAPIMethod(CinderException):
-    message = _("%(message)s")
-    
+# Google Cloud Storage(GCS) backup driver
+class GCSConnectionFailure(BackupDriverException):
+    message = _("Google Cloud Storage connection failure: %(reason)s")
+
+
+class GCSApiFailure(BackupDriverException):
+    message = _("Google Cloud Storage api failure: %(reason)s")
+
+
+class GCSOAuth2Failure(BackupDriverException):
+    message = _("Google Cloud Storage oauth2 failure: %(reason)s")

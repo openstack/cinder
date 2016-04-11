@@ -1,0 +1,3 @@
+---
+features:
+  - Configrable migration rate in VNX driver via metadata

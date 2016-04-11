@@ -1,0 +1,12 @@
+---
+features:
+  - Split nested quota support into a separate driver. In
+    order to use nested quotas, change the following config
+    ``quota_driver = cinder.quota.NestedDbQuotaDriver`` after
+    running the following admin API
+    "os-quota-sets/validate_setup_for_nested_quota_use" command
+    to ensure the existing quota values make sense to nest.
+upgrade:
+  - Nested quotas will no longer be used by default, but can be
+    configured by setting
+    ``quota_driver = cinder.quota.NestedDbQuotaDriver``

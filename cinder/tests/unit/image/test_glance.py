@@ -41,7 +41,8 @@ class NullWriter(object):
 class TestGlanceSerializer(test.TestCase):
     def test_serialize(self):
         metadata = {'name': 'image1',
-                    'is_public': True,
+                    'visibility': 'public',
+                    'protected': True,
                     'foo': 'bar',
                     'properties': {
                         'prop1': 'propvalue1',
@@ -54,7 +55,8 @@ class TestGlanceSerializer(test.TestCase):
 
         converted_expected = {
             'name': 'image1',
-            'is_public': True,
+            'visibility': 'public',
+            'protected': True,
             'foo': 'bar',
             'properties': {
                 'prop1': 'propvalue1',
@@ -119,7 +121,8 @@ class TestGlanceImageService(test.TestCase):
         fixture = {'name': None,
                    'properties': {},
                    'status': None,
-                   'is_public': None}
+                   'visibility': None,
+                   'protected': None}
         fixture.update(kwargs)
         return fixture
 
@@ -133,10 +136,21 @@ class TestGlanceImageService(test.TestCase):
         expected = (u'example.com:9292', False)
         self.assertEqual(expected, next(result))
 
+    def test_get_api_servers_not_mounted_at_root_and_ssl(self):
+        service_catalog = [{u'type': u'image', u'name': u'glance',
+                            u'endpoints': [{
+                                u'publicURL': u'https://example.com/image'}]}]
+        self.context = context.RequestContext('fake', 'fake', auth_token=True)
+        self.context.service_catalog = service_catalog
+        result = glance.get_api_servers(self.context)
+        expected = (u'example.com/image', True)
+        self.assertEqual(expected, next(result))
+
     def test_create_with_instance_id(self):
         """Ensure instance_id is persisted as an image-property."""
         fixture = {'name': 'test image',
                    'is_public': False,
+                   'protected': False,
                    'properties': {'instance_id': '42', 'user_id': 'fake'}}
 
         image_id = self.service.create(self.context, fixture)['id']
@@ -145,6 +159,7 @@ class TestGlanceImageService(test.TestCase):
             'id': image_id,
             'name': 'test image',
             'is_public': False,
+            'protected': False,
             'size': None,
             'min_disk': None,
             'min_ram': None,
@@ -171,13 +186,15 @@ class TestGlanceImageService(test.TestCase):
         instance_id. Public images are an example of an image not tied to an
         instance.
         """
-        fixture = {'name': 'test image', 'is_public': False}
+        fixture = {'name': 'test image', 'is_public': False,
+                   'protected': False}
         image_id = self.service.create(self.context, fixture)['id']
 
         expected = {
             'id': image_id,
             'name': 'test image',
             'is_public': False,
+            'protected': False,
             'size': None,
             'min_disk': None,
             'min_ram': None,
@@ -216,7 +233,8 @@ class TestGlanceImageService(test.TestCase):
 
     def test_detail_private_image(self):
         fixture = self._make_fixture(name='test image')
-        fixture['is_public'] = False
+        fixture['visibility'] = 'private'
+        fixture['protected'] = False
         properties = {'owner_id': 'proj1'}
         fixture['properties'] = properties
 
@@ -249,6 +267,7 @@ class TestGlanceImageService(test.TestCase):
                 'id': ids[i],
                 'status': None,
                 'is_public': None,
+                'protected': None,
                 'name': 'TestImage %d' % (i),
                 'properties': {},
                 'size': None,
@@ -306,6 +325,7 @@ class TestGlanceImageService(test.TestCase):
                 'id': ids[i],
                 'status': None,
                 'is_public': None,
+                'protected': None,
                 'name': 'TestImage %d' % (i),
                 'properties': {},
                 'size': None,
@@ -392,6 +412,7 @@ class TestGlanceImageService(test.TestCase):
             'id': image_id,
             'name': 'image1',
             'is_public': True,
+            'protected': None,
             'size': None,
             'min_disk': None,
             'min_ram': None,
@@ -411,6 +432,7 @@ class TestGlanceImageService(test.TestCase):
     def test_show_raises_when_no_authtoken_in_the_context(self):
         fixture = self._make_fixture(name='image1',
                                      is_public=False,
+                                     protected=False,
                                      properties={'one': 'two'})
         image_id = self.service.create(self.context, fixture)['id']
         self.context.auth_token = False
@@ -428,6 +450,7 @@ class TestGlanceImageService(test.TestCase):
                 'id': image_id,
                 'name': 'image10',
                 'is_public': True,
+                'protected': None,
                 'size': None,
                 'min_disk': None,
                 'min_ram': None,
@@ -605,7 +628,8 @@ class TestGlanceImageService(test.TestCase):
                 IMAGE_ATTRIBUTES = ['size', 'disk_format', 'owner',
                                     'container_format', 'id', 'created_at',
                                     'updated_at', 'deleted', 'status',
-                                    'min_disk', 'min_ram', 'is_public']
+                                    'min_disk', 'min_ram', 'is_public',
+                                    'visibility', 'protected']
                 raw = dict.fromkeys(IMAGE_ATTRIBUTES)
                 raw.update(metadata)
                 self.__dict__['raw'] = raw
@@ -621,6 +645,7 @@ class TestGlanceImageService(test.TestCase):
             'id': 1,
             'name': None,
             'is_public': None,
+            'protected': None,
             'size': None,
             'min_disk': None,
             'min_ram': None,
@@ -635,6 +660,46 @@ class TestGlanceImageService(test.TestCase):
             'properties': {},
             'owner': None,
         }
+        self.assertEqual(expected, actual)
+
+    @mock.patch('cinder.image.glance.CONF')
+    def test_v2_passes_visibility_param(self, config):
+
+        config.glance_api_version = 2
+        config.glance_num_retries = 0
+
+        metadata = {
+            'id': 1,
+            'size': 2,
+            'visibility': 'public',
+        }
+
+        image = glance_stubs.FakeImage(metadata)
+        client = glance_stubs.StubGlanceClient()
+
+        service = self._create_image_service(client)
+        service._image_schema = glance_stubs.FakeSchema()
+
+        actual = service._translate_from_glance('fake_context', image)
+        expected = {
+            'id': 1,
+            'name': None,
+            'visibility': 'public',
+            'protected': None,
+            'size': 2,
+            'min_disk': None,
+            'min_ram': None,
+            'disk_format': None,
+            'container_format': None,
+            'checksum': None,
+            'deleted': None,
+            'status': None,
+            'properties': {},
+            'owner': None,
+            'created_at': None,
+            'updated_at': None
+        }
+
         self.assertEqual(expected, actual)
 
     @mock.patch('cinder.image.glance.CONF')
@@ -662,7 +727,8 @@ class TestGlanceImageService(test.TestCase):
         expected = {
             'id': 1,
             'name': None,
-            'is_public': None,
+            'visibility': None,
+            'protected': None,
             'size': 2,
             'min_disk': 2,
             'min_ram': 2,

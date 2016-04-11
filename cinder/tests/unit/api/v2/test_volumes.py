@@ -37,6 +37,7 @@ from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_notifier
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
@@ -65,7 +66,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db, 'service_get_all_by_topic',
                        stubs.stub_service_get_all_by_topic)
         self.maxDiff = None
-        self.ctxt = context.RequestContext('admin', 'fakeproject', True)
+        self.ctxt = context.RequestContext(fake.user_id, fake.project_id, True)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -188,9 +189,11 @@ class VolumeApiTest(test.TestCase):
                    'description': description,
                    'id': stubs.DEFAULT_VOL_ID,
                    'links':
-                   [{'href': 'http://localhost/v2/fakeproject/volumes/1',
+                   [{'href': 'http://localhost/v2/%s/volumes/%s' % (
+                             fake.project_id, fake.volume_id),
                      'rel': 'self'},
-                    {'href': 'http://localhost/fakeproject/volumes/1',
+                    {'href': 'http://localhost/%s/volumes/%s' % (
+                             fake.project_id, fake.volume_id),
                      'rel': 'bookmark'}],
                    'metadata': metadata,
                    'name': name,
@@ -200,7 +203,7 @@ class VolumeApiTest(test.TestCase):
                    'snapshot_id': snapshot_id,
                    'source_volid': source_volid,
                    'status': status,
-                   'user_id': 'fakeuser',
+                   'user_id': fake.user_id,
                    'volume_type': volume_type,
                    'encrypted': False}}
 
@@ -232,8 +235,8 @@ class VolumeApiTest(test.TestCase):
         get_snapshot.side_effect = stubs.stub_snapshot_get
         volume_type_get.side_effect = stubs.stub_volume_type_get
 
-        snapshot_id = stubs.TEST_SNAPSHOT_UUID
-        vol = self._vol_in_request_body(snapshot_id=stubs.TEST_SNAPSHOT_UUID)
+        snapshot_id = fake.snapshot_id
+        vol = self._vol_in_request_body(snapshot_id=snapshot_id)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         res_dict = self.controller.create(req, body)
@@ -256,14 +259,13 @@ class VolumeApiTest(test.TestCase):
 
         get_snapshot.side_effect = stubs.stub_snapshot_get
 
-        snapshot_id = "fake_id"
+        snapshot_id = fake.will_not_be_found_id
         vol = self._vol_in_request_body(snapshot_id=snapshot_id)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when snapshot cannot be found.
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
                           req, body)
-
         context = req.environ['cinder.context']
         get_snapshot.assert_called_once_with(self.controller.volume_api,
                                              context, snapshot_id)
@@ -305,7 +307,7 @@ class VolumeApiTest(test.TestCase):
 
         get_volume.side_effect = stubs.stub_volume_get_notfound
 
-        source_volid = "fake_id"
+        source_volid = fake.volume_id
         vol = self._vol_in_request_body(source_volid=source_volid)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
@@ -323,7 +325,7 @@ class VolumeApiTest(test.TestCase):
 
         get_volume.side_effect = stubs.stub_volume_get_notfound
 
-        source_replica = "fake_id"
+        source_replica = fake.volume_id
         vol = self._vol_in_request_body(source_replica=source_replica)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
@@ -421,6 +423,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_ref_not_uuid_format(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="12345")
@@ -433,6 +438,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_ref_with_empty_string(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_ref="")
@@ -475,6 +483,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_id_not_uuid_format(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="12345")
@@ -487,6 +498,9 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_create_with_image_id_with_empty_string(self):
         self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.stubs.Set(fake_image._FakeImageService,
+                       "detail",
+                       stubs.stub_image_service_detail)
         self.ext_mgr.extensions = {'os-image-create': 'fake'}
         vol = self._vol_in_request_body(availability_zone="cinder",
                                         image_id="")
@@ -531,7 +545,7 @@ class VolumeApiTest(test.TestCase):
                                         image_ref=test_id)
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
-        self.assertRaises(webob.exc.HTTPBadRequest,
+        self.assertRaises(webob.exc.HTTPConflict,
                           self.controller.create,
                           req,
                           body)
@@ -566,9 +580,9 @@ class VolumeApiTest(test.TestCase):
             "name": "Updated Test Name",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, '1', body)
+        res_dict = self.controller.update(req, fake.volume_id, body)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ, name="Updated Test Name",
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
@@ -589,9 +603,9 @@ class VolumeApiTest(test.TestCase):
             "display_description": "Updated Test Description",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, '1', body)
+        res_dict = self.controller.update(req, fake.volume_id, body)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ, name="Updated Test Name",
             description="Updated Test Description",
@@ -616,9 +630,9 @@ class VolumeApiTest(test.TestCase):
             "display_description": "Not Shown Description",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, '1', body)
+        res_dict = self.controller.update(req, fake.volume_id, body)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ,
             name="New Name", description="New Description",
@@ -639,9 +653,9 @@ class VolumeApiTest(test.TestCase):
             "metadata": {"qos_max_iops": 2000}
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertEqual(0, len(self.notifier.notifications))
-        res_dict = self.controller.update(req, '1', body)
+        res_dict = self.controller.update(req, fake.volume_id, body)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ,
             metadata={'attached_mode': 'rw', 'readonly': 'False',
@@ -655,39 +669,41 @@ class VolumeApiTest(test.TestCase):
     def test_volume_update_with_admin_metadata(self, mock_validate):
         self.stubs.Set(volume_api.API, "update", stubs.stub_volume_update)
 
-        volume = stubs.stub_volume("1")
+        volume = stubs.stub_volume(fake.volume_id)
         del volume['name']
         del volume['volume_type']
         del volume['volume_type_id']
         volume['metadata'] = {'key': 'value'}
         db.volume_create(context.get_admin_context(), volume)
-        db.volume_admin_metadata_update(context.get_admin_context(), "1",
+
+        db.volume_admin_metadata_update(context.get_admin_context(),
+                                        fake.volume_id,
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
-        values = {'volume_id': '1', }
+        values = {'volume_id': fake.volume_id, }
         attachment = db.volume_attach(context.get_admin_context(), values)
         db.volume_attached(context.get_admin_context(),
-                           attachment['id'], stubs.FAKE_UUID, None, '/')
+                           attachment['id'], fake.instance_id, None, '/')
         attach_tmp = db.volume_attachment_get(context.get_admin_context(),
                                               attachment['id'])
-        volume_tmp = db.volume_get(context.get_admin_context(), '1')
+        volume_tmp = db.volume_get(context.get_admin_context(), fake.volume_id)
         updates = {
             "name": "Updated Test Name",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertEqual(0, len(self.notifier.notifications))
-        admin_ctx = context.RequestContext('admin', 'fakeproject', True)
+        admin_ctx = context.RequestContext(fake.user_id, fake.project_id, True)
         req.environ['cinder.context'] = admin_ctx
-        res_dict = self.controller.update(req, '1', body)
+        res_dict = self.controller.update(req, fake.volume_id, body)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ, volume_type=None,
             status='in-use', name='Updated Test Name',
-            attachments=[{'id': '1',
+            attachments=[{'id': fake.volume_id,
                           'attachment_id': attachment['id'],
                           'volume_id': stubs.DEFAULT_VOL_ID,
-                          'server_id': stubs.FAKE_UUID,
+                          'server_id': fake.instance_id,
                           'host_name': None,
                           'device': '/',
                           'attached_at': attach_tmp['attach_time'].replace(
@@ -703,19 +719,19 @@ class VolumeApiTest(test.TestCase):
 
     def test_update_empty_body(self):
         body = {}
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
-                          req, '1', body)
+                          req, fake.volume_id, body)
 
     def test_update_invalid_body(self):
         body = {
             'name': 'missing top level volume key'
         }
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
-                          req, '1', body)
+                          req, fake.volume_id, body)
 
     def test_update_not_found(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
@@ -723,10 +739,10 @@ class VolumeApiTest(test.TestCase):
             "name": "Updated Test Name",
         }
         body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertRaises(webob.exc.HTTPNotFound,
                           self.controller.update,
-                          req, '1', body)
+                          req, fake.volume_id, body)
 
     def test_volume_list_summary(self):
         self.stubs.Set(volume_api.API, 'get_all',
@@ -740,15 +756,16 @@ class VolumeApiTest(test.TestCase):
             'volumes': [
                 {
                     'name': stubs.DEFAULT_VOL_NAME,
-                    'id': '1',
+                    'id': fake.volume_id,
                     'links': [
                         {
-                            'href': 'http://localhost/v2/fakeproject/volumes/'
-                                    '1',
+                            'href': 'http://localhost/v2/%s/volumes/%s' % (
+                                    fake.project_id, fake.volume_id),
                             'rel': 'self'
                         },
                         {
-                            'href': 'http://localhost/fakeproject/volumes/1',
+                            'href': 'http://localhost/%s/volumes/%s' % (
+                                    fake.project_id, fake.volume_id),
                             'rel': 'bookmark'
                         }
                     ],
@@ -776,26 +793,27 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(1, len(req.cached_resource()))
 
     def test_volume_list_detail_with_admin_metadata(self):
-        volume = stubs.stub_volume("1")
+        volume = stubs.stub_volume(fake.volume_id)
         del volume['name']
         del volume['volume_type']
         del volume['volume_type_id']
         volume['metadata'] = {'key': 'value'}
         db.volume_create(context.get_admin_context(), volume)
-        db.volume_admin_metadata_update(context.get_admin_context(), "1",
+        db.volume_admin_metadata_update(context.get_admin_context(),
+                                        fake.volume_id,
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
-        values = {'volume_id': '1', }
+        values = {'volume_id': fake.volume_id, }
         attachment = db.volume_attach(context.get_admin_context(), values)
         db.volume_attached(context.get_admin_context(),
-                           attachment['id'], stubs.FAKE_UUID, None, '/')
+                           attachment['id'], fake.instance_id, None, '/')
         attach_tmp = db.volume_attachment_get(context.get_admin_context(),
                                               attachment['id'])
-        volume_tmp = db.volume_get(context.get_admin_context(), '1')
+        volume_tmp = db.volume_get(context.get_admin_context(), fake.volume_id)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/detail')
-        admin_ctx = context.RequestContext('admin', 'fakeproject', True)
+        admin_ctx = context.RequestContext(fake.user_id, fake.project_id, True)
         req.environ['cinder.context'] = admin_ctx
         res_dict = self.controller.detail(req)
         exp_vol = self._expected_vol_from_controller(
@@ -803,9 +821,9 @@ class VolumeApiTest(test.TestCase):
             status="in-use", volume_type=None,
             attachments=[{'attachment_id': attachment['id'],
                           'device': '/',
-                          'server_id': stubs.FAKE_UUID,
+                          'server_id': fake.instance_id,
                           'host_name': None,
-                          'id': '1',
+                          'id': fake.volume_id,
                           'volume_id': stubs.DEFAULT_VOL_ID,
                           'attached_at': attach_tmp['attach_time'].replace(
                               tzinfo=iso8601.iso8601.Utc()),
@@ -824,8 +842,8 @@ class VolumeApiTest(test.TestCase):
                                            viewable_admin_meta=False,
                                            offset=0):
             return [
-                stubs.stub_volume(1, display_name='vol1'),
-                stubs.stub_volume(2, display_name='vol2'),
+                stubs.stub_volume(fake.volume_id, display_name='vol1'),
+                stubs.stub_volume(fake.volume2_id, display_name='vol2'),
             ]
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project)
@@ -835,8 +853,8 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(2, len(volumes))
-        self.assertEqual('1', volumes[0]['id'])
-        self.assertEqual('2', volumes[1]['id'])
+        self.assertEqual(fake.volume_id, volumes[0]['id'])
+        self.assertEqual(fake.volume2_id, volumes[1]['id'])
 
     def test_volume_index_limit(self):
         self.stubs.Set(db, 'volume_get_all_by_project',
@@ -858,7 +876,7 @@ class VolumeApiTest(test.TestCase):
         links = res_dict['volumes_links']
         self.assertEqual('next', links[0]['rel'])
         href_parts = urllib.parse.urlparse(links[0]['href'])
-        self.assertEqual('/v2/fakeproject/volumes', href_parts.path)
+        self.assertEqual('/v2/%s/volumes' % fake.project_id, href_parts.path)
         params = urllib.parse.parse_qs(href_parts.query)
         self.assertEqual(str(volumes[0]['id']), params['marker'][0])
         self.assertEqual('1', params['limit'][0])
@@ -886,7 +904,7 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
-        self.assertEqual('1', volumes[0]['id'])
+        self.assertEqual(fake.volume_id, volumes[0]['id'])
 
     def _create_db_volumes(self, num_volumes):
         volumes = [utils.create_volume(self.ctxt, display_name='vol%s' % i)
@@ -929,8 +947,8 @@ class VolumeApiTest(test.TestCase):
                                            viewable_admin_meta=False,
                                            offset=0):
             return [
-                stubs.stub_volume(1, display_name='vol1'),
-                stubs.stub_volume(2, display_name='vol2'),
+                stubs.stub_volume(fake.volume_id, display_name='vol1'),
+                stubs.stub_volume(fake.volume2_id, display_name='vol2'),
             ]
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project)
@@ -941,15 +959,14 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(2, len(volumes))
-        self.assertEqual('1', volumes[0]['id'])
-        self.assertEqual('2', volumes[1]['id'])
+        self.assertEqual(fake.volume_id, volumes[0]['id'])
+        self.assertEqual(fake.volume2_id, volumes[1]['id'])
 
     def test_volume_detail_limit(self):
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stubs.stub_volume_get_all_by_project)
         self.stubs.Set(db.sqlalchemy.api, '_volume_type_get_full',
                        stubs.stub_volume_type_get)
-
         req = fakes.HTTPRequest.blank('/v2/volumes/detail?limit=1')
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
@@ -959,7 +976,8 @@ class VolumeApiTest(test.TestCase):
         links = res_dict['volumes_links']
         self.assertEqual('next', links[0]['rel'])
         href_parts = urllib.parse.urlparse(links[0]['href'])
-        self.assertEqual('/v2/fakeproject/volumes/detail', href_parts.path)
+        self.assertEqual('/v2/%s/volumes/detail' % fake.project_id,
+                         href_parts.path)
         params = urllib.parse.parse_qs(href_parts.query)
         self.assertTrue('marker' in params)
         self.assertEqual('1', params['limit'][0])
@@ -986,7 +1004,7 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.detail(req)
         volumes = res_dict['volumes']
         self.assertEqual(1, len(volumes))
-        self.assertEqual('1', volumes[0]['id'])
+        self.assertEqual(fake.volume_id, volumes[0]['id'])
 
     def test_volume_detail_limit_offset(self):
         created_volumes = self._create_db_volumes(2)
@@ -1113,7 +1131,7 @@ class VolumeApiTest(test.TestCase):
                                            offset=0):
             self.assertTrue(filters['no_migration_targets'])
             self.assertFalse('all_tenants' in filters)
-            return [stubs.stub_volume(1, display_name='vol1')]
+            return [stubs.stub_volume(fake.volume_id, display_name='vol1')]
 
         def stub_volume_get_all(context, marker, limit,
                                 sort_keys=None, sort_dirs=None,
@@ -1139,7 +1157,7 @@ class VolumeApiTest(test.TestCase):
                                             viewable_admin_meta=False,
                                             offset=0):
             self.assertFalse('no_migration_targets' in filters)
-            return [stubs.stub_volume(1, display_name='vol2')]
+            return [stubs.stub_volume(fake.volume_id, display_name='vol2')]
 
         def stub_volume_get_all2(context, marker, limit,
                                  sort_keys=None, sort_dirs=None,
@@ -1170,7 +1188,7 @@ class VolumeApiTest(test.TestCase):
                                  viewable_admin_meta=False, offset=0):
             self.assertFalse('no_migration_targets' in filters)
             self.assertFalse('all_tenants' in filters)
-            return [stubs.stub_volume(1, display_name='vol3')]
+            return [stubs.stub_volume(fake.volume3_id, display_name='vol3')]
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project3)
         self.stubs.Set(db, 'volume_get_all', stub_volume_get_all3)
@@ -1186,14 +1204,14 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db.sqlalchemy.api, '_volume_type_get_full',
                        stubs.stub_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        res_dict = self.controller.show(req, '1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
+        res_dict = self.controller.show(req, fake.volume_id)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ,
             metadata={'attached_mode': 'rw', 'readonly': 'False'})
         self.assertEqual(expected, res_dict)
         # Finally test that we cached the returned volume
-        self.assertIsNotNone(req.cached_resource_by_id('1'))
+        self.assertIsNotNone(req.cached_resource_by_id(fake.volume_id))
 
     def test_volume_show_no_attachments(self):
         def stub_volume_get(self, context, volume_id, **kwargs):
@@ -1210,8 +1228,8 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db.sqlalchemy.api, '_volume_type_get_full',
                        stubs.stub_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        res_dict = self.controller.show(req, '1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
+        res_dict = self.controller.show(req, fake.volume_id)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ,
             metadata={'readonly': 'False'})
@@ -1221,41 +1239,42 @@ class VolumeApiTest(test.TestCase):
     def test_volume_show_no_volume(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
                           req, 1)
         # Finally test that nothing was cached
-        self.assertIsNone(req.cached_resource_by_id('1'))
+        self.assertIsNone(req.cached_resource_by_id(fake.volume_id))
 
     def test_volume_show_with_admin_metadata(self):
-        volume = stubs.stub_volume("1")
+        volume = stubs.stub_volume(fake.volume_id)
         del volume['name']
         del volume['volume_type']
         del volume['volume_type_id']
         volume['metadata'] = {'key': 'value'}
         db.volume_create(context.get_admin_context(), volume)
-        db.volume_admin_metadata_update(context.get_admin_context(), "1",
+        db.volume_admin_metadata_update(context.get_admin_context(),
+                                        fake.volume_id,
                                         {"readonly": "True",
                                          "invisible_key": "invisible_value"},
                                         False)
-        values = {'volume_id': '1', }
+        values = {'volume_id': fake.volume_id, }
         attachment = db.volume_attach(context.get_admin_context(), values)
         db.volume_attached(context.get_admin_context(),
-                           attachment['id'], stubs.FAKE_UUID, None, '/')
+                           attachment['id'], fake.instance_id, None, '/')
         attach_tmp = db.volume_attachment_get(context.get_admin_context(),
                                               attachment['id'])
-        volume_tmp = db.volume_get(context.get_admin_context(), '1')
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        admin_ctx = context.RequestContext('admin', 'fakeproject', True)
+        volume_tmp = db.volume_get(context.get_admin_context(), fake.volume_id)
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
+        admin_ctx = context.RequestContext(fake.user_id, fake.project_id, True)
         req.environ['cinder.context'] = admin_ctx
-        res_dict = self.controller.show(req, '1')
+        res_dict = self.controller.show(req, fake.volume_id)
         expected = self._expected_vol_from_controller(
             availability_zone=stubs.DEFAULT_AZ,
             volume_type=None, status='in-use',
-            attachments=[{'id': '1',
+            attachments=[{'id': fake.volume_id,
                           'attachment_id': attachment['id'],
                           'volume_id': stubs.DEFAULT_VOL_ID,
-                          'server_id': stubs.FAKE_UUID,
+                          'server_id': fake.instance_id,
                           'host_name': None,
                           'device': '/',
                           'attached_at': attach_tmp['attach_time'].replace(
@@ -1269,15 +1288,15 @@ class VolumeApiTest(test.TestCase):
 
     def test_volume_show_with_encrypted_volume(self):
         def stub_volume_get(self, context, volume_id, **kwargs):
-            vol = stubs.stub_volume(volume_id, encryption_key_id='fake_id')
+            vol = stubs.stub_volume(volume_id, encryption_key_id=fake.key_id)
             return fake_volume.fake_volume_obj(context, **vol)
 
         self.stubs.Set(volume_api.API, 'get', stub_volume_get)
         self.stubs.Set(db.sqlalchemy.api, '_volume_type_get_full',
                        stubs.stub_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        res_dict = self.controller.show(req, 1)
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
+        res_dict = self.controller.show(req, fake.volume_id)
         self.assertTrue(res_dict['volume']['encrypted'])
 
     def test_volume_show_with_unencrypted_volume(self):
@@ -1285,15 +1304,15 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db.sqlalchemy.api, '_volume_type_get_full',
                        stubs.stub_volume_type_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        res_dict = self.controller.show(req, 1)
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
+        res_dict = self.controller.show(req, fake.volume_id)
         self.assertEqual(False, res_dict['volume']['encrypted'])
 
     def test_volume_delete(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
-        resp = self.controller.delete(req, 1)
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
+        resp = self.controller.delete(req, fake.volume_id)
         self.assertEqual(202, resp.status_int)
 
     def test_volume_delete_attached(self):
@@ -1303,7 +1322,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "delete", stub_volume_attached)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         exp = self.assertRaises(exception.VolumeAttached,
                                 self.controller.delete,
                                 req, 1)
@@ -1313,7 +1332,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_delete_no_volume(self):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
 
-        req = fakes.HTTPRequest.blank('/v2/volumes/1')
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.volume_id)
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
                           req, 1)
 
@@ -1321,7 +1340,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stubs.stub_volume_get_all_by_project)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes',
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.project_id,
                                       use_admin_context=True)
         res = self.controller.index(req)
 
@@ -1332,8 +1351,9 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stubs.stub_volume_get_all_by_project)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes?all_tenants=1',
-                                      use_admin_context=True)
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/volumes?all_tenants=1' % fake.project_id,
+            use_admin_context=True)
         res = self.controller.index(req)
         self.assertIn('volumes', res)
         self.assertEqual(3, len(res['volumes']))
@@ -1343,7 +1363,8 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_volume_get_all_by_project)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes?all_tenants=1')
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/volumes?all_tenants=1' % fake.project_id)
         res = self.controller.index(req)
         self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
@@ -1353,13 +1374,13 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_volume_get_all_by_project)
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.project_id)
         res = self.controller.index(req)
         self.assertIn('volumes', res)
         self.assertEqual(1, len(res['volumes']))
 
     def _create_volume_bad_request(self, body):
-        req = fakes.HTTPRequest.blank('/v2/fake/volumes')
+        req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.project_id)
         req.method = 'POST'
 
         self.assertRaises(webob.exc.HTTPBadRequest,
@@ -1449,13 +1470,15 @@ class VolumeApiTest(test.TestCase):
         req = mock.MagicMock()
         context = mock.Mock()
         req.environ = {'cinder.context': context}
-        req.params = {'id': "['1', '2', '3']"}
+        req.params = {'id': "['%s', '%s', '%s']" % (
+            fake.volume_id, fake.volume2_id, fake.volume3_id)}
         self.controller._view_builder.detail_list = mock.Mock()
         self.controller._get_volumes(req, True)
         get_all.assert_called_once_with(
             context, None, CONF.osapi_max_limit,
             sort_keys=['created_at'], sort_dirs=['desc'],
-            filters={'id': ['1', '2', '3']}, viewable_admin_meta=True,
+            filters={'id': [fake.volume_id, fake.volume2_id, fake.volume3_id]},
+            viewable_admin_meta=True,
             offset=0)
 
     @mock.patch('cinder.volume.api.API.get_all')
@@ -1474,7 +1497,8 @@ class VolumeApiTest(test.TestCase):
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_status(self, get_all):
         req = mock.MagicMock()
-        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        ctxt = context.RequestContext(
+            fake.user_id, fake.project_id, auth_token=True)
         req.environ = {'cinder.context': ctxt}
         req.params = {'status': 'available'}
         self.controller._view_builder.detail_list = mock.Mock()
@@ -1488,7 +1512,8 @@ class VolumeApiTest(test.TestCase):
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_metadata(self, get_all):
         req = mock.MagicMock()
-        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        ctxt = context.RequestContext(
+            fake.user_id, fake.project_id, auth_token=True)
         req.environ = {'cinder.context': ctxt}
         req.params = {'metadata': "{'fake_key': 'fake_value'}"}
         self.controller._view_builder.detail_list = mock.Mock()
@@ -1502,7 +1527,8 @@ class VolumeApiTest(test.TestCase):
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_availability_zone(self, get_all):
         req = mock.MagicMock()
-        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        ctxt = context.RequestContext(
+            fake.user_id, fake.project_id, auth_token=True)
         req.environ = {'cinder.context': ctxt}
         req.params = {'availability_zone': 'nova'}
         self.controller._view_builder.detail_list = mock.Mock()
@@ -1516,7 +1542,8 @@ class VolumeApiTest(test.TestCase):
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_bootable(self, get_all):
         req = mock.MagicMock()
-        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        ctxt = context.RequestContext(
+            fake.user_id, fake.project_id, auth_token=True)
         req.environ = {'cinder.context': ctxt}
         req.params = {'bootable': 1}
         self.controller._view_builder.detail_list = mock.Mock()
@@ -1530,7 +1557,8 @@ class VolumeApiTest(test.TestCase):
     @mock.patch('cinder.volume.api.API.get_all')
     def test_get_volumes_filter_with_invalid_filter(self, get_all):
         req = mock.MagicMock()
-        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        ctxt = context.RequestContext(
+            fake.user_id, fake.project_id, auth_token=True)
         req.environ = {'cinder.context': ctxt}
         req.params = {'invalid_filter': 'invalid',
                       'availability_zone': 'nova'}
@@ -1547,7 +1575,8 @@ class VolumeApiTest(test.TestCase):
         """Name in client means display_name in database."""
 
         req = mock.MagicMock()
-        ctxt = context.RequestContext('fake', 'fake', auth_token=True)
+        ctxt = context.RequestContext(
+            fake.user_id, fake.project_id, auth_token=True)
         req.environ = {'cinder.context': ctxt}
         req.params = {'sort': 'name'}
         self.controller._view_builder.detail_list = mock.Mock()

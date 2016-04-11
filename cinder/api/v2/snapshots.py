@@ -15,54 +15,24 @@
 
 """The volumes snapshots api."""
 
+from oslo_log import log as logging
+from oslo_utils import encodeutils
 from oslo_utils import strutils
 import webob
 from webob import exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
+from cinder.api.views import snapshots as snapshot_views
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
 from cinder import volume
+from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
-
-
-def _translate_snapshot_detail_view(context, snapshot):
-    """Maps keys for snapshots details view."""
-
-    d = _translate_snapshot_summary_view(context, snapshot)
-
-    # NOTE(gagupta): No additional data / lookups at the moment
-    return d
-
-
-def _translate_snapshot_summary_view(context, snapshot):
-    """Maps keys for snapshots summary view."""
-    d = {}
-
-    d['id'] = snapshot['id']
-    d['created_at'] = snapshot['created_at']
-    d['name'] = snapshot['display_name']
-    d['description'] = snapshot['display_description']
-    d['volume_id'] = snapshot['volume_id']
-    d['status'] = snapshot['status']
-    d['size'] = snapshot['volume_size']
-
-    if snapshot.get('snapshot_metadata'):
-        metadata = snapshot.get('snapshot_metadata')
-        d['metadata'] = dict((item['key'], item['value']) for item in metadata)
-    # avoid circular ref when vol is a Volume instance
-    elif snapshot.get('metadata') and isinstance(snapshot.get('metadata'),
-                                                 dict):
-        d['metadata'] = snapshot['metadata']
-    else:
-        d['metadata'] = {}
-    return d
 
 
 def make_snapshot(elem):
@@ -95,6 +65,8 @@ class SnapshotsTemplate(xmlutil.TemplateBuilder):
 class SnapshotsController(wsgi.Controller):
     """The Snapshots API controller for the OpenStack API."""
 
+    _view_builder_class = snapshot_views.ViewBuilder
+
     def __init__(self, ext_mgr=None):
         self.volume_api = volume.API()
         self.ext_mgr = ext_mgr
@@ -108,11 +80,10 @@ class SnapshotsController(wsgi.Controller):
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
             req.cache_db_snapshot(snapshot)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
-        return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
+        return self._view_builder.detail(req, snapshot)
 
     def delete(self, req, id):
         """Delete a snapshot."""
@@ -123,32 +94,31 @@ class SnapshotsController(wsgi.Controller):
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
             self.volume_api.delete_snapshot(context, snapshot)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         return webob.Response(status_int=202)
 
     @wsgi.serializers(xml=SnapshotsTemplate)
     def index(self, req):
         """Returns a summary list of snapshots."""
-        return self._items(req, entity_maker=_translate_snapshot_summary_view)
+        return self._items(req, is_detail=False)
 
     @wsgi.serializers(xml=SnapshotsTemplate)
     def detail(self, req):
         """Returns a detailed list of snapshots."""
-        return self._items(req, entity_maker=_translate_snapshot_detail_view)
+        return self._items(req, is_detail=True)
 
-    def _items(self, req, entity_maker):
-        """Returns a list of snapshots, transformed through entity_maker."""
+    def _items(self, req, is_detail=True):
+        """Returns a list of snapshots, transformed through view builder."""
         context = req.environ['cinder.context']
 
-        #pop out limit and offset , they are not search_opts
+        # Pop out non search_opts and create local variables
         search_opts = req.GET.copy()
-        search_opts.pop('limit', None)
-        search_opts.pop('offset', None)
+        sort_keys, sort_dirs = common.get_sort_params(search_opts)
+        marker, limit, offset = common.get_pagination_params(search_opts)
 
-        #filter out invalid option
+        # Filter out invalid options
         allowed_search_options = ('status', 'volume_id', 'name')
         utils.remove_invalid_filter_options(context, search_opts,
                                             allowed_search_options)
@@ -159,11 +129,20 @@ class SnapshotsController(wsgi.Controller):
             del search_opts['name']
 
         snapshots = self.volume_api.get_all_snapshots(context,
-                                                      search_opts=search_opts)
-        limited_list = common.limited(snapshots, req)
-        req.cache_db_snapshots(limited_list)
-        res = [entity_maker(context, snapshot) for snapshot in limited_list]
-        return {'snapshots': res}
+                                                      search_opts=search_opts,
+                                                      marker=marker,
+                                                      limit=limit,
+                                                      sort_keys=sort_keys,
+                                                      sort_dirs=sort_dirs,
+                                                      offset=offset)
+
+        req.cache_db_snapshots(snapshots.objects)
+
+        if is_detail:
+            snapshots = self._view_builder.detail_list(req, snapshots.objects)
+        else:
+            snapshots = self._view_builder.summary_list(req, snapshots.objects)
+        return snapshots
 
     @wsgi.response(202)
     @wsgi.serializers(xml=SnapshotTemplate)
@@ -172,10 +151,7 @@ class SnapshotsController(wsgi.Controller):
         kwargs = {}
         context = req.environ['cinder.context']
 
-        if not self.is_valid_body(body, 'snapshot'):
-            msg = (_("Missing required element '%s' in request body") %
-                   'snapshot')
-            raise exc.HTTPBadRequest(explanation=msg)
+        self.assert_valid_body(body, 'snapshot')
 
         snapshot = body['snapshot']
         kwargs['metadata'] = snapshot.get('metadata', None)
@@ -188,23 +164,25 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             volume = self.volume_api.get(context, volume_id)
-        except exception.NotFound:
-            msg = _("Volume could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.VolumeNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
         force = snapshot.get('force', False)
-        msg = _("Create snapshot from volume %s")
+        msg = _LI("Create snapshot from volume %s")
         LOG.info(msg, volume_id, context=context)
+        self.validate_name_and_description(snapshot)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in snapshot:
-            snapshot['display_name'] = snapshot.get('name')
-            del snapshot['name']
+            snapshot['display_name'] = snapshot.pop('name')
 
-        if not utils.is_valid_boolstr(force):
-            msg = _("Invalid value '%s' for force. ") % force
+        try:
+            force = strutils.bool_from_string(force, strict=True)
+        except ValueError as error:
+            err_msg = encodeutils.exception_to_unicode(error)
+            msg = _("Invalid value for 'force': '%s'") % err_msg
             raise exception.InvalidParameterValue(err=msg)
 
-        if strutils.bool_from_string(force):
+        if force:
             new_snapshot = self.volume_api.create_snapshot_force(
                 context,
                 volume,
@@ -220,9 +198,7 @@ class SnapshotsController(wsgi.Controller):
                 **kwargs)
         req.cache_db_snapshot(new_snapshot)
 
-        retval = _translate_snapshot_detail_view(context, new_snapshot)
-
-        return {'snapshot': retval}
+        return self._view_builder.detail(req, new_snapshot)
 
     @wsgi.serializers(xml=SnapshotTemplate)
     def update(self, req, id, body):
@@ -247,17 +223,16 @@ class SnapshotsController(wsgi.Controller):
             'display_name',
             'display_description',
         )
+        self.validate_name_and_description(snapshot)
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in snapshot:
-            snapshot['display_name'] = snapshot['name']
-            del snapshot['name']
+            snapshot['display_name'] = snapshot.pop('name')
 
         # NOTE(thingee): v2 API allows description instead of
         # display_description
         if 'description' in snapshot:
-            snapshot['display_description'] = snapshot['description']
-            del snapshot['description']
+            snapshot['display_description'] = snapshot.pop('description')
 
         for key in valid_update_keys:
             if key in snapshot:
@@ -265,15 +240,18 @@ class SnapshotsController(wsgi.Controller):
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)
+            volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                     'update.start')
             self.volume_api.update_snapshot(context, snapshot, update_dict)
-        except exception.NotFound:
-            msg = _("Snapshot could not be found")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.SnapshotNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         snapshot.update(update_dict)
         req.cache_db_snapshot(snapshot)
+        volume_utils.notify_about_snapshot_usage(context, snapshot,
+                                                 'update.end')
 
-        return {'snapshot': _translate_snapshot_detail_view(context, snapshot)}
+        return self._view_builder.detail(req, snapshot)
 
 
 def create_resource(ext_mgr):

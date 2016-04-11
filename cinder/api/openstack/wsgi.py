@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import functools
 import inspect
 import math
 import time
@@ -21,22 +22,29 @@ from xml.dom import minidom
 from xml.parsers import expat
 
 from lxml import etree
+from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_serialization import jsonutils
+from oslo_utils import encodeutils
 from oslo_utils import excutils
+from oslo_utils import strutils
 import six
 import webob
+import webob.exc
 
+from cinder.api.openstack import api_version_request as api_version
+from cinder.api.openstack import versioned_method
 from cinder import exception
 from cinder import i18n
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder import utils
-from cinder import wsgi
+from cinder.wsgi import common as wsgi
 
 
 XML_NS_V1 = 'http://docs.openstack.org/api/openstack-block-storage/1.0/content'
 XML_NS_V2 = 'http://docs.openstack.org/api/openstack-block-storage/2.0/content'
 XML_NS_ATOM = 'http://www.w3.org/2005/Atom'
+XML_WARNING = False
 
 LOG = logging.getLogger(__name__)
 
@@ -56,12 +64,24 @@ _MEDIA_TYPE_MAP = {
 }
 
 
+# name of attribute to keep version method information
+VER_METHOD_ATTR = 'versioned_methods'
+
+# Name of header used by clients to request a specific version
+# of the REST API
+API_VERSION_REQUEST_HEADER = 'OpenStack-API-Version'
+
+VOLUME_SERVICE = 'volume'
+
+
 class Request(webob.Request):
     """Add some OpenStack API-specific logic to the base webob.Request."""
 
     def __init__(self, *args, **kwargs):
         super(Request, self).__init__(*args, **kwargs)
         self._resource_cache = {}
+        if not hasattr(self, 'api_version_request'):
+            self.api_version_request = api_version.APIVersionRequest()
 
     def cache_resource(self, resource_to_cache, id_attribute='id', name=None):
         """Cache the given resource.
@@ -134,7 +154,9 @@ class Request(webob.Request):
         return resources.get(resource_id)
 
     def cache_db_items(self, key, items, item_key='id'):
-        """Allow API methods to store objects from a DB query to be
+        """Get cached database items.
+
+        Allow API methods to store objects from a DB query to be
         used by API extensions within the same API request.
 
         An instance of this class only lives for the lifetime of a
@@ -144,7 +166,9 @@ class Request(webob.Request):
         self.cache_resource(items, item_key, key)
 
     def get_db_items(self, key):
-        """Allow an API extension to get previously stored objects within
+        """Get database items.
+
+        Allow an API extension to get previously stored objects within
         the same API request.
 
         Note that the object data will be slightly stale.
@@ -152,7 +176,9 @@ class Request(webob.Request):
         return self.cached_resource(key)
 
     def get_db_item(self, key, item_key):
-        """Allow an API extension to get a previously stored object
+        """Get database item.
+
+        Allow an API extension to get a previously stored object
         within the same API request.
 
         Note that the object data will be slightly stale.
@@ -238,7 +264,6 @@ class Request(webob.Request):
         """Determine content type of the request body.
 
         Does not do any body introspection, only checks header
-
         """
         if "Content-Type" not in self.headers:
             return None
@@ -262,6 +287,54 @@ class Request(webob.Request):
         all_languages = i18n.get_available_languages()
         return self.accept_language.best_match(all_languages)
 
+    def set_api_version_request(self, url):
+        """Set API version request based on the request header information.
+
+        Microversions starts with /v3, so if a client sends a request for
+        version 1.0 or 2.0 with the /v3 endpoint, throw an exception.
+        Sending a header with any microversion to a /v1 or /v2 endpoint will
+        be ignored.
+        Note that a microversion must be set for the legacy endpoints. This
+        will appear as 1.0 and 2.0 for /v1 and /v2.
+        """
+        if API_VERSION_REQUEST_HEADER in self.headers and 'v3' in url:
+            hdr_string = self.headers[API_VERSION_REQUEST_HEADER]
+            # 'latest' is a special keyword which is equivalent to requesting
+            # the maximum version of the API supported
+            hdr_string_list = hdr_string.split(",")
+            volume_version = None
+            for hdr in hdr_string_list:
+                if VOLUME_SERVICE in hdr:
+                    service, volume_version = hdr.split()
+                    break
+            if not volume_version:
+                raise exception.VersionNotFoundForAPIMethod(
+                    version=volume_version)
+            if volume_version == 'latest':
+                self.api_version_request = api_version.max_api_version()
+            else:
+                self.api_version_request = api_version.APIVersionRequest(
+                    volume_version)
+
+                # Check that the version requested is within the global
+                # minimum/maximum of supported API versions
+                if not self.api_version_request.matches(
+                        api_version.min_api_version(),
+                        api_version.max_api_version()):
+                    raise exception.InvalidGlobalAPIVersion(
+                        req_ver=self.api_version_request.get_string(),
+                        min_ver=api_version.min_api_version().get_string(),
+                        max_ver=api_version.max_api_version().get_string())
+
+        else:
+            if 'v1' in url:
+                self.api_version_request = api_version.legacy_api_version1()
+            elif 'v2' in url:
+                self.api_version_request = api_version.legacy_api_version2()
+            else:
+                self.api_version_request = api_version.APIVersionRequest(
+                    api_version._MIN_API_VERSION)
+
 
 class ActionDispatcher(object):
     """Maps method name to local methods through action name."""
@@ -269,7 +342,7 @@ class ActionDispatcher(object):
     def dispatch(self, *args, **kwargs):
         """Find and call local method."""
         action = kwargs.pop('action', 'default')
-        action_method = getattr(self, str(action), self.default)
+        action_method = getattr(self, six.text_type(action), self.default)
         return action_method(*args, **kwargs)
 
     def default(self, data):
@@ -325,7 +398,6 @@ class XMLDeserializer(TextDeserializer):
 
         :param listnames: list of XML node names whose subnodes should
                           be considered list items.
-
         """
         if len(node.childNodes) == 1 and node.childNodes[0].nodeType == 3:
             return node.childNodes[0].nodeValue
@@ -373,17 +445,6 @@ class XMLDeserializer(TextDeserializer):
                 text.append(child.nodeValue)
         return ''.join(text)
 
-    def find_attribute_or_element(self, parent, name):
-        """Get an attribute value; fallback to an element if not found."""
-        if parent.hasAttribute(name):
-            return parent.getAttribute(name)
-
-        node = self.find_first_child_named(parent, name)
-        if node:
-            return self.extract_text(node)
-
-        return None
-
     def default(self, datastring):
         return {'body': self._from_xml(datastring)}
 
@@ -414,7 +475,7 @@ class JSONDictSerializer(DictSerializer):
     """Default JSON request body serialization."""
 
     def default(self, data):
-        return jsonutils.dumps(data)
+        return jsonutils.dump_as_bytes(data)
 
 
 class XMLDictSerializer(DictSerializer):
@@ -432,7 +493,7 @@ class XMLDictSerializer(DictSerializer):
 
     def default(self, data):
         # We expect data to contain a single key which is the XML root.
-        root_key = data.keys()[0]
+        root_key = list(data.keys())[0]
         doc = minidom.Document()
         node = self._to_xml_node(doc, self.metadata, root_key, data[root_key])
 
@@ -442,7 +503,7 @@ class XMLDictSerializer(DictSerializer):
         self._add_xmlns(node, has_atom)
         return node.toxml('UTF-8')
 
-    #NOTE (ameade): the has_atom should be removed after all of the
+    # NOTE (ameade): the has_atom should be removed after all of the
     # xml serializers and view builders have been updated to the current
     # spec that required all responses include the xmlns:atom, the has_atom
     # flag is to prevent current tests from breaking
@@ -462,7 +523,7 @@ class XMLDictSerializer(DictSerializer):
         if xmlns:
             result.setAttribute('xmlns', xmlns)
 
-        #TODO(bcwaldon): accomplish this without a type-check
+        # TODO(bcwaldon): accomplish this without a type-check
         if isinstance(data, list):
             collections = metadata.get('list_collections', {})
             if nodename in collections:
@@ -481,12 +542,12 @@ class XMLDictSerializer(DictSerializer):
             for item in data:
                 node = self._to_xml_node(doc, metadata, singular, item)
                 result.appendChild(node)
-        #TODO(bcwaldon): accomplish this without a type-check
+        # TODO(bcwaldon): accomplish this without a type-check
         elif isinstance(data, dict):
             collections = metadata.get('dict_collections', {})
             if nodename in collections:
                 metadata = collections[nodename]
-                for k, v in data.items():
+                for k, v in sorted(data.items()):
                     node = doc.createElement(metadata['item_name'])
                     node.setAttribute(metadata['item_key'], str(k))
                     text = doc.createTextNode(str(v))
@@ -494,7 +555,7 @@ class XMLDictSerializer(DictSerializer):
                     result.appendChild(node)
                 return result
             attrs = metadata.get('attributes', {}).get(nodename, {})
-            for k, v in data.items():
+            for k, v in sorted(data.items()):
                 if k in attrs:
                     result.setAttribute(k, str(v))
                 else:
@@ -576,7 +637,7 @@ class ResponseObject(object):
     optional.
     """
 
-    def __init__(self, obj, code=None, **serializers):
+    def __init__(self, obj, code=None, headers=None, **serializers):
         """Binds serializers with an object.
 
         Takes keyword arguments akin to the @serializer() decorator
@@ -589,7 +650,7 @@ class ResponseObject(object):
         self.serializers = serializers
         self._default_code = 200
         self._code = code
-        self._headers = {}
+        self._headers = headers or {}
         self.serializer = None
         self.media_type = None
 
@@ -682,10 +743,13 @@ class ResponseObject(object):
         response = webob.Response()
         response.status_int = self.code
         for hdr, value in self._headers.items():
-            response.headers[hdr] = value
-        response.headers['Content-Type'] = content_type
+            response.headers[hdr] = six.text_type(value)
+        response.headers['Content-Type'] = six.text_type(content_type)
         if self.obj is not None:
-            response.body = serializer.serialize(self.obj)
+            body = serializer.serialize(self.obj)
+            if isinstance(body, six.text_type):
+                body = body.encode('utf-8')
+            response.body = body
 
         return response
 
@@ -717,7 +781,7 @@ def action_peek_json(body):
         raise exception.MalformedRequestBody(reason=msg)
 
     # Return the action and the decoded body...
-    return decoded.keys()[0]
+    return list(decoded.keys())[0]
 
 
 def action_peek_xml(body):
@@ -745,21 +809,24 @@ class ResourceExceptionHandler(object):
             return True
 
         if isinstance(ex_value, exception.NotAuthorized):
-            raise Fault(webob.exc.HTTPForbidden(explanation=ex_value.msg))
+            msg = six.text_type(ex_value)
+            raise Fault(webob.exc.HTTPForbidden(explanation=msg))
+        elif isinstance(ex_value, exception.VersionNotFoundForAPIMethod):
+            raise
         elif isinstance(ex_value, exception.Invalid):
             raise Fault(exception.ConvertedException(
-                code=ex_value.code, explanation=ex_value.msg))
+                code=ex_value.code, explanation=six.text_type(ex_value)))
         elif isinstance(ex_value, TypeError):
             exc_info = (ex_type, ex_value, ex_traceback)
             LOG.error(_LE(
-                'Exception handling resource: %s') %
+                'Exception handling resource: %s'),
                 ex_value, exc_info=exc_info)
             raise Fault(webob.exc.HTTPBadRequest())
         elif isinstance(ex_value, Fault):
-            LOG.info(_LI("Fault thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("Fault thrown: %s"), six.text_type(ex_value))
             raise ex_value
         elif isinstance(ex_value, webob.exc.HTTPException):
-            LOG.info(_LI("HTTP exception thrown: %s"), unicode(ex_value))
+            LOG.info(_LI("HTTP exception thrown: %s"), six.text_type(ex_value))
             raise Fault(ex_value)
 
         # We didn't handle the exception
@@ -779,8 +846,8 @@ class Resource(wsgi.Application):
 
     Exceptions derived from webob.exc.HTTPException will be automatically
     wrapped in Fault() to provide API friendly error responses.
-
     """
+    support_api_request_version = True
 
     def __init__(self, controller, action_peek=None, **deserializers):
         """Initialize Resource.
@@ -908,7 +975,7 @@ class Resource(wsgi.Application):
                 try:
                     with ResourceExceptionHandler():
                         gen = ext(req=request, **action_args)
-                        response = gen.next()
+                        response = next(gen)
                 except Fault as ex:
                     response = ex
 
@@ -946,6 +1013,11 @@ class Resource(wsgi.Application):
                     with ResourceExceptionHandler():
                         response = ext(req=request, resp_obj=resp_obj,
                                        **action_args)
+                except exception.VersionNotFoundForAPIMethod:
+                    # If an attached extension (@wsgi.extends) for the
+                    # method has no version match its not an error. We
+                    # just don't run the extends code
+                    continue
                 except Fault as ex:
                     response = ex
 
@@ -959,8 +1031,20 @@ class Resource(wsgi.Application):
     def __call__(self, request):
         """WSGI method that controls (de)serialization and method dispatch."""
 
-        LOG.info("%(method)s %(url)s" % {"method": request.method,
-                                         "url": request.url})
+        LOG.info(_LI("%(method)s %(url)s"),
+                 {"method": request.method,
+                  "url": request.url})
+
+        if self.support_api_request_version:
+            # Set the version of the API requested based on the header
+            try:
+                request.set_api_version_request(request.url)
+            except exception.InvalidAPIVersionString as e:
+                return Fault(webob.exc.HTTPBadRequest(
+                    explanation=six.text_type(e)))
+            except exception.InvalidGlobalAPIVersion as e:
+                return Fault(webob.exc.HTTPNotAcceptable(
+                    explanation=six.text_type(e)))
 
         # Identify the action, its arguments, and the requested
         # content type
@@ -976,6 +1060,10 @@ class Resource(wsgi.Application):
         #            decorator.
         return self._process_stack(request, action, action_args,
                                    content_type, body, accept)
+
+    def _is_legacy_endpoint(self, request):
+        version_str = request.api_version_request.get_string()
+        return '1.0' in version_str or '2.0' in version_str
 
     def _process_stack(self, request, action, action_args,
                        content_type, body, accept):
@@ -993,6 +1081,16 @@ class Resource(wsgi.Application):
         except exception.MalformedRequestBody:
             msg = _("Malformed request body")
             return Fault(webob.exc.HTTPBadRequest(explanation=msg))
+
+        if body:
+            msg = ("Action: '%(action)s', calling method: %(meth)s, body: "
+                   "%(body)s") % {'action': action,
+                                  'body': six.text_type(body),
+                                  'meth': six.text_type(meth)}
+            LOG.debug(strutils.mask_password(msg))
+        else:
+            LOG.debug("Calling method '%(meth)s'",
+                      {'meth': six.text_type(meth)})
 
         # Now, deserialize the request body...
         try:
@@ -1031,7 +1129,7 @@ class Resource(wsgi.Application):
             # No exceptions; convert action_result into a
             # ResponseObject
             resp_obj = None
-            if type(action_result) is dict or action_result is None:
+            if isinstance(action_result, dict) or action_result is None:
                 resp_obj = ResponseObject(action_result)
             elif isinstance(action_result, ResponseObject):
                 resp_obj = action_result
@@ -1058,12 +1156,32 @@ class Resource(wsgi.Application):
 
         try:
             msg_dict = dict(url=request.url, status=response.status_int)
-            msg = _("%(url)s returned with HTTP %(status)d") % msg_dict
+            msg = _LI("%(url)s returned with HTTP %(status)d")
         except AttributeError as e:
             msg_dict = dict(url=request.url, e=e)
-            msg = _("%(url)s returned a fault: %(e)s") % msg_dict
+            msg = _LI("%(url)s returned a fault: %(e)s")
 
-        LOG.info(msg)
+        LOG.info(msg, msg_dict)
+
+        if hasattr(response, 'headers'):
+            for hdr, val in response.headers.items():
+                # Headers must be utf-8 strings
+                if six.PY2:
+                    val = encodeutils.to_utf8(val)
+                else:
+                    if isinstance(val, bytes):
+                        val = val.decode('utf-8')
+                    else:
+                        val = str(val)
+
+                response.headers[hdr] = val
+
+            if (not request.api_version_request.is_null() and
+               not self._is_legacy_endpoint(request)):
+                response.headers[API_VERSION_REQUEST_HEADER] = (
+                    VOLUME_SERVICE + ' ' +
+                    request.api_version_request.get_string())
+                response.headers['Vary'] = API_VERSION_REQUEST_HEADER
 
         return response
 
@@ -1082,7 +1200,7 @@ class Resource(wsgi.Application):
                                                             'create',
                                                             'delete',
                                                             'update']):
-                    LOG.exception(six.text_type(e))
+                    LOG.exception(_LE('Get method error.'))
                 else:
                     ctxt.reraise = False
         else:
@@ -1092,7 +1210,7 @@ class Resource(wsgi.Application):
             # OK, it's an action; figure out which action...
             mtype = _MEDIA_TYPE_MAP.get(content_type)
             action_name = self.action_peek[mtype](body)
-            LOG.debug("Action body: %s" % body)
+            LOG.debug("Action body: %s", body)
         else:
             action_name = action
 
@@ -1103,7 +1221,13 @@ class Resource(wsgi.Application):
     def dispatch(self, method, request, action_args):
         """Dispatch a call to the action-specific method."""
 
-        return method(req=request, **action_args)
+        try:
+            return method(req=request, **action_args)
+        except exception.VersionNotFoundForAPIMethod:
+            # We deliberately don't return any message information
+            # about the exception to the user so it looks as if
+            # the method is simply not implemented.
+            return Fault(webob.exc.HTTPNotFound())
 
 
 def action(name):
@@ -1163,9 +1287,22 @@ class ControllerMetaclass(type):
         # Find all actions
         actions = {}
         extensions = []
+        versioned_methods = None
         # start with wsgi actions from base classes
         for base in bases:
             actions.update(getattr(base, 'wsgi_actions', {}))
+
+            if base.__name__ == "Controller":
+                # NOTE(cyeoh): This resets the VER_METHOD_ATTR attribute
+                # between API controller class creations. This allows us
+                # to use a class decorator on the API methods that doesn't
+                # require naming explicitly what method is being versioned as
+                # it can be implicit based on the method decorated. It is a bit
+                # ugly.
+                if VER_METHOD_ATTR in base.__dict__:
+                    versioned_methods = getattr(base, VER_METHOD_ATTR)
+                    delattr(base, VER_METHOD_ATTR)
+
         for key, value in cls_dict.items():
             if not callable(value):
                 continue
@@ -1177,6 +1314,8 @@ class ControllerMetaclass(type):
         # Add the actions and extensions to the class dict
         cls_dict['wsgi_actions'] = actions
         cls_dict['wsgi_extensions'] = extensions
+        if versioned_methods:
+            cls_dict[VER_METHOD_ATTR] = versioned_methods
 
         return super(ControllerMetaclass, mcs).__new__(mcs, name, bases,
                                                        cls_dict)
@@ -1197,6 +1336,99 @@ class Controller(object):
         else:
             self._view_builder = None
 
+    def __getattribute__(self, key):
+
+        def version_select(*args, **kwargs):
+            """Select and call the matching version of the specified method.
+
+            Look for the method which matches the name supplied and version
+            constraints and calls it with the supplied arguments.
+
+            :returns: Returns the result of the method called
+            :raises: VersionNotFoundForAPIMethod if there is no method which
+                 matches the name and version constraints
+            """
+
+            # The first arg to all versioned methods is always the request
+            # object. The version for the request is attached to the
+            # request object
+            if len(args) == 0:
+                version_request = kwargs['req'].api_version_request
+            else:
+                version_request = args[0].api_version_request
+
+            func_list = self.versioned_methods[key]
+            for func in func_list:
+                if version_request.matches_versioned_method(func):
+                    # Update the version_select wrapper function so
+                    # other decorator attributes like wsgi.response
+                    # are still respected.
+                    functools.update_wrapper(version_select, func.func)
+                    return func.func(self, *args, **kwargs)
+
+            # No version match
+            raise exception.VersionNotFoundForAPIMethod(
+                version=version_request)
+
+        try:
+            version_meth_dict = object.__getattribute__(self, VER_METHOD_ATTR)
+        except AttributeError:
+            # No versioning on this class
+            return object.__getattribute__(self, key)
+
+        if (version_meth_dict and key in
+                object.__getattribute__(self, VER_METHOD_ATTR)):
+
+            return version_select
+
+        return object.__getattribute__(self, key)
+
+    # NOTE(cyeoh): This decorator MUST appear first (the outermost
+    # decorator) on an API method for it to work correctly
+    @classmethod
+    def api_version(cls, min_ver, max_ver=None, experimental=False):
+        """Decorator for versioning API methods.
+
+        Add the decorator to any method which takes a request object
+        as the first parameter and belongs to a class which inherits from
+        wsgi.Controller.
+
+        :param min_ver: string representing minimum version
+        :param max_ver: optional string representing maximum version
+        """
+
+        def decorator(f):
+            obj_min_ver = api_version.APIVersionRequest(min_ver)
+            if max_ver:
+                obj_max_ver = api_version.APIVersionRequest(max_ver)
+            else:
+                obj_max_ver = api_version.APIVersionRequest()
+
+            # Add to list of versioned methods registered
+            func_name = f.__name__
+            new_func = versioned_method.VersionedMethod(
+                func_name, obj_min_ver, obj_max_ver, experimental, f)
+
+            func_dict = getattr(cls, VER_METHOD_ATTR, {})
+            if not func_dict:
+                setattr(cls, VER_METHOD_ATTR, func_dict)
+
+            func_list = func_dict.get(func_name, [])
+            if not func_list:
+                func_dict[func_name] = func_list
+            func_list.append(new_func)
+            # Ensure the list is sorted by minimum version (reversed)
+            # so later when we work through the list in order we find
+            # the method which has the latest version which supports
+            # the version requested.
+            # TODO(cyeoh): Add check to ensure that there are no overlapping
+            # ranges of valid versions as that is ambiguous
+            func_list.sort(reverse=True)
+
+            return f
+
+        return decorator
+
     @staticmethod
     def is_valid_body(body, entity_name):
         if not (body and entity_name in body):
@@ -1213,6 +1445,60 @@ class Controller(object):
             return False
 
         return True
+
+    @staticmethod
+    def assert_valid_body(body, entity_name):
+        # NOTE: After v1 api is deprecated need to merge 'is_valid_body' and
+        #       'assert_valid_body' in to one method. Right now it is not
+        #       possible to modify 'is_valid_body' to raise exception because
+        #       in case of V1 api when 'is_valid_body' return False,
+        #       'HTTPUnprocessableEntity' exception is getting raised and in
+        #       V2 api 'HTTPBadRequest' exception is getting raised.
+        if not Controller.is_valid_body(body, entity_name):
+            raise webob.exc.HTTPBadRequest(
+                explanation=_("Missing required element '%s' in "
+                              "request body.") % entity_name)
+
+    @staticmethod
+    def validate_name_and_description(body):
+        name = body.get('name')
+        if name is not None:
+            if isinstance(name, six.string_types):
+                body['name'] = name.strip()
+            try:
+                utils.check_string_length(body['name'], 'Name',
+                                          min_length=0, max_length=255)
+            except exception.InvalidInput as error:
+                raise webob.exc.HTTPBadRequest(explanation=error.msg)
+
+        description = body.get('description')
+        if description is not None:
+            try:
+                utils.check_string_length(description, 'Description',
+                                          min_length=0, max_length=255)
+            except exception.InvalidInput as error:
+                raise webob.exc.HTTPBadRequest(explanation=error.msg)
+
+    @staticmethod
+    def validate_string_length(value, entity_name, min_length=0,
+                               max_length=None, remove_whitespaces=False):
+        """Check the length of specified string.
+
+        :param value: the value of the string
+        :param entity_name: the name of the string
+        :param min_length: the min_length of the string
+        :param max_length: the max_length of the string
+        :param remove_whitespaces: True if trimming whitespaces is needed
+                                   else False
+        """
+        if isinstance(value, six.string_types) and remove_whitespaces:
+            value = value.strip()
+        try:
+            utils.check_string_length(value, entity_name,
+                                      min_length=min_length,
+                                      max_length=max_length)
+        except exception.InvalidInput as error:
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
 
 
 class Fault(webob.exc.HTTPException):
@@ -1251,6 +1537,11 @@ class Fault(webob.exc.HTTPException):
             if retry:
                 fault_data[fault_name]['retryAfter'] = retry
 
+        if not req.api_version_request.is_null():
+            self.wrapped_exc.headers[API_VERSION_REQUEST_HEADER] = (
+                req.api_version_request.get_string())
+            self.wrapped_exc.headers['Vary'] = API_VERSION_REQUEST_HEADER
+
         # 'code' is an attribute on the fault tag itself
         metadata = {'attributes': {fault_name: 'code'}}
 
@@ -1262,7 +1553,18 @@ class Fault(webob.exc.HTTPException):
             'application/json': JSONDictSerializer(),
         }[content_type]
 
-        self.wrapped_exc.body = serializer.serialize(fault_data)
+        if content_type == 'application/xml':
+            global XML_WARNING
+            if not XML_WARNING:
+                msg = _('XML support has been deprecated and will be removed '
+                        'in the N release.')
+                versionutils.report_deprecated_feature(LOG, msg)
+            XML_WARNING = True
+
+        body = serializer.serialize(fault_data)
+        if isinstance(body, six.text_type):
+            body = body.encode('utf-8')
+        self.wrapped_exc.body = body
         self.wrapped_exc.content_type = content_type
         _set_request_id_header(req, self.wrapped_exc.headers)
 

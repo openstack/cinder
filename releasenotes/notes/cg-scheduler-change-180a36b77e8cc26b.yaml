@@ -1,0 +1,3 @@
+---
+fixes:
+  - Consistency group creation previously scheduled at the pool level. Now it is fixed to schedule at the backend level as designed.

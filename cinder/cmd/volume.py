@@ -17,9 +17,12 @@
 
 """Starter script for Cinder Volume."""
 
+import logging as python_logging
 import os
 
 import eventlet
+
+from cinder import objects
 
 if os.name == 'nt':
     # eventlet monkey patching the os module causes subprocess.Popen to fail
@@ -29,18 +32,19 @@ else:
     eventlet.monkey_patch()
 
 import sys
-import warnings
-
-warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_reports import guru_meditation_report as gmr
+from oslo_reports import opts as gmr_opts
 
 from cinder import i18n
 i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
-from cinder.openstack.common import log as logging
+from cinder.db import api as session
+from cinder.i18n import _
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -54,21 +58,45 @@ CONF = cfg.CONF
 
 
 def main():
+    objects.register_all()
+    gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
-    logging.setup("cinder")
+    logging.setup(CONF, "cinder")
+    python_logging.captureWarnings(True)
     utils.monkey_patch()
+    gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     launcher = service.get_launcher()
+    LOG = logging.getLogger(__name__)
+    service_started = False
+
     if CONF.enabled_backends:
         for backend in CONF.enabled_backends:
             CONF.register_opt(host_opt, group=backend)
             backend_host = getattr(CONF, backend).backend_host
             host = "%s@%s" % (backend_host or CONF.host, backend)
-            server = service.Service.create(host=host,
-                                            service_name=backend,
-                                            binary='cinder-volume')
-            launcher.launch_service(server)
+            try:
+                server = service.Service.create(host=host,
+                                                service_name=backend,
+                                                binary='cinder-volume')
+            except Exception:
+                msg = _('Volume service %s failed to start.') % host
+                LOG.exception(msg)
+            else:
+                # Dispose of the whole DB connection pool here before
+                # starting another process.  Otherwise we run into cases where
+                # child processes share DB connections which results in errors.
+                session.dispose_engine()
+                launcher.launch_service(server)
+                service_started = True
     else:
         server = service.Service.create(binary='cinder-volume')
         launcher.launch_service(server)
+        service_started = True
+
+    if not service_started:
+        msg = _('No volume service(s) started successfully, terminating.')
+        LOG.error(msg)
+        sys.exit(1)
+
     launcher.wait()

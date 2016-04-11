@@ -13,12 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
 import six
 
 from cinder.i18n import _LW
-from cinder.openstack.common import log as logging
-from cinder.openstack.common.scheduler import filters
 from cinder.scheduler.evaluator import evaluator
+from cinder.scheduler import filters
 
 
 LOG = logging.getLogger(__name__)
@@ -48,23 +48,8 @@ class DriverFilter(filters.BaseHostFilter):
            Returns a tuple in the format (filter_passing, filter_invalid).
            Both values are booleans.
         """
-        host_stats = stats['host_stats']
-        extra_specs = stats['extra_specs']
-
-        # Check that the volume types match
-        if (extra_specs is None or 'volume_backend_name' not in extra_specs):
-            LOG.warning(_LW("No 'volume_backend_name' key in extra_specs. "
-                            "Skipping volume backend name check."))
-        elif (extra_specs['volume_backend_name'] !=
-                host_stats['volume_backend_name']):
-            LOG.warning(_LW("Volume backend names do not match: '%(target)s' "
-                            "vs '%(current)s' :: Skipping"),
-                        {'target': extra_specs['volume_backend_name'],
-                         'current': host_stats['volume_backend_name']})
-            return False
-
         if stats['filter_function'] is None:
-            LOG.warning(_LW("Filter function not set :: passing host"))
+            LOG.debug("Filter function not set :: passing host")
             return True
 
         try:

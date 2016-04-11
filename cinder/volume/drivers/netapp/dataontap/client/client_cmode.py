@@ -1,5 +1,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,19 +19,24 @@
 import copy
 import math
 
+from oslo_log import log as logging
 import six
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LW
+from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp import utils as na_utils
 
+from oslo_utils import strutils
+
 
 LOG = logging.getLogger(__name__)
+DELETED_PREFIX = 'deleted_cinder_'
 
 
+@six.add_metaclass(utils.TraceWrapperMetaclass)
 class Client(client_base.Client):
 
     def __init__(self, **kwargs):
@@ -41,12 +48,29 @@ class Client(client_base.Client):
         self.connection.set_api_version(1, 15)
         (major, minor) = self.get_ontapi_version(cached=False)
         self.connection.set_api_version(major, minor)
+        self._init_features()
+
+    def _init_features(self):
+        super(Client, self)._init_features()
+
+        ontapi_version = self.get_ontapi_version()   # major, minor
+
+        ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
+        ontapi_1_30 = ontapi_version >= (1, 30)
+        self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
+        self.features.add_feature('FAST_CLONE_DELETE', supported=ontapi_1_30)
+        self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
+                                  supported=ontapi_1_30)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
         server.set_vserver(vserver)
         result = server.invoke_successfully(na_element, True)
         return result
+
+    def _has_records(self, api_result_element):
+        num_records = api_result_element.get_child_content('num-records')
+        return bool(num_records and '0' != num_records)
 
     def set_vserver(self, vserver):
         self.connection.set_vserver(vserver)
@@ -69,6 +93,62 @@ class Client(client_base.Client):
                     'is-interface-enabled')
                 tgt_list.append(d)
         return tgt_list
+
+    def set_iscsi_chap_authentication(self, iqn, username, password):
+        """Provides NetApp host's CHAP credentials to the backend."""
+        initiator_exists = self.check_iscsi_initiator_exists(iqn)
+
+        command_template = ('iscsi security %(mode)s -vserver %(vserver)s '
+                            '-initiator-name %(iqn)s -auth-type CHAP '
+                            '-user-name %(username)s')
+
+        if initiator_exists:
+            LOG.debug('Updating CHAP authentication for %(iqn)s.',
+                      {'iqn': iqn})
+            command = command_template % {
+                'mode': 'modify',
+                'vserver': self.vserver,
+                'iqn': iqn,
+                'username': username,
+            }
+        else:
+            LOG.debug('Adding initiator %(iqn)s with CHAP authentication.',
+                      {'iqn': iqn})
+            command = command_template % {
+                'mode': 'create',
+                'vserver': self.vserver,
+                'iqn': iqn,
+                'username': username,
+            }
+
+        try:
+            with self.ssh_client.ssh_connect_semaphore:
+                ssh_pool = self.ssh_client.ssh_pool
+                with ssh_pool.item() as ssh:
+                    self.ssh_client.execute_command_with_prompt(ssh,
+                                                                command,
+                                                                'Password:',
+                                                                password)
+        except Exception as e:
+            msg = _('Failed to set CHAP authentication for target IQN %(iqn)s.'
+                    ' Details: %(ex)s') % {
+                'iqn': iqn,
+                'ex': e,
+            }
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def check_iscsi_initiator_exists(self, iqn):
+        """Returns True if initiator exists."""
+        initiator_exists = True
+        try:
+            auth_list = netapp_api.NaElement('iscsi-initiator-get-auth')
+            auth_list.add_new_child('initiator', iqn)
+            self.connection.invoke_successfully(auth_list, True)
+        except netapp_api.NaApiError:
+            initiator_exists = False
+
+        return initiator_exists
 
     def get_fc_target_wwpns(self):
         """Gets the FC target details."""
@@ -98,7 +178,7 @@ class Client(client_base.Client):
             attr_list = result.get_child_by_name('attributes-list')
             iscsi_service = attr_list.get_child_by_name('iscsi-service-info')
             return iscsi_service.get_child_content('node-name')
-        LOG.debug('No iSCSI service found for vserver %s' % (self.vserver))
+        LOG.debug('No iSCSI service found for vserver %s', self.vserver)
         return None
 
     def get_lun_list(self):
@@ -236,7 +316,8 @@ class Client(client_base.Client):
         return igroup_list
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
-                  src_block=0, dest_block=0, block_count=0):
+                  qos_policy_group_name=None, src_block=0, dest_block=0,
+                  block_count=0, source_snapshot=None):
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
         # zAPI can only handle 32 block ranges per call
@@ -252,11 +333,20 @@ class Client(client_base.Client):
                 zbc -= z_limit
             else:
                 block_count = zbc
+
+            zapi_args = {
+                'volume': volume,
+                'source-path': name,
+                'destination-path': new_name,
+                'space-reserve': space_reserved,
+            }
+            if source_snapshot:
+                zapi_args['snapshot-name'] = source_snapshot
             clone_create = netapp_api.NaElement.create_node_with_children(
-                'clone-create',
-                **{'volume': volume, 'source-path': name,
-                   'destination-path': new_name,
-                   'space-reserve': space_reserved})
+                'clone-create', **zapi_args)
+            if qos_policy_group_name is not None:
+                clone_create.add_new_child('qos-policy-group-name',
+                                           qos_policy_group_name)
             if block_count > 0:
                 block_ranges = netapp_api.NaElement("block-ranges")
                 segments = int(math.ceil(block_count / float(bc_limit)))
@@ -291,17 +381,144 @@ class Client(client_base.Client):
         query.add_node_with_children('lun-info', **args)
         luns = self.connection.invoke_successfully(lun_iter, True)
         attr_list = luns.get_child_by_name('attributes-list')
+        if not attr_list:
+            return []
         return attr_list.get_children()
 
-    def file_assign_qos(self, flex_vol, qos_policy_group, file_path):
-        """Retrieves LUN with specified args."""
-        file_assign_qos = netapp_api.NaElement.create_node_with_children(
-            'file-assign-qos',
-            **{'volume': flex_vol,
-               'qos-policy-group-name': qos_policy_group,
-               'file': file_path,
-               'vserver': self.vserver})
-        self.connection.invoke_successfully(file_assign_qos, True)
+    def file_assign_qos(self, flex_vol, qos_policy_group_name, file_path):
+        """Assigns the named QoS policy-group to a file."""
+        api_args = {
+            'volume': flex_vol,
+            'qos-policy-group-name': qos_policy_group_name,
+            'file': file_path,
+            'vserver': self.vserver,
+        }
+        return self.send_request('file-assign-qos', api_args, False)
+
+    def provision_qos_policy_group(self, qos_policy_group_info):
+        """Create QOS policy group on the backend if appropriate."""
+        if qos_policy_group_info is None:
+            return
+
+        # Legacy QOS uses externally provisioned QOS policy group,
+        # so we don't need to create one on the backend.
+        legacy = qos_policy_group_info.get('legacy')
+        if legacy is not None:
+            return
+
+        spec = qos_policy_group_info.get('spec')
+        if spec is not None:
+            if not self.qos_policy_group_exists(spec['policy_name']):
+                self.qos_policy_group_create(spec['policy_name'],
+                                             spec['max_throughput'])
+            else:
+                self.qos_policy_group_modify(spec['policy_name'],
+                                             spec['max_throughput'])
+
+    def qos_policy_group_exists(self, qos_policy_group_name):
+        """Checks if a QOS policy group exists."""
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': qos_policy_group_name,
+                },
+            },
+            'desired-attributes': {
+                'qos-policy-group-info': {
+                    'policy-group': None,
+                },
+            },
+        }
+        result = self.send_request('qos-policy-group-get-iter',
+                                   api_args,
+                                   False)
+        return self._has_records(result)
+
+    def qos_policy_group_create(self, qos_policy_group_name, max_throughput):
+        """Creates a QOS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+            'max-throughput': max_throughput,
+            'vserver': self.vserver,
+        }
+        return self.send_request('qos-policy-group-create', api_args, False)
+
+    def qos_policy_group_modify(self, qos_policy_group_name, max_throughput):
+        """Modifies a QOS policy group."""
+        api_args = {
+            'policy-group': qos_policy_group_name,
+            'max-throughput': max_throughput,
+        }
+        return self.send_request('qos-policy-group-modify', api_args, False)
+
+    def qos_policy_group_delete(self, qos_policy_group_name):
+        """Attempts to delete a QOS policy group."""
+        api_args = {'policy-group': qos_policy_group_name}
+        return self.send_request('qos-policy-group-delete', api_args, False)
+
+    def qos_policy_group_rename(self, qos_policy_group_name, new_name):
+        """Renames a QOS policy group."""
+        api_args = {
+            'policy-group-name': qos_policy_group_name,
+            'new-name': new_name,
+        }
+        return self.send_request('qos-policy-group-rename', api_args, False)
+
+    def mark_qos_policy_group_for_deletion(self, qos_policy_group_info):
+        """Do (soft) delete of backing QOS policy group for a cinder volume."""
+        if qos_policy_group_info is None:
+            return
+
+        spec = qos_policy_group_info.get('spec')
+
+        # For cDOT we want to delete the QoS policy group that we created for
+        # this cinder volume.  Because the QoS policy may still be "in use"
+        # after the zapi call to delete the volume itself returns successfully,
+        # we instead rename the QoS policy group using a specific pattern and
+        # later attempt on a best effort basis to delete any QoS policy groups
+        # matching that pattern.
+        if spec is not None:
+            current_name = spec['policy_name']
+            new_name = DELETED_PREFIX + current_name
+            try:
+                self.qos_policy_group_rename(current_name, new_name)
+            except netapp_api.NaApiError as ex:
+                msg = _LW('Rename failure in cleanup of cDOT QOS policy group '
+                          '%(name)s: %(ex)s')
+                LOG.warning(msg, {'name': current_name, 'ex': ex})
+
+        # Attempt to delete any QoS policies named "delete-openstack-*".
+        self.remove_unused_qos_policy_groups()
+
+    def remove_unused_qos_policy_groups(self):
+        """Deletes all QOS policy groups that are marked for deletion."""
+        api_args = {
+            'query': {
+                'qos-policy-group-info': {
+                    'policy-group': '%s*' % DELETED_PREFIX,
+                    'vserver': self.vserver,
+                }
+            },
+            'max-records': 3500,
+            'continue-on-failure': 'true',
+            'return-success-list': 'false',
+            'return-failure-list': 'false',
+        }
+
+        try:
+            self.send_request('qos-policy-group-delete-iter', api_args, False)
+        except netapp_api.NaApiError as ex:
+            msg = 'Could not delete QOS policy groups. Details: %(ex)s'
+            msg_args = {'ex': ex}
+            LOG.debug(msg % msg_args)
+
+    def set_lun_qos_policy_group(self, path, qos_policy_group):
+        """Sets qos_policy_group on a LUN."""
+        api_args = {
+            'path': path,
+            'qos-policy-group': qos_policy_group,
+        }
+        return self.send_request('lun-set-qos-policy-group', api_args)
 
     def get_if_info_by_ip(self, ip):
         """Gets the network interface info by ip."""
@@ -318,7 +535,7 @@ class Client(client_base.Client):
             attr_list = result.get_child_by_name('attributes-list')
             return attr_list.get_children()
         raise exception.NotFound(
-            _('No interface found on cluster for ip %s') % (ip))
+            _('No interface found on cluster for ip %s') % ip)
 
     def get_vol_by_junc_vserver(self, vserver, junction):
         """Gets the volume by junction path and vserver."""
@@ -351,11 +568,10 @@ class Client(client_base.Client):
     def clone_file(self, flex_vol, src_path, dest_path, vserver,
                    dest_exists=False):
         """Clones file on vserver."""
-        msg = ("Cloning with params volume %(volume)s, src %(src_path)s,"
-               "dest %(dest_path)s, vserver %(vserver)s")
-        msg_fmt = {'volume': flex_vol, 'src_path': src_path,
-                   'dest_path': dest_path, 'vserver': vserver}
-        LOG.debug(msg % msg_fmt)
+        LOG.debug("Cloning with params volume %(volume)s, src %(src_path)s, "
+                  "dest %(dest_path)s, vserver %(vserver)s",
+                  {'volume': flex_vol, 'src_path': src_path,
+                   'dest_path': dest_path, 'vserver': vserver})
         clone_create = netapp_api.NaElement.create_node_with_children(
             'clone-create',
             **{'volume': flex_vol, 'source-path': src_path,
@@ -372,8 +588,8 @@ class Client(client_base.Client):
             'file-usage-get', **{'path': path})
         res = self._invoke_vserver_api(file_use, vserver)
         unique_bytes = res.get_child_content('unique-bytes')
-        LOG.debug('file-usage for path %(path)s is %(bytes)s'
-                  % {'path': path, 'bytes': unique_bytes})
+        LOG.debug('file-usage for path %(path)s is %(bytes)s',
+                  {'path': path, 'bytes': unique_bytes})
         return unique_bytes
 
     def get_vserver_ips(self, vserver):
@@ -451,3 +667,284 @@ class Client(client_base.Client):
                 msg = _("Data ONTAP API version could not be determined.")
                 raise exception.VolumeBackendAPIException(data=msg)
         return failed_apis
+
+    def get_operational_network_interface_addresses(self):
+        """Gets the IP addresses of operational LIFs on the vserver."""
+
+        api_args = {
+            'query': {
+                'net-interface-info': {
+                    'operational-status': 'up'
+                }
+            },
+            'desired-attributes': {
+                'net-interface-info': {
+                    'address': None,
+                }
+            }
+        }
+        result = self.send_request('net-interface-get-iter', api_args)
+
+        lif_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        return [lif_info.get_child_content('address') for lif_info in
+                lif_info_list.get_children()]
+
+    def get_flexvol_capacity(self, flexvol_path):
+        """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'junction-path': flexvol_path
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'size-available': None,
+                        'size-total': None,
+                    }
+                }
+            },
+        }
+
+        result = self.send_request('volume-get-iter', api_args)
+
+        attributes_list = result.get_child_by_name('attributes-list')
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes')
+        volume_space_attributes = volume_attributes.get_child_by_name(
+            'volume-space-attributes')
+
+        size_available = float(
+            volume_space_attributes.get_child_content('size-available'))
+        size_total = float(
+            volume_space_attributes.get_child_content('size-total'))
+
+        return size_total, size_available
+
+    @utils.trace_method
+    def delete_file(self, path_to_file):
+        """Delete file at path."""
+
+        api_args = {
+            'path': path_to_file,
+        }
+        # Use fast clone deletion engine if it is supported.
+        if self.features.FAST_CLONE_DELETE:
+            api_args['is-clone-file'] = 'true'
+        self.send_request('file-delete-file', api_args, True)
+
+    def _get_aggregates(self, aggregate_names=None, desired_attributes=None):
+
+        query = {
+            'aggr-attributes': {
+                'aggregate-name': '|'.join(aggregate_names),
+            }
+        } if aggregate_names else None
+
+        api_args = {}
+        if query:
+            api_args['query'] = query
+        if desired_attributes:
+            api_args['desired-attributes'] = desired_attributes
+
+        result = self.send_request('aggr-get-iter',
+                                   api_args,
+                                   enable_tunneling=False)
+        if not self._has_records(result):
+            return []
+        else:
+            return result.get_child_by_name('attributes-list').get_children()
+
+    def get_node_for_aggregate(self, aggregate_name):
+        """Get home node for the specified aggregate.
+
+        This API could return None, most notably if it was sent
+        to a Vserver LIF, so the caller must be able to handle that case.
+        """
+
+        if not aggregate_name:
+            return None
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-ownership-attributes': {
+                    'home-name': None,
+                },
+            },
+        }
+
+        try:
+            aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
+                                         desired_attributes=desired_attributes)
+        except netapp_api.NaApiError as e:
+            if e.code == netapp_api.EAPINOTFOUND:
+                return None
+            else:
+                raise e
+
+        if len(aggrs) < 1:
+            return None
+
+        aggr_ownership_attrs = aggrs[0].get_child_by_name(
+            'aggr-ownership-attributes') or netapp_api.NaElement('none')
+        return aggr_ownership_attrs.get_child_content('home-name')
+
+    def get_performance_instance_uuids(self, object_name, node_name):
+        """Get UUIDs of performance instances for a cluster node."""
+
+        api_args = {
+            'objectname': object_name,
+            'query': {
+                'instance-info': {
+                    'uuid': node_name + ':*',
+                }
+            }
+        }
+
+        result = self.send_request('perf-object-instance-list-info-iter',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        uuids = []
+
+        instances = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('None')
+
+        for instance_info in instances.get_children():
+            uuids.append(instance_info.get_child_content('uuid'))
+
+        return uuids
+
+    def get_performance_counters(self, object_name, instance_uuids,
+                                 counter_names):
+        """Gets or or more cDOT performance counters."""
+
+        api_args = {
+            'objectname': object_name,
+            'instance-uuids': [
+                {'instance-uuid': instance_uuid}
+                for instance_uuid in instance_uuids
+            ],
+            'counters': [
+                {'counter': counter} for counter in counter_names
+            ],
+        }
+
+        result = self.send_request('perf-object-get-instances',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        counter_data = []
+
+        timestamp = result.get_child_content('timestamp')
+
+        instances = result.get_child_by_name(
+            'instances') or netapp_api.NaElement('None')
+        for instance in instances.get_children():
+
+            instance_name = instance.get_child_content('name')
+            instance_uuid = instance.get_child_content('uuid')
+            node_name = instance_uuid.split(':')[0]
+
+            counters = instance.get_child_by_name(
+                'counters') or netapp_api.NaElement('None')
+            for counter in counters.get_children():
+
+                counter_name = counter.get_child_content('name')
+                counter_value = counter.get_child_content('value')
+
+                counter_data.append({
+                    'instance-name': instance_name,
+                    'instance-uuid': instance_uuid,
+                    'node-name': node_name,
+                    'timestamp': timestamp,
+                    counter_name: counter_value,
+                })
+
+        return counter_data
+
+    def get_snapshot(self, volume_name, snapshot_name):
+        """Gets a single snapshot."""
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': snapshot_name,
+                    'volume': volume_name,
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'volume': None,
+                    'busy': None,
+                    'snapshot-owners-list': {
+                        'snapshot-owner': None,
+                    }
+                },
+            },
+        }
+        result = self.send_request('snapshot-get-iter', api_args)
+
+        self._handle_get_snapshot_return_failure(result, snapshot_name)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        snapshot_info_list = attributes_list.get_children()
+
+        self._handle_snapshot_not_found(result, snapshot_info_list,
+                                        snapshot_name, volume_name)
+
+        snapshot_info = snapshot_info_list[0]
+        snapshot = {
+            'name': snapshot_info.get_child_content('name'),
+            'volume': snapshot_info.get_child_content('volume'),
+            'busy': strutils.bool_from_string(
+                snapshot_info.get_child_content('busy')),
+        }
+
+        snapshot_owners_list = snapshot_info.get_child_by_name(
+            'snapshot-owners-list') or netapp_api.NaElement('none')
+        snapshot_owners = set([
+            snapshot_owner.get_child_content('owner')
+            for snapshot_owner in snapshot_owners_list.get_children()])
+        snapshot['owners'] = snapshot_owners
+
+        return snapshot
+
+    def _handle_get_snapshot_return_failure(self, result, snapshot_name):
+        error_record_list = result.get_child_by_name(
+            'volume-errors') or netapp_api.NaElement('none')
+        errors = error_record_list.get_children()
+
+        if errors:
+            error = errors[0]
+            error_code = error.get_child_content('errno')
+            error_reason = error.get_child_content('reason')
+            msg = _('Could not read information for snapshot %(name)s. '
+                    'Code: %(code)s. Reason: %(reason)s')
+            msg_args = {
+                'name': snapshot_name,
+                'code': error_code,
+                'reason': error_reason,
+            }
+            if error_code == netapp_api.ESNAPSHOTNOTALLOWED:
+                raise exception.SnapshotUnavailable(msg % msg_args)
+            else:
+                raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+    def _handle_snapshot_not_found(self, result, snapshot_info_list,
+                                   snapshot_name, volume_name):
+        if not self._has_records(result):
+            raise exception.SnapshotNotFound(snapshot_id=snapshot_name)
+        elif len(snapshot_info_list) > 1:
+            msg = _('Could not find unique snapshot %(snap)s on '
+                    'volume %(vol)s.')
+            msg_args = {'snap': snapshot_name, 'vol': volume_name}
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)

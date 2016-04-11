@@ -23,13 +23,3 @@ def upgrade(migrate_engine):
     _name_id = Column('_name_id', String(36))
     volumes.create_column(_name_id)
     volumes.update().values(_name_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove _name_id column from volumes."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volumes = Table('volumes', meta, autoload=True)
-    _name_id = volumes.columns._name_id
-    volumes.drop_column(_name_id)

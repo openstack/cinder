@@ -44,37 +44,69 @@ import math
 
 from oslo_config import cfg
 
-from cinder.openstack.common.scheduler import weights
+from cinder.scheduler import weights
+from cinder import utils
 
 
 capacity_weight_opts = [
     cfg.FloatOpt('capacity_weight_multiplier',
                  default=1.0,
-                 help='Multiplier used for weighing volume capacity. '
+                 help='Multiplier used for weighing free capacity. '
                       'Negative numbers mean to stack vs spread.'),
     cfg.FloatOpt('allocated_capacity_weight_multiplier',
                  default=-1.0,
-                 help='Multiplier used for weighing volume capacity. '
-                      'Negative numbers mean to stack vs spread.'),
+                 help='Multiplier used for weighing allocated capacity. '
+                      'Positive numbers mean to stack vs spread.'),
 ]
 
 CONF = cfg.CONF
 CONF.register_opts(capacity_weight_opts)
 
+OFFSET_MIN = 10000
+OFFSET_MULT = 100
+
 
 class CapacityWeigher(weights.BaseHostWeigher):
-    def _weight_multiplier(self):
+    def weight_multiplier(self):
         """Override the weight multiplier."""
         return CONF.capacity_weight_multiplier
 
+    def weigh_objects(self, weighed_obj_list, weight_properties):
+        """Override the weigh objects.
+
+
+        This override calls the parent to do the weigh objects and then
+        replaces any infinite weights with a value that is a multiple of the
+        delta between the min and max values.
+
+        NOTE(jecarey): the infinite weight value is only used when the
+        smallest value is being favored (negative multiplier).  When the
+        largest weight value is being used a weight of -1 is used instead.
+        See _weigh_object method.
+        """
+        tmp_weights = super(weights.BaseHostWeigher, self).weigh_objects(
+            weighed_obj_list, weight_properties)
+
+        if math.isinf(self.maxval):
+            # NOTE(jecarey): if all weights were infinite then parent
+            # method returns 0 for all of the weights.  Thus self.minval
+            # cannot be infinite at this point
+            copy_weights = [w for w in tmp_weights if not math.isinf(w)]
+            self.maxval = max(copy_weights)
+            offset = (self.maxval - self.minval) * OFFSET_MULT
+            self.maxval += OFFSET_MIN if offset == 0.0 else offset
+            tmp_weights = [self.maxval if math.isinf(w) else w
+                           for w in tmp_weights]
+
+        return tmp_weights
+
     def _weigh_object(self, host_state, weight_properties):
         """Higher weights win.  We want spreading to be the default."""
-        reserved = float(host_state.reserved_percentage) / 100
         free_space = host_state.free_capacity_gb
         total_space = host_state.total_capacity_gb
         if (free_space == 'infinite' or free_space == 'unknown' or
                 total_space == 'infinite' or total_space == 'unknown'):
-            #(zhiteng) 'infinite' and 'unknown' are treated the same
+            # (zhiteng) 'infinite' and 'unknown' are treated the same
             # here, for sorting purpose.
 
             # As a partial fix for bug #1350638, 'infinite' and 'unknown' are
@@ -82,21 +114,19 @@ class CapacityWeigher(weights.BaseHostWeigher):
             # capacity anymore.
             free = -1 if CONF.capacity_weight_multiplier > 0 else float('inf')
         else:
-            total = float(total_space)
-            if host_state.thin_provisioning_support:
-                # Calculate virtual free capacity for thin provisioning.
-                free = (total * host_state.max_over_subscription_ratio
-                        - host_state.provisioned_capacity_gb -
-                        math.floor(total * reserved))
-            else:
-                # Calculate how much free space is left after taking into
-                # account the reserved space.
-                free = free_space - math.floor(total * reserved)
+            free = utils.calculate_virtual_free_capacity(
+                total_space,
+                free_space,
+                host_state.provisioned_capacity_gb,
+                host_state.thin_provisioning_support,
+                host_state.max_over_subscription_ratio,
+                host_state.reserved_percentage)
+
         return free
 
 
 class AllocatedCapacityWeigher(weights.BaseHostWeigher):
-    def _weight_multiplier(self):
+    def weight_multiplier(self):
         """Override the weight multiplier."""
         return CONF.allocated_capacity_weight_multiplier
 

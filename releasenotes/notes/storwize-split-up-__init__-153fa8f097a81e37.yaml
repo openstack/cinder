@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Removed storwize_svc_connection_protocol config setting. Users will now need to set different values for volume_driver in cinder.conf. FC:volume_driver = cinder.volume.drivers.ibm.storwize_svc.storwize_svc_fc.StorwizeSVCFCDriver iSCSI:volume_driver = cinder.volume.drivers.ibm.storwize_svc.storwize_svc_iscsi.StorwizeSVCISCSIDriver

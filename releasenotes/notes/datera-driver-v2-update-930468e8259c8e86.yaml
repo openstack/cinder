@@ -1,0 +1,12 @@
+---
+features:
+  - All Datera DataFabric backed volume-types will now use
+    API version 2 with Datera DataFabric
+upgrade:
+  - Users of the Datera Cinder driver are now required to use
+    Datera DataFabric version 1.0+. Versions before 1.0 will
+    not be able to utilize this new driver since they still
+    function on v1 of the Datera DataFabric API
+deprecations:
+  - datera_api_token -- this has been replaced by
+    san_login and san_password

@@ -32,14 +32,15 @@ encryption key so *any* volume can be decrypted once the fixed key is known.
 """
 
 import array
+import binascii
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LW
 from cinder.keymgr import key
 from cinder.keymgr import key_mgr
-from cinder.openstack.common import log as logging
 
 
 key_mgr_opts = [
@@ -70,13 +71,14 @@ class ConfKeyManager(key_mgr.KeyManager):
 
     def _generate_key(self, **kwargs):
         _hex = self._generate_hex_key(**kwargs)
-        return key.SymmetricKey('AES',
-                                array.array('B', _hex.decode('hex')).tolist())
+        key_list = array.array('B', binascii.unhexlify(_hex)).tolist()
+        return key.SymmetricKey('AES', key_list)
 
     def _generate_hex_key(self, **kwargs):
         if CONF.keymgr.fixed_key is None:
-            LOG.warn(_LW('config option keymgr.fixed_key has not been defined:'
-                         ' some operations may fail unexpectedly'))
+            LOG.warning(
+                _LW('config option keymgr.fixed_key has not been defined:'
+                    ' some operations may fail unexpectedly'))
             raise ValueError(_('keymgr.fixed_key not defined'))
         return CONF.keymgr.fixed_key
 
@@ -131,4 +133,4 @@ class ConfKeyManager(key_mgr.KeyManager):
             raise exception.KeyManagerError(
                 reason="cannot delete non-existent key")
 
-        LOG.warn(_LW("Not deleting key %s"), key_id)
+        LOG.warning(_LW("Not deleting key %s"), key_id)

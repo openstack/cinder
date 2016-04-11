@@ -24,6 +24,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import rpc
+from cinder import utils
 from cinder.volume import volume_types
 
 authorize = extensions.extension_authorizer('volume',
@@ -46,27 +47,21 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         encryption_specs = {}
         if not encryption_ref:
             return encryption_specs
-        for key, value in encryption_ref.iteritems():
+        for key, value in encryption_ref.items():
             encryption_specs[key] = value
         return encryption_specs
 
     def _check_type(self, context, type_id):
         try:
             volume_types.get_volume_type(context, type_id)
-        except exception.NotFound as ex:
+        except exception.VolumeTypeNotFound as ex:
             raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
     def _check_encryption_input(self, encryption, create=True):
-        if 'key_size' in encryption.keys():
-            key_size = encryption['key_size']
-            if key_size is not None:
-                if isinstance(key_size, (int, long)):
-                    if key_size < 0:
-                        msg = _('key_size must be non-negative')
-                        raise exception.InvalidInput(reason=msg)
-                else:
-                    msg = _('key_size must be an integer')
-                    raise exception.InvalidInput(reason=msg)
+        if encryption.get('key_size') is not None:
+            encryption['key_size'] = utils.validate_integer(
+                encryption['key_size'], 'key_size',
+                min_value=0, max_value=db.MAX_INT)
 
         if create:
             msg = None
@@ -112,9 +107,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             expl = _('Cannot create encryption specs. Volume type in use.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
 
-        if not self.is_valid_body(body, 'encryption'):
-            expl = _('Create body is not valid.')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
+        self.assert_valid_body(body, 'encryption')
 
         self._check_type(context, type_id)
 
@@ -138,12 +131,8 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        if not body:
-            expl = _('Request body empty.')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
-        if not self.is_valid_body(body, 'encryption'):
-            expl = _('Update body is not valid. It must contain "encryption."')
-            raise webob.exc.HTTPBadRequest(explanation=expl)
+        self.assert_valid_body(body, 'encryption')
+
         if len(body) > 1:
             expl = _('Request body contains too many items.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
@@ -188,7 +177,10 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             expl = _('Cannot delete encryption specs. Volume type in use.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         else:
-            db.volume_type_encryption_delete(context, type_id)
+            try:
+                db.volume_type_encryption_delete(context, type_id)
+            except exception.VolumeTypeEncryptionNotFound as ex:
+                raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
         return webob.Response(status_int=202)
 

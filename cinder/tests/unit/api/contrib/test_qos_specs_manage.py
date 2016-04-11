@@ -27,6 +27,7 @@ from cinder import db
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_notifier
 
 
@@ -208,7 +209,7 @@ class QoSSpecManageApiTest(test.TestCase):
         self.assertEqual(set(expected_names), names)
 
     def test_index_with_limit(self):
-        url = '/v2/fake/qos-specs?limit=2'
+        url = '/v2/%s/qos-specs?limit=2' % fake.project_id
         req = fakes.HTTPRequest.blank(url, use_admin_context=True)
         res = self.controller.index(req)
 
@@ -216,8 +217,9 @@ class QoSSpecManageApiTest(test.TestCase):
         self.assertEqual(self.qos_id4, res['qos_specs'][0]['id'])
         self.assertEqual(self.qos_id3, res['qos_specs'][1]['id'])
 
-        expect_next_link = ('http://localhost/v2/fakeproject/qos-specs?limit'
-                            '=2&marker=%s') % res['qos_specs'][1]['id']
+        expect_next_link = ('http://localhost/v2/%s/qos-specs?limit'
+                            '=2&marker=%s') % (
+                                fake.project_id, res['qos_specs'][1]['id'])
         self.assertEqual(expect_next_link, res['qos_specs_links'][0]['href'])
 
     def test_index_with_offset(self):

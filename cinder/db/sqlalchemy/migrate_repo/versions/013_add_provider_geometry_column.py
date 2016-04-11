@@ -23,13 +23,3 @@ def upgrade(migrate_engine):
     provider_geometry = Column('provider_geometry', String(255))
     volumes.create_column(provider_geometry)
     volumes.update().values(provider_geometry=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove provider_geometry column from volumes."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volumes = Table('volumes', meta, autoload=True)
-    provider_geometry = Column('provider_geometry', String(255))
-    volumes.drop_column(provider_geometry)

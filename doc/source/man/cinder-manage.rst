@@ -7,9 +7,9 @@ Control and manage OpenStack block storage
 ------------------------------------------------------
 
 :Author: openstack@lists.openstack.org
-:Date:   2013-05-30
+:Date:   2015-11-03
 :Copyright: OpenStack Foundation
-:Version: 2013.2
+:Version: 7.0.0
 :Manual section: 1
 :Manual group: cloud computing
 
@@ -35,7 +35,7 @@ For example, to obtain a list of the cinder services currently running:
 Run without arguments to see a list of available command categories:
 ``cinder-manage``
 
-Categories are shell, logs, migrate, db, volume, host, service, backup, version, sm and config. Detailed descriptions are below.
+Categories are shell, logs, migrate, db, volume, host, service, backup, version, and config. Detailed descriptions are below.
 
 You can also run with a category argument such as 'db' to see a list of all commands in that category:
 ``cinder-manage db``
@@ -52,6 +52,10 @@ Cinder Db
 ``cinder-manage db sync``
 
     Sync the database up to the most recent version. This is the standard way to create the db as well.
+
+``cinder-manage db purge [<number of days>]``
+
+    Purge database entries that are marked as deleted, that are older than the number of days specified.
 
 
 Cinder Logs
@@ -91,13 +95,13 @@ Cinder Shell
 Cinder Volume
 ~~~~~~~~~~~~~
 
-``cinder-manage volume reattach <volume_id>``
-
-    Re-attach a volume that has previously been attached to an instance.
-
 ``cinder-manage volume delete <volume_id>``
 
     Delete a volume without first checking that the volume is available.
+
+``cinder-manage volume update_host --currenthost <current host> --newhost <new host>``
+
+    Updates the host name of all volumes currently associated with a specified host.
 
 Cinder Host
 ~~~~~~~~~~~
@@ -113,6 +117,10 @@ Cinder Service
 
     Displays a list of all cinder services and their host, zone, status, state and when the information was last updated.
 
+``cinder-manage service remove <service> <host>``
+
+    Removes a specified cinder service from a specified host.
+
 Cinder Backup
 ~~~~~~~~~~~~~
 
@@ -126,33 +134,6 @@ Cinder Version
 ``cinder-manage version list``
 
     Displays the codebase version cinder is running upon.
-
-Cinder Storage Management
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-``cinder-manage sm flavor_create <label> <desc>``
-
-    Creates a Storage Management flavor with the requested label and description.
-
-``cinder-manage sm flavor_list [<flavor id>]``
-
-    Displays a list of all available flavors.  The optional flavor ID parameter may be used to display information for a specific flavor.
-
-``cinder-manage sm flavor_delete <label>``
-
-    Deletes the requested flavor.
-
-``cinder-manage sm backend_add <flavor_label> <sr_type> [<config connection parameters>]``
-
-    Creates a backend using the requested flavor, sr_type and optional arguments.
-
-``cinder-manage sm backend_list [<backend_conf_id>]``
-
-    Displays a list of all backends.  The optional backend ID parameter may be used to display information for a specific backend.
-
-``cinder-manage sm backend_remove <backend_conf_id>``
-
-    Removes the specified backend.
 
 Cinder Config
 ~~~~~~~~~~~~~

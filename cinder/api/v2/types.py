@@ -18,8 +18,9 @@
 from oslo_utils import strutils
 from webob import exc
 
+from cinder.api import common
 from cinder.api.openstack import wsgi
-from cinder.api.views import types as views_types
+from cinder.api.v2.views import types as views_types
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _
@@ -31,6 +32,7 @@ def make_voltype(elem):
     elem.set('id')
     elem.set('name')
     elem.set('description')
+    elem.set('qos_specs_id')
     extra_specs = xmlutil.make_flat_dict('extra_specs', selector='extra_specs')
     elem.append(extra_specs)
 
@@ -79,9 +81,8 @@ class VolumeTypesController(wsgi.Controller):
             try:
                 vol_type = volume_types.get_volume_type(context, id)
                 req.cache_resource(vol_type, name='types')
-            except exception.NotFound:
-                msg = _("Volume type not found")
-                raise exc.HTTPNotFound(explanation=msg)
+            except exception.VolumeTypeNotFound as error:
+                raise exc.HTTPNotFound(explanation=error.msg)
 
         return self._view_builder.show(req, vol_type)
 
@@ -107,6 +108,12 @@ class VolumeTypesController(wsgi.Controller):
 
     def _get_volume_types(self, req):
         """Helper function that returns a list of type dicts."""
+        params = req.params.copy()
+        marker, limit, offset = common.get_pagination_params(params)
+        sort_keys, sort_dirs = common.get_sort_params(params)
+        # NOTE(wanghao): Currently, we still only support to filter by
+        # is_public. If we want to filter by more args, we should set params
+        # to filters.
         filters = {}
         context = req.environ['cinder.context']
         if context.is_admin:
@@ -115,9 +122,22 @@ class VolumeTypesController(wsgi.Controller):
                 req.params.get('is_public', None))
         else:
             filters['is_public'] = True
-        limited_types = volume_types.get_all_types(
-            context, search_opts=filters).values()
+        utils.remove_invalid_filter_options(context,
+                                            filters,
+                                            self._get_vol_type_filter_options()
+                                            )
+        limited_types = volume_types.get_all_types(context,
+                                                   filters=filters,
+                                                   marker=marker, limit=limit,
+                                                   sort_keys=sort_keys,
+                                                   sort_dirs=sort_dirs,
+                                                   offset=offset,
+                                                   list_result=True)
         return limited_types
+
+    def _get_vol_type_filter_options(self):
+        """Return volume type search options allowed by non-admin."""
+        return ['is_public']
 
 
 def create_resource():

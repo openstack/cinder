@@ -17,19 +17,16 @@ Handles all requests to Nova.
 """
 
 
+from novaclient import client as nova_client
 from novaclient import exceptions as nova_exceptions
-from novaclient import extension
 from novaclient import service_catalog
-from novaclient.v1_1 import client as nova_client
-from novaclient.v1_1.contrib import assisted_volume_snapshots
-from novaclient.v1_1.contrib import list_extensions
 from oslo_config import cfg
+from oslo_log import log as logging
 from requests import exceptions as request_exceptions
 
 from cinder import context as ctx
 from cinder.db import base
 from cinder import exception
-from cinder.openstack.common import log as logging
 
 nova_opts = [
     cfg.StrOpt('nova_catalog_info',
@@ -42,17 +39,13 @@ nova_opts = [
                default='compute:Compute Service:adminURL',
                help='Same as nova_catalog_info, but for admin endpoint.'),
     cfg.StrOpt('nova_endpoint_template',
-               default=None,
                help='Override service catalog lookup with template for nova '
                     'endpoint e.g. http://localhost:8774/v2/%(project_id)s'),
     cfg.StrOpt('nova_endpoint_admin_template',
-               default=None,
                help='Same as nova_endpoint_template, but for admin endpoint.'),
     cfg.StrOpt('os_region_name',
-               default=None,
                help='Region name of this node'),
     cfg.StrOpt('nova_ca_certificates_file',
-               default=None,
                help='Location of ca certificates file to use for nova client '
                     'requests.'),
     cfg.BoolOpt('nova_api_insecure',
@@ -65,8 +58,12 @@ CONF.register_opts(nova_opts)
 
 LOG = logging.getLogger(__name__)
 
-nova_extensions = (assisted_volume_snapshots,
-                   extension.Extension('list_extensions', list_extensions))
+# TODO(e0ne): Make Nova version configurable in Mitaka.
+NOVA_API_VERSION = 2
+
+nova_extensions = [ext for ext in nova_client.discover_extensions(2)
+                   if ext.name in ("assisted_volume_snapshots",
+                                   "list_extensions")]
 
 
 def novaclient(context, admin_endpoint=False, privileged_user=False,
@@ -96,6 +93,13 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
     if admin_endpoint:
         nova_endpoint_template = CONF.nova_endpoint_admin_template
         nova_catalog_info = CONF.nova_catalog_admin_info
+    service_type, service_name, endpoint_type = nova_catalog_info.split(':')
+
+    # Extract the region if set in configuration
+    if CONF.os_region_name:
+        region_filter = {'attr': 'region', 'filter_value': CONF.os_region_name}
+    else:
+        region_filter = {}
 
     if privileged_user and CONF.os_privileged_user_name:
         context = ctx.RequestContext(
@@ -104,38 +108,41 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
             project_name=CONF.os_privileged_user_tenant,
             service_catalog=context.service_catalog)
 
-        # The admin user needs to authenticate before querying Nova
-        url = sc.url_for(service_type='identity')
+        # When privileged_user is used, it needs to authenticate to Keystone
+        # before querying Nova, so we set auth_url to the identity service
+        # endpoint.
+        if CONF.os_privileged_user_auth_url:
+            url = CONF.os_privileged_user_auth_url
+        else:
+            # We then pass region_name, endpoint_type, etc. to the
+            # Client() constructor so that the final endpoint is
+            # chosen correctly.
+            url = sc.url_for(service_type='identity',
+                             endpoint_type=endpoint_type,
+                             **region_filter)
 
-        LOG.debug('Creating a Nova client using "%s" user' %
+        LOG.debug('Creating a Nova client using "%s" user',
                   CONF.os_privileged_user_name)
     else:
         if nova_endpoint_template:
             url = nova_endpoint_template % context.to_dict()
         else:
-            info = nova_catalog_info
-            service_type, service_name, endpoint_type = info.split(':')
-            # extract the region if set in configuration
-            if CONF.os_region_name:
-                attr = 'region'
-                filter_value = CONF.os_region_name
-            else:
-                attr = None
-                filter_value = None
-            url = sc.url_for(attr=attr,
-                             filter_value=filter_value,
-                             service_type=service_type,
+            url = sc.url_for(service_type=service_type,
                              service_name=service_name,
-                             endpoint_type=endpoint_type)
+                             endpoint_type=endpoint_type,
+                             **region_filter)
 
-        LOG.debug('Nova client connection created using URL: %s' % url)
+        LOG.debug('Nova client connection created using URL: %s', url)
 
-    c = nova_client.Client(context.user_id,
+    c = nova_client.Client(NOVA_API_VERSION,
+                           context.user_id,
                            context.auth_token,
                            context.project_name,
                            auth_url=url,
                            insecure=CONF.nova_api_insecure,
                            timeout=timeout,
+                           region_name=CONF.os_region_name,
+                           endpoint_type=endpoint_type,
                            cacert=CONF.nova_ca_certificates_file,
                            extensions=nova_extensions)
 
@@ -152,12 +159,7 @@ class API(base.Base):
 
     def has_extension(self, context, extension, timeout=None):
         try:
-            client = novaclient(context, timeout=timeout)
-
-            # Pylint gives a false positive here because the 'list_extensions'
-            # method is not explicitly declared. Overriding the error.
-            # pylint: disable-msg=E1101
-            nova_exts = client.list_extensions.show_all()
+            nova_exts = novaclient(context).list_extensions.show_all()
         except request_exceptions.Timeout:
             raise exception.APITimeout(service='Nova')
         return extension in [e.name for e in nova_exts]
@@ -169,15 +171,17 @@ class API(base.Base):
                                                          new_volume_id)
 
     def create_volume_snapshot(self, context, volume_id, create_info):
-        nova = novaclient(context, admin_endpoint=True)
+        nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
+        # pylint: disable-msg=E1101
         nova.assisted_volume_snapshots.create(
             volume_id,
             create_info=create_info)
 
     def delete_volume_snapshot(self, context, snapshot_id, delete_info):
-        nova = novaclient(context, admin_endpoint=True)
+        nova = novaclient(context, admin_endpoint=True, privileged_user=True)
 
+        # pylint: disable-msg=E1101
         nova.assisted_volume_snapshots.delete(
             snapshot_id,
             delete_info=delete_info)

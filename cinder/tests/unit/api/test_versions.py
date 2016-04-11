@@ -95,10 +95,12 @@ class VersionsControllerTestCase(test.TestCase):
         response = req.get_response(router.APIRouter())
         self.assertEqual(200, response.status_int)
 
-    @ddt.data('1.0')
-    def test_versions_v1(self, version):
-        req = self.build_request(base_url='http://localhost/v1',
-                                 header_version=version)
+    @ddt.data('1.0', '2.0', '3.0')
+    def test_versions(self, version):
+        req = self.build_request(
+            base_url='http://localhost/v{}'.format(version[0]),
+            header_version=version)
+
         if version is not None:
             req.headers = {VERSION_HEADER_NAME: VOLUME_SERVICE + version}
 
@@ -108,44 +110,17 @@ class VersionsControllerTestCase(test.TestCase):
         version_list = body['versions']
 
         ids = [v['id'] for v in version_list]
-        self.assertEqual({'v1.0'}, set(ids))
+        self.assertEqual({'v{}'.format(version)}, set(ids))
 
-        self.assertEqual('', version_list[0].get('min_version'))
-        self.assertEqual('', version_list[0].get('version'))
-
-    @ddt.data('2.0')
-    def test_versions_v2(self, version):
-        req = self.build_request(base_url='http://localhost/v2',
-                                 header_version=version)
-
-        response = req.get_response(router.APIRouter())
-        self.assertEqual(200, response.status_int)
-        body = jsonutils.loads(response.body)
-        version_list = body['versions']
-
-        ids = [v['id'] for v in version_list]
-        self.assertEqual({'v2.0'}, set(ids))
-
-        self.assertEqual('', version_list[0].get('min_version'))
-        self.assertEqual('', version_list[0].get('version'))
-
-    @ddt.data('3.0', 'latest')
-    def test_versions_v3_0_and_latest(self, version):
-        req = self.build_request(header_version=version)
-
-        response = req.get_response(router.APIRouter())
-        self.assertEqual(200, response.status_int)
-        body = jsonutils.loads(response.body)
-        version_list = body['versions']
-
-        ids = [v['id'] for v in version_list]
-        self.assertEqual({'v3.0'}, set(ids))
-        self.check_response(response, '3.0')
-
-        self.assertEqual(api_version_request._MAX_API_VERSION,
-                         version_list[0].get('version'))
-        self.assertEqual(api_version_request._MIN_API_VERSION,
-                         version_list[0].get('min_version'))
+        if version == '3.0':
+            self.check_response(response, version)
+            self.assertEqual(api_version_request._MAX_API_VERSION,
+                             version_list[0].get('version'))
+            self.assertEqual(api_version_request._MIN_API_VERSION,
+                             version_list[0].get('min_version'))
+        else:
+            self.assertEqual('', version_list[0].get('min_version'))
+            self.assertEqual('', version_list[0].get('version'))
 
     def test_versions_version_latest(self):
         req = self.build_request(header_version='latest')

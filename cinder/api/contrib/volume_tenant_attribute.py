@@ -22,7 +22,7 @@ authorize = extensions.soft_extension_authorizer('volume',
 
 
 class VolumeTenantAttributeController(wsgi.Controller):
-    def _add_volume_tenant_attribute(self, context, req, resp_volume):
+    def _add_volume_tenant_attribute(self, req, resp_volume):
         db_volume = req.get_db_volume(resp_volume['id'])
         key = "%s:tenant_id" % Volume_tenant_attribute.alias
         resp_volume[key] = db_volume['project_id']
@@ -33,7 +33,7 @@ class VolumeTenantAttributeController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumeTenantAttributeTemplate())
             volume = resp_obj.obj['volume']
-            self._add_volume_tenant_attribute(context, req, volume)
+            self._add_volume_tenant_attribute(req, volume)
 
     @wsgi.extends
     def detail(self, req, resp_obj):
@@ -41,7 +41,7 @@ class VolumeTenantAttributeController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumeListTenantAttributeTemplate())
             for vol in list(resp_obj.obj['volumes']):
-                self._add_volume_tenant_attribute(context, req, vol)
+                self._add_volume_tenant_attribute(req, vol)
 
 
 class Volume_tenant_attribute(extensions.ExtensionDescriptor):

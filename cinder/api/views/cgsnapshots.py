@@ -13,8 +13,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
+
 from cinder.api import common
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -41,8 +42,8 @@ class ViewBuilder(common.ViewBuilder):
         """Generic, non-detailed view of a cgsnapshot."""
         return {
             'cgsnapshot': {
-                'id': cgsnapshot['id'],
-                'name': cgsnapshot['name']
+                'id': cgsnapshot.id,
+                'name': cgsnapshot.name
             }
         }
 
@@ -50,12 +51,12 @@ class ViewBuilder(common.ViewBuilder):
         """Detailed view of a single cgsnapshot."""
         return {
             'cgsnapshot': {
-                'id': cgsnapshot.get('id'),
-                'consistencygroup_id': cgsnapshot.get('consistencygroup_id'),
-                'status': cgsnapshot.get('status'),
-                'created_at': cgsnapshot.get('created_at'),
-                'name': cgsnapshot.get('name'),
-                'description': cgsnapshot.get('description')
+                'id': cgsnapshot.id,
+                'consistencygroup_id': cgsnapshot.consistencygroup_id,
+                'status': cgsnapshot.status,
+                'created_at': cgsnapshot.created_at,
+                'name': cgsnapshot.name,
+                'description': cgsnapshot.description
             }
         }
 

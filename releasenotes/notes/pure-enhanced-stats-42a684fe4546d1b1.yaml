@@ -1,0 +1,11 @@
+---
+features:
+  - Added additional metrics reported to the scheduler for Pure Volume Drivers
+    for better filtering and weighing functions.
+  - Added config option to enable/disable automatically calculation an
+    over-subscription ratio max for Pure Volume Drivers. When disabled the
+    drivers will now respect the max_oversubscription_ratio config option.
+fixes:
+  - Fixed issue where Pure Volume Drivers would ignore reserved_percentage
+    config option.
+

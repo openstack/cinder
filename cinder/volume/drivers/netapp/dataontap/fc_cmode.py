@@ -1,4 +1,5 @@
 # Copyright (c) - 2014, Clinton Knight.  All rights reserved.
+# Copyright (c) - 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -15,23 +16,30 @@
 Volume driver for NetApp Data ONTAP (C-mode) FibreChannel storage systems.
 """
 
-from cinder.openstack.common import log as logging
+from oslo_log import log as logging
+
 from cinder.volume import driver
-from cinder.volume.drivers.netapp.dataontap.block_cmode import \
-    NetAppBlockStorageCmodeLibrary as lib_cmode
+from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.zonemanager import utils as fczm_utils
+
 
 LOG = logging.getLogger(__name__)
 
 
-class NetAppCmodeFibreChannelDriver(driver.FibreChannelDriver):
+class NetAppCmodeFibreChannelDriver(driver.BaseVD,
+                                    driver.ConsistencyGroupVD,
+                                    driver.ManageableVD,
+                                    driver.ExtendVD,
+                                    driver.TransferVD,
+                                    driver.SnapshotVD):
     """NetApp C-mode FibreChannel volume driver."""
 
     DRIVER_NAME = 'NetApp_FibreChannel_Cluster_direct'
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeFibreChannelDriver, self).__init__(*args, **kwargs)
-        self.library = lib_cmode(self.DRIVER_NAME, 'FC', **kwargs)
+        self.library = block_cmode.NetAppBlockStorageCmodeLibrary(
+            self.DRIVER_NAME, 'FC', **kwargs)
 
     def do_setup(self, context):
         self.library.do_setup(context)
@@ -58,7 +66,15 @@ class NetAppCmodeFibreChannelDriver(driver.FibreChannelDriver):
         self.library.delete_snapshot(snapshot)
 
     def get_volume_stats(self, refresh=False):
-        return self.library.get_volume_stats(refresh)
+        return self.library.get_volume_stats(refresh,
+                                             self.get_filter_function(),
+                                             self.get_goodness_function())
+
+    def get_default_filter_function(self):
+        return self.library.get_default_filter_function()
+
+    def get_default_goodness_function(self):
+        return self.library.get_default_goodness_function()
 
     def extend_volume(self, volume, new_size):
         self.library.extend_volume(volume, new_size)
@@ -66,11 +82,20 @@ class NetAppCmodeFibreChannelDriver(driver.FibreChannelDriver):
     def ensure_export(self, context, volume):
         return self.library.ensure_export(context, volume)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self.library.create_export(context, volume)
 
     def remove_export(self, context, volume):
         self.library.remove_export(context, volume)
+
+    def manage_existing(self, volume, existing_ref):
+        return self.library.manage_existing(volume, existing_ref)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self.library.manage_existing_get_size(volume, existing_ref)
+
+    def unmanage(self, volume):
+        return self.library.unmanage(volume)
 
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
@@ -83,3 +108,27 @@ class NetAppCmodeFibreChannelDriver(driver.FibreChannelDriver):
 
     def get_pool(self, volume):
         return self.library.get_pool(volume)
+
+    def create_consistencygroup(self, context, group):
+        return self.library.create_consistencygroup(group)
+
+    def delete_consistencygroup(self, context, group, volumes):
+        return self.library.delete_consistencygroup(group, volumes)
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes=None, remove_volumes=None):
+        return self.library.update_consistencygroup(group, add_volumes=None,
+                                                    remove_volumes=None)
+
+    def create_cgsnapshot(self, context, cgsnapshot, snapshots):
+        return self.library.create_cgsnapshot(cgsnapshot, snapshots)
+
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        return self.library.delete_cgsnapshot(cgsnapshot, snapshots)
+
+    def create_consistencygroup_from_src(self, context, group, volumes,
+                                         cgsnapshot=None, snapshots=None,
+                                         source_cg=None, source_vols=None):
+        return self.library.create_consistencygroup_from_src(
+            group, volumes, cgsnapshot=cgsnapshot, snapshots=snapshots,
+            source_cg=source_cg, source_vols=source_vols)

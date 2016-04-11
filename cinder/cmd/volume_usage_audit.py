@@ -34,21 +34,18 @@
 
 from __future__ import print_function
 
-from datetime import datetime
+import datetime
 import sys
-import traceback
-import warnings
-
-warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
+from oslo_log import log as logging
 
 from cinder import i18n
 i18n.enable_lazy()
 from cinder import context
 from cinder import db
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
+from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder import version
@@ -58,12 +55,10 @@ import cinder.volume.utils
 CONF = cfg.CONF
 script_opts = [
     cfg.StrOpt('start_time',
-               default=None,
                help="If this option is specified then the start time "
                     "specified is used instead of the start time of the "
                     "last completed audit period."),
     cfg.StrOpt('end_time',
-               default=None,
                help="If this option is specified then the end time "
                     "specified is used instead of the end time of the "
                     "last completed audit period."),
@@ -76,27 +71,29 @@ CONF.register_cli_opts(script_opts)
 
 
 def main():
+    objects.register_all()
     admin_context = context.get_admin_context()
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
-    logging.setup("cinder")
+    logging.setup(CONF, "cinder")
     LOG = logging.getLogger("cinder")
     rpc.init(CONF)
     begin, end = utils.last_completed_audit_period()
     if CONF.start_time:
-        begin = datetime.strptime(CONF.start_time, "%Y-%m-%d %H:%M:%S")
+        begin = datetime.datetime.strptime(CONF.start_time,
+                                           "%Y-%m-%d %H:%M:%S")
     if CONF.end_time:
-        end = datetime.strptime(CONF.end_time, "%Y-%m-%d %H:%M:%S")
+        end = datetime.datetime.strptime(CONF.end_time,
+                                         "%Y-%m-%d %H:%M:%S")
     if not end > begin:
         msg = _("The end time (%(end)s) must be after the start "
                 "time (%(start)s).") % {'start': begin,
                                         'end': end}
-        print(msg)
         LOG.error(msg)
         sys.exit(-1)
-    print(_("Starting volume usage audit"))
+    LOG.debug("Starting volume usage audit")
     msg = _("Creating usages for %(begin_period)s until %(end_period)s")
-    print(msg % {"begin_period": str(begin), "end_period": str(end)})
+    LOG.debug(msg, {"begin_period": str(begin), "end_period": str(end)})
 
     extra_info = {
         'audit_period_beginning': str(begin),
@@ -106,12 +103,12 @@ def main():
     volumes = db.volume_get_active_by_window(admin_context,
                                              begin,
                                              end)
-    print(_("Found %d volumes") % len(volumes))
+    LOG.debug("Found %d volumes", len(volumes))
     for volume_ref in volumes:
         try:
             LOG.debug("Send exists notification for <volume_id: "
                       "%(volume_id)s> <project_id %(project_id)s> "
-                      "<%(extra_info)s>" %
+                      "<%(extra_info)s>",
                       {'volume_id': volume_ref.id,
                        'project_id': volume_ref.project_id,
                        'extra_info': extra_info})
@@ -119,11 +116,9 @@ def main():
                 admin_context,
                 volume_ref,
                 'exists', extra_usage_info=extra_info)
-        except Exception as e:
-            LOG.error(_LE("Failed to send exists notification"
-                          " for volume %s.") %
-                      volume_ref.id)
-            print(traceback.format_exc(e))
+        except Exception as exc_msg:
+            LOG.exception(_LE("Exists volume notification failed: %s"),
+                          exc_msg, resource=volume_ref)
 
         if (CONF.send_actions and
                 volume_ref.created_at > begin and
@@ -135,7 +130,7 @@ def main():
                 }
                 LOG.debug("Send create notification for "
                           "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'volume_id': volume_ref.id,
                            'project_id': volume_ref.project_id,
                            'extra_info': local_extra_info})
@@ -147,10 +142,9 @@ def main():
                     admin_context,
                     volume_ref,
                     'create.end', extra_usage_info=local_extra_info)
-            except Exception as e:
-                LOG.error(_LE("Failed to send create notification for "
-                              "volume %s.") % volume_ref.id)
-                print(traceback.format_exc(e))
+            except Exception as exc_msg:
+                LOG.exception(_LE("Create volume notification failed: %s"),
+                              exc_msg, resource=volume_ref)
 
         if (CONF.send_actions and volume_ref.deleted_at and
                 volume_ref.deleted_at > begin and
@@ -162,7 +156,7 @@ def main():
                 }
                 LOG.debug("Send delete notification for "
                           "<volume_id: %(volume_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'volume_id': volume_ref.id,
                            'project_id': volume_ref.project_id,
                            'extra_info': local_extra_info})
@@ -174,19 +168,17 @@ def main():
                     admin_context,
                     volume_ref,
                     'delete.end', extra_usage_info=local_extra_info)
-            except Exception as e:
-                LOG.error(_LE("Failed to send delete notification for volume "
-                              "%s.") % volume_ref.id)
-                print(traceback.format_exc(e))
+            except Exception as exc_msg:
+                LOG.exception(_LE("Delete volume notification failed: %s"),
+                              exc_msg, resource=volume_ref)
 
-    snapshots = db.snapshot_get_active_by_window(admin_context,
-                                                 begin,
-                                                 end)
-    print(_("Found %d snapshots") % len(snapshots))
+    snapshots = objects.SnapshotList.get_active_by_window(admin_context,
+                                                          begin, end)
+    LOG.debug("Found %d snapshots", len(snapshots))
     for snapshot_ref in snapshots:
         try:
             LOG.debug("Send notification for <snapshot_id: %(snapshot_id)s> "
-                      "<project_id %(project_id)s> <%(extra_info)s>" %
+                      "<project_id %(project_id)s> <%(extra_info)s>",
                       {'snapshot_id': snapshot_ref.id,
                        'project_id': snapshot_ref.project_id,
                        'extra_info': extra_info})
@@ -194,11 +186,9 @@ def main():
                                                             snapshot_ref,
                                                             'exists',
                                                             extra_info)
-        except Exception as e:
-            LOG.error(_LE("Failed to send exists notification "
-                          "for snapshot %s.")
-                      % snapshot_ref.id)
-            print(traceback.format_exc(e))
+        except Exception as exc_msg:
+            LOG.exception(_LE("Exists snapshot notification failed: %s"),
+                          exc_msg, resource=snapshot_ref)
 
         if (CONF.send_actions and
                 snapshot_ref.created_at > begin and
@@ -210,7 +200,7 @@ def main():
                 }
                 LOG.debug("Send create notification for "
                           "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'snapshot_id': snapshot_ref.id,
                            'project_id': snapshot_ref.project_id,
                            'extra_info': local_extra_info})
@@ -222,10 +212,9 @@ def main():
                     admin_context,
                     snapshot_ref,
                     'create.end', extra_usage_info=local_extra_info)
-            except Exception as e:
-                LOG.error(_LE("Failed to send create notification for snapshot"
-                              "%s.") % snapshot_ref.id)
-                print(traceback.format_exc(e))
+            except Exception as exc_msg:
+                LOG.exception(_LE("Create snapshot notification failed: %s"),
+                              exc_msg, resource=snapshot_ref)
 
         if (CONF.send_actions and snapshot_ref.deleted_at and
                 snapshot_ref.deleted_at > begin and
@@ -237,7 +226,7 @@ def main():
                 }
                 LOG.debug("Send delete notification for "
                           "<snapshot_id: %(snapshot_id)s> "
-                          "<project_id %(project_id)s> <%(extra_info)s>" %
+                          "<project_id %(project_id)s> <%(extra_info)s>",
                           {'snapshot_id': snapshot_ref.id,
                            'project_id': snapshot_ref.project_id,
                            'extra_info': local_extra_info})
@@ -249,9 +238,8 @@ def main():
                     admin_context,
                     snapshot_ref,
                     'delete.end', extra_usage_info=local_extra_info)
-            except Exception as e:
-                LOG.error(_LE("Failed to send delete notification for snapshot"
-                              "%s.") % snapshot_ref.id)
-                print(traceback.format_exc(e))
+            except Exception as exc_msg:
+                LOG.exception(_LE("Delete snapshot notification failed: %s"),
+                              exc_msg, resource=snapshot_ref)
 
-    print(_("Volume usage audit completed"))
+    LOG.debug("Volume usage audit completed")

@@ -23,13 +23,3 @@ def upgrade(migrate_engine):
     provider_id = Column('provider_id', String(255))
     volumes.create_column(provider_id)
     volumes.update().values(provider_id=None).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove provider_id column from volumes."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volumes = Table('volumes', meta, autoload=True)
-    provider_id = volumes.columns.provider_id
-    volumes.drop_column(provider_id)

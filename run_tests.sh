@@ -150,14 +150,7 @@ function run_tests {
     ${wrapper} python setup.py egg_info
   fi
   echo "Running \`${wrapper} $TESTRTESTS\`"
-  if ${wrapper} which subunit-2to1 2>&1 > /dev/null
-  then
-    # subunit-2to1 is present, testr subunit stream should be in version 2
-    # format. Convert to version one before colorizing.
-    bash -c "${wrapper} $TESTRTESTS | ${wrapper} subunit-2to1 | ${wrapper} tools/colorizer.py"
-  else
-    bash -c "${wrapper} $TESTRTESTS | ${wrapper} tools/colorizer.py"
-  fi
+  bash -c "${wrapper} $TESTRTESTS | ${wrapper} subunit-trace"
   RESULT=$?
   set -e
 
@@ -167,7 +160,7 @@ function run_tests {
     echo "Generating coverage report in covhtml/"
     # Don't compute coverage for common code, which is tested elsewhere
     ${wrapper} coverage combine
-    ${wrapper} coverage html --include='cinder/*' --omit='cinder/openstack/common/*' -d covhtml -i
+    ${wrapper} coverage html --include='cinder/*' -d covhtml -i
   fi
 
   return $RESULT
@@ -191,6 +184,8 @@ function run_pep8 {
   echo "Running flake8 ..."
   warn_on_flake8_without_venv
   bash -c "${wrapper} flake8"
+  ${wrapper} bash tools/config/check_uptodate.sh --checkonly
+  ${wrapper} tools/check_exec.py cinder || exit 1
 }
 
 

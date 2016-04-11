@@ -13,18 +13,16 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import base64
-import string
-import urllib2
-
 from lxml import etree
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_serialization import base64
+from oslo_service import loopingcall
+from six.moves import urllib
 
 from cinder import context
 from cinder import exception
 from cinder.i18n import _LE, _LI, _LW
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import loopingcall
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -55,6 +53,7 @@ LOG = logging.getLogger(__name__)
 OPERATIONAL_STATUS = 'OPERATIONAL'
 PREPARED_STATUS = 'PREPARED'
 INVALID_STATUS = 'VALID'
+NOTFOUND_STATUS = 'NOT FOUND'
 
 
 # Raise exception for X-IO driver
@@ -64,11 +63,15 @@ def RaiseXIODriverException():
 
 class XIOISEDriver(object):
 
-    VERSION = '1.1.0'
+    VERSION = '1.1.4'
 
     # Version   Changes
     # 1.0.0     Base driver
     # 1.1.0     QoS, affinity, retype and thin support
+    # 1.1.1     Fix retry loop (Bug 1429283)
+    # 1.1.2     Fix host object deletion (Bug 1433450).
+    # 1.1.3     Wait for volume/snapshot to be deleted.
+    # 1.1.4     Force target_lun to be int (Bug 1549048)
 
     def __init__(self, *args, **kwargs):
         super(XIOISEDriver, self).__init__()
@@ -88,18 +91,15 @@ class XIOISEDriver(object):
         LOG.debug("XIOISEDriver check_for_setup_error called.")
         # The san_ip must always be set
         if self.configuration.san_ip == "":
-            msg = _LE("san ip must be configured!")
-            LOG.error(msg)
+            LOG.error(_LE("san ip must be configured!"))
             RaiseXIODriverException()
         # The san_login must always be set
         if self.configuration.san_login == "":
-            msg = _LE("san_login must be configured!")
-            LOG.error(msg)
+            LOG.error(_LE("san_login must be configured!"))
             RaiseXIODriverException()
         # The san_password must always be set
         if self.configuration.san_password == "":
-            msg = _LE("san_password must be configured!")
-            LOG.error(msg)
+            LOG.error(_LE("san_password must be configured!"))
             RaiseXIODriverException()
         return
 
@@ -116,8 +116,7 @@ class XIOISEDriver(object):
         if status != 200:
             # unsuccessful - this is fatal as we need the global id
             # to build REST requests.
-            msg = _LE("Array query failed - No response (%d)!") % status
-            LOG.error(msg)
+            LOG.error(_LE("Array query failed - No response (%d)!"), status)
             RaiseXIODriverException()
         # Successfully fetched QUERY info. Parse out globalid along with
         # ipaddress for Controller 1 and Controller 2. We assign primary
@@ -132,8 +131,7 @@ class XIOISEDriver(object):
         self.configuration.ise_qos = False
         capabilities = xml_tree.find('capabilities')
         if capabilities is None:
-            msg = _LE("Array query failed. No capabilities in response!")
-            LOG.error(msg)
+            LOG.error(_LE("Array query failed. No capabilities in response!"))
             RaiseXIODriverException()
         for node in capabilities:
             if node.tag != 'capability':
@@ -151,22 +149,19 @@ class XIOISEDriver(object):
                 support['thin-clones'] = True
         # Make sure ISE support necessary features
         if not support['clones']:
-            msg = _LE("ISE FW version is not compatible with Openstack!")
-            LOG.error(msg)
+            LOG.error(_LE("ISE FW version is not compatible with OpenStack!"))
             RaiseXIODriverException()
         # set up thin provisioning support
         self.configuration.san_thin_provision = support['thin-clones']
         # Fill in global id, primary and secondary ip addresses
         globalid = xml_tree.find('globalid')
         if globalid is None:
-            msg = _LE("Array query failed. No global id in XML response!")
-            LOG.error(msg)
+            LOG.error(_LE("Array query failed. No global id in XML response!"))
             RaiseXIODriverException()
         self.ise_globalid = globalid.text
         controllers = xml_tree.find('controllers')
         if controllers is None:
-            msg = _LE("Array query failed. No controllers in response!")
-            LOG.error(msg)
+            LOG.error(_LE("Array query failed. No controllers in response!"))
             RaiseXIODriverException()
         for node in controllers:
             if node.tag != 'controller':
@@ -205,8 +200,7 @@ class XIOISEDriver(object):
             # this call will populate globalid
             self._send_query()
         if self.ise_globalid is None:
-            msg = _LE("ISE globalid not set!")
-            LOG.error(msg)
+            LOG.error(_LE("ISE globalid not set!"))
             RaiseXIODriverException()
         return self.ise_globalid
 
@@ -217,8 +211,7 @@ class XIOISEDriver(object):
             self.ise_primary_ip = self.configuration.san_ip
         if self.ise_primary_ip == '':
             # No IP - fatal.
-            msg = _LE("Primary IP must be set!")
-            LOG.error(msg)
+            LOG.error(_LE("Primary IP must be set!"))
             RaiseXIODriverException()
         return self.ise_primary_ip
 
@@ -246,17 +239,17 @@ class XIOISEDriver(object):
         response['content'] = ''
         response['location'] = ''
         # send the request
-        req = urllib2.Request(url, body, header)
+        req = urllib.request.Request(url, body, header)
         # Override method to allow GET, PUT, POST, DELETE
         req.get_method = lambda: method
         try:
-            resp = urllib2.urlopen(req)
-        except urllib2.HTTPError as err:
+            resp = urllib.request.urlopen(req)
+        except urllib.error.HTTPError as err:
             # HTTP error. Return HTTP status and content and let caller
             # handle retries.
             response['status'] = err.code
             response['content'] = err.read()
-        except urllib2.URLError as err:
+        except urllib.error.URLError as err:
             # Connection failure.  Return a status of 0 to indicate error.
             response['status'] = 0
         else:
@@ -282,7 +275,7 @@ class XIOISEDriver(object):
             if 'content' in resp:
                 reason = etree.fromstring(resp['content'])
                 if reason is not None:
-                    reason = string.upper(reason.text)
+                    reason = reason.text.upper()
             if INVALID_STATUS in reason:
                 # Request failed with an invalid state. This can be because
                 # source volume is in a temporary unavailable state.
@@ -344,12 +337,13 @@ class XIOISEDriver(object):
         def _call_loop(loop_args):
             remaining = loop_args['retries']
             args = loop_args['args']
-            LOG.debug("In call loop (%d) %s", remaining, args)
+            LOG.debug("In call loop (%(remaining)d) %(args)s",
+                      {'remaining': remaining, 'args': args})
             (remaining, response) = loop_args['func'](args, remaining)
             if remaining == 0:
                 # We are done - let our caller handle response
                 raise loopingcall.LoopingCallDone(response)
-            args['retries'] = remaining
+            loop_args['retries'] = remaining
 
         # Setup retries, interval and call wait function.
         loop_args = {}
@@ -371,17 +365,18 @@ class XIOISEDriver(object):
         url += uri
         # set up headers for XML and Auth
         header = {'Content-Type': 'application/xml; charset=utf-8'}
-        auth_key =\
-            base64.encodestring('%s:%s' %
-                                (self.configuration.san_login,
-                                 self.configuration.san_password))[:-1]
+        auth_key = ('%s:%s'
+                    % (self.configuration.san_login,
+                       self.configuration.san_password))
+        auth_key = base64.encode_as_text(auth_key)
         header['Authorization'] = 'Basic %s' % auth_key
         # We allow 5 retries on each IP address. If connection to primary
         # fails, secondary will be tried. If connection to secondary is
         # successful, the request flag for a new QUERY will be set. The QUERY
         # will be sent on next connection attempt to figure out which
         # controller is primary in case it has changed.
-        LOG.debug("Connect: %s %s %s", method, url, body)
+        LOG.debug("Connect: %(method)s %(url)s %(body)s",
+                  {'method': method, 'url': url, 'body': body})
         using_secondary = 0
         response = {}
         response['status'] = 0
@@ -412,21 +407,19 @@ class XIOISEDriver(object):
                 if secondary_ip is '':
                     # if secondary is not setup yet, then assert
                     # connection on primary and secondary ip failed
-                    msg = (_LE("Connection to %s failed and no secondary!") %
-                           primary_ip)
-                    LOG.error(msg)
+                    LOG.error(_LE("Connection to %s failed and no secondary!"),
+                              primary_ip)
                     RaiseXIODriverException()
                 # swap primary for secondary ip in URL
-                url = string.replace(url, primary_ip, secondary_ip)
+                url = url.replace(primary_ip, secondary_ip)
                 LOG.debug('Trying secondary IP URL: %s', url)
                 using_secondary = 1
                 continue
             # connection failed on both IPs - break out of the loop
             break
         # connection on primary and secondary ip failed
-        msg = (_LE("Could not connect to %(primary)s or %(secondary)s!") %
-               {'primary': primary_ip, 'secondary': secondary_ip})
-        LOG.error(msg)
+        LOG.error(_LE("Could not connect to %(primary)s or %(secondary)s!"),
+                  {'primary': primary_ip, 'secondary': secondary_ip})
         RaiseXIODriverException()
 
     def _param_string(self, params):
@@ -437,21 +430,19 @@ class XIOISEDriver(object):
                 param_str.append("%s=%s" % (name, value))
         return '&'.join(param_str)
 
-    def _send_cmd(self, method, url, params):
+    def _send_cmd(self, method, url, params=None):
         """Prepare HTTP request and call _connect"""
+        params = params or {}
         # Add params to appropriate field based on method
-        body = ''
-        if method == 'GET':
-            if params != {}:
+        if method in ('GET', 'PUT'):
+            if params:
                 url += '?' + self._param_string(params)
             body = ''
         elif method == 'POST':
             body = self._param_string(params)
-        elif method == 'DELETE':
+        else:
+            # method like 'DELETE'
             body = ''
-        elif method == 'PUT':
-            if params != {}:
-                url += '?' + self._param_string(params)
         # ISE REST API is mostly synchronous but has some asynchronous
         # streaks. Add retries to work around design of ISE REST API that
         # does not allow certain operations to be in process concurrently.
@@ -465,11 +456,10 @@ class XIOISEDriver(object):
         chap['chap_user'] = ''
         chap['chap_passwd'] = ''
         url = '/storage/arrays/%s/ionetworks' % (self._get_ise_globalid())
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
-            msg = _LW("IOnetworks GET failed (%d)") % status
-            LOG.warning(msg)
+            LOG.warning(_LW("IOnetworks GET failed (%d)"), status)
             return chap
         # Got a good response. Parse out CHAP info.  First check if CHAP is
         # enabled and if so parse out username and password.
@@ -495,12 +485,11 @@ class XIOISEDriver(object):
     def find_target_iqn(self, iscsi_ip):
         """Find Target IQN string"""
         url = '/storage/arrays/%s/controllers' % (self._get_ise_globalid())
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
             # Not good. Throw an exception.
-            msg = _LE("Controller GET failed (%d)") % status
-            LOG.error(msg)
+            LOG.error(_LE("Controller GET failed (%d)"), status)
             RaiseXIODriverException()
         # Good response.  Parse out IQN that matches iscsi_ip_address
         # passed in from cinder.conf.  IQN is 'hidden' in globalid field.
@@ -525,8 +514,7 @@ class XIOISEDriver(object):
                 if target_iqn != '':
                     return target_iqn
         # Did not find a matching IQN. Upsetting.
-        msg = _LE("Failed to get IQN!")
-        LOG.error(msg)
+        LOG.error(_LE("Failed to get IQN!"))
         RaiseXIODriverException()
 
     def find_target_wwns(self):
@@ -535,12 +523,11 @@ class XIOISEDriver(object):
         target_wwns = []
         target = ''
         url = '/storage/arrays/%s/controllers' % (self._get_ise_globalid())
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
             # Not good. Throw an exception.
-            msg = _LE("Controller GET failed (%d)") % status
-            LOG.error(msg)
+            LOG.error(_LE("Controller GET failed (%d)"), status)
             RaiseXIODriverException()
         # Good response. Parse out globalid (WWN) of endpoint that matches
         # protocol and type (array).
@@ -563,12 +550,12 @@ class XIOISEDriver(object):
 
     def _find_target_lun(self, location):
         """Return LUN for allocation specified in location string"""
-        resp = self._send_cmd('GET', location, {})
+        resp = self._send_cmd('GET', location)
         status = resp['status']
         if status != 200:
             # Not good. Throw an exception.
-            msg = _LE("Failed to get allocation information (%d)!") % status
-            LOG.error(msg)
+            LOG.error(_LE("Failed to get allocation information (%d)!"),
+                      status)
             RaiseXIODriverException()
         # Good response. Parse out LUN.
         xml_tree = etree.fromstring(resp['content'])
@@ -578,15 +565,14 @@ class XIOISEDriver(object):
             if luntag is not None:
                 return luntag.text
         # Did not find LUN. Throw an exception.
-        msg = _LE("Failed to get LUN information!")
-        LOG.error(msg)
+        LOG.error(_LE("Failed to get LUN information!"))
         RaiseXIODriverException()
 
     def _get_volume_info(self, vol_name):
         """Return status of ISE volume"""
         vol_info = {}
         vol_info['value'] = ''
-        vol_info['string'] = ''
+        vol_info['string'] = NOTFOUND_STATUS
         vol_info['details'] = ''
         vol_info['location'] = ''
         vol_info['size'] = ''
@@ -598,34 +584,31 @@ class XIOISEDriver(object):
         url = '/storage/arrays/%s/volumes' % (self._get_ise_globalid())
         resp = self._send_cmd('GET', url, {'name': vol_name})
         if resp['status'] != 200:
-            msg = (_LW("Could not get status for %(name)s (%(status)d).") %
-                   {'name': vol_name, 'status': resp['status']})
-            LOG.warning(msg)
+            LOG.warning(_LW("Could not get status for %(name)s (%(status)d)."),
+                        {'name': vol_name, 'status': resp['status']})
             return vol_info
         # Good response. Parse down to Volume tag in list of one.
         root = etree.fromstring(resp['content'])
         volume_node = root.find('volume')
         if volume_node is None:
-            msg = _LW("No volume node in XML content.")
-            LOG.warning(msg)
+            LOG.warning(_LW("No volume node in XML content."))
             return vol_info
         # Location can be found as an attribute in the volume node tag.
         vol_info['location'] = volume_node.attrib['self']
         # Find status tag
         status = volume_node.find('status')
         if status is None:
-            msg = _LW("No status payload for volume %s.") % vol_name
-            LOG.warning(msg)
+            LOG.warning(_LW("No status payload for volume %s."), vol_name)
             return vol_info
         # Fill in value and string from status tag attributes.
         vol_info['value'] = status.attrib['value']
-        vol_info['string'] = string.upper(status.attrib['string'])
+        vol_info['string'] = status.attrib['string'].upper()
         # Detailed status has it's own list of tags.
         details = status.find('details')
         if details is not None:
             detail = details.find('detail')
             if detail is not None:
-                vol_info['details'] = string.upper(detail.text)
+                vol_info['details'] = detail.text.upper()
         # Get volume size
         size_tag = volume_node.find('size')
         if size_tag is not None:
@@ -640,9 +623,8 @@ class XIOISEDriver(object):
         resp = self._send_cmd('GET', url, {'name': volume['name'],
                                            'hostname': hostname})
         if resp['status'] != 200:
-            msg = (_LE("Could not GET allocation information (%d)!") %
-                   resp['status'])
-            LOG.error(msg)
+            LOG.error(_LE("Could not GET allocation information (%d)!"),
+                      resp['status'])
             RaiseXIODriverException()
         # Good response. Find the allocation based on volume name.
         allocation_tree = etree.fromstring(resp['content'])
@@ -672,14 +654,14 @@ class XIOISEDriver(object):
                     hname_tag = endpoint.find('hostname')
                     if hname_tag is None:
                         continue
-                    if string.upper(hname_tag.text) != string.upper(hostname):
+                    if hname_tag.text.upper() != hostname.upper():
                         continue
                 # Found hostname match. Location string is an attribute in
                 # allocation tag.
                 location = allocation.attrib['self']
                 # Delete allocation if requested.
                 if delete == 1:
-                    self._send_cmd('DELETE', location, {})
+                    self._send_cmd('DELETE', location)
                     location = ''
                     break
                 else:
@@ -691,7 +673,6 @@ class XIOISEDriver(object):
         # Set up params with volume name, host name and target lun, if
         # specified.
         target_lun = lun
-        params = {}
         params = {'volumename': volume['name'],
                   'hostname': hostname}
         # Fill in LUN if specified.
@@ -704,13 +685,11 @@ class XIOISEDriver(object):
         if status == 201:
             LOG.info(_LI("Volume %s presented."), volume['name'])
         elif status == 409:
-            msg = (_LW("Volume %(name)s already presented (%(status)d)!") %
-                   {'name': volume['name'], 'status': status})
-            LOG.warning(msg)
+            LOG.warning(_LW("Volume %(name)s already presented (%(status)d)!"),
+                        {'name': volume['name'], 'status': status})
         else:
-            msg = (_LE("Failed to present volume %(name)s (%(status)d)!") %
-                   {'name': volume['name'], 'status': status})
-            LOG.error(msg)
+            LOG.error(_LE("Failed to present volume %(name)s (%(status)d)!"),
+                      {'name': volume['name'], 'status': status})
             RaiseXIODriverException()
         # Fetch LUN. In theory the LUN should be what caller requested.
         # We try to use shortcut as location comes back in Location header.
@@ -723,8 +702,9 @@ class XIOISEDriver(object):
         if location != '':
             target_lun = self._find_target_lun(location)
         # Success. Return target LUN.
-        LOG.debug("Volume %s presented: %s %s",
-                  volume['name'], hostname, target_lun)
+        LOG.debug("Volume %(volume)s presented: %(host)s %(lun)s",
+                  {'volume': volume['name'], 'host': hostname,
+                   'lun': target_lun})
         return target_lun
 
     def find_allocations(self, hostname):
@@ -734,10 +714,9 @@ class XIOISEDriver(object):
         resp = self._send_cmd('GET', url, {'hostname': hostname})
         status = resp['status']
         if status != 200:
-            msg = (_LE("Failed to get allocation information: "
-                       "%(host)s (%(status)d)!") %
-                   {'host': hostname, 'status': status})
-            LOG.error(msg)
+            LOG.error(_LE("Failed to get allocation information: "
+                          "%(host)s (%(status)d)!"),
+                      {'host': hostname, 'status': status})
             RaiseXIODriverException()
         # Good response. Count the number of allocations.
         allocation_tree = etree.fromstring(resp['content'])
@@ -769,8 +748,7 @@ class XIOISEDriver(object):
         resp = self._send_cmd('GET', url, params)
         status = resp['status']
         if resp['status'] != 200:
-            msg = _LE("Could not find any hosts (%s)") % status
-            LOG.error(msg)
+            LOG.error(_LE("Could not find any hosts (%s)"), status)
             RaiseXIODriverException()
         # Good response. Try to match up a host based on end point string.
         host_tree = etree.fromstring(resp['content'])
@@ -787,7 +765,7 @@ class XIOISEDriver(object):
                 gid = endpoint_node.find('globalid')
                 if gid is None:
                     continue
-                if string.upper(gid.text) != string.upper(ep):
+                if gid.text.upper() != ep.upper():
                     continue
                 # We have a match. Fill in host name, type and locator
                 host['locator'] = host_node.attrib['self']
@@ -818,17 +796,16 @@ class XIOISEDriver(object):
         else:
             endpoint_str = endpoints
         # Log host creation.
-        LOG.debug("Create host %s; %s", hostname, endpoint_str)
-        # Issue REST call to create host entry of Openstack type.
-        params = {}
+        LOG.debug("Create host %(host)s; %(endpoint)s",
+                  {'host': hostname, 'endpoint': endpoint_str})
+        # Issue REST call to create host entry of OpenStack type.
         params = {'name': hostname, 'endpoint': endpoint_str,
                   'os': 'openstack'}
         url = '/storage/arrays/%s/hosts' % (self._get_ise_globalid())
         resp = self._send_cmd('POST', url, params)
         status = resp['status']
         if status != 201 and status != 409:
-            msg = _LE("POST for host create failed (%s)!") % status
-            LOG.error(msg)
+            LOG.error(_LE("POST for host create failed (%s)!"), status)
             RaiseXIODriverException()
         # Successfully created host entry. Return host name.
         return hostname
@@ -855,8 +832,7 @@ class XIOISEDriver(object):
         if vol_info['value'] == '0':
             LOG.debug('Source volume %s ready.', volume_name)
         else:
-            msg = _LE("Source volume %s not ready!") % volume_name
-            LOG.error(msg)
+            LOG.error(_LE("Source volume %s not ready!"), volume_name)
             RaiseXIODriverException()
         # Prepare snapshot
         # get extra_specs and qos specs from source volume
@@ -864,7 +840,8 @@ class XIOISEDriver(object):
         ctxt = context.get_admin_context()
         type_id = volume['volume_type_id']
         extra_specs = self._get_extra_specs(ctxt, type_id)
-        LOG.debug("Volume %s extra_specs %s", volume['name'], extra_specs)
+        LOG.debug("Volume %(volume_name)s extra_specs %(extra_specs)s",
+                  {'volume_name': volume['name'], 'extra_specs': extra_specs})
         qos = self._get_qos_specs(ctxt, type_id)
         # Wait until snapshot/clone is prepared.
         args['method'] = 'POST'
@@ -881,8 +858,7 @@ class XIOISEDriver(object):
                                          args, retries)
         if resp['status'] != 202:
             # clone prepare failed - bummer
-            msg = _LE("Prepare clone failed for %s.") % clone['name']
-            LOG.error(msg)
+            LOG.error(_LE("Prepare clone failed for %s."), clone['name'])
             RaiseXIODriverException()
         # clone prepare request accepted
         # make sure not to continue until clone prepared
@@ -894,16 +870,14 @@ class XIOISEDriver(object):
         if PREPARED_STATUS in clone_info['details']:
             LOG.debug('Clone %s prepared.', clone['name'])
         else:
-            msg = (_LE("Clone %s not in prepared state!") % clone['name'])
-            LOG.error(msg)
+            LOG.error(_LE("Clone %s not in prepared state!"), clone['name'])
             RaiseXIODriverException()
         # Clone prepared, now commit the create
         resp = self._send_cmd('PUT', clone_info['location'],
                               {clone_type: 'true'})
         if resp['status'] != 201:
-            msg = (_LE("Commit clone failed: %(name)s (%(status)d)!") %
-                   {'name': clone['name'], 'status': resp['status']})
-            LOG.error(msg)
+            LOG.error(_LE("Commit clone failed: %(name)s (%(status)d)!"),
+                      {'name': clone['name'], 'status': resp['status']})
             RaiseXIODriverException()
         # Clone create request accepted. Make sure not to return until clone
         # operational.
@@ -913,11 +887,9 @@ class XIOISEDriver(object):
         clone_info = self._wait_for_completion(self._help_wait_for_status,
                                                args, retries)
         if OPERATIONAL_STATUS in clone_info['string']:
-            msg = _LI("Clone %s created."), clone['name']
-            LOG.info(msg)
+            LOG.info(_LI("Clone %s created."), clone['name'])
         else:
-            msg = _LE("Commit failed for %s!") % clone['name']
-            LOG.error(msg)
+            LOG.error(_LE("Commit failed for %s!"), clone['name'])
             RaiseXIODriverException()
         return
 
@@ -977,12 +949,11 @@ class XIOISEDriver(object):
         pool = {}
         vol_cnt = 0
         url = '/storage/pools'
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
             # Request failed. Return what we have, which isn't much.
-            msg = _LW("Could not get pool information (%s)!") % status
-            LOG.warning(msg)
+            LOG.warning(_LW("Could not get pool information (%s)!"), status)
             return (pools, vol_cnt)
         # Parse out available (free) and used. Add them up to get total.
         xml_tree = etree.fromstring(resp['content'])
@@ -1042,8 +1013,7 @@ class XIOISEDriver(object):
             # count volumes
             volumes = child.find('volumes')
             if volumes is not None:
-                for volume in volumes:
-                    vol_cnt += 1
+                vol_cnt += len(volumes)
         return (pools, vol_cnt)
 
     def _update_volume_stats(self):
@@ -1083,9 +1053,9 @@ class XIOISEDriver(object):
         """Get volume stats."""
         if refresh:
             self._vol_stats = self._update_volume_stats()
-        LOG.debug("ISE get_volume_stats (total, free): %s, %s",
-                  self._vol_stats['total_capacity_gb'],
-                  self._vol_stats['free_capacity_gb'])
+        LOG.debug("ISE get_volume_stats (total, free): %(total)s, %(free)s",
+                  {'total': self._vol_stats['total_capacity_gb'],
+                   'free': self._vol_stats['free_capacity_gb']})
         return self._vol_stats
 
     def _get_extra_specs(self, ctxt, type_id):
@@ -1099,26 +1069,26 @@ class XIOISEDriver(object):
             volume_type = volume_types.get_volume_type(ctxt, type_id)
             extra_specs = volume_type.get('extra_specs')
             # Parse out RAID, pool and affinity values
-            for key, value in extra_specs.iteritems():
+            for key, value in extra_specs.items():
                 subkey = ''
                 if ':' in key:
                     fields = key.split(':')
                     key = fields[0]
                     subkey = fields[1]
-                if string.upper(key) == string.upper('Feature'):
-                    if string.upper(subkey) == string.upper('Raid'):
+                if key.upper() == 'Feature'.upper():
+                    if subkey.upper() == 'Raid'.upper():
                         specs['raid'] = value
-                    elif string.upper(subkey) == string.upper('Pool'):
+                    elif subkey.upper() == 'Pool'.upper():
                         specs['pool'] = value
-                elif string.upper(key) == string.upper('Affinity'):
+                elif key.upper() == 'Affinity'.upper():
                     # Only fill this in if ISE FW supports volume affinity
                     if self.configuration.ise_affinity:
-                        if string.upper(subkey) == string.upper('Type'):
+                        if subkey.upper() == 'Type'.upper():
                             specs['affinity'] = value
-                elif string.upper(key) == string.upper('Alloc'):
+                elif key.upper() == 'Alloc'.upper():
                     # Only fill this in if ISE FW supports thin provisioning
                     if self.configuration.san_thin_provision:
-                        if string.upper(subkey) == string.upper('Type'):
+                        if subkey.upper() == 'Type'.upper():
                             specs['alloctype'] = value
         return specs
 
@@ -1136,15 +1106,15 @@ class XIOISEDriver(object):
             else:
                 kvs = volume_type.get('extra_specs')
             # Parse out min, max and burst values
-            for key, value in kvs.iteritems():
+            for key, value in kvs.items():
                 if ':' in key:
                     fields = key.split(':')
                     key = fields[1]
-                if string.upper(key) == string.upper('minIOPS'):
+                if key.upper() == 'minIOPS'.upper():
                     specs['minIOPS'] = value
-                elif string.upper(key) == string.upper('maxIOPS'):
+                elif key.upper() == 'maxIOPS'.upper():
                     specs['maxIOPS'] = value
-                elif string.upper(key) == string.upper('burstIOPS'):
+                elif key.upper() == 'burstIOPS'.upper():
                     specs['burstIOPS'] = value
         return specs
 
@@ -1156,7 +1126,8 @@ class XIOISEDriver(object):
         ctxt = context.get_admin_context()
         type_id = volume['volume_type_id']
         extra_specs = self._get_extra_specs(ctxt, type_id)
-        LOG.debug("Volume %s extra_specs %s", volume['name'], extra_specs)
+        LOG.debug("Volume %(volume_name)s extra_specs %(extra_specs)s",
+                  {'volume_name': volume['name'], 'extra_specs': extra_specs})
         qos = self._get_qos_specs(ctxt, type_id)
         # Make create call
         url = '/storage/arrays/%s/volumes' % (self._get_ise_globalid())
@@ -1171,9 +1142,8 @@ class XIOISEDriver(object):
                                'IOPSmax': qos['maxIOPS'],
                                'IOPSburst': qos['burstIOPS']})
         if resp['status'] != 201:
-            msg = (_LE("Failed to create volume: %(name)s (%(status)s)") %
-                   {'name': volume['name'], 'status': resp['status']})
-            LOG.error(msg)
+            LOG.error(_LE("Failed to create volume: %(name)s (%(status)s)"),
+                      {'name': volume['name'], 'status': resp['status']})
             RaiseXIODriverException()
         # Good response. Make sure volume is in operational state before
         # returning. Volume creation completes asynchronously.
@@ -1185,11 +1155,9 @@ class XIOISEDriver(object):
                                              args, retries)
         if OPERATIONAL_STATUS in vol_info['string']:
             # Ready.
-            msg = _LI("Volume %s created"), volume['name']
-            LOG.info(msg)
+            LOG.info(_LI("Volume %s created"), volume['name'])
         else:
-            msg = _LE("Failed to create volume %s.") % volume['name']
-            LOG.error(msg)
+            LOG.error(_LE("Failed to create volume %s."), volume['name'])
             RaiseXIODriverException()
         return
 
@@ -1214,15 +1182,13 @@ class XIOISEDriver(object):
 
     def _delete_volume(self, volume):
         """Delete specified volume"""
-        LOG.debug("X-IO delete_volume called.")
         # First unpresent volume from all hosts.
         self._alloc_location(volume, '', 1)
         # Get volume status. Location string for volume comes back
         # in response. Used for DELETE call below.
         vol_info = self._get_volume_info(volume['name'])
         if vol_info['location'] == '':
-            msg = _LW("Delete volume: %s not found!") % volume['name']
-            LOG.warning(msg)
+            LOG.warning(_LW("%s not found!"), volume['name'])
             return
         # Make DELETE call.
         args = {}
@@ -1232,9 +1198,25 @@ class XIOISEDriver(object):
         args['status'] = 204
         retries = self.configuration.ise_completion_retries
         resp = self._wait_for_completion(self._help_call_method, args, retries)
-        if resp['status'] == 204:
-            msg = (_LI("Volume %s deleted."), volume['name'])
-            LOG.info(msg)
+        if resp['status'] != 204:
+            LOG.warning(_LW("DELETE call failed for %s!"), volume['name'])
+            return
+        # DELETE call successful, now wait for completion.
+        # We do that by waiting for the REST call to return Volume Not Found.
+        args['method'] = ''
+        args['url'] = ''
+        args['name'] = volume['name']
+        args['status_string'] = NOTFOUND_STATUS
+        retries = self.configuration.ise_completion_retries
+        vol_info = self._wait_for_completion(self._help_wait_for_status,
+                                             args, retries)
+        if NOTFOUND_STATUS in vol_info['string']:
+            # Volume no longer present on the backend.
+            LOG.info(_LI("Successfully deleted %s."), volume['name'])
+            return
+        # If we come here it means the volume is still present
+        # on the backend.
+        LOG.error(_LE("Timed out deleting %s!"), volume['name'])
         return
 
     def delete_volume(self, volume):
@@ -1253,8 +1235,7 @@ class XIOISEDriver(object):
         # in response. Used for PUT call below.
         vol_info = self._get_volume_info(volume['name'])
         if vol_info['location'] == '':
-            msg = _LE("modify volume: %s does not exist!") % volume['name']
-            LOG.error(msg)
+            LOG.error(_LE("modify volume: %s does not exist!"), volume['name'])
             RaiseXIODriverException()
         # Make modify volume REST call using PUT.
         # Location from above is used as identifier.
@@ -1263,9 +1244,8 @@ class XIOISEDriver(object):
         if status == 201:
             LOG.debug("Volume %s modified.", volume['name'])
             return True
-        msg = (_LE("Modify volume PUT failed: %(name)s (%(status)d).") %
-               {'name': volume['name'], 'status': status})
-        LOG.error(msg)
+        LOG.error(_LE("Modify volume PUT failed: %(name)s (%(status)d)."),
+                  {'name': volume['name'], 'status': status})
         RaiseXIODriverException()
 
     def extend_volume(self, volume, new_size):
@@ -1273,9 +1253,8 @@ class XIOISEDriver(object):
         LOG.debug("extend_volume called")
         ret = self._modify_volume(volume, {'size': new_size})
         if ret is True:
-            msg = (_LI("volume %(name)s extended to %(size)d."),
-                   {'name': volume['name'], 'size': new_size})
-            LOG.info(msg)
+            LOG.info(_LI("volume %(name)s extended to %(size)d."),
+                     {'name': volume['name'], 'size': new_size})
         return
 
     def retype(self, ctxt, volume, new_type, diff, host):
@@ -1286,16 +1265,14 @@ class XIOISEDriver(object):
                                            'IOPSmax': qos['maxIOPS'],
                                            'IOPSburst': qos['burstIOPS']})
         if ret is True:
-            msg = _LI("Volume %s retyped."), volume['name']
-            LOG.info(msg)
+            LOG.info(_LI("Volume %s retyped."), volume['name'])
         return True
 
     def manage_existing(self, volume, ise_volume_ref):
         """Convert an existing ISE volume to a Cinder volume."""
         LOG.debug("X-IO manage_existing called")
         if 'source-name' not in ise_volume_ref:
-            msg = _LE("manage_existing: No source-name in ref!")
-            LOG.error(msg)
+            LOG.error(_LE("manage_existing: No source-name in ref!"))
             RaiseXIODriverException()
         # copy the source-name to 'name' for modify volume use
         ise_volume_ref['name'] = ise_volume_ref['source-name']
@@ -1307,24 +1284,21 @@ class XIOISEDriver(object):
                                    'IOPSmax': qos['maxIOPS'],
                                    'IOPSburst': qos['burstIOPS']})
         if ret is True:
-            msg = _LI("Volume %s converted."), ise_volume_ref['name']
-            LOG.info(msg)
+            LOG.info(_LI("Volume %s converted."), ise_volume_ref['name'])
         return ret
 
     def manage_existing_get_size(self, volume, ise_volume_ref):
         """Get size of an existing ISE volume."""
         LOG.debug("X-IO manage_existing_get_size called")
         if 'source-name' not in ise_volume_ref:
-            msg = _LE("manage_existing_get_size: No source-name in ref!")
-            LOG.error(msg)
+            LOG.error(_LE("manage_existing_get_size: No source-name in ref!"))
             RaiseXIODriverException()
         ref_name = ise_volume_ref['source-name']
         # get volume status including size
         vol_info = self._get_volume_info(ref_name)
         if vol_info['location'] == '':
-            msg = (_LE("manage_existing_get_size: %s does not exist!") %
-                   ref_name)
-            LOG.error(msg)
+            LOG.error(_LE("manage_existing_get_size: %s does not exist!"),
+                      ref_name)
             RaiseXIODriverException()
         return int(vol_info['size'])
 
@@ -1333,8 +1307,8 @@ class XIOISEDriver(object):
         LOG.debug("X-IO unmanage called")
         vol_info = self._get_volume_info(volume['name'])
         if vol_info['location'] == '':
-            msg = _LE("unmanage: Volume %s does not exist!") % volume['name']
-            LOG.error(msg)
+            LOG.error(_LE("unmanage: Volume %s does not exist!"),
+                      volume['name'])
             RaiseXIODriverException()
         # This is a noop. ISE does not store any Cinder specific information.
 
@@ -1352,17 +1326,15 @@ class XIOISEDriver(object):
             host = self._find_host(endpoints)
             if host['name'] == '':
                 # host still not found, this is fatal.
-                msg = _LE("Host could not be found!")
-                LOG.error(msg)
+                LOG.error(_LE("Host could not be found!"))
                 RaiseXIODriverException()
-        elif string.upper(host['type']) != 'OPENSTACK':
-            # Make sure host type is marked as Openstack host
+        elif host['type'].upper() != 'OPENSTACK':
+            # Make sure host type is marked as OpenStack host
             params = {'os': 'openstack'}
             resp = self._send_cmd('PUT', host['locator'], params)
             status = resp['status']
             if status != 201 and status != 409:
-                msg = _LE("Host PUT failed (%s).") % status
-                LOG.error(msg)
+                LOG.error(_LE("Host PUT failed (%s)."), status)
                 RaiseXIODriverException()
         # We have a host object.
         target_lun = ''
@@ -1370,9 +1342,8 @@ class XIOISEDriver(object):
         target_lun = self._present_volume(volume, host['name'], target_lun)
         # Fill in target information.
         data = {}
-        data['target_lun'] = target_lun
+        data['target_lun'] = int(target_lun)
         data['volume_id'] = volume['id']
-        data['access_mode'] = 'rw'
         return data
 
     def ise_unpresent(self, volume, endpoints):
@@ -1397,6 +1368,14 @@ class XIOISEDriver(object):
     def local_path(self, volume):
         LOG.debug("X-IO local_path called.")
 
+    def delete_host(self, endpoints):
+        """Delete ISE host object"""
+        host = self._find_host(endpoints)
+        if host['locator'] != '':
+            # Delete host
+            self._send_cmd('DELETE', host['locator'])
+            LOG.debug("X-IO: host %s deleted", host['name'])
+
 
 # Protocol specific classes for entry.  They are wrappers around base class
 # above and every external API resuslts in a call to common function in base
@@ -1412,8 +1391,7 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
 
         # The iscsi_ip_address must always be set.
         if self.configuration.iscsi_ip_address == '':
-            err_msg = _LE("iscsi_ip_address must be set!")
-            LOG.error(err_msg)
+            LOG.error(_LE("iscsi_ip_address must be set!"))
             RaiseXIODriverException()
         # Setup common driver
         self.driver = XIOISEDriver(configuration=self.configuration)
@@ -1436,7 +1414,6 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
         self.driver.create_volume(volume)
         # Volume created successfully. Fill in CHAP information.
         model_update = {}
-        chap = {}
         chap = self.driver.find_target_chap()
         if chap['chap_user'] != '':
             model_update['provider_auth'] = 'CHAP %s %s' % \
@@ -1505,7 +1482,13 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
                 'data': data}
 
     def terminate_connection(self, volume, connector, **kwargs):
-        return self.driver.ise_unpresent(volume, connector['initiator'])
+        hostname = self.driver.ise_unpresent(volume, connector['initiator'])
+        alloc_cnt = 0
+        if hostname != '':
+            alloc_cnt = self.driver.find_allocations(hostname)
+            if alloc_cnt == 0:
+                # delete host object
+                self.driver.delete_host(connector['initiator'])
 
     def create_snapshot(self, snapshot):
         return self.driver.create_snapshot(snapshot)
@@ -1513,7 +1496,7 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
     def delete_snapshot(self, snapshot):
         return self.driver.delete_snapshot(snapshot)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self.driver.create_export(context, volume)
 
     def ensure_export(self, context, volume):
@@ -1602,14 +1585,17 @@ class XIOISEFCDriver(driver.FibreChannelDriver):
         alloc_cnt = 0
         if hostname != '':
             alloc_cnt = self.driver.find_allocations(hostname)
-        if alloc_cnt == 0:
-            target_wwns = self.driver.find_target_wwns()
-            data['target_wwn'] = target_wwns
-            # build target initiator map
-            target_map = {}
-            for initiator in connector['wwpns']:
-                target_map[initiator] = target_wwns
-            data['initiator_target_map'] = target_map
+            if alloc_cnt == 0:
+                target_wwns = self.driver.find_target_wwns()
+                data['target_wwn'] = target_wwns
+                # build target initiator map
+                target_map = {}
+                for initiator in connector['wwpns']:
+                    target_map[initiator] = target_wwns
+                data['initiator_target_map'] = target_map
+                # delete host object
+                self.driver.delete_host(connector['wwpns'])
+
         return {'driver_volume_type': 'fibre_channel',
                 'data': data}
 
@@ -1619,7 +1605,7 @@ class XIOISEFCDriver(driver.FibreChannelDriver):
     def delete_snapshot(self, snapshot):
         return self.driver.delete_snapshot(snapshot)
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         return self.driver.create_export(context, volume)
 
     def ensure_export(self, context, volume):

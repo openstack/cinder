@@ -23,8 +23,8 @@ from oslo_config import cfg
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
-from cinder import db
 from cinder.i18n import _
+from cinder import objects
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -34,7 +34,7 @@ scheduler_driver_opts = [
                help='The scheduler host manager class to use'),
     cfg.IntOpt('scheduler_max_attempts',
                default=3,
-               help='Maximum number of attempts to schedule an volume'),
+               help='Maximum number of attempts to schedule a volume'),
 ]
 
 CONF = cfg.CONF
@@ -42,23 +42,28 @@ CONF.register_opts(scheduler_driver_opts)
 
 
 def volume_update_db(context, volume_id, host):
-    '''Set the host and set the scheduled_at field of a volume.
+    """Set the host and set the scheduled_at field of a volume.
 
     :returns: A Volume with the updated fields set properly.
-    '''
-    now = timeutils.utcnow()
-    values = {'host': host, 'scheduled_at': now}
-    return db.volume_update(context, volume_id, values)
+    """
+    volume = objects.Volume.get_by_id(context, volume_id)
+    volume.host = host
+    volume.scheduled_at = timeutils.utcnow()
+    volume.save()
+
+    # A volume object is expected to be returned, as it is used by
+    # filter_scheduler.
+    return volume
 
 
-def group_update_db(context, group_id, host):
+def group_update_db(context, group, host):
     """Set the host and the scheduled_at field of a consistencygroup.
 
     :returns: A Consistencygroup with the updated fields set properly.
     """
-    now = timeutils.utcnow()
-    values = {'host': host, 'updated_at': now}
-    return db.consistencygroup_update(context, group_id, values)
+    group.update({'host': host, 'updated_at': timeutils.utcnow()})
+    group.save()
+    return group
 
 
 class Scheduler(object):
@@ -68,6 +73,19 @@ class Scheduler(object):
         self.host_manager = importutils.import_object(
             CONF.scheduler_host_manager)
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
+
+    def reset(self):
+        """Reset volume RPC API object to load new version pins."""
+        self.volume_rpcapi = volume_rpcapi.VolumeAPI()
+
+    def is_ready(self):
+        """Returns True if Scheduler is ready to accept requests.
+
+        This is to handle scheduler service startup when it has no volume hosts
+        stats and will fail all the requests.
+        """
+
+        return self.host_manager.has_all_capabilities()
 
     def update_service_capabilities(self, service_name, host, capabilities):
         """Process a capability update from a service node."""
@@ -92,7 +110,7 @@ class Scheduler(object):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_("Must implement schedule_create_volume"))
 
-    def schedule_create_consistencygroup(self, context, group_id,
+    def schedule_create_consistencygroup(self, context, group,
                                          request_spec_list,
                                          filter_properties_list):
         """Must override schedule method for scheduler to work."""

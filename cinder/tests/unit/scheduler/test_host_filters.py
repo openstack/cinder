@@ -24,6 +24,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.scheduler import filters
+from cinder.scheduler.filters import extra_specs_ops
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.scheduler import fakes
@@ -1025,7 +1026,7 @@ class TestBogusFilter(object):
 class ExtraSpecsOpsTestCase(test.TestCase):
     def _do_extra_specs_ops_test(self, value, req, matches):
         assertion = self.assertTrue if matches else self.assertFalse
-        assertion(filters.extra_specs_ops.match(value, req))
+        assertion(extra_specs_ops.match(value, req))
 
     def test_extra_specs_matches_simple(self):
         self._do_extra_specs_ops_test(

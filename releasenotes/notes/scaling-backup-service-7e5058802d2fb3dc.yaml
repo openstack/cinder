@@ -1,0 +1,8 @@
+---
+features:
+  - cinder-backup service is now decoupled from
+    cinder-volume, which allows more flexible scaling.
+upgrade:
+  - As cinder-backup was strongly reworked in this
+    release, the recommended upgrade order when executing
+    live (rolling) upgrade is c-api->c-sch->c-vol->c-bak.

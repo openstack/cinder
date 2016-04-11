@@ -19,20 +19,18 @@ class FakeTarget(iscsi.ISCSITarget):
     def __init__(self, *args, **kwargs):
         super(FakeTarget, self).__init__(*args, **kwargs)
 
-    def ensure_export(self, context, volume, volume_path):
+    def _get_target_and_lun(self, context, volume):
+        return(0, 0)
+
+    def create_iscsi_target(self, name, tid, lun, path,
+                            chap_auth, **kwargs):
         pass
 
-    def create_export(self, context, volume, volume_path):
-        return {
-            'location': "fake_location",
-            'auth': "fake_auth"
-        }
-
-    def remove_export(self, context, volume):
+    def remove_iscsi_target(self, tid, lun, vol_id, vol_name, **kwargs):
         pass
 
-    def initialize_connection(self, volume, connector):
+    def _get_iscsi_target(self, context, vol_id):
         pass
 
-    def terminate_connection(self, volume, connector, **kwargs):
+    def _get_target(self, iqn):
         pass

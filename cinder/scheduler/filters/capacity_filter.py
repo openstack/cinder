@@ -19,9 +19,10 @@
 
 import math
 
+from oslo_log import log as logging
+
 from cinder.i18n import _LE, _LW
-from cinder.openstack.common import log as logging
-from cinder.openstack.common.scheduler import filters
+from cinder.scheduler import filters
 
 
 LOG = logging.getLogger(__name__)
@@ -79,15 +80,6 @@ class CapacityFilter(filters.BaseHostFilter):
         msg_args = {"host": host_state.host,
                     "requested": volume_size,
                     "available": free}
-        if free < volume_size:
-            LOG.warning(_LW("Insufficient free space for volume creation "
-                            "on host %(host)s (requested / avail): "
-                            "%(requested)s/%(available)s"), msg_args)
-            return free >= volume_size
-        else:
-            LOG.debug("Space information for volume creation "
-                      "on host %(host)s (requested / avail): "
-                      "%(requested)s/%(available)s", msg_args)
 
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
@@ -97,7 +89,7 @@ class CapacityFilter(filters.BaseHostFilter):
                 host_state.max_over_subscription_ratio >= 1):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
                                   volume_size) / total)
-            if provisioned_ratio >= host_state.max_over_subscription_ratio:
+            if provisioned_ratio > host_state.max_over_subscription_ratio:
                 LOG.warning(_LW(
                     "Insufficient free space for thin provisioning. "
                     "The ratio of provisioned capacity over total capacity "
@@ -109,7 +101,33 @@ class CapacityFilter(filters.BaseHostFilter):
                      "host": host_state.host})
                 return False
             else:
-                free_virtual = free * host_state.max_over_subscription_ratio
-                return free_virtual >= volume_size
+                # Thin provisioning is enabled and projected over-subscription
+                # ratio does not exceed max_over_subscription_ratio. The host
+                # passes if "adjusted" free virtual capacity is enough to
+                # accommodate the volume. Adjusted free virtual capacity is
+                # the currently available free capacity (taking into account
+                # of reserved space) which we can over-subscribe.
+                adjusted_free_virtual = (
+                    free * host_state.max_over_subscription_ratio)
+                return adjusted_free_virtual >= volume_size
+        elif host_state.thin_provisioning_support:
+            LOG.warning(_LW("Filtering out host %(host)s with an invalid "
+                            "maximum over subscription ratio of "
+                            "%(oversub_ratio).2f. The ratio should be a "
+                            "minimum of 1.0."),
+                        {"oversub_ratio":
+                            host_state.max_over_subscription_ratio,
+                         "host": host_state.host})
+            return False
 
-        return free >= volume_size
+        if free < volume_size:
+            LOG.warning(_LW("Insufficient free space for volume creation "
+                            "on host %(host)s (requested / avail): "
+                            "%(requested)s/%(available)s"), msg_args)
+            return False
+
+        LOG.debug("Space information for volume creation "
+                  "on host %(host)s (requested / avail): "
+                  "%(requested)s/%(available)s", msg_args)
+
+        return True

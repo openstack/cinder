@@ -20,12 +20,16 @@ import base64
 import binascii
 import uuid
 
+from oslo_log import log as logging
 import six
-
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
+
+MULTI_ATTACH_HOST_GROUP_NAME = 'cinder-multi-attach'
+NULL_REF = '0000000000000000000000000000000000000000'
+MAX_LUNS_PER_HOST = 256
+MAX_LUNS_PER_HOST_GROUP = 256
 
 
 def encode_hex_to_base32(hex_string):
@@ -43,10 +47,20 @@ def decode_base32_to_hex(base32_string):
 def convert_uuid_to_es_fmt(uuid_str):
     """Converts uuid to e-series compatible name format."""
     uuid_base32 = encode_hex_to_base32(uuid.UUID(six.text_type(uuid_str)).hex)
-    return uuid_base32.strip('=')
+    es_label = uuid_base32.strip(b'=')
+    if six.PY3:
+        es_label = es_label.decode('ascii')
+    return es_label
 
 
 def convert_es_fmt_to_uuid(es_label):
     """Converts e-series name format to uuid."""
-    es_label_b32 = es_label.ljust(32, '=')
-    return uuid.UUID(binascii.hexlify(base64.b32decode(es_label_b32)))
+    if isinstance(es_label, six.text_type):
+        es_label = es_label.encode('utf-8')
+    if es_label.startswith(b'tmp-'):
+        es_label = es_label[4:]
+    es_label = es_label.ljust(32, b'=')
+    es_label = binascii.hexlify(base64.b32decode(es_label))
+    if six.PY3:
+        es_label = es_label.decode('ascii')
+    return uuid.UUID(es_label)

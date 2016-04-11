@@ -1,0 +1,7 @@
+---
+features:
+  - Support for configuring Fibre Channel zoning on
+    Brocade switches through Cinder Fibre Channel Zone
+    Manager and Brocade Fibre Channel zone plugin.
+    To zone in a Virtual Fabric, set the configuration
+    option 'fc_virtual_fabric_id' for the fabric.

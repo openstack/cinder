@@ -49,6 +49,17 @@ Manually
       % sphinx-build -b html source build/html
 
 
+Use `tox`
+=========
+
+The easiest way to build the docs and avoid dealing with all
+dependencies is to let tox prepare a virtualenv and run the
+build_sphinx target inside the virtualenv::
+
+ % cd ..
+ % tox -e docs
+
+
 The docs have been built
 ========================
 

@@ -16,11 +16,6 @@
 from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import MetaData, Integer, String, Table
 
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
-
-LOG = logging.getLogger(__name__)
-
 
 def upgrade(migrate_engine):
     meta = MetaData()
@@ -51,20 +46,4 @@ def upgrade(migrate_engine):
         mysql_engine='InnoDB'
     )
 
-    try:
-        backups.create()
-    except Exception:
-        LOG.error(_("Table |%s| not created!"), repr(backups))
-        raise
-
-
-def downgrade(migrate_engine):
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    backups = Table('backups', meta, autoload=True)
-    try:
-        backups.drop()
-    except Exception:
-        LOG.error(_("backups table not dropped"))
-        raise
+    backups.create()

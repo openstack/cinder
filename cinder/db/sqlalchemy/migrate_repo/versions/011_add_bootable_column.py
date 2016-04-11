@@ -31,13 +31,3 @@ def upgrade(migrate_engine):
         volumes.update().\
             where(volumes.c.id == item['volume_id']).\
             values(bootable=True).execute()
-
-
-def downgrade(migrate_engine):
-    """Remove bootable column to volumes."""
-    meta = MetaData()
-    meta.bind = migrate_engine
-
-    volumes = Table('volumes', meta, autoload=True)
-    bootable = volumes.columns.bootable
-    volumes.drop_column(bootable)

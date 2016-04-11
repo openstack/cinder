@@ -18,11 +18,12 @@
 
 """Implementation of paginate query."""
 
+from oslo_log import log as logging
+from six.moves import range
 import sqlalchemy
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ LOG = logging.getLogger(__name__)
 
 # copied from glance/db/sqlalchemy/api.py
 def paginate_query(query, model, limit, sort_keys, marker=None,
-                   sort_dir=None, sort_dirs=None):
+                   sort_dir=None, sort_dirs=None, offset=None):
     """Returns a query with sorting / pagination criteria added.
 
     Pagination works by requiring a unique sort_key, specified by sort_keys.
@@ -64,7 +65,7 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
     if 'id' not in sort_keys:
         # TODO(justinsb): If this ever gives a false-positive, check
         # the actual primary key, rather than assuming its id
-        LOG.warn(_LW('Id not in sort_keys; is sort_keys unique?'))
+        LOG.warning(_LW('Id not in sort_keys; is sort_keys unique?'))
 
     assert(not (sort_dir and sort_dirs))
 
@@ -100,9 +101,9 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
 
         # Build up an array of sort criteria as in the docstring
         criteria_list = []
-        for i in xrange(0, len(sort_keys)):
+        for i in range(0, len(sort_keys)):
             crit_attrs = []
-            for j in xrange(0, i):
+            for j in range(0, i):
                 model_attr = getattr(model, sort_keys[j])
                 crit_attrs.append((model_attr == marker_values[j]))
 
@@ -123,5 +124,8 @@ def paginate_query(query, model, limit, sort_keys, marker=None,
 
     if limit is not None:
         query = query.limit(limit)
+
+    if offset:
+        query = query.offset(offset)
 
     return query

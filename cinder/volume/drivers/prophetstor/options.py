@@ -21,9 +21,9 @@ DPL_OPTS = [
     cfg.StrOpt('dpl_pool',
                default='',
                help='DPL pool uuid in which DPL volumes are stored.'),
-    cfg.IntOpt('dpl_port',
-               default=8357,
-               help='DPL port number.'),
+    cfg.PortOpt('dpl_port',
+                default=8357,
+                help='DPL port number.'),
 ]
 
 CONF = cfg.CONF

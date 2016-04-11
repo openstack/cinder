@@ -25,15 +25,9 @@ git. Refer to GettingTheCode_ for additional information.
 
 .. _GettingTheCode: http://wiki.openstack.org/GettingTheCode
 
-Following these instructions will allow you to run the cinder unit
-tests. If you want to be able to run cinder (i.e., launch VM instances),
-you will also need to install libvirt and at least one of the
-`supported hypervisors`_. Running cinder is currently only supported on
-Linux, although you can run the unit tests on Mac OS X. See
-:doc:`../quickstart` for how to get a working version of OpenStack
-Compute running as quickly as possible.
-
-.. _supported hypervisors: http://wiki.openstack.org/HypervisorSupportMatrix
+Following these instructions will allow you to run the cinder unit tests.
+Running cinder is currently only supported on Linux, although you can run the
+unit tests on Mac OS X.
 
 Virtual environments
 --------------------

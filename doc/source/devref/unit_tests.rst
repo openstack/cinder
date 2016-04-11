@@ -1,21 +1,50 @@
 Unit Tests
 ==========
 
-Cinder contains a suite of unit tests, in the cinder/tests directory.
+Cinder contains a suite of unit tests, in the cinder/tests/unit directory.
 
 Any proposed code change will be automatically rejected by the OpenStack
 Jenkins server [#f1]_ if the change causes unit test failures.
 
 Running the tests
 -----------------
-Run the unit tests by doing::
+There are a number of ways to run unit tests currently, and there's a combination
+of frameworks used depending on what commands you use.  The preferred method
+is to use tox, which calls ostestr via the tox.ini file.  To run all tests simply run::
+    tox
+
+This will create a virtual environment, load all the packages from test-requirements.txt
+and run all unit tests as well as run flake8 and hacking checks against the code.
+
+Note that you can inspect the tox.ini file to get more details on the available options
+and what the test run does by default.
+
+Running a subset of tests using tox
+-----------------------------------
+One common activity is to just run a single test, you can do this with tox simply by
+specifying to just run py27 or py34 tests against a single test::
+
+    tox -epy27 -- -n cinder.tests.unit.test_volume.AvailabilityZoneTestCase.test_list_availability_zones_cached
+
+Or all tests in the test_volume.py file::
+
+    tox -epy27 -- -n cinder.tests.unit.test_volume
+
+For more information on these options and how to run tests, please see the `ostestr
+documentation <http://docs.openstack.org/developer/os-testr/>`_.
+
+Run tests wrapper script
+------------------------
+
+In addition you can also use the wrapper script run_tests.sh by simply executing::
 
     ./run_tests.sh
 
-This script is a wrapper around the `nose`_ testrunner and the `pep8`_ checker.
+This script is a wrapper around the testr testrunner and the flake8 checker. Note that
+there has been talk around deprecating this wrapper and this method of testing, it's currently
+available still but it may be good to get used to using tox or even ostestr directly.
 
-.. _nose: http://code.google.com/p/python-nose/
-.. _pep8: https://github.com/jcrocholl/pep8
+Documenation is left in place for those that still use it.
 
 Flags
 -----
@@ -43,8 +72,8 @@ This will show the following help information::
       -h, --help               Print this usage message
       --hide-elapsed           Don't print the elapsed time for each test along with slow test list
 
-Because ``run_tests.sh`` is a wrapper around nose, it also accepts the same
-flags as nosetests. See the `nose options documentation`_ for details about
+Because ``run_tests.sh`` is a wrapper around testr, it also accepts the same
+flags as testr. See the `testr documentation`_ for details about
 these additional flags.
 
 .. _nose options documentation: http://readthedocs.org/docs/nose/en/latest/usage.html#options
@@ -153,7 +182,39 @@ a shared folder.
 .. [#f2] See :doc:`development.environment` for more details about the use of
    virtualenv.
 
-.. [#f3] There is an effort underway to use a fake DB implementation for the
-   unit tests. See https://lists.launchpad.net/openstack/msg05604.html
+**Running py34 tests**
 
-.. [#f4] See Vish's comment in this bug report: https://bugs.launchpad.net/cinder/+bug/882933
+You will need to install:
+python3-dev
+in order to get py34 tests to run. If you do not have this, you will get the following::
+	 netifaces.c:1:20: fatal error: Python.h: No such file or directory
+	     #include <Python.h>
+				^
+	    compilation terminated.
+	    error: command 'x86_64-linux-gnu-gcc' failed with exit status 1
+
+	    ----------------------------------------
+        <snip>
+	ERROR: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
+        oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
+        .tox/py34/bin/pip install -r/opt/stack/cinder/test-requirements.txt
+         oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py34/log/py34-1.log)', 1)
+	_______________________________________________________________ summary _______________________________________________________________
+	ERROR:   py34: could not install deps [-r/opt/stack/cinder/test-requirements.txt,
+        oslo.versionedobjects[fixtures]]; v = InvocationError('/opt/stack/cinder/
+        .tox/py34/bin/pip install -r/opt/stack/cinder/test-requirements.txt
+        oslo.versionedobjects[fixtures] (see /opt/stack/cinder/.tox/py34/log/py34-1.log)', 1)
+
+To Fix:
+
+- On Ubuntu/Debian::
+
+    sudo apt-get install python3-dev
+
+- On Fedora 21/RHEL7/CentOS7::
+
+    sudo yum install python3-devel
+
+- On Fedora 22 and higher::
+
+    sudo dnf install python3-devel

@@ -30,6 +30,7 @@ import cinder.image.glance
 from cinder.image import image_utils
 from cinder import objects
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import test_volume
@@ -891,7 +892,7 @@ class RBDTestCase(test.TestCase):
                 'extra_specs': {}}
         updates = {'name': 'testvolume',
                    'host': 'currenthost',
-                   'id': 'fakeid'}
+                   'id': fake.volume_id}
         fake_type = 'high-IOPS'
         volume = fake_volume.fake_volume_obj(context, **updates)
 

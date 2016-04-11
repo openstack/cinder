@@ -23,14 +23,16 @@ import hmac
 import os
 
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
+import six
 
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import quota
 from cinder.volume import api as volume_api
+from cinder.volume import utils as volume_utils
 
 
 volume_transfer_opts = [
@@ -56,7 +58,7 @@ class API(base.Base):
 
     def get(self, context, transfer_id):
         rv = self.db.transfer_get(context, transfer_id)
-        return dict(rv.iteritems())
+        return dict(rv)
 
     def delete(self, context, transfer_id):
         """Make the RPC call to delete a volume transfer."""
@@ -64,10 +66,13 @@ class API(base.Base):
         transfer = self.db.transfer_get(context, transfer_id)
 
         volume_ref = self.db.volume_get(context, transfer.volume_id)
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.delete.start")
         if volume_ref['status'] != 'awaiting-transfer':
-            msg = _("Volume in unexpected state")
-            LOG.error(msg)
+            LOG.error(_LE("Volume in unexpected state"))
         self.db.transfer_destroy(context, transfer_id)
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.delete.end")
 
     def get_all(self, context, filters=None):
         filters = filters or {}
@@ -94,18 +99,26 @@ class API(base.Base):
 
     def _get_crypt_hash(self, salt, auth_key):
         """Generate a random hash based on the salt and the auth key."""
-        return hmac.new(str(salt),
-                        str(auth_key),
-                        hashlib.sha1).hexdigest()
+        if not isinstance(salt, (six.binary_type, six.text_type)):
+            salt = str(salt)
+        if isinstance(salt, six.text_type):
+            salt = salt.encode('utf-8')
+        if not isinstance(auth_key, (six.binary_type, six.text_type)):
+            auth_key = str(auth_key)
+        if isinstance(auth_key, six.text_type):
+            auth_key = auth_key.encode('utf-8')
+        return hmac.new(salt, auth_key, hashlib.sha1).hexdigest()
 
     def create(self, context, volume_id, display_name):
         """Creates an entry in the transfers table."""
         volume_api.check_policy(context, 'create_transfer')
-        LOG.info("Generating transfer record for volume %s" % volume_id)
+        LOG.info(_LI("Generating transfer record for volume %s"), volume_id)
         volume_ref = self.db.volume_get(context, volume_id)
         if volume_ref['status'] != "available":
             raise exception.InvalidVolume(reason=_("status must be available"))
 
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.create.start")
         # The salt is just a short random string.
         salt = self._get_random_string(CONF.volume_transfer_salt_length)
         auth_key = self._get_random_string(CONF.volume_transfer_key_length)
@@ -122,8 +135,10 @@ class API(base.Base):
             transfer = self.db.transfer_create(context, transfer_rec)
         except Exception:
             LOG.error(_LE("Failed to create transfer record "
-                          "for %s") % volume_id)
+                          "for %s"), volume_id)
             raise
+        volume_utils.notify_about_volume_usage(context, volume_ref,
+                                               "transfer.create.end")
         return {'id': transfer['id'],
                 'volume_id': transfer['volume_id'],
                 'display_name': transfer['display_name'],
@@ -146,10 +161,21 @@ class API(base.Base):
 
         volume_id = transfer['volume_id']
         vol_ref = self.db.volume_get(context.elevated(), volume_id)
+        if vol_ref['consistencygroup_id']:
+            msg = _("Volume %s must not be part of a consistency "
+                    "group.") % vol_ref['id']
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
+
+        volume_utils.notify_about_volume_usage(context, vol_ref,
+                                               "transfer.accept.start")
 
         try:
-            reservations = QUOTAS.reserve(context, volumes=1,
-                                          gigabytes=vol_ref['size'])
+            reserve_opts = {'volumes': 1, 'gigabytes': vol_ref.size}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        vol_ref.volume_type_id)
+            reservations = QUOTAS.reserve(context, **reserve_opts)
         except exception.OverQuota as e:
             overs = e.kwargs['overs']
             usages = e.kwargs['usages']
@@ -158,35 +184,41 @@ class API(base.Base):
             def _consumed(name):
                 return (usages[name]['reserved'] + usages[name]['in_use'])
 
-            if 'gigabytes' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG volume (%(d_consumed)dG of %(d_quota)dG "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                's_size': vol_ref['size'],
-                                'd_consumed': _consumed('gigabytes'),
-                                'd_quota': quotas['gigabytes']})
-                raise exception.VolumeSizeExceedsAvailableQuota(
-                    requested=vol_ref['size'],
-                    consumed=_consumed('gigabytes'),
-                    quota=quotas['gigabytes'])
-            elif 'volumes' in overs:
-                msg = _("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes "
-                        "already consumed)")
-                LOG.warn(msg % {'s_pid': context.project_id,
-                                'd_consumed': _consumed('volumes')})
-                raise exception.VolumeLimitExceeded(allowed=quotas['volumes'])
+            for over in overs:
+                if 'gigabytes' in over:
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "%(s_size)sG volume (%(d_consumed)dG of "
+                              "%(d_quota)dG already consumed)")
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      's_size': vol_ref['size'],
+                                      'd_consumed': _consumed(over),
+                                      'd_quota': quotas[over]})
+                    raise exception.VolumeSizeExceedsAvailableQuota(
+                        requested=vol_ref['size'],
+                        consumed=_consumed(over),
+                        quota=quotas[over])
+                elif 'volumes' in over:
+                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                              "volume (%(d_consumed)d volumes "
+                              "already consumed)")
+                    LOG.warning(msg, {'s_pid': context.project_id,
+                                      'd_consumed': _consumed(over)})
+                    raise exception.VolumeLimitExceeded(allowed=quotas[over],
+                                                        name=over)
+
         try:
             donor_id = vol_ref['project_id']
+            reserve_opts = {'volumes': -1, 'gigabytes': -vol_ref.size}
+            QUOTAS.add_volume_type_opts(context,
+                                        reserve_opts,
+                                        vol_ref.volume_type_id)
             donor_reservations = QUOTAS.reserve(context.elevated(),
                                                 project_id=donor_id,
-                                                volumes=-1,
-                                                gigabytes=-vol_ref['size'])
+                                                **reserve_opts)
         except Exception:
             donor_reservations = None
             LOG.exception(_LE("Failed to update quota donating volume"
-                              " transfer id %s") % transfer_id)
+                              " transfer id %s"), transfer_id)
 
         try:
             # Transfer ownership of the volume now, must use an elevated
@@ -202,7 +234,7 @@ class API(base.Base):
             QUOTAS.commit(context, reservations)
             if donor_reservations:
                 QUOTAS.commit(context, donor_reservations, project_id=donor_id)
-            LOG.info(_LI("Volume %s has been transferred.") % volume_id)
+            LOG.info(_LI("Volume %s has been transferred."), volume_id)
         except Exception:
             with excutils.save_and_reraise_exception():
                 QUOTAS.rollback(context, reservations)
@@ -211,6 +243,8 @@ class API(base.Base):
                                     project_id=donor_id)
 
         vol_ref = self.db.volume_get(context, volume_id)
+        volume_utils.notify_about_volume_usage(context, vol_ref,
+                                               "transfer.accept.end")
         return {'id': transfer_id,
                 'display_name': transfer['display_name'],
                 'volume_id': vol_ref['id']}

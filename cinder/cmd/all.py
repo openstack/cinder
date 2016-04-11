@@ -29,19 +29,23 @@ import eventlet
 eventlet.monkey_patch()
 
 import sys
-import warnings
-
-warnings.simplefilter('once', DeprecationWarning)
 
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_log import versionutils
+from oslo_reports import guru_meditation_report as gmr
+from oslo_reports import opts as gmr_opts
 
 from cinder import i18n
 i18n.enable_lazy()
 
 # Need to register global_opts
+from cinder.cmd import volume as volume_cmd
 from cinder.common import config   # noqa
-from cinder.i18n import _LE
-from cinder.openstack.common import log as logging
+from cinder.db import api as session
+from cinder.i18n import _LE, _
+from cinder import objects
+from cinder import rpc
 from cinder import service
 from cinder import utils
 from cinder import version
@@ -50,13 +54,24 @@ from cinder import version
 CONF = cfg.CONF
 
 
+# TODO(e0ne): get a rid of code duplication in cinder.cmd module in Mitaka
 def main():
+    objects.register_all()
+    gmr_opts.set_defaults(CONF)
     CONF(sys.argv[1:], project='cinder',
          version=version.version_string())
-    logging.setup("cinder")
+    config.set_middleware_defaults()
+    logging.setup(CONF, "cinder")
     LOG = logging.getLogger('cinder.all')
+    versionutils.report_deprecated_feature(LOG, _(
+        'cinder-all is deprecated in Newton and will be removed in Ocata.'))
 
     utils.monkey_patch()
+
+    gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
+
+    rpc.init(CONF)
+
     launcher = service.process_launcher()
     # cinder-api
     try:
@@ -65,9 +80,32 @@ def main():
     except (Exception, SystemExit):
         LOG.exception(_LE('Failed to load osapi_volume'))
 
-    for binary in ['cinder-volume', 'cinder-scheduler', 'cinder-backup']:
+    for binary in ['cinder-scheduler', 'cinder-backup']:
         try:
             launcher.launch_service(service.Service.create(binary=binary))
         except (Exception, SystemExit):
             LOG.exception(_LE('Failed to load %s'), binary)
+
+    # cinder-volume
+    try:
+        if CONF.enabled_backends:
+            for backend in CONF.enabled_backends:
+                CONF.register_opt(volume_cmd.host_opt, group=backend)
+                backend_host = getattr(CONF, backend).backend_host
+                host = "%s@%s" % (backend_host or CONF.host, backend)
+                server = service.Service.create(host=host,
+                                                service_name=backend,
+                                                binary='cinder-volume')
+                # Dispose of the whole DB connection pool here before
+                # starting another process.  Otherwise we run into cases
+                # where child processes share DB connections which results
+                # in errors.
+                session.dispose_engine()
+                launcher.launch_service(server)
+        else:
+            server = service.Service.create(binary='cinder-volume')
+            launcher.launch_service(server)
+    except (Exception, SystemExit):
+        LOG.exception(_LE('Failed to load conder-volume'))
+
     launcher.wait()

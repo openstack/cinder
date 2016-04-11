@@ -29,19 +29,22 @@ add_connection and delete_connection interfaces.
 
 from oslo_concurrency import lockutils
 from oslo_config import cfg
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
 import six
+import string
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
-from cinder.openstack.common import log as logging
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
-from cinder.zonemanager.drivers.fc_zone_driver import FCZoneDriver
-from cinder.zonemanager.utils import get_formatted_wwn
+from cinder.zonemanager.drivers import driver_utils
+from cinder.zonemanager.drivers import fc_zone_driver
+from cinder.zonemanager import utils as zm_utils
 
 LOG = logging.getLogger(__name__)
 
+SUPPORTED_CHARS = string.ascii_letters + string.digits + '$' + '-' + '^' + '_'
 cisco_opts = [
     cfg.StrOpt('cisco_sb_connector',
                default='cinder.zonemanager.drivers.cisco'
@@ -50,10 +53,10 @@ cisco_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(cisco_opts, 'fc-zone-manager')
+CONF.register_opts(cisco_opts, group='fc-zone-manager')
 
 
-class CiscoFCZoneDriver(FCZoneDriver):
+class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
     """Cisco FC zone driver implementation.
 
     OpenStack Fibre Channel zone driver to manage FC zoning in
@@ -61,9 +64,10 @@ class CiscoFCZoneDriver(FCZoneDriver):
 
     Version history:
         1.0 - Initial Cisco FC zone driver
+        1.1 - Added friendly zone name support
     """
 
-    VERSION = "1.0.0"
+    VERSION = "1.1.0"
 
     def __init__(self, **kwargs):
         super(CiscoFCZoneDriver, self).__init__(**kwargs)
@@ -79,7 +83,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
             base_san_opts = []
             if not fabric_names:
                 base_san_opts.append(
-                    cfg.StrOpt('fc_fabric_names', default=None,
+                    cfg.StrOpt('fc_fabric_names',
                                help='Comma separated list of fibre channel '
                                'fabric names. This list of names is used to'
                                ' retrieve other SAN credentials for connecting'
@@ -109,7 +113,8 @@ class CiscoFCZoneDriver(FCZoneDriver):
                     fabric_names)
 
     @lockutils.synchronized('cisco', 'fcfabric-', True)
-    def add_connection(self, fabric, initiator_target_map):
+    def add_connection(self, fabric, initiator_target_map, host_name=None,
+                       storage_system=None):
         """Concrete implementation of add_connection.
 
         Based on zoning policy and state of each I-T pair, list of zone
@@ -122,7 +127,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
         :param initiator_target_map: Mapping of initiator to list of targets
         """
 
-        LOG.debug("Add connection for Fabric:%s", fabric)
+        LOG.debug("Add connection for Fabric: %s", fabric)
         LOG.info(_LI("CiscoFCZoneDriver - Add connection "
                      "for I-T map: %s"), initiator_target_map)
         fabric_ip = self.fabric_configs[fabric].safe_get(
@@ -162,12 +167,18 @@ class CiscoFCZoneDriver(FCZoneDriver):
                     if zoning_policy == 'initiator-target':
                         for t in t_list:
                             target = t.lower()
-                            zone_members = [get_formatted_wwn(initiator),
-                                            get_formatted_wwn(target)]
-                            zone_name = (self.
-                                         configuration.cisco_zone_name_prefix
-                                         + initiator.replace(':', '')
-                                         + target.replace(':', ''))
+                            zone_members = [
+                                zm_utils.get_formatted_wwn(initiator),
+                                zm_utils.get_formatted_wwn(target)]
+                            zone_name = (
+                                driver_utils.get_friendly_zone_name(
+                                    zoning_policy,
+                                    initiator,
+                                    target,
+                                    host_name,
+                                    storage_system,
+                                    self.configuration.cisco_zone_name_prefix,
+                                    SUPPORTED_CHARS))
                             if (len(cfgmap_from_fabric) == 0 or (
                                     zone_name not in zone_names)):
                                 zone_map[zone_name] = zone_members
@@ -177,13 +188,22 @@ class CiscoFCZoneDriver(FCZoneDriver):
                                              "Skipping zone creation %s"),
                                          zone_name)
                     elif zoning_policy == 'initiator':
-                        zone_members = [get_formatted_wwn(initiator)]
+                        zone_members = [
+                            zm_utils.get_formatted_wwn(initiator)]
                         for t in t_list:
                             target = t.lower()
-                            zone_members.append(get_formatted_wwn(target))
+                            zone_members.append(
+                                zm_utils.get_formatted_wwn(target))
 
-                        zone_name = self.configuration.cisco_zone_name_prefix \
-                            + initiator.replace(':', '')
+                        zone_name = (
+                            driver_utils.get_friendly_zone_name(
+                                zoning_policy,
+                                initiator,
+                                target,
+                                host_name,
+                                storage_system,
+                                self.configuration.cisco_zone_name_prefix,
+                                SUPPORTED_CHARS))
 
                         if len(zone_names) > 0 and (zone_name in zone_names):
                             zone_members = zone_members + filter(
@@ -216,17 +236,17 @@ class CiscoFCZoneDriver(FCZoneDriver):
                     except exception.CiscoZoningCliException as cisco_ex:
                         msg = _("Exception: %s") % six.text_type(cisco_ex)
                         raise exception.FCZoneDriverException(msg)
-                    except Exception as e:
-                        LOG.error(_LE("Exception: %s") % six.text_type(e))
-                        msg = (_("Failed to add zoning configuration %s") %
-                               six.text_type(e))
+                    except Exception:
+                        msg = _("Failed to add zoning configuration.")
+                        LOG.exception(msg)
                         raise exception.FCZoneDriverException(msg)
                 LOG.debug("Zones added successfully: %s", zone_map)
             else:
                 LOG.debug("Zoning session exists VSAN: %s", zoning_vsan)
 
     @lockutils.synchronized('cisco', 'fcfabric-', True)
-    def delete_connection(self, fabric, initiator_target_map):
+    def delete_connection(self, fabric, initiator_target_map, host_name=None,
+                          storage_system=None):
         """Concrete implementation of delete_connection.
 
         Based on zoning policy and state of each I-T pair, list of zones
@@ -236,7 +256,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
         :param fabric: Fabric name from cinder.conf file
         :param initiator_target_map: Mapping of initiator to list of targets
         """
-        LOG.debug("Delete connection for fabric:%s", fabric)
+        LOG.debug("Delete connection for fabric: %s", fabric)
         LOG.info(_LI("CiscoFCZoneDriver - Delete connection for I-T map: %s"),
                  initiator_target_map)
         fabric_ip = self.fabric_configs[fabric].safe_get(
@@ -277,7 +297,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
             LOG.debug("zone config from Fabric: %s", cfgmap_from_fabric)
             for initiator_key in initiator_target_map.keys():
                 initiator = initiator_key.lower()
-                formatted_initiator = get_formatted_wwn(initiator)
+                formatted_initiator = zm_utils.get_formatted_wwn(initiator)
                 zone_map = {}
                 zones_to_delete = []
                 t_list = initiator_target_map[initiator_key]
@@ -286,9 +306,14 @@ class CiscoFCZoneDriver(FCZoneDriver):
                     for t in t_list:
                         target = t.lower()
                         zone_name = (
-                            self.configuration.cisco_zone_name_prefix
-                            + initiator.replace(':', '')
-                            + target.replace(':', ''))
+                            driver_utils.get_friendly_zone_name(
+                                zoning_policy,
+                                initiator,
+                                target,
+                                host_name,
+                                storage_system,
+                                self.configuration.cisco_zone_name_prefix,
+                                SUPPORTED_CHARS))
                         LOG.debug("Zone name to del: %s", zone_name)
                         if (len(zone_names) > 0 and (zone_name in zone_names)):
                             # delete zone.
@@ -300,10 +325,17 @@ class CiscoFCZoneDriver(FCZoneDriver):
                     zone_members = [formatted_initiator]
                     for t in t_list:
                         target = t.lower()
-                        zone_members.append(get_formatted_wwn(target))
+                        zone_members.append(
+                            zm_utils.get_formatted_wwn(target))
 
-                    zone_name = self.configuration.cisco_zone_name_prefix \
-                        + initiator.replace(':', '')
+                    zone_name = driver_utils.get_friendly_zone_name(
+                        zoning_policy,
+                        initiator,
+                        target,
+                        host_name,
+                        storage_system,
+                        self.configuration.cisco_zone_name_prefix,
+                        SUPPORTED_CHARS)
 
                     if (zone_names and (zone_name in zone_names)):
                         filtered_members = filter(
@@ -315,7 +347,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
                         # We find the filtered list and if it is non-empty,
                         # add initiator to it and update zone if filtered
                         # list is empty, we remove that zone.
-                        LOG.debug("Zone delete - I mode: filtered targets:%s",
+                        LOG.debug("Zone delete - I mode: filtered targets: %s",
                                   filtered_members)
                         if filtered_members:
                             filtered_members.append(formatted_initiator)
@@ -366,10 +398,9 @@ class CiscoFCZoneDriver(FCZoneDriver):
                                           zoning_vsan, cfgmap_from_fabric,
                                           statusmap_from_fabric)
                     conn.cleanup()
-                except Exception as e:
-                    msg = _("Exception: %s") % six.text_type(e)
-                    LOG.error(msg)
+                except Exception:
                     msg = _("Failed to update or delete zoning configuration")
+                    LOG.exception(msg)
                     raise exception.FCZoneDriverException(msg)
                 LOG.debug("Zones deleted successfully: %s", zone_map)
             else:
@@ -389,7 +420,8 @@ class CiscoFCZoneDriver(FCZoneDriver):
         LOG.debug("Target wwn List: %s", target_wwn_list)
         if len(fabrics) > 0:
             for t in target_wwn_list:
-                formatted_target_list.append(get_formatted_wwn(t.lower()))
+                formatted_target_list.append(
+                    zm_utils.get_formatted_wwn(t.lower()))
             LOG.debug("Formatted Target wwn List: %s", formatted_target_list)
             for fabric_name in fabrics:
                 fabric_ip = self.fabric_configs[fabric_name].safe_get(
@@ -414,16 +446,16 @@ class CiscoFCZoneDriver(FCZoneDriver):
                         password=fabric_pwd, port=fabric_port,
                         vsan=zoning_vsan)
                     nsinfo = conn.get_nameserver_info()
-                    LOG.debug("show fcns database info from fabric:%s", nsinfo)
+                    LOG.debug("show fcns database info from fabric: %s",
+                              nsinfo)
                     conn.cleanup()
-                except exception.CiscoZoningCliException as ex:
+                except exception.CiscoZoningCliException:
                     with excutils.save_and_reraise_exception():
-                        LOG.error(_LE("Error getting show fcns database "
-                                      "info: %s"), six.text_type(ex))
-                except Exception as e:
-                    msg = (_("Failed to get show fcns database info:%s") %
-                           six.text_type(e))
-                    LOG.error(msg)
+                        LOG.exception(_LE("Error getting show fcns database "
+                                          "info."))
+                except Exception:
+                    msg = _("Failed to get show fcns database info.")
+                    LOG.exception(msg)
                     raise exception.FCZoneDriverException(msg)
                 visible_targets = filter(
                     lambda x: x in formatted_target_list, nsinfo)
@@ -439,7 +471,7 @@ class CiscoFCZoneDriver(FCZoneDriver):
                 else:
                     LOG.debug("No targets are in the fcns info for SAN %s",
                               fabric_name)
-        LOG.debug("Return SAN context output:%s", fabric_map)
+        LOG.debug("Return SAN context output: %s", fabric_map)
         return fabric_map
 
     def get_active_zone_set(self, fabric_ip,
@@ -457,10 +489,9 @@ class CiscoFCZoneDriver(FCZoneDriver):
                 password=fabric_pwd, port=fabric_port, vsan=zoning_vsan)
             cfgmap = conn.get_active_zone_set()
             conn.cleanup()
-        except Exception as e:
-            msg = (_("Failed to access active zoning configuration:%s") %
-                   six.text_type(e))
-            LOG.error(msg)
+        except Exception:
+            msg = _("Failed to access active zoning configuration.")
+            LOG.exception(msg)
             raise exception.FCZoneDriverException(msg)
         LOG.debug("Active zone set from fabric: %s", cfgmap)
         return cfgmap
@@ -479,10 +510,9 @@ class CiscoFCZoneDriver(FCZoneDriver):
                 password=fabric_pwd, port=fabric_port, vsan=zoning_vsan)
             statusmap = conn.get_zoning_status()
             conn.cleanup()
-        except Exception as e:
-            msg = (_("Failed to access zoneset status:%s") %
-                   six.text_type(e))
-            LOG.error(msg)
+        except Exception:
+            msg = _("Failed to access zoneset status:%s")
+            LOG.exception(msg)
             raise exception.FCZoneDriverException(msg)
         LOG.debug("Zoneset status from fabric: %s", statusmap)
         return statusmap

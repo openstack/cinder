@@ -1,9 +1,5 @@
-Brick is a new library that currently is maintained in Cinder for
-the Havana release.   It will eventually be moved external to Cinder,
-possibly oslo, or pypi.  Any defects found in Brick, should be submitted
-against Cinder and fixed there, then pulled into other projects that
-are using brick.
+Brick has been migrated to a new standalone
+pypi library called os-brick.
 
-* Brick is used outside of Cinder and therefore
-  cannot have any dependencies on Cinder and/or
-  it's database.
+We are leaving the local_dev directory here for the time
+being until we can migrate it to a new home.

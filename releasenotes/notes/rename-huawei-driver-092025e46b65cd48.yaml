@@ -1,0 +1,3 @@
+---
+upgrade:
+  - Rename Huawei18000ISCSIDriver and Huawei18000FCDriver to HuaweiISCSIDriver and HuaweiFCDriver.

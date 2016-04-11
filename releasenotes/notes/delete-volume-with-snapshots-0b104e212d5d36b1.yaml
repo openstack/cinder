@@ -1,0 +1,4 @@
+---
+features:
+  - It is now possible to delete a volume and its snapshots
+    by passing an additional argument to volume delete, "cascade=True".

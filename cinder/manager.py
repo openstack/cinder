@@ -52,21 +52,30 @@ This module provides Manager, a base class for managers.
 """
 
 
-from oslo import messaging
 from oslo_config import cfg
+from oslo_log import log as logging
+import oslo_messaging as messaging
+from oslo_service import periodic_task
 
 from cinder.db import base
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import periodic_task
+from cinder.i18n import _LI
+from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
+
+from eventlet import greenpool
 
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
-class Manager(base.Base, periodic_task.PeriodicTasks):
+class PeriodicTasks(periodic_task.PeriodicTasks):
+    def __init__(self):
+        super(PeriodicTasks, self).__init__(CONF)
+
+
+class Manager(base.Base, PeriodicTasks):
     # Set RPC API version to 1.0 by default.
     RPC_API_VERSION = '1.0'
 
@@ -86,19 +95,49 @@ class Manager(base.Base, periodic_task.PeriodicTasks):
     def init_host(self):
         """Handle initialization if this is a standalone service.
 
-        Child classes should override this method.
+        A hook point for services to execute tasks before the services are made
+        available (i.e. showing up on RPC and starting to accept RPC calls) to
+        other components.  Child classes should override this method.
 
         """
         pass
 
-    def service_version(self, context):
+    def init_host_with_rpc(self):
+        """A hook for service to do jobs after RPC is ready.
+
+        Like init_host(), this method is a hook where services get a chance
+        to execute tasks that *need* RPC. Child classes should override
+        this method.
+
+        """
+        pass
+
+    def service_version(self):
         return version.version_string()
 
-    def service_config(self, context):
+    def service_config(self):
         config = {}
         for key in CONF:
             config[key] = CONF.get(key, None)
         return config
+
+    def is_working(self):
+        """Method indicating if service is working correctly.
+
+        This method is supposed to be overriden by subclasses and return if
+        manager is working correctly.
+        """
+        return True
+
+    def reset(self):
+        """Method executed when SIGHUP is caught by the process.
+
+        We're utilizing it to reset RPC API version pins to avoid restart of
+        the service when rolling upgrade is completed.
+        """
+        LOG.info(_LI('Resetting cached RPC version pins.'))
+        rpc.LAST_OBJ_VERSIONS = {}
+        rpc.LAST_RPC_VERSIONS = {}
 
 
 class SchedulerDependentManager(Manager):
@@ -115,6 +154,7 @@ class SchedulerDependentManager(Manager):
         self.last_capabilities = None
         self.service_name = service_name
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
+        self._tp = greenpool.GreenPool()
         super(SchedulerDependentManager, self).__init__(host, db_driver)
 
     def update_service_capabilities(self, capabilities):
@@ -131,3 +171,10 @@ class SchedulerDependentManager(Manager):
                 self.service_name,
                 self.host,
                 self.last_capabilities)
+
+    def _add_to_threadpool(self, func, *args, **kwargs):
+        self._tp.spawn_n(func, *args, **kwargs)
+
+    def reset(self):
+        super(SchedulerDependentManager, self).reset()
+        self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()

@@ -1,0 +1,3 @@
+---
+features:
+  - Support cinder_img_volume_type property in glance image metadata to specify volume type.

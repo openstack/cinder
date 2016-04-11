@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_log import log as logging
 import webob
 from webob import exc
 
@@ -23,7 +24,6 @@ from cinder.api.views import transfers as transfer_view
 from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder.openstack.common import log as logging
 from cinder import transfer as transferAPI
 from cinder import utils
 
@@ -131,12 +131,15 @@ class VolumeTransferController(wsgi.Controller):
         filters = req.params.copy()
         LOG.debug('Listing volume transfers')
         transfers = self.transfer_api.get_all(context, filters=filters)
+        transfer_count = len(transfers)
         limited_list = common.limited(transfers, req)
 
         if is_detail:
-            transfers = self._view_builder.detail_list(req, limited_list)
+            transfers = self._view_builder.detail_list(req, limited_list,
+                                                       transfer_count)
         else:
-            transfers = self._view_builder.summary_list(req, limited_list)
+            transfers = self._view_builder.summary_list(req, limited_list,
+                                                        transfer_count)
 
         return transfers
 
@@ -146,19 +149,23 @@ class VolumeTransferController(wsgi.Controller):
     def create(self, req, body):
         """Create a new volume transfer."""
         LOG.debug('Creating new volume transfer %s', body)
-        if not self.is_valid_body(body, 'transfer'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'transfer')
 
         context = req.environ['cinder.context']
+        transfer = body['transfer']
 
         try:
-            transfer = body['transfer']
             volume_id = transfer['volume_id']
         except KeyError:
             msg = _("Incorrect request body format")
             raise exc.HTTPBadRequest(explanation=msg)
 
         name = transfer.get('name', None)
+        if name is not None:
+            self.validate_string_length(name, 'Transfer name',
+                                        min_length=1, max_length=255,
+                                        remove_whitespaces=True)
+            name = name.strip()
 
         LOG.info(_LI("Creating transfer of volume %s"),
                  volume_id,
@@ -172,7 +179,7 @@ class VolumeTransferController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=error.msg)
 
         transfer = self._view_builder.create(req,
-                                             dict(new_transfer.iteritems()))
+                                             dict(new_transfer))
         return transfer
 
     @wsgi.response(202)
@@ -182,13 +189,12 @@ class VolumeTransferController(wsgi.Controller):
         """Accept a new volume transfer."""
         transfer_id = id
         LOG.debug('Accepting volume transfer %s', transfer_id)
-        if not self.is_valid_body(body, 'accept'):
-            raise exc.HTTPBadRequest()
+        self.assert_valid_body(body, 'accept')
 
         context = req.environ['cinder.context']
+        accept = body['accept']
 
         try:
-            accept = body['accept']
             auth_key = accept['auth_key']
         except KeyError:
             msg = _("Incorrect request body format")
@@ -202,13 +208,13 @@ class VolumeTransferController(wsgi.Controller):
                                                          auth_key)
         except exception.VolumeSizeExceedsAvailableQuota as error:
             raise exc.HTTPRequestEntityTooLarge(
-                explanation=error.msg, headers={'Retry-After': 0})
+                explanation=error.msg, headers={'Retry-After': '0'})
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
         transfer = \
             self._view_builder.summary(req,
-                                       dict(accepted_transfer.iteritems()))
+                                       dict(accepted_transfer))
         return transfer
 
     def delete(self, req, id):

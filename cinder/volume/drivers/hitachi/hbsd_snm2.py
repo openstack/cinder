@@ -12,20 +12,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from contextlib import nested
 import re
 import shlex
 import threading
 import time
 
+from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _LE, _LW
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import loopingcall
 from cinder import utils
 from cinder.volume.drivers.hitachi import hbsd_basiclib as basic_lib
 
@@ -66,7 +65,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
 
     def _wait_for_exec_hsnm(self, args, printflag, noretry, timeout, start):
         lock = basic_lib.get_process_lock(self.hsnm_lock_file)
-        with nested(self.hsnm_lock, lock):
+        with self.hsnm_lock, lock:
             ret, stdout, stderr = self.exec_command('env', args=args,
                                                     printflag=printflag)
 
@@ -144,8 +143,8 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                 if int(line[3]) == ldev:
                     hlu = int(line[2])
                     LOG.warning(_LW('ldev(%(ldev)d) is already mapped '
-                                    '(hlun: %(hlu)d)')
-                                % {'ldev': ldev, 'hlu': hlu})
+                                    '(hlun: %(hlu)d)'),
+                                {'ldev': ldev, 'hlu': hlu})
                     return hlu
         return None
 
@@ -296,7 +295,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
             else:
                 target_wwns[port] = line[3]
 
-        LOG.debug('target wwns: %s' % target_wwns)
+        LOG.debug('target wwns: %s', target_wwns)
         return target_wwns
 
     def get_hostgroup_from_wwns(self, hostgroups, port, wwns, buf, login):
@@ -380,7 +379,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
         no_lun_cnt = 0
         deleted_hostgroups = []
         for hostgroup in hostgroups:
-            LOG.debug('comm_delete_lun: hostgroup is %s' % hostgroup)
+            LOG.debug('comm_delete_lun: hostgroup is %s', hostgroup)
             port = hostgroup['port']
             gid = hostgroup['gid']
             ctl_no = port[0]
@@ -424,7 +423,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                 raise exception.HBSDCmdError(message=msg, ret=ret, err=stderr)
 
             deleted_hostgroups.append({'port': port, 'gid': gid})
-            LOG.debug('comm_delete_lun is over (%d)' % lun)
+            LOG.debug('comm_delete_lun is over (%d)', lun)
 
     def comm_delete_lun(self, hostgroups, ldev):
         self.comm_delete_lun_core('auhgmap', hostgroups, ldev)
@@ -555,9 +554,8 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                 if is_once:
                     break
             else:
-                msg = basic_lib.set_msg(
-                    314, ldev=ldev, lun=hlu, port=port, id=gid)
-                LOG.warning(msg)
+                LOG.warning(basic_lib.set_msg(
+                    314, ldev=ldev, lun=hlu, port=port, id=gid))
 
         if not is_ok:
             if stderr:
@@ -617,7 +615,7 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
         import pexpect
 
         lock = basic_lib.get_process_lock(self.hsnm_lock_file)
-        with nested(self.hsnm_lock, lock):
+        with self.hsnm_lock, lock:
             try:
                 child = pexpect.spawn(cmd)
                 child.expect('Secret: ', timeout=CHAP_TIMEOUT)
@@ -681,8 +679,8 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                 if added_flag:
                     _ret, _stdout, _stderr = self.delete_chap_user(port)
                     if _ret:
-                        msg = basic_lib.set_msg(303, user=auth_username)
-                        LOG.warning(msg)
+                        LOG.warning(basic_lib.set_msg(
+                            303, user=auth_username))
 
                 msg = basic_lib.output_err(
                     600, cmd='auchapuser', ret=ret, out=stdout, err=stderr)
@@ -774,8 +772,8 @@ class HBSDSNM2(basic_lib.HBSDBasicLib):
                     gid = int(shlex.split(line)[0][0:3])
                     hostgroups.append(
                         {'port': port, 'gid': gid, 'detected': True})
-                    LOG.debug('Find port=%(port)s gid=%(gid)d'
-                              % {'port': port, 'gid': gid})
+                    LOG.debug('Find port=%(port)s gid=%(gid)d',
+                              {'port': port, 'gid': gid})
                 if port not in security_ports:
                     security_ports.append(port)
 

@@ -15,6 +15,7 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+
 """
 SQLAlchemy models for cinder data.
 """
@@ -63,6 +64,22 @@ class Service(BASE, CinderBase):
     disabled = Column(Boolean, default=False)
     availability_zone = Column(String(255), default='cinder')
     disabled_reason = Column(String(255))
+    # adding column modified_at to contain timestamp
+    # for manual enable/disable of cinder services
+    # updated_at column will now contain timestamps for
+    # periodic updates
+    modified_at = Column(DateTime)
+
+    # Version columns to support rolling upgrade. These report the max RPC API
+    # and objects versions that the manager of the service is able to support.
+    rpc_current_version = Column(String(36))
+    object_current_version = Column(String(36))
+
+    # replication_status can be: enabled, disabled, not-capable, error,
+    # failed-over or not-configured
+    replication_status = Column(String(255), default="not-capable")
+    active_backend_id = Column(String(255))
+    frozen = Column(Boolean, nullable=False, default=False)
 
 
 class ConsistencyGroup(BASE, CinderBase):
@@ -79,6 +96,8 @@ class ConsistencyGroup(BASE, CinderBase):
     description = Column(String(255))
     volume_type_id = Column(String(255))
     status = Column(String(255))
+    cgsnapshot_id = Column(String(36))
+    source_cgid = Column(String(36))
 
 
 class Cgsnapshot(BASE, CinderBase):
@@ -128,10 +147,6 @@ class Volume(BASE, CinderBase):
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     size = Column(Integer)
     availability_zone = Column(String(255))  # TODO(vish): foreign key?
-    instance_uuid = Column(String(36))
-    attached_host = Column(String(255))
-    mountpoint = Column(String(255))
-    attach_time = Column(String(255))  # TODO(vish): datetime
     status = Column(String(255))  # TODO(vish): enum?
     attach_status = Column(String(255))  # TODO(vish): enum
     migration_status = Column(String(255))
@@ -154,12 +169,14 @@ class Volume(BASE, CinderBase):
 
     consistencygroup_id = Column(String(36))
 
-    deleted = Column(Boolean, default=False)
     bootable = Column(Boolean, default=False)
+    multiattach = Column(Boolean, default=False)
 
     replication_status = Column(String(255))
     replication_extended_status = Column(String(255))
     replication_driver_data = Column(String(255))
+
+    previous_status = Column(String(255))
 
     consistencygroup = relationship(
         ConsistencyGroup,
@@ -196,6 +213,26 @@ class VolumeAdminMetadata(BASE, CinderBase):
                           'VolumeAdminMetadata.deleted == False)')
 
 
+class VolumeAttachment(BASE, CinderBase):
+    """Represents a volume attachment for a vm."""
+    __tablename__ = 'volume_attachment'
+    id = Column(String(36), primary_key=True)
+
+    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=False)
+    volume = relationship(Volume, backref="volume_attachment",
+                          foreign_keys=volume_id,
+                          primaryjoin='and_('
+                          'VolumeAttachment.volume_id == Volume.id,'
+                          'VolumeAttachment.deleted == False)')
+    instance_uuid = Column(String(36))
+    attached_host = Column(String(255))
+    mountpoint = Column(String(255))
+    attach_time = Column(DateTime)
+    detach_time = Column(DateTime)
+    attach_status = Column(String(255))
+    attach_mode = Column(String(255))
+
+
 class VolumeTypes(BASE, CinderBase):
     """Represent possible volume_types of volumes offered."""
     __tablename__ = "volume_types"
@@ -225,6 +262,7 @@ class VolumeTypeProjects(BASE, CinderBase):
     volume_type_id = Column(Integer, ForeignKey('volume_types.id'),
                             nullable=False)
     project_id = Column(String(255))
+    deleted = Column(Integer, default=0)
 
     volume_type = relationship(
         VolumeTypes,
@@ -232,7 +270,7 @@ class VolumeTypeProjects(BASE, CinderBase):
         foreign_keys=volume_type_id,
         primaryjoin='and_('
         'VolumeTypeProjects.volume_type_id == VolumeTypes.id,'
-        'VolumeTypeProjects.deleted == False)')
+        'VolumeTypeProjects.deleted == 0)')
 
 
 class VolumeTypeExtraSpecs(BASE, CinderBase):
@@ -343,6 +381,7 @@ class Quota(BASE, CinderBase):
 
     resource = Column(String(255))
     hard_limit = Column(Integer, nullable=True)
+    allocated = Column(Integer, default=0)
 
 
 class QuotaClass(BASE, CinderBase):
@@ -388,7 +427,8 @@ class Reservation(BASE, CinderBase):
     id = Column(Integer, primary_key=True)
     uuid = Column(String(36), nullable=False)
 
-    usage_id = Column(Integer, ForeignKey('quota_usages.id'), nullable=False)
+    usage_id = Column(Integer, ForeignKey('quota_usages.id'), nullable=True)
+    allocated_id = Column(Integer, ForeignKey('quotas.id'), nullable=True)
 
     project_id = Column(String(255), index=True)
     resource = Column(String(255))
@@ -401,6 +441,10 @@ class Reservation(BASE, CinderBase):
         foreign_keys=usage_id,
         primaryjoin='and_(Reservation.usage_id == QuotaUsage.id,'
                     'QuotaUsage.deleted == 0)')
+    quota = relationship(
+        "Quota",
+        foreign_keys=allocated_id,
+        primaryjoin='and_(Reservation.allocated_id == Quota.id)')
 
 
 class Snapshot(BASE, CinderBase):
@@ -433,6 +477,7 @@ class Snapshot(BASE, CinderBase):
 
     provider_location = Column(String(255))
     provider_id = Column(String(255))
+    provider_auth = Column(String(255))
 
     volume = relationship(Volume, backref="snapshots",
                           foreign_keys=volume_id,
@@ -461,22 +506,6 @@ class SnapshotMetadata(BASE, CinderBase):
                             'SnapshotMetadata.deleted == False)')
 
 
-class IscsiTarget(BASE, CinderBase):
-    """Represents an iscsi target for a given host."""
-    __tablename__ = 'iscsi_targets'
-    __table_args__ = (schema.UniqueConstraint("target_num", "host"),
-                      {'mysql_engine': 'InnoDB'})
-    id = Column(Integer, primary_key=True)
-    target_num = Column(Integer)
-    host = Column(String(255))
-    volume_id = Column(String(36), ForeignKey('volumes.id'), nullable=True)
-    volume = relationship(Volume,
-                          backref=backref('iscsi_target', uselist=False),
-                          foreign_keys=volume_id,
-                          primaryjoin='and_(IscsiTarget.volume_id==Volume.id,'
-                          'IscsiTarget.deleted==False)')
-
-
 class Backup(BASE, CinderBase):
     """Represents a backup of a volume to Swift."""
     __tablename__ = 'backups'
@@ -495,12 +524,19 @@ class Backup(BASE, CinderBase):
     display_name = Column(String(255))
     display_description = Column(String(255))
     container = Column(String(255))
+    parent_id = Column(String(36))
     status = Column(String(255))
     fail_reason = Column(String(255))
     service_metadata = Column(String(255))
     service = Column(String(255))
     size = Column(Integer)
     object_count = Column(Integer)
+    temp_volume_id = Column(String(36))
+    temp_snapshot_id = Column(String(36))
+    num_dependent_backups = Column(Integer)
+    snapshot_id = Column(String(36))
+    data_timestamp = Column(DateTime)
+    restore_volume_id = Column(String(36))
 
     @validates('fail_reason')
     def validate_fail_reason(self, key, fail_reason):
@@ -547,6 +583,32 @@ class Transfer(BASE, CinderBase):
                           'Transfer.deleted == False)')
 
 
+class DriverInitiatorData(BASE, models.TimestampMixin, models.ModelBase):
+    """Represents private key-value pair specific an initiator for drivers"""
+    __tablename__ = 'driver_initiator_data'
+    __table_args__ = (
+        schema.UniqueConstraint("initiator", "namespace", "key"),
+        {'mysql_engine': 'InnoDB'}
+    )
+    id = Column(Integer, primary_key=True, nullable=False)
+    initiator = Column(String(255), index=True, nullable=False)
+    namespace = Column(String(255), nullable=False)
+    key = Column(String(255), nullable=False)
+    value = Column(String(255))
+
+
+class ImageVolumeCacheEntry(BASE, models.ModelBase):
+    """Represents an image volume cache entry"""
+    __tablename__ = 'image_volume_cache_entries'
+    id = Column(Integer, primary_key=True, nullable=False)
+    host = Column(String(255), index=True, nullable=False)
+    image_id = Column(String(36), index=True, nullable=False)
+    image_updated_at = Column(DateTime, nullable=False)
+    volume_id = Column(String(36), nullable=False)
+    size = Column(Integer, nullable=False)
+    last_used = Column(DateTime, default=lambda: timeutils.utcnow())
+
+
 def register_models():
     """Register Models and create metadata.
 
@@ -560,6 +622,7 @@ def register_models():
               Volume,
               VolumeMetadata,
               VolumeAdminMetadata,
+              VolumeAttachment,
               SnapshotMetadata,
               Transfer,
               VolumeTypeExtraSpecs,

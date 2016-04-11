@@ -1,5 +1,7 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Clinton Knight.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -17,29 +19,47 @@ import copy
 import socket
 import sys
 
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import timeutils
+
 import six
 
-from cinder.i18n import _LE, _LW, _LI
-from cinder.openstack.common import log as logging
+from cinder import exception
+from cinder.i18n import _, _LE, _LW, _LI
+from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
-from cinder.volume.drivers.netapp.dataontap.client.api import NaApiError
-from cinder.volume.drivers.netapp.dataontap.client.api import NaElement
-from cinder.volume.drivers.netapp.dataontap.client.api import NaServer
+from cinder.volume.drivers.netapp import utils as na_utils
 
 
 LOG = logging.getLogger(__name__)
 
 
+@six.add_metaclass(utils.TraceWrapperMetaclass)
 class Client(object):
 
     def __init__(self, **kwargs):
-        self.connection = NaServer(host=kwargs['hostname'],
-                                   transport_type=kwargs['transport_type'],
-                                   port=kwargs['port'],
-                                   username=kwargs['username'],
-                                   password=kwargs['password'])
+        host = kwargs['hostname']
+        username = kwargs['username']
+        password = kwargs['password']
+        self.connection = netapp_api.NaServer(
+            host=host,
+            transport_type=kwargs['transport_type'],
+            port=kwargs['port'],
+            username=username,
+            password=password)
+
+        self.ssh_client = self._init_ssh_client(host, username, password)
+
+    def _init_ssh_client(self, host, username, password):
+        return netapp_api.SSHUtil(
+            host=host,
+            username=username,
+            password=password)
+
+    def _init_features(self):
+        """Set up the repository of available Data ONTAP features."""
+        self.features = na_utils.Features()
 
     def get_ontapi_version(self, cached=True):
         """Gets the supported ontapi version."""
@@ -58,11 +78,18 @@ class Client(object):
 
     def check_is_naelement(self, elem):
         """Checks if object is instance of NaElement."""
-        if not isinstance(elem, NaElement):
+        if not isinstance(elem, netapp_api.NaElement):
             raise ValueError('Expects NaElement')
 
+    def send_request(self, api_name, api_args=None, enable_tunneling=True):
+        """Sends request to Ontapi."""
+        request = netapp_api.NaElement(api_name)
+        if api_args:
+            request.translate_struct(api_args)
+        return self.connection.invoke_successfully(request, enable_tunneling)
+
     def create_lun(self, volume_name, lun_name, size, metadata,
-                   qos_policy_group=None):
+                   qos_policy_group_name=None):
         """Issues API request for creating LUN on volume."""
 
         path = '/vol/%s/%s' % (volume_name, lun_name)
@@ -71,19 +98,18 @@ class Client(object):
             **{'path': path, 'size': six.text_type(size),
                'ostype': metadata['OsType'],
                'space-reservation-enabled': metadata['SpaceReserved']})
-        if qos_policy_group:
-            lun_create.add_new_child('qos-policy-group', qos_policy_group)
+        if qos_policy_group_name:
+            lun_create.add_new_child('qos-policy-group', qos_policy_group_name)
 
         try:
             self.connection.invoke_successfully(lun_create, True)
         except netapp_api.NaApiError as ex:
             with excutils.save_and_reraise_exception():
-                msg = _LE("Error provisioning volume %(lun_name)s on "
-                          "%(volume_name)s. Details: %(ex)s")
-                msg_args = {'lun_name': lun_name,
-                            'volume_name': volume_name,
-                            'ex': six.text_type(ex)}
-                LOG.error(msg % msg_args)
+                LOG.error(_LE("Error provisioning volume %(lun_name)s on "
+                              "%(volume_name)s. Details: %(ex)s"),
+                          {'lun_name': lun_name,
+                           'volume_name': volume_name,
+                           'ex': ex})
 
     def destroy_lun(self, path, force=True):
         """Destroys the LUN at the path."""
@@ -94,7 +120,7 @@ class Client(object):
             lun_destroy.add_new_child('force', 'true')
         self.connection.invoke_successfully(lun_destroy, True)
         seg = path.split("/")
-        LOG.debug("Destroyed LUN %s" % seg[-1])
+        LOG.debug("Destroyed LUN %s", seg[-1])
 
     def map_lun(self, path, igroup_name, lun_id=None):
         """Maps LUN to the initiator and returns LUN id assigned."""
@@ -109,9 +135,8 @@ class Client(object):
         except netapp_api.NaApiError as e:
             code = e.code
             message = e.message
-            msg = _LW('Error mapping LUN. Code :%(code)s, Message:%(message)s')
-            msg_fmt = {'code': code, 'message': message}
-            LOG.warning(msg % msg_fmt)
+            LOG.warning(_LW('Error mapping LUN. Code :%(code)s, Message: '
+                            '%(message)s'), {'code': code, 'message': message})
             raise
 
     def unmap_lun(self, path, igroup_name):
@@ -122,16 +147,15 @@ class Client(object):
         try:
             self.connection.invoke_successfully(lun_unmap, True)
         except netapp_api.NaApiError as e:
-            msg = _LW("Error unmapping LUN. Code :%(code)s,"
-                      " Message:%(message)s")
-            msg_fmt = {'code': e.code, 'message': e.message}
             exc_info = sys.exc_info()
-            LOG.warning(msg % msg_fmt)
+            LOG.warning(_LW("Error unmapping LUN. Code :%(code)s, Message: "
+                            "%(message)s"), {'code': e.code,
+                                             'message': e.message})
             # if the LUN is already unmapped
             if e.code == '13115' or e.code == '9016':
                 pass
             else:
-                raise exc_info[0], exc_info[1], exc_info[2]
+                six.reraise(*exc_info)
 
     def create_igroup(self, igroup, igroup_type='iscsi', os_type='default'):
         """Creates igroup with specified args."""
@@ -181,8 +205,8 @@ class Client(object):
             geometry['max_resize'] =\
                 result.get_child_content("max-resize-size")
         except Exception as e:
-            LOG.error(_LE("LUN %(path)s geometry failed. Message - %(msg)s")
-                      % {'path': path, 'msg': e.message})
+            LOG.error(_LE("LUN %(path)s geometry failed. Message - %(msg)s"),
+                      {'path': path, 'msg': e.message})
         return geometry
 
     def get_volume_options(self, volume_name):
@@ -200,8 +224,8 @@ class Client(object):
         """Moves the LUN at path to new path."""
         seg = path.split("/")
         new_seg = new_path.split("/")
-        LOG.debug("Moving LUN %(name)s to %(new_name)s."
-                  % {'name': seg[-1], 'new_name': new_seg[-1]})
+        LOG.debug("Moving LUN %(name)s to %(new_name)s.",
+                  {'name': seg[-1], 'new_name': new_seg[-1]})
         lun_move = netapp_api.NaElement("lun-move")
         lun_move.add_new_child("path", path)
         lun_move.add_new_child("new-path", new_path)
@@ -217,6 +241,14 @@ class Client(object):
 
     def get_iscsi_service_details(self):
         """Returns iscsi iqn."""
+        raise NotImplementedError()
+
+    def check_iscsi_initiator_exists(self, iqn):
+        """Returns True if initiator exists."""
+        raise NotImplementedError()
+
+    def set_iscsi_chap_authentication(self, iqn, username, password):
+        """Provides NetApp host's CHAP credentials to the backend."""
         raise NotImplementedError()
 
     def get_lun_list(self):
@@ -247,6 +279,36 @@ class Client(object):
         """Retrieves LUNs with specified args."""
         raise NotImplementedError()
 
+    def get_performance_counter_info(self, object_name, counter_name):
+        """Gets info about one or more Data ONTAP performance counters."""
+
+        api_args = {'objectname': object_name}
+        result = self.send_request('perf-object-counter-list-info',
+                                   api_args,
+                                   enable_tunneling=False)
+
+        counters = result.get_child_by_name(
+            'counters') or netapp_api.NaElement('None')
+
+        for counter in counters.get_children():
+
+            if counter.get_child_content('name') == counter_name:
+
+                labels = []
+                label_list = counter.get_child_by_name(
+                    'labels') or netapp_api.NaElement('None')
+                for label in label_list.get_children():
+                    labels.extend(label.get_content().split(','))
+                base_counter = counter.get_child_content('base-counter')
+
+                return {
+                    'name': counter_name,
+                    'labels': labels,
+                    'base-counter': base_counter,
+                }
+        else:
+            raise exception.NotFound(_('Counter %s not found') % counter_name)
+
     def provide_ems(self, requester, netapp_backend, app_version,
                     server_type="cluster"):
         """Provide ems with volume stats for the requester.
@@ -255,7 +317,7 @@ class Client(object):
         """
         def _create_ems(netapp_backend, app_version, server_type):
             """Create ems API request."""
-            ems_log = NaElement('ems-autosupport-log')
+            ems_log = netapp_api.NaElement('ems-autosupport-log')
             host = socket.getfqdn() or 'Cinder_node'
             if server_type == "cluster":
                 dest = "cluster node"
@@ -275,13 +337,13 @@ class Client(object):
 
         def _create_vs_get():
             """Create vs_get API request."""
-            vs_get = NaElement('vserver-get-iter')
+            vs_get = netapp_api.NaElement('vserver-get-iter')
             vs_get.add_new_child('max-records', '1')
-            query = NaElement('query')
+            query = netapp_api.NaElement('query')
             query.add_node_with_children('vserver-info',
                                          **{'vserver-type': 'node'})
             vs_get.add_child_elem(query)
-            desired = NaElement('desired-attributes')
+            desired = netapp_api.NaElement('desired-attributes')
             desired.add_node_with_children(
                 'vserver-info', **{'vserver-name': '', 'vserver-type': ''})
             vs_get.add_child_elem(desired)
@@ -315,21 +377,57 @@ class Client(object):
                     if api_version:
                         major, minor = api_version
                     else:
-                        raise NaApiError(code='Not found',
-                                         message='No API version found')
+                        raise netapp_api.NaApiError(
+                            code='Not found',
+                            message='No API version found')
                     if major == 1 and minor > 15:
                         node = getattr(requester, 'vserver', None)
                     else:
                         node = _get_cluster_node(na_server)
                     if node is None:
-                        raise NaApiError(code='Not found',
-                                         message='No vserver found')
+                        raise netapp_api.NaApiError(
+                            code='Not found',
+                            message='No vserver found')
                     na_server.set_vserver(node)
                 else:
                     na_server.set_vfiler(None)
                 na_server.invoke_successfully(ems, True)
                 LOG.debug("ems executed successfully.")
-            except NaApiError as e:
-                LOG.warning(_LW("Failed to invoke ems. Message : %s") % e)
+            except netapp_api.NaApiError as e:
+                LOG.warning(_LW("Failed to invoke ems. Message : %s"), e)
             finally:
                 requester.last_ems = timeutils.utcnow()
+
+    def delete_snapshot(self, volume_name, snapshot_name):
+        """Deletes a volume snapshot."""
+        api_args = {'volume': volume_name, 'snapshot': snapshot_name}
+        self.send_request('snapshot-delete', api_args)
+
+    def create_cg_snapshot(self, volume_names, snapshot_name):
+        """Creates a consistency group snapshot out of one or more flexvols.
+
+        ONTAP requires an invocation of cg-start to first fence off the
+        flexvols to be included in the snapshot. If cg-start returns
+        success, a cg-commit must be executed to finalized the snapshot and
+        unfence the flexvols.
+        """
+        cg_id = self._start_cg_snapshot(volume_names, snapshot_name)
+        if not cg_id:
+            msg = _('Could not start consistency group snapshot %s.')
+            raise exception.VolumeBackendAPIException(data=msg % snapshot_name)
+        self._commit_cg_snapshot(cg_id)
+
+    def _start_cg_snapshot(self, volume_names, snapshot_name):
+        snapshot_init = {
+            'snapshot': snapshot_name,
+            'timeout': 'relaxed',
+            'volumes': [
+                {'volume-name': volume_name} for volume_name in volume_names
+            ],
+        }
+        result = self.send_request('cg-start', snapshot_init)
+        return result.get_child_content('cg-id')
+
+    def _commit_cg_snapshot(self, cg_id):
+        snapshot_commit = {'cg-id': cg_id}
+        self.send_request('cg-commit', snapshot_commit)

@@ -22,17 +22,17 @@
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
-import six
+from oslo_log import log as logging
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
-
+from cinder import quota
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
+QUOTAS = quota.QUOTAS
 
 
 def create(context,
@@ -44,31 +44,43 @@ def create(context,
     """Creates volume types."""
     extra_specs = extra_specs or {}
     projects = projects or []
+    elevated = context if context.is_admin else context.elevated()
     try:
-        type_ref = db.volume_type_create(context,
+        type_ref = db.volume_type_create(elevated,
                                          dict(name=name,
                                               extra_specs=extra_specs,
                                               is_public=is_public,
                                               description=description),
                                          projects=projects)
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % six.text_type(e))
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.VolumeTypeCreateFailed(name=name,
                                                extra_specs=extra_specs)
     return type_ref
 
 
-def update(context, id, description):
+def update(context, id, name, description, is_public=None):
     """Update volume type by id."""
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
+    elevated = context if context.is_admin else context.elevated()
+    old_volume_type = get_volume_type(elevated, id)
     try:
-        type_updated = db.volume_type_update(context,
+        type_updated = db.volume_type_update(elevated,
                                              id,
-                                             dict(description=description))
-    except db_exc.DBError as e:
-        LOG.exception(_LE('DB error: %s') % six.text_type(e))
+                                             dict(name=name,
+                                                  description=description,
+                                                  is_public=is_public))
+        # Rename resource in quota if volume type name is changed.
+        if name:
+            old_type_name = old_volume_type.get('name')
+            if old_type_name != name:
+                QUOTAS.update_quota_resource(elevated,
+                                             old_type_name,
+                                             name)
+    except db_exc.DBError:
+        LOG.exception(_LE('DB error:'))
         raise exception.VolumeTypeUpdateFailed(id=id)
     return type_updated
 
@@ -79,51 +91,23 @@ def destroy(context, id):
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
     else:
-        db.volume_type_destroy(context, id)
+        elevated = context if context.is_admin else context.elevated()
+        db.volume_type_destroy(elevated, id)
 
 
-def get_all_types(context, inactive=0, search_opts=None):
+def get_all_types(context, inactive=0, filters=None, marker=None,
+                  limit=None, sort_keys=None, sort_dirs=None,
+                  offset=None, list_result=False):
     """Get all non-deleted volume_types.
 
     Pass true as argument if you want deleted volume types returned also.
 
     """
-    search_opts = search_opts or {}
-    filters = {}
-
-    if 'is_public' in search_opts:
-        filters['is_public'] = search_opts['is_public']
-        del search_opts['is_public']
-
-    vol_types = db.volume_type_get_all(context, inactive, filters=filters)
-
-    if search_opts:
-        LOG.debug("Searching by: %s" % search_opts)
-
-        def _check_extra_specs_match(vol_type, searchdict):
-            for k, v in searchdict.iteritems():
-                if (k not in vol_type['extra_specs'].keys()
-                        or vol_type['extra_specs'][k] != v):
-                    return False
-            return True
-
-        # search_option to filter_name mapping.
-        filter_mapping = {'extra_specs': _check_extra_specs_match}
-
-        result = {}
-        for type_name, type_args in vol_types.iteritems():
-            # go over all filters in the list
-            for opt, values in search_opts.iteritems():
-                try:
-                    filter_func = filter_mapping[opt]
-                except KeyError:
-                    # no such filter - ignore it, go to next filter
-                    continue
-                else:
-                    if filter_func(type_args, values):
-                        result[type_name] = type_args
-                        break
-        vol_types = result
+    vol_types = db.volume_type_get_all(context, inactive, filters=filters,
+                                       marker=marker, limit=limit,
+                                       sort_keys=sort_keys,
+                                       sort_dirs=sort_dirs, offset=offset,
+                                       list_result=list_result)
     return vol_types
 
 
@@ -157,13 +141,12 @@ def get_default_volume_type():
         ctxt = context.get_admin_context()
         try:
             vol_type = get_volume_type_by_name(ctxt, name)
-        except exception.VolumeTypeNotFoundByName as e:
+        except exception.VolumeTypeNotFoundByName:
             # Couldn't find volume type with the name in default_volume_type
             # flag, record this issue and move on
-            #TODO(zhiteng) consider add notification to warn admin
-            LOG.exception(_LE('Default volume type is not found,'
-                          'please check default_volume_type config: %s') %
-                          six.text_type(e))
+            # TODO(zhiteng) consider add notification to warn admin
+            LOG.exception(_LE('Default volume type is not found. '
+                          'Please check default_volume_type config:'))
 
     return vol_type
 
@@ -181,12 +164,23 @@ def get_volume_type_extra_specs(volume_type_id, key=False):
         return extra_specs
 
 
+def is_public_volume_type(context, volume_type_id):
+    """Return is_public boolean value of volume type"""
+    volume_type = db.volume_type_get(context, volume_type_id)
+    return volume_type['is_public']
+
+
 def add_volume_type_access(context, volume_type_id, project_id):
     """Add access to volume type for project_id."""
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_add(context, volume_type_id, project_id)
+    elevated = context if context.is_admin else context.elevated()
+    if is_public_volume_type(elevated, volume_type_id):
+        msg = _("Type access modification is not applicable to public volume "
+                "type.")
+        raise exception.InvalidVolumeType(reason=msg)
+    return db.volume_type_access_add(elevated, volume_type_id, project_id)
 
 
 def remove_volume_type_access(context, volume_type_id, project_id):
@@ -194,15 +188,16 @@ def remove_volume_type_access(context, volume_type_id, project_id):
     if volume_type_id is None:
         msg = _("volume_type_id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    return db.volume_type_access_remove(context, volume_type_id, project_id)
+    elevated = context if context.is_admin else context.elevated()
+    if is_public_volume_type(elevated, volume_type_id):
+        msg = _("Type access modification is not applicable to public volume "
+                "type.")
+        raise exception.InvalidVolumeType(reason=msg)
+    return db.volume_type_access_remove(elevated, volume_type_id, project_id)
 
 
 def is_encrypted(context, volume_type_id):
-    if volume_type_id is None:
-        return False
-
-    encryption = db.volume_type_encryption_get(context, volume_type_id)
-    return encryption is not None
+    return get_volume_type_encryption(context, volume_type_id) is not None
 
 
 def get_volume_type_encryption(context, volume_type_id):
@@ -257,11 +252,11 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
             dict1 = {}
         if dict2 is None:
             dict2 = {}
-        for k, v in dict1.iteritems():
+        for k, v in dict1.items():
             res[k] = (v, dict2.get(k))
             if k not in dict2 or res[k][0] != res[k][1]:
                 equal = False
-        for k, v in dict2.iteritems():
+        for k, v in dict2.items():
             res[k] = (dict1.get(k), v)
             if k not in dict1 or res[k][0] != res[k][1]:
                 equal = False

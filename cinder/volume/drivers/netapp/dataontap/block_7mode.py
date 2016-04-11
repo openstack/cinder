@@ -5,6 +5,9 @@
 # Copyright (c) 2014 Alex Meade.  All rights reserved.
 # Copyright (c) 2014 Andrew Kerr.  All rights reserved.
 # Copyright (c) 2014 Jeff Applewhite.  All rights reserved.
+# Copyright (c) 2015 Tom Barron.  All rights reserved.
+# Copyright (c) 2015 Goutham Pacha Ravi. All rights reserved.
+# Copyright (c) 2016 Mike Rooney. All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -21,16 +24,19 @@
 Volume driver library for NetApp 7-mode block storage systems.
 """
 
+from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import six
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.openstack.common import log as logging
-from cinder.volume.configuration import Configuration
+from cinder import utils
+from cinder.volume import configuration
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_7mode
+from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -38,8 +44,8 @@ from cinder.volume.drivers.netapp import utils as na_utils
 LOG = logging.getLogger(__name__)
 
 
-class NetAppBlockStorage7modeLibrary(block_base.
-                                     NetAppBlockStorageLibrary):
+@six.add_metaclass(utils.TraceWrapperMetaclass)
+class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
     """NetApp block storage library for Data ONTAP (7-mode)."""
 
     def __init__(self, driver_name, driver_protocol, **kwargs):
@@ -52,10 +58,7 @@ class NetAppBlockStorage7modeLibrary(block_base.
     def do_setup(self, context):
         super(NetAppBlockStorage7modeLibrary, self).do_setup(context)
 
-        self.volume_list = self.configuration.netapp_volume_list
-        if self.volume_list:
-            self.volume_list = self.volume_list.split(',')
-            self.volume_list = [el.strip() for el in self.volume_list]
+        self.volume_list = []
 
         self.vfiler = self.configuration.netapp_vfiler
 
@@ -75,11 +78,14 @@ class NetAppBlockStorage7modeLibrary(block_base.
         self.vol_refresh_running = False
         self.vol_refresh_voluntary = False
         self.root_volume_name = self._get_root_volume_name()
+        self.perf_library = perf_7mode.Performance7modeLibrary(
+            self.zapi_client)
 
     def _do_partner_setup(self):
         partner_backend = self.configuration.netapp_partner_backend_name
         if partner_backend:
-            config = Configuration(na_opts.netapp_7mode_opts, partner_backend)
+            config = configuration.Configuration(na_opts.netapp_7mode_opts,
+                                                 partner_backend)
             config.append_config_values(na_opts.netapp_connection_opts)
             config.append_config_values(na_opts.netapp_basicauth_opts)
             config.append_config_values(na_opts.netapp_transport_opts)
@@ -105,14 +111,25 @@ class NetAppBlockStorage7modeLibrary(block_base.
         else:
             msg = _("API version could not be determined.")
             raise exception.VolumeBackendAPIException(data=msg)
+
+        self._refresh_volume_info()
+
+        if not self.volume_list:
+            msg = _('No pools are available for provisioning volumes. '
+                    'Ensure that the configuration option '
+                    'netapp_pool_name_search_pattern is set correctly.')
+            raise exception.NetAppDriverException(msg)
         super(NetAppBlockStorage7modeLibrary, self).check_for_setup_error()
 
     def _create_lun(self, volume_name, lun_name, size,
-                    metadata, qos_policy_group=None):
+                    metadata, qos_policy_group_name=None):
         """Creates a LUN, handling Data ONTAP differences as needed."""
-
+        if qos_policy_group_name is not None:
+            msg = _('Data ONTAP operating in 7-Mode does not support QoS '
+                    'policy groups.')
+            raise exception.VolumeDriverException(msg)
         self.zapi_client.create_lun(
-            volume_name, lun_name, size, metadata, qos_policy_group)
+            volume_name, lun_name, size, metadata, qos_policy_group_name)
 
         self.vol_refresh_voluntary = True
 
@@ -124,7 +141,7 @@ class NetAppBlockStorage7modeLibrary(block_base.
             if self._get_vol_option(volume_name, 'root') == 'true':
                 return volume_name
         LOG.warning(_LW('Could not determine root volume name '
-                        'on %s.') % self._get_owner())
+                        'on %s.'), self._get_owner())
         return None
 
     def _get_owner(self):
@@ -156,11 +173,11 @@ class NetAppBlockStorage7modeLibrary(block_base.
                         initiator_info.get_child_content('initiator-name'))
 
                 if initiator_set == initiator_set_for_igroup:
-                        igroup = initiator_group_info.get_child_content(
-                            'initiator-group-name')
-                        lun_id = initiator_group_info.get_child_content(
-                            'lun-id')
-                        return igroup, lun_id
+                    igroup = initiator_group_info.get_child_content(
+                        'initiator-group-name')
+                    lun_id = initiator_group_info.get_child_content(
+                        'lun-id')
+                    return igroup, lun_id
 
         return None, None
 
@@ -175,17 +192,27 @@ class NetAppBlockStorage7modeLibrary(block_base.
             return True
         return False
 
-    def _clone_lun(self, name, new_name, space_reserved='true',
-                   src_block=0, dest_block=0, block_count=0):
+    def _clone_lun(self, name, new_name, space_reserved=None,
+                   qos_policy_group_name=None, src_block=0, dest_block=0,
+                   block_count=0, source_snapshot=None):
         """Clone LUN with the given handle to the new name."""
+        if not space_reserved:
+            space_reserved = self.lun_space_reservation
+        if qos_policy_group_name is not None:
+            msg = _('Data ONTAP operating in 7-Mode does not support QoS '
+                    'policy groups.')
+            raise exception.VolumeDriverException(msg)
+
         metadata = self._get_lun_attr(name, 'metadata')
         path = metadata['Path']
         (parent, _splitter, name) = path.rpartition('/')
         clone_path = '%s/%s' % (parent, new_name)
 
         self.zapi_client.clone_lun(path, clone_path, name, new_name,
-                                   space_reserved, src_block=0,
-                                   dest_block=0, block_count=0)
+                                   space_reserved, src_block=src_block,
+                                   dest_block=dest_block,
+                                   block_count=block_count,
+                                   source_snapshot=source_snapshot)
 
         self.vol_refresh_voluntary = True
         luns = self.zapi_client.get_lun_by_args(path=clone_path)
@@ -207,6 +234,7 @@ class NetAppBlockStorage7modeLibrary(block_base.
         meta_dict['OsType'] = lun.get_child_content('multiprotocol-type')
         meta_dict['SpaceReserved'] = lun.get_child_content(
             'is-space-reservation-enabled')
+        meta_dict['UUID'] = lun.get_child_content('uuid')
         return meta_dict
 
     def _get_fc_target_wwpns(self, include_partner=True):
@@ -215,7 +243,8 @@ class NetAppBlockStorage7modeLibrary(block_base.
             wwpns.extend(self.partner_zapi_client.get_fc_target_wwpns())
         return wwpns
 
-    def _update_volume_stats(self):
+    def _update_volume_stats(self, filter_function=None,
+                             goodness_function=None):
         """Retrieve stats info from filer."""
 
         # ensure we get current data
@@ -229,23 +258,26 @@ class NetAppBlockStorage7modeLibrary(block_base.
         data['vendor_name'] = 'NetApp'
         data['driver_version'] = self.VERSION
         data['storage_protocol'] = self.driver_protocol
-        data['pools'] = self._get_pool_stats()
+        data['pools'] = self._get_pool_stats(
+            filter_function=filter_function,
+            goodness_function=goodness_function)
+        data['sparse_copy_volume'] = True
 
         self.zapi_client.provide_ems(self, self.driver_name, self.app_version,
                                      server_type=self.driver_mode)
         self._stats = data
 
-    def _get_pool_stats(self):
+    def _get_pool_stats(self, filter_function=None, goodness_function=None):
         """Retrieve pool (i.e. Data ONTAP volume) stats info from volumes."""
 
         pools = []
-        if not self.vols:
-            return pools
+        self.perf_library.update_performance_cache()
 
         for vol in self.vols:
 
-            # omit volumes not specified in the config
             volume_name = vol.get_child_content('name')
+
+            # omit volumes not specified in the config
             if self.volume_list and volume_name not in self.volume_list:
                 continue
 
@@ -265,22 +297,67 @@ class NetAppBlockStorage7modeLibrary(block_base.
             pool = dict()
             pool['pool_name'] = volume_name
             pool['QoS_support'] = False
-            pool['reserved_percentage'] = 0
+            pool['reserved_percentage'] = (
+                self.reserved_percentage)
+            pool['max_over_subscription_ratio'] = (
+                self.max_over_subscription_ratio)
 
-            # convert sizes to GB and de-rate by NetApp multiplier
+            # convert sizes to GB
             total = float(vol.get_child_content('size-total') or 0)
-            total /= self.configuration.netapp_size_multiplier
             total /= units.Gi
             pool['total_capacity_gb'] = na_utils.round_down(total, '0.01')
 
             free = float(vol.get_child_content('size-available') or 0)
-            free /= self.configuration.netapp_size_multiplier
             free /= units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
+
+            pool['provisioned_capacity_gb'] = (round(
+                pool['total_capacity_gb'] - pool['free_capacity_gb'], 2))
+
+            thick = (
+                self.configuration.netapp_lun_space_reservation == 'enabled')
+            pool['thick_provisioning_support'] = thick
+            pool['thin_provisioning_support'] = not thick
+
+            utilization = self.perf_library.get_node_utilization()
+            pool['utilization'] = na_utils.round_down(utilization, '0.01')
+            pool['filter_function'] = filter_function
+            pool['goodness_function'] = goodness_function
+
+            pool['consistencygroup_support'] = True
 
             pools.append(pool)
 
         return pools
+
+    def _get_filtered_pools(self):
+        """Return available pools filtered by a pool name search pattern."""
+
+        # Inform deprecation of legacy option.
+        if self.configuration.safe_get('netapp_volume_list'):
+            msg = _LW("The option 'netapp_volume_list' is deprecated and "
+                      "will be removed in the future releases. Please use "
+                      "the option 'netapp_pool_name_search_pattern' instead.")
+            versionutils.report_deprecated_feature(LOG, msg)
+
+        pool_regex = na_utils.get_pool_name_filter_regex(self.configuration)
+
+        filtered_pools = []
+        for vol in self.vols:
+            vol_name = vol.get_child_content('name')
+            if pool_regex.match(vol_name):
+                msg = ("Volume '%(vol_name)s' matches against regular "
+                       "expression: %(vol_pattern)s")
+                LOG.debug(msg, {'vol_name': vol_name,
+                                'vol_pattern': pool_regex.pattern})
+                filtered_pools.append(vol_name)
+            else:
+                msg = ("Volume '%(vol_name)s' does not match against regular "
+                       "expression: %(vol_pattern)s")
+                LOG.debug(msg, {'vol_name': vol_name,
+                                'vol_pattern': pool_regex.pattern})
+
+        return filtered_pools
 
     def _get_lun_block_count(self, path):
         """Gets block counts for the LUN."""
@@ -309,10 +386,11 @@ class NetAppBlockStorage7modeLibrary(block_base.
                     return
                 self.vol_refresh_voluntary = False
                 self.vols = self.zapi_client.get_filer_volumes()
+                self.volume_list = self._get_filtered_pools()
                 self.vol_refresh_time = timeutils.utcnow()
             except Exception as e:
                 LOG.warning(_LW("Error refreshing volume info. Message: %s"),
-                            six.text_type(e))
+                            e)
             finally:
                 na_utils.set_safe_attr(self, 'vol_refresh_running', False)
 
@@ -320,3 +398,44 @@ class NetAppBlockStorage7modeLibrary(block_base.
         """Driver entry point for destroying existing volumes."""
         super(NetAppBlockStorage7modeLibrary, self).delete_volume(volume)
         self.vol_refresh_voluntary = True
+        LOG.debug('Deleted LUN with name %s', volume['name'])
+
+    def delete_snapshot(self, snapshot):
+        """Driver entry point for deleting a snapshot."""
+        super(NetAppBlockStorage7modeLibrary, self).delete_snapshot(snapshot)
+        self.vol_refresh_voluntary = True
+
+    def _is_lun_valid_on_storage(self, lun):
+        """Validate LUN specific to storage system."""
+        if self.volume_list:
+            lun_vol = lun.get_metadata_property('Volume')
+            if lun_vol not in self.volume_list:
+                return False
+        return True
+
+    def _check_volume_type_for_lun(self, volume, lun, existing_ref,
+                                   extra_specs):
+        """Check if LUN satisfies volume type."""
+        if extra_specs:
+            legacy_policy = extra_specs.get('netapp:qos_policy_group')
+            if legacy_policy is not None:
+                raise exception.ManageExistingVolumeTypeMismatch(
+                    reason=_("Setting LUN QoS policy group is not supported "
+                             "on this storage family and ONTAP version."))
+        volume_type = na_utils.get_volume_type_from_volume(volume)
+        if volume_type is None:
+            return
+        spec = na_utils.get_backend_qos_spec_from_volume_type(volume_type)
+        if spec is not None:
+            raise exception.ManageExistingVolumeTypeMismatch(
+                reason=_("Back-end QoS specs are not supported on this "
+                         "storage family and ONTAP version."))
+
+    def _get_preferred_target_from_list(self, target_details_list,
+                                        filter=None):
+        # 7-mode iSCSI LIFs migrate from controller to controller
+        # in failover and flap operational state in transit, so
+        # we  don't filter these on operational state.
+
+        return (super(NetAppBlockStorage7modeLibrary, self)
+                ._get_preferred_target_from_list(target_details_list))

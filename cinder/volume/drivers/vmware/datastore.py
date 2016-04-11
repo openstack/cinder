@@ -17,12 +17,12 @@
 Classes and utility methods for datastore selection.
 """
 
+from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_vmware import exceptions
 from oslo_vmware import pbm
 
 from cinder.i18n import _LE, _LW
-from cinder.openstack.common import log as logging
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
@@ -35,6 +35,13 @@ class DatastoreType(object):
     NFS = "nfs"
     VMFS = "vmfs"
     VSAN = "vsan"
+    VVOL = "vvol"
+
+    _ALL_TYPES = {NFS, VMFS, VSAN, VVOL}
+
+    @staticmethod
+    def get_all_types():
+        return DatastoreType._ALL_TYPES
 
 
 class DatastoreSelector(object):
@@ -107,12 +114,11 @@ class DatastoreSelector(object):
         filtered_summaries = [self._vops.get_summary(ds) for ds in
                               filtered_datastores]
 
-        def _filter(summary):
-            return (summary.freeSpace > size_bytes and
+        return [summary for summary in filtered_summaries
+                if (summary.freeSpace > size_bytes and
+                    summary.type.lower() in DatastoreType.get_all_types() and
                     (hard_affinity_ds_types is None or
-                     summary.type.lower() in hard_affinity_ds_types))
-
-        return filter(_filter, filtered_summaries)
+                     summary.type.lower() in hard_affinity_ds_types))]
 
     def _get_all_hosts(self):
         """Get all ESX hosts managed by vCenter."""
@@ -125,7 +131,8 @@ class DatastoreSelector(object):
                 break
 
             for host in hosts:
-                all_hosts.append(host.obj)
+                if self._vops.is_host_usable(host.obj):
+                    all_hosts.append(host.obj)
             retrieve_result = self._vops.continue_retrieval(
                 retrieve_result)
         return all_hosts
@@ -199,7 +206,7 @@ class DatastoreSelector(object):
         if profile_name is not None:
             profile_id = self.get_profile_id(profile_name)
 
-        if hosts is None:
+        if not hosts:
             hosts = self._get_all_hosts()
 
         LOG.debug("Using hosts: %(hosts)s for datastore selection based on "
@@ -217,8 +224,8 @@ class DatastoreSelector(object):
             except exceptions.VimException:
                 # TODO(vbala) volumeops.get_dss_rp shouldn't throw VimException
                 # for empty datastore list.
-                LOG.warn(_LW("Unable to fetch datastores connected "
-                             "to host %s."), host_ref, exc_info=True)
+                LOG.warning(_LW("Unable to fetch datastores connected "
+                                "to host %s."), host_ref, exc_info=True)
                 continue
 
             if not datastores:

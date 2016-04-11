@@ -22,25 +22,27 @@ import inspect
 import os
 import random
 
-from oslo import messaging
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_db import exception as db_exc
+from oslo_log import log as logging
+import oslo_messaging as messaging
+from oslo_service import loopingcall
+from oslo_service import service
+from oslo_service import wsgi
 from oslo_utils import importutils
-import osprofiler.notifier
-from osprofiler import profiler
-import osprofiler.web
+osprofiler_notifier = importutils.try_import('osprofiler.notifier')
+profiler = importutils.try_import('osprofiler.profiler')
+osprofiler_web = importutils.try_import('osprofiler.web')
+profiler_opts = importutils.try_import('osprofiler.opts')
 
 from cinder import context
-from cinder import db
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
-from cinder.openstack.common import loopingcall
-from cinder.openstack.common import service
+from cinder.i18n import _, _LE, _LI, _LW
+from cinder import objects
+from cinder.objects import base as objects_base
 from cinder import rpc
 from cinder import version
-from cinder import wsgi
 
 
 LOG = logging.getLogger(__name__)
@@ -61,42 +63,46 @@ service_opts = [
     cfg.StrOpt('osapi_volume_listen',
                default="0.0.0.0",
                help='IP address on which OpenStack Volume API listens'),
-    cfg.IntOpt('osapi_volume_listen_port',
-               default=8776,
-               help='Port on which OpenStack Volume API listens'),
+    cfg.PortOpt('osapi_volume_listen_port',
+                default=8776,
+                help='Port on which OpenStack Volume API listens'),
     cfg.IntOpt('osapi_volume_workers',
                help='Number of workers for OpenStack Volume API service. '
                     'The default is equal to the number of CPUs available.'), ]
 
-profiler_opts = [
-    cfg.BoolOpt("profiler_enabled", default=False,
-                help=_('If False fully disable profiling feature.')),
-    cfg.BoolOpt("trace_sqlalchemy", default=False,
-                help=_("If False doesn't trace SQL requests."))
-]
 
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
-CONF.register_opts(profiler_opts, group="profiler")
+if profiler_opts:
+    profiler_opts.set_defaults(CONF)
 
 
 def setup_profiler(binary, host):
-    if CONF.profiler.profiler_enabled:
-        _notifier = osprofiler.notifier.create(
+    if (osprofiler_notifier is None or
+            profiler is None or
+            osprofiler_web is None or
+            profiler_opts is None):
+        LOG.debug('osprofiler is not present')
+        return
+
+    if CONF.profiler.enabled:
+        _notifier = osprofiler_notifier.create(
             "Messaging", messaging, context.get_admin_context().to_dict(),
             rpc.TRANSPORT, "cinder", binary, host)
-        osprofiler.notifier.set(_notifier)
-        LOG.warning("OSProfiler is enabled.\nIt means that person who knows "
-                    "any of hmac_keys that are specified in "
-                    "/etc/cinder/api-paste.ini can trace his requests. \n"
-                    "In real life only operator can read this file so there "
-                    "is no security issue. Note that even if person can "
-                    "trigger profiler, only admin user can retrieve trace "
-                    "information.\n"
-                    "To disable OSprofiler set in cinder.conf:\n"
-                    "[profiler]\nenabled=false")
+        osprofiler_notifier.set(_notifier)
+        osprofiler_web.enable(CONF.profiler.hmac_keys)
+        LOG.warning(
+            _LW("OSProfiler is enabled.\nIt means that person who knows "
+                "any of hmac_keys that are specified in "
+                "/etc/cinder/cinder.conf can trace his requests. \n"
+                "In real life only operator can read this file so there "
+                "is no security issue. Note that even if person can "
+                "trigger profiler, only admin user can retrieve trace "
+                "information.\n"
+                "To disable OSprofiler set in cinder.conf:\n"
+                "[profiler]\nenabled=false"))
     else:
-        osprofiler.web.disable()
+        osprofiler_web.disable()
 
 
 class Service(service.Service):
@@ -120,7 +126,8 @@ class Service(service.Service):
         self.topic = topic
         self.manager_class_name = manager
         manager_class = importutils.import_class(self.manager_class_name)
-        manager_class = profiler.trace_cls("rpc")(manager_class)
+        if CONF.profiler.enabled:
+            manager_class = profiler.trace_cls("rpc")(manager_class)
 
         self.manager = manager_class(host=self.host,
                                      service_name=service_name,
@@ -133,29 +140,36 @@ class Service(service.Service):
         self.timers = []
 
         setup_profiler(binary, host)
+        self.rpcserver = None
 
     def start(self):
         version_string = version.version_string()
-        LOG.info(_('Starting %(topic)s node (version %(version_string)s)'),
+        LOG.info(_LI('Starting %(topic)s node (version %(version_string)s)'),
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         self.manager.init_host()
         ctxt = context.get_admin_context()
         try:
-            service_ref = db.service_get_by_args(ctxt,
-                                                 self.host,
-                                                 self.binary)
-            self.service_id = service_ref['id']
+            service_ref = objects.Service.get_by_args(
+                ctxt, self.host, self.binary)
+            service_ref.rpc_current_version = self.manager.RPC_API_VERSION
+            obj_version = objects_base.OBJ_VERSIONS.get_current()
+            service_ref.object_current_version = obj_version
+            service_ref.save()
+            self.service_id = service_ref.id
         except exception.NotFound:
             self._create_service_ref(ctxt)
 
-        LOG.debug("Creating RPC server for service %s" % self.topic)
+        LOG.debug("Creating RPC server for service %s", self.topic)
 
         target = messaging.Target(topic=self.topic, server=self.host)
         endpoints = [self.manager]
         endpoints.extend(self.manager.additional_endpoints)
-        self.rpcserver = rpc.get_server(target, endpoints)
+        serializer = objects_base.CinderObjectSerializer()
+        self.rpcserver = rpc.get_server(target, endpoints, serializer)
         self.rpcserver.start()
+
+        self.manager.init_host_with_rpc()
 
         if self.report_interval:
             pulse = loopingcall.FixedIntervalLoopingCall(
@@ -182,25 +196,31 @@ class Service(service.Service):
         if self.report_interval:
             if CONF.service_down_time <= self.report_interval:
                 new_down_time = int(self.report_interval * 2.5)
-                LOG.warn(_("Report interval must be less than service down "
-                           "time. Current config service_down_time: "
-                           "%(service_down_time)s, report_interval for this: "
-                           "service is: %(report_interval)s. Setting global "
-                           "service_down_time to: %(new_down_time)s") %
-                         {'service_down_time': CONF.service_down_time,
-                          'report_interval': self.report_interval,
-                          'new_down_time': new_down_time})
+                LOG.warning(
+                    _LW("Report interval must be less than service down "
+                        "time. Current config service_down_time: "
+                        "%(service_down_time)s, report_interval for this: "
+                        "service is: %(report_interval)s. Setting global "
+                        "service_down_time to: %(new_down_time)s"),
+                    {'service_down_time': CONF.service_down_time,
+                     'report_interval': self.report_interval,
+                     'new_down_time': new_down_time})
                 CONF.set_override('service_down_time', new_down_time)
 
     def _create_service_ref(self, context):
         zone = CONF.storage_availability_zone
-        service_ref = db.service_create(context,
-                                        {'host': self.host,
-                                         'binary': self.binary,
-                                         'topic': self.topic,
-                                         'report_count': 0,
-                                         'availability_zone': zone})
-        self.service_id = service_ref['id']
+        kwargs = {
+            'host': self.host,
+            'binary': self.binary,
+            'topic': self.topic,
+            'report_count': 0,
+            'availability_zone': zone,
+            'rpc_current_version': self.manager.RPC_API_VERSION,
+            'object_current_version': objects_base.OBJ_VERSIONS.get_current(),
+        }
+        service_ref = objects.Service(context=context, **kwargs)
+        service_ref.create()
+        self.service_id = service_ref.id
 
     def __getattr__(self, key):
         manager = self.__dict__.get('manager', None)
@@ -244,14 +264,6 @@ class Service(service.Service):
 
         return service_obj
 
-    def kill(self):
-        """Destroy the service object in the datastore."""
-        self.stop()
-        try:
-            db.service_destroy(context.get_admin_context(), self.service_id)
-        except exception.NotFound:
-            LOG.warn(_('Service killed that has no database entry'))
-
     def stop(self):
         # Try to shut the connection down, but if we get any sort of
         # errors, go ahead and ignore them.. as we're shutting down anyway
@@ -259,20 +271,26 @@ class Service(service.Service):
             self.rpcserver.stop()
         except Exception:
             pass
+
+        self.timers_skip = []
         for x in self.timers:
             try:
                 x.stop()
             except Exception:
-                pass
-        self.timers = []
-        super(Service, self).stop()
+                self.timers_skip.append(x)
+        super(Service, self).stop(graceful=True)
 
     def wait(self):
+        skip = getattr(self, 'timers_skip', [])
         for x in self.timers:
-            try:
-                x.wait()
-            except Exception:
-                pass
+            if x not in skip:
+                try:
+                    x.wait()
+                except Exception:
+                    pass
+        if self.rpcserver:
+            self.rpcserver.wait()
+        super(Service, self).wait()
 
     def periodic_tasks(self, raise_on_error=False):
         """Tasks to be run at a periodic interval."""
@@ -281,37 +299,61 @@ class Service(service.Service):
 
     def report_state(self):
         """Update the state of this service in the datastore."""
+        if not self.manager.is_working():
+            # NOTE(dulek): If manager reports a problem we're not sending
+            # heartbeats - to indicate that service is actually down.
+            LOG.error(_LE('Manager for service %(binary)s %(host)s is '
+                          'reporting problems, not sending heartbeat. '
+                          'Service will appear "down".'),
+                      {'binary': self.binary,
+                       'host': self.host})
+            return
+
         ctxt = context.get_admin_context()
         zone = CONF.storage_availability_zone
-        state_catalog = {}
         try:
             try:
-                service_ref = db.service_get(ctxt, self.service_id)
+                service_ref = objects.Service.get_by_id(ctxt, self.service_id)
             except exception.NotFound:
                 LOG.debug('The service database object disappeared, '
-                          'Recreating it.')
+                          'recreating it.')
                 self._create_service_ref(ctxt)
-                service_ref = db.service_get(ctxt, self.service_id)
+                service_ref = objects.Service.get_by_id(ctxt, self.service_id)
 
-            state_catalog['report_count'] = service_ref['report_count'] + 1
-            if zone != service_ref['availability_zone']:
-                state_catalog['availability_zone'] = zone
+            service_ref.report_count += 1
+            if zone != service_ref.availability_zone:
+                service_ref.availability_zone = zone
 
-            db.service_update(ctxt,
-                              self.service_id, state_catalog)
+            service_ref.save()
 
             # TODO(termie): make this pattern be more elegant.
             if getattr(self, 'model_disconnected', False):
                 self.model_disconnected = False
-                LOG.error(_('Recovered model server connection!'))
+                LOG.error(_LE('Recovered model server connection!'))
 
         except db_exc.DBConnectionError:
             if not getattr(self, 'model_disconnected', False):
                 self.model_disconnected = True
-                LOG.exception(_('model server went away'))
+                LOG.exception(_LE('model server went away'))
+
+        # NOTE(jsbryant) Other DB errors can happen in HA configurations.
+        # such errors shouldn't kill this thread, so we handle them here.
+        except db_exc.DBError:
+            if not getattr(self, 'model_disconnected', False):
+                self.model_disconnected = True
+                LOG.exception(_LE('DBError encountered: '))
+
+        except Exception:
+            if not getattr(self, 'model_disconnected', False):
+                self.model_disconnected = True
+                LOG.exception(_LE('Exception encountered: '))
+
+    def reset(self):
+        self.manager.reset()
+        super(Service, self).reset()
 
 
-class WSGIService(object):
+class WSGIService(service.ServiceBase):
     """Provides ability to launch API from a 'paste' configuration."""
 
     def __init__(self, name, loader=None):
@@ -324,7 +366,7 @@ class WSGIService(object):
         """
         self.name = name
         self.manager = self._get_manager()
-        self.loader = loader or wsgi.Loader()
+        self.loader = loader or wsgi.Loader(CONF)
         self.app = self.loader.load_app(name)
         self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
@@ -339,7 +381,8 @@ class WSGIService(object):
             raise exception.InvalidInput(msg)
         setup_profiler(name, self.host)
 
-        self.server = wsgi.Server(name,
+        self.server = wsgi.Server(CONF,
+                                  name,
                                   self.app,
                                   host=self.host,
                                   port=self.port)
@@ -405,7 +448,7 @@ class WSGIService(object):
 
 
 def process_launcher():
-    return service.ProcessLauncher()
+    return service.ProcessLauncher(CONF)
 
 
 # NOTE(vish): the global launcher is to maintain the existing
@@ -419,7 +462,7 @@ def serve(server, workers=None):
     if _launcher:
         raise RuntimeError(_('serve() can only be called once'))
 
-    _launcher = service.launch(server, workers=workers)
+    _launcher = service.launch(CONF, server, workers=workers)
 
 
 def wait():
@@ -431,9 +474,9 @@ def wait():
         if ("_password" in flag or "_key" in flag or
                 (flag == "sql_connection" and
                     ("mysql:" in flag_get or "postgresql:" in flag_get))):
-            LOG.debug('%s : FLAG SET ' % flag)
+            LOG.debug('%s : FLAG SET ', flag)
         else:
-            LOG.debug('%(flag)s : %(flag_get)s' %
+            LOG.debug('%(flag)s : %(flag_get)s',
                       {'flag': flag, 'flag_get': flag_get})
     try:
         _launcher.wait()

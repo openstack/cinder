@@ -1,0 +1,4 @@
+---
+features:
+  - Support for creating a consistency group from
+    consistency group in XtremIO.

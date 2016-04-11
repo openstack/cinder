@@ -1,4 +1,5 @@
 # Copyright 2010 OpenStack Foundation
+# Copyright 2015 Clinton Knight
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,11 +15,15 @@
 #    under the License.
 
 
+import copy
 import datetime
 
 from lxml import etree
 from oslo_config import cfg
 
+from cinder.api import extensions
+from cinder.api import openstack
+from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder.api.views import versions as views_versions
 from cinder.api import xmlutil
@@ -26,67 +31,115 @@ from cinder.api import xmlutil
 
 CONF = cfg.CONF
 
+_LINKS = [{
+    "rel": "describedby",
+    "type": "text/html",
+    "href": "http://docs.openstack.org/",
+}]
+
+_MEDIA_TYPES = [{
+    "base":
+    "application/json",
+    "type":
+    "application/vnd.openstack.volume+json;version=1",
+},
+    {"base":
+     "application/xml",
+     "type":
+     "application/vnd.openstack.volume+xml;version=1",
+     },
+]
 
 _KNOWN_VERSIONS = {
-    "v2.0": {
-        "id": "v2.0",
-        "status": "CURRENT",
-        "updated": "2012-11-21T11:33:21Z",
-        "links": [
-            {
-                "rel": "describedby",
-                "type": "text/html",
-                "href": "http://docs.openstack.org/",
-            },
-        ],
-        "media-types": [
-            {
-                "base": "application/xml",
-                "type": "application/vnd.openstack.volume+xml;version=1",
-            },
-            {
-                "base": "application/json",
-                "type": "application/vnd.openstack.volume+json;version=1",
-            }
-        ],
-    },
     "v1.0": {
         "id": "v1.0",
         "status": "SUPPORTED",
+        "version": "",
+        "min_version": "",
         "updated": "2014-06-28T12:20:21Z",
-        "links": [
-            {
-                "rel": "describedby",
-                "type": "text/html",
-                "href": "http://docs.openstack.org/",
-            },
-        ],
-        "media-types": [
-            {
-                "base": "application/xml",
-                "type": "application/vnd.openstack.volume+xml;version=1",
-            },
-            {
-                "base": "application/json",
-                "type": "application/vnd.openstack.volume+json;version=1",
-            }
-        ],
-    }
+        "links": _LINKS,
+        "media-types": _MEDIA_TYPES,
+    },
+    "v2.0": {
+        "id": "v2.0",
+        "status": "SUPPORTED",
+        "version": "",
+        "min_version": "",
+        "updated": "2014-06-28T12:20:21Z",
+        "links": _LINKS,
+        "media-types": _MEDIA_TYPES,
+    },
+    "v3.0": {
+        "id": "v3.0",
+        "status": "CURRENT",
+        "version": api_version_request._MAX_API_VERSION,
+        "min_version": api_version_request._MIN_API_VERSION,
+        "updated": "2016-02-08T12:20:21Z",
+        "links": _LINKS,
+        "media-types": _MEDIA_TYPES,
+    },
 }
 
 
-def get_supported_versions():
-    versions = {}
+class Versions(openstack.APIRouter):
+    """Route versions requests."""
 
-    if CONF.enable_v1_api:
-        versions['v1.0'] = _KNOWN_VERSIONS['v1.0']
-    if CONF.enable_v2_api:
-        versions['v2.0'] = _KNOWN_VERSIONS['v2.0']
+    ExtensionManager = extensions.ExtensionManager
 
-    return versions
+    def _setup_routes(self, mapper, ext_mgr):
+        self.resources['versions'] = create_resource()
+        mapper.connect('versions', '/',
+                       controller=self.resources['versions'],
+                       action='all')
+        mapper.redirect('', '/')
+
+
+class VersionsController(wsgi.Controller):
+
+    def __init__(self):
+        super(VersionsController, self).__init__(None)
+
+    @wsgi.Controller.api_version('1.0')
+    def index(self, req):  # pylint: disable=E0102
+        """Return versions supported prior to the microversions epoch."""
+        builder = views_versions.get_view_builder(req)
+        known_versions = copy.deepcopy(_KNOWN_VERSIONS)
+        known_versions.pop('v2.0')
+        known_versions.pop('v3.0')
+        return builder.build_versions(known_versions)
+
+    @wsgi.Controller.api_version('2.0')  # noqa
+    def index(self, req):  # pylint: disable=E0102
+        """Return versions supported prior to the microversions epoch."""
+        builder = views_versions.get_view_builder(req)
+        known_versions = copy.deepcopy(_KNOWN_VERSIONS)
+        known_versions.pop('v1.0')
+        known_versions.pop('v3.0')
+        return builder.build_versions(known_versions)
+
+    @wsgi.Controller.api_version('3.0')  # noqa
+    def index(self, req):  # pylint: disable=E0102
+        """Return versions supported after the start of microversions."""
+        builder = views_versions.get_view_builder(req)
+        known_versions = copy.deepcopy(_KNOWN_VERSIONS)
+        known_versions.pop('v1.0')
+        known_versions.pop('v2.0')
+        return builder.build_versions(known_versions)
+
+    # NOTE (cknight): Calling the versions API without
+    # /v1, /v2, or /v3 in the URL will lead to this unversioned
+    # method, which should always return info about all
+    # available versions.
+    @wsgi.response(300)
+    def all(self, req):
+        """Return all known versions."""
+        builder = views_versions.get_view_builder(req)
+        known_versions = copy.deepcopy(_KNOWN_VERSIONS)
+        return builder.build_versions(known_versions)
 
 
 class MediaTypesTemplateElement(xmlutil.TemplateElement):
+
     def will_render(self, datum):
         return 'media-types' in datum
 
@@ -110,6 +163,7 @@ version_nsmap = {None: xmlutil.XMLNS_COMMON_V10, 'atom': xmlutil.XMLNS_ATOM}
 
 
 class VersionTemplate(xmlutil.TemplateBuilder):
+
     def construct(self):
         root = xmlutil.TemplateElement('version', selector='version')
         make_version(root)
@@ -117,6 +171,7 @@ class VersionTemplate(xmlutil.TemplateBuilder):
 
 
 class VersionsTemplate(xmlutil.TemplateBuilder):
+
     def construct(self):
         root = xmlutil.TemplateElement('versions')
         elem = xmlutil.SubTemplateElement(root, 'version', selector='versions')
@@ -125,6 +180,7 @@ class VersionsTemplate(xmlutil.TemplateBuilder):
 
 
 class ChoicesTemplate(xmlutil.TemplateBuilder):
+
     def construct(self):
         root = xmlutil.TemplateElement('choices')
         elem = xmlutil.SubTemplateElement(root, 'version', selector='choices')
@@ -209,6 +265,7 @@ class AtomSerializer(wsgi.XMLDictSerializer):
 
 
 class VersionsAtomSerializer(AtomSerializer):
+
     def default(self, data):
         versions = data['versions']
         feed_id = self._get_base_url(versions[0]['links'][0]['href'])
@@ -217,6 +274,7 @@ class VersionsAtomSerializer(AtomSerializer):
 
 
 class VersionAtomSerializer(AtomSerializer):
+
     def default(self, data):
         version = data['version']
         feed_id = version['links'][0]['href']
@@ -224,43 +282,5 @@ class VersionAtomSerializer(AtomSerializer):
         return self._to_xml(feed)
 
 
-class Versions(wsgi.Resource):
-
-    def __init__(self):
-        super(Versions, self).__init__(None)
-
-    @wsgi.serializers(xml=VersionsTemplate,
-                      atom=VersionsAtomSerializer)
-    def index(self, req):
-        """Return all versions."""
-        builder = views_versions.get_view_builder(req)
-        return builder.build_versions(get_supported_versions())
-
-    @wsgi.serializers(xml=ChoicesTemplate)
-    @wsgi.response(300)
-    def multi(self, req):
-        """Return multiple choices."""
-        builder = views_versions.get_view_builder(req)
-        return builder.build_choices(get_supported_versions(), req)
-
-    def get_action_args(self, request_environment):
-        """Parse dictionary created by routes library."""
-        args = {}
-        if request_environment['PATH_INFO'] == '/':
-            args['action'] = 'index'
-        else:
-            args['action'] = 'multi'
-
-        return args
-
-
-class VolumeVersionV1(object):
-    @wsgi.serializers(xml=VersionTemplate,
-                      atom=VersionAtomSerializer)
-    def show(self, req):
-        builder = views_versions.get_view_builder(req)
-        return builder.build_version(_KNOWN_VERSIONS['v1.0'])
-
-
 def create_resource():
-    return wsgi.Resource(VolumeVersionV1())
+    return wsgi.Resource(VersionsController())

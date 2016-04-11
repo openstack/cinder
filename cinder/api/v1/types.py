@@ -56,7 +56,8 @@ class VolumeTypesController(wsgi.Controller):
     def index(self, req):
         """Returns the list of volume types."""
         context = req.environ['cinder.context']
-        vol_types = volume_types.get_all_types(context).values()
+        vol_types = volume_types.get_all_types(context)
+        vol_types = list(vol_types.values())
         req.cache_resource(vol_types, name='types')
         return self._view_builder.index(req, vol_types)
 

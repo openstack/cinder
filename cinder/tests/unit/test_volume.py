@@ -3856,8 +3856,9 @@ class VolumeTestCase(BaseVolumeTestCase):
                           'fake2': {'key3': 'value3', 'key4': 'value4'}}
         self.assertEqual(expect_results, results)
 
+    @mock.patch.object(QUOTAS, 'limit_check')
     @mock.patch.object(QUOTAS, 'reserve')
-    def test_extend_volume(self, reserve):
+    def test_extend_volume(self, reserve, limit_check):
         """Test volume can be extended at API level."""
         # create a volume and assign to host
         volume = tests_utils.create_volume(self.context, size=2,
@@ -3905,6 +3906,12 @@ class VolumeTestCase(BaseVolumeTestCase):
                                                           {'reserved': 5,
                                                            'in_use': 15}})
         self.assertRaises(exception.VolumeSizeExceedsAvailableQuota,
+                          volume_api.extend, self.context,
+                          volume, 3)
+
+        limit_check.side_effect = exception.OverQuota(
+            overs=['per_volume_gigabytes'], quotas={'per_volume_gigabytes': 2})
+        self.assertRaises(exception.VolumeSizeExceedsLimit,
                           volume_api.extend, self.context,
                           volume, 3)
 
@@ -5925,7 +5932,7 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
             'container_format': 'bare',
             'disk_format': 'raw'
         }
-        self.volume_id = 1
+        self.volume_id = fake.volume_id
         self.addCleanup(db.volume_destroy, self.context, self.volume_id)
 
         self.volume_attrs = {
@@ -6103,7 +6110,6 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
                               self.context,
                               saving_image_id)
 
-    @test.testtools.skip('SKIP BUG #1173266')
     @mock.patch.object(QUOTAS, 'reserve')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(vol_manager.VolumeManager, 'create_volume')
@@ -6150,7 +6156,6 @@ class CopyVolumeToImageTestCase(BaseVolumeTestCase):
         image = self._test_copy_volume_to_image_with_image_volume()
         self.assertIsNone(image.get('locations'))
 
-    @test.testtools.skip('SKIP BUG #1173266')
     @mock.patch.object(vol_manager.VolumeManager, 'delete_volume')
     @mock.patch.object(fake_image._FakeImageService, 'add_location',
                        side_effect=exception.Invalid)

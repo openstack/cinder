@@ -27,34 +27,36 @@ we should look at maybe pushing this up to Oslo
 import contextlib
 import math
 import os
+import re
 import tempfile
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_utils import fileutils
+from oslo_utils import imageutils
 from oslo_utils import timeutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import fileutils
-from cinder.openstack.common import imageutils
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LI, _LW
 from cinder import utils
+from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 
-image_helper_opt = [cfg.StrOpt('image_conversion_dir',
-                               default='$state_path/conversion',
-                               help='Directory used for temporary storage '
-                                    'during image conversion'), ]
+image_helper_opts = [cfg.StrOpt('image_conversion_dir',
+                                default='$state_path/conversion',
+                                help='Directory used for temporary storage '
+                                'during image conversion'), ]
 
 CONF = cfg.CONF
-CONF.register_opts(image_helper_opt)
+CONF.register_opts(image_helper_opts)
 
 
 def qemu_img_info(path, run_as_root=True):
-    """Return a object containing the parsed output from qemu-img info."""
+    """Return an object containing the parsed output from qemu-img info."""
     cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
     if os.name == 'nt':
         cmd = cmd[2:]
@@ -62,11 +64,42 @@ def qemu_img_info(path, run_as_root=True):
     return imageutils.QemuImgInfo(out)
 
 
-def convert_image(source, dest, out_format, bps_limit=None, run_as_root=True):
+def get_qemu_img_version():
+    info = utils.execute('qemu-img', '--help', check_exit_code=False)[0]
+    pattern = r"qemu-img version ([0-9\.]*)"
+    version = re.match(pattern, info)
+    if not version:
+        LOG.warning(_LW("qemu-img is not installed."))
+        return None
+    return _get_version_from_string(version.groups()[0])
+
+
+def _get_version_from_string(version_string):
+    return [int(x) for x in version_string.split('.')]
+
+
+def check_qemu_img_version(minimum_version):
+    qemu_version = get_qemu_img_version()
+    if (qemu_version is None
+       or qemu_version < _get_version_from_string(minimum_version)):
+        if qemu_version:
+            current_version = '.'.join((str(element)
+                                       for element in qemu_version))
+        else:
+            current_version = None
+
+        _msg = _('qemu-img %(minimum_version)s or later is required by '
+                 'this volume driver. Current qemu-img version: '
+                 '%(current_version)s') % {'minimum_version': minimum_version,
+                                           'current_version': current_version}
+        raise exception.VolumeBackendAPIException(data=_msg)
+
+
+def _convert_image(prefix, source, dest, out_format, run_as_root=True):
     """Convert image to other format."""
 
-    cmd = ('qemu-img', 'convert',
-           '-O', out_format, source, dest)
+    cmd = prefix + ('qemu-img', 'convert',
+                    '-O', out_format, source, dest)
 
     # Check whether O_DIRECT is supported and set '-t none' if it is
     # This is needed to ensure that all data hit the device before
@@ -81,33 +114,48 @@ def convert_image(source, dest, out_format, bps_limit=None, run_as_root=True):
             volume_utils.check_for_odirect_support(source,
                                                    dest,
                                                    'oflag=direct')):
-        cmd = ('qemu-img', 'convert',
-               '-t', 'none',
-               '-O', out_format, source, dest)
+        cmd = prefix + ('qemu-img', 'convert',
+                        '-t', 'none',
+                        '-O', out_format, source, dest)
 
     start_time = timeutils.utcnow()
-    cgcmd = volume_utils.setup_blkio_cgroup(source, dest, bps_limit)
-    if cgcmd:
-        cmd = tuple(cgcmd) + cmd
     utils.execute(*cmd, run_as_root=run_as_root)
-
     duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
 
     # NOTE(jdg): use a default of 1, mostly for unit test, but in
     # some incredible event this is 0 (cirros image?) don't barf
     if duration < 1:
         duration = 1
-    fsz_mb = os.stat(source).st_size / units.Mi
+    try:
+        image_size = qemu_img_info(source, run_as_root=True).virtual_size
+    except ValueError as e:
+        msg = _LI("The image was successfully converted, but image size "
+                  "is unavailable. src %(src)s, dest %(dest)s. %(error)s")
+        LOG.info(msg, {"src": source,
+                       "dest": dest,
+                       "error": e})
+        return
+
+    fsz_mb = image_size / units.Mi
     mbps = (fsz_mb / duration)
     msg = ("Image conversion details: src %(src)s, size %(sz).2f MB, "
            "duration %(duration).2f sec, destination %(dest)s")
-    LOG.debug(msg % {"src": source,
-                     "sz": fsz_mb,
-                     "duration": duration,
-                     "dest": dest})
+    LOG.debug(msg, {"src": source,
+                    "sz": fsz_mb,
+                    "duration": duration,
+                    "dest": dest})
 
-    msg = _("Converted %(sz).2f MB image at %(mbps).2f MB/s")
-    LOG.info(msg % {"sz": fsz_mb, "mbps": mbps})
+    msg = _LI("Converted %(sz).2f MB image at %(mbps).2f MB/s")
+    LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
+
+
+def convert_image(source, dest, out_format, run_as_root=True, throttle=None):
+    if not throttle:
+        throttle = throttling.Throttle.get_default()
+    with throttle.subcommand(source, dest) as throttle_cmd:
+        _convert_image(tuple(throttle_cmd['prefix']),
+                       source, dest,
+                       out_format, run_as_root=run_as_root)
 
 
 def resize_image(source, size, run_as_root=False):
@@ -135,11 +183,11 @@ def fetch(context, image_service, image_id, path, _user_id, _project_id):
     mbps = (fsz_mb / duration)
     msg = ("Image fetch details: dest %(dest)s, size %(sz).2f MB, "
            "duration %(duration).2f sec")
-    LOG.debug(msg % {"dest": image_file.name,
-                     "sz": fsz_mb,
-                     "duration": duration})
-    msg = _("Image download %(sz).2f MB at %(mbps).2f MB/s")
-    LOG.info(msg % {"sz": fsz_mb, "mbps": mbps})
+    LOG.debug(msg, {"dest": image_file.name,
+                    "sz": fsz_mb,
+                    "duration": duration})
+    msg = _LI("Image download %(sz).2f MB at %(mbps).2f MB/s")
+    LOG.info(msg, {"sz": fsz_mb, "mbps": mbps})
 
 
 def fetch_verify_image(context, image_service, image_id, dest,
@@ -227,7 +275,12 @@ def fetch_to_volume_format(context, image_service,
                              "can be used if qemu-img is not installed."),
                     image_id=image_id)
 
-        fetch(context, image_service, image_id, tmp, user_id, project_id)
+        tmp_images = TemporaryImages.for_image_service(image_service)
+        tmp_image = tmp_images.get(context, image_id)
+        if tmp_image:
+            tmp = tmp_image
+        else:
+            fetch(context, image_service, image_id, tmp, user_id, project_id)
 
         if is_xenserver_image(context, image_service, image_id):
             replace_xenserver_image_with_coalesced_vhd(tmp)
@@ -237,8 +290,8 @@ def fetch_to_volume_format(context, image_service,
             # result we only need to copy the image to the destination and then
             # return.
             LOG.debug('Copying image from %(tmp)s to volume %(dest)s - '
-                      'size: %(size)s' % {'tmp': tmp, 'dest': dest,
-                                          'size': image_meta['size']})
+                      'size: %(size)s', {'tmp': tmp, 'dest': dest,
+                                         'size': image_meta['size']})
             image_size_m = math.ceil(image_meta['size'] / units.Mi)
             volume_utils.copy_volume(tmp, dest, image_size_m, blocksize)
             return
@@ -275,14 +328,13 @@ def fetch_to_volume_format(context, image_service,
         # check via 'qemu-img info' that what we copied was in fact a raw
         # image and not a different format with a backing file, which may be
         # malicious.
-        LOG.debug("%s was %s, converting to %s " % (image_id, fmt,
-                                                    volume_format))
+        LOG.debug("%s was %s, converting to %s ", image_id, fmt, volume_format)
         convert_image(tmp, dest, volume_format,
-                      bps_limit=CONF.volume_copy_bps_limit,
                       run_as_root=run_as_root)
 
         data = qemu_img_info(dest, run_as_root=run_as_root)
-        if data.file_format != volume_format:
+
+        if not _validate_file_format(data, volume_format):
             raise exception.ImageUnacceptable(
                 image_id=image_id,
                 reason=_("Converted to %(vol_format)s, but format is "
@@ -291,26 +343,48 @@ def fetch_to_volume_format(context, image_service,
                                                    file_format})
 
 
+def _validate_file_format(image_data, expected_format):
+    if image_data.file_format == expected_format:
+        return True
+    elif image_data.file_format == 'vpc' and expected_format == 'vhd':
+        # qemu-img still uses the legacy 'vpc' name for the vhd format.
+        return True
+    return False
+
+
 def upload_volume(context, image_service, image_meta, volume_path,
                   volume_format='raw', run_as_root=True):
     image_id = image_meta['id']
     if (image_meta['disk_format'] == volume_format):
-        LOG.debug("%s was %s, no need to convert to %s" %
-                  (image_id, volume_format, image_meta['disk_format']))
+        LOG.debug("%s was %s, no need to convert to %s",
+                  image_id, volume_format, image_meta['disk_format'])
         if os.name == 'nt' or os.access(volume_path, os.R_OK):
-            with fileutils.file_open(volume_path, 'rb') as image_file:
+            with open(volume_path, 'rb') as image_file:
                 image_service.update(context, image_id, {}, image_file)
         else:
             with utils.temporary_chown(volume_path):
-                with fileutils.file_open(volume_path) as image_file:
+                with open(volume_path) as image_file:
                     image_service.update(context, image_id, {}, image_file)
         return
 
     with temporary_file() as tmp:
-        LOG.debug("%s was %s, converting to %s" %
-                  (image_id, volume_format, image_meta['disk_format']))
+        LOG.debug("%s was %s, converting to %s",
+                  image_id, volume_format, image_meta['disk_format'])
+
+        data = qemu_img_info(volume_path, run_as_root=run_as_root)
+        backing_file = data.backing_file
+        fmt = data.file_format
+        if backing_file is not None:
+            # Disallow backing files as a security measure.
+            # This prevents a user from writing an image header into a raw
+            # volume with a backing file pointing to data they wish to
+            # access.
+            raise exception.ImageUnacceptable(
+                image_id=image_id,
+                reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
+                % {'fmt': fmt, 'backing_file': backing_file})
+
         convert_image(volume_path, tmp, image_meta['disk_format'],
-                      bps_limit=CONF.volume_copy_bps_limit,
                       run_as_root=run_as_root)
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
@@ -320,7 +394,7 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 reason=_("Converted to %(f1)s, but format is now %(f2)s") %
                 {'f1': image_meta['disk_format'], 'f2': data.file_format})
 
-        with fileutils.file_open(tmp, 'rb') as image_file:
+        with open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {}, image_file)
 
 
@@ -428,3 +502,48 @@ def replace_xenserver_image_with_coalesced_vhd(image_file):
         coalesced = coalesce_chain(chain)
         fileutils.delete_if_exists(image_file)
         os.rename(coalesced, image_file)
+
+
+class TemporaryImages(object):
+    """Manage temporarily downloaded images to avoid downloading it twice.
+
+    In the 'with TemporaryImages.fetch(image_service, ctx, image_id) as tmp'
+    clause, 'tmp' can be used as the downloaded image path. In addition,
+    image_utils.fetch() will use the pre-fetched image by the TemporaryImages.
+    This is useful to inspect image contents before conversion.
+    """
+
+    def __init__(self, image_service):
+        self.temporary_images = {}
+        self.image_service = image_service
+        image_service.temp_images = self
+
+    @staticmethod
+    def for_image_service(image_service):
+        instance = image_service.temp_images
+        if instance:
+            return instance
+        return TemporaryImages(image_service)
+
+    @classmethod
+    @contextlib.contextmanager
+    def fetch(cls, image_service, context, image_id):
+        tmp_images = cls.for_image_service(image_service).temporary_images
+        with temporary_file() as tmp:
+            fetch_verify_image(context, image_service, image_id, tmp)
+            user = context.user_id
+            if not tmp_images.get(user):
+                tmp_images[user] = {}
+            tmp_images[user][image_id] = tmp
+            LOG.debug("Temporary image %(id)s is fetched for user %(user)s.",
+                      {'id': image_id, 'user': user})
+            yield tmp
+            del tmp_images[user][image_id]
+        LOG.debug("Temporary image %(id)s for user %(user)s is deleted.",
+                  {'id': image_id, 'user': user})
+
+    def get(self, context, image_id):
+        user = context.user_id
+        if not self.temporary_images.get(user):
+            return None
+        return self.temporary_images[user].get(image_id)

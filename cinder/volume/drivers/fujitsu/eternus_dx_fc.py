@@ -1,5 +1,6 @@
-# Copyright (c) 2014 FUJITSU LIMITED
-# Copyright (c) 2014 EMC Corporation.
+# Copyright (c) 2015 FUJITSU LIMITED
+# Copyright (c) 2012 EMC Corporation.
+# Copyright (c) 2012 OpenStack Foundation
 # All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -13,15 +14,14 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-FC Drivers for ETERNUS DX arrays based on SMI-S.
+#
 
 """
-from oslo_concurrency import lockutils
+FibreChannel Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
+"""
+from oslo_log import log as logging
 import six
 
-from cinder import context
-from cinder.openstack.common import log as logging
 from cinder.volume import driver
 from cinder.volume.drivers.fujitsu import eternus_dx_common
 from cinder.zonemanager import utils as fczm_utils
@@ -30,205 +30,185 @@ LOG = logging.getLogger(__name__)
 
 
 class FJDXFCDriver(driver.FibreChannelDriver):
-    """FC Drivers using SMI-S."""
-
-    VERSION = "1.2.0"
+    """FC Cinder Volume Driver for Fujitsu ETERNUS DX S3 series."""
 
     def __init__(self, *args, **kwargs):
 
         super(FJDXFCDriver, self).__init__(*args, **kwargs)
         self.common = eternus_dx_common.FJDXCommon(
-            'FC',
+            'fc',
             configuration=self.configuration)
+        self.VERSION = self.common.VERSION
 
     def check_for_setup_error(self):
         pass
 
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def create_volume(self, volume):
-        """Creates a volume."""
-        volpath = self.common.create_volume(volume)
+        """Create volume."""
+        LOG.debug('create_volume, '
+                  'volume id: %s, enter method.', volume['id'])
 
-        model_update = {}
-        volume['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = volume['provider_location']
-        return model_update
+        location, metadata = self.common.create_volume(volume)
 
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
+        v_metadata = self._get_metadata(volume)
+        metadata.update(v_metadata)
+
+        LOG.debug('create_volume, info: %s, exit method.', metadata)
+        return {'provider_location': six.text_type(location),
+                'metadata': metadata}
+
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot."""
-        volpath = self.common.create_volume_from_snapshot(volume, snapshot)
+        LOG.debug('create_volume_from_snapshot, '
+                  'volume id: %(vid)s, snap id: %(sid)s, enter method.',
+                  {'vid': volume['id'], 'sid': snapshot['id']})
 
-        model_update = {}
-        volume['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = volume['provider_location']
-        return model_update
+        location, metadata = (
+            self.common.create_volume_from_snapshot(volume, snapshot))
 
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
+        v_metadata = self._get_metadata(volume)
+        metadata.update(v_metadata)
+
+        LOG.debug('create_volume_from_snapshot, '
+                  'info: %s, exit method.', metadata)
+        return {'provider_location': six.text_type(location),
+                'metadata': metadata}
+
     def create_cloned_volume(self, volume, src_vref):
-        """Creates a cloned volume."""
-        volpath = self.common.create_cloned_volume(volume, src_vref)
+        """Create cloned volume."""
+        LOG.debug('create_cloned_volume, '
+                  'target volume id: %(tid)s, '
+                  'source volume id: %(sid)s, enter method.',
+                  {'tid': volume['id'], 'sid': src_vref['id']})
 
-        model_update = {}
-        volume['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = volume['provider_location']
-        return model_update
+        location, metadata = (
+            self.common.create_cloned_volume(volume, src_vref))
 
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
+        v_metadata = self._get_metadata(volume)
+        metadata.update(v_metadata)
+
+        LOG.debug('create_cloned_volume, '
+                  'info: %s, exit method.', metadata)
+        return {'provider_location': six.text_type(location),
+                'metadata': metadata}
+
     def delete_volume(self, volume):
-        """Deletes a volume."""
-        self.common.delete_volume(volume)
+        """Delete volume on ETERNUS."""
+        LOG.debug('delete_volume, '
+                  'volume id: %s, enter method.', volume['id'])
 
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
+        vol_exist = self.common.delete_volume(volume)
+
+        LOG.debug('delete_volume, '
+                  'delete: %s, exit method.', vol_exist)
+
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
+        LOG.debug('create_snapshot, '
+                  'snap id: %(sid)s, volume id: %(vid)s, enter method.',
+                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
-        ctxt = context.get_admin_context()
-        volumename = snapshot['volume_name']
-        index = volumename.index('-')
-        volumeid = volumename[index + 1:]
-        volume = self.db.volume_get(ctxt, volumeid)
+        location, metadata = self.common.create_snapshot(snapshot)
 
-        volpath = self.common.create_snapshot(snapshot, volume)
+        LOG.debug('create_snapshot, info: %s, exit method.', metadata)
+        return {'provider_location': six.text_type(location)}
 
-        model_update = {}
-        snapshot['provider_location'] = six.text_type(volpath)
-        model_update['provider_location'] = snapshot['provider_location']
-        return model_update
-
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
+        LOG.debug('delete_snapshot, '
+                  'snap id: %(sid)s, volume id: %(vid)s, enter method.',
+                  {'sid': snapshot['id'], 'vid': snapshot['volume_id']})
 
-        self.common.delete_volume(snapshot)
+        vol_exist = self.common.delete_snapshot(snapshot)
+
+        LOG.debug('delete_snapshot, '
+                  'delete: %s, exit method.', vol_exist)
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
-        pass
+        return
 
-    def create_export(self, context, volume):
+    def create_export(self, context, volume, connector):
         """Driver entry point to get the export info for a new volume."""
-        pass
+        return
 
     def remove_export(self, context, volume):
         """Driver entry point to remove an export for a volume."""
-        pass
-
-    def check_for_export(self, context, volume_id):
-        """Make sure volume is exported."""
-        pass
+        return
 
     @fczm_utils.AddFCZone
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def initialize_connection(self, volume, connector):
-        """Initializes the connection and returns connection info.
+        """Allow connection to connector and return connection info."""
+        LOG.debug('initialize_connection, volume id: %(vid)s, '
+                  'wwpns: %(wwpns)s, enter method.',
+                  {'vid': volume['id'], 'wwpns': connector['wwpns']})
 
-        Assign any created volume to a compute node/host so that it can be
-        used from that host.
+        info = self.common.initialize_connection(volume, connector)
 
-        The  driver returns a driver_volume_type of 'fibre_channel'.
-        The target_wwn can be a single entry or a list of wwns that
-        correspond to the list of remote wwn(s) that will export the volume.
-        Example return values:
+        data = info['data']
+        init_tgt_map = (
+            self.common.build_fc_init_tgt_map(connector, data['target_wwn']))
+        data['initiator_target_map'] = init_tgt_map
 
-            {
-                'driver_volume_type': 'fibre_channel'
-                'data': {
-                    'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': '1234567890123',
-                }
-            }
-
-            or
-
-             {
-                'driver_volume_type': 'fibre_channel'
-                'data': {
-                    'target_discovered': True,
-                    'target_lun': 1,
-                    'target_wwn': ['1234567890123', '0987654321321'],
-                }
-            }
-
-        """
-        device_info = self.common.initialize_connection(volume,
-                                                        connector)
-        device_number = device_info['hostlunid']
-        storage_system = device_info['storagesystem']
-        target_wwns, init_targ_map = self._build_initiator_target_map(
-            storage_system, connector)
-
-        data = {'driver_volume_type': 'fibre_channel',
-                'data': {'target_lun': device_number,
-                         'target_discovered': True,
-                         'target_wwn': target_wwns,
-                         'initiator_target_map': init_targ_map}}
-
-        LOG.debug('Return FC data: %(data)s.'
-                  % {'data': data})
-
-        return data
+        info['data'] = data
+        LOG.debug('initialize_connection, '
+                  'info: %s, exit method.', info)
+        return info
 
     @fczm_utils.RemoveFCZone
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Disallow connection from connector."""
-        ctrl = self.common.terminate_connection(volume, connector)
+        LOG.debug('terminate_connection, volume id: %(vid)s, '
+                  'wwpns: %(wwpns)s, enter method.',
+                  {'vid': volume['id'], 'wwpns': connector['wwpns']})
 
-        loc = volume['provider_location']
-        name = eval(loc)
-        storage_system = name['keybindings']['SystemName']
-        target_wwns, init_targ_map = self._build_initiator_target_map(
-            storage_system, connector)
+        map_exist = self.common.terminate_connection(volume, connector)
+        attached = self.common.check_attached_volume_in_zone(connector)
 
-        data = {'driver_volume_type': 'fibre_channel',
+        info = {'driver_volume_type': 'fibre_channel',
                 'data': {}}
 
-        if len(ctrl) == 0:
+        if not attached:
             # No more volumes attached to the host
-            data['data'] = {'target_wwn': target_wwns,
-                            'initiator_target_map': init_targ_map}
+            init_tgt_map = self.common.build_fc_init_tgt_map(connector)
+            info['data'] = {'initiator_target_map': init_tgt_map}
 
-        LOG.debug('Return FC data: %(data)s.'
-                  % {'data': data})
-
-        return data
-
-    def _build_initiator_target_map(self, storage_system, connector):
-        """Build the target_wwns and the initiator target map."""
-
-        target_wwns = self.common.get_target_portid(connector)
-
-        initiator_wwns = connector['wwpns']
-
-        init_targ_map = {}
-        for initiator in initiator_wwns:
-            init_targ_map[initiator] = target_wwns
-
-        return target_wwns, init_targ_map
-
-    @lockutils.synchronized('ETERNUS_DX-vol', 'cinder-', True)
-    def extend_volume(self, volume, new_size):
-        """Extend an existing volume."""
-        self.common.extend_volume(volume, new_size)
+        LOG.debug('terminate_connection, unmap: %(unmap)s, '
+                  'connection info: %(info)s, exit method',
+                  {'unmap': map_exist, 'info': info})
+        return info
 
     def get_volume_stats(self, refresh=False):
-        """Get volume stats.
+        """Get volume stats."""
+        LOG.debug('get_volume_stats, refresh: %s, enter method.', refresh)
 
-        If 'refresh' is True, run update the stats first.
-        """
-        if refresh:
-            self.update_volume_stats()
+        pool_name = None
+        if refresh is True:
+            data, pool_name = self.common.update_volume_stats()
+            backend_name = self.configuration.safe_get('volume_backend_name')
+            data['volume_backend_name'] = backend_name or 'FJDXFCDriver'
+            data['storage_protocol'] = 'FC'
+            self._stats = data
 
+        LOG.debug('get_volume_stats, '
+                  'pool name: %s, exit method.', pool_name)
         return self._stats
 
-    def update_volume_stats(self):
-        """Retrieve stats info from volume group."""
-        LOG.debug("Updating volume stats")
-        data = self.common.update_volume_stats()
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        data['volume_backend_name'] = backend_name or 'FJDXFCDriver'
-        data['storage_protocol'] = 'FC'
-        data['driver_version'] = self.VERSION
-        self._stats = data
+    def extend_volume(self, volume, new_size):
+        """Extend volume."""
+        LOG.debug('extend_volume, '
+                  'volume id: %s, enter method.', volume['id'])
+
+        used_pool_name = self.common.extend_volume(volume, new_size)
+
+        LOG.debug('extend_volume, '
+                  'used pool name: %s, exit method.', used_pool_name)
+
+    def _get_metadata(self, volume):
+        v_metadata = volume.get('volume_metadata')
+        if v_metadata:
+            ret = {data['key']: data['value'] for data in v_metadata}
+        else:
+            ret = volume.get('metadata', {})
+
+        return ret

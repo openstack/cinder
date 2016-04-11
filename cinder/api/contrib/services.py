@@ -15,17 +15,19 @@
 
 
 from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_log import versionutils
 from oslo_utils import timeutils
 import webob.exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api import xmlutil
-from cinder import db
 from cinder import exception
 from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder import objects
 from cinder import utils
+from cinder import volume
 
 
 CONF = cfg.CONF
@@ -45,6 +47,9 @@ class ServicesIndexTemplate(xmlutil.TemplateBuilder):
         elem.set('state')
         elem.set('update_at')
         elem.set('disabled_reason')
+        elem.set('replication_status')
+        elem.set('active_backend_id')
+        elem.set('frozen')
 
         return xmlutil.MasterTemplate(root, 1)
 
@@ -62,6 +67,9 @@ class ServicesUpdateTemplate(xmlutil.TemplateBuilder):
         root.set('binary')
         root.set('status')
         root.set('disabled_reason')
+        root.set('replication_status')
+        root.set('active_backend_id')
+        root.set('frozen')
 
         return xmlutil.MasterTemplate(root, 1)
 
@@ -70,6 +78,7 @@ class ServiceController(wsgi.Controller):
     def __init__(self, ext_mgr=None):
         self.ext_mgr = ext_mgr
         super(ServiceController, self).__init__()
+        self.volume_api = volume.API()
 
     @wsgi.serializers(xml=ServicesIndexTemplate)
     def index(self, req):
@@ -78,44 +87,50 @@ class ServiceController(wsgi.Controller):
         Filter by host & service name.
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action='index')
         detailed = self.ext_mgr.is_loaded('os-extended-services')
-        now = timeutils.utcnow()
-        services = db.service_get_all(context)
+        now = timeutils.utcnow(with_timezone=True)
 
-        host = ''
+        filters = {}
+
         if 'host' in req.GET:
-            host = req.GET['host']
-        service = ''
-        if 'service' in req.GET:
-            service = req.GET['service']
-            LOG.deprecated(_("Query by service parameter is deprecated. "
-                             "Please use binary parameter instead."))
-        binary = ''
+            filters['host'] = req.GET['host']
         if 'binary' in req.GET:
-            binary = req.GET['binary']
+            filters['binary'] = req.GET['binary']
+        elif 'service' in req.GET:
+            filters['binary'] = req.GET['service']
+            versionutils.report_deprecated_feature(LOG, _(
+                "Query by service parameter is deprecated. "
+                "Please use binary parameter instead."))
 
-        if host:
-            services = [s for s in services if s['host'] == host]
-        # NOTE(uni): deprecating service request key, binary takes precedence
-        binary_key = binary or service
-        if binary_key:
-            services = [s for s in services if s['binary'] == binary_key]
+        services = objects.ServiceList.get_all(context, filters)
 
         svcs = []
         for svc in services:
-            delta = now - (svc['updated_at'] or svc['created_at'])
-            alive = abs(delta.total_seconds()) <= CONF.service_down_time
+            updated_at = svc.updated_at
+            delta = now - (svc.updated_at or svc.created_at)
+            delta_sec = delta.total_seconds()
+            if svc.modified_at:
+                delta_mod = now - svc.modified_at
+                if abs(delta_sec) >= abs(delta_mod.total_seconds()):
+                    updated_at = svc.modified_at
+            alive = abs(delta_sec) <= CONF.service_down_time
             art = (alive and "up") or "down"
             active = 'enabled'
-            if svc['disabled']:
+            if svc.disabled:
                 active = 'disabled'
-            ret_fields = {'binary': svc['binary'], 'host': svc['host'],
-                          'zone': svc['availability_zone'],
+            if updated_at:
+                updated_at = timeutils.normalize_time(updated_at)
+            ret_fields = {'binary': svc.binary, 'host': svc.host,
+                          'zone': svc.availability_zone,
                           'status': active, 'state': art,
-                          'updated_at': svc['updated_at']}
+                          'updated_at': updated_at}
             if detailed:
-                ret_fields['disabled_reason'] = svc['disabled_reason']
+                ret_fields['disabled_reason'] = svc.disabled_reason
+                if svc.binary == "cinder-volume":
+                    ret_fields['replication_status'] = svc.replication_status
+                    ret_fields['active_backend_id'] = svc.active_backend_id
+                    ret_fields['frozen'] = svc.frozen
             svcs.append(ret_fields)
         return {'services': svcs}
 
@@ -130,11 +145,26 @@ class ServiceController(wsgi.Controller):
 
         return True
 
+    def _freeze(self, context, host):
+        return self.volume_api.freeze_host(context, host)
+
+    def _thaw(self, context, host):
+        return self.volume_api.thaw_host(context, host)
+
+    def _failover(self, context, host, backend_id=None):
+        return self.volume_api.failover_host(context, host, backend_id)
+
     @wsgi.serializers(xml=ServicesUpdateTemplate)
     def update(self, req, id, body):
-        """Enable/Disable scheduling for a service."""
+        """Enable/Disable scheduling for a service.
+
+        Includes Freeze/Thaw which sends call down to drivers
+        and allows volume.manager for the specified host to
+        disable the service rather than accessing the service
+        directly in this API layer.
+        """
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize(context, action='update')
 
         ext_loaded = self.ext_mgr.is_loaded('os-extended-services')
         ret_val = {}
@@ -147,13 +177,25 @@ class ServiceController(wsgi.Controller):
                 (id == "disable-log-reason" and ext_loaded)):
             disabled = True
             status = "disabled"
+        elif id == "freeze":
+            return self._freeze(context, body['host'])
+        elif id == "thaw":
+            return self._thaw(context, body['host'])
+        elif id == "failover_host":
+            self._failover(
+                context,
+                body['host'],
+                body.get('backend_id', None)
+            )
+            return webob.Response(status_int=202)
         else:
             raise webob.exc.HTTPNotFound(explanation=_("Unknown action"))
 
         try:
             host = body['host']
         except (TypeError, KeyError):
-            raise webob.exc.HTTPBadRequest()
+            msg = _("Missing required element 'host' in request body.")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
 
         ret_val['disabled'] = disabled
         if id == "disable-log-reason" and ext_loaded:
@@ -173,11 +215,14 @@ class ServiceController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest()
 
         try:
-            svc = db.service_get_by_args(context, host, binary_key)
+            svc = objects.Service.get_by_args(context, host, binary_key)
             if not svc:
                 raise webob.exc.HTTPNotFound(explanation=_('Unknown service'))
 
-            db.service_update(context, svc['id'], ret_val)
+            svc.disabled = ret_val['disabled']
+            if 'disabled_reason' in ret_val:
+                svc.disabled_reason = ret_val['disabled_reason']
+            svc.save()
         except exception.ServiceNotFound:
             raise webob.exc.HTTPNotFound(explanation=_("service not found"))
 

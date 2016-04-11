@@ -1,8 +1,6 @@
 #    (c) Copyright 2014 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
-#    Copyright 2014 OpenStack Foundation
-#
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
 #    a copy of the License at
@@ -26,14 +24,15 @@ import re
 
 from eventlet import greenthread
 from oslo_concurrency import processutils
+from oslo_log import log as logging
 from oslo_utils import excutils
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE
-from cinder.openstack.common import log as logging
 from cinder import ssh_utils
 from cinder import utils
-import cinder.zonemanager.drivers.brocade.fc_zone_constants as ZoneConstant
+import cinder.zonemanager.drivers.brocade.fc_zone_constants as zone_constant
 
 LOG = logging.getLogger(__name__)
 
@@ -43,14 +42,17 @@ class BrcdFCZoneClientCLI(object):
     switch_port = '22'
     switch_user = 'admin'
     switch_pwd = 'none'
+    switch_key = 'none'
     patrn = re.compile('[;\s]+')
 
-    def __init__(self, ipaddress, username, password, port):
-        """initializing the client."""
+    def __init__(self, ipaddress, username,
+                 password, port, key):
+        """Initializing the client."""
         self.switch_ip = ipaddress
         self.switch_port = port
         self.switch_user = username
         self.switch_pwd = password
+        self.switch_key = key
         self.sshpool = None
 
     def get_active_zone_set(self):
@@ -76,7 +78,7 @@ class BrcdFCZoneClientCLI(object):
         zone_set_name = None
         try:
             switch_data = self._get_switch_info(
-                [ZoneConstant.GET_ACTIVE_ZONE_CFG])
+                [zone_constant.GET_ACTIVE_ZONE_CFG])
         except exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed getting active zone set "
@@ -90,7 +92,7 @@ class BrcdFCZoneClientCLI(object):
                     line_split = [x.replace(
                         ' ',
                         '') for x in line_split]
-                    if ZoneConstant.CFG_ZONESET in line_split:
+                    if zone_constant.CFG_ZONESET in line_split:
                         zone_set_name = line_split[1]
                         continue
                     if line_split[1]:
@@ -98,19 +100,17 @@ class BrcdFCZoneClientCLI(object):
                         zone[zone_name] = list()
                     if line_split[2]:
                         zone_member = line_split[2]
-                    if zone_member:
                         zone_member_list = zone.get(zone_name)
                         zone_member_list.append(zone_member)
-            zone_set[ZoneConstant.CFG_ZONES] = zone
-            zone_set[ZoneConstant.ACTIVE_ZONE_CONFIG] = zone_set_name
-        except Exception as ex:
-            # Incase of parsing error here, it should be malformed cli output.
+            zone_set[zone_constant.CFG_ZONES] = zone
+            zone_set[zone_constant.ACTIVE_ZONE_CONFIG] = zone_set_name
+        except Exception:
+            # In case of parsing error here, it should be malformed cli output.
             msg = _("Malformed zone configuration: (switch=%(switch)s "
                     "zone_config=%(zone_config)s)."
                     ) % {'switch': self.switch_ip,
                          'zone_config': switch_data}
-            LOG.error(msg)
-            LOG.exception(ex)
+            LOG.exception(msg)
             raise exception.FCZoneDriverException(reason=msg)
         switch_data = None
         return zone_set
@@ -137,15 +137,21 @@ class BrcdFCZoneClientCLI(object):
         zone_with_sep = ''
         if not active_zone_set:
             active_zone_set = self.get_active_zone_set()
-            LOG.debug("Active zone set:%s", active_zone_set)
-        zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
-        LOG.debug("zone list:%s", zone_list)
+            LOG.debug("Active zone set: %s", active_zone_set)
+        zone_list = active_zone_set[zone_constant.CFG_ZONES]
+        zone_updated = []
+        LOG.debug("zone list: %s", zone_list)
         for zone in zones.keys():
-            # if zone exists, its an update. Delete & insert
-            # TODO(skolathur): This can be optimized to an update call later
+            # If zone exists, its an update. Delete & insert
+            # TODO(skolathur): This still need to be optimized
+            # to an update call later. Now we just handled the
+            # same zone name with same zone members.
             if (zone in zone_list):
+                if set(zones[zone]) == set(zone_list[zone]):
+                    break
                 try:
                     self.delete_zones(zone, activate, active_zone_set)
+                    zone_updated.append(zone)
                 except exception.BrocadeZoningCliException:
                     with excutils.save_and_reraise_exception():
                         LOG.error(_LE("Deleting zone failed %s"), zone)
@@ -163,11 +169,18 @@ class BrcdFCZoneClientCLI(object):
                 zone_with_sep += ';'
             iterator_count += 1
             zone_with_sep += zone
+        if not zone_with_sep:
+            return
         try:
-            cfg_name = active_zone_set[ZoneConstant.ACTIVE_ZONE_CONFIG]
+            # If all existing zones are to be updated, the active zone config
+            # will require a recreate, since all zones have been deleted.
+            if len(zone_list) == len(zone_updated):
+                cfg_name = None
+            else:
+                cfg_name = active_zone_set[zone_constant.ACTIVE_ZONE_CONFIG]
             cmd = None
             if not cfg_name:
-                cfg_name = ZoneConstant.OPENSTACK_CFG_NAME
+                cfg_name = zone_constant.OPENSTACK_CFG_NAME
                 cmd = 'cfgcreate "%(zoneset)s", "%(zones)s"' \
                     % {'zoneset': cfg_name, 'zones': zone_with_sep}
             else:
@@ -183,27 +196,27 @@ class BrcdFCZoneClientCLI(object):
             self._cfg_trans_abort()
             msg = _("Creating and activating zone set failed: "
                     "(Zone set=%(cfg_name)s error=%(err)s)."
-                    ) % {'cfg_name': cfg_name, 'err': e}
+                    ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
     def activate_zoneset(self, cfgname):
         """Method to Activate the zone config. Param cfgname - ZonesetName."""
-        cmd_list = [ZoneConstant.ACTIVATE_ZONESET, cfgname]
+        cmd_list = [zone_constant.ACTIVATE_ZONESET, cfgname]
         return self._ssh_execute(cmd_list, True, 1)
 
     def deactivate_zoneset(self):
         """Method to deActivate the zone config."""
-        return self._ssh_execute([ZoneConstant.DEACTIVATE_ZONESET], True, 1)
+        return self._ssh_execute([zone_constant.DEACTIVATE_ZONESET], True, 1)
 
     def delete_zones(self, zone_names, activate, active_zone_set=None):
         """Delete zones from fabric.
 
         Method to delete the active zone config zones
 
-        params zone_names: zoneNames separated by semicolon
-        params activate: True/False
-        params active_zone_set: the active zone set dict retrieved
+        :param zone_names: zoneNames separated by semicolon
+        :param activate: True/False
+        :param active_zone_set: the active zone set dict retrieved
                                 from get_active_zone_set method
         """
         active_zoneset_name = None
@@ -211,8 +224,8 @@ class BrcdFCZoneClientCLI(object):
         if not active_zone_set:
             active_zone_set = self.get_active_zone_set()
         active_zoneset_name = active_zone_set[
-            ZoneConstant.ACTIVE_ZONE_CONFIG]
-        zone_list = active_zone_set[ZoneConstant.CFG_ZONES]
+            zone_constant.ACTIVE_ZONE_CONFIG]
+        zone_list = active_zone_set[zone_constant.CFG_ZONES]
         zones = self.patrn.split(''.join(zone_names))
         cmd = None
         try:
@@ -227,7 +240,7 @@ class BrcdFCZoneClientCLI(object):
                     % {'active_zoneset_name': active_zoneset_name,
                        'zone_names': zone_names
                        }
-            LOG.debug("Delete zones: Config cmd to run:%s", cmd)
+            LOG.debug("Delete zones: Config cmd to run: %s", cmd)
             self.apply_zone_change(cmd.split())
             for zone in zones:
                 self._zone_delete(zone)
@@ -237,7 +250,7 @@ class BrcdFCZoneClientCLI(object):
                 self._cfg_save()
         except Exception as e:
             msg = _("Deleting zones failed: (command=%(cmd)s error=%(err)s)."
-                    ) % {'cmd': cmd, 'err': e}
+                    ) % {'cmd': cmd, 'err': six.text_type(e)}
             LOG.error(msg)
             self._cfg_trans_abort()
             raise exception.BrocadeZoningCliException(reason=msg)
@@ -252,8 +265,8 @@ class BrcdFCZoneClientCLI(object):
         return_list = []
         try:
             cmd = '%(nsshow)s;%(nscamshow)s' % {
-                'nsshow': ZoneConstant.NS_SHOW,
-                'nscamshow': ZoneConstant.NS_CAM_SHOW}
+                'nsshow': zone_constant.NS_SHOW,
+                'nscamshow': zone_constant.NS_CAM_SHOW}
             cli_output = self._get_switch_info([cmd])
         except exception.BrocadeZoningCliException:
             with excutils.save_and_reraise_exception():
@@ -265,7 +278,7 @@ class BrcdFCZoneClientCLI(object):
         return return_list
 
     def _cfg_save(self):
-        self._ssh_execute([ZoneConstant.CFG_SAVE], True, 1)
+        self._ssh_execute([zone_constant.CFG_SAVE], True, 1)
 
     def _zone_delete(self, zone_name):
         cmd = 'zonedelete "%(zone_name)s"' % {'zone_name': zone_name}
@@ -274,17 +287,17 @@ class BrcdFCZoneClientCLI(object):
     def _cfg_trans_abort(self):
         is_abortable = self._is_trans_abortable()
         if(is_abortable):
-            self.apply_zone_change([ZoneConstant.CFG_ZONE_TRANS_ABORT])
+            self.apply_zone_change([zone_constant.CFG_ZONE_TRANS_ABORT])
 
     def _is_trans_abortable(self):
         is_abortable = False
         stdout, stderr = None, None
         stdout, stderr = self._run_ssh(
-            [ZoneConstant.CFG_SHOW_TRANS], True, 1)
+            [zone_constant.CFG_SHOW_TRANS], True, 1)
         output = stdout.splitlines()
         is_abortable = False
         for line in output:
-            if(ZoneConstant.TRANS_ABORTABLE in line):
+            if(zone_constant.TRANS_ABORTABLE in line):
                 is_abortable = True
                 break
         if stderr:
@@ -323,7 +336,7 @@ class BrcdFCZoneClientCLI(object):
             if (stdout):
                 for line in stdout:
                     if 'Fabric OS:  v' in line:
-                        LOG.debug("Firmware version string:%s", line)
+                        LOG.debug("Firmware version string: %s", line)
                         ver = line.split('Fabric OS:  v')[1].split('.')
                         if (ver):
                             firmware = int(ver[0] + ver[1])
@@ -333,7 +346,7 @@ class BrcdFCZoneClientCLI(object):
                 return False
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
-                    "error=%(err)s).") % {'cmd': cmd, 'err': e}
+                    "error=%(err)s).") % {'cmd': cmd, 'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -347,7 +360,7 @@ class BrcdFCZoneClientCLI(object):
         except processutils.ProcessExecutionError as e:
             msg = _("Error while getting data via ssh: (command=%(cmd)s "
                     "error=%(err)s).") % {'cmd': cmd_list,
-                                          'err': e}
+                                          'err': six.text_type(e)}
             LOG.error(msg)
             raise exception.BrocadeZoningCliException(reason=msg)
 
@@ -384,6 +397,7 @@ class BrcdFCZoneClientCLI(object):
                                              None,
                                              self.switch_user,
                                              self.switch_pwd,
+                                             self.switch_key,
                                              min_size=1,
                                              max_size=5)
         last_exception = None
@@ -397,7 +411,7 @@ class BrcdFCZoneClientCLI(object):
                             command,
                             check_exit_code=check_exit_code)
                     except Exception as e:
-                        LOG.error(e)
+                        LOG.exception(_LE('Error executing SSH command.'))
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 try:
@@ -414,7 +428,7 @@ class BrcdFCZoneClientCLI(object):
                         cmd=command)
         except Exception:
             with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error running SSH command: %s") % command)
+                LOG.error(_LE("Error running SSH command: %s"), command)
 
     def _ssh_execute(self, cmd_list, check_exit_code=True, attempts=1):
         """Execute cli with status update.
@@ -430,10 +444,11 @@ class BrcdFCZoneClientCLI(object):
                                              None,
                                              self.switch_user,
                                              self.switch_pwd,
+                                             self.switch_key,
                                              min_size=1,
                                              max_size=5)
         stdin, stdout, stderr = None, None, None
-        LOG.debug("Executing command via ssh: %s" % command)
+        LOG.debug("Executing command via ssh: %s", command)
         last_exception = None
         try:
             with self.sshpool.item() as ssh:
@@ -441,14 +456,13 @@ class BrcdFCZoneClientCLI(object):
                     attempts -= 1
                     try:
                         stdin, stdout, stderr = ssh.exec_command(command)
-                        greenthread.sleep(random.randint(20, 500) / 100.0)
-                        stdin.write("%s\n" % ZoneConstant.YES)
+                        stdin.write("%s\n" % zone_constant.YES)
                         channel = stdout.channel
                         exit_status = channel.recv_exit_status()
-                        LOG.debug("Exit Status from ssh:%s", exit_status)
+                        LOG.debug("Exit Status from ssh: %s", exit_status)
                         # exit_status == -1 if no exit code was returned
                         if exit_status != -1:
-                            LOG.debug('Result was %s' % exit_status)
+                            LOG.debug('Result was %s', exit_status)
                             if check_exit_code and exit_status != 0:
                                 raise processutils.ProcessExecutionError(
                                     exit_code=exit_status,
@@ -460,11 +474,11 @@ class BrcdFCZoneClientCLI(object):
                         else:
                             return True
                     except Exception as e:
-                        LOG.error(e)
+                        LOG.exception(_LE('Error executing SSH command.'))
                         last_exception = e
                         greenthread.sleep(random.randint(20, 500) / 100.0)
                 LOG.debug("Handling error case after "
-                          "SSH:%s", last_exception)
+                          "SSH: %s", last_exception)
                 try:
                     raise processutils.ProcessExecutionError(
                         exit_code=last_exception.exit_code,
@@ -492,7 +506,7 @@ class BrcdFCZoneClientCLI(object):
     def _execute_shell_cmd(self, cmd):
         """Run command over shell for older firmware versions.
 
-        We invoke shell and issue the command and return the output.
+        Invokes shell and issue the command and return the output.
         This is primarily used for issuing read commands when we are not sure
         if the firmware supports exec_command.
         """
@@ -505,10 +519,11 @@ class BrcdFCZoneClientCLI(object):
                                              None,
                                              self.switch_user,
                                              self.switch_pwd,
+                                             self.switch_key,
                                              min_size=1,
                                              max_size=5)
         with self.sshpool.item() as ssh:
-            LOG.debug('Running cmd (SSH): %s' % command)
+            LOG.debug('Running cmd (SSH): %s', command)
             channel = ssh.invoke_shell()
             stdin_stream = channel.makefile('wb')
             stdout_stream = channel.makefile('rb')
@@ -526,10 +541,9 @@ exit
             exit_status = channel.recv_exit_status()
             # exit_status == -1 if no exit code was returned
             if exit_status != -1:
-                LOG.debug('Result was %s' % exit_status)
+                LOG.debug('Result was %s', exit_status)
                 if exit_status != 0:
-                    msg = "command %s failed" % command
-                    LOG.debug(msg)
+                    LOG.debug("command %s failed", command)
                     raise processutils.ProcessExecutionError(
                         exit_code=exit_status,
                         stdout=stdout,
@@ -537,9 +551,10 @@ exit
                         cmd=command)
             try:
                 channel.close()
-            except Exception as e:
-                LOG.exception(e)
-            LOG.debug("_execute_cmd: stderr to return:%s" % stderr)
+            except Exception:
+                LOG.exception(_LE('Error closing channel.'))
+            LOG.debug("_execute_cmd: stdout to return: %s", stdout)
+            LOG.debug("_execute_cmd: stderr to return: %s", stderr)
         return (stdout, stderr)
 
     def cleanup(self):

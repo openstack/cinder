@@ -19,13 +19,13 @@ Module dedicated functions/classes dealing with rate limiting requests.
 
 import collections
 import copy
-import httplib
 import math
 import re
 import time
 
 from oslo_serialization import jsonutils
 from oslo_utils import importutils
+from six.moves import http_client
 import webob.dec
 import webob.exc
 
@@ -34,7 +34,7 @@ from cinder.api.views import limits as limits_views
 from cinder.api import xmlutil
 from cinder.i18n import _
 from cinder import quota
-from cinder import wsgi as base_wsgi
+from cinder.wsgi import common as base_wsgi
 
 QUOTAS = quota.QUOTAS
 LIMITS_PREFIX = "limits."
@@ -84,7 +84,7 @@ class LimitsController(wsgi.Controller):
         context = req.environ['cinder.context']
         quotas = QUOTAS.get_project_quotas(context, context.project_id,
                                            usages=False)
-        abs_limits = dict((k, v['limit']) for k, v in quotas.items())
+        abs_limits = {k: v['limit'] for k, v in quotas.items()}
         rate_limits = req.environ.get("cinder.limits", [])
 
         builder = self._get_view_builder(req)
@@ -108,7 +108,7 @@ class Limit(object):
         60 * 60 * 24: "DAY",
     }
 
-    UNIT_MAP = dict([(v, k) for k, v in UNITS.items()])
+    UNIT_MAP = {v: k for k, v in UNITS.items()}
 
     def __init__(self, verb, uri, regex, value, unit):
         """Initialize a new `Limit`.
@@ -136,9 +136,11 @@ class Limit(object):
         self.water_level = 0
         self.capacity = self.unit
         self.request_value = float(self.capacity) / float(self.value)
-        msg = _("Only %(value)s %(verb)s request(s) can be "
-                "made to %(uri)s every %(unit_string)s.")
-        self.error_message = msg % self.__dict__
+        msg = (_("Only %(value)s %(verb)s request(s) can be "
+               "made to %(uri)s every %(unit_string)s.") %
+               {'value': self.value, 'verb': self.verb,
+                'uri': self.uri, 'unit_string': self.unit_string})
+        self.error_message = msg
 
     def __call__(self, verb, url):
         """Represent a call to this limit from a relevant request.
@@ -434,10 +436,10 @@ class WsgiLimiterProxy(object):
         self.limiter_address = limiter_address
 
     def check_for_delay(self, verb, path, username=None):
-        body = jsonutils.dumps({"verb": verb, "path": path})
+        body = jsonutils.dump_as_bytes({"verb": verb, "path": path})
         headers = {"Content-Type": "application/json"}
 
-        conn = httplib.HTTPConnection(self.limiter_address)
+        conn = http_client.HTTPConnection(self.limiter_address)
 
         if username:
             conn.request("POST", "/%s" % (username), body, headers)

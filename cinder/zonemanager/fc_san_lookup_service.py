@@ -23,11 +23,11 @@ defined in this class.
 
 """
 
+from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
-from cinder.i18n import _
-from cinder.openstack.common import log as logging
+from cinder.i18n import _, _LE
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
 from cinder.zonemanager import fc_zone_manager
@@ -49,8 +49,6 @@ class FCSanLookupService(fc_common.FCCommon):
     def __init__(self, **kwargs):
         super(FCSanLookupService, self).__init__(**kwargs)
 
-        self.configuration = kwargs.get('configuration', None)
-
         opts = fc_zone_manager.zone_manager_opts
         self.configuration = config.Configuration(opts, 'fc-zone-manager')
 
@@ -61,7 +59,7 @@ class FCSanLookupService(fc_common.FCCommon):
         available.
         :param initiator_list list of initiator port WWN
         :param target_list list of target port WWN
-        :return device wwn map in following format
+        :returns: device wwn map in following format
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -70,7 +68,7 @@ class FCSanLookupService(fc_common.FCCommon):
                     ('100000051E55A100', '100000051E55A121'..)
                 }
             }
-        :raise Exception when a lookup service implementation is not specified
+        :raise: Exception when a lookup service implementation is not specified
         in cinder.conf:fc_san_lookup_service
         """
         # Initialize vendor specific implementation of  FCZoneDriver
@@ -82,14 +80,14 @@ class FCSanLookupService(fc_common.FCCommon):
                 lookup_service, configuration=self.configuration)
         else:
             msg = _("Lookup service not configured. Config option for "
-                    "fc_san_lookup_service need to specify a concrete "
-                    "implementation of lookup service")
+                    "fc_san_lookup_service needs to specify a concrete "
+                    "implementation of the lookup service.")
             LOG.error(msg)
             raise exception.FCSanLookupServiceException(msg)
         try:
             device_map = self.lookup_service.get_device_mapping_from_network(
                 initiator_list, target_list)
         except Exception as e:
-            LOG.error(e)
+            LOG.exception(_LE('Unable to get device mapping from network.'))
             raise exception.FCSanLookupServiceException(e)
         return device_map
