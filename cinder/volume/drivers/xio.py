@@ -430,21 +430,19 @@ class XIOISEDriver(object):
                 param_str.append("%s=%s" % (name, value))
         return '&'.join(param_str)
 
-    def _send_cmd(self, method, url, params):
+    def _send_cmd(self, method, url, params=None):
         """Prepare HTTP request and call _connect"""
+        params = params or {}
         # Add params to appropriate field based on method
-        body = ''
-        if method == 'GET':
-            if params != {}:
+        if method in ('GET', 'PUT'):
+            if params:
                 url += '?' + self._param_string(params)
             body = ''
         elif method == 'POST':
             body = self._param_string(params)
-        elif method == 'DELETE':
+        else:
+            # method like 'DELETE'
             body = ''
-        elif method == 'PUT':
-            if params != {}:
-                url += '?' + self._param_string(params)
         # ISE REST API is mostly synchronous but has some asynchronous
         # streaks. Add retries to work around design of ISE REST API that
         # does not allow certain operations to be in process concurrently.
@@ -458,7 +456,7 @@ class XIOISEDriver(object):
         chap['chap_user'] = ''
         chap['chap_passwd'] = ''
         url = '/storage/arrays/%s/ionetworks' % (self._get_ise_globalid())
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
             LOG.warning(_LW("IOnetworks GET failed (%d)"), status)
@@ -487,7 +485,7 @@ class XIOISEDriver(object):
     def find_target_iqn(self, iscsi_ip):
         """Find Target IQN string"""
         url = '/storage/arrays/%s/controllers' % (self._get_ise_globalid())
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
             # Not good. Throw an exception.
@@ -525,7 +523,7 @@ class XIOISEDriver(object):
         target_wwns = []
         target = ''
         url = '/storage/arrays/%s/controllers' % (self._get_ise_globalid())
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
             # Not good. Throw an exception.
@@ -552,7 +550,7 @@ class XIOISEDriver(object):
 
     def _find_target_lun(self, location):
         """Return LUN for allocation specified in location string"""
-        resp = self._send_cmd('GET', location, {})
+        resp = self._send_cmd('GET', location)
         status = resp['status']
         if status != 200:
             # Not good. Throw an exception.
@@ -663,7 +661,7 @@ class XIOISEDriver(object):
                 location = allocation.attrib['self']
                 # Delete allocation if requested.
                 if delete == 1:
-                    self._send_cmd('DELETE', location, {})
+                    self._send_cmd('DELETE', location)
                     location = ''
                     break
                 else:
@@ -951,7 +949,7 @@ class XIOISEDriver(object):
         pool = {}
         vol_cnt = 0
         url = '/storage/pools'
-        resp = self._send_cmd('GET', url, {})
+        resp = self._send_cmd('GET', url)
         status = resp['status']
         if status != 200:
             # Request failed. Return what we have, which isn't much.
@@ -1375,7 +1373,7 @@ class XIOISEDriver(object):
         host = self._find_host(endpoints)
         if host['locator'] != '':
             # Delete host
-            self._send_cmd('DELETE', host['locator'], {})
+            self._send_cmd('DELETE', host['locator'])
             LOG.debug("X-IO: host %s deleted", host['name'])
 
 
