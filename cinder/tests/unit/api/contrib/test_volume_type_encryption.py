@@ -22,6 +22,7 @@ from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder import utils
 
 
@@ -35,7 +36,7 @@ def stub_volume_type_encryption():
         'control_location': 'front-end',
         'key_size': 256,
         'provider': 'fake_provider',
-        'volume_type_id': 'fake_type_id',
+        'volume_type_id': fake.VOLUME_TYPE_ID
     }
     return values
 
@@ -43,23 +44,25 @@ def stub_volume_type_encryption():
 class VolumeTypeEncryptionTest(test.TestCase):
 
     _default_volume_type = {
-        'id': 'fake_type_id',
+        'id': fake.VOLUME_TYPE_ID,
         'name': 'fake_type',
     }
 
     def setUp(self):
         super(VolumeTypeEncryptionTest, self).setUp()
         self.flags(host='fake')
-        self.api_path = '/v2/fake/os-volume-types/1/encryption'
+        self.api_path = '/v2/%s/os-volume-types/%s/encryption' % (
+            fake.PROJECT_ID, fake.VOLUME_TYPE_ID)
         """to reset notifier drivers left over from other api/contrib tests"""
 
     def _get_response(self, volume_type, admin=True,
-                      url='/v2/fake/types/%s/encryption',
+                      url='/v2/%s/types/%s/encryption',
                       req_method='GET', req_body=None,
                       req_headers=None):
-        ctxt = context.RequestContext('fake', 'fake', is_admin=admin)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                      is_admin=admin)
 
-        req = webob.Request.blank(url % volume_type['id'])
+        req = webob.Request.blank(url % (fake.PROJECT_ID, volume_type['id']))
         req.method = req_method
         req.body = req_body
         if req_headers:
@@ -112,7 +115,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         volume_type = self._default_volume_type
         self._create_type_and_encryption(volume_type)
         res = self._get_response(volume_type,
-                                 url='/v2/fake/types/%s/encryption/key_size')
+                                 url='/v2/%s/types/%s/encryption/key_size')
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_code)
@@ -125,7 +128,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self._create_type_and_encryption(volume_type)
 
         res = self._get_response(volume_type,
-                                 url='/v2/fake/types/%s/encryption/provider')
+                                 url='/v2/%s/types/%s/encryption/provider')
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(200, res.status_code)
@@ -137,7 +140,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self._create_type_and_encryption(volume_type)
 
         res = self._get_response(volume_type,
-                                 url='/v2/fake/types/%s/encryption/fake')
+                                 url='/v2/%s/types/%s/encryption/fake')
         res_dict = jsonutils.loads(res.body)
 
         self.assertEqual(404, res.status_code)
@@ -243,7 +246,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
             'badRequest': {
                 'code': 400,
                 'message': ('Volume type encryption for type '
-                            'fake_type_id already exists.')
+                            '%s already exists.' % fake.VOLUME_TYPE_ID)
             }
         }
         self.assertEqual(expected, res_dict)
@@ -254,7 +257,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         volume_type = self._default_volume_type
         db.volume_type_create(context.get_admin_context(), volume_type)
         db.volume_create(context.get_admin_context(),
-                         {'id': 'fake_id',
+                         {'id': fake.VOLUME_ID,
                           'display_description': 'Test Desc',
                           'size': 20,
                           'status': 'creating',
@@ -283,7 +286,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
             }
         }
         self.assertEqual(expected, res_dict)
-        db.volume_destroy(context.get_admin_context(), 'fake_id')
+        db.volume_destroy(context.get_admin_context(), fake.VOLUME_ID)
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
 
     def _encryption_create_bad_body(self, body,
@@ -319,7 +322,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         body = {"encryption": {'cipher': 'cipher',
                                'key_size': -128,
                                'provider': 'fake_provider',
-                               'volume_type_id': 'volume_type'}}
+                               'volume_type_id': fake.VOLUME_TYPE_ID}}
         msg = 'key_size must be >= 0'
         self._encryption_create_bad_body(body=body, msg=msg)
 
@@ -330,14 +333,14 @@ class VolumeTypeEncryptionTest(test.TestCase):
         body = {"encryption": {'cipher': 'cipher',
                                'control_location': 'fake_control',
                                'provider': 'fake_provider',
-                               'volume_type_id': 'volume_type'}}
+                               'volume_type_id': fake.VOLUME_TYPE_ID}}
         msg = ("Invalid input received: Valid control location are: "
                "['front-end', 'back-end']")
         self._encryption_create_bad_body(body=body, msg=msg)
 
     def test_create_no_provider(self):
         body = {"encryption": {'cipher': 'cipher',
-                               'volume_type_id': 'volume_type'}}
+                               'volume_type_id': fake.VOLUME_TYPE_ID}}
         msg = ("Invalid input received: provider must be defined")
         self._encryption_create_bad_body(body=body, msg=msg)
 
@@ -365,7 +368,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption')
+                                 url='/v2/%s/types/%s/encryption')
         self.assertEqual(200, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
@@ -373,12 +376,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Delete, and test that get returns nothing
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption/provider')
+                                 url='/v2/%s/types/%s/encryption/provider')
         self.assertEqual(202, res.status_code)
         self.assertEqual(0, len(res.body))
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption')
+                                 url='/v2/%s/types/%s/encryption')
         self.assertEqual(200, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual({}, res_dict)
@@ -402,14 +405,14 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                  req_headers='application/json')
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption')
+                                 url='/v2/%s/types/%s/encryption')
         self.assertEqual(200, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(volume_type['id'], res_dict['volume_type_id'])
 
         # Create volumes with the volume type
         db.volume_create(context.get_admin_context(),
-                         {'id': 'fake_id',
+                         {'id': fake.VOLUME_ID,
                           'display_description': 'Test Desc',
                           'size': 20,
                           'status': 'creating',
@@ -418,7 +421,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                           'volume_type_id': volume_type['id']})
 
         db.volume_create(context.get_admin_context(),
-                         {'id': 'fake_id2',
+                         {'id': fake.VOLUME2_ID,
                           'display_description': 'Test Desc2',
                           'size': 2,
                           'status': 'creating',
@@ -429,7 +432,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Delete, and test that there is an error since volumes exist
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption/provider')
+                                 url='/v2/%s/types/%s/encryption/provider')
         self.assertEqual(400, res.status_code)
         res_dict = jsonutils.loads(res.body)
         expected = {
@@ -442,18 +445,18 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
         # Delete the volumes
-        db.volume_destroy(context.get_admin_context(), 'fake_id')
-        db.volume_destroy(context.get_admin_context(), 'fake_id2')
+        db.volume_destroy(context.get_admin_context(), fake.VOLUME_ID)
+        db.volume_destroy(context.get_admin_context(), fake.VOLUME2_ID)
 
         # Delete, and test that get returns nothing
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption/provider')
+                                 url='/v2/%s/types/%s/encryption/provider')
         self.assertEqual(202, res.status_code)
         self.assertEqual(0, len(res.body))
         res = self._get_response(volume_type, req_method='GET',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption')
+                                 url='/v2/%s/types/%s/encryption')
         self.assertEqual(200, res.status_code)
         res_dict = jsonutils.loads(res.body)
         self.assertEqual({}, res_dict)
@@ -469,12 +472,12 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # and check if 404 is raised.
         res = self._get_response(volume_type, req_method='DELETE',
                                  req_headers='application/json',
-                                 url='/v2/fake/types/%s/encryption/provider')
+                                 url='/v2/%s/types/%s/encryption/provider')
         self.assertEqual(404, res.status_code)
         expected = {
             "itemNotFound": {
                 "message": "Volume type encryption for type "
-                           "fake_type_id does not exist.",
+                           "%s does not exist." % fake.VOLUME_TYPE_ID,
                 "code": 404
             }
         }
@@ -502,7 +505,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
             _get_response(volume_type, req_method='PUT',
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
-                          url='/v2/fake/types/%s/encryption/fake_type_id')
+                          url='/v2/%s/types/%s/encryption/' +
+                              fake.encryption_key_id)
 
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(512, res_dict['encryption']['key_size'])
@@ -524,14 +528,13 @@ class VolumeTypeEncryptionTest(test.TestCase):
         # Create Volume Type and Encryption
         volume_type = self._default_volume_type
         res = self._create_type_and_encryption(volume_type)
-
         # Update Encryption
         res = self.\
             _get_response(volume_type, req_method='PUT',
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
-                          url='/v2/fake/types/%s/encryption/fake_type_id')
-
+                          url='/v2/%s/types/%s/encryption/' +
+                              fake.encryption_key_id)
         res_dict = jsonutils.loads(res.body)
 
         expected = {
@@ -578,7 +581,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
         # Create a volume with the volume type
         db.volume_create(context.get_admin_context(),
-                         {'id': 'fake_id',
+                         {'id': fake.VOLUME_ID,
                           'display_description': 'Test Desc',
                           'size': 20,
                           'status': 'creating',
@@ -599,7 +602,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
             _get_response(volume_type, req_method='PUT',
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
-                          url='/v2/fake/types/%s/encryption/fake_type_id')
+                          url='/v2/%s/types/%s/encryption/' +
+                              fake.encryption_key_id)
         self.assertEqual(400, res.status_code)
         res_dict = jsonutils.loads(res.body)
         expected = {
