@@ -52,7 +52,7 @@ class BaseAdminTest(test.TestCase):
         super(BaseAdminTest, self).setUp()
         self.volume_api = volume_api.API()
         # admin context
-        self.ctx = context.RequestContext('admin', 'fake', True)
+        self.ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
     def _create_volume(self, context, updates=None):
         db_volume = {'status': 'available',
@@ -90,7 +90,8 @@ class AdminActionsTest(BaseAdminTest):
         super(AdminActionsTest, self).tearDown()
 
     def _issue_volume_reset(self, ctx, volume, updated_status):
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
@@ -99,8 +100,8 @@ class AdminActionsTest(BaseAdminTest):
         return resp
 
     def _issue_snapshot_reset(self, ctx, snapshot, updated_status):
-        req = webob.Request.blank('/v2/fake/snapshots/%s/action' %
-                                  snapshot.id)
+        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, snapshot.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
@@ -109,12 +110,14 @@ class AdminActionsTest(BaseAdminTest):
         return resp
 
     def _issue_backup_reset(self, ctx, backup, updated_status):
-        req = webob.Request.blank('/v2/fake/backups/%s/action' % backup['id'])
+        req = webob.Request.blank('/v2/%s/backups/%s/action' % (
+            fake.PROJECT_ID, backup['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-reset_status': updated_status})
         req.environ['cinder.context'] = ctx
-        with mock.patch('cinder.backup.api.API._get_available_backup_service_host') \
+        with mock.patch(
+                'cinder.backup.api.API._get_available_backup_service_host') \
                 as mock_get_backup_host:
             mock_get_backup_host.return_value = 'testhost'
             resp = req.get_response(app())
@@ -194,7 +197,7 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('error', volume['status'])
 
     def test_reset_status_as_non_admin(self):
-        ctx = context.RequestContext('fake', 'fake')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         volume = db.volume_create(self.ctx,
                                   {'status': 'error', 'size': 1})
 
@@ -210,14 +213,14 @@ class AdminActionsTest(BaseAdminTest):
 
     def test_backup_reset_status_as_admin(self):
         volume = db.volume_create(self.ctx, {'status': 'available',
-                                             'user_id': 'user',
-                                             'project_id': 'project'})
+                                             'user_id': fake.USER_ID,
+                                             'project_id': fake.PROJECT_ID})
         backup = db.backup_create(self.ctx,
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'size': 1,
                                    'volume_id': volume['id'],
-                                   'user_id': 'user',
-                                   'project_id': 'project',
+                                   'user_id': fake.USER_ID,
+                                   'project_id': fake.PROJECT_ID,
                                    'host': 'test'})
 
         resp = self._issue_backup_reset(self.ctx,
@@ -227,7 +230,7 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual(202, resp.status_int)
 
     def test_backup_reset_status_as_non_admin(self):
-        ctx = context.RequestContext('fake', 'fake')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         backup = db.backup_create(ctx, {'status': 'available',
                                         'size': 1,
                                         'volume_id': "fakeid",
@@ -245,8 +248,8 @@ class AdminActionsTest(BaseAdminTest):
         backup = db.backup_create(self.ctx,
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'volume_id': volume['id'],
-                                   'user_id': 'user',
-                                   'project_id': 'project',
+                                   'user_id': fake.USER_ID,
+                                   'project_id': fake.PROJECT_ID,
                                    'host': 'test'})
 
         resp = self._issue_backup_reset(self.ctx,
@@ -273,10 +276,10 @@ class AdminActionsTest(BaseAdminTest):
         backup = db.backup_create(self.ctx,
                                   {'status': fields.BackupStatus.AVAILABLE,
                                    'volume_id': volume['id'],
-                                   'user_id': 'user',
-                                   'project_id': 'project'})
+                                   'user_id': fake.USER_ID,
+                                   'project_id': fake.PROJECT_ID})
 
-        backup['id'] = 'fake_id'
+        backup['id'] = fake.BACKUP_ID
         resp = self._issue_backup_reset(self.ctx,
                                         backup,
                                         {'status': fields.BackupStatus.ERROR})
@@ -306,8 +309,8 @@ class AdminActionsTest(BaseAdminTest):
         self.assertEqual('available', volume['status'])
 
     def test_reset_status_for_missing_volume(self):
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' %
-                                  'missing-volume-id')
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         body = {'os-reset_status': {'status': 'available'}}
@@ -316,7 +319,7 @@ class AdminActionsTest(BaseAdminTest):
         resp = req.get_response(app())
         self.assertEqual(404, resp.status_int)
         self.assertRaises(exception.NotFound, db.volume_get, self.ctx,
-                          'missing-volume-id')
+                          fake.WILL_NOT_BE_FOUND_ID)
 
     def test_reset_attached_status(self):
         # current status is available
@@ -324,7 +327,7 @@ class AdminActionsTest(BaseAdminTest):
                                                 'size': 1})
         self.volume_api.reserve_volume(self.ctx, volume)
         mountpoint = '/dev/vdb'
-        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
+        attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(self.ctx.elevated(), volume['id'])
@@ -332,7 +335,7 @@ class AdminActionsTest(BaseAdminTest):
 
         self.assertEqual('in-use', volume['status'])
         self.assertEqual('attached', volume['attach_status'])
-        self.assertEqual(stubs.fake.instance_id, attachment['instance_uuid'])
+        self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
@@ -421,7 +424,8 @@ class AdminActionsTest(BaseAdminTest):
     def test_force_delete(self):
         # current status is creating
         volume = self._create_volume(self.ctx, {'size': 1, 'host': None})
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
@@ -440,14 +444,15 @@ class AdminActionsTest(BaseAdminTest):
     @mock.patch.object(db, 'volume_get')
     def test_force_delete_snapshot(self, volume_get, snapshot_get, get_by_id,
                                    delete_snapshot):
-        volume = stubs.stub_volume(1)
-        snapshot = stubs.stub_snapshot(1)
+        volume = stubs.stub_volume(fake.VOLUME_ID)
+        snapshot = stubs.stub_snapshot(fake.SNAPSHOT_ID)
         snapshot_obj = fake_snapshot.fake_snapshot_obj(self.ctx, **snapshot)
         volume_get.return_value = volume
         snapshot_get.return_value = snapshot
         get_by_id.return_value = snapshot_obj
 
-        path = '/v2/fake/snapshots/%s/action' % snapshot['id']
+        path = '/v2/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, snapshot['id'])
         req = webob.Request.blank(path)
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
@@ -474,7 +479,8 @@ class AdminActionsTest(BaseAdminTest):
     def _migrate_volume_exec(self, ctx, volume, host, expected_status,
                              force_host_copy=False):
         # build request to migrate to host
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
@@ -510,7 +516,7 @@ class AdminActionsTest(BaseAdminTest):
     def test_migrate_volume_as_non_admin(self):
         expected_status = 403
         host = 'test2'
-        ctx = context.RequestContext('fake', 'fake')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         volume = self._migrate_volume_prep()
         self._migrate_volume_exec(ctx, volume, host, expected_status)
 
@@ -519,7 +525,8 @@ class AdminActionsTest(BaseAdminTest):
         host = 'test3'
         volume = self._migrate_volume_prep()
         # build request to migrate without host
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         body = {'os-migrate_volume': {'host': host,
@@ -568,7 +575,8 @@ class AdminActionsTest(BaseAdminTest):
 
     def _migrate_volume_comp_exec(self, ctx, volume, new_volume, error,
                                   expected_status, expected_id, no_body=False):
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         body = {'new_volume': new_volume['id'], 'error': error}
@@ -588,11 +596,11 @@ class AdminActionsTest(BaseAdminTest):
             self.assertNotIn('save_volume_id', resp_dict)
 
     def test_migrate_volume_comp_as_non_admin(self):
-        volume = db.volume_create(self.ctx, {'id': 'fake1'})
-        new_volume = db.volume_create(self.ctx, {'id': 'fake2'})
+        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
+        new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID})
         expected_status = 403
         expected_id = None
-        ctx = context.RequestContext('fake', 'fake')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
                                        expected_status, expected_id)
 
@@ -618,11 +626,11 @@ class AdminActionsTest(BaseAdminTest):
                                        expected_status, expected_id)
 
     def test_migrate_volume_comp_no_action(self):
-        volume = db.volume_create(self.ctx, {'id': 'fake1'})
-        new_volume = db.volume_create(self.ctx, {'id': 'fake2'})
+        volume = db.volume_create(self.ctx, {'id': fake.VOLUME_ID})
+        new_volume = db.volume_create(self.ctx, {'id': fake.VOLUME2_ID})
         expected_status = 400
         expected_id = None
-        ctx = context.RequestContext('fake', 'fake')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self._migrate_volume_comp_exec(ctx, volume, new_volume, False,
                                        expected_status, expected_id, True)
 
@@ -660,7 +668,8 @@ class AdminActionsTest(BaseAdminTest):
         mock_check_support.return_value = True
         # current status is dependent on argument: test_status.
         id = test_backups.BackupsAPITestCase._create_backup(status=test_status)
-        req = webob.Request.blank('/v2/fake/backups/%s/action' % id)
+        req = webob.Request.blank('/v2/%s/backups/%s/action' % (
+            fake.PROJECT_ID, id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
@@ -668,9 +677,9 @@ class AdminActionsTest(BaseAdminTest):
         res = req.get_response(app())
 
         self.assertEqual(202, res.status_int)
-        self.assertEqual('deleting',
-                         test_backups.BackupsAPITestCase.
-                         _get_backup_attrib(id, 'status'))
+        self.assertEqual(
+            'deleting',
+            test_backups.BackupsAPITestCase._get_backup_attrib(id, 'status'))
         db.backup_destroy(self.ctx, id)
 
     def test_delete_backup_force_when_creating(self):
@@ -697,7 +706,8 @@ class AdminActionsTest(BaseAdminTest):
         # admin context
         self.override_config('backup_driver', 'cinder.backup.drivers.ceph')
         id = test_backups.BackupsAPITestCase._create_backup()
-        req = webob.Request.blank('/v2/fake/backups/%s/action' % id)
+        req = webob.Request.blank('/v2/%s/backups/%s/action' % (
+            fake.PROJECT_ID, id))
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
         req.body = jsonutils.dump_as_bytes({'os-force_delete': {}})
@@ -724,12 +734,12 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.volume_api.reserve_volume(self.ctx, volume)
         mountpoint = '/dev/vbd'
-        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
+        attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
-        self.assertEqual(stubs.fake.instance_id, attachment['instance_uuid'])
+        self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
@@ -743,7 +753,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                                                           connector)
         self.assertEqual('rw', conn_info['data']['access_mode'])
         # build request to force detach
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
@@ -796,7 +807,8 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                                                           volume, connector)
         self.assertEqual('ro', conn_info['data']['access_mode'])
         # build request to force detach
-        req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
+        req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
@@ -828,12 +840,12 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.volume_api.reserve_volume(self.ctx, volume)
         mountpoint = '/dev/vbd'
-        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
+        attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
-        self.assertEqual(fake.instance_id, attachment['instance_uuid'])
+        self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
@@ -851,11 +863,11 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             messaging.RemoteError(exc_type='VolumeAttachmentNotFound')
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
-                                      volume['id'])
+            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+                fake.PROJECT_ID, volume['id']))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            body = {'os-force_detach': {'attachment_id': 'fake'}}
+            body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID}}
             req.body = jsonutils.dump_as_bytes(body)
             # attach admin context to request
             req.environ['cinder.context'] = self.ctx
@@ -868,11 +880,11 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             messaging.RemoteError(exc_type='KeyError'))
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
-                                      volume['id'])
+            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+                fake.PROJECT_ID, volume['id']))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            body = {'os-force_detach': {'attachment_id': 'fake'}}
+            body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID}}
             req.body = jsonutils.dump_as_bytes(body)
             # attach admin context to request
             req.environ['cinder.context'] = self.ctx
@@ -886,11 +898,11 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
             messaging.RemoteError(exc_type='VolumeBackendAPIException'))
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
-                                      volume['id'])
+            req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
+                fake.PROJECT_ID, volume['id']))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            body = {'os-force_detach': {'attachment_id': 'fake',
+            body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID,
                                         'connector': connector}}
             req.body = jsonutils.dump_as_bytes(body)
 
@@ -910,12 +922,12 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
 
         self.volume_api.reserve_volume(self.ctx, volume)
         mountpoint = '/dev/vbd'
-        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
+        attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('in-use', volume['status'])
-        self.assertEqual(fake.instance_id, attachment['instance_uuid'])
+        self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
         admin_metadata = volume['volume_admin_metadata']
@@ -932,11 +944,11 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         volume_remote_error = messaging.RemoteError(exc_type='DBError')
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
-            req = webob.Request.blank('/v2/fake/volumes/%s/action' %
-                                      volume['id'])
+            req = webob.Request.blank('/v2/%s/volumes/%s/action' %
+                                      (fake.PROJECT_ID, volume['id']))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
-            body = {'os-force_detach': {'attachment_id': 'fake',
+            body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID,
                                         'connector': connector}}
             req.body = jsonutils.dump_as_bytes(body)
             # attach admin context to request
@@ -955,14 +967,14 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         self.volume_api.reserve_volume(self.ctx, volume)
         conn_info = self.volume_api.initialize_connection(self.ctx,
                                                           volume, connector)
-        self.volume_api.attach(self.ctx, volume, fakes.get_fake_uuid(), None,
+        self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID, None,
                                '/dev/vbd0', 'rw')
         self.assertEqual('rw', conn_info['data']['access_mode'])
         self.assertRaises(exception.InvalidVolume,
                           self.volume_api.attach,
                           self.ctx,
                           volume,
-                          fakes.get_fake_uuid(),
+                          fake.INSTANCE_ID,
                           None,
                           '/dev/vdb1',
                           'ro')
@@ -1018,10 +1030,10 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                                         {"attached_mode": 'rw'}, False)
         mountpoint = '/dev/vbd'
         attachment = self.volume_api.attach(self.ctx, volume,
-                                            fake.instance_id, None,
+                                            fake.INSTANCE_ID, None,
                                             mountpoint, 'rw')
 
-        self.assertEqual(fake.instance_id, attachment['instance_uuid'])
+        self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(volume['id'], attachment['volume_id'], volume['id'])
         self.assertEqual('attached', attachment['attach_status'])
 
@@ -1032,7 +1044,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                                                 'size': 1})
 
         values = {'status': 'attaching',
-                  'instance_uuid': fakes.get_fake_uuid()}
+                  'instance_uuid': fake.INSTANCE_ID}
         db.volume_update(self.ctx, volume['id'], values)
         db.volume_admin_metadata_update(self.ctx, volume['id'],
                                         {"attached_mode": 'rw'}, False)
