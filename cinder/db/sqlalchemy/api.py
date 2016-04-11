@@ -4257,9 +4257,10 @@ def purge_deleted_rows(context, age_in_days):
                 result = session.execute(
                     t.delete()
                     .where(t.c.deleted_at < deleted_age))
-        except db_exc.DBReferenceError:
-            LOG.exception(_LE('DBError detected when purging from '
-                              'table=%(table)s'), {'table': table})
+        except db_exc.DBReferenceError as ex:
+            LOG.error(_LE('DBError detected when purging from '
+                          '%(tablename)s: %(error)s.'),
+                      {'tablename': table, 'error': six.text_type(ex)})
             raise
 
         rows_purged = result.rowcount

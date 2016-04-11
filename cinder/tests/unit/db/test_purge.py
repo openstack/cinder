@@ -18,7 +18,9 @@
 import datetime
 import uuid
 
+from oslo_db import exception as db_exc
 from oslo_utils import timeutils
+from sqlalchemy.dialects import sqlite
 
 from cinder import context
 from cinder import db
@@ -100,3 +102,35 @@ class PurgeDeletedTest(test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           db.purge_deleted_rows, self.context,
                           age_in_days=-1)
+
+    def test_purge_deleted_rows_integrity_failure(self):
+        dialect = self.engine.url.get_dialect()
+        if dialect == sqlite.dialect:
+            # We're seeing issues with foreign key support in SQLite 3.6.20
+            # SQLAlchemy doesn't support it at all with < SQLite 3.6.19
+            # It works fine in SQLite 3.7.
+            # So return early to skip this test if running SQLite < 3.7
+            import sqlite3
+            tup = sqlite3.sqlite_version_info
+            if tup[0] < 3 or (tup[0] == 3 and tup[1] < 7):
+                self.skipTest(
+                    'sqlite version too old for reliable SQLA foreign_keys')
+            self.conn.execute("PRAGMA foreign_keys = ON")
+
+        # add new entry in volume and volume_admin_metadata for
+        # integrity check
+        uuid_str = uuid.uuid4().hex
+        ins_stmt = self.volumes.insert().values(id=uuid_str)
+        self.conn.execute(ins_stmt)
+        ins_stmt = self.vm.insert().values(volume_id=uuid_str)
+        self.conn.execute(ins_stmt)
+
+        # set volume record to deleted 20 days ago
+        old = timeutils.utcnow() - datetime.timedelta(days=20)
+        make_old = self.volumes.update().where(
+            self.volumes.c.id.in_([uuid_str])).values(deleted_at=old)
+        self.conn.execute(make_old)
+
+        # Verify that purge_deleted_rows fails due to Foreign Key constraint
+        self.assertRaises(db_exc.DBReferenceError, db.purge_deleted_rows,
+                          self.context, age_in_days=10)
