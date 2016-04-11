@@ -55,6 +55,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 self.driver.vserver = fake.VSERVER_NAME
                 self.driver.ssc_enabled = True
                 self.driver.perf_library = mock.Mock()
+                self.driver.zapi_client = mock.Mock()
 
     def get_config_cmode(self):
         config = na_fakes.create_configuration_cmode()
@@ -65,6 +66,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         config.netapp_transport_type = 'http'
         config.netapp_server_port = '80'
         config.netapp_vserver = fake.VSERVER_NAME
+        config.netapp_copyoffload_tool_path = 'copyoffload_tool_path'
         return config
 
     @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
@@ -174,7 +176,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             ssc_cmode, 'check_ssc_api_permissions')
         mock_start_periodic_tasks = self.mock_object(
             self.driver, '_start_periodic_tasks')
-        self.driver.zapi_client = mock.Mock()
 
         self.driver.check_for_setup_error()
 
@@ -188,7 +189,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         fake_volume = {'provider_location': fake_provider_location}
         self.mock_object(self.driver, '_delete_backing_file_for_volume')
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info')
-        self.driver.zapi_client = mock.Mock()
         mock_prov_deprov = self.mock_object(self.driver,
                                             '_post_prov_deprov_in_ssc')
 
@@ -235,7 +235,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_delete_volume_on_filer(self):
         mock_get_vs_ip = self.mock_object(self.driver, '_get_export_ip_path')
         mock_get_vs_ip.return_value = (fake.VSERVER_NAME, '/%s' % fake.FLEXVOL)
-        self.driver.zapi_client = mock.Mock()
         mock_zapi_delete = self.driver.zapi_client.delete_file
 
         self.driver._delete_volume_on_filer(fake.NFS_VOLUME)
@@ -285,7 +284,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_delete_snapshot_on_filer(self):
         mock_get_vs_ip = self.mock_object(self.driver, '_get_export_ip_path')
         mock_get_vs_ip.return_value = (fake.VSERVER_NAME, '/%s' % fake.FLEXVOL)
-        self.driver.zapi_client = mock.Mock()
         mock_zapi_delete = self.driver.zapi_client.delete_file
 
         self.driver._delete_snapshot_on_filer(fake.test_snapshot)
@@ -298,7 +296,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_info = self.mock_object(na_utils,
                                          'get_valid_qos_policy_group_info')
         mock_get_info.return_value = fake.QOS_POLICY_GROUP_INFO
-        self.driver.zapi_client = mock.Mock()
         mock_provision_qos = self.driver.zapi_client.provision_qos_policy_group
         mock_set_policy = self.mock_object(self.driver,
                                            '_set_qos_policy_group_on_volume')
@@ -323,7 +320,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_info = self.mock_object(na_utils,
                                          'get_valid_qos_policy_group_info')
         mock_get_info.return_value = fake.QOS_POLICY_GROUP_INFO
-        self.driver.zapi_client = mock.Mock()
         mock_provision_qos = self.driver.zapi_client.provision_qos_policy_group
         mock_set_policy = self.mock_object(self.driver,
                                            '_set_qos_policy_group_on_volume')
@@ -354,7 +350,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_info = self.mock_object(na_utils,
                                          'get_valid_qos_policy_group_info')
         mock_get_info.side_effect = exception.Invalid
-        self.driver.zapi_client = mock.Mock()
         mock_provision_qos = self.driver.zapi_client.provision_qos_policy_group
         mock_set_policy = self.mock_object(self.driver,
                                            '_set_qos_policy_group_on_volume')
@@ -383,7 +378,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_extract_host = self.mock_object(volume_utils, 'extract_host')
         mock_extract_host.return_value = fake.NFS_SHARE
 
-        self.driver.zapi_client = mock.Mock()
         mock_get_flex_vol_name =\
             self.driver.zapi_client.get_vol_by_junc_vserver
         mock_get_flex_vol_name.return_value = fake.FLEXVOL
@@ -410,7 +404,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mock_extract_host = self.mock_object(volume_utils, 'extract_host')
 
-        self.driver.zapi_client = mock.Mock()
         mock_get_flex_vol_name =\
             self.driver.zapi_client.get_vol_by_junc_vserver
 
@@ -432,7 +425,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         mock_extract_host = self.mock_object(volume_utils, 'extract_host')
 
-        self.driver.zapi_client = mock.Mock()
         mock_get_flex_vol_name =\
             self.driver.zapi_client.get_vol_by_junc_vserver
 
@@ -452,7 +444,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                                          'get_valid_qos_policy_group_info')
         mock_get_info.return_value = fake.QOS_POLICY_GROUP_INFO
 
-        self.driver.zapi_client = mock.Mock()
         mock_mark_for_deletion =\
             self.driver.zapi_client.mark_qos_policy_group_for_deletion
 
@@ -507,7 +498,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
     def test_start_periodic_tasks(self):
 
-        self.driver.zapi_client = mock.Mock()
         mock_remove_unused_qos_policy_groups = self.mock_object(
             self.driver.zapi_client,
             'remove_unused_qos_policy_groups')
@@ -618,3 +608,181 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_get_vol_for_share_no_ssc_vols(self):
         with mock.patch.object(self.driver, 'ssc_vols', None):
             self.assertIsNone(self.driver._get_vol_for_share(fake.NFS_SHARE))
+
+    def test_find_image_location_with_local_copy(self):
+        local_share = '/share'
+        cache_result = [
+            ('ip1:/openstack', 'img-cache-imgid'),
+            ('ip2:/openstack', 'img-cache-imgid'),
+            (local_share, 'img-cache-imgid'),
+            ('ip3:/openstack', 'img-cache-imgid'),
+        ]
+        self.driver._get_provider_location = mock.Mock(
+            return_value=local_share)
+
+        cache_copy, found_local_copy = self.driver._find_image_location(
+            cache_result, fake.VOLUME_ID)
+
+        self.assertEqual(cache_result[2], cache_copy)
+        self.assertTrue(found_local_copy)
+        self.driver._get_provider_location.assert_called_once_with(
+            fake.VOLUME_ID)
+
+    def test_find_image_location_with_remote_copy(self):
+        cache_result = [('ip1:/openstack', 'img-cache-imgid')]
+        self.driver._get_provider_location = mock.Mock(return_value='/share')
+
+        cache_copy, found_local_copy = self.driver._find_image_location(
+            cache_result, fake.VOLUME_ID)
+
+        self.assertEqual(cache_result[0], cache_copy)
+        self.assertFalse(found_local_copy)
+        self.driver._get_provider_location.assert_called_once_with(
+            fake.VOLUME_ID)
+
+    def test_find_image_location_without_cache_copy(self):
+        cache_result = []
+        self.driver._get_provider_location = mock.Mock(return_value='/share')
+
+        cache_copy, found_local_copy = self.driver._find_image_location(
+            cache_result, fake.VOLUME_ID)
+
+        self.assertIsNone(cache_copy)
+        self.assertFalse(found_local_copy)
+        self.driver._get_provider_location.assert_called_once_with(
+            fake.VOLUME_ID)
+
+    def test_clone_file_dest_exists(self):
+        self.driver._get_vserver_and_exp_vol = mock.Mock(
+            return_value=(fake.VSERVER_NAME, fake.EXPORT_PATH))
+        self.driver.zapi_client.clone_file = mock.Mock()
+
+        self.driver._clone_file_dst_exists(
+            fake.NFS_SHARE, fake.IMAGE_FILE_ID, fake.VOLUME['name'],
+            dest_exists=True)
+
+        self.driver._get_vserver_and_exp_vol.assert_called_once_with(
+            share=fake.NFS_SHARE)
+        self.driver.zapi_client.clone_file.assert_called_once_with(
+            fake.EXPORT_PATH, fake.IMAGE_FILE_ID, fake.VOLUME['name'],
+            fake.VSERVER_NAME, dest_exists=True)
+
+    def test_get_source_ip_and_path(self):
+        self.driver._get_ip_verify_on_cluster = mock.Mock(
+            return_value=fake.SHARE_IP)
+
+        src_ip, src_path = self.driver._get_source_ip_and_path(
+            fake.NFS_SHARE, fake.IMAGE_FILE_ID)
+
+        self.assertEqual(fake.SHARE_IP, src_ip)
+        assert_path = fake.EXPORT_PATH + '/' + fake.IMAGE_FILE_ID
+        self.assertEqual(assert_path, src_path)
+        self.driver._get_ip_verify_on_cluster.assert_called_once_with(
+            fake.SHARE_IP)
+
+    def test_get_destination_ip_and_path(self):
+        self.driver._get_ip_verify_on_cluster = mock.Mock(
+            return_value=fake.SHARE_IP)
+        self.driver._get_host_ip = mock.Mock(return_value='host.ip')
+        self.driver._get_export_path = mock.Mock(return_value=fake.EXPORT_PATH)
+
+        dest_ip, dest_path = self.driver._get_destination_ip_and_path(
+            fake.VOLUME)
+
+        self.assertEqual(fake.SHARE_IP, dest_ip)
+        assert_path = fake.EXPORT_PATH + '/' + fake.LUN_NAME
+        self.assertEqual(assert_path, dest_path)
+        self.driver._get_ip_verify_on_cluster.assert_called_once_with(
+            'host.ip')
+        self.driver._get_host_ip.assert_called_once_with(fake.VOLUME_ID)
+        self.driver._get_export_path.assert_called_once_with(fake.VOLUME_ID)
+
+    def test_copy_from_remote_cache(self):
+        source_ip = '192.0.1.1'
+        source_path = '/openstack/img-cache-imgid'
+        cache_copy = ('192.0.1.1:/openstack', fake.IMAGE_FILE_ID)
+        dest_path = fake.EXPORT_PATH + '/' + fake.VOLUME['name']
+        self.driver._execute = mock.Mock()
+        self.driver._get_source_ip_and_path = mock.Mock(
+            return_value=(source_ip, source_path))
+        self.driver._get_destination_ip_and_path = mock.Mock(
+            return_value=(fake.SHARE_IP, dest_path))
+        self.driver._register_image_in_cache = mock.Mock()
+
+        self.driver._copy_from_remote_cache(
+            fake.VOLUME, fake.IMAGE_FILE_ID, cache_copy)
+
+        self.driver._execute.assert_called_once_with(
+            'copyoffload_tool_path', source_ip, fake.SHARE_IP,
+            source_path, dest_path, run_as_root=False, check_exit_code=0)
+        self.driver._get_source_ip_and_path.assert_called_once_with(
+            cache_copy[0], fake.IMAGE_FILE_ID)
+        self.driver._get_destination_ip_and_path.assert_called_once_with(
+            fake.VOLUME)
+        self.driver._register_image_in_cache.assert_called_once_with(
+            fake.VOLUME, fake.IMAGE_FILE_ID)
+
+    def test_copy_from_cache_workflow_remote_location(self):
+        cache_result = [('ip1:/openstack', fake.IMAGE_FILE_ID),
+                        ('ip2:/openstack', fake.IMAGE_FILE_ID),
+                        ('ip3:/openstack', fake.IMAGE_FILE_ID)]
+        self.driver._find_image_location = mock.Mock(return_value=[
+            cache_result[0], False])
+        self.driver._copy_from_remote_cache = mock.Mock()
+        self.driver._post_clone_image = mock.Mock()
+
+        copied = self.driver._copy_from_cache(
+            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result)
+
+        self.assertTrue(copied)
+        self.driver._copy_from_remote_cache.assert_called_once_with(
+            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0])
+        self.driver._post_clone_image.assert_called_once_with(fake.VOLUME)
+
+    def test_copy_from_cache_workflow_local_location(self):
+        local_share = '/share'
+        cache_result = [
+            ('ip1:/openstack', 'img-cache-imgid'),
+            ('ip2:/openstack', 'img-cache-imgid'),
+            (local_share, 'img-cache-imgid'),
+            ('ip3:/openstack', 'img-cache-imgid'),
+        ]
+        self.driver._find_image_location = mock.Mock(return_value=[
+            cache_result[2], True])
+        self.driver._clone_file_dst_exists = mock.Mock()
+        self.driver._post_clone_image = mock.Mock()
+
+        copied = self.driver._copy_from_cache(
+            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result)
+
+        self.assertTrue(copied)
+        self.driver._clone_file_dst_exists.assert_called_once_with(
+            local_share, fake.IMAGE_FILE_ID, fake.VOLUME['name'],
+            dest_exists=True)
+        self.driver._post_clone_image.assert_called_once_with(fake.VOLUME)
+
+    def test_copy_from_cache_workflow_no_location(self):
+        cache_result = []
+        self.driver._find_image_location = mock.Mock(
+            return_value=(None, False))
+
+        copied = self.driver._copy_from_cache(
+            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result)
+
+        self.assertFalse(copied)
+
+    def test_copy_from_cache_workflow_exception(self):
+        cache_result = [('ip1:/openstack', fake.IMAGE_FILE_ID)]
+        self.driver._find_image_location = mock.Mock(return_value=[
+            cache_result[0], False])
+        self.driver._copy_from_remote_cache = mock.Mock(
+            side_effect=Exception)
+        self.driver._post_clone_image = mock.Mock()
+
+        copied = self.driver._copy_from_cache(
+            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result)
+
+        self.assertFalse(copied)
+        self.driver._copy_from_remote_cache.assert_called_once_with(
+            fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0])
+        self.assertFalse(self.driver._post_clone_image.called)
