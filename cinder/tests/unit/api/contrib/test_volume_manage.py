@@ -20,6 +20,7 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 
 
@@ -46,7 +47,7 @@ def db_service_get_by_host_and_topic(context, host, topic):
 # Some of the tests check that volume types are correctly validated during a
 # volume manage operation.  This data structure represents an existing volume
 # type.
-fake_vt = {'id': 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+fake_vt = {'id': fake.VOLUME_TYPE_ID,
            'name': 'good_fakevt'}
 
 
@@ -83,16 +84,16 @@ def api_manage(*args, **kwargs):
     Note that we don't try to replicate any passed-in information (e.g. name,
     volume type) in the returned structure.
     """
-    ctx = context.RequestContext('admin', 'fake', True)
+    ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
     vol = {
         'status': 'creating',
         'display_name': 'fake_name',
         'availability_zone': 'nova',
-        'tenant_id': 'fake',
-        'id': 'ffffffff-0000-ffff-0000-ffffffffffff',
+        'tenant_id': fake.PROJECT_ID,
+        'id': fake.VOLUME_ID,
         'volume_type': None,
         'snapshot_id': None,
-        'user_id': 'fake',
+        'user_id': fake.USER_ID,
         'size': 0,
         'attach_status': 'detached',
         'volume_type_id': None}
@@ -124,11 +125,11 @@ class VolumeManageTest(test.TestCase):
 
     def _get_resp(self, body):
         """Helper to execute an os-volume-manage API call."""
-        req = webob.Request.blank('/v2/fake/os-volume-manage')
+        req = webob.Request.blank('/v2/%s/os-volume-manage' % fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.environ['cinder.context'] = context.RequestContext('admin',
-                                                               'fake',
+        req.environ['cinder.context'] = context.RequestContext(fake.USER_ID,
+                                                               fake.PROJECT_ID,
                                                                True)
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(app())
@@ -181,8 +182,7 @@ class VolumeManageTest(test.TestCase):
         """
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref',
-                           'volume_type':
-                           'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'}}
+                           'volume_type': fake.VOLUME_TYPE_ID}}
         res = self._get_resp(body)
         self.assertEqual(202, res.status_int, res)
         self.assertTrue(mock_validate.called)
@@ -209,8 +209,7 @@ class VolumeManageTest(test.TestCase):
         """Test failure on nonexistent volume type specified by ID."""
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref',
-                           'volume_type':
-                           'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb'}}
+                           'volume_type': fake.WILL_NOT_BE_FOUND_ID}}
         res = self._get_resp(body)
         self.assertEqual(404, res.status_int, res)
         pass

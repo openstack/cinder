@@ -21,6 +21,7 @@ from cinder import db
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 
 
@@ -40,7 +41,7 @@ class VolumeUnmanageTest(test.TestCase):
 
     def setUp(self):
         super(VolumeUnmanageTest, self).setUp()
-        self.ctxt = context.RequestContext('admin', 'fake_project', True)
+        self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
         api = fakes.router.APIRouter()
         self.app = fakes.urlmap.URLMap()
@@ -72,7 +73,7 @@ class VolumeUnmanageTest(test.TestCase):
 
     def test_unmanage_volume_bad_volume_id(self):
         """Return 404 if the volume does not exist."""
-        res = self._get_resp('nonexistent-volume-id')
+        res = self._get_resp(fake.WILL_NOT_BE_FOUND_ID)
         self.assertEqual(404, res.status_int, res)
 
     def test_unmanage_volume_attached(self):

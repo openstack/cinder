@@ -22,13 +22,14 @@ from cinder import context
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import volume
 
 
 def fake_db_volume_get(*args, **kwargs):
     return {
-        'id': 'fake',
+        'id': fake.VOLUME_ID,
         'host': 'host001',
         'status': 'available',
         'size': 5,
@@ -39,14 +40,14 @@ def fake_db_volume_get(*args, **kwargs):
         'display_description': 'Just another volume!',
         'volume_type_id': None,
         'snapshot_id': None,
-        'project_id': 'fake',
+        'project_id': fake.PROJECT_ID,
         'migration_status': 'migrating',
-        '_name_id': 'fake2',
+        '_name_id': fake.VOLUME2_ID,
     }
 
 
 def fake_volume_api_get(*args, **kwargs):
-    ctx = context.RequestContext('admin', 'fake', True)
+    ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
     db_volume = fake_db_volume_get()
     return fake_volume.fake_volume_obj(ctx, **db_volume)
 
@@ -72,18 +73,22 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         self.UUID = uuid.uuid4()
 
     def test_get_volume_allowed(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req = webob.Request.blank('/v2/%s/volumes/%s' % (
+            fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = jsonutils.loads(res.body)['volume']
-        self.assertEqual('migrating', vol['os-vol-mig-status-attr:migstat'])
-        self.assertEqual('fake2', vol['os-vol-mig-status-attr:name_id'])
+        self.assertEqual('migrating',
+                         vol['os-vol-mig-status-attr:migstat'])
+        self.assertEqual(fake.VOLUME2_ID,
+                         vol['os-vol-mig-status-attr:name_id'])
 
     def test_get_volume_unallowed(self):
-        ctx = context.RequestContext('non-admin', 'fake', False)
-        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req = webob.Request.blank('/v2/%s/volumes/%s' % (
+            fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -92,18 +97,20 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         self.assertNotIn('os-vol-mig-status-attr:name_id', vol)
 
     def test_list_detail_volumes_allowed(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/detail')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
         vol = jsonutils.loads(res.body)['volumes']
-        self.assertEqual('migrating', vol[0]['os-vol-mig-status-attr:migstat'])
-        self.assertEqual('fake2', vol[0]['os-vol-mig-status-attr:name_id'])
+        self.assertEqual('migrating',
+                         vol[0]['os-vol-mig-status-attr:migstat'])
+        self.assertEqual(fake.VOLUME2_ID,
+                         vol[0]['os-vol-mig-status-attr:name_id'])
 
     def test_list_detail_volumes_unallowed(self):
-        ctx = context.RequestContext('non-admin', 'fake', False)
-        req = webob.Request.blank('/v2/fake/volumes/detail')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -112,8 +119,8 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         self.assertNotIn('os-vol-mig-status-attr:name_id', vol[0])
 
     def test_list_simple_volumes_no_migration_status(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req = webob.Request.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())

@@ -21,6 +21,7 @@ from cinder import context
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import volume
 
@@ -29,9 +30,9 @@ PROJECT_ID = '88fd1da4-f464-4a87-9ce5-26f2f40743b9'
 
 
 def fake_volume_get(*args, **kwargs):
-    ctx = context.RequestContext('non-admin', 'fake', False)
+    ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
     vol = {
-        'id': 'fake',
+        'id': fake.volume_id,
         'project_id': PROJECT_ID,
     }
     return fake_volume.fake_volume_obj(ctx, **vol)
@@ -58,8 +59,9 @@ class VolumeTenantAttributeTest(test.TestCase):
         self.UUID = uuid.uuid4()
 
     def test_get_volume_allowed(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req = webob.Request.blank('/v2/%s/volumes/%s' % (
+            fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -67,8 +69,9 @@ class VolumeTenantAttributeTest(test.TestCase):
         self.assertEqual(PROJECT_ID, vol['os-vol-tenant-attr:tenant_id'])
 
     def test_get_volume_unallowed(self):
-        ctx = context.RequestContext('non-admin', 'fake', False)
-        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req = webob.Request.blank('/v2/%s/volumes/%s' % (
+            fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -76,8 +79,8 @@ class VolumeTenantAttributeTest(test.TestCase):
         self.assertNotIn('os-vol-tenant-attr:tenant_id', vol)
 
     def test_list_detail_volumes_allowed(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/detail')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -85,8 +88,8 @@ class VolumeTenantAttributeTest(test.TestCase):
         self.assertEqual(PROJECT_ID, vol[0]['os-vol-tenant-attr:tenant_id'])
 
     def test_list_detail_volumes_unallowed(self):
-        ctx = context.RequestContext('non-admin', 'fake', False)
-        req = webob.Request.blank('/v2/fake/volumes/detail')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
+        req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
@@ -94,8 +97,8 @@ class VolumeTenantAttributeTest(test.TestCase):
         self.assertNotIn('os-vol-tenant-attr:tenant_id', vol[0])
 
     def test_list_simple_volumes_no_tenant_id(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes')
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
+        req = webob.Request.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
         res = req.get_response(app())
