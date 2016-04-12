@@ -25,7 +25,6 @@ from lxml import etree
 from oslo_log import log as logging
 from oslo_log import versionutils
 from oslo_serialization import jsonutils
-from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 import six
@@ -1166,13 +1165,7 @@ class Resource(wsgi.Application):
         if hasattr(response, 'headers'):
             for hdr, val in response.headers.items():
                 # Headers must be utf-8 strings
-                if six.PY2:
-                    val = encodeutils.to_utf8(val)
-                else:
-                    if isinstance(val, bytes):
-                        val = val.decode('utf-8')
-                    else:
-                        val = str(val)
+                val = utils.convert_str(val)
 
                 response.headers[hdr] = val
 
