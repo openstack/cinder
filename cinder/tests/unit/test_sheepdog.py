@@ -32,6 +32,7 @@ from cinder.i18n import _
 from cinder.image import image_utils
 from cinder import test
 from cinder.tests.unit import fake_backup
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
@@ -115,10 +116,10 @@ class SheepdogDriverTestDataGenerator(object):
 
     TEST_VOL_DATA = {
         'size': 1,
-        'id': '00000000-0000-0000-0000-000000000001',
+        'id': fake.volume_id,
         'provider_auth': None,
         'host': 'host@backendsec#unit_test_pool',
-        'project_id': 'project',
+        'project_id': fake.project_id,
         'provider_location': 'location',
         'display_name': 'vol1',
         'display_description': 'unit test volume',
@@ -128,10 +129,10 @@ class SheepdogDriverTestDataGenerator(object):
 
     TEST_CLONED_VOL_DATA = {
         'size': 2,
-        'id': '00000000-0000-0000-0000-000000000003',
+        'id': fake.volume2_id,
         'provider_auth': None,
         'host': 'host@backendsec#unit_test_pool',
-        'project_id': 'project',
+        'project_id': fake.project_id,
         'provider_location': 'location',
         'display_name': 'vol3',
         'display_description': 'unit test cloned volume',
@@ -140,11 +141,11 @@ class SheepdogDriverTestDataGenerator(object):
     }
 
     TEST_SNAPSHOT_DATA = {
-        'id': '00000000-0000-0000-0000-000000000002',
+        'id': fake.snapshot_id,
     }
 
     TEST_BACKUP_VOL_DATA = {
-        'volume_id': '00000000-0000-0000-0000-000000000001',
+        'volume_id': fake.volume_id,
     }
 
     COLLIE_NODE_INFO = """
