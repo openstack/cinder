@@ -27,6 +27,7 @@ from cinder.api.contrib import quota_classes
 from cinder import context
 from cinder import quota
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import volume_types
 
 
@@ -37,7 +38,7 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10,
               backup_gigabytes=1000, per_volume_gigabytes=-1,
               volume_types_faked=None,
-              tenant_id='foo'):
+              tenant_id=fake.PROJECT_ID):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
@@ -61,7 +62,7 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
 
 
 def make_response_body(root=True, ctxt=None, quota_class='foo',
-                       request_body=None, tenant_id='foo'):
+                       request_body=None, tenant_id=fake.PROJECT_ID):
     resources = {}
     if not ctxt:
         ctxt = context.get_admin_context()
@@ -91,21 +92,21 @@ class QuotaClassSetsControllerTest(test.TestCase):
 
     def test_show(self):
         volume_types.create(self.ctxt, 'fake_type')
-        result = self.controller.show(self.req, 'foo')
+        result = self.controller.show(self.req, fake.PROJECT_ID)
         self.assertDictMatch(make_body(), result)
 
     def test_show_not_authorized(self):
         self.req.environ['cinder.context'].is_admin = False
-        self.req.environ['cinder.context'].user_id = 'bad_user'
-        self.req.environ['cinder.context'].project_id = 'bad_project'
+        self.req.environ['cinder.context'].user_id = fake.USER_ID
+        self.req.environ['cinder.context'].project_id = fake.PROJECT_ID
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.show,
-                          self.req, 'foo')
+                          self.req, fake.PROJECT_ID)
 
     def test_update(self):
         volume_types.create(self.ctxt, 'fake_type')
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, tenant_id=None)
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertDictMatch(body, result)
 
     @mock.patch('cinder.api.openstack.wsgi.Controller.validate_string_length')
@@ -114,7 +115,7 @@ class QuotaClassSetsControllerTest(test.TestCase):
         mock_validate_integer.return_value = 5
         volume_types.create(self.ctxt, 'fake_type')
         body = make_body(volumes=5)
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertEqual(5, result['quota_class_set']['volumes'])
         self.assertTrue(mock_validate.called)
         self.assertTrue(mock_validate_integer.called)
@@ -122,32 +123,32 @@ class QuotaClassSetsControllerTest(test.TestCase):
     def test_update_wrong_key(self):
         volume_types.create(self.ctxt, 'fake_type')
         body = {'quota_class_set': {'bad': 'bad'}}
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertDictMatch(make_body(tenant_id=None), result)
 
     def test_update_invalid_key_value(self):
         body = {'quota_class_set': {'gigabytes': "should_be_int"}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_bad_quota_limit(self):
         body = {'quota_class_set': {'gigabytes': -1000}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
-                          self.req, 'foo', make_body(tenant_id=None))
+                          self.req, fake.PROJECT_ID, make_body(tenant_id=None))
 
     def test_update_with_more_volume_types(self):
         volume_types.create(self.ctxt, 'fake_type_1')
         volume_types.create(self.ctxt, 'fake_type_2')
         body = {'quota_class_set': {'gigabytes_fake_type_1': 1111,
                                     'volumes_fake_type_2': 2222}}
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertDictMatch(make_response_body(ctxt=self.ctxt,
-                                                quota_class='foo',
+                                                quota_class=fake.PROJECT_ID,
                                                 request_body=body,
                                                 tenant_id=None),
                              result)

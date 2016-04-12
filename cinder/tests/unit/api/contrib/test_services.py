@@ -28,6 +28,7 @@ from cinder import exception
 from cinder import policy
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 
 
 fake_services_list = [
@@ -594,27 +595,31 @@ class ServicesTest(test.TestCase):
 
     def test_services_enable_with_service_key(self):
         body = {'host': 'host1', 'service': 'cinder-volume'}
-        req = fakes.HTTPRequest.blank('/v2/fake/os-services/enable')
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/os-services/enable' % fake.PROJECT_ID)
         res_dict = self.controller.update(req, "enable", body)
 
         self.assertEqual('enabled', res_dict['status'])
 
     def test_services_enable_with_binary_key(self):
         body = {'host': 'host1', 'binary': 'cinder-volume'}
-        req = fakes.HTTPRequest.blank('/v2/fake/os-services/enable')
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/os-services/enable' % fake.PROJECT_ID)
         res_dict = self.controller.update(req, "enable", body)
 
         self.assertEqual('enabled', res_dict['status'])
 
     def test_services_disable_with_service_key(self):
-        req = fakes.HTTPRequest.blank('/v2/fake/os-services/disable')
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/os-services/disable' % fake.PROJECT_ID)
         body = {'host': 'host1', 'service': 'cinder-volume'}
         res_dict = self.controller.update(req, "disable", body)
 
         self.assertEqual('disabled', res_dict['status'])
 
     def test_services_disable_with_binary_key(self):
-        req = fakes.HTTPRequest.blank('/v2/fake/os-services/disable')
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/os-services/disable' % fake.PROJECT_ID)
         body = {'host': 'host1', 'binary': 'cinder-volume'}
         res_dict = self.controller.update(req, "disable", body)
 

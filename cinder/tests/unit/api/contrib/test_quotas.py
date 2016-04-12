@@ -30,7 +30,9 @@ from cinder import db
 from cinder import exception
 from cinder import quota
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import test_db_api
+
 
 from keystonemiddleware import auth_token
 from oslo_config import cfg
@@ -42,7 +44,7 @@ CONF = cfg.CONF
 
 def make_body(root=True, gigabytes=1000, snapshots=10,
               volumes=10, backups=10, backup_gigabytes=1000,
-              tenant_id='foo', per_volume_gigabytes=-1):
+              tenant_id=fake.PROJECT_ID, per_volume_gigabytes=-1):
     resources = {'gigabytes': gigabytes,
                  'snapshots': snapshots,
                  'volumes': volumes,
@@ -68,7 +70,7 @@ def make_body(root=True, gigabytes=1000, snapshots=10,
 
 def make_subproject_body(root=True, gigabytes=0, snapshots=0,
                          volumes=0, backups=0, backup_gigabytes=0,
-                         tenant_id='foo', per_volume_gigabytes=0):
+                         tenant_id=fake.PROJECT_ID, per_volume_gigabytes=0):
     return make_body(root=root, gigabytes=gigabytes, snapshots=snapshots,
                      volumes=volumes, backups=backups,
                      backup_gigabytes=backup_gigabytes, tenant_id=tenant_id,
@@ -79,7 +81,7 @@ class QuotaSetsControllerTestBase(test.TestCase):
 
     class FakeProject(object):
 
-        def __init__(self, id='foo', parent_id=None):
+        def __init__(self, id=fake.PROJECT_ID, parent_id=None):
             self.id = id
             self.parent_id = parent_id
             self.subtree = None
@@ -164,36 +166,36 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         super(QuotaSetsControllerTest, self).setUp()
 
     def test_defaults(self):
-        result = self.controller.defaults(self.req, 'foo')
+        result = self.controller.defaults(self.req, fake.PROJECT_ID)
         self.assertDictMatch(make_body(), result)
 
     def test_show(self):
-        result = self.controller.show(self.req, 'foo')
+        result = self.controller.show(self.req, fake.PROJECT_ID)
         self.assertDictMatch(make_body(), result)
 
     def test_show_not_authorized(self):
         self.req.environ['cinder.context'].is_admin = False
-        self.req.environ['cinder.context'].user_id = 'bad_user'
-        self.req.environ['cinder.context'].project_id = 'bad_project'
+        self.req.environ['cinder.context'].user_id = fake.USER_ID
+        self.req.environ['cinder.context'].project_id = fake.PROJECT_ID
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.show,
-                          self.req, 'foo')
+                          self.req, fake.PROJECT2_ID)
 
     def test_show_non_admin_user(self):
         self.controller._get_quotas = mock.Mock(side_effect=
                                                 self.controller._get_quotas)
-        result = self.controller.show(self.req, 'foo')
+        result = self.controller.show(self.req, fake.PROJECT_ID)
         self.assertDictMatch(make_body(), result)
         self.controller._get_quotas.assert_called_with(
-            self.req.environ['cinder.context'], 'foo', False)
+            self.req.environ['cinder.context'], fake.PROJECT_ID, False)
 
     def test_update(self):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertDictMatch(body, result)
 
         body = make_body(gigabytes=db.MAX_INT, tenant_id=None)
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertDictMatch(body, result)
 
     def test_update_subproject_not_in_hierarchy_non_nested(self):
@@ -227,7 +229,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         mock_validate_integer.return_value = 10
 
         body = {'quota_set': {'volumes': 10}}
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
 
         self.assertEqual(10, result['quota_set']['volumes'])
         self.assertTrue(mock_validate.called)
@@ -236,105 +238,106 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
     def test_update_wrong_key(self):
         body = {'quota_set': {'bad': 'bad'}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_invalid_value_key_value(self):
         body = {'quota_set': {'gigabytes': "should_be_int"}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_invalid_type_key_value(self):
         body = {'quota_set': {'gigabytes': None}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_multi_value_with_bad_data(self):
-        orig_quota = self.controller.show(self.req, 'foo')
+        orig_quota = self.controller.show(self.req, fake.PROJECT_ID)
         body = make_body(gigabytes=2000, snapshots=15, volumes="should_be_int",
                          backups=5, tenant_id=None)
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
         # Verify that quota values are not updated in db
-        new_quota = self.controller.show(self.req, 'foo')
+        new_quota = self.controller.show(self.req, fake.PROJECT_ID)
         self.assertDictMatch(orig_quota, new_quota)
 
     def test_update_bad_quota_limit(self):
         body = {'quota_set': {'gigabytes': -1000}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
         body = {'quota_set': {'gigabytes': db.MAX_INT + 1}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
-        self.req.environ['cinder.context'].project_id = 'foo'
+        self.req.environ['cinder.context'].project_id = fake.PROJECT_ID
         self.req.environ['cinder.context'].user_id = 'foo_user'
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.update,
-                          self.req, 'foo', make_body(tenant_id=None))
+                          self.req, fake.PROJECT_ID, make_body(tenant_id=None))
 
     def test_update_without_quota_set_field(self):
         body = {'fake_quota_set': {'gigabytes': 100}}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_empty_body(self):
         body = {}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def _commit_quota_reservation(self):
         # Create simple quota and quota usage.
         ctxt = context.get_admin_context()
-        res = test_db_api._quota_reserve(ctxt, 'foo')
-        db.reservation_commit(ctxt, res, 'foo')
-        expected = {'project_id': 'foo',
+        res = test_db_api._quota_reserve(ctxt, fake.PROJECT_ID)
+        db.reservation_commit(ctxt, res, fake.PROJECT_ID)
+        expected = {'project_id': fake.PROJECT_ID,
                     'volumes': {'reserved': 0, 'in_use': 1},
                     'gigabytes': {'reserved': 0, 'in_use': 2},
                     }
         self.assertEqual(expected,
-                         db.quota_usage_get_all_by_project(ctxt, 'foo'))
+                         db.quota_usage_get_all_by_project(ctxt,
+                                                           fake.PROJECT_ID))
 
     def test_update_lower_than_existing_resources_when_skip_false(self):
         self._commit_quota_reservation()
         body = {'quota_set': {'volumes': 0},
                 'skip_validation': 'false'}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
         # Ensure that validation works even if some resources are valid
         body = {'quota_set': {'gigabytes': 1, 'volumes': 10},
                 'skip_validation': 'false'}
         self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          self.req, 'foo', body)
+                          self.req, fake.PROJECT_ID, body)
 
     def test_update_lower_than_existing_resources_when_skip_true(self):
         self._commit_quota_reservation()
         body = {'quota_set': {'volumes': 0},
                 'skip_validation': 'true'}
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertEqual(body['quota_set']['volumes'],
                          result['quota_set']['volumes'])
 
     def test_update_lower_than_existing_resources_without_skip_argument(self):
         self._commit_quota_reservation()
         body = {'quota_set': {'volumes': 0}}
-        result = self.controller.update(self.req, 'foo', body)
+        result = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertEqual(body['quota_set']['volumes'],
                          result['quota_set']['volumes'])
 
     def test_delete(self):
-        result_show = self.controller.show(self.req, 'foo')
+        result_show = self.controller.show(self.req, fake.PROJECT_ID)
         self.assertDictMatch(make_body(), result_show)
 
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5,
                          backup_gigabytes=1000, tenant_id=None)
-        result_update = self.controller.update(self.req, 'foo', body)
+        result_update = self.controller.update(self.req, fake.PROJECT_ID, body)
         self.assertDictMatch(body, result_update)
 
-        self.controller.delete(self.req, 'foo')
+        self.controller.delete(self.req, fake.PROJECT_ID)
 
-        result_show_after = self.controller.show(self.req, 'foo')
+        result_show_after = self.controller.show(self.req, fake.PROJECT_ID)
         self.assertDictMatch(result_show, result_show_after)
 
     def test_delete_with_allocated_quota_different_from_zero(self):
@@ -361,7 +364,7 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
     def test_delete_no_admin(self):
         self.req.environ['cinder.context'].is_admin = False
         self.assertRaises(webob.exc.HTTPForbidden, self.controller.delete,
-                          self.req, 'foo')
+                          self.req, fake.PROJECT_ID)
 
     def test_subproject_show_not_using_nested_quotas(self):
         # Current roles say for non-nested quotas, an admin should be able to
