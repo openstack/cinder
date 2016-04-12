@@ -302,6 +302,6 @@ class EMCCLIFCDriver(driver.FibreChannelDriver):
     def backup_use_temp_snapshot(self):
         return True
 
-    def failover_host(self, context, volumes, secondary_backend_id):
+    def failover_host(self, context, volumes, secondary_id=None):
         """Failovers volume from primary device to secondary."""
-        return self.cli.failover_host(context, volumes, secondary_backend_id)
+        return self.cli.failover_host(context, volumes, secondary_id)

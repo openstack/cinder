@@ -4020,7 +4020,7 @@ class EMCVnxCliBase(object):
 
         return specs
 
-    def failover_host(self, context, volumes, secondary_backend_id):
+    def failover_host(self, context, volumes, secondary_id=None):
         """Fails over the volume back and forth.
 
         Driver needs to update following info for this volume:
@@ -4028,12 +4028,12 @@ class EMCVnxCliBase(object):
         """
         volume_update_list = []
 
-        if secondary_backend_id != 'default':
+        if secondary_id and secondary_id != 'default':
             rep_status = 'failed-over'
             backend_id = (
                 self.configuration.replication_device[0]['backend_id'])
-            if secondary_backend_id != backend_id:
-                msg = (_('Invalid secondary_backend_id specified. '
+            if secondary_id != backend_id:
+                msg = (_('Invalid secondary_id specified. '
                          'Valid backend id is %s.') % backend_id)
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
@@ -4055,12 +4055,12 @@ class EMCVnxCliBase(object):
                     'Failed to failover volume %(volume_id)s '
                     'to %(target)s: %(error)s.')
                 LOG.error(msg, {'volume_id': volume.id,
-                                'target': secondary_backend_id,
+                                'target': secondary_id,
                                 'error': ex},)
                 new_status = 'error'
             else:
                 rep_data.update({'is_primary': not is_primary})
-                # Transfer ownership to secondary_backend_id and
+                # Transfer ownership to secondary_id and
                 # update provider_location field
                 provider_location = self._update_provider_location(
                     provider_location,
@@ -4085,7 +4085,7 @@ class EMCVnxCliBase(object):
                 volume_update_list.append({
                     'volume_id': volume.id,
                     'updates': {'status': 'error'}})
-        return secondary_backend_id, volume_update_list
+        return secondary_id, volume_update_list
 
     def _is_replication_enabled(self, volume):
         """Return True if replication extra specs is specified.

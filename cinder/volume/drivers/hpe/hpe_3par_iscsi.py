@@ -929,13 +929,13 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
-    def failover_host(self, context, volumes, secondary_backend_id):
+    def failover_host(self, context, volumes, secondary_id=None):
         """Force failover to a secondary replication target."""
         common = self._login(timeout=30)
         try:
             # Update the active_backend_id in the driver and return it.
             active_backend_id, volume_updates = common.failover_host(
-                context, volumes, secondary_backend_id)
+                context, volumes, secondary_id)
             self._active_backend_id = active_backend_id
             return active_backend_id, volume_updates
         finally:

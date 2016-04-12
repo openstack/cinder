@@ -3297,7 +3297,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.driver.failover_host(
                     context,
                     volumes,
-                    secondary_backend_id))
+                    secondary_id=secondary_backend_id))
         except exception.UnableToFailOver:
             LOG.exception(_LE("Failed to perform replication failover"))
             service.replication_status = (
