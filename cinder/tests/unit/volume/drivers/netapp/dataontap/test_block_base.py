@@ -25,6 +25,7 @@ Mock unit tests for the NetApp block storage library
 import copy
 import uuid
 
+import ddt
 import mock
 from oslo_log import versionutils
 from oslo_utils import units
@@ -41,6 +42,7 @@ from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
 
+@ddt.ddt
 class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def setUp(self):
@@ -458,30 +460,86 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         self.assertEqual('true', self.library.lun_space_reservation)
 
-    def test_get_existing_vol_manage_missing_id_path(self):
+    def test_get_existing_vol_with_manage_ref_no_source_info(self):
+
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.library._get_existing_vol_with_manage_ref,
                           {})
 
     def test_get_existing_vol_manage_not_found(self):
+
         self.zapi_client.get_lun_by_args.return_value = []
+
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.library._get_existing_vol_with_manage_ref,
-                          {'source-id': 'src_id',
-                           'source-name': 'lun_path'})
+                          {'source-name': 'lun_path'})
         self.assertEqual(1, self.zapi_client.get_lun_by_args.call_count)
 
-    @mock.patch.object(block_base.NetAppBlockStorageLibrary,
-                       '_extract_lun_info',
-                       mock.Mock(return_value=block_base.NetAppLun(
-                                 'lun0', 'lun0', '3', {'UUID': 'src_id'})))
-    def test_get_existing_vol_manage_lun(self):
+    def test_get_existing_vol_manage_lun_by_path(self):
+
+        self.library.vserver = 'fake_vserver'
         self.zapi_client.get_lun_by_args.return_value = ['lun0', 'lun1']
-        lun = self.library._get_existing_vol_with_manage_ref(
-            {'source-id': 'src_id', 'path': 'lun_path'})
-        self.assertEqual(1, self.zapi_client.get_lun_by_args.call_count)
+        mock_lun = block_base.NetAppLun(
+            'lun0', 'lun0', '3', {'UUID': 'fake_uuid'})
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_extract_lun_info',
+                         mock.Mock(return_value=mock_lun))
+
+        existing_ref = {'source-name': 'fake_path'}
+        lun = self.library._get_existing_vol_with_manage_ref(existing_ref)
+
+        self.zapi_client.get_lun_by_args.assert_called_once_with(
+            path='fake_path')
         self.library._extract_lun_info.assert_called_once_with('lun0')
         self.assertEqual('lun0', lun.name)
+
+    def test_get_existing_vol_manage_lun_by_uuid(self):
+
+        self.library.vserver = 'fake_vserver'
+        self.zapi_client.get_lun_by_args.return_value = ['lun0', 'lun1']
+        mock_lun = block_base.NetAppLun(
+            'lun0', 'lun0', '3', {'UUID': 'fake_uuid'})
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_extract_lun_info',
+                         mock.Mock(return_value=mock_lun))
+
+        existing_ref = {'source-id': 'fake_uuid'}
+        lun = self.library._get_existing_vol_with_manage_ref(existing_ref)
+
+        self.zapi_client.get_lun_by_args.assert_called_once_with(
+            uuid='fake_uuid')
+        self.library._extract_lun_info.assert_called_once_with('lun0')
+        self.assertEqual('lun0', lun.name)
+
+    def test_get_existing_vol_manage_lun_invalid_mode(self):
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.library._get_existing_vol_with_manage_ref,
+                          {'source-id': 'src_id'})
+
+    def test_get_existing_vol_manage_lun_invalid_lun(self):
+
+        self.zapi_client.get_lun_by_args.return_value = ['lun0', 'lun1']
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_is_lun_valid_on_storage',
+                         mock.Mock(side_effect=[False, True]))
+        mock_lun0 = block_base.NetAppLun(
+            'lun0', 'lun0', '3', {'UUID': 'src_id_0'})
+        mock_lun1 = block_base.NetAppLun(
+            'lun1', 'lun1', '5', {'UUID': 'src_id_1'})
+        self.mock_object(block_base.NetAppBlockStorageLibrary,
+                         '_extract_lun_info',
+                         mock.Mock(side_effect=[mock_lun0, mock_lun1]))
+
+        lun = self.library._get_existing_vol_with_manage_ref(
+            {'source-name': 'lun_path'})
+
+        self.assertEqual(1, self.zapi_client.get_lun_by_args.call_count)
+        self.library._extract_lun_info.assert_has_calls([
+            mock.call('lun0'),
+            mock.call('lun1'),
+        ])
+        self.assertEqual('lun1', lun.name)
 
     @mock.patch.object(block_base.NetAppBlockStorageLibrary,
                        '_get_existing_vol_with_manage_ref',

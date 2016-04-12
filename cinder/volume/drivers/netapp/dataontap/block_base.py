@@ -689,30 +689,33 @@ class NetAppBlockStorageLibrary(object):
 
     def _get_existing_vol_with_manage_ref(self, existing_ref):
         """Get the corresponding LUN from the storage server."""
+
         uuid = existing_ref.get('source-id')
         path = existing_ref.get('source-name')
-        if not (uuid or path):
-            reason = _('Reference must contain either source-id'
-                       ' or source-name element.')
+
+        lun_info = {}
+        if path:
+            lun_info['path'] = path
+        elif uuid:
+            if not hasattr(self, 'vserver'):
+                reason = _('Volume manage identifier with source-id is only '
+                           'supported with clustered Data ONTAP.')
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=existing_ref, reason=reason)
+            lun_info['uuid'] = uuid
+        else:
+            reason = _('Volume manage identifier must contain either '
+                       'source-id or source-name element.')
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=reason)
-        lun_info = {}
-        lun_info.setdefault('path', path if path else None)
-        if hasattr(self, 'vserver') and uuid:
-            lun_info['uuid'] = uuid
+
         luns = self.zapi_client.get_lun_by_args(**lun_info)
-        if luns:
-            for lun in luns:
-                netapp_lun = self._extract_lun_info(lun)
-                storage_valid = self._is_lun_valid_on_storage(netapp_lun)
-                uuid_valid = True
-                if uuid:
-                    if netapp_lun.get_metadata_property('UUID') == uuid:
-                        uuid_valid = True
-                    else:
-                        uuid_valid = False
-                if storage_valid and uuid_valid:
-                    return netapp_lun
+
+        for lun in luns:
+            netapp_lun = self._extract_lun_info(lun)
+            if self._is_lun_valid_on_storage(netapp_lun):
+                return netapp_lun
+
         raise exception.ManageExistingInvalidReference(
             existing_ref=existing_ref,
             reason=(_('LUN not found with given ref %s.') % existing_ref))
