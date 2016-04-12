@@ -892,7 +892,7 @@ class RBDTestCase(test.TestCase):
                 'extra_specs': {}}
         updates = {'name': 'testvolume',
                    'host': 'currenthost',
-                   'id': fake.volume_id}
+                   'id': fake.VOLUME_ID}
         fake_type = 'high-IOPS'
         volume = fake_volume.fake_volume_obj(context, **updates)
 
