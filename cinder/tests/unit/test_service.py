@@ -136,7 +136,12 @@ class ServiceTestCase(test.TestCase):
                                      binary=self.binary,
                                      topic=self.topic)
 
-        self.assertTrue(app)
+        self.assertIsNotNone(app)
+
+        # Check that we have the service ID
+        self.assertTrue(hasattr(app, 'service_id'))
+        # Check that the entry has been really created in the DB
+        objects.Service.get_by_id(context.get_admin_context(), app.service_id)
 
     def test_report_state_newly_disconnected(self):
         service_ref = {'host': self.host,
