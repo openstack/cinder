@@ -159,12 +159,13 @@ class StorageCenterApiHelper(object):
     connection to the Dell REST API.
     """
 
-    def __init__(self, config, active_backend_id):
+    def __init__(self, config, active_backend_id, storage_protocol):
         self.config = config
         # Now that active_backend_id is set on failover.
         # Use that if set.  Mark the backend as failed over.
         self.active_backend_id = active_backend_id
         self.ssn = self.config.dell_sc_ssn
+        self.storage_protocol = storage_protocol
         self.apiversion = '2.0'
 
     def open_connection(self):
@@ -190,6 +191,8 @@ class StorageCenterApiHelper(object):
             # about.
             connection.vfname = self.config.dell_sc_volume_folder
             connection.sfname = self.config.dell_sc_server_folder
+            if self.storage_protocol == 'FC':
+                connection.protocol = 'FibreChannel'
             # Set appropriate ssn and failover state.
             if self.active_backend_id:
                 # active_backend_id is a string.  Convert to int.
@@ -231,9 +234,10 @@ class StorageCenterApi(object):
         2.4.0 - Added Replication V2 support.
         2.4.1 - Updated Replication support to V2.1.
         2.5.0 - ManageableSnapshotsVD implemented.
+        3.0.0 - ProviderID utilized.
     """
 
-    APIDRIVERVERSION = '2.5.0'
+    APIDRIVERVERSION = '3.0.0'
 
     def __init__(self, host, port, user, password, verify, apiversion):
         """This creates a connection to Dell SC or EM.
@@ -254,6 +258,7 @@ class StorageCenterApi(object):
         self.sfname = 'openstack'
         self.legacypayloadfilters = False
         self.consisgroups = True
+        self.protocol = 'Iscsi'
         self.apiversion = apiversion
         # Nothing other than Replication should care if we are direct connect
         # or not.
@@ -278,6 +283,13 @@ class StorageCenterApi(object):
             # API call was a normal success
             return True
 
+        # Some versions return this as a dict.
+        try:
+            response_text = rest_response.text['result']
+        except Exception:
+            # We do not care why that failed. Just use the text.
+            response_text = rest_response.text
+
         LOG.debug('REST call result:\n'
                   '\tUrl:    %(url)s\n'
                   '\tCode:   %(code)d\n'
@@ -286,7 +298,7 @@ class StorageCenterApi(object):
                   {'url': rest_response.url,
                    'code': rest_response.status_code,
                    'reason': rest_response.reason,
-                   'text': rest_response.text})
+                   'text': response_text})
         return False
 
     @staticmethod
@@ -303,21 +315,6 @@ class StorageCenterApi(object):
                 array.reverse()
                 return array
             array.append(tail)
-
-    @staticmethod
-    def _lower_first(s):
-        return s[:1].lower() + s[1:] if s else ''
-
-    def _lower_key(self, in_dict):
-        if type(in_dict) is dict:
-            out_dict = {}
-            for key, item in in_dict.items():
-                out_dict[self._lower_first(key)] = self._lower_key(item)
-            return out_dict
-        elif type(in_dict) is list:
-            return [self._lower_key(obj) for obj in in_dict]
-        else:
-            return in_dict
 
     def _first_result(self, blob):
         """Get the first result from the JSON return value.
@@ -374,7 +371,7 @@ class StorageCenterApi(object):
         :returns: JSON or None on error.
         """
         try:
-            return self._lower_key(blob.json())
+            return blob.json()
         except AttributeError:
             LOG.error(_LE('Error invalid json: %s'),
                       blob)
@@ -402,7 +399,7 @@ class StorageCenterApi(object):
             LOG.error(_LE('Error TypeError. %s'), ex)
         except scanner.JSONDecodeError as ex:
             LOG.error(_LE('Error JSONDecodeError. %s'), ex)
-        LOG.debug('_get_json blob %s', blob)
+        LOG.debug('_get_id failed: blob %s', blob)
         return None
 
     def _get_payload_filter(self, filterType='AND'):
@@ -444,8 +441,6 @@ class StorageCenterApi(object):
         payload = {}
         payload['Application'] = 'Cinder REST Driver'
         payload['ApplicationVersion'] = self.APIDRIVERVERSION
-        LOG.debug('open_connection %s',
-                  self.client.header['x-dell-api-version'])
         r = self.client.post('ApiConnection/Login', payload)
         if not self._check_result(r):
             # SC requires a specific version. See if we can get it.
@@ -479,11 +474,29 @@ class StorageCenterApi(object):
 
     def close_connection(self):
         """Logout of Dell REST API."""
-        r = self.client.post('ApiConnection/Logout',
-                             {})
+        r = self.client.post('ApiConnection/Logout', {})
         # 204 expected.
         self._check_result(r)
         self.client = None
+
+    def _use_provider_id(self, provider_id):
+        """See if our provider_id points at our current backend.
+
+        provider_id is instanceId. The instanceId contains the ssn of the
+        StorageCenter it is hosted on. This must equal our current ssn or
+        it isn't valid.
+
+        :param provider_id: Provider_id from an volume or snapshot object.
+        :returns: True/False
+        """
+        if provider_id:
+            try:
+                if provider_id.split('.')[0] == str(self.ssn):
+                    return True
+            except Exception:
+                LOG.error(_LE('_use_provider_id: provider_id %s is invalid!'),
+                          provider_id)
+        return False
 
     def find_sc(self, ssn=-1):
         """Check that the SC is there and being managed by EM.
@@ -497,9 +510,7 @@ class StorageCenterApi(object):
             ssn = self.ssn
 
         r = self.client.get('StorageCenter/StorageCenter')
-        result = self._get_result(r,
-                                  'scSerialNumber',
-                                  ssn)
+        result = self._get_result(r, 'scSerialNumber', ssn)
         if result is None:
             LOG.error(_LE('Failed to find %(s)s.  Result %(r)s'),
                       {'s': ssn,
@@ -532,9 +543,7 @@ class StorageCenterApi(object):
             payload['Parent'] = parent
         payload['Notes'] = self.notes
 
-        r = self.client.post(url,
-                             payload)
-        # 201 expected.
+        r = self.client.post(url, payload)
         if self._check_result(r):
             scfolder = self._first_result(r)
         return scfolder
@@ -562,19 +571,15 @@ class StorageCenterApi(object):
             # If the last was found see if this part of the path exists too
             if found:
                 listurl = url + '/GetList'
-                scfolder = self._find_folder(listurl,
-                                             folderpath)
+                scfolder = self._find_folder(listurl, folderpath)
                 if scfolder is None:
                     found = False
             # We didn't find it so create it
             if found is False:
-                scfolder = self._create_folder(url,
-                                               instanceId,
-                                               folder)
+                scfolder = self._create_folder(url, instanceId, folder)
             # If we haven't found a folder or created it then leave
             if scfolder is None:
-                LOG.error(_LE('Unable to create folder path %s'),
-                          folderpath)
+                LOG.error(_LE('Unable to create folder path %s'), folderpath)
                 break
             # Next part of the path will need this
             instanceId = self._get_id(scfolder)
@@ -609,13 +614,9 @@ class StorageCenterApi(object):
             folderpath += '/'
             pf.append('folderPath', folderpath)
         folder = None
-        r = self.client.post(url,
-                             pf.payload)
-        # 200 expected.
+        r = self.client.post(url, pf.payload)
         if self._check_result(r):
-            folder = self._get_result(r,
-                                      'folderPath',
-                                      folderpath)
+            folder = self._get_result(r, 'folderPath', folderpath)
         return folder
 
     def _find_volume_folder(self, create=False):
@@ -644,25 +645,21 @@ class StorageCenterApi(object):
         :param scvolume: Dell Volume object.
         """
         pf = self._get_payload_filter()
-        pf.append('scSerialNumber', scvolume.get('scSerialNumber'), 'Equals')
+        pf.append('scSerialNumber', scvolume.get('scSerialNumber'))
         r = self.client.post('StorageCenter/ScServer/GetList', pf.payload)
-        # 200 expected.
         if self._check_result(r):
             scservers = self._get_json(r)
             # Sort through the servers looking for one with connectivity.
             for scserver in scservers:
-                # TODO(tom_swanson): Add check for server type.
                 # This needs to be either a physical or virtual server.
                 # Outside of tempest tests this should not matter as we only
                 # "init" a volume to allow snapshotting of an empty volume.
                 if scserver.get('status', '').lower() != 'down':
                     # Map to actually create the volume
-                    self.map_volume(scvolume,
-                                    scserver)
+                    self.map_volume(scvolume, scserver)
                     # We have changed the volume so grab a new copy of it.
-                    scvolume = self.find_volume(scvolume.get('name'))
-                    self.unmap_volume(scvolume,
-                                      scserver)
+                    scvolume = self.get_volume(self._get_id(scvolume))
+                    self.unmap_volume(scvolume, scserver)
                     return
         # We didn't map/unmap the volume.  So no initialization done.
         # Warn the user before we leave.  Note that this is almost certainly
@@ -670,8 +667,7 @@ class StorageCenterApi(object):
         # has likely been attempted before the volume has been instantiated
         # on the Storage Center.  In the real world no one will snapshot
         # a volume without first putting some data in that volume.
-        LOG.warning(_LW('Volume initialization failure. (%s)'),
-                    self._get_id(scvolume))
+        LOG.warning(_LW('Volume %s initialization failure.'), scvolume['name'])
 
     def _find_storage_profile(self, storage_profile):
         """Looks for a Storage Profile on the array.
@@ -692,10 +688,9 @@ class StorageCenterApi(object):
         # this doesn't cause as much overhead as it might seem.
         storage_profile = storage_profile.replace(' ', '').lower()
         pf = self._get_payload_filter()
-        pf.append('scSerialNumber', self.ssn, 'Equals')
-        r = self.client.post(
-            'StorageCenter/ScStorageProfile/GetList', pf.payload)
-        # 200 expected.
+        pf.append('scSerialNumber', self.ssn)
+        r = self.client.post('StorageCenter/ScStorageProfile/GetList',
+                             pf.payload)
         if self._check_result(r):
             profiles = self._get_json(r)
             for profile in profiles:
@@ -829,7 +824,7 @@ class StorageCenterApi(object):
                                       the volume.
         :returns: Dell Volume object or None.
         """
-        LOG.debug('Create Volume %(name)s %(ssn)s %(folder)s %(profile)s',
+        LOG.debug('create_volume: %(name)s %(ssn)s %(folder)s %(profile)s',
                   {'name': name,
                    'ssn': self.ssn,
                    'folder': self.vfname,
@@ -842,8 +837,7 @@ class StorageCenterApi(object):
 
         # If we actually have a place to put our volume create it
         if folder is None:
-            LOG.warning(_LW('Unable to create folder %s'),
-                        self.vfname)
+            LOG.warning(_LW('Unable to create folder %s'), self.vfname)
 
         # See if we need a storage profile
         profile = self._find_storage_profile(storage_profile)
@@ -870,10 +864,9 @@ class StorageCenterApi(object):
         # This is a new volume so there is nothing to remove.
         if addids:
             payload['ReplayProfileList'] = addids
-        r = self.client.post('StorageCenter/ScVolume',
-                             payload)
-        # 201 expected.
+        r = self.client.post('StorageCenter/ScVolume', payload)
         if self._check_result(r):
+            # Our volume should be in the return.
             scvolume = self._get_json(r)
             if scvolume:
                 LOG.info(_LI('Created volume %(instanceId)s: %(name)s'),
@@ -884,7 +877,7 @@ class StorageCenterApi(object):
                               '  Attempting to locate volume'))
                 # In theory it is there since success was returned.
                 # Try one last time to find it before returning.
-                scvolume = self.find_volume(name)
+                scvolume = self._search_for_volume(name)
         else:
             LOG.error(_LE('Unable to create volume on SC: %s'), name)
 
@@ -913,24 +906,53 @@ class StorageCenterApi(object):
                 vfname = (self.vfname if self.vfname.endswith('/')
                           else self.vfname + '/')
                 pf.append('volumeFolderPath', vfname)
-            r = self.client.post('StorageCenter/ScVolume/GetList',
-                                 pf.payload)
-            # 200 expected.
+            r = self.client.post('StorageCenter/ScVolume/GetList', pf.payload)
             if self._check_result(r):
                 result = self._get_json(r)
         # We return None if there was an error and a list if the command
         # succeeded. It might be an empty list.
         return result
 
-    def find_volume(self, name):
+    def find_volume(self, name, provider_id):
+        """Find the volume by name or instanceId.
+
+        We check if we can use provider_id before using it. If so then
+        we expect to find it by provider_id.
+
+        We also conclude our failover at this point. If we are failed over we
+        run _import_one to rename the volume.
+
+        :param name: Volume name.
+        :param provider_id: instanceId of the volume if known.
+        :return: sc volume object or None.
+        :raises VolumeBackendAPIException: if unable to import.
+        """
+        scvolume = None
+        # If we have a provided_id just go get it.
+        if self._use_provider_id(provider_id):
+            scvolume = self.get_volume(provider_id)
+            # if we are failed over we need to check if we
+            # need to import the failed over volume.
+            if self.failed_over:
+                if scvolume['name'] == self._repl_name(name):
+                    scvolume = self._import_one(scvolume, name)
+                    if not scvolume:
+                        msg = _('Unable to complete failover of %s.') % name
+                        raise exception.VolumeBackendAPIException(data=msg)
+                    LOG.info(_LI('Imported %(fail)s to %(guid)s.'),
+                             {'fail': self._repl_name(name),
+                              'guid': name})
+        else:
+            # No? Then search for it.
+            scvolume = self._search_for_volume(name)
+        return scvolume
+
+    def _search_for_volume(self, name):
         """Search self.ssn for volume of name.
 
         This searches the folder self.vfname (specified in the cinder.conf)
         for the volume first.  If not found it searches the entire array for
         the volume.
-
-        Remember that in the case of a failover we have already been switched
-        to our new SSN.  So the initial searches are valid.
 
         :param name: Name of the volume to search for.  This is the cinder
                      volume ID.
@@ -941,7 +963,7 @@ class StorageCenterApi(object):
                   {'sn': self.ssn,
                    'name': name})
 
-        # Cannot find a volume without the name
+        # Cannot find a volume without the name.
         if name is None:
             return None
 
@@ -954,27 +976,6 @@ class StorageCenterApi(object):
                       {'n': name,
                        'v': self.vfname})
             vollist = self._get_volume_list(name, None, False)
-        # If we found nothing and are failed over then we might not have
-        # completed our replication failover. Look for the replication
-        # volume. We are already pointing at that SC.
-        if not vollist and self.failed_over:
-            LOG.debug('Unable to locate volume. Checking for failover.')
-            # Get our replay name.
-            fn = self._repl_name(name)
-            vollist = self._get_volume_list(fn, None, False)
-            # Same deal as the rest of these.  If 0 not found.  If greater than
-            # one we have multiple copies and cannot return a valid result.
-            if len(vollist) == 1:
-                LOG.info(_LI('Found failover volume. Competing failover.'))
-                # Import our found volume.  This completes our failover.
-                scvolume = self._import_one(vollist[0], name)
-                if scvolume:
-                    LOG.info(_LI('Imported %(fail)s to %(guid)s.'),
-                             {'fail': fn,
-                              'guid': name})
-                    return scvolume
-                msg = _('Unable to complete failover of %s.') % fn
-                raise exception.VolumeBackendAPIException(data=msg)
 
         # If multiple volumes of the same name are found we need to error.
         if len(vollist) > 1:
@@ -985,32 +986,50 @@ class StorageCenterApi(object):
         # We made it and should have a valid volume.
         return None if not vollist else vollist[0]
 
-    def delete_volume(self, name):
+    def get_volume(self, provider_id):
+        """Returns the scvolume associated with provider_id.
+
+        :param provider_id: This is the instanceId
+        :return: Dell SCVolume object.
+        """
+        result = None
+        if provider_id:
+            r = self.client.get('StorageCenter/ScVolume/%s' % provider_id)
+            if self._check_result(r):
+                result = self._get_json(r)
+        return result
+
+    def delete_volume(self, name, provider_id=None):
         """Deletes the volume from the SC backend array.
 
         If the volume cannot be found we claim success.
 
         :param name: Name of the volume to search for.  This is the cinder
                      volume ID.
+        :param provider_id: This is the instanceId
         :returns: Boolean indicating success or failure.
         """
-        vol = self.find_volume(name)
-        if vol is not None:
-            r = self.client.delete('StorageCenter/ScVolume/%s'
-                                   % self._get_id(vol))
-            # 200 expected
+        # No provider id? Then do a search.
+        if not provider_id:
+            vol = self._search_for_volume(name)
+            if vol:
+                provider_id = self._get_id(vol)
+
+        # If we have an id then delete the volume.
+        if provider_id:
+            r = self.client.delete('StorageCenter/ScVolume/%s' % provider_id)
             if not self._check_result(r):
                 msg = _('Error deleting volume %(ssn)s: %(volume)s') % {
                     'ssn': self.ssn,
-                    'volume': name}
+                    'volume': provider_id}
                 raise exception.VolumeBackendAPIException(data=msg)
 
             # json return should be true or false
             return self._get_json(r)
 
         # If we can't find the volume then it is effectively gone.
-        LOG.warning(_LW('delete_volume: unable to find volume %s'),
-                    name)
+        LOG.warning(_LW('delete_volume: unable to find volume '
+                        'provider_id: %s'), provider_id)
         return True
 
     def _find_server_folder(self, create=False):
@@ -1029,7 +1048,7 @@ class StorageCenterApi(object):
                                               self.sfname)
         return folder
 
-    def _add_hba(self, scserver, wwnoriscsiname, isfc=False):
+    def _add_hba(self, scserver, wwnoriscsiname):
         """This adds a server HBA to the Dell server object.
 
         The HBA is taken from the connector provided in initialize_connection.
@@ -1039,22 +1058,16 @@ class StorageCenterApi(object):
 
         :param scserver: Dell server object.
         :param wwnoriscsiname: The WWN or IQN to add to this server.
-        :param isfc: Boolean indicating whether this is an FC HBA or not.
         :returns: Boolean indicating success or failure.
         """
         payload = {}
-        if isfc is True:
-            payload['HbaPortType'] = 'FibreChannel'
-        else:
-            payload['HbaPortType'] = 'Iscsi'
+        payload['HbaPortType'] = self.protocol
         payload['WwnOrIscsiName'] = wwnoriscsiname
         payload['AllowManual'] = True
         r = self.client.post('StorageCenter/ScPhysicalServer/%s/AddHba'
-                             % self._get_id(scserver),
-                             payload)
-        # 200 expected.
+                             % self._get_id(scserver), payload)
         if not self._check_result(r):
-            LOG.error(_LE('AddHba error: %(wwn)s to %(srvname)s'),
+            LOG.error(_LE('_add_hba error: %(wwn)s to %(srvname)s'),
                       {'wwn': wwnoriscsiname,
                        'srvname': scserver['name']})
             return False
@@ -1075,7 +1088,6 @@ class StorageCenterApi(object):
         pf.append('scSerialNumber', self.ssn)
         r = self.client.post('StorageCenter/ScServerOperatingSystem/GetList',
                              pf.payload)
-        # 200 expected.
         if self._check_result(r):
             oslist = self._get_json(r)
             for srvos in oslist:
@@ -1102,23 +1114,19 @@ class StorageCenterApi(object):
         for wwn in wwns:
             if scserver is None:
                 # Use the fist wwn to create the server.
-                scserver = self.create_server(wwn,
-                                              True)
+                scserver = self.create_server(wwn)
             else:
                 # Add the wwn to our server
-                self._add_hba(scserver,
-                              wwn,
-                              True)
+                self._add_hba(scserver, wwn)
         return scserver
 
-    def create_server(self, wwnoriscsiname, isfc=False):
-        """Creates a Dell server object on the Storage Center.
+    def create_server(self, wwnoriscsiname):
+        """Creates a Dell server object on the the Storage Center.
 
         Adds the first HBA identified by wwnoriscsiname to it.
 
-        :param wwnoriscsiname: A list of FC WWNs or iSCSI IQNs associated with
+        :param wwnoriscsiname: FC WWN or iSCSI IQN associated with
                                this Dell server object.
-        :param isfc: Boolean indicating whether this is an FC HBA or not.
         :returns: Dell server object.
         """
 
@@ -1145,9 +1153,7 @@ class StorageCenterApi(object):
             payload['ServerFolder'] = self._get_id(folder)
 
         # create our server
-        r = self.client.post('StorageCenter/ScPhysicalServer',
-                             payload)
-        # 201 expected.
+        r = self.client.post('StorageCenter/ScPhysicalServer', payload)
         if self._check_result(r):
             # Server was created
             scserver = self._first_result(r)
@@ -1155,9 +1161,7 @@ class StorageCenterApi(object):
 
             # Add hba to our server
             if scserver is not None:
-                if not self._add_hba(scserver,
-                                     wwnoriscsiname,
-                                     isfc):
+                if not self._add_hba(scserver, wwnoriscsiname):
                     LOG.error(_LE('Error adding HBA to server'))
                     # Can't have a server without an HBA
                     self._delete_server(scserver)
@@ -1188,9 +1192,7 @@ class StorageCenterApi(object):
             pf = self._get_payload_filter()
             pf.append('scSerialNumber', self.ssn)
             pf.append('instanceId', self._get_id(hba['server']))
-            r = self.client.post('StorageCenter/ScServer/GetList',
-                                 pf.payload)
-            # 200 expected.
+            r = self.client.post('StorageCenter/ScServer/GetList', pf.payload)
             if self._check_result(r):
                 scserver = self._first_result(r)
 
@@ -1213,9 +1215,7 @@ class StorageCenterApi(object):
         pf = self._get_payload_filter()
         pf.append('scSerialNumber', self.ssn)
         pf.append('instanceName', instance_name)
-        r = self.client.post('StorageCenter/ScServerHba/GetList',
-                             pf.payload)
-        # 200 expected.
+        r = self.client.post('StorageCenter/ScServerHba/GetList', pf.payload)
         if self._check_result(r):
             scserverhba = self._first_result(r)
         return scserverhba
@@ -1228,7 +1228,6 @@ class StorageCenterApi(object):
         """
         r = self.client.get('StorageCenter/ScControllerPort/%s/FaultDomainList'
                             % cportid)
-        # 200 expected.
         if self._check_result(r):
             domains = self._get_json(r)
             return domains
@@ -1236,26 +1235,25 @@ class StorageCenterApi(object):
         LOG.error(_LE('Error getting FaultDomainList for %s'), cportid)
         return None
 
-    def _find_fc_initiators(self, scserver):
-        """Returns a list of FC WWNs associated with the specified Dell server.
+    def _find_initiators(self, scserver):
+        """Returns a list of WWNs associated with the specified Dell server.
 
         :param scserver: The Dell backend server object.
-        :returns: A list of FC WWNs associated with this server.
+        :returns: A list of WWNs associated with this server.
         """
         initiators = []
         r = self.client.get('StorageCenter/ScServer/%s/HbaList'
                             % self._get_id(scserver))
-        # 200 expected.
         if self._check_result(r):
             hbas = self._get_json(r)
             for hba in hbas:
                 wwn = hba.get('instanceName')
-                if (hba.get('portType') == 'FibreChannel' and
+                if (hba.get('portType') == self.protocol and
                         wwn is not None):
                     initiators.append(wwn)
         else:
-            LOG.error(_LE('Unable to find FC initiators'))
-        LOG.debug('fc_initiators: %s', initiators)
+            LOG.error(_LE('Unable to find initiators'))
+        LOG.debug('_find_initiators: %s', initiators)
         return initiators
 
     def get_volume_count(self, scserver):
@@ -1266,7 +1264,6 @@ class StorageCenterApi(object):
         """
         r = self.client.get('StorageCenter/ScServer/%s/MappingList'
                             % self._get_id(scserver))
-        # 200 expected.
         if self._check_result(r):
             mappings = self._get_json(r)
             return len(mappings)
@@ -1283,7 +1280,6 @@ class StorageCenterApi(object):
         if scvolume.get('active', False):
             r = self.client.get('StorageCenter/ScVolume/%s/MappingList'
                                 % self._get_id(scvolume))
-            # 200 expected.
             if self._check_result(r):
                 mappings = self._get_json(r)
         else:
@@ -1302,7 +1298,6 @@ class StorageCenterApi(object):
         mapping_profiles = []
         r = self.client.get('StorageCenter/ScVolume/%s/MappingProfileList'
                             % self._get_id(scvolume))
-        # 200 expected.
         if self._check_result(r):
             mapping_profiles = self._get_json(r)
         else:
@@ -1318,15 +1313,10 @@ class StorageCenterApi(object):
         :returns: The controller port object.
         """
         controllerport = None
-        r = self.client.get('StorageCenter/ScControllerPort/%s'
-                            % cportid)
-        # 200 expected.
+        r = self.client.get('StorageCenter/ScControllerPort/%s' % cportid)
         if self._check_result(r):
             controllerport = self._first_result(r)
-        else:
-            LOG.error(_LE('Unable to find controller port: %s'),
-                      cportid)
-        LOG.debug(controllerport)
+        LOG.debug('_find_controller_port: %s', controllerport)
         return controllerport
 
     def find_wwns(self, scvolume, scserver):
@@ -1342,54 +1332,46 @@ class StorageCenterApi(object):
 
         # Make sure we know our server's initiators.  Only return
         # mappings that contain HBA for this server.
-        initiators = self._find_fc_initiators(scserver)
+        initiators = self._find_initiators(scserver)
         # Get our volume mappings
         mappings = self._find_mappings(scvolume)
-        if len(mappings) > 0:
-            # We check each of our mappings.  We want to return
-            # the mapping we have been configured to use.
-            for mapping in mappings:
-                # Find the controller port for this mapping
-                cport = mapping.get('controllerPort')
-                controllerport = self._find_controller_port(
-                    self._get_id(cport))
-                if controllerport is not None:
-                    # This changed case at one point or another.
-                    # Look for both keys.
-                    wwn = controllerport.get('wwn',
-                                             controllerport.get('WWN'))
-                    if wwn:
-                        serverhba = mapping.get('serverHba')
-                        if serverhba:
-                            hbaname = serverhba.get('instanceName')
-                            if hbaname in initiators:
-                                if itmap.get(hbaname) is None:
-                                    itmap[hbaname] = []
-                                itmap[hbaname].append(wwn)
-                                wwns.append(wwn)
-
-                                mappinglun = mapping.get('lun')
-                                if lun is None:
-                                    lun = mappinglun
-                                elif lun != mappinglun:
-                                    LOG.warning(_LW('Inconsistent Luns.'))
-                            else:
-                                LOG.debug('%s not found in initiator list',
-                                          hbaname)
+        # We check each of our mappings.  We want to return
+        # the mapping we have been configured to use.
+        for mapping in mappings:
+            # Find the controller port for this mapping
+            cport = mapping.get('controllerPort')
+            controllerport = self._find_controller_port(self._get_id(cport))
+            if controllerport is not None:
+                # This changed case at one point or another.
+                # Look for both keys.
+                wwn = controllerport.get('wwn', controllerport.get('WWN'))
+                if wwn:
+                    serverhba = mapping.get('serverHba')
+                    if serverhba:
+                        hbaname = serverhba.get('instanceName')
+                        if hbaname in initiators:
+                            if itmap.get(hbaname) is None:
+                                itmap[hbaname] = []
+                            itmap[hbaname].append(wwn)
+                            wwns.append(wwn)
+                            mappinglun = mapping.get('lun')
+                            if lun is None:
+                                lun = mappinglun
+                            elif lun != mappinglun:
+                                LOG.warning(_LW('Inconsistent Luns.'))
                         else:
-                            LOG.debug('serverhba is None.')
+                            LOG.debug('%s not found in initiator list',
+                                      hbaname)
                     else:
-                        LOG.debug('Unable to find port wwn.')
+                        LOG.warning(_LW('_find_wwn: serverhba is None.'))
                 else:
-                    LOG.debug('controllerport is None.')
-        else:
-            LOG.error(_LE('Volume appears unmapped'))
-        LOG.debug(lun)
-        LOG.debug(wwns)
-        LOG.debug(itmap)
-        # TODO(tom_swanson): if we have nothing to return raise an exception
-        # here.  We can't do anything with an unmapped volume.  We shouldn't
-        # pretend we succeeded.
+                    LOG.warning(_LW('_find_wwn: Unable to find port wwn.'))
+            else:
+                LOG.warning(_LW('_find_wwn: controllerport is None.'))
+        LOG.info(_LI('_find_wwns-lun: %(lun)s wwns: %(wwn)s itmap: %(map)s'),
+                 {'lun': lun,
+                  'wwn': wwns,
+                  'map': itmap})
         return lun, wwns, itmap
 
     def _find_active_controller(self, scvolume):
@@ -1402,18 +1384,14 @@ class StorageCenterApi(object):
         :returns: Active controller ID.
         """
         actvctrl = None
-        # TODO(Swanson): We have a function that gets this.  Call that.
-        r = self.client.get('StorageCenter/ScVolume/%s/VolumeConfiguration'
-                            % self._get_id(scvolume))
-        # 200 expected.
-        if self._check_result(r):
-            volconfig = self._first_result(r)
+        volconfig = self._get_volume_configuration(scvolume)
+        if volconfig:
             controller = volconfig.get('controller')
             actvctrl = self._get_id(controller)
         else:
             LOG.error(_LE('Unable to retrieve VolumeConfiguration: %s'),
                       self._get_id(scvolume))
-        LOG.debug('activecontroller %s', actvctrl)
+        LOG.debug('_find_active_controller: %s', actvctrl)
         return actvctrl
 
     def _get_controller_id(self, mapping):
@@ -1429,20 +1407,18 @@ class StorageCenterApi(object):
         iqn = None
         cportid = self._get_id(mapping.get('controllerPort'))
         controllerport = self._find_controller_port(cportid)
-        LOG.debug('controllerport: %s', controllerport)
         if controllerport:
             iqn = controllerport.get('iscsiName')
+        LOG.debug('_get_iqn: %s', iqn)
         return iqn
 
     def _is_virtualport_mode(self):
         isvpmode = False
         r = self.client.get('StorageCenter/ScConfiguration/%s' % self.ssn)
-        # 200 expected.
         if self._check_result(r):
             scconfig = self._get_json(r)
-            if scconfig:
-                isvpmode = True if (scconfig['iscsiTransportMode'] ==
-                                    'VirtualPort') else False
+            if scconfig and scconfig['iscsiTransportMode'] == 'VirtualPort':
+                isvpmode = True
         return isvpmode
 
     def _find_controller_port_iscsi_config(self, cportid):
@@ -1452,16 +1428,13 @@ class StorageCenterApi(object):
         :returns: The controller port object.
         """
         controllerport = None
-        r = self.client.get('StorageCenter/'
-                            'ScControllerPortIscsiConfiguration/%s'
-                            % cportid)
-        # 200 expected.
+        r = self.client.get(
+            'StorageCenter/ScControllerPortIscsiConfiguration/%s' % cportid)
         if self._check_result(r):
             controllerport = self._first_result(r)
         else:
-            LOG.error(_LE('Unable to find controller '
-                          'port iscsi configuration: %s'),
-                      cportid)
+            LOG.error(_LE('_find_controller_port_iscsi_config: '
+                          'Error finding configuration: %s'), cportid)
         return controllerport
 
     def find_iscsi_properties(self, scvolume, ip=None, port=None):
@@ -1475,8 +1448,7 @@ class StorageCenterApi(object):
         :returns: iSCSI property dictionary.
         :raises: VolumeBackendAPIException
         """
-        LOG.debug('enter find_iscsi_properties')
-        LOG.debug('scvolume: %s', scvolume)
+        LOG.debug('find_iscsi_properties: scvolume: %s', scvolume)
         # Our mutable process object.
         pdata = {'active': -1,
                  'up': -1,
@@ -1540,7 +1512,7 @@ class StorageCenterApi(object):
             # Trundle through our mappings.
             for mapping in mappings:
                 # The lun, ro mode and status are in the mapping.
-                LOG.debug('mapping: %s', mapping)
+                LOG.debug('find_iscsi_properties: mapping: %s', mapping)
                 lun = mapping.get('lun')
                 status = mapping.get('status')
                 # Get our IQN from our mapping.
@@ -1553,7 +1525,7 @@ class StorageCenterApi(object):
                     domains = self._get_domains(mapping)
                     if domains:
                         for dom in domains:
-                            LOG.debug('domain: %s', dom)
+                            LOG.debug('find_iscsi_properties: domain: %s', dom)
                             ipaddress = dom.get('targetIpv4Address',
                                                 dom.get('wellKnownIpAddress'))
                             portnumber = dom.get('portNumber')
@@ -1593,7 +1565,8 @@ class StorageCenterApi(object):
             # This shouldn't be able to happen.  Maybe a controller went
             # down in the middle of this so just return the first one and
             # hope the ports are up by the time the connection is attempted.
-            LOG.debug('Volume is not yet active on any controller.')
+            LOG.debug('find_iscsi_properties: '
+                      'Volume is not yet active on any controller.')
             pdata['active'] = 0
 
         data = {'target_discovered': False,
@@ -1604,9 +1577,7 @@ class StorageCenterApi(object):
                 'target_lun': luns[pdata['active']],
                 'target_luns': luns,
                 }
-        LOG.debug('find_iscsi_properties return: %s',
-                  data)
-
+        LOG.debug('find_iscsi_properties: %s', data)
         return data
 
     def map_volume(self, scvolume, scserver):
@@ -1616,7 +1587,7 @@ class StorageCenterApi(object):
         create the Dell server object.
 
         :param scvolume: Storage Center volume object.
-        :param scserver: Storage Center server opbject.
+        :param scserver: Storage Center server object.
         :returns: SC mapping profile or None
         """
         # Make sure we have what we think we have
@@ -1627,19 +1598,21 @@ class StorageCenterApi(object):
             mprofiles = self._find_mapping_profiles(scvolume)
             for mprofile in mprofiles:
                 if self._get_id(mprofile.get('server')) == serverid:
+                    LOG.info(_LI('Volume %(vol)s already mapped to %(srv)s'),
+                             {'vol': scvolume['name'],
+                              'srv': scserver['name']})
                     return mprofile
             # No?  Then map it up.
             payload = {}
             payload['server'] = serverid
-            advanced = {}
-            advanced['MapToDownServerHbas'] = True
-            payload['Advanced'] = advanced
-            r = self.client.post('StorageCenter/ScVolume/%s/MapToServer'
-                                 % volumeid,
-                                 payload)
-            # 200 expected.
+            payload['Advanced'] = {'MapToDownServerHbas': True}
+            r = self.client.post(
+                'StorageCenter/ScVolume/%s/MapToServer' % volumeid, payload)
             if self._check_result(r):
                 # We just return our mapping
+                LOG.info(_LI('Volume %(vol)s mapped to %(srv)s'),
+                         {'vol': scvolume['name'],
+                          'srv': scserver['name']})
                 return self._first_result(r)
 
         # Error out
@@ -1655,7 +1628,7 @@ class StorageCenterApi(object):
         the path defined in cinder.conf.
 
         :param scvolume: Storage Center volume object.
-        :param scserver: Storage Center server opbject.
+        :param scserver: Storage Center server object.
         :returns: True or False.
         """
         rtn = True
@@ -1668,7 +1641,6 @@ class StorageCenterApi(object):
                 if prosrv is not None and self._get_id(prosrv) == serverid:
                     r = self.client.delete('StorageCenter/ScMappingProfile/%s'
                                            % self._get_id(profile))
-                    # 200 expected.
                     if self._check_result(r):
                         # Check our result in the json.
                         result = self._get_json(r)
@@ -1676,13 +1648,15 @@ class StorageCenterApi(object):
                         # 15.3 on up return it in a dict under 'result'.
                         if result is True or (type(result) is dict and
                                               result.get('result')):
-                            LOG.debug('Volume %(vol)s unmapped from %(srv)s',
-                                      {'vol': volumeid,
-                                       'srv': serverid})
+                            LOG.info(
+                                _LI('Volume %(vol)s unmapped from %(srv)s'),
+                                {'vol': scvolume['name'],
+                                 'srv': scserver['name']})
                             continue
 
-                    LOG.error(_LE('Unable to unmap Volume %s'),
-                              volumeid)
+                    LOG.error(_LE('Unable to unmap %(vol)s from %(srv)s'),
+                              {'vol': scvolume['name'],
+                               'srv': scserver['name']})
                     # 1 failed unmap is as good as 100.
                     # Fail it and leave
                     rtn = False
@@ -1699,12 +1673,10 @@ class StorageCenterApi(object):
         """
         storageusage = None
         if self.ssn is not None:
-            r = self.client.get('StorageCenter/StorageCenter/%s/StorageUsage'
-                                % self.ssn)
-            # 200 expected.
+            r = self.client.get(
+                'StorageCenter/StorageCenter/%s/StorageUsage' % self.ssn)
             if self._check_result(r):
                 storageusage = self._get_json(r)
-
         return storageusage
 
     def create_replay(self, scvolume, replayid, expire):
@@ -1735,14 +1707,12 @@ class StorageCenterApi(object):
             r = self.client.post('StorageCenter/ScVolume/%s/CreateReplay'
                                  % self._get_id(scvolume),
                                  payload)
-            # 200 expected.
             if self._check_result(r):
                 replay = self._first_result(r)
 
         # Quick double check.
         if replay is None:
-            LOG.warning(_LW('Unable to create snapshot %s'),
-                        replayid)
+            LOG.warning(_LW('Unable to create snapshot %s'), replayid)
         # Return replay or None.
         return replay
 
@@ -1834,18 +1804,17 @@ class StorageCenterApi(object):
                          replay description.
         :returns: Boolean for success or failure.
         """
+        ret = True
         LOG.debug('Expiring replay %s', replayid)
-        replay = self.find_replay(scvolume,
-                                  replayid)
+        # if we do not have the instanceid then we have to find the replay.
+        replay = self.find_replay(scvolume, replayid)
         if replay is not None:
-            r = self.client.post('StorageCenter/ScReplay/%s/Expire'
-                                 % self._get_id(replay),
-                                 {})
-            # 204 expected.
-            if not self._check_result(r):
-                return False
-        # We either couldn't find it or expired it.
-        return True
+            # expire our replay.
+            r = self.client.post('StorageCenter/ScReplay/%s/Expire' %
+                                 self._get_id(replay), {})
+            ret = self._check_result(r)
+        # If we couldn't find it we call that a success.
+        return ret
 
     def create_view_volume(self, volname, screplay, replay_profile_string):
         """Creates a new volume named volname from the screplay.
@@ -1872,7 +1841,6 @@ class StorageCenterApi(object):
                              % self._get_id(screplay),
                              payload)
         volume = None
-        # 200 expected.
         if self._check_result(r):
             volume = self._first_result(r)
 
@@ -1896,17 +1864,12 @@ class StorageCenterApi(object):
         :param replay_profile_list: List of snapshot profiles.
         :returns: The new volume's Dell volume object.
         """
-        clone = None
-        replay = self.create_replay(scvolume,
-                                    'Cinder Clone Replay',
-                                    60)
+        replay = self.create_replay(scvolume, 'Cinder Clone Replay', 60)
         if replay is not None:
-            clone = self.create_view_volume(volumename,
-                                            replay,
-                                            replay_profile_list)
-        else:
-            LOG.error(_LE('Error: unable to snap replay'))
-        return clone
+            return self.create_view_volume(volumename, replay,
+                                           replay_profile_list)
+        LOG.error(_LE('Error: unable to snap replay'))
+        return None
 
     def expand_volume(self, scvolume, newsize):
         """Expands scvolume to newsize GBs.
@@ -1915,24 +1878,21 @@ class StorageCenterApi(object):
         :param newsize: The new size of the volume object.
         :returns: The updated Dell volume object on success or None on failure.
         """
+        vol = None
         payload = {}
         payload['NewSize'] = '%d GB' % newsize
         r = self.client.post('StorageCenter/ScVolume/%s/ExpandToSize'
                              % self._get_id(scvolume),
                              payload)
-        vol = None
-        # 200 expected.
         if self._check_result(r):
             vol = self._get_json(r)
-
         # More info might be good.
         if vol is not None:
             LOG.debug('Volume expanded: %(name)s %(size)s',
                       {'name': vol['name'],
                        'size': vol['configuredSize']})
         else:
-            LOG.error(_LE('Error expanding volume %s.'),
-                      scvolume['name'])
+            LOG.error(_LE('Error expanding volume %s.'), scvolume['name'])
         return vol
 
     def rename_volume(self, scvolume, name):
@@ -1949,13 +1909,13 @@ class StorageCenterApi(object):
         r = self.client.post('StorageCenter/ScVolume/%s/Modify'
                              % self._get_id(scvolume),
                              payload)
-        # 200 expected.
-        if not self._check_result(r):
-            LOG.error(_LE('Error renaming volume %(original)s to %(name)s'),
-                      {'original': scvolume['name'],
-                       'name': name})
-            return False
-        return True
+        if self._check_result(r):
+            return True
+
+        LOG.error(_LE('Error renaming volume %(original)s to %(name)s'),
+                  {'original': scvolume['name'],
+                   'name': name})
+        return False
 
     def update_storage_profile(self, scvolume, storage_profile):
         """Update a volume's Storage Profile.
@@ -1999,14 +1959,14 @@ class StorageCenterApi(object):
                              '/%s/Modify'
                              % self._get_id(scvolume),
                              payload)
-        # 200 expected.
-        if not self._check_result(r):
-            LOG.error(_LE('Error changing Storage Profile for volume '
-                          '%(original)s to %(name)s'),
-                      {'original': scvolume['name'],
-                       'name': storage_profile})
-            return False
-        return True
+        if self._check_result(r):
+            return True
+
+        LOG.error(_LE('Error changing Storage Profile for volume '
+                      '%(original)s to %(name)s'),
+                  {'original': scvolume['name'],
+                   'name': storage_profile})
+        return False
 
     def _get_user_preferences(self):
         """Gets the preferences and defaults for this user.
@@ -2017,10 +1977,9 @@ class StorageCenterApi(object):
         """
         r = self.client.get('StorageCenter/StorageCenter/%s/UserPreferences' %
                             self.ssn)
-        # 200 expected.
-        if not self._check_result(r):
-            return {}
-        return self._get_json(r)
+        if self._check_result(r):
+            return self._get_json(r)
+        return {}
 
     def _delete_server(self, scserver):
         """Deletes scserver from the backend.
@@ -2058,7 +2017,6 @@ class StorageCenterApi(object):
         pf.append('Name', name)
         r = self.client.post('StorageCenter/ScReplayProfile/GetList',
                              pf.payload)
-        # 200 expected.
         if self._check_result(r):
             profilelist = self._get_json(r)
             if profilelist:
@@ -2102,7 +2060,6 @@ class StorageCenterApi(object):
         self.cg_except_on_no_support()
         r = self.client.delete('StorageCenter/ScReplayProfile/%s' %
                                self._get_id(profile))
-        # 200 is a good return.  Log and leave.
         if self._check_result(r):
             LOG.info(_LI('Profile %s has been deleted.'),
                      profile.get('name'))
@@ -2121,7 +2078,6 @@ class StorageCenterApi(object):
         """
         r = self.client.get('StorageCenter/ScVolume/%s/VolumeConfiguration' %
                             self._get_id(scvolume))
-        # 200 expected.
         if self._check_result(r):
             return self._first_result(r)
         return None
@@ -2161,7 +2117,7 @@ class StorageCenterApi(object):
                           self._get_id(scvolume),
                           profilelist,
                           r)
-                # 200 expected.
+                # Good return?
                 if self._check_result(r):
                     return True
         return False
@@ -2175,7 +2131,8 @@ class StorageCenterApi(object):
         :return: True/False on success/failure.
         """
         for vol in add_volumes:
-            if (self._update_volume_profiles(self.find_volume(vol['id']),
+            scvolume = self.find_volume(vol['id'], vol['provider_id'])
+            if (self._update_volume_profiles(scvolume,
                                              addid=profileid,
                                              removeid=None)):
                 LOG.info(_LI('Added %s to cg.'), vol['id'])
@@ -2193,7 +2150,8 @@ class StorageCenterApi(object):
         :return: True/False on success/failure.
         """
         for vol in remove_volumes:
-            if (self._update_volume_profiles(self.find_volume(vol['id']),
+            scvolume = self.find_volume(vol['id'], vol['provider_id'])
+            if (self._update_volume_profiles(scvolume,
                                              addid=None,
                                              removeid=profileid)):
                 LOG.info(_LI('Removed %s from cg.'), vol['id'])
@@ -2234,7 +2192,6 @@ class StorageCenterApi(object):
         """
         r = self.client.get('StorageCenter/ScReplayProfile/%s/VolumeList' %
                             profileid)
-        # 200 expected.
         if self._check_result(r):
             vols = self._get_json(r)
             for vol in vols:
@@ -2264,7 +2221,6 @@ class StorageCenterApi(object):
                                  'CreateReplay'
                                  % self._get_id(profile),
                                  payload)
-            # 204 expected.
             if self._check_result(r):
                 LOG.info(_LI('CreateReplay success %s'), replayid)
                 return True
@@ -2284,7 +2240,6 @@ class StorageCenterApi(object):
         r = self.client.get(
             'StorageCenter/ScReplayProfile/%s/ConsistencyGroupList'
             % self._get_id(profile))
-        # 200 expected.
         if self._check_result(r):
             cglist = self._get_json(r)
             if cglist and isinstance(cglist, list):
@@ -2343,7 +2298,6 @@ class StorageCenterApi(object):
             r = self.client.post('StorageCenter/ScReplay/%s/Expire'
                                  % instanceid,
                                  {})
-            # 204 expected.
             if not self._check_result(r):
                 return False
         # We either couldn't find it or expired it.
@@ -2383,8 +2337,7 @@ class StorageCenterApi(object):
 
         # If we actually have a place to put our volume create it
         if folder is None:
-            LOG.warning(_LW('Unable to create folder %s'),
-                        self.vfname)
+            LOG.warning(_LW('Unable to create folder %s'), self.vfname)
 
         # Rename and move our volume.
         payload = {}
@@ -2395,7 +2348,6 @@ class StorageCenterApi(object):
         r = self.client.put('StorageCenter/ScVolume/%s' %
                             self._get_id(scvolume),
                             payload)
-        # 200 expected.
         if self._check_result(r):
             return self._get_json(r)
         return None
@@ -2413,7 +2365,7 @@ class StorageCenterApi(object):
 
         :param newname: Name to rename the volume to.
         :param existing: The existing volume dict..
-        :return: Nothing.
+        :return: scvolume.
         :raises: VolumeBackendAPIException, ManageExistingInvalidReference
         """
         vollist = self._get_volume_list(existing.get('source-name'),
@@ -2436,10 +2388,11 @@ class StorageCenterApi(object):
                 raise exception.VolumeBackendAPIException(data=msg)
 
             scvolume = self._import_one(vollist[0], newname)
+            if scvolume:
+                return scvolume
 
-            if not scvolume:
-                msg = _('Unable to manage volume %s') % existing
-                raise exception.VolumeBackendAPIException(data=msg)
+            msg = _('Unable to manage volume %s') % existing
+            raise exception.VolumeBackendAPIException(data=msg)
         elif count > 1:
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing, reason=_('Volume not unique.'))
@@ -2487,7 +2440,6 @@ class StorageCenterApi(object):
         r = self.client.put('StorageCenter/ScVolume/%s' %
                             self._get_id(scvolume),
                             payload)
-        # 200 expected.
         if self._check_result(r):
             LOG.info(_LI('Volume %s unmanaged.'), scvolume['name'])
         else:
@@ -2507,7 +2459,6 @@ class StorageCenterApi(object):
         pf.append('name', qosnode)
         r = self.client.post('StorageCenter/ScReplicationQosNode/GetList',
                              pf.payload)
-        # 200 expected.
         if self._check_result(r):
             nodes = self._get_json(r)
             if len(nodes) > 0:
@@ -2520,7 +2471,6 @@ class StorageCenterApi(object):
                 payload['BandwidthLimited'] = False
                 r = self.client.post('StorageCenter/ScReplicationQosNode',
                                      payload)
-                # 201 expected.
                 if self._check_result(r):
                     return self._get_json(r)
 
@@ -2537,7 +2487,6 @@ class StorageCenterApi(object):
         """
         r = self.client.get('StorageCenter/ScVolume/%s/ReplicationSourceList' %
                             self._get_id(scvolume))
-        # 200 expected.
         if self._check_result(r):
             replications = self._get_json(r)
             for replication in replications:
@@ -2560,7 +2509,6 @@ class StorageCenterApi(object):
         LOG.debug('get_screplication')
         r = self.client.get('StorageCenter/ScVolume/%s/ReplicationSourceList' %
                             self._get_id(scvolume))
-        # 200 expected.
         if self._check_result(r):
             replications = self._get_json(r)
             for replication in replications:
@@ -2584,7 +2532,6 @@ class StorageCenterApi(object):
         """
         replication = self.get_screplication(scvolume, destssn)
         if replication:
-            # TODO(tswanson): Sort out why we cannot send down attributes.
             r = self.client.delete('StorageCenter/ScReplication/%s' %
                                    self._get_id(replication))
             if self._check_result(r):
@@ -2594,18 +2541,16 @@ class StorageCenterApi(object):
                           'dest': destssn})
 
                 return True
-            else:
-                LOG.error(_LE('Unable to delete replication for '
-                              '%(vol)s to %(dest)s.'),
-                          {'vol': scvolume.get('name'),
-                           'dest': destssn})
+            LOG.error(_LE('Unable to delete replication for '
+                          '%(vol)s to %(dest)s.'),
+                      {'vol': scvolume.get('name'),
+                       'dest': destssn})
         return False
 
     def _repl_name(self, name):
         return self.repl_prefix + name
 
     def _get_disk_folder(self, ssn, foldername):
-        # TODO(tswanson): Harden this.
         diskfolder = None
         # If no folder name we just pass through this.
         if foldername:
@@ -2675,7 +2620,7 @@ class StorageCenterApi(object):
                        'destsc': destssn})
         return screpl
 
-    def find_repl_volume(self, guid, destssn, instance_id=None):
+    def _find_repl_volume(self, guid, destssn, instance_id=None):
         """Find our replay destination volume on the destssn.
 
         :param guid: Volume ID.
@@ -2704,8 +2649,8 @@ class StorageCenterApi(object):
     def remove_mappings(self, scvol):
         """Peels all the mappings off of scvol.
 
-        :param scvol:
-        :return:
+        :param scvol: Storage Center volume object.
+        :return: True/False on Success/Failure.
         """
         if scvol:
             r = self.client.post('StorageCenter/ScVolume/%s/Unmap' %
@@ -2714,33 +2659,32 @@ class StorageCenterApi(object):
             return self._check_result(r)
         return False
 
-    def break_replication(self, volumename, destssn):
+    def break_replication(self, volumename, instance_id, destssn):
         """This just breaks the replication.
 
         If we find the source we just delete the replication.  If the source
         is down then we find the destination and unmap it.  Fail pretty much
         every time this goes south.
 
-        :param volumename:
-        :return:
+        :param volumename: Volume name is the guid from the cinder volume.
+        :param instance_id: Storage Center volume object instance id.
+        :param destssn: Destination ssn.
+        :return: Replication SC volume object.
         """
-        ret = False
-        replid = None
-        scvolume = self.find_volume(volumename)
+        replinstanceid = None
+        scvolume = self.find_volume(volumename, instance_id)
         screplication = self.get_screplication(scvolume, destssn)
         # if we got our replication volume we can do this nicely.
         if screplication:
-            replid = screplication['destinationVolume']['instanceId']
-        screplvol = self.find_repl_volume(volumename, destssn, replid)
+            replinstanceid = screplication['destinationVolume']['instanceId']
+        screplvol = self._find_repl_volume(volumename, destssn, replinstanceid)
         # delete_replication fails to delete replication without also
         # stuffing it into the recycle bin.
         # Instead we try to unmap the destination volume which will break
         # the replication but leave the replication object on the SC.
-        ret = self.remove_mappings(screplvol)
-        # If the volume is free of replication.
-        if ret:
+        if self.remove_mappings(screplvol):
             # Try to kill mappings on the source.
             # We don't care that this succeeded or failed.  Just move on.
             self.remove_mappings(scvolume)
 
-        return ret
+        return screplvol

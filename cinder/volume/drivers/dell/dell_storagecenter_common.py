@@ -1,4 +1,4 @@
-#    Copyright 2015 Dell Inc.
+#    Copyright 2016 Dell Inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -63,6 +63,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         self.is_direct_connect = False
         self.active_backend_id = kwargs.get('active_backend_id', None)
         self.failed_over = (self.active_backend_id is not None)
+        self.storage_protocol = 'iSCSI'
 
     def _bytes_to_gb(self, spacestring):
         """Space is returned in a string like ...
@@ -90,7 +91,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         specific helpers.
         """
         self._client = dell_storagecenter_api.StorageCenterApiHelper(
-            self.configuration, self.active_backend_id)
+            self.configuration, self.active_backend_id, self.storage_protocol)
 
     def check_for_setup_error(self):
         """Validates the configuration information."""
@@ -227,21 +228,23 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         scvolume = None
         with self._client.open_connection() as api:
             try:
-                if api.find_sc():
-                    scvolume = api.create_volume(volume_name,
-                                                 volume_size,
-                                                 storage_profile,
-                                                 replay_profile_string)
-                    if scvolume is None:
-                        raise exception.VolumeBackendAPIException(
-                            message=_('Unable to create volume %s') %
-                            volume_name)
+                scvolume = api.create_volume(volume_name,
+                                             volume_size,
+                                             storage_profile,
+                                             replay_profile_string)
+                if scvolume is None:
+                    raise exception.VolumeBackendAPIException(
+                        message=_('Unable to create volume %s') %
+                        volume_name)
 
                 # Update Consistency Group
                 self._add_volume_to_consistency_group(api, scvolume, volume)
 
                 # Create replications. (Or not. It checks.)
                 model_update = self._create_replications(api, volume, scvolume)
+
+                # Save our provider_id.
+                model_update['provider_id'] = scvolume['instanceId']
 
             except Exception:
                 # if we actually created a volume but failed elsewhere
@@ -288,20 +291,22 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         """
         do_repl, sync = self._do_repl(api, volume)
         if do_repl:
-            volume_name = volume.get('id')
-            scvol = api.find_volume(volume_name)
             replication_driver_data = volume.get('replication_driver_data')
-            # This is just a string of ssns separated by commas.
-            ssnstrings = self._split_driver_data(replication_driver_data)
-            # Trundle through these and delete them all.
-            for ssnstring in ssnstrings:
-                ssn = int(ssnstring)
-                if not api.delete_replication(scvol, ssn):
-                    LOG.warning(_LW('Unable to delete replication of '
-                                    'Volume %(vname)s to Storage Center '
-                                    '%(sc)s.'),
-                                {'vname': volume_name,
-                                 'sc': ssnstring})
+            if replication_driver_data:
+                ssnstrings = self._split_driver_data(replication_driver_data)
+                volume_name = volume.get('id')
+                provider_id = volume.get('provider_id')
+                scvol = api.find_volume(volume_name, provider_id)
+                # This is just a string of ssns separated by commas.
+                # Trundle through these and delete them all.
+                for ssnstring in ssnstrings:
+                    ssn = int(ssnstring)
+                    if not api.delete_replication(scvol, ssn):
+                        LOG.warning(_LW('Unable to delete replication of '
+                                        'Volume %(vname)s to Storage Center '
+                                        '%(sc)s.'),
+                                    {'vname': volume_name,
+                                     'sc': ssnstring})
         # If none of that worked or there was nothing to do doesn't matter.
         # Just move on.
 
@@ -309,12 +314,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         deleted = False
         # We use id as our name as it is unique.
         volume_name = volume.get('id')
+        provider_id = volume.get('provider_id')
         LOG.debug('Deleting volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                if api.find_sc():
-                    self._delete_replications(api, volume)
-                    deleted = api.delete_volume(volume_name)
+                self._delete_replications(api, volume)
+                deleted = api.delete_volume(volume_name, provider_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to delete volume %s'),
@@ -330,22 +335,23 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         """Create snapshot"""
         # our volume name is the volume id
         volume_name = snapshot.get('volume_id')
+        # TODO(tswanson): Is there any reason to think this will be set
+        # before I create the snapshot? Doesn't hurt to try to get it.
+        provider_id = snapshot.get('provider_id')
         snapshot_id = snapshot.get('id')
         LOG.debug('Creating snapshot %(snap)s on volume %(vol)s',
                   {'snap': snapshot_id,
                    'vol': volume_name})
         with self._client.open_connection() as api:
-            if api.find_sc():
-                scvolume = api.find_volume(volume_name)
-                if scvolume is not None:
-                    if api.create_replay(scvolume,
-                                         snapshot_id,
-                                         0) is not None:
-                        snapshot['status'] = 'available'
-                        return
-                else:
-                    LOG.warning(_LW('Unable to locate volume:%s'),
-                                volume_name)
+            scvolume = api.find_volume(volume_name, provider_id)
+            if scvolume is not None:
+                replay = api.create_replay(scvolume, snapshot_id, 0)
+                if replay:
+                    return {'status': 'available',
+                            'provider_id': scvolume['instanceId']}
+            else:
+                LOG.warning(_LW('Unable to locate volume:%s'),
+                            volume_name)
 
         snapshot['status'] = 'error_creating'
         msg = _('Failed to create snapshot %s') % snapshot_id
@@ -355,6 +361,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         """Create new volume from other volume's snapshot on appliance."""
         model_update = {}
         scvolume = None
+        volume_name = volume.get('id')
+        src_provider_id = snapshot.get('provider_id')
         src_volume_name = snapshot.get('volume_id')
         # This snapshot could have been created on its own or as part of a
         # cgsnapshot.  If it was a cgsnapshot it will be identified on the Dell
@@ -365,7 +373,6 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         snapshot_id = snapshot.get('cgsnapshot_id')
         if not snapshot_id:
             snapshot_id = snapshot.get('id')
-        volume_name = volume.get('id')
         LOG.debug(
             'Creating new volume %(vol)s from snapshot %(snap)s '
             'from vol %(src)s',
@@ -374,43 +381,42 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
              'src': src_volume_name})
         with self._client.open_connection() as api:
             try:
-                if api.find_sc():
-                    srcvol = api.find_volume(src_volume_name)
-                    if srcvol is not None:
-                        replay = api.find_replay(srcvol,
-                                                 snapshot_id)
-                        if replay is not None:
-                            volume_name = volume.get('id')
-                            # See if we have any extra specs.
-                            specs = self._get_volume_extra_specs(volume)
-                            replay_profile_string = specs.get(
-                                'storagetype:replayprofiles')
-                            scvolume = api.create_view_volume(
-                                volume_name, replay, replay_profile_string)
+                srcvol = api.find_volume(src_volume_name, src_provider_id)
+                if srcvol is not None:
+                    replay = api.find_replay(srcvol, snapshot_id)
+                    if replay is not None:
+                        # See if we have any extra specs.
+                        specs = self._get_volume_extra_specs(volume)
+                        replay_profile_string = specs.get(
+                            'storagetype:replayprofiles')
+                        scvolume = api.create_view_volume(
+                            volume_name, replay, replay_profile_string)
 
-                            # Extend Volume
-                            if scvolume and (volume['size'] >
-                                             snapshot["volume_size"]):
-                                LOG.debug("Resize the new volume to %s.",
-                                          volume['size'])
-                                scvolume = api.expand_volume(scvolume,
-                                                             volume['size'])
+                        # Extend Volume
+                        if scvolume and (volume['size'] >
+                                         snapshot["volume_size"]):
+                            LOG.debug('Resize the new volume to %s.',
+                                      volume['size'])
+                            scvolume = api.expand_volume(scvolume,
+                                                         volume['size'])
+                        if scvolume is None:
+                            raise exception.VolumeBackendAPIException(
+                                message=_('Unable to create volume '
+                                          '%(name)s from %(snap)s.') %
+                                {'name': volume_name,
+                                 'snap': snapshot_id})
 
-                            if scvolume is None:
-                                raise exception.VolumeBackendAPIException(
-                                    message=_('Unable to create volume '
-                                              '%(name)s from %(snap)s.') %
-                                    {'name': volume_name,
-                                     'snap': snapshot_id})
-
-                            # Update Consistency Group
-                            self._add_volume_to_consistency_group(api,
-                                                                  scvolume,
-                                                                  volume)
-                            # Replicate if we are supposed to.
-                            model_update = self._create_replications(api,
-                                                                     volume,
-                                                                     scvolume)
+                        # Update Consistency Group
+                        self._add_volume_to_consistency_group(api,
+                                                              scvolume,
+                                                              volume)
+                        # Replicate if we are supposed to.
+                        model_update = self._create_replications(api,
+                                                                 volume,
+                                                                 scvolume)
+                        # Save our instanceid.
+                        model_update['provider_id'] = (
+                            scvolume['instanceId'])
 
             except Exception:
                 # Clean up after ourselves.
@@ -433,46 +439,46 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         model_update = {}
         scvolume = None
         src_volume_name = src_vref.get('id')
+        src_provider_id = src_vref.get('provider_id')
         volume_name = volume.get('id')
         LOG.debug('Creating cloned volume %(clone)s from volume %(vol)s',
                   {'clone': volume_name,
                    'vol': src_volume_name})
         with self._client.open_connection() as api:
             try:
-                if api.find_sc():
-                    srcvol = api.find_volume(src_volume_name)
-                    if srcvol is not None:
-                        # See if we have any extra specs.
-                        specs = self._get_volume_extra_specs(volume)
-                        replay_profile_string = specs.get(
-                            'storagetype:replayprofiles')
-                        # Create our volume
-                        scvolume = api.create_cloned_volume(
-                            volume_name, srcvol, replay_profile_string)
+                srcvol = api.find_volume(src_volume_name, src_provider_id)
+                if srcvol is not None:
+                    # See if we have any extra specs.
+                    specs = self._get_volume_extra_specs(volume)
+                    replay_profile_string = specs.get(
+                        'storagetype:replayprofiles')
+                    # Create our volume
+                    scvolume = api.create_cloned_volume(
+                        volume_name, srcvol, replay_profile_string)
 
-                        # Extend Volume
-                        if scvolume and volume['size'] > src_vref['size']:
-                            LOG.debug("Resize the new volume to %s.",
-                                      volume['size'])
-                            scvolume = api.expand_volume(scvolume,
-                                                         volume['size'])
+                    # Extend Volume
+                    if scvolume and volume['size'] > src_vref['size']:
+                        LOG.debug('Resize the volume to %s.', volume['size'])
+                        scvolume = api.expand_volume(scvolume, volume['size'])
 
-                        # If either of those didn't work we bail.
-                        if scvolume is None:
-                            raise exception.VolumeBackendAPIException(
-                                message=_('Unable to create volume '
-                                          '%(name)s from %(vol)s.') %
-                                {'name': volume_name,
-                                 'vol': src_volume_name})
+                    # If either of those didn't work we bail.
+                    if scvolume is None:
+                        raise exception.VolumeBackendAPIException(
+                            message=_('Unable to create volume '
+                                      '%(name)s from %(vol)s.') %
+                            {'name': volume_name,
+                             'vol': src_volume_name})
 
-                        # Update Consistency Group
-                        self._add_volume_to_consistency_group(api,
-                                                              scvolume,
-                                                              volume)
-                        # Replicate if we are supposed to.
-                        model_update = self._create_replications(api,
-                                                                 volume,
-                                                                 scvolume)
+                    # Update Consistency Group
+                    self._add_volume_to_consistency_group(api,
+                                                          scvolume,
+                                                          volume)
+                    # Replicate if we are supposed to.
+                    model_update = self._create_replications(api,
+                                                             volume,
+                                                             scvolume)
+                    # Save our provider_id.
+                    model_update['provider_id'] = scvolume['instanceId']
             except Exception:
                 # Clean up after ourselves.
                 self._cleanup_failed_create_volume(api, volume_name)
@@ -492,16 +498,14 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         """delete_snapshot"""
         volume_name = snapshot.get('volume_id')
         snapshot_id = snapshot.get('id')
+        provider_id = snapshot.get('provider_id')
         LOG.debug('Deleting snapshot %(snap)s from volume %(vol)s',
                   {'snap': snapshot_id,
                    'vol': volume_name})
         with self._client.open_connection() as api:
-            if api.find_sc():
-                scvolume = api.find_volume(volume_name)
-                if scvolume is not None:
-                    if api.delete_replay(scvolume,
-                                         snapshot_id):
-                        return
+            scvolume = api.find_volume(volume_name, provider_id)
+            if scvolume and api.delete_replay(scvolume, snapshot_id):
+                return
         # if we are here things went poorly.
         snapshot['status'] = 'error_deleting'
         msg = _('Failed to delete snapshot %s') % snapshot_id
@@ -513,7 +517,6 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         The volume exists on creation and will be visible on
         initialize connection.  So nothing to do here.
         """
-        # TODO(tswanson): Move mapping code here.
         pass
 
     def ensure_export(self, context, volume):
@@ -524,11 +527,11 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         """
         scvolume = None
         volume_name = volume.get('id')
+        provider_id = volume.get('provider_id')
         LOG.debug('Checking existence of volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                if api.find_sc():
-                    scvolume = api.find_volume(volume_name)
+                scvolume = api.find_volume(volume_name, provider_id)
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to ensure export of volume %s'),
@@ -548,15 +551,15 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
     def extend_volume(self, volume, new_size):
         """Extend the size of the volume."""
         volume_name = volume.get('id')
+        provider_id = volume.get('provider_id')
         LOG.debug('Extending volume %(vol)s to %(size)s',
                   {'vol': volume_name,
                    'size': new_size})
         if volume is not None:
             with self._client.open_connection() as api:
-                if api.find_sc():
-                    scvolume = api.find_volume(volume_name)
-                    if api.expand_volume(scvolume, new_size) is not None:
-                        return
+                scvolume = api.find_volume(volume_name, provider_id)
+                if api.expand_volume(scvolume, new_size) is not None:
+                    return
         # If we are here nothing good happened.
         msg = _('Unable to extend volume %s') % volume_name
         raise exception.VolumeBackendAPIException(data=msg)
@@ -574,27 +577,25 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
     def _update_volume_stats(self):
         """Retrieve stats info from volume group."""
         with self._client.open_connection() as api:
-            storageusage = api.get_storage_usage() if api.find_sc() else None
+            storageusage = api.get_storage_usage()
+            if not storageusage:
+                msg = _('Unable to retrieve volume stats.')
+                raise exception.VolumeBackendAPIException(message=msg)
 
             # all of this is basically static for now
             data = {}
             data['volume_backend_name'] = self.backend_name
             data['vendor_name'] = 'Dell'
             data['driver_version'] = self.VERSION
-            data['storage_protocol'] = 'iSCSI'
+            data['storage_protocol'] = self.storage_protocol
             data['reserved_percentage'] = 0
-            data['free_capacity_gb'] = 'unavailable'
-            data['total_capacity_gb'] = 'unavailable'
             data['consistencygroup_support'] = True
-            # In theory if storageusage is None then we should have
-            # blown up getting it.  If not just report unavailable.
-            if storageusage is not None:
-                totalcapacity = storageusage.get('availableSpace')
-                totalcapacitygb = self._bytes_to_gb(totalcapacity)
-                data['total_capacity_gb'] = totalcapacitygb
-                freespace = storageusage.get('freeSpace')
-                freespacegb = self._bytes_to_gb(freespace)
-                data['free_capacity_gb'] = freespacegb
+            totalcapacity = storageusage.get('availableSpace')
+            totalcapacitygb = self._bytes_to_gb(totalcapacity)
+            data['total_capacity_gb'] = totalcapacitygb
+            freespace = storageusage.get('freeSpace')
+            freespacegb = self._bytes_to_gb(freespace)
+            data['free_capacity_gb'] = freespacegb
             data['QoS_support'] = False
             data['replication_enabled'] = self.replication_enabled
             if self.replication_enabled:
@@ -627,22 +628,24 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         # volume to the original volume name.
         original_volume_name = volume.get('id')
         current_name = new_volume.get('id')
+        # We should have this. If we don't we'll set it below.
+        provider_id = new_volume.get('provider_id')
         LOG.debug('update_migrated_volume: %(current)s to %(original)s',
                   {'current': current_name,
                    'original': original_volume_name})
         if original_volume_name:
             with self._client.open_connection() as api:
-                if api.find_sc():
-                    scvolume = api.find_volume(current_name)
-                    if (scvolume and
-                       api.rename_volume(scvolume, original_volume_name)):
-                        # Replicate if we are supposed to.
-                        model_update = self._create_replications(api,
-                                                                 new_volume,
-                                                                 scvolume)
-                        model_update['_name_id'] = None
+                scvolume = api.find_volume(current_name, provider_id)
+                if (scvolume and
+                   api.rename_volume(scvolume, original_volume_name)):
+                    # Replicate if we are supposed to.
+                    model_update = self._create_replications(api,
+                                                             new_volume,
+                                                             scvolume)
+                    model_update['_name_id'] = None
+                    model_update['provider_id'] = scvolume['instanceId']
 
-                        return model_update
+                    return model_update
         # The world was horrible to us so we should error and leave.
         LOG.error(_LE('Unable to rename the logical volume for volume: %s'),
                   original_volume_name)
@@ -1072,17 +1075,25 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     for volume in volumes:
                         model_update = {}
                         if volume.get('replication_driver_data'):
-                            ret = api.break_replication(volume['id'], destssn)
-                            LOG.info(_LI('Failing over volume %(id)s '
-                                         'replication: %(res)s.'),
-                                     {'id': volume['id'],
-                                      'res': ('FAILED', 'SUCCESS')[ret]})
-                            # We should note that we are now failed over.
+                            rvol = api.break_replication(
+                                volume['id'], volume.get('provider_id'),
+                                destssn)
+                            if rvol:
+                                LOG.info(_LI('Success failing over volume %s'),
+                                         volume['id'])
+                            else:
+                                LOG.info(_LI('Failed failing over volume %s'),
+                                         volume['id'])
+
+                            # We should note that we are now failed over
+                            # and that we have a new instanceId.
                             model_update = {
-                                'replication_status': 'failed-over'}
+                                'replication_status': 'failed-over',
+                                'provider_id': rvol['instanceId']}
                         else:
                             # Not a replicated volume. Try to unmap it.
-                            scvolume = api.find_volume(volume['id'])
+                            scvolume = api.find_volume(
+                                volume['id'], volume.get('provider_id'))
                             api.remove_mappings(scvolume)
                             model_update = {'status': 'error'}
                         # Either we are failed over or our status is now error.
@@ -1152,10 +1163,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         backend storage object, raise a ManageExistingInvalidReference
         exception.
         """
-        volume_name = snapshot.get('volume_id')
-        snapshot_id = snapshot.get('id')
         with self._client.open_connection() as api:
             # Find our unmanaged snapshot. This will raise on error.
+            volume_name = snapshot.get('volume_id')
+            snapshot_id = snapshot.get('id')
             screplay = self._get_unmanaged_replay(api, volume_name,
                                                   existing_ref)
             # Manage means update description and update expiration.
@@ -1175,6 +1186,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                      {'exist': screplay.get('description'),
                       'volume': volume_name,
                       'id': snapshot_id})
+            return {'provider_id': screplay['createVolume']['instanceId']}
 
     # NOTE: Can't use abstractmethod before all drivers implement it
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
@@ -1202,11 +1214,13 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         NOTE: We do set the expire countdown to 1 day. Once a snapshot is
               unmanaged it will expire 24 hours later.
         """
-        volume_name = snapshot.get('volume_id')
-        snapshot_id = snapshot.get('id')
         with self._client.open_connection() as api:
+            snapshot_id = snapshot.get('id')
+            # provider_id is the snapshot's parent volume's instanceId.
+            provider_id = snapshot.get('provider_id')
+            volume_name = snapshot.get('volume_id')
             # Find our volume.
-            scvolume = api.find_volume(volume_name)
+            scvolume = api.find_volume(volume_name, provider_id)
             if not scvolume:
                 # Didn't find it.
                 msg = (_('unmanage_snapshot: Cannot find volume id %s')

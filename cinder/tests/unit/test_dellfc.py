@@ -17,6 +17,7 @@ import mock
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.dell import dell_storagecenter_fc
 
@@ -172,9 +173,6 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           'wwpns': ['21000024ff30441c', '21000024ff30441d']}
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -182,6 +180,9 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                        return_value=SCSERVER)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume',
                        return_value=VOLUME)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'map_volume',
@@ -198,14 +199,14 @@ class DellSCSanFCDriverTestCase(test.TestCase):
     def test_initialize_connection(self,
                                    mock_find_wwns,
                                    mock_map_volume,
+                                   mock_get_volume,
                                    mock_find_volume,
                                    mock_create_server,
                                    mock_find_server,
-                                   mock_find_sc,
                                    mock_close_connection,
                                    mock_open_connection,
                                    mock_init):
-        volume = {'id': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         res = self.driver.initialize_connection(volume, connector)
         expected = {'data':
@@ -221,17 +222,17 @@ class DellSCSanFCDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, res, 'Unexpected return data')
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_any_call(self.volume_name)
-        assert mock_find_volume.call_count == 2
+        mock_find_volume.assert_called_once_with(fake.volume_id, None)
+        mock_get_volume.assert_called_once_with(self.VOLUME[u'instanceId'])
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume',
                        return_value=VOLUME)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'map_volume',
@@ -242,22 +243,19 @@ class DellSCSanFCDriverTestCase(test.TestCase):
     def test_initialize_connection_no_wwns(self,
                                            mock_find_wwns,
                                            mock_map_volume,
+                                           mock_get_volume,
                                            mock_find_volume,
                                            mock_find_server,
-                                           mock_find_sc,
                                            mock_close_connection,
                                            mock_open_connection,
                                            mock_init):
-        volume = {'id': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=None)
@@ -279,20 +277,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                              mock_find_volume,
                                              mock_create_server,
                                              mock_find_server,
-                                             mock_find_sc,
                                              mock_close_connection,
                                              mock_open_connection,
                                              mock_init):
-        volume = {'id': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -310,20 +304,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                                  mock_map_volume,
                                                  mock_find_volume,
                                                  mock_find_server,
-                                                 mock_find_sc,
                                                  mock_close_connection,
                                                  mock_open_connection,
                                                  mock_init):
-        volume = {'name': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=12345)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -341,21 +331,17 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                                 mock_map_volume,
                                                 mock_find_volume,
                                                 mock_find_server,
-                                                mock_find_sc,
                                                 mock_close_connection,
                                                 mock_open_connection,
                                                 mock_init):
         # Test case where map_volume returns None (no mappings)
-        volume = {'id': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -383,11 +369,10 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                   mock_unmap_volume,
                                   mock_find_volume,
                                   mock_find_server,
-                                  mock_find_sc,
                                   mock_close_connection,
                                   mock_open_connection,
                                   mock_init):
-        volume = {'id': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
@@ -395,9 +380,6 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                     'data': {}}
         self.assertEqual(expected, res, 'Unexpected return data')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=None)
@@ -425,20 +407,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                             mock_unmap_volume,
                                             mock_find_volume,
                                             mock_find_server,
-                                            mock_find_sc,
                                             mock_close_connection,
                                             mock_open_connection,
                                             mock_init):
-        volume = {'name': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -466,20 +444,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                             mock_unmap_volume,
                                             mock_find_volume,
                                             mock_find_server,
-                                            mock_find_sc,
                                             mock_close_connection,
                                             mock_open_connection,
                                             mock_init):
-        volume = {'name': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -503,11 +477,10 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                           mock_unmap_volume,
                                           mock_find_volume,
                                           mock_find_server,
-                                          mock_find_sc,
                                           mock_close_connection,
                                           mock_open_connection,
                                           mock_init):
-        volume = {'name': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         # self.assertRaises(exception.VolumeBackendAPIException,
         #                  self.driver.terminate_connection,
@@ -518,9 +491,6 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                     'data': {}}
         self.assertEqual(expected, res, 'Unexpected return data')
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -548,20 +518,16 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                           mock_unmap_volume,
                                           mock_find_volume,
                                           mock_find_server,
-                                          mock_find_sc,
                                           mock_close_connection,
                                           mock_open_connection,
                                           mock_init):
-        volume = {'name': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
                           volume,
                           connector)
 
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -589,12 +555,11 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                                  mock_unmap_volume,
                                                  mock_find_volume,
                                                  mock_find_server,
-                                                 mock_find_sc,
                                                  mock_close_connection,
                                                  mock_open_connection,
                                                  mock_init):
         # Test case where get_volume_count is zero
-        volume = {'id': self.volume_name}
+        volume = {'id': fake.volume_id}
         connector = self.connector
         res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
@@ -608,14 +573,10 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         self.assertEqual(expected, res, 'Unexpected return data')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'get_storage_usage',
                        return_value={'availableSpace': 100, 'freeSpace': 50})
     def test_update_volume_stats_with_refresh(self,
                                               mock_get_storage_usage,
-                                              mock_find_sc,
                                               mock_close_connection,
                                               mock_open_connection,
                                               mock_init):
@@ -624,14 +585,10 @@ class DellSCSanFCDriverTestCase(test.TestCase):
         mock_get_storage_usage.assert_called_once_with()
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'find_sc',
-                       return_value=64702)
-    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'get_storage_usage',
                        return_value={'availableSpace': 100, 'freeSpace': 50})
     def test_get_volume_stats_no_refresh(self,
                                          mock_get_storage_usage,
-                                         mock_find_sc,
                                          mock_close_connection,
                                          mock_open_connection,
                                          mock_init):
