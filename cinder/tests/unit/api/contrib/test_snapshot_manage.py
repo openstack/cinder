@@ -20,6 +20,7 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_service
 
 
@@ -32,8 +33,8 @@ def app():
 
 
 def volume_get(self, context, volume_id, viewable_admin_meta=False):
-    if volume_id == 'fake_volume_id':
-        return {'id': 'fake_volume_id', 'name': 'fake_volume_name',
+    if volume_id == fake.VOLUME_ID:
+        return {'id': fake.VOLUME_ID, 'name': 'fake_volume_name',
                 'host': 'fake_host'}
     raise exception.VolumeNotFound(volume_id=volume_id)
 
@@ -56,11 +57,12 @@ class SnapshotManageTest(test.TestCase):
 
     def _get_resp(self, body):
         """Helper to execute an os-snapshot-manage API call."""
-        req = webob.Request.blank('/v2/fake/os-snapshot-manage')
+        req = webob.Request.blank('/v2/%s/os-snapshot-manage' %
+                                  fake.PROJECT_ID)
         req.method = 'POST'
         req.headers['Content-Type'] = 'application/json'
-        req.environ['cinder.context'] = context.RequestContext('admin',
-                                                               'fake',
+        req.environ['cinder.context'] = context.RequestContext(fake.USER_ID,
+                                                               fake.PROJECT_ID,
                                                                True)
         req.body = jsonutils.dump_as_bytes(body)
         res = req.get_response(app())
@@ -78,12 +80,12 @@ class SnapshotManageTest(test.TestCase):
         called with the correct arguments, and that we return the correct HTTP
         code to the caller.
         """
-        ctxt = context.RequestContext('admin', 'fake', True)
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         mock_db.return_value = fake_service.fake_service_obj(
             ctxt,
             binary='cinder-volume')
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
 
-        body = {'snapshot': {'volume_id': 'fake_volume_id', 'ref': 'fake_ref'}}
         res = self._get_resp(body)
         self.assertEqual(202, res.status_int, res)
 
@@ -96,7 +98,7 @@ class SnapshotManageTest(test.TestCase):
         # Check the create_snapshot_in_db was called with correct arguments.
         self.assertEqual(1, mock_create_snapshot.call_count)
         args = mock_create_snapshot.call_args[0]
-        self.assertEqual('fake_volume_id', args[1].get('id'))
+        self.assertEqual(fake.VOLUME_ID, args[1].get('id'))
 
         # Check the volume_rpcapi.manage_existing_snapshot was called with
         # correct arguments.
@@ -112,13 +114,13 @@ class SnapshotManageTest(test.TestCase):
 
     def test_manage_snapshot_missing_ref(self):
         """Test correct failure when the ref is not specified."""
-        body = {'snapshot': {'volume_id': 'fake_volume_id'}}
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID}}
         res = self._get_resp(body)
         self.assertEqual(400, res.status_int)
 
     def test_manage_snapshot_error_body(self):
         """Test correct failure when body is invaild."""
-        body = {'error_snapshot': {'volume_id': 'fake_volume_id'}}
+        body = {'error_snapshot': {'volume_id': fake.VOLUME_ID}}
         res = self._get_resp(body)
         self.assertEqual(400, res.status_int)
 

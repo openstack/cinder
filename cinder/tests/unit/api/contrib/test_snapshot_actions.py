@@ -16,23 +16,20 @@ import mock
 from oslo_serialization import jsonutils
 import webob
 
+from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit import fake_constants as fake
 
 
 def stub_snapshot_get(context, snapshot_id):
     snapshot = stubs.stub_snapshot(snapshot_id)
-    if snapshot_id == 3:
-        snapshot['status'] = 'error'
-    elif snapshot_id == 1:
+    if snapshot_id == fake.SNAPSHOT_ID:
         snapshot['status'] = 'creating'
-    elif snapshot_id == 7:
-        snapshot['status'] = 'available'
     else:
-        snapshot['status'] = 'creating'
-
+        snapshot['status'] = 'error'
     return snapshot
 
 
@@ -40,6 +37,8 @@ class SnapshotActionsTest(test.TestCase):
 
     def setUp(self):
         super(SnapshotActionsTest, self).setUp()
+        self.user_ctxt = context.RequestContext(
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True)
 
     @mock.patch('cinder.db.snapshot_update', autospec=True)
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
@@ -47,12 +46,14 @@ class SnapshotActionsTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status(self, metadata_get, *args):
         body = {'os-update_snapshot_status': {'status': 'available'}}
-        req = webob.Request.blank('/v2/fake/snapshots/1/action')
+        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, fake.SNAPSHOT_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         self.assertEqual(202, res.status_int)
 
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
@@ -60,21 +61,25 @@ class SnapshotActionsTest(test.TestCase):
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status_invalid_status(self, metadata_get, *args):
         body = {'os-update_snapshot_status': {'status': 'in-use'}}
-        req = webob.Request.blank('/v2/fake/snapshots/1/action')
+        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, fake.SNAPSHOT_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         self.assertEqual(400, res.status_int)
 
     def test_update_snapshot_status_without_status(self):
         self.stubs.Set(db, 'snapshot_get', stub_snapshot_get)
         body = {'os-update_snapshot_status': {}}
-        req = webob.Request.blank('/v2/fake/snapshots/1/action')
+        req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
+            fake.PROJECT_ID, fake.SNAPSHOT_ID))
         req.method = "POST"
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        res = req.get_response(fakes.wsgi_app())
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
         self.assertEqual(400, res.status_int)
