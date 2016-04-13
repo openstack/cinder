@@ -202,6 +202,10 @@ class RPCAPI(object):
             # NOTE(dulek): This means that one of the services is Liberty,
             # we should cap to it's RPC version.
             version_cap = LIBERTY_RPC_VERSIONS[self.BINARY]
+        elif not version_cap:
+            # If there is no service we assume they will come up later and will
+            # have the same version as we do.
+            version_cap = self.RPC_API_VERSION
         LOG.info(_LI('Automatically selected %(binary)s RPC version '
                      '%(version)s as minimum service version.'),
                  {'binary': self.BINARY, 'version': version_cap})
@@ -215,6 +219,10 @@ class RPCAPI(object):
 
         version_cap = objects.Service.get_minimum_obj_version(
             cinder.context.get_admin_context(), self.BINARY)
+        # If there is no service we assume they will come up later and will
+        # have the same version as we do.
+        if not version_cap:
+            version_cap = base.OBJ_VERSIONS.get_current()
         LOG.info(_LI('Automatically selected %(binary)s objects version '
                      '%(version)s as minimum service version.'),
                  {'binary': self.BINARY, 'version': version_cap})
