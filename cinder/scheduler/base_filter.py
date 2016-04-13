@@ -17,6 +17,7 @@
 Filter support
 """
 from oslo_log import log as logging
+import six
 
 from cinder.i18n import _LI
 from cinder.scheduler import base_handler
@@ -63,6 +64,28 @@ class BaseFilterHandler(base_handler.BaseHandler):
     This class should be subclassed where one needs to use filters.
     """
 
+    def _log_filtration(self, full_filter_results,
+                        part_filter_results, filter_properties):
+        # Log the filtration history
+        rspec = filter_properties.get("request_spec", {})
+        msg_dict = {"vol_id": rspec.get("volume_id", ""),
+                    "str_results": six.text_type(full_filter_results),
+                    }
+        full_msg = ("Filtering removed all hosts for the request with "
+                    "volume ID "
+                    "'%(vol_id)s'. Filter results: %(str_results)s"
+                    ) % msg_dict
+        msg_dict["str_results"] = ', '.join(
+            _LI("%(cls_name)s: (start: %(start)s, end: %(end)s)") % {
+                "cls_name": value[0], "start": value[1], "end": value[2]}
+            for value in part_filter_results)
+        part_msg = _LI("Filtering removed all hosts for the request with "
+                       "volume ID "
+                       "'%(vol_id)s'. Filter results: %(str_results)s"
+                       ) % msg_dict
+        LOG.debug(full_msg)
+        LOG.info(part_msg)
+
     def get_filtered_objects(self, filter_classes, objs,
                              filter_properties, index=0):
         """Get objects after filter
@@ -77,21 +100,37 @@ class BaseFilterHandler(base_handler.BaseHandler):
         """
         list_objs = list(objs)
         LOG.debug("Starting with %d host(s)", len(list_objs))
+        # The 'part_filter_results' list just tracks the number of hosts
+        # before and after the filter, unless the filter returns zero
+        # hosts, in which it records the host/nodename for the last batch
+        # that was removed. Since the full_filter_results can be very large,
+        # it is only recorded if the LOG level is set to debug.
+        part_filter_results = []
+        full_filter_results = []
         for filter_cls in filter_classes:
             cls_name = filter_cls.__name__
+            start_count = len(list_objs)
             filter_class = filter_cls()
 
             if filter_class.run_filter_for_index(index):
                 objs = filter_class.filter_all(list_objs, filter_properties)
                 if objs is None:
-                    LOG.debug("Filter %(cls_name)s says to stop filtering",
-                              {'cls_name': cls_name})
-                    return
-                list_objs = list(objs)
-                msg = (_LI("Filter %(cls_name)s returned %(obj_len)d host(s)")
-                       % {'cls_name': cls_name, 'obj_len': len(list_objs)})
-                if not list_objs:
-                    LOG.info(msg)
+                    LOG.info(_LI("Filter %s returned 0 hosts"), cls_name)
+                    full_filter_results.append((cls_name, None))
+                    list_objs = None
                     break
-                LOG.debug(msg)
+
+                list_objs = list(objs)
+                end_count = len(list_objs)
+                part_filter_results.append((cls_name, start_count, end_count))
+                remaining = [getattr(obj, "host", obj)
+                             for obj in list_objs]
+                full_filter_results.append((cls_name, remaining))
+
+                LOG.debug("Filter %(cls_name)s returned "
+                          "%(obj_len)d host(s)",
+                          {'cls_name': cls_name, 'obj_len': len(list_objs)})
+        if not list_objs:
+            self._log_filtration(full_filter_results,
+                                 part_filter_results, filter_properties)
         return list_objs

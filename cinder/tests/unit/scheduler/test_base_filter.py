@@ -17,7 +17,9 @@ import mock
 from oslotest import moxstubout
 
 from cinder.scheduler import base_filter
+from cinder.scheduler import host_manager
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 
 
 class TestBaseFilter(test.TestCase):
@@ -95,6 +97,18 @@ class FakeFilter5(BaseFakeFilter):
     pass
 
 
+class FilterA(base_filter.BaseFilter):
+    def filter_all(self, list_objs, filter_properties):
+        # return all but the first object
+        return list_objs[1:]
+
+
+class FilterB(base_filter.BaseFilter):
+    def filter_all(self, list_objs, filter_properties):
+        # return an empty list
+        return None
+
+
 class FakeExtensionManager(list):
 
     def __init__(self, namespace):
@@ -166,3 +180,32 @@ class TestBaseFilterHandler(test.TestCase):
             result = self._get_filtered_objects(filter_classes, index=2)
             self.assertEqual(filter_objs_expected, result)
             self.assertEqual(1, fake5_filter_all.call_count)
+
+    def test_get_filtered_objects_info_and_debug_log_none_returned(self):
+
+        all_filters = [FilterA, FilterA, FilterB]
+        fake_hosts = [host_manager.HostState('fake_host%s' % x)
+                      for x in range(1, 4)]
+
+        filt_props = {"request_spec": {'volume_id': fake.VOLUME_ID,
+                      'volume_properties': {'project_id': fake.PROJECT_ID,
+                                            'size': 2048,
+                                            'host': 'host4'}}}
+        with mock.patch.object(base_filter, 'LOG') as mock_log:
+            result = self.handler.get_filtered_objects(
+                all_filters, fake_hosts, filt_props)
+            self.assertFalse(result)
+            msg = "with volume ID '%s'" % fake.VOLUME_ID
+            # FilterA should leave Host1 and Host2; FilterB should leave None.
+            exp_output = ("FilterA: (start: 3, end: 2), "
+                          "FilterA: (start: 2, end: 1)")
+            cargs = mock_log.info.call_args[0][0]
+            self.assertIn(msg, cargs)
+            self.assertIn(exp_output, cargs)
+
+            exp_output = ("[('FilterA', ['fake_host2', 'fake_host3']), "
+                          "('FilterA', ['fake_host3']), "
+                          + "('FilterB', None)]")
+            cargs = mock_log.debug.call_args[0][0]
+            self.assertIn(msg, cargs)
+            self.assertIn(exp_output, cargs)
