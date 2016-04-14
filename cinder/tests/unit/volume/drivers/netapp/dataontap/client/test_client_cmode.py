@@ -947,6 +947,122 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_bytes, actual_bytes)
 
+    def test_check_cluster_api(self):
+
+        self.client.features.USER_CAPABILITY_LIST = True
+        mock_check_cluster_api_legacy = self.mock_object(
+            self.client, '_check_cluster_api_legacy')
+        mock_check_cluster_api = self.mock_object(
+            self.client, '_check_cluster_api', mock.Mock(return_value=True))
+
+        result = self.client.check_cluster_api('object', 'operation', 'api')
+
+        self.assertTrue(result)
+        self.assertFalse(mock_check_cluster_api_legacy.called)
+        mock_check_cluster_api.assert_called_once_with(
+            'object', 'operation', 'api')
+
+    def test_check_cluster_api_legacy(self):
+
+        self.client.features.USER_CAPABILITY_LIST = False
+        mock_check_cluster_api_legacy = self.mock_object(
+            self.client, '_check_cluster_api_legacy',
+            mock.Mock(return_value=True))
+        mock_check_cluster_api = self.mock_object(
+            self.client, '_check_cluster_api')
+
+        result = self.client.check_cluster_api('object', 'operation', 'api')
+
+        self.assertTrue(result)
+        self.assertFalse(mock_check_cluster_api.called)
+        mock_check_cluster_api_legacy.assert_called_once_with('api')
+
+    def test__check_cluster_api(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.SYSTEM_USER_CAPABILITY_GET_ITER_RESPONSE)
+        self.mock_send_request.return_value = api_response
+
+        result = self.client._check_cluster_api('object', 'operation', 'api')
+
+        system_user_capability_get_iter_args = {
+            'query': {
+                'capability-info': {
+                    'object-name': 'object',
+                    'operation-list': {
+                        'operation-info': {
+                            'name': 'operation',
+                        },
+                    },
+                },
+            },
+            'desired-attributes': {
+                'capability-info': {
+                    'operation-list': {
+                        'operation-info': {
+                            'api-name': None,
+                        },
+                    },
+                },
+            },
+        }
+        self.mock_send_request.assert_called_once_with(
+            'system-user-capability-get-iter',
+            system_user_capability_get_iter_args,
+            False)
+
+        self.assertTrue(result)
+
+    @ddt.data(fake_client.SYSTEM_USER_CAPABILITY_GET_ITER_RESPONSE,
+              fake_client.NO_RECORDS_RESPONSE)
+    def test__check_cluster_api_not_found(self, response):
+
+        api_response = netapp_api.NaElement(response)
+        self.mock_send_request.return_value = api_response
+
+        result = self.client._check_cluster_api('object', 'operation', 'api4')
+
+        self.assertFalse(result)
+
+    @ddt.data('volume-get-iter', 'volume-get', 'aggr-options-list-info')
+    def test__check_cluster_api_legacy(self, api):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_send_request.return_value = api_response
+
+        result = self.client._check_cluster_api_legacy(api)
+
+        self.assertTrue(result)
+        self.mock_send_request.assert_called_once_with(api,
+                                                       enable_tunneling=False)
+
+    @ddt.data(netapp_api.EAPIPRIVILEGE, netapp_api.EAPINOTFOUND)
+    def test__check_cluster_api_legacy_insufficient_privileges(self, code):
+
+        self.mock_send_request.side_effect = netapp_api.NaApiError(code=code)
+
+        result = self.client._check_cluster_api_legacy('volume-get-iter')
+
+        self.assertFalse(result)
+        self.mock_send_request.assert_called_once_with('volume-get-iter',
+                                                       enable_tunneling=False)
+
+    def test__check_cluster_api_legacy_api_error(self):
+
+        self.mock_send_request.side_effect = netapp_api.NaApiError()
+
+        result = self.client._check_cluster_api_legacy('volume-get-iter')
+
+        self.assertTrue(result)
+        self.mock_send_request.assert_called_once_with('volume-get-iter',
+                                                       enable_tunneling=False)
+
+    def test__check_cluster_api_legacy_invalid_api(self):
+
+        self.assertRaises(ValueError,
+                          self.client._check_cluster_api_legacy,
+                          'fake_api')
+
     def test_get_operational_network_interface_addresses(self):
         expected_result = ['1.2.3.4', '99.98.97.96']
         api_response = netapp_api.NaElement(

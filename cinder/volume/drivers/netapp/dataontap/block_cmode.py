@@ -38,6 +38,7 @@ from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
+from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -77,10 +78,11 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         self.stale_vols = set()
         self.perf_library = perf_cmode.PerformanceCmodeLibrary(
             self.zapi_client)
+        self.ssc_library = capabilities.CapabilitiesLibrary(self.zapi_client)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
-        ssc_cmode.check_ssc_api_permissions(self.zapi_client)
+        self.ssc_library.check_api_permissions()
         ssc_cmode.refresh_cluster_ssc(self, self.zapi_client.get_connection(),
                                       self.vserver, synchronous=True)
         if not self._get_filtered_pools():

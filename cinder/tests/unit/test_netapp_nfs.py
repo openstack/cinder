@@ -41,7 +41,6 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import utils
 
 
@@ -157,6 +156,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.mock_object(nfs_base, 'LOG')
         self._driver = netapp_nfs_cmode.NetAppCmodeNfsDriver(**kwargs)
         self._driver.zapi_client = mock.Mock()
+        self._driver.ssc_library = mock.Mock()
         config = self._driver.configuration
         config.netapp_vserver = FAKE_VSERVER
 
@@ -220,13 +220,11 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_super_do_setup.assert_called_once_with(context)
 
     @mock.patch.object(nfs_base.NetAppNfsDriver, 'check_for_setup_error')
-    @mock.patch.object(ssc_cmode, 'check_ssc_api_permissions')
-    def test_check_for_setup_error(self, mock_ssc_api_permission_check,
-                                   mock_super_check_for_setup_error):
+    def test_check_for_setup_error(self, mock_super_check_for_setup_error):
         self._driver.zapi_client = mock.Mock()
         self._driver.check_for_setup_error()
-        mock_ssc_api_permission_check.assert_called_once_with(
-            self._driver.zapi_client)
+        (self._driver.ssc_library.check_api_permissions.
+         assert_called_once_with())
         mock_super_check_for_setup_error.assert_called_once_with()
 
     def _prepare_clone_mock(self, status):

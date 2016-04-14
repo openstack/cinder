@@ -32,7 +32,6 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import nfs_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume import utils as volume_utils
@@ -55,6 +54,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                 self.driver.vserver = fake.VSERVER_NAME
                 self.driver.ssc_enabled = True
                 self.driver.perf_library = mock.Mock()
+                self.driver.ssc_library = mock.Mock()
                 self.driver.zapi_client = mock.Mock()
 
     def get_config_cmode(self):
@@ -172,16 +172,15 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(
             nfs_base.NetAppNfsDriver, 'check_for_setup_error')
-        mock_check_ssc_api_permissions = self.mock_object(
-            ssc_cmode, 'check_ssc_api_permissions')
         mock_start_periodic_tasks = self.mock_object(
             self.driver, '_start_periodic_tasks')
+        mock_check_api_permissions = self.mock_object(
+            self.driver.ssc_library, 'check_api_permissions')
 
         self.driver.check_for_setup_error()
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
-        mock_check_ssc_api_permissions.assert_called_once_with(
-            self.driver.zapi_client)
+        mock_check_api_permissions.assert_called_once_with()
         self.assertEqual(1, mock_start_periodic_tasks.call_count)
 
     def test_delete_volume(self):

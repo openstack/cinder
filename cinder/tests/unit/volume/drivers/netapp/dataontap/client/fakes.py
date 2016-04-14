@@ -628,6 +628,23 @@ VOLUME_GET_ITER_RESPONSE = etree.XML("""
     'total_size': VOLUME_SIZE_TOTAL,
 })
 
+SYSTEM_USER_CAPABILITY_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <capability-info>
+        <object-name>object</object-name>
+        <operation-list>
+          <operation-info>
+            <api-name>api,api2,api3</api-name>
+            <name>operation</name>
+          </operation-info>
+        </operation-list>
+      </capability-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
 PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS = [
     'SETUP', 'PRE_P0', 'P0_SNAP_DEL', 'P1_CLEAN', 'P1_QUOTA', 'IPU_DISK_ADD',
     'P2V_INOFILE', 'P2V_INO_PUB', 'P2V_INO_PRI', 'P2V_FSINFO', 'P2V_DLOG1',
