@@ -25,21 +25,21 @@ from cinder import test
 object_data = {
     'Backup': '1.4-bcd1797dc2f3e17a46571525e9dbec30',
     'BackupImport': '1.4-bcd1797dc2f3e17a46571525e9dbec30',
-    'BackupList': '1.0-24591dabe26d920ce0756fe64cd5f3aa',
+    'BackupList': '1.0-7350483276ddb74960c8c39b69192eaa',
     'CGSnapshot': '1.0-de2586a31264d7647f40c762dece9d58',
     'CGSnapshotList': '1.0-e8c3f4078cd0ee23487b34d173eec776',
     'ConsistencyGroup': '1.2-de280886bd04d7e3184c1f7c3a7e2074',
     'ConsistencyGroupList': '1.1-73916823b697dfa0c7f02508d87e0f28',
     'Service': '1.3-66c8e1683f58546c54551e9ff0a3b111',
-    'ServiceList': '1.1-cb758b200f0a3a90efabfc5aa2ffb627',
+    'ServiceList': '1.1-07d2be494d704784ad2af4d4c91e68e5',
     'Snapshot': '1.1-ac41f2fe2fb0e34127155d1ec6e4c7e0',
-    'SnapshotList': '1.0-71661e7180ef6cc51501704a9bea4bf1',
+    'SnapshotList': '1.0-58441afd20ddf9417b8879aa6de1ee6f',
     'Volume': '1.3-049e3e5dc411b1a4deb7d6ee4f1ad5ef',
+    'VolumeList': '1.1-8859f973dc02e9eb4582063a171bd0f1',
     'VolumeAttachment': '1.0-8fc9a9ac6f554fdf2a194d25dbf28a3b',
-    'VolumeAttachmentList': '1.0-307d2b6c8dd55ef854f6386898e9e98e',
-    'VolumeList': '1.1-03ba6cb8c546683e64e15c50042cb1a3',
+    'VolumeAttachmentList': '1.0-4ef79b3824e5d1717ebe0d0558ddff96',
     'VolumeType': '1.0-dd980cfd1eef2dcce941a981eb469fc8',
-    'VolumeTypeList': '1.1-8a1016c03570dc13b9a33fe04a6acb2c',
+    'VolumeTypeList': '1.1-68a4549e98563caec82a2018638fa69c',
 }
 
 
