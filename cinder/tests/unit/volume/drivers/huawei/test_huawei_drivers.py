@@ -281,7 +281,8 @@ FAKE_GET_LOGIN_STORAGE_RESPONSE = """
     "data": {
         "username": "admin",
         "iBaseToken": "2001031430",
-        "deviceid": "210235G7J20000000000"
+        "deviceid": "210235G7J20000000000",
+        "accountstate": 2
     }
 }
 """
@@ -2229,6 +2230,32 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
     def test_login_success(self):
         device_id = self.driver.client.login()
         self.assertEqual('210235G7J20000000000', device_id)
+
+    @ddt.data(constants.PWD_EXPIRED, constants.PWD_RESET)
+    def test_login_password_expires_and_reset_fail(self, state):
+        with mock.patch.object(self.driver.client, 'logout') as mock_logout:
+            self.mock_object(FakeClient, 'do_call',
+                             mock.Mock(return_value={"error": {"code": 0},
+                                       "data": {
+                                       "username": "admin",
+                                       "iBaseToken": "2001031430",
+                                       "deviceid": "210235G7J20000000000",
+                                       "accountstate": state}}))
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              self.driver.client.login)
+            mock_logout.assert_called_once_with()
+
+    def test_login_logout_fail(self):
+        login_info = {"error": {"code": 0},
+                      "data": {"username": "admin",
+                               "iBaseToken": "2001031430",
+                               "deviceid": "210235G7J20000000000",
+                               "accountstate": 3}}
+        logout_info = {"error": {"code": 1}, "data": {}}
+        self.mock_object(FakeClient, 'do_call',
+                         mock.Mock(side_effect=[login_info, logout_info]))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.client.login)
 
     def test_check_volume_exist_on_array(self):
         self.mock_object(rest_client.RestClient, 'get_lun_id_by_name',

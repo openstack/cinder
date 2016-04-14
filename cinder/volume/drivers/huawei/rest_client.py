@@ -131,6 +131,13 @@ class RestClient(object):
             self.device_id = device_id
             self.url = item_url + device_id
             self.headers['iBaseToken'] = result['data']['iBaseToken']
+            if (result['data']['accountstate']
+                    in (constants.PWD_EXPIRED, constants.PWD_RESET)):
+                self.logout()
+                msg = _("Password has expired or has been reset, "
+                        "please change the password.")
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
             break
 
         if device_id is None:
@@ -176,7 +183,7 @@ class RestClient(object):
         """Logout the session."""
         url = "/sessions"
         if self.url:
-            result = self.call(url, None, "DELETE")
+            result = self.do_call(url, None, "DELETE")
             self._assert_rest_result(result, _('Logout session error.'))
 
     def _assert_rest_result(self, result, err_str):
