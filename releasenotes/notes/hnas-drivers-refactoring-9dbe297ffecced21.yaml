@@ -1,0 +1,7 @@
+upgrade:
+  - HNAS drivers have new configuration paths. Users should now use
+    ``cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver`` for HNAS NFS driver
+    and ``cinder.volume.drivers.hitachi.hnas_iscsi.HNASISCSIDriver`` for HNAS
+    iSCSI driver.
+deprecations:
+  - The old HNAS drivers configuration paths have been marked for deprecation.

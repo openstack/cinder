@@ -18,14 +18,12 @@
 Hitachi Unified Storage (HUS-HNAS) platform. Backend operations.
 """
 
-import re
-
 from oslo_concurrency import processutils as putils
 from oslo_log import log as logging
 from oslo_utils import units
 import six
 
-from cinder.i18n import _, _LW, _LI, _LE
+from cinder.i18n import _, _LE
 from cinder import exception
 from cinder import ssh_utils
 from cinder import utils
@@ -34,34 +32,53 @@ LOG = logging.getLogger("cinder.volume.driver")
 HNAS_SSC_RETRIES = 5
 
 
-class HnasBackend(object):
-    """Back end. Talks to HUS-HNAS."""
-    def __init__(self, drv_configs):
-        self.drv_configs = drv_configs
+class HNASSSHBackend(object):
+    def __init__(self, backend_opts):
+
+        self.mgmt_ip0 = backend_opts.get('mgmt_ip0')
+        self.hnas_cmd = backend_opts.get('hnas_cmd', 'ssc')
+        self.cluster_admin_ip0 = backend_opts.get('cluster_admin_ip0')
+        self.ssh_port = backend_opts.get('ssh_port', '22')
+        self.ssh_username = backend_opts.get('username')
+        self.ssh_pwd = backend_opts.get('password')
+        self.ssh_private_key = backend_opts.get('ssh_private_key')
+        self.storage_version = None
         self.sshpool = None
+        self.fslist = {}
+        self.tgt_list = {}
 
     @utils.retry(exceptions=exception.HNASConnError, retries=HNAS_SSC_RETRIES,
                  wait_random=True)
-    def run_cmd(self, cmd, ip0, user, pw, *args, **kwargs):
-        """Run a command on SMU or using SSH
+    def _run_cmd(self, *args, **kwargs):
+        """Runs a command on SMU using SSH.
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :returns: formated string with version information
+        :returns: stdout and stderr of the command
         """
-        LOG.debug('Enable ssh: %s',
-                  six.text_type(self.drv_configs['ssh_enabled']))
+        if self.cluster_admin_ip0 is None:
+            # Connect to SMU through SSH and run ssc locally
+            args = (self.hnas_cmd, 'localhost') + args
+        else:
+            args = (self.hnas_cmd, '--smuauth', self.cluster_admin_ip0) + args
 
-        if self.drv_configs['ssh_enabled'] != 'True':
-            # Direct connection via ssc
-            args = (cmd, '--user', user, '--password', pw, ip0) + args
+        utils.check_ssh_injection(args)
+        command = ' '.join(args)
+        command = command.replace('"', '\\"')
 
+        if not self.sshpool:
+            self.sshpool = ssh_utils.SSHPool(ip=self.mgmt_ip0,
+                                             port=int(self.ssh_port),
+                                             conn_timeout=None,
+                                             login=self.ssh_username,
+                                             password=self.ssh_pwd,
+                                             privatekey=self.ssh_private_key)
+
+        with self.sshpool.item() as ssh:
             try:
-                out, err = utils.execute(*args, **kwargs)
-                LOG.debug("command %(cmd)s result: out = %(out)s - err = "
-                          "%(err)s", {'cmd': cmd, 'out': out, 'err': err})
+                out, err = putils.ssh_execute(ssh, command,
+                                              check_exit_code=True)
+                LOG.debug("command %(cmd)s result: out = "
+                          "%(out)s - err = %(err)s",
+                          {'cmd': self.hnas_cmd, 'out': out, 'err': err})
                 return out, err
             except putils.ProcessExecutionError as e:
                 if 'Failed to establish SSC connection' in e.stderr:
@@ -74,687 +91,428 @@ class HnasBackend(object):
                     raise exception.HNASConnError(msg)
                 else:
                     raise
-        else:
-            if self.drv_configs['cluster_admin_ip0'] is None:
-                # Connect to SMU through SSH and run ssc locally
-                args = (cmd, 'localhost') + args
-            else:
-                args = (cmd, '--smuauth',
-                        self.drv_configs['cluster_admin_ip0']) + args
 
-            utils.check_ssh_injection(args)
-            command = ' '.join(args)
-            command = command.replace('"', '\\"')
+    def get_version(self):
+        """Gets version information from the storage unit.
 
-            if not self.sshpool:
-                server = self.drv_configs['mgmt_ip0']
-                port = int(self.drv_configs['ssh_port'])
-                username = self.drv_configs['username']
-                # We only accept private/public key auth
-                password = ""
-                privatekey = self.drv_configs['ssh_private_key']
-                self.sshpool = ssh_utils.SSHPool(server,
-                                                 port,
-                                                 None,
-                                                 username,
-                                                 password=password,
-                                                 privatekey=privatekey)
-
-            with self.sshpool.item() as ssh:
-
-                try:
-                    out, err = putils.ssh_execute(ssh, command,
-                                                  check_exit_code=True)
-                    LOG.debug("command %(cmd)s result: out = "
-                              "%(out)s - err = %(err)s",
-                              {'cmd': cmd, 'out': out, 'err': err})
-                    return out, err
-                except putils.ProcessExecutionError as e:
-                    if 'Failed to establish SSC connection' in e.stderr:
-                        LOG.debug("SSC connection error!")
-                        msg = _("Failed to establish SSC connection.")
-                        raise exception.HNASConnError(msg)
-                    else:
-                        raise putils.ProcessExecutionError
-
-    def get_version(self, cmd, ver, ip0, user, pw):
-        """Gets version information from the storage unit
-
-       :param cmd: ssc command name
-       :param ver: string driver version
-       :param ip0: string IP address of controller
-       :param user: string user authentication for array
-       :param pw: string password authentication for array
-       :returns: formatted string with version information
-       """
-        out, err = self.run_cmd(cmd, ip0, user, pw, "cluster-getmac",
-                                check_exit_code=True)
-        hardware = out.split()[2]
-
-        out, err = self.run_cmd(cmd, ip0, user, pw, "ver",
-                                check_exit_code=True)
-        lines = out.split('\n')
-
-        model = ""
-        for line in lines:
-            if 'Model:' in line:
-                model = line.split()[1]
-            if 'Software:' in line:
-                ver = line.split()[1]
-
-        # If not using SSH, the local utility version can be different from the
-        # one used in HNAS
-        if self.drv_configs['ssh_enabled'] != 'True':
-            out, err = utils.execute(cmd, "-version", check_exit_code=True)
-            util = out.split()[1]
-
-            out = ("Array_ID: %(arr)s (%(mod)s) version: %(ver)s LU: 256 "
-                   "RG: 0 RG_LU: 0 Utility_version: %(util)s" %
-                   {'arr': hardware, 'mod': model, 'ver': ver, 'util': util})
-        else:
-            out = ("Array_ID: %(arr)s (%(mod)s) version: %(ver)s LU: 256 "
-                   "RG: 0 RG_LU: 0" %
-                   {'arr': hardware, 'mod': model, 'ver': ver})
-
-        LOG.debug('get_version: %(out)s -- %(err)s', {'out': out, 'err': err})
-        return out
-
-    def get_iscsi_info(self, cmd, ip0, user, pw):
-        """Gets IP addresses for EVSs, use EVSID as controller.
-
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :returns: formated string with iSCSI information
+        :returns: dictionary with HNAS information
+        storage_version={
+            'mac': HNAS MAC ID,
+            'model': HNAS model,
+            'version': the software version,
+            'hardware': the hardware version,
+            'serial': HNAS serial number}
         """
+        if not self.storage_version:
+            version_info = {}
+            out, err = self._run_cmd("cluster-getmac")
+            mac = out.split(':')[1].strip()
+            version_info['mac'] = mac
 
-        out, err = self.run_cmd(cmd, ip0, user, pw,
-                                'evsipaddr', '-l',
-                                check_exit_code=True)
-        lines = out.split('\n')
+            out, err = self._run_cmd("ver")
+            split_out = out.split('\n')
 
-        newout = ""
-        for line in lines:
+            model = split_out[1].split(':')[1].strip()
+            version = split_out[3].split()[1]
+            hardware = split_out[5].split(':')[1].strip()
+            serial = split_out[12].split()[2]
+
+            version_info['model'] = model
+            version_info['version'] = version
+            version_info['hardware'] = hardware
+            version_info['serial'] = serial
+
+            self.storage_version = version_info
+
+        return self.storage_version
+
+    def get_evs_info(self):
+        """Gets the IP addresses of all EVSs in HNAS.
+
+        :returns: dictionary with EVS information
+        evs_info={
+            <IP1>: {evs_number: number identifying the EVS1 on HNAS},
+            <IP2>: {evs_number: number identifying the EVS2 on HNAS},
+            ...
+        }
+        """
+        evs_info = {}
+        out, err = self._run_cmd("evsipaddr", "-l")
+
+        out = out.split('\n')
+        for line in out:
             if 'evs' in line and 'admin' not in line:
-                inf = line.split()
-                (evsnum, ip) = (inf[1], inf[3])
-                newout += "CTL: %s Port: 0 IP: %s Port: 3260 Link: Up\n" \
-                          % (evsnum, ip)
+                ip = line.split()[3].strip()
+                evs_info[ip] = {}
+                evs_info[ip]['evs_number'] = line.split()[1].strip()
 
-        LOG.debug('get_iscsi_info: %(out)s -- %(err)s',
-                  {'out': out, 'err': err})
-        return newout
+        return evs_info
 
-    def get_hdp_info(self, cmd, ip0, user, pw, fslabel=None):
-        """Gets the list of filesystems and fsids.
+    def get_fs_info(self, fs_label):
+        """Gets the information of a given FS.
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param fslabel: filesystem label we want to get info
-        :returns: formated string with filesystems and fsids
+        :param fs_label: Label of the filesystem
+        :returns: dictionary with FS information
+        fs_info={
+            'id': a Logical Unit ID,
+            'label': a Logical Unit name,
+            'evs_id': the ID of the EVS in which the filesystem is created
+            (not present if there is a single EVS),
+            'total_size': the total size of the FS (in GB),
+            'used_size': the size that is already used (in GB),
+            'available_size': the free space (in GB)
+            }
         """
+        def _convert_size(param):
+            size = float(param) * units.Mi
+            return six.text_type(size)
 
-        if fslabel is None:
-            out, err = self.run_cmd(cmd, ip0, user, pw, 'df', '-a',
-                                    check_exit_code=True)
-        else:
-            out, err = self.run_cmd(cmd, ip0, user, pw, 'df', '-f', fslabel,
-                                    check_exit_code=True)
-
-        lines = out.split('\n')
+        fs_info = {}
         single_evs = True
+        id, lbl, evs, t_sz, u_sz, a_sz = 0, 1, 2, 3, 5, 12
+        t_sz_unit, u_sz_unit, a_sz_unit = 4, 6, 13
 
-        LOG.debug("Parsing output: %s", lines)
+        out, err = self._run_cmd("df", "-af", fs_label)
 
-        newout = ""
-        for line in lines:
-            if 'Not mounted' in line or 'Not determined' in line:
-                continue
-            if 'not' not in line and 'EVS' in line:
-                single_evs = False
-            if 'GB' in line or 'TB' in line:
-                LOG.debug("Parsing output: %s", line)
-                inf = line.split()
+        invalid_outs = ['Not mounted', 'Not determined', 'not found']
 
-                if not single_evs:
-                    (fsid, fslabel, capacity) = (inf[0], inf[1], inf[3])
-                    (used, perstr) = (inf[5], inf[7])
-                    (availunit, usedunit) = (inf[4], inf[6])
-                else:
-                    (fsid, fslabel, capacity) = (inf[0], inf[1], inf[2])
-                    (used, perstr) = (inf[4], inf[6])
-                    (availunit, usedunit) = (inf[3], inf[5])
+        for problem in invalid_outs:
+            if problem in out:
+                return {}
 
-                if usedunit == 'GB':
-                    usedmultiplier = units.Ki
-                else:
-                    usedmultiplier = units.Mi
-                if availunit == 'GB':
-                    availmultiplier = units.Ki
-                else:
-                    availmultiplier = units.Mi
-                m = re.match("\((\d+)\%\)", perstr)
-                if m:
-                    percent = m.group(1)
-                else:
-                    percent = 0
-                newout += "HDP: %s %d MB %d MB %d %% LUs: 256 Normal %s\n" \
-                          % (fsid, int(float(capacity) * availmultiplier),
-                             int(float(used) * usedmultiplier),
-                             int(percent), fslabel)
+        if 'EVS' in out:
+            single_evs = False
 
-        LOG.debug('get_hdp_info: %(out)s -- %(err)s',
-                  {'out': newout, 'err': err})
-        return newout
+        fs_data = out.split('\n')[3].split()
 
-    def get_evs(self, cmd, ip0, user, pw, fsid):
-        """Gets the EVSID for the named filesystem.
+        # Getting only the desired values from the output. If there is a single
+        # EVS, its ID is not shown in the output and we have to decrease the
+        # indexes to get the right values.
+        fs_info['id'] = fs_data[id]
+        fs_info['label'] = fs_data[lbl]
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :returns: EVS id of the file system
+        if not single_evs:
+            fs_info['evs_id'] = fs_data[evs]
+
+        fs_info['total_size'] = (
+            (fs_data[t_sz]) if not single_evs else fs_data[t_sz - 1])
+        fs_info['used_size'] = (
+            fs_data[u_sz] if not single_evs else fs_data[u_sz - 1])
+        fs_info['available_size'] = (
+            fs_data[a_sz] if not single_evs else fs_data[a_sz - 1])
+
+        # Converting the sizes if necessary.
+        if not single_evs:
+            if fs_data[t_sz_unit] == 'TB':
+                fs_info['total_size'] = _convert_size(fs_info['total_size'])
+            if fs_data[u_sz_unit] == 'TB':
+                fs_info['used_size'] = _convert_size(fs_info['used_size'])
+            if fs_data[a_sz_unit] == 'TB':
+                fs_info['available_size'] = _convert_size(
+                    fs_info['available_size'])
+        else:
+            if fs_data[t_sz_unit - 1] == 'TB':
+                fs_info['total_size'] = _convert_size(fs_info['total_size'])
+            if fs_data[u_sz_unit - 1] == 'TB':
+                fs_info['used_size'] = _convert_size(fs_info['used_size'])
+            if fs_data[a_sz_unit - 1] == 'TB':
+                fs_info['available_size'] = _convert_size(
+                    fs_info['available_size'])
+
+        LOG.debug("File system info of %(fs)s (sizes in GB): %(info)s.",
+                  {'fs': fs_label, 'info': fs_info})
+
+        return fs_info
+
+    def get_evs(self, fs_label):
+        """Gets the EVS ID for the named filesystem.
+
+        :param fs_label: The filesystem label related to the EVS required
+        :returns: EVS ID of the filesystem
         """
+        if not self.fslist:
+            self._get_fs_list()
 
-        out, err = self.run_cmd(cmd, ip0, user, pw, "evsfs", "list",
-                                check_exit_code=True)
-        LOG.debug('get_evs: out %s.', out)
+        # When the FS is found in the list of known FS, returns the EVS ID
+        for key in self.fslist:
+            if fs_label == self.fslist[key]['label']:
+                return self.fslist[key]['evsid']
 
-        lines = out.split('\n')
-        for line in lines:
-            inf = line.split()
-            if fsid in line and (fsid == inf[0] or fsid == inf[1]):
-                return inf[3]
+    def _get_targets(self, evs_id, tgt_alias=None, refresh=False):
+        """Gets the target list of an EVS.
 
-        LOG.warning(_LW('get_evs: %(out)s -- No find for %(fsid)s'),
-                    {'out': out, 'fsid': fsid})
-        return 0
-
-    def _get_evsips(self, cmd, ip0, user, pw, evsid):
-        """Gets the EVS IPs for the named filesystem."""
-
-        out, err = self.run_cmd(cmd, ip0, user, pw,
-                                'evsipaddr', '-e', evsid,
-                                check_exit_code=True)
-
-        iplist = ""
-        lines = out.split('\n')
-        for line in lines:
-            inf = line.split()
-            if 'evs' in line:
-                iplist += inf[3] + ' '
-
-        LOG.debug('get_evsips: %s', iplist)
-        return iplist
-
-    def _get_fsid(self, cmd, ip0, user, pw, fslabel):
-        """Gets the FSID for the named filesystem."""
-
-        out, err = self.run_cmd(cmd, ip0, user, pw, 'evsfs', 'list',
-                                check_exit_code=True)
-        LOG.debug('get_fsid: out %s', out)
-
-        lines = out.split('\n')
-        for line in lines:
-            inf = line.split()
-            if fslabel in line and fslabel == inf[1]:
-                LOG.debug('get_fsid: %s', line)
-                return inf[0]
-
-        LOG.warning(_LW('get_fsid: %(out)s -- No info for %(fslabel)s'),
-                    {'out': out, 'fslabel': fslabel})
-        return 0
-
-    def _get_targets(self, cmd, ip0, user, pw, evsid, tgtalias=None):
-        """Get the target list of an EVS.
-
-        Get the target list of an EVS. Optionally can return the target
-        list of a specific target.
+        Gets the target list of an EVS. Optionally can return the information
+        of a specific target.
+        :returns: Target list or Target info (EVS ID) or empty list
         """
+        LOG.debug("Getting target list for evs %(evs)s, tgtalias: %(tgt)s.",
+                  {'evs': evs_id, 'tgt': tgt_alias})
 
-        LOG.debug("Getting target list for evs %s, tgtalias: %s.",
-                  evsid, tgtalias)
+        if (refresh or
+                evs_id not in self.tgt_list.keys() or
+                tgt_alias is not None):
+            self.tgt_list[evs_id] = []
+            out, err = self._run_cmd("console-context", "--evs", evs_id,
+                                     'iscsi-target', 'list')
 
-        try:
-            out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                    "--evs", evsid, 'iscsi-target', 'list',
-                                    check_exit_code=True)
-        except putils.ProcessExecutionError as e:
-            LOG.error(_LE('Error getting iSCSI target info '
-                          'from EVS %(evs)s.'), {'evs': evsid})
-            LOG.debug("_get_targets out: %(out)s, err: %(err)s.",
-                      {'out': e.stdout, 'err': e.stderr})
-            return []
+            if 'No targets' in out:
+                LOG.debug("No targets found in EVS %(evsid)s.",
+                          {'evsid': evs_id})
+                return self.tgt_list[evs_id]
 
-        tgt_list = []
-        if 'No targets' in out:
-            LOG.debug("No targets found in EVS %(evsid)s.", {'evsid': evsid})
-            return tgt_list
+            tgt_raw_list = out.split('Alias')[1:]
+            for tgt_raw_info in tgt_raw_list:
+                tgt = {}
+                tgt['alias'] = tgt_raw_info.split('\n')[0].split(' ').pop()
+                tgt['iqn'] = tgt_raw_info.split('\n')[1].split(' ').pop()
+                tgt['secret'] = tgt_raw_info.split('\n')[3].split(' ').pop()
+                tgt['auth'] = tgt_raw_info.split('\n')[4].split(' ').pop()
+                lus = []
+                tgt_raw_info = tgt_raw_info.split('\n\n')[1]
+                tgt_raw_list = tgt_raw_info.split('\n')[2:]
 
-        tgt_raw_list = out.split('Alias')[1:]
-        for tgt_raw_info in tgt_raw_list:
-            tgt = {}
-            tgt['alias'] = tgt_raw_info.split('\n')[0].split(' ').pop()
-            tgt['iqn'] = tgt_raw_info.split('\n')[1].split(' ').pop()
-            tgt['secret'] = tgt_raw_info.split('\n')[3].split(' ').pop()
-            tgt['auth'] = tgt_raw_info.split('\n')[4].split(' ').pop()
-            luns = []
-            tgt_raw_info = tgt_raw_info.split('\n\n')[1]
-            tgt_raw_list = tgt_raw_info.split('\n')[2:]
+                for lu_raw_line in tgt_raw_list:
+                    lu_raw_line = lu_raw_line.strip()
+                    lu_raw_line = lu_raw_line.split(' ')
+                    lu = {}
+                    lu['id'] = lu_raw_line[0]
+                    lu['name'] = lu_raw_line.pop()
+                    lus.append(lu)
 
-            for lun_raw_line in tgt_raw_list:
-                lun_raw_line = lun_raw_line.strip()
-                lun_raw_line = lun_raw_line.split(' ')
-                lun = {}
-                lun['id'] = lun_raw_line[0]
-                lun['name'] = lun_raw_line.pop()
-                luns.append(lun)
+                tgt['lus'] = lus
 
-            tgt['luns'] = luns
+                if tgt_alias == tgt['alias']:
+                    return tgt
 
-            if tgtalias == tgt['alias']:
-                return [tgt]
+                self.tgt_list[evs_id].append(tgt)
 
-            tgt_list.append(tgt)
-
-        if tgtalias is not None:
-            # We tried to find  'tgtalias' but didn't find. Return an empty
+        if tgt_alias is not None:
+            # We tried to find  'tgtalias' but didn't find. Return a empty
             # list.
             LOG.debug("There's no target %(alias)s in EVS %(evsid)s.",
-                      {'alias': tgtalias, 'evsid': evsid})
+                      {'alias': tgt_alias, 'evsid': evs_id})
             return []
 
         LOG.debug("Targets in EVS %(evs)s: %(tgtl)s.",
-                  {'evs': evsid, 'tgtl': tgt_list})
-        return tgt_list
+                  {'evs': evs_id, 'tgtl': self.tgt_list[evs_id]})
 
-    def _get_unused_lunid(self, cmd, ip0, user, pw, tgt_info):
+        return self.tgt_list[evs_id]
 
-        if len(tgt_info['luns']) == 0:
+    def _get_unused_luid(self, tgt_info):
+        """Gets a free logical unit id number to be used.
+
+        :param tgt_info: dictionary with the target information
+        :returns: a free logical unit id number
+        """
+        if len(tgt_info['lus']) == 0:
             return 0
 
-        free_lun = 0
-        for lun in tgt_info['luns']:
-            if int(lun['id']) == free_lun:
-                free_lun += 1
+        free_lu = 0
+        for lu in tgt_info['lus']:
+            if int(lu['id']) == free_lu:
+                free_lu += 1
 
-            if int(lun['id']) > free_lun:
-                # Found a free LUN number
+            if int(lu['id']) > free_lu:
+                # Found a free LU number
                 break
 
-        return free_lun
+        LOG.debug("Found the free LU ID: %(lu)s.", {'lu': free_lu})
 
-    def get_nfs_info(self, cmd, ip0, user, pw):
-        """Gets information on each NFS export.
+        return free_lu
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :returns: formated string
-        """
-
-        out, err = self.run_cmd(cmd, ip0, user, pw,
-                                'for-each-evs', '-q',
-                                'nfs-export', 'list',
-                                check_exit_code=True)
-
-        lines = out.split('\n')
-        newout = ""
-        export = ""
-        path = ""
-        for line in lines:
-            inf = line.split()
-            if 'Export name' in line:
-                export = inf[2]
-            if 'Export path' in line:
-                path = inf[2]
-            if 'File system info' in line:
-                fs = ""
-            if 'File system label' in line:
-                fs = inf[3]
-            if 'Transfer setting' in line and fs != "":
-                fsid = self._get_fsid(cmd, ip0, user, pw, fs)
-                evsid = self.get_evs(cmd, ip0, user, pw, fsid)
-                ips = self._get_evsips(cmd, ip0, user, pw, evsid)
-                newout += "Export: %s Path: %s HDP: %s FSID: %s \
-                           EVS: %s IPS: %s\n" \
-                           % (export, path, fs, fsid, evsid, ips)
-                fs = ""
-
-        LOG.debug('get_nfs_info: %(out)s -- %(err)s',
-                  {'out': newout, 'err': err})
-        return newout
-
-    def create_lu(self, cmd, ip0, user, pw, hdp, size, name):
+    def create_lu(self, fs_label, size, lu_name):
         """Creates a new Logical Unit.
 
         If the operation can not be performed for some reason, utils.execute()
         throws an error and aborts the operation. Used for iSCSI only
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param hdp: data Pool the logical unit will be created
-        :param size: Size (Mb) of the new logical unit
-        :param name: name of the logical unit
-        :returns: formated string with 'LUN %d HDP: %d size: %s MB, is
-                  successfully created'
+        :param fs_label: data pool the Logical Unit will be created
+        :param size: Size (GB) of the new Logical Unit
+        :param lu_name: name of the Logical Unit
         """
+        evs_id = self.get_evs(fs_label)
 
-        _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'iscsi-lu', 'add', "-e",
-                                name, hdp,
-                                '/.cinder/' + name + '.iscsi',
-                                size + 'M',
-                                check_exit_code=True)
+        self._run_cmd("console-context", "--evs", evs_id, 'iscsi-lu', 'add',
+                      "-e", lu_name, fs_label, '/.cinder/' + lu_name +
+                      '.iscsi', size + 'G')
 
-        out = "LUN %s HDP: %s size: %s MB, is successfully created" \
-              % (name, hdp, size)
+        LOG.debug('Created %(size)s GB LU: %(name)s FS: %(fs)s.',
+                  {'size': size, 'name': lu_name, 'fs': fs_label})
 
-        LOG.debug('create_lu: %s.', out)
-        return out
+    def delete_lu(self, fs_label, lu_name):
+        """Deletes a Logical Unit.
 
-    def delete_lu(self, cmd, ip0, user, pw, hdp, lun):
-        """Delete an logical unit. Used for iSCSI only
-
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param hdp: data Pool of the logical unit
-        :param lun: id of the logical unit being deleted
-        :returns: formated string 'Logical unit deleted successfully.'
+        :param fs_label: data pool of the Logical Unit
+        :param lu_name: id of the Logical Unit being deleted
         """
+        evs_id = self.get_evs(fs_label)
+        self._run_cmd("console-context", "--evs", evs_id, 'iscsi-lu', 'del',
+                      '-d', '-f', lu_name)
 
-        _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'iscsi-lu', 'del', '-d',
-                                '-f', lun,
-                                check_exit_code=True)
+        LOG.debug('LU %(lu)s deleted.', {'lu': lu_name})
 
-        LOG.debug('delete_lu: %(out)s -- %(err)s.', {'out': out, 'err': err})
-        return out
-
-    def create_dup(self, cmd, ip0, user, pw, src_lun, hdp, size, name):
-        """Clones a volume
-
-        Clone primitive used to support all iSCSI snapshot/cloning functions.
-        Used for iSCSI only.
-
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param hdp: data Pool of the logical unit
-        :param src_lun: id of the logical unit being deleted
-        :param size: size of the LU being cloned. Only for logging purposes
-        :returns: formated string
-        """
-
-        _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'iscsi-lu', 'clone', '-e',
-                                src_lun, name,
-                                '/.cinder/' + name + '.iscsi',
-                                check_exit_code=True)
-
-        out = "LUN %s HDP: %s size: %s MB, is successfully created" \
-              % (name, hdp, size)
-
-        LOG.debug('create_dup: %(out)s -- %(err)s.', {'out': out, 'err': err})
-        return out
-
-    def file_clone(self, cmd, ip0, user, pw, fslabel, src, name):
-        """Clones NFS files to a new one named 'name'
+    def file_clone(self, fs_label, src, name):
+        """Clones NFS files to a new one named 'name'.
 
         Clone primitive used to support all NFS snapshot/cloning functions.
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param fslabel:  file system label of the new file
+        :param fs_label:  file system label of the new file
         :param src: source file
         :param name: target path of the new created file
-        :returns: formated string
         """
+        fs_list = self._get_fs_list()
+        fs = fs_list.get(fs_label)
+        if not fs:
+            LOG.error(_LE("Can't find file %(file)s in FS %(label)s"),
+                      {'file': src, 'label': fs_label})
+            msg = _('FS label: %s') % fs_label
+            raise exception.InvalidParameterValue(err=msg)
 
-        _fsid = self._get_fsid(cmd, ip0, user, pw, fslabel)
-        _evsid = self.get_evs(cmd, ip0, user, pw, _fsid)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'file-clone-create', '-f', fslabel,
-                                src, name,
-                                check_exit_code=True)
+        self._run_cmd("console-context", "--evs", fs['evsid'],
+                      'file-clone-create', '-f', fs_label, src, name)
 
-        out = "LUN %s HDP: %s Clone: %s -> %s" % (name, _fsid, src, name)
+    def extend_lu(self, fs_label, new_size, lu_name):
+        """Extends an iSCSI volume.
 
-        LOG.debug('file_clone: %(out)s -- %(err)s.', {'out': out, 'err': err})
-        return out
-
-    def extend_vol(self, cmd, ip0, user, pw, hdp, lun, new_size, name):
-        """Extend a iSCSI volume.
-
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param hdp: data Pool of the logical unit
-        :param lun: id of the logical unit being extended
-        :param new_size: new size of the LU
-        :param name: formated string
+        :param fs_label: data pool of the Logical Unit
+        :param new_size: new size of the Logical Unit
+        :param lu_name: name of the Logical Unit
         """
+        evs_id = self.get_evs(fs_label)
+        size = six.text_type(new_size)
+        self._run_cmd("console-context", "--evs", evs_id, 'iscsi-lu', 'expand',
+                      lu_name, size + 'G')
 
-        _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'iscsi-lu', 'expand',
-                                name, new_size + 'M',
-                                check_exit_code=True)
-
-        out = ("LUN: %s successfully extended to %s MB" % (name, new_size))
-
-        LOG.debug('extend_vol: %s.', out)
-        return out
+        LOG.debug('LU %(lu)s extended.', {'lu': lu_name})
 
     @utils.retry(putils.ProcessExecutionError, retries=HNAS_SSC_RETRIES,
                  wait_random=True)
-    def add_iscsi_conn(self, cmd, ip0, user, pw, lun_name, hdp,
-                       port, tgtalias, initiator):
-        """Setup the lun on on the specified target port
+    def add_iscsi_conn(self, lu_name, fs_label, port, tgt_alias, initiator):
+        """Sets up the Logical Unit on the specified target port.
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param lun_name: id of the logical unit being extended
-        :param hdp: data pool of the logical unit
+        :param lu_name: id of the Logical Unit being extended
+        :param fs_label: data pool of the Logical Unit
         :param port: iSCSI port
-        :param tgtalias: iSCSI qualified name
+        :param tgt_alias: iSCSI qualified name
         :param initiator: initiator address
+        :returns: dictionary (conn_info) with the connection information
+        conn_info={
+            'lu': Logical Unit ID,
+            'iqn': iSCSI qualified name,
+            'lu_name': Logical Unit name,
+            'initiator': iSCSI initiator,
+            'fs_label': File system to connect,
+            'port': Port to make the iSCSI connection
+             }
         """
+        conn_info = {}
+        lu_info = self.check_lu(lu_name, fs_label)
+        _evs_id = self.get_evs(fs_label)
 
-        LOG.debug('Adding %(lun)s to %(tgt)s returns %(tgt)s.',
-                  {'lun': lun_name, 'tgt': tgtalias})
-        found, lunid, tgt = self.check_lu(cmd, ip0, user, pw, lun_name, hdp)
-        evsid = self.get_evs(cmd, ip0, user, pw, hdp)
+        if not lu_info['mapped']:
+            tgt = self._get_targets(_evs_id, tgt_alias)
+            lu_id = self._get_unused_luid(tgt)
+            conn_info['lu_id'] = lu_id
+            conn_info['iqn'] = tgt['iqn']
 
-        if found:
-            conn = (int(lunid), lun_name, initiator, int(lunid), tgt['iqn'],
-                    int(lunid), hdp, port)
-            out = ("H-LUN: %d mapped LUN: %s, iSCSI Initiator: %s "
-                   "@ index: %d, and Target: %s @ index %d is "
-                   "successfully paired  @ CTL: %s, Port: %s.") % conn
+            # In busy situations where 2 or more instances of the driver are
+            # trying to map an LU, 2 hosts can retrieve the same 'lu_id',
+            # and try to map the LU in the same LUN. To handle that we
+            # capture the ProcessExecutionError exception, backoff for some
+            # seconds and retry it.
+            self._run_cmd("console-context", "--evs", _evs_id, 'iscsi-target',
+                          'addlu', tgt_alias, lu_name, six.text_type(lu_id))
         else:
-            tgt = self._get_targets(cmd, ip0, user, pw, evsid, tgtalias)
-            lunid = self._get_unused_lunid(cmd, ip0, user, pw, tgt[0])
+            conn_info['lu_id'] = lu_info['id']
+            conn_info['iqn'] = lu_info['tgt']['iqn']
 
-            out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                    "--evs", evsid,
-                                    'iscsi-target', 'addlu',
-                                    tgtalias, lun_name, six.text_type(lunid),
-                                    check_exit_code=True)
+        conn_info['lu_name'] = lu_name
+        conn_info['initiator'] = initiator
+        conn_info['fs'] = fs_label
+        conn_info['port'] = port
 
-            conn = (int(lunid), lun_name, initiator, int(lunid), tgt[0]['iqn'],
-                    int(lunid), hdp, port)
-            out = ("H-LUN: %d mapped LUN: %s, iSCSI Initiator: %s "
-                   "@ index: %d, and Target: %s @ index %d is "
-                   "successfully paired  @ CTL: %s, Port: %s.") % conn
+        LOG.debug('add_iscsi_conn: LU %(lu)s added to %(tgt)s.',
+                  {'lu': lu_name, 'tgt': tgt_alias})
 
-        LOG.debug('add_iscsi_conn: returns %s.', out)
-        return out
+        return conn_info
 
-    def del_iscsi_conn(self, cmd, ip0, user, pw, evsid, iqn, hlun):
-        """Remove the lun on on the specified target port
+    def del_iscsi_conn(self, evs_id, iqn, lu_id):
+        """Removes the Logical Unit on the specified target port.
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param evsid: EVSID for the file system
+        :param evs_id: EVSID for the file system
         :param iqn: iSCSI qualified name
-        :param hlun: logical unit id
-        :returns: formated string
+        :param lu_id: Logical Unit id
         """
+        found = False
+        out, err = self._run_cmd("console-context", "--evs", evs_id,
+                                 'iscsi-target', 'list', iqn)
 
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", evsid,
-                                'iscsi-target', 'list', iqn,
-                                check_exit_code=True)
-
+        # see if LU is already detached
         lines = out.split('\n')
-        out = ("H-LUN: %d already deleted from target %s" % (int(hlun), iqn))
-        # see if lun is already detached
         for line in lines:
             if line.startswith('  '):
-                lunline = line.split()[0]
-                if lunline[0].isdigit() and lunline == hlun:
-                    out = ""
+                lu_line = line.split()[0]
+                if lu_line[0].isdigit() and lu_line == lu_id:
+                    found = True
                     break
 
-        if out != "":
-            # hlun wasn't found
-            LOG.info(_LI('del_iscsi_conn: hlun not found %s.'), out)
-            return out
+        # LU wasn't found
+        if not found:
+            LOG.debug("del_iscsi_conn: LU already deleted from "
+                      "target %(iqn)s", {'lu': lu_id, 'iqn': iqn})
+            return
 
         # remove the LU from the target
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", evsid,
-                                'iscsi-target', 'dellu',
-                                '-f', iqn, hlun,
-                                check_exit_code=True)
+        self._run_cmd("console-context", "--evs", evs_id, 'iscsi-target',
+                      'dellu', '-f', iqn, lu_id)
 
-        out = "H-LUN: %d successfully deleted from target %s" \
-              % (int(hlun), iqn)
+        LOG.debug("del_iscsi_conn: LU: %(lu)s successfully deleted from "
+                  "target %(iqn)s", {'lu': lu_id, 'iqn': iqn})
 
-        LOG.debug('del_iscsi_conn: %s.', out)
-        return out
-
-    def get_targetiqn(self, cmd, ip0, user, pw, targetalias, hdp, secret):
-        """Obtain the targets full iqn
+    def get_target_iqn(self, tgt_alias, fs_label):
+        """Obtains the target full iqn
 
         Returns the target's full iqn rather than its alias.
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param targetalias: alias of the target
-        :param hdp: data pool of the logical unit
-        :param secret: CHAP secret of the target
+
+        :param tgt_alias: alias of the target
+        :param fs_label: data pool of the Logical Unit
         :returns: string with full IQN
         """
-
-        _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'iscsi-target', 'list', targetalias,
-                                check_exit_code=True)
-
-        if "does not exist" in out:
-            if secret == "":
-                secret = '""'
-                out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                        "--evs", _evsid,
-                                        'iscsi-target', 'add',
-                                        targetalias, secret,
-                                        check_exit_code=True)
-            else:
-                out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                        "--evs", _evsid,
-                                        'iscsi-target', 'add',
-                                        targetalias, secret,
-                                        check_exit_code=True)
-            if "success" in out:
-                return targetalias
+        _evs_id = self.get_evs(fs_label)
+        out, err = self._run_cmd("console-context", "--evs", _evs_id,
+                                 'iscsi-target', 'list', tgt_alias)
 
         lines = out.split('\n')
         # returns the first iqn
         for line in lines:
-            if 'Alias' in line:
-                fulliqn = line.split()[2]
-                return fulliqn
+            if 'Globally unique name' in line:
+                full_iqn = line.split()[3]
+                return full_iqn
 
-    def set_targetsecret(self, cmd, ip0, user, pw, targetalias, hdp, secret):
+    def set_target_secret(self, targetalias, fs_label, secret):
         """Sets the chap secret for the specified target.
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
         :param targetalias: alias of the target
-        :param hdp: data pool of the logical unit
+        :param fs_label: data pool of the Logical Unit
         :param secret: CHAP secret of the target
         """
+        _evs_id = self.get_evs(fs_label)
+        self._run_cmd("console-context", "--evs", _evs_id, 'iscsi-target',
+                      'mod', '-s', secret, '-a', 'enable', targetalias)
 
-        _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'iscsi-target', 'list',
-                                targetalias,
-                                check_exit_code=False)
+        LOG.debug("set_target_secret: Secret set on target %(tgt)s.",
+                  {'tgt': targetalias})
 
-        if "does not exist" in out:
-            out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                    "--evs", _evsid,
-                                    'iscsi-target', 'add',
-                                    targetalias, secret,
-                                    check_exit_code=True)
-        else:
-            LOG.info(_LI('targetlist: %s'), targetalias)
-            out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                    "--evs", _evsid,
-                                    'iscsi-target', 'mod',
-                                    '-s', secret, '-a', 'enable',
-                                    targetalias,
-                                    check_exit_code=True)
+    def get_target_secret(self, targetalias, fs_label):
+        """Gets the chap secret for the specified target.
 
-    def get_targetsecret(self, cmd, ip0, user, pw, targetalias, hdp):
-        """Returns the chap secret for the specified target.
-
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
         :param targetalias: alias of the target
-        :param hdp: data pool of the logical unit
-        :return secret: CHAP secret of the target
+        :param fs_label: data pool of the Logical Unit
+        :returns: CHAP secret of the target
         """
-
-        _evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context",
-                                "--evs", _evsid,
-                                'iscsi-target', 'list', targetalias,
-                                check_exit_code=True)
+        _evs_id = self.get_evs(fs_label)
+        out, err = self._run_cmd("console-context", "--evs", _evs_id,
+                                 'iscsi-target', 'list', targetalias)
 
         enabled = ""
         secret = ""
@@ -771,106 +529,273 @@ class HnasBackend(object):
         else:
             return ""
 
-    def check_target(self, cmd, ip0, user, pw, hdp, target_alias):
-        """Checks if a given target exists and gets its info
+    def check_target(self, fs_label, target_alias):
+        """Checks if a given target exists and gets its info.
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param hdp: pool name used
+        :param fs_label: pool name used
         :param target_alias: alias of the target
-        :returns: True if target exists
-        :returns: list with the target info
+        :returns: dictionary (tgt_info)
+        tgt_info={
+            'alias': The alias of the target,
+            'found': boolean to inform if the target was found or not,
+            'tgt': dictionary with the target information
+            }
         """
+        tgt_info = {}
+        _evs_id = self.get_evs(fs_label)
+        _tgt_list = self._get_targets(_evs_id)
 
-        LOG.debug("Checking if target %(tgt)s exists.", {'tgt': target_alias})
-        evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        tgt_list = self._get_targets(cmd, ip0, user, pw, evsid)
-
-        for tgt in tgt_list:
+        for tgt in _tgt_list:
             if tgt['alias'] == target_alias:
-                attached_luns = len(tgt['luns'])
-                LOG.debug("Target %(tgt)s has %(lun)s volumes.",
-                          {'tgt': target_alias, 'lun': attached_luns})
-                return True, tgt
+                attached_lus = len(tgt['lus'])
+                tgt_info['found'] = True
+                tgt_info['tgt'] = tgt
+                LOG.debug("Target %(tgt)s has %(lu)s volumes.",
+                          {'tgt': target_alias, 'lu': attached_lus})
+                return tgt_info
 
-        LOG.debug("Target %(tgt)s does not exist.", {'tgt': target_alias})
-        return False, None
+        tgt_info['found'] = False
+        tgt_info['tgt'] = None
 
-    def check_lu(self, cmd, ip0, user, pw, volume_name, hdp):
-        """Checks if a given LUN is already mapped
+        LOG.debug("check_target: Target %(tgt)s does not exist.",
+                  {'tgt': target_alias})
 
-        :param cmd: ssc command name
-        :param ip0: string IP address of controller
-        :param user: string user authentication for array
-        :param pw: string password authentication for array
-        :param volume_name: number of the LUN
-        :param hdp: storage pool of the LUN
-        :returns: True if the lun is attached
-        :returns: the LUN id
-        :returns: Info related to the target
+        return tgt_info
+
+    def check_lu(self, vol_name, fs_label):
+        """Checks if a given LU is already mapped
+
+        :param vol_name: name of the LU
+        :param fs_label: storage pool of the LU
+        :returns: dictionary (lu_info) with LU information
+        lu_info={
+            'mapped': LU state (mapped or not),
+            'id': ID of the LU,
+            'tgt': the iSCSI target alias
+            }
         """
-
-        LOG.debug("Checking if vol %s (hdp: %s) is attached.",
-                  volume_name, hdp)
-        evsid = self.get_evs(cmd, ip0, user, pw, hdp)
-        tgt_list = self._get_targets(cmd, ip0, user, pw, evsid)
+        lu_info = {}
+        evs_id = self.get_evs(fs_label)
+        tgt_list = self._get_targets(evs_id, refresh=True)
 
         for tgt in tgt_list:
-            if len(tgt['luns']) == 0:
+            if len(tgt['lus']) == 0:
                 continue
 
-            for lun in tgt['luns']:
-                lunid = lun['id']
-                lunname = lun['name']
-                if lunname[:29] == volume_name[:29]:
-                    LOG.debug("LUN %(lun)s attached on %(lunid)s, "
+            for lu in tgt['lus']:
+                lu_id = lu['id']
+                lu_name = lu['name']
+                if lu_name[:29] == vol_name[:29]:
+                    lu_info['mapped'] = True
+                    lu_info['id'] = lu_id
+                    lu_info['tgt'] = tgt
+                    LOG.debug("LU %(lu)s attached on %(luid)s, "
                               "target: %(tgt)s.",
-                              {'lun': volume_name, 'lunid': lunid, 'tgt': tgt})
-                    return True, lunid, tgt
+                              {'lu': vol_name, 'luid': lu_id, 'tgt': tgt})
+                    return lu_info
 
-        LOG.debug("LUN %(lun)s not attached.", {'lun': volume_name})
-        return False, 0, None
+        lu_info['mapped'] = False
+        lu_info['id'] = 0
+        lu_info['tgt'] = None
 
-    def get_existing_lu_info(self, cmd, ip0, user, pw, fslabel, lun):
-        """Returns the information for the specified Logical Unit.
+        LOG.debug("LU %(lu)s not attached.", {'lu': vol_name})
+
+        return lu_info
+
+    def get_existing_lu_info(self, lu_name, fs_label=None, evs_id=None):
+        """Gets the information for the specified Logical Unit.
 
         Returns the information of an existing Logical Unit on HNAS, according
         to the name provided.
 
-        :param cmd:     the command that will be run on SMU
-        :param ip0:     string IP address of controller
-        :param user:    string user authentication for array
-        :param pw:      string password authentication for array
-        :param fslabel: label of the file system
-        :param lun:     label of the logical unit
+        :param lu_name: label of the Logical Unit
+        :param fs_label: label of the file system
+        :param evs_id: ID of the EVS where the LU is located
+        :returns: dictionary (lu_info) with LU information
+        lu_info={
+            'name': A Logical Unit name,
+            'comment': A comment about the LU, not used for Cinder,
+            'path': Path to LU inside filesystem,
+            'size': Logical Unit size returned always in GB (volume size),
+            'filesystem': File system where the Logical Unit was created,
+            'fs_mounted': Information about the state of file system
+            (mounted or not),
+            'lu_mounted': Information about the state of Logical Unit
+            (mounted or not)
+            }
         """
+        lu_info = {}
+        if evs_id is None:
+            evs_id = self.get_evs(fs_label)
 
-        evs = self.get_evs(cmd, ip0, user, pw, fslabel)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context", "--evs",
-                                evs, 'iscsi-lu', 'list', lun)
+        lu_name = "'{}'".format(lu_name)
+        out, err = self._run_cmd("console-context", "--evs", evs_id,
+                                 'iscsi-lu', 'list', lu_name)
 
-        return out
+        if 'does not exist.' not in out:
+            aux = out.split('\n')
+            lu_info['name'] = aux[0].split(':')[1].strip()
+            lu_info['comment'] = aux[1].split(':')[1].strip()
+            lu_info['path'] = aux[2].split(':')[1].strip()
+            lu_info['size'] = aux[3].split(':')[1].strip()
+            lu_info['filesystem'] = aux[4].split(':')[1].strip()
+            lu_info['fs_mounted'] = aux[5].split(':')[1].strip()
+            lu_info['lu_mounted'] = aux[6].split(':')[1].strip()
 
-    def rename_existing_lu(self, cmd, ip0, user, pw, fslabel,
-                           new_name, vol_name):
+            if 'TB' in lu_info['size']:
+                sz_convert = float(lu_info['size'].split()[0]) * units.Ki
+                lu_info['size'] = sz_convert
+            else:
+                lu_info['size'] = float(lu_info['size'].split()[0])
+
+        LOG.debug('get_existing_lu_info: LU info: %(lu)s', {'lu': lu_info})
+
+        return lu_info
+
+    def rename_existing_lu(self, fs_label, vol_name, new_name):
         """Renames the specified Logical Unit.
 
          Renames an existing Logical Unit on HNAS according to the new name
          provided.
 
-        :param cmd:      command that will be run on SMU
-        :param ip0:      string IP address of controller
-        :param user:     string user authentication for array
-        :param pw:       string password authentication for array
-        :param fslabel:  label of the file system
-        :param new_name: new name to the existing volume
+        :param fs_label: label of the file system
         :param vol_name: current name of the existing volume
+        :param new_name: new name to the existing volume
         """
-        evs = self.get_evs(cmd, ip0, user, pw, fslabel)
-        out, err = self.run_cmd(cmd, ip0, user, pw, "console-context", "--evs",
-                                evs, "iscsi-lu", "mod", "-n", new_name,
-                                vol_name)
 
-        return out
+        new_name = "'{}'".format(new_name)
+        evs_id = self.get_evs(fs_label)
+        self._run_cmd("console-context", "--evs", evs_id, "iscsi-lu", "mod",
+                      "-n", new_name, vol_name)
+
+        LOG.debug('rename_existing_lu_info:'
+                  'LU %(old)s was renamed to %(new)s',
+                  {'old': vol_name, 'new': new_name})
+
+    def _get_fs_list(self):
+        """Gets a list of file systems configured on the backend.
+
+        :returns: a list with the Filesystems configured on HNAS
+        """
+        if not self.fslist:
+            fslist_out, err = self._run_cmd('evsfs', 'list')
+            list_raw = fslist_out.split('\n')[3:-2]
+
+            for fs_raw in list_raw:
+                fs = {}
+
+                fs_raw = fs_raw.split()
+                fs['id'] = fs_raw[0]
+                fs['label'] = fs_raw[1]
+                fs['permid'] = fs_raw[2]
+                fs['evsid'] = fs_raw[3]
+                fs['evslabel'] = fs_raw[4]
+                self.fslist[fs['label']] = fs
+
+        return self.fslist
+
+    def _get_evs_list(self):
+        """Gets a list of EVS configured on the backend.
+
+        :returns: a list of the EVS configured on HNAS
+        """
+        evslist_out, err = self._run_cmd('evs', 'list')
+
+        evslist = {}
+        idx = 0
+        for evs_raw in evslist_out.split('\n'):
+            idx += 1
+            if 'Service' in evs_raw and 'Online' in evs_raw:
+                evs = {}
+                evs_line = evs_raw.split()
+                evs['node'] = evs_line[0]
+                evs['id'] = evs_line[1]
+                evs['label'] = evs_line[3]
+                evs['ips'] = []
+                evs['ips'].append(evs_line[6])
+                # Each EVS can have a list of IPs that are displayed in the
+                # next lines of the evslist_out. We need to check if the next
+                # lines is a new EVS entry or and IP of this current EVS.
+                for evs_ip_raw in evslist_out.split('\n')[idx:]:
+                    if 'Service' in evs_ip_raw or not evs_ip_raw.split():
+                        break
+                    ip = evs_ip_raw.split()[0]
+                    evs['ips'].append(ip)
+
+                evslist[evs['label']] = evs
+
+        return evslist
+
+    def get_export_list(self):
+        """Gets information on each NFS export.
+
+        :returns: a list of the exports configured on HNAS
+        """
+        nfs_export_out, _ = self._run_cmd('for-each-evs', '-q', 'nfs-export',
+                                          'list')
+        fs_list = self._get_fs_list()
+        evs_list = self._get_evs_list()
+
+        export_list = []
+
+        for export_raw_data in nfs_export_out.split("Export name:")[1:]:
+            export_info = {}
+            export_data = export_raw_data.split('\n')
+
+            export_info['name'] = export_data[0].strip()
+            export_info['path'] = export_data[1].split(':')[1].strip()
+            export_info['fs'] = export_data[2].split(':')[1].strip()
+
+            if "*** not available ***" in export_raw_data:
+                export_info['size'] = -1
+                export_info['free'] = -1
+            else:
+                evslbl = fs_list[export_info['fs']]['evslabel']
+                export_info['evs'] = evs_list[evslbl]['ips']
+
+                size = export_data[3].split(':')[1].strip().split()[0]
+                multiplier = export_data[3].split(':')[1].strip().split()[1]
+                if multiplier == 'TB':
+                    export_info['size'] = float(size) * units.Ki
+                else:
+                    export_info['size'] = float(size)
+
+                free = export_data[4].split(':')[1].strip().split()[0]
+                fmultiplier = export_data[4].split(':')[1].strip().split()[1]
+                if fmultiplier == 'TB':
+                    export_info['free'] = float(free) * units.Ki
+                else:
+                    export_info['free'] = float(free)
+
+            export_list.append(export_info)
+
+        return export_list
+
+    def create_cloned_lu(self, src_lu, fs_label, clone_name):
+        """Clones a Logical Unit
+
+        Clone primitive used to support all iSCSI snapshot/cloning functions.
+
+        :param src_lu: id of the Logical Unit being deleted
+        :param fs_label: data pool of the Logical Unit
+        :param clone_name: name of the snapshot
+        """
+        evs_id = self.get_evs(fs_label)
+        self._run_cmd("console-context", "--evs", evs_id, 'iscsi-lu', 'clone',
+                      '-e', src_lu, clone_name,
+                      '/.cinder/' + clone_name + '.iscsi')
+
+        LOG.debug('LU %(lu)s cloned.', {'lu': clone_name})
+
+    def create_target(self, tgt_alias, fs_label, secret):
+        """Creates a new iSCSI target
+
+        :param tgt_alias: the alias with which the target will be created
+        :param fs_label: the label of the file system to create the target
+        :param secret: the secret for authentication of the target
+        """
+        _evs_id = self.get_evs(fs_label)
+        self._run_cmd("console-context", "--evs", _evs_id,
+                      'iscsi-target', 'add', tgt_alias, secret)
+
+        self._get_targets(_evs_id, refresh=True)
