@@ -683,57 +683,56 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if (dest_type != 'LVMVolumeDriver' or dest_hostname != self.hostname):
             return false_ret
 
-        if dest_vg != self.vg.vg_name:
-            vg_list = volutils.get_all_volume_groups()
-            try:
-                next(vg for vg in vg_list if vg['name'] == dest_vg)
-            except StopIteration:
-                LOG.error(_LE("Destination Volume Group %s does not exist"),
-                          dest_vg)
-                return false_ret
-
-            helper = utils.get_root_helper()
-
-            lvm_conf_file = self.configuration.lvm_conf_file
-            if lvm_conf_file.lower() == 'none':
-                lvm_conf_file = None
-
-            dest_vg_ref = lvm.LVM(dest_vg, helper,
-                                  lvm_type=lvm_type,
-                                  executor=self._execute,
-                                  lvm_conf=lvm_conf_file)
-
-            self._create_volume(volume['name'],
-                                self._sizestr(volume['size']),
-                                lvm_type,
-                                lvm_mirrors,
-                                dest_vg_ref)
-            # copy_volume expects sizes in MiB, we store integer GiB
-            # be sure to convert before passing in
-            size_in_mb = int(volume['size']) * units.Ki
-            try:
-                volutils.copy_volume(self.local_path(volume),
-                                     self.local_path(volume, vg=dest_vg),
-                                     size_in_mb,
-                                     self.configuration.volume_dd_blocksize,
-                                     execute=self._execute,
-                                     sparse=self._sparse_copy_volume)
-            except Exception as e:
-                with excutils.save_and_reraise_exception():
-                    LOG.error(_LE("Volume migration failed due to "
-                                  "exception: %(reason)s."),
-                              {'reason': six.text_type(e)}, resource=volume)
-                    dest_vg_ref.delete(volume)
-            self._delete_volume(volume)
-
-            return (True, None)
-        else:
+        if dest_vg == self.vg.vg_name:
             message = (_("Refusing to migrate volume ID: %(id)s. Please "
                          "check your configuration because source and "
                          "destination are the same Volume Group: %(name)s.") %
                        {'id': volume['id'], 'name': self.vg.vg_name})
             LOG.error(message)
             raise exception.VolumeBackendAPIException(data=message)
+
+        vg_list = volutils.get_all_volume_groups()
+        try:
+            next(vg for vg in vg_list if vg['name'] == dest_vg)
+        except StopIteration:
+            LOG.error(_LE("Destination Volume Group %s does not exist"),
+                      dest_vg)
+            return false_ret
+
+        helper = utils.get_root_helper()
+
+        lvm_conf_file = self.configuration.lvm_conf_file
+        if lvm_conf_file.lower() == 'none':
+            lvm_conf_file = None
+
+        dest_vg_ref = lvm.LVM(dest_vg, helper,
+                              lvm_type=lvm_type,
+                              executor=self._execute,
+                              lvm_conf=lvm_conf_file)
+
+        self._create_volume(volume['name'],
+                            self._sizestr(volume['size']),
+                            lvm_type,
+                            lvm_mirrors,
+                            dest_vg_ref)
+        # copy_volume expects sizes in MiB, we store integer GiB
+        # be sure to convert before passing in
+        size_in_mb = int(volume['size']) * units.Ki
+        try:
+            volutils.copy_volume(self.local_path(volume),
+                                 self.local_path(volume, vg=dest_vg),
+                                 size_in_mb,
+                                 self.configuration.volume_dd_blocksize,
+                                 execute=self._execute,
+                                 sparse=self._sparse_copy_volume)
+        except Exception as e:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Volume migration failed due to "
+                              "exception: %(reason)s."),
+                          {'reason': six.text_type(e)}, resource=volume)
+                dest_vg_ref.delete(volume)
+        self._delete_volume(volume)
+        return (True, None)
 
     def get_pool(self, volume):
         return self.backend_name
