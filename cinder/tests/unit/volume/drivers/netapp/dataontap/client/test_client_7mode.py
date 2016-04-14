@@ -670,11 +670,13 @@ class NetApp7modeClientTestCase(test.TestCase):
                              'available_bytes': expected_available_bytes}))
         self.connection.invoke_successfully.return_value = response
 
-        total_bytes, available_bytes = (
-            self.client.get_flexvol_capacity(fake_flexvol_path))
+        result = self.client.get_flexvol_capacity(fake_flexvol_path)
 
-        self.assertEqual(expected_total_bytes, total_bytes)
-        self.assertEqual(expected_available_bytes, available_bytes)
+        expected = {
+            'size-total': expected_total_bytes,
+            'size-available': expected_available_bytes,
+        }
+        self.assertEqual(expected, result)
 
     def test_get_performance_instance_names(self):
 

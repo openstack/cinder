@@ -228,14 +228,15 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             pool['max_over_subscription_ratio'] = (
                 self.max_over_subscription_ratio)
 
-            # convert sizes to GB
-            total = float(vol.space['size_total_bytes'])
-            total /= units.Gi
-            pool['total_capacity_gb'] = na_utils.round_down(total, '0.01')
+            # Get capacity info and convert to GB
+            capacity = self.zapi_client.get_flexvol_capacity(
+                flexvol_name=pool_name)
 
-            free = float(vol.space['size_avl_bytes'])
-            free /= units.Gi
-            pool['free_capacity_gb'] = na_utils.round_down(free, '0.01')
+            size_total_gb = capacity['size-total'] / units.Gi
+            pool['total_capacity_gb'] = na_utils.round_down(size_total_gb)
+
+            size_available_gb = capacity['size-available'] / units.Gi
+            pool['free_capacity_gb'] = na_utils.round_down(size_available_gb)
 
             pool['provisioned_capacity_gb'] = (round(
                 pool['total_capacity_gb'] - pool['free_capacity_gb'], 2))

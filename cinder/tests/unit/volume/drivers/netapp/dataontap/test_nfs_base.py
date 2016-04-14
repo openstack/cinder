@@ -86,25 +86,25 @@ class NetAppNfsDriverTestCase(test.TestCase):
         expected = fake.CAPACITY_VALUES
         self.driver.zapi_client = mock.Mock()
         get_capacity = self.driver.zapi_client.get_flexvol_capacity
-        get_capacity.return_value = fake.CAPACITY_VALUES
+        get_capacity.return_value = fake.CAPACITIES
 
         result = self.driver._get_capacity_info(fake.NFS_SHARE_IPV4)
 
         self.assertEqual(expected, result)
         get_capacity.assert_has_calls([
-            mock.call(fake.EXPORT_PATH)])
+            mock.call(flexvol_path=fake.EXPORT_PATH)])
 
     def test_get_capacity_info_ipv6_share(self):
         expected = fake.CAPACITY_VALUES
         self.driver.zapi_client = mock.Mock()
         get_capacity = self.driver.zapi_client.get_flexvol_capacity
-        get_capacity.return_value = fake.CAPACITY_VALUES
+        get_capacity.return_value = fake.CAPACITIES
 
         result = self.driver._get_capacity_info(fake.NFS_SHARE_IPV6)
 
         self.assertEqual(expected, result)
         get_capacity.assert_has_calls([
-            mock.call(fake.EXPORT_PATH)])
+            mock.call(flexvol_path=fake.EXPORT_PATH)])
 
     def test_create_volume(self):
         self.mock_object(self.driver, '_ensure_shares_mounted')

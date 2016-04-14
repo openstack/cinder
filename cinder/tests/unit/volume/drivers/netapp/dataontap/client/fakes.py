@@ -104,6 +104,13 @@ NO_RECORDS_RESPONSE = etree.XML("""
   </results>
 """)
 
+INVALID_GET_ITER_RESPONSE_NO_RECORDS = etree.XML("""
+  <results status="passed">
+    <attributes-list/>
+    <next-tag>fake_tag</next-tag>
+  </results>
+""")
+
 GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE = etree.XML("""
     <results status="passed">
         <num-records>2</num-records>
@@ -279,12 +286,6 @@ SNAPSHOT_NOT_PRESENT_7MODE = etree.XML("""
     </snapshots>
     </results>
 """ % {'vol_name': fake.SNAPSHOT['volume_id']})
-
-NO_RECORDS_RESPONSE = etree.XML("""
-  <results status="passed">
-    <num-records>0</num-records>
-  </results>
-""")
 
 NODE_NAME = 'fake_node1'
 NODE_NAMES = ('fake_node1', 'fake_node2')
@@ -606,6 +607,25 @@ AGGR_GET_NODE_RESPONSE = etree.XML("""
 """ % {
     'aggr': VOLUME_AGGREGATE_NAME,
     'node': NODE_NAME,
+})
+
+VOLUME_SIZE_TOTAL = 19922944
+VOLUME_SIZE_AVAILABLE = 19791872
+VOLUME_GET_ITER_RESPONSE = etree.XML("""
+    <results status="passed">
+        <num-records>1</num-records>
+        <attributes-list>
+            <volume-attributes>
+                <volume-space-attributes>
+                    <size-available>%(available_size)s</size-available>
+                    <size-total>%(total_size)s</size-total>
+                </volume-space-attributes>
+            </volume-attributes>
+        </attributes-list>
+    </results>
+""" % {
+    'available_size': VOLUME_SIZE_AVAILABLE,
+    'total_size': VOLUME_SIZE_TOTAL,
 })
 
 PERF_OBJECT_COUNTER_TOTAL_CP_MSECS_LABELS = [

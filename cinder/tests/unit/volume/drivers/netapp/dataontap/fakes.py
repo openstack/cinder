@@ -169,6 +169,7 @@ MAX_OVER_SUBSCRIPTION_RATIO = 19.0
 TOTAL_BYTES = 4797892092432
 AVAILABLE_BYTES = 13479932478
 CAPACITY_VALUES = (TOTAL_BYTES, AVAILABLE_BYTES)
+CAPACITIES = {'size-total': TOTAL_BYTES, 'size-available': AVAILABLE_BYTES}
 
 IGROUP1 = {'initiator-group-os-type': 'linux',
            'initiator-group-type': 'fcp',
@@ -279,8 +280,6 @@ FAKE_CMODE_VOL1 = ssc_cmode.NetAppVolume(name='open123', vserver='openstack')
 FAKE_CMODE_VOL1.state['vserver_root'] = False
 FAKE_CMODE_VOL1.state['status'] = 'online'
 FAKE_CMODE_VOL1.state['junction_active'] = True
-FAKE_CMODE_VOL1.space['size_avl_bytes'] = '4000000000'
-FAKE_CMODE_VOL1.space['size_total_bytes'] = '5000000000'
 FAKE_CMODE_VOL1.space['space-guarantee-enabled'] = False
 FAKE_CMODE_VOL1.space['space-guarantee'] = 'file'
 FAKE_CMODE_VOL1.space['thin_provisioned'] = True
