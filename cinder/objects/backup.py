@@ -163,9 +163,6 @@ class BackupList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('Backup'),
     }
-    child_versions = {
-        '1.0': '1.0'
-    }
 
     @base.remotable_classmethod
     def get_all(cls, context, filters=None, marker=None, limit=None,

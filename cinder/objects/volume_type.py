@@ -108,11 +108,6 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('VolumeType'),
     }
 
-    child_versions = {
-        '1.0': '1.0',
-        '1.1': '1.0',
-    }
-
     @base.remotable_classmethod
     def get_all(cls, context, inactive=0, filters=None, marker=None,
                 limit=None, sort_keys=None, sort_dirs=None, offset=None):

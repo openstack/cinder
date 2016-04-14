@@ -758,6 +758,11 @@ ObjectActionError = obj_exc.ObjectActionError
 ObjectFieldInvalid = obj_exc.ObjectFieldInvalid
 
 
+class CappedVersionUnknown(CinderException):
+    message = _('Unrecoverable Error: Versioned Objects in DB are capped to '
+                'unknown version %(version)s.')
+
+
 class VolumeGroupNotFound(CinderException):
     message = _('Unable to find Volume Group: %(vg_name)s')
 

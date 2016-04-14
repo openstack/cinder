@@ -143,10 +143,6 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('ConsistencyGroup')
     }
-    child_version = {
-        '1.0': '1.0',
-        '1.1': '1.1',
-    }
 
     @base.remotable_classmethod
     def get_all(cls, context, filters=None, marker=None, limit=None,

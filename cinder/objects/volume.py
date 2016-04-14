@@ -442,11 +442,6 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('Volume'),
     }
 
-    child_versions = {
-        '1.0': '1.0',
-        '1.1': '1.1',
-    }
-
     @classmethod
     def _get_expected_attrs(cls, context):
         expected_attrs = ['metadata', 'volume_type']
