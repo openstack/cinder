@@ -27,6 +27,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_backup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -289,31 +290,36 @@ class NotifyUsageTestCase(test.TestCase):
 
     def test_usage_from_backup(self):
         raw_backup = {
-            'project_id': '12b0330ec2584a',
-            'user_id': '158cba1b8c2bb6008e',
+            'project_id': fake.project_id,
+            'user_id': fake.user_id,
             'availability_zone': 'nova',
-            'id': 'fake_id',
+            'id': fake.backup_id,
             'host': 'fake_host',
             'display_name': 'test_backup',
-            'created_at': '2014-12-11T10:10:00',
+            'created_at': datetime.datetime(2015, 1, 1, 1, 1, 1),
             'status': 'available',
-            'volume_id': 'fake_volume_id',
+            'volume_id': fake.volume_id,
             'size': 1,
             'service_metadata': None,
             'service': 'cinder.backup.drivers.swift',
             'fail_reason': None,
-            'parent_id': 'fake_parent_id',
+            'parent_id': fake.backup2_id,
             'num_dependent_backups': 0,
             'snapshot_id': None,
         }
+
+        ctxt = context.get_admin_context()
+        backup_obj = fake_backup.fake_backup_obj(ctxt, **raw_backup)
 
         # Make it easier to find out differences between raw and expected.
         expected_backup = raw_backup.copy()
         expected_backup['tenant_id'] = expected_backup.pop('project_id')
         expected_backup['backup_id'] = expected_backup.pop('id')
+        expected_backup['created_at'] = (
+            six.text_type(expected_backup['created_at']) + '+00:00')
 
-        usage_info = volume_utils._usage_from_backup(raw_backup)
-        self.assertEqual(expected_backup, usage_info)
+        usage_info = volume_utils._usage_from_backup(backup_obj)
+        self.assertDictMatch(expected_backup, usage_info)
 
 
 class LVMVolumeDriverTestCase(test.TestCase):

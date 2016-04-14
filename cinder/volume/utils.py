@@ -91,24 +91,24 @@ def _usage_from_volume(context, volume_ref, **kw):
     return usage_info
 
 
-def _usage_from_backup(backup_ref, **kw):
-    num_dependent_backups = backup_ref['num_dependent_backups']
-    usage_info = dict(tenant_id=backup_ref['project_id'],
-                      user_id=backup_ref['user_id'],
-                      availability_zone=backup_ref['availability_zone'],
-                      backup_id=backup_ref['id'],
-                      host=backup_ref['host'],
-                      display_name=backup_ref['display_name'],
-                      created_at=str(backup_ref['created_at']),
-                      status=backup_ref['status'],
-                      volume_id=backup_ref['volume_id'],
-                      size=backup_ref['size'],
-                      service_metadata=backup_ref['service_metadata'],
-                      service=backup_ref['service'],
-                      fail_reason=backup_ref['fail_reason'],
-                      parent_id=backup_ref['parent_id'],
+def _usage_from_backup(backup, **kw):
+    num_dependent_backups = backup.num_dependent_backups
+    usage_info = dict(tenant_id=backup.project_id,
+                      user_id=backup.user_id,
+                      availability_zone=backup.availability_zone,
+                      backup_id=backup.id,
+                      host=backup.host,
+                      display_name=backup.display_name,
+                      created_at=str(backup.created_at),
+                      status=backup.status,
+                      volume_id=backup.volume_id,
+                      size=backup.size,
+                      service_metadata=backup.service_metadata,
+                      service=backup.service,
+                      fail_reason=backup.fail_reason,
+                      parent_id=backup.parent_id,
                       num_dependent_backups=num_dependent_backups,
-                      snapshot_id=backup_ref['snapshot_id'],
+                      snapshot_id=backup.snapshot_id,
                       )
 
     usage_info.update(kw)
