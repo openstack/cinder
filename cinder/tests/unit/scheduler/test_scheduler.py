@@ -234,7 +234,8 @@ class SchedulerManagerTestCase(test.TestCase):
         self.manager.migrate_volume_to_host(self.context, topic,
                                             fake_volume_id, 'host', True,
                                             request_spec=request_spec,
-                                            filter_properties={})
+                                            filter_properties={},
+                                            volume=volume)
         _mock_volume_update.assert_called_once_with(self.context,
                                                     fake_volume_id,
                                                     fake_updates)

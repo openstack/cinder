@@ -66,7 +66,6 @@ class SchedulerManager(manager.Manager):
             scheduler_driver = CONF.scheduler_driver
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
-        self.additional_endpoints.append(_SchedulerV1Proxy(self))
         self._startup_delay = True
 
     def init_host_with_rpc(self):
@@ -126,7 +125,7 @@ class SchedulerManager(manager.Manager):
 
         self._wait_for_scheduler()
 
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the
             # volume by its volume_id.
@@ -158,7 +157,7 @@ class SchedulerManager(manager.Manager):
 
         self._wait_for_scheduler()
 
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the
             # volume by its volume_id.
@@ -204,7 +203,7 @@ class SchedulerManager(manager.Manager):
 
         self._wait_for_scheduler()
 
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the
             # volume by its volume_id.
@@ -316,59 +315,3 @@ class SchedulerManager(manager.Manager):
         rpc.get_notifier("scheduler").error(context,
                                             'scheduler.' + method,
                                             payload)
-
-
-# TODO(dulek): This goes away immediately in Newton and is just present in
-# Mitaka so that we can receive v1.x and v2.0 messages.
-class _SchedulerV1Proxy(object):
-
-    target = messaging.Target(version='1.11')
-
-    def __init__(self, manager):
-        self.manager = manager
-
-    def update_service_capabilities(self, context, service_name=None,
-                                    host=None, capabilities=None, **kwargs):
-        return self.manager.update_service_capabilities(
-            context, service_name=service_name, host=host,
-            capabilities=capabilities, **kwargs)
-
-    def create_consistencygroup(self, context, topic, group,
-                                request_spec_list=None,
-                                filter_properties_list=None):
-        return self.manager.create_consistencygroup(
-            context, topic, group, request_spec_list=request_spec_list,
-            filter_properties_list=None)
-
-    def create_volume(self, context, topic, volume_id, snapshot_id=None,
-                      image_id=None, request_spec=None, filter_properties=None,
-                      volume=None):
-        return self.manager.create_volume(
-            context, topic, volume_id, snapshot_id=snapshot_id,
-            image_id=image_id, request_spec=request_spec,
-            filter_properties=filter_properties, volume=volume)
-
-    def request_service_capabilities(self, context):
-        return self.manager.request_service_capabilities(context)
-
-    def migrate_volume_to_host(self, context, topic, volume_id, host,
-                               force_host_copy, request_spec,
-                               filter_properties=None, volume=None):
-        return self.manager.migrate_volume_to_host(
-            context, topic, volume_id, host, force_host_copy, request_spec,
-            filter_properties=filter_properties, volume=volume)
-
-    def retype(self, context, topic, volume_id, request_spec,
-               filter_properties=None, volume=None):
-        return self.manager.retype(context, topic, volume_id, request_spec,
-                                   filter_properties=filter_properties,
-                                   volume=volume)
-
-    def manage_existing(self, context, topic, volume_id, request_spec,
-                        filter_properties=None):
-        return self.manager.manage_existing(
-            context, topic, volume_id, request_spec,
-            filter_properties=filter_properties)
-
-    def get_pools(self, context, filters=None):
-        return self.manager.get_pools(context, filters=filters)

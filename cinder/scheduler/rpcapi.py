@@ -56,16 +56,10 @@ class SchedulerAPI(rpc.RPCAPI):
     TOPIC = CONF.scheduler_topic
     BINARY = 'cinder-scheduler'
 
-    def _compat_ver(self, current, legacy):
-        if self.client.can_send_version(current):
-            return current
-        else:
-            return legacy
-
     def create_consistencygroup(self, ctxt, topic, group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
-        version = self._compat_ver('2.0', '1.8')
+        version = '2.0'
         cctxt = self.client.prepare(version=version)
         request_spec_p_list = []
         for request_spec in request_spec_list:
@@ -85,15 +79,8 @@ class SchedulerAPI(rpc.RPCAPI):
         msg_args = {'topic': topic, 'volume_id': volume_id,
                     'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec_p,
-                    'filter_properties': filter_properties}
-        if self.client.can_send_version('2.0'):
-            version = '2.0'
-            msg_args['volume'] = volume
-        elif self.client.can_send_version('1.9'):
-            version = '1.9'
-            msg_args['volume'] = volume
-        else:
-            version = '1.2'
+                    'filter_properties': filter_properties, 'volume': volume}
+        version = '2.0'
 
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'create_volume', **msg_args)
@@ -105,15 +92,8 @@ class SchedulerAPI(rpc.RPCAPI):
         msg_args = {'topic': topic, 'volume_id': volume_id,
                     'host': host, 'force_host_copy': force_host_copy,
                     'request_spec': request_spec_p,
-                    'filter_properties': filter_properties}
-        if self.client.can_send_version('2.0'):
-            version = '2.0'
-            msg_args['volume'] = volume
-        elif self.client.can_send_version('1.11'):
-            version = '1.11'
-            msg_args['volume'] = volume
-        else:
-            version = '1.3'
+                    'filter_properties': filter_properties, 'volume': volume}
+        version = '2.0'
 
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'migrate_volume_to_host', **msg_args)
@@ -124,22 +104,15 @@ class SchedulerAPI(rpc.RPCAPI):
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {'topic': topic, 'volume_id': volume_id,
                     'request_spec': request_spec_p,
-                    'filter_properties': filter_properties}
-        if self.client.can_send_version('2.0'):
-            version = '2.0'
-            msg_args['volume'] = volume
-        elif self.client.can_send_version('1.10'):
-            version = '1.10'
-            msg_args['volume'] = volume
-        else:
-            version = '1.4'
+                    'filter_properties': filter_properties, 'volume': volume}
+        version = '2.0'
 
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'retype', **msg_args)
 
     def manage_existing(self, ctxt, topic, volume_id,
                         request_spec=None, filter_properties=None):
-        version = self._compat_ver('2.0', '1.5')
+        version = '2.0'
         cctxt = self.client.prepare(version=version)
         request_spec_p = jsonutils.to_primitive(request_spec)
         return cctxt.cast(ctxt, 'manage_existing',
@@ -149,7 +122,7 @@ class SchedulerAPI(rpc.RPCAPI):
                           filter_properties=filter_properties)
 
     def get_pools(self, ctxt, filters=None):
-        version = self._compat_ver('2.0', '1.7')
+        version = '2.0'
         cctxt = self.client.prepare(version=version)
         return cctxt.call(ctxt, 'get_pools',
                           filters=filters)
@@ -157,8 +130,7 @@ class SchedulerAPI(rpc.RPCAPI):
     def update_service_capabilities(self, ctxt,
                                     service_name, host,
                                     capabilities):
-        # FIXME(flaper87): What to do with fanout?
-        version = self._compat_ver('2.0', '1.0')
+        version = '2.0'
         cctxt = self.client.prepare(fanout=True, version=version)
         cctxt.cast(ctxt, 'update_service_capabilities',
                    service_name=service_name, host=host,
