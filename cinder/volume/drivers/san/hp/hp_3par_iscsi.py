@@ -100,10 +100,11 @@ class HP3PARISCSIDriver(driver.TransferVD,
         2.0.21 - Adds consistency group support
         2.0.22 - Update driver to use ABC metaclasses
         2.0.23 - Added update_migrated_volume. bug # 1492023
+        2.0.24 - Use same LUN ID for each VLUN path #1551994
 
     """
 
-    VERSION = "2.0.23"
+    VERSION = "2.0.24"
 
     def __init__(self, *args, **kwargs):
         super(HP3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -318,6 +319,7 @@ class HP3PARISCSIDriver(driver.TransferVD,
 
                 # Cycle through each ready iSCSI port and determine if a new
                 # VLUN should be created or an existing one used.
+                lun_id = None
                 for port in ready_ports:
                     iscsi_ip = port['IPAddr']
                     if iscsi_ip in target_portal_ips:
@@ -333,7 +335,13 @@ class HP3PARISCSIDriver(driver.TransferVD,
                                 break
                         else:
                             vlun = common.create_vlun(
-                                volume, host, self.iscsi_ips[iscsi_ip]['nsp'])
+                                volume, host, self.iscsi_ips[iscsi_ip]['nsp'],
+                                lun_id=lun_id)
+
+                            # We want to use the same LUN ID for every port
+                            if lun_id is None:
+                                lun_id = vlun['lun']
+
                         iscsi_ip_port = "%s:%s" % (
                             iscsi_ip, self.iscsi_ips[iscsi_ip]['ip_port'])
                         target_portals.append(iscsi_ip_port)

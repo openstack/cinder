@@ -203,10 +203,11 @@ class HP3PARCommon(object):
         2.0.51 - Adds consistency group support
         2.0.52 - Added update_migrated_volume. bug #1492023
         2.0.53 - Fix volume size conversion. bug #1513158
+        2.0.54 - Use same LUN ID for each VLUN path #1551994
 
     """
 
-    VERSION = "2.0.53"
+    VERSION = "2.0.54"
 
     stats = {}
 
@@ -802,16 +803,22 @@ class HP3PARCommon(object):
     def _delete_3par_host(self, hostname):
         self.client.deleteHost(hostname)
 
-    def _create_3par_vlun(self, volume, hostname, nsp):
+    def _create_3par_vlun(self, volume, hostname, nsp, lun_id=None):
         try:
             location = None
+            auto = True
+
+            if lun_id:
+                auto = False
+
             if nsp is None:
                 location = self.client.createVLUN(volume, hostname=hostname,
-                                                  auto=True)
+                                                  auto=auto, lun=lun_id)
             else:
                 port = self.build_portPos(nsp)
                 location = self.client.createVLUN(volume, hostname=hostname,
-                                                  auto=True, portPos=port)
+                                                  auto=auto, portPos=port,
+                                                  lun=lun_id)
 
             vlun_info = None
             if location:
@@ -1026,13 +1033,14 @@ class HP3PARCommon(object):
                      {'name': volume_name, 'host': hostname})
         return found_vlun
 
-    def create_vlun(self, volume, host, nsp=None):
+    def create_vlun(self, volume, host, nsp=None, lun_id=None):
         """Create a VLUN.
 
         In order to export a volume on a 3PAR box, we have to create a VLUN.
         """
         volume_name = self._get_3par_vol_name(volume['id'])
-        vlun_info = self._create_3par_vlun(volume_name, host['name'], nsp)
+        vlun_info = self._create_3par_vlun(volume_name, host['name'], nsp,
+                                           lun_id=lun_id)
         return self._get_vlun(volume_name,
                               host['name'],
                               vlun_info['lun_id'],

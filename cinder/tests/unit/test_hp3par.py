@@ -3599,7 +3599,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,
-                    hostname=self.FAKE_HOST),
+                    hostname=self.FAKE_HOST,
+                    lun=None),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
@@ -3692,7 +3693,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                     self.VOLUME_3PAR_NAME,
                     auto=True,
                     hostname=self.FAKE_HOST,
-                    portPos={'node': 7, 'slot': 1, 'cardPort': 1}),
+                    portPos={'node': 7, 'slot': 1, 'cardPort': 1},
+                    lun=None),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
@@ -3765,7 +3767,8 @@ class TestHP3PARFCDriver(HP3PARBaseDriver, test.TestCase):
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,
-                    hostname=self.FAKE_HOST),
+                    hostname=self.FAKE_HOST,
+                    lun=None),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
@@ -4593,7 +4596,8 @@ class TestHP3PARISCSIDriver(HP3PARBaseDriver, test.TestCase):
                     self.VOLUME_3PAR_NAME,
                     auto=True,
                     hostname=self.FAKE_HOST,
-                    portPos=self.FAKE_ISCSI_PORT['portPos']),
+                    portPos=self.FAKE_ISCSI_PORT['portPos'],
+                    lun=None),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
