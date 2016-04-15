@@ -211,9 +211,11 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         volume['name'] which is how drivers traditionally map between a
         cinder volume and the associated backend storage object.
 
-        existing_ref:{
-            'id':lun_id
-        }
+        .. code-block:: json
+
+            existing_ref:{
+                'id':lun_id
+            }
         """
         LOG.debug(
             'manage_existing volume id=%(volume_id)s '

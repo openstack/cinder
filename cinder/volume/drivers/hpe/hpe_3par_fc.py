@@ -57,6 +57,9 @@ class HPE3PARFCDriver(driver.TransferVD,
     """OpenStack Fibre Channel driver to enable 3PAR storage array.
 
     Version history:
+
+    .. code-block:: none
+
         1.0   - Initial driver
         1.1   - QoS, extend volume, multiple iscsi ports, remove domain,
                 session changes, faster clone, requires 3.1.2 MU2 firmware,

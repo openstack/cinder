@@ -56,17 +56,20 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
     """IBM FlashSystem iSCSI volume driver.
 
     Version history:
-    1.0.0 - Initial driver
-    1.0.1 - Code clean up
-    1.0.2 - Add lock into vdisk map/unmap, connection
-            initialize/terminate
-    1.0.3 - Initial driver for iSCSI
-    1.0.4 - Split Flashsystem driver into common and FC
-    1.0.5 - Report capability of volume multiattach
-    1.0.6 - Fix bug #1469581, add I/T mapping check in
-            terminate_connection
-    1.0.7 - Fix bug #1505477, add host name check in
-            _find_host_exhaustive for FC
+
+    .. code-block:: none
+
+        1.0.0 - Initial driver
+        1.0.1 - Code clean up
+        1.0.2 - Add lock into vdisk map/unmap, connection
+                initialize/terminate
+        1.0.3 - Initial driver for iSCSI
+        1.0.4 - Split Flashsystem driver into common and FC
+        1.0.5 - Report capability of volume multiattach
+        1.0.6 - Fix bug #1469581, add I/T mapping check in
+                terminate_connection
+        1.0.7 - Fix bug #1505477, add host name check in
+                _find_host_exhaustive for FC
 
     """
 
@@ -218,7 +221,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
         2. Create new host on the storage system if it does not yet exist
         3. Map the volume to the host if it is not already done
         4. Return the connection information for relevant nodes (in the
-           proper I/O group)
+        proper I/O group)
 
         """
 
@@ -268,7 +271,7 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
         1. Translate the given connector to a host name
         2. Remove the volume-to-host mapping if it exists
         3. Delete the host if it has no more mappings (hosts are created
-           automatically by this driver when mappings are created)
+        automatically by this driver when mappings are created)
         """
         LOG.debug(
             'enter: terminate_connection: volume %(vol)s with '

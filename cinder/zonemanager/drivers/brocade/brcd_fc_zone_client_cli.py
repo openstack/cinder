@@ -62,13 +62,16 @@ class BrcdFCZoneClientCLI(object):
         are active then it will return empty map.
 
         :returns: Map -- active zone set map in the following format
-        {
-            'zones':
-                {'openstack50060b0000c26604201900051ee8e329':
-                    ['50060b0000c26604', '201900051ee8e329']
-                },
-            'active_zone_config': 'OpenStack_Cfg'
-        }
+
+        .. code-block:: python
+
+            {
+                'zones':
+                    {'openstack50060b0000c26604201900051ee8e329':
+                        ['50060b0000c26604', '201900051ee8e329']
+                    },
+                'active_zone_config': 'OpenStack_Cfg'
+            }
         """
         zone_set = {}
         zone = {}
@@ -119,17 +122,27 @@ class BrcdFCZoneClientCLI(object):
         """Add zone configuration.
 
         This method will add the zone configuration passed by user.
-            input params:
-            zones - zone names mapped to members.
-            zone members are colon separated but case-insensitive
-            {   zonename1:[zonememeber1,zonemember2,...],
+
+        :param zones: zone names mapped to members. Zone members
+                      are colon separated but case-insensitive
+
+        .. code-block:: python
+
+            {   zonename1:[zonememeber1, zonemember2,...],
                 zonename2:[zonemember1, zonemember2,...]...}
-            e.g: {'openstack50060b0000c26604201900051ee8e329':
-                    ['50:06:0b:00:00:c2:66:04', '20:19:00:05:1e:e8:e3:29']
-                }
-            activate - True/False
-            active_zone_set - active zone set dict retrieved from
-                              get_active_zone_set method
+
+            e.g:
+
+            {
+                'openstack50060b0000c26604201900051ee8e329':
+                        ['50:06:0b:00:00:c2:66:04',
+                         '20:19:00:05:1e:e8:e3:29']
+            }
+
+        :param activate: True/False
+        :param active_zone_set: active zone set dict retrieved from
+                                get_active_zone_set method
+
         """
         LOG.debug("Add Zones - Zones passed: %s", zones)
         cfg_name = None

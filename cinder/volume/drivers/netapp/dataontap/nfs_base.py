@@ -895,7 +895,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         new Cinder volume name. It is expected that the existing volume
         reference is an NFS share point and some [/path]/volume;
         e.g., 10.10.32.1:/openstack/vol_to_manage
-           or 10.10.32.1:/openstack/some_directory/vol_to_manage
+        or 10.10.32.1:/openstack/some_directory/vol_to_manage
 
         :param volume:           Cinder volume to manage
         :param existing_vol_ref: Driver-specific information used to identify a

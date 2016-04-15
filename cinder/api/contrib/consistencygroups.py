@@ -312,15 +312,19 @@ class ConsistencyGroupsController(wsgi.Controller):
         """Update the consistency group.
 
         Expected format of the input parameter 'body':
-        {
-            "consistencygroup":
+
+        .. code-block:: json
+
             {
-                "name": "my_cg",
-                "description": "My consistency group",
-                "add_volumes": "volume-uuid-1,volume-uuid-2,..."
-                "remove_volumes": "volume-uuid-8,volume-uuid-9,..."
+                "consistencygroup":
+                {
+                    "name": "my_cg",
+                    "description": "My consistency group",
+                    "add_volumes": "volume-uuid-1,volume-uuid-2,...",
+                    "remove_volumes": "volume-uuid-8,volume-uuid-9,..."
+                }
             }
-        }
+
         """
         LOG.debug('Update called for consistency group %s.', id)
 

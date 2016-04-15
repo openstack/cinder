@@ -16,15 +16,18 @@
 Driver for EMC XtremIO Storage.
 supported XtremIO version 2.4 and up
 
-1.0.0 - initial release
-1.0.1 - enable volume extend
-1.0.2 - added FC support, improved error handling
-1.0.3 - update logging level, add translation
-1.0.4 - support for FC zones
-1.0.5 - add support for XtremIO 4.0
-1.0.6 - add support for iSCSI multipath, CA validation, consistency groups,
-        R/O snapshots, CHAP discovery authentication
-1.0.7 - cache glance images on the array
+.. code-block:: none
+
+  1.0.0 - initial release
+  1.0.1 - enable volume extend
+  1.0.2 - added FC support, improved error handling
+  1.0.3 - update logging level, add translation
+  1.0.4 - support for FC zones
+  1.0.5 - add support for XtremIO 4.0
+  1.0.6 - add support for iSCSI multipath, CA validation, consistency groups,
+          R/O snapshots, CHAP discovery authentication
+  1.0.7 - cache glance images on the array
+
 """
 
 import json
@@ -662,7 +665,7 @@ class XtremIOVolumeDriver(san.SanDriver):
         :param snapshots: a list of snapshot dictionaries in the cgsnapshot.
         :param source_cg: the dictionary of a consistency group as source.
         :param source_vols: a list of volume dictionaries in the source_cg.
-        :returns model_update, volumes_model_update
+        :returns: model_update, volumes_model_update
         """
         if not (cgsnapshot and snapshots and not source_cg or
                 source_cg and source_vols and not cgsnapshot):

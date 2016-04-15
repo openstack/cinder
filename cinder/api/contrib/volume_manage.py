@@ -57,13 +57,15 @@ class VolumeManageController(wsgi.Controller):
 
         Required HTTP Body:
 
-        {
-         'volume':
-          {
-           'host': <Cinder host on which the existing storage resides>,
-           'ref':  <Driver-specific reference to the existing storage object>,
-          }
-        }
+        .. code-block:: json
+
+         {
+           'volume':
+           {
+             'host': <Cinder host on which the existing storage resides>,
+             'ref':  <Driver-specific reference to existing storage object>,
+           }
+         }
 
         See the appropriate Cinder drivers' implementations of the
         manage_volume method to find out the accepted format of 'ref'.
@@ -75,21 +77,23 @@ class VolumeManageController(wsgi.Controller):
         The volume will later enter the error state if it is discovered that
         'ref' is bad.
 
-        Optional elements to 'volume' are:
-            name               A name for the new volume.
-            description        A description for the new volume.
-            volume_type        ID or name of a volume type to associate with
-                               the new Cinder volume.  Does not necessarily
-                               guarantee that the managed volume will have the
-                               properties described in the volume_type.  The
-                               driver may choose to fail if it identifies that
-                               the specified volume_type is not compatible with
-                               the backend storage object.
-            metadata           Key/value pairs to be associated with the new
-                               volume.
-            availability_zone  The availability zone to associate with the new
-                               volume.
-            bootable           If set to True, marks the volume as bootable.
+        Optional elements to 'volume' are::
+
+         name               A name for the new volume.
+         description        A description for the new volume.
+         volume_type        ID or name of a volume type to associate with
+                            the new Cinder volume. Does not necessarily
+                            guarantee that the managed volume will have the
+                            properties described in the volume_type. The
+                            driver may choose to fail if it identifies that
+                            the specified volume_type is not compatible with
+                            the backend storage object.
+         metadata           Key/value pairs to be associated with the new
+                            volume.
+         availability_zone  The availability zone to associate with the new
+                            volume.
+         bootable           If set to True, marks the volume as bootable.
+
         """
         context = req.environ['cinder.context']
         authorize(context)

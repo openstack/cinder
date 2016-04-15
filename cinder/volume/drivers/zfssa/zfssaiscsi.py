@@ -109,11 +109,14 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
     """ZFSSA Cinder iSCSI volume driver.
 
     Version history:
-    1.0.1:
-        Backend enabled volume migration.
-        Local cache feature.
-    1.0.2:
-        Volume manage/unmanage support.
+
+    .. code-block:: none
+
+        1.0.1:
+            Backend enabled volume migration.
+            Local cache feature.
+        1.0.2:
+            Volume manage/unmanage support.
     """
     VERSION = '1.0.2'
     protocol = 'iSCSI'

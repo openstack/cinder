@@ -68,6 +68,9 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
         :param initiator_wwn_list: List of initiator port WWN
         :param target_wwn_list: List of target port WWN
         :returns: List -- device wwn map in following format
+
+        .. code-block:: json
+
             {
                 <San name>: {
                     'initiator_port_wwn_list':
@@ -76,6 +79,7 @@ class BrcdFCSanLookupService(fc_service.FCSanLookupService):
                     ('100000051e55a100', '100000051e55a121'..)
                 }
             }
+
         :raises: Exception when connection to fabric is failed
         """
         device_map = {}

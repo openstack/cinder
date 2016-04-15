@@ -124,10 +124,13 @@ class ZoneManager(fc_common.FCCommon):
         Adds connection control for the given initiator target map.
         initiator_target_map - each initiator WWN mapped to a list of one
         or more target WWN:
-        eg:
-        {
-            '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
-        }
+
+        .. code-block:: python
+
+            e.g.:
+            {
+                '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
+            }
         """
         connected_fabric = None
         host_name = None
@@ -187,10 +190,13 @@ class ZoneManager(fc_common.FCCommon):
         Updates/deletes connection control for the given initiator target map.
         initiator_target_map - each initiator WWN mapped to a list of one
         or more target WWN:
-        eg:
-        {
-            '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
-        }
+
+        .. code-block:: python
+
+            e.g.:
+            {
+                '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
+            }
         """
         connected_fabric = None
         host_name = None

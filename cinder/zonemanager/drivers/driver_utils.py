@@ -33,16 +33,17 @@ def get_friendly_zone_name(zoning_policy, initiator, target,
     Get friendly zone name is used to form the zone name
     based on the details provided by the caller
 
-    :param zoning_policy - determines the zoning policy is either
-    initiator-target or initiator
-    :param initiator - initiator WWN
-    :param target - target WWN
-    :param host_name - Host name returned from Volume Driver
-    :param storage_system - Storage name returned from Volume Driver
-    :param zone_name_prefix - user defined zone prefix configured
-    in cinder.conf
-    :param supported_chars - Supported character set of FC switch vendor.
-    Example: 'abc123_-$'. These are defined in the FC zone drivers.
+    :param zoning_policy: determines the zoning policy is either
+                          initiator-target or initiator
+    :param initiator: initiator WWN
+    :param target: target WWN
+    :param host_name: Host name returned from Volume Driver
+    :param storage_system: Storage name returned from Volume Driver
+    :param zone_name_prefix: user defined zone prefix configured
+                             in cinder.conf
+    :param supported_chars: Supported character set of FC switch vendor.
+                            Example: `abc123_-$`. These are defined in
+                            the FC zone drivers.
     """
     if host_name is None:
         host_name = ''

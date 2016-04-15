@@ -356,16 +356,19 @@ class EMCVMAXCommon(object):
         maskingview.
 
         The naming convention is the following:
-        initiatorGroupName = OS-<shortHostName>-<shortProtocol>-IG
-                             e.g OS-myShortHost-I-IG
-        storageGroupName = OS-<shortHostName>-<poolName>-<shortProtocol>-SG
-                           e.g OS-myShortHost-SATA_BRONZ1-I-SG
-        portGroupName = OS-<target>-PG  The portGroupName will come from
-                        the EMC configuration xml file.
-                        These are precreated. If the portGroup does not exist
-                        then an error will be returned to the user
-        maskingView  = OS-<shortHostName>-<poolName>-<shortProtocol>-MV
-                       e.g OS-myShortHost-SATA_BRONZ1-I-MV
+
+        .. code-block:: none
+
+         initiatorGroupName = OS-<shortHostName>-<shortProtocol>-IG
+                              e.g OS-myShortHost-I-IG
+         storageGroupName = OS-<shortHostName>-<poolName>-<shortProtocol>-SG
+                            e.g OS-myShortHost-SATA_BRONZ1-I-SG
+         portGroupName = OS-<target>-PG  The portGroupName will come from
+                         the EMC configuration xml file.
+                         These are precreated. If the portGroup does not
+                         exist then an error will be returned to the user
+         maskingView  = OS-<shortHostName>-<poolName>-<shortProtocol>-MV
+                        e.g OS-myShortHost-SATA_BRONZ1-I-MV
 
         :param volume: volume Object
         :param connector: the connector Object
@@ -541,7 +544,7 @@ class EMCVMAXCommon(object):
         Prequisites:
         1. The volume must be composite e.g StorageVolume.EMCIsComposite=True
         2. The volume can only be concatenated
-           e.g StorageExtent.IsConcatenated=True
+        e.g StorageExtent.IsConcatenated=True
 
         :params volume: the volume Object
         :params newSize: the new size to increase the volume to

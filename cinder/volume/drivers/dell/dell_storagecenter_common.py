@@ -832,7 +832,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         :param volume:       Cinder volume to manage
         :param existing_ref: Driver-specific information used to identify a
-        volume
+                             volume
         """
         if existing_ref.get('source-name') or existing_ref.get('source-id'):
             with self._client.open_connection() as api:
@@ -856,7 +856,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         :param volume:       Cinder volume to manage
         :param existing_ref: Driver-specific information used to identify a
-        volume
+                             volume
         """
         if existing_ref.get('source-name') or existing_ref.get('source-id'):
             with self._client.open_connection() as api:
@@ -1048,9 +1048,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :param context: security context
         :param secondary_id: Specifies rep target to fail over to
         :param volumes: List of volumes serviced by this backend.
-        :returns : destssn, volume_updates data structure
+        :returns: destssn, volume_updates data structure
 
         Example volume_updates data structure:
+
+        .. code-block:: json
+
         [{'volume_id': <cinder-uuid>,
           'updates': {'provider_id': 8,
                       'replication_status': 'failed-over',

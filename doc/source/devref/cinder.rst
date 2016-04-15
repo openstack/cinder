@@ -22,16 +22,6 @@ Libraries common throughout Cinder or just ones that haven't been categorized
 very well yet.
 
 
-The :mod:`cinder.adminclient` Module
-------------------------------------
-
-.. automodule:: cinder.adminclient
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 The :mod:`cinder.context` Module
 --------------------------------
 
@@ -53,19 +43,9 @@ The :mod:`cinder.exception` Module
 
 
 The :mod:`cinder.common.config` Module
-------------------------------
+--------------------------------------
 
 .. automodule:: cinder.common.config
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`cinder.process` Module
---------------------------------
-
-.. automodule:: cinder.process
     :noindex:
     :members:
     :undoc-members:
@@ -76,16 +56,6 @@ The :mod:`cinder.rpc` Module
 ----------------------------
 
 .. automodule:: cinder.rpc
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`cinder.server` Module
--------------------------------
-
-.. automodule:: cinder.server
     :noindex:
     :members:
     :undoc-members:
@@ -112,16 +82,6 @@ The :mod:`cinder.utils` Module
     :show-inheritance:
 
 
-The :mod:`cinder.validate` Module
----------------------------------
-
-.. automodule:: cinder.validate
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 The :mod:`cinder.wsgi` Module
 -----------------------------
 
@@ -136,9 +96,9 @@ Tests
 -----
 
 The :mod:`declare_conf` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.declare_conf
+.. automodule:: cinder.tests.unit.declare_conf
     :noindex:
     :members:
     :undoc-members:
@@ -146,29 +106,19 @@ The :mod:`declare_conf` Module
 
 
 The :mod:`conf_fixture` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.conf_fixture
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`process_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.process_unittest
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`rpc_unittest` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.rpc_unittest
+.. automodule:: cinder.tests.unit.conf_fixture
+    :noindex:
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+The :mod:`test_rpc` Module
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. automodule:: cinder.tests.unit.test_rpc
     :noindex:
     :members:
     :undoc-members:
@@ -178,17 +128,7 @@ The :mod:`rpc_unittest` Module
 The :mod:`runtime_conf` Module
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. automodule:: cinder.tests.runtime_conf
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
-The :mod:`validator_unittest` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.tests.validator_unittest
+.. automodule:: cinder.tests.unit.runtime_conf
     :noindex:
     :members:
     :undoc-members:

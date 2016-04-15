@@ -30,10 +30,12 @@ class SchedulerAPI(rpc.RPCAPI):
 
     API version history:
 
+    .. code-block:: none
+
         1.0 - Initial version.
         1.1 - Add create_volume() method
-        1.2 - Add request_spec, filter_properties arguments
-              to create_volume()
+        1.2 - Add request_spec, filter_properties arguments to
+              create_volume()
         1.3 - Add migrate_volume_to_host() method
         1.4 - Add retype method
         1.5 - Add manage_existing method

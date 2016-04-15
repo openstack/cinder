@@ -132,6 +132,7 @@ They include::
 
 Additionally we have freeze/thaw methods that will act on the scheduler
 but may or may not require something from the driver::
+
     freeze_backend(self, context)
     thaw_backend(self, context)
 

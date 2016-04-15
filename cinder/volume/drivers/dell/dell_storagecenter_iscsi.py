@@ -33,6 +33,9 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterISCSIDriver
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         1.1.0 - Added extra spec support for Storage Profile selection
         1.2.0 - Added consistency group support.
@@ -47,6 +50,7 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         2.4.1 - Updated Replication support to V2.1.
         2.5.0 - ManageableSnapshotsVD implemented.
         3.0.0 - ProviderID utilized.
+
     """
 
     VERSION = '3.0.0'

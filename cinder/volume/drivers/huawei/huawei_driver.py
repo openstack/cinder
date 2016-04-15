@@ -1581,6 +1581,9 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     """ISCSI driver for Huawei storage arrays.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         1.1.0 - Provide Huawei OceanStor storage 18000 driver
         1.1.1 - Code refactor
@@ -1769,6 +1772,9 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
     """FC driver for Huawei OceanStor storage arrays.
 
     Version history:
+
+    .. code-block:: none
+
         1.0.0 - Initial driver
         1.1.0 - Provide Huawei OceanStor 18000 storage volume driver
         1.1.1 - Code refactor

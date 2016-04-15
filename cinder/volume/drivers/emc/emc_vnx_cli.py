@@ -1307,6 +1307,7 @@ class CommandLineHelper(object):
 
         :param src_id: source LUN id
         :param dst_id: destination LUN id
+
         NOTE: This method will ignore any errors, error-handling
         is located in verification function.
         """
@@ -3901,13 +3902,18 @@ class EMCVnxCliBase(object):
     def manage_existing(self, volume, manage_existing_ref):
         """Imports the existing backend storage object as a volume.
 
-        manage_existing_ref:{
-            'source-id':<lun id in VNX>
-        }
-        or
-        manage_existing_ref:{
-            'source-name':<lun name in VNX>
-        }
+        .. code-block:: none
+
+            manage_existing_ref:{
+                'source-id':<lun id in VNX>
+            }
+
+            or
+
+            manage_existing_ref:{
+                'source-name':<lun name in VNX>
+            }
+
         """
         client = self._client
 
@@ -4826,25 +4832,29 @@ class MirrorView(object):
         :param name: mirror view name
         :param use_secondary: get image info from secodnary or not
         :return: dict of mirror view properties as below:
+
+        .. code-block:: python
+
             {
                 'MirrorView Name': 'mirror name',
                 'MirrorView Description': 'some desciption here',
-                ...,
+                {...},
                 'images': [
                     {
                         'Image UID': '50:06:01:60:88:60:08:0F',
                         'Is Image Primary': 'YES',
-                        ...
+                        {...}
                         'Preferred SP': 'A'
                     },
                     {
                         'Image UID': '50:06:01:60:88:60:03:BA',
                         'Is Image Primary': 'NO',
-                        ...,
+                        {...},
                         'Synchronizing Progress(%)': 100
                     }
                 ]
             }
+
         """
         if use_secondary:
             client = self._secondary_client

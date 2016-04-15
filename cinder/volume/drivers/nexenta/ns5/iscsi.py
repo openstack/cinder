@@ -12,12 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.iscsi` -- Driver to store volumes on Nexenta Appliance
-=====================================================================
-
-.. automodule:: nexenta.volume
-"""
 
 from oslo_log import log as logging
 from oslo_utils import units

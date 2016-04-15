@@ -298,32 +298,34 @@ class QualityOfServiceSpecs(BASE, CinderBase):
     QoS specs is standalone entity that can be associated/disassociated
     with volume types (one to many relation).  Adjacency list relationship
     pattern is used in this model in order to represent following hierarchical
-    data with in flat table, e.g, following structure
+    data with in flat table, e.g, following structure:
 
-    qos-specs-1  'Rate-Limit'
-         |
-         +------>  consumer = 'front-end'
-         +------>  total_bytes_sec = 1048576
-         +------>  total_iops_sec = 500
+    .. code-block:: none
 
-    qos-specs-2  'QoS_Level1'
-         |
-         +------>  consumer = 'back-end'
-         +------>  max-iops =  1000
-         +------>  min-iops = 200
+      qos-specs-1  'Rate-Limit'
+           |
+           +------>  consumer = 'front-end'
+           +------>  total_bytes_sec = 1048576
+           +------>  total_iops_sec = 500
 
-    is represented by:
+      qos-specs-2  'QoS_Level1'
+           |
+           +------>  consumer = 'back-end'
+           +------>  max-iops =  1000
+           +------>  min-iops = 200
 
-      id       specs_id       key                  value
-    ------     --------   -------------            -----
-    UUID-1     NULL       QoSSpec_Name           Rate-Limit
-    UUID-2     UUID-1       consumer             front-end
-    UUID-3     UUID-1     total_bytes_sec        1048576
-    UUID-4     UUID-1     total_iops_sec           500
-    UUID-5     NULL       QoSSpec_Name           QoS_Level1
-    UUID-6     UUID-5       consumer             back-end
-    UUID-7     UUID-5       max-iops               1000
-    UUID-8     UUID-5       min-iops               200
+      is represented by:
+
+        id       specs_id       key                  value
+      ------     --------   -------------            -----
+      UUID-1     NULL       QoSSpec_Name           Rate-Limit
+      UUID-2     UUID-1       consumer             front-end
+      UUID-3     UUID-1     total_bytes_sec        1048576
+      UUID-4     UUID-1     total_iops_sec           500
+      UUID-5     NULL       QoSSpec_Name           QoS_Level1
+      UUID-6     UUID-5       consumer             back-end
+      UUID-7     UUID-5       max-iops               1000
+      UUID-8     UUID-5       min-iops               200
     """
     __tablename__ = 'quality_of_service_specs'
     id = Column(String(36), primary_key=True)

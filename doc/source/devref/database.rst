@@ -46,15 +46,6 @@ The :mod:`cinder.db.sqlalchemy.models` Module
     :undoc-members:
     :show-inheritance:
 
-The :mod:`cinder.db.sqlalchemy.session` Module
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-.. automodule:: cinder.db.sqlalchemy.session
-    :noindex:
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 
 Tests
 -----

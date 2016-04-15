@@ -62,6 +62,9 @@ class HPE3PARISCSIDriver(driver.TransferVD,
     """OpenStack iSCSI driver to enable 3PAR storage array.
 
     Version history:
+
+    .. code-block:: none
+
         1.0   - Initial driver
         1.1   - QoS, extend volume, multiple iscsi ports, remove domain,
                 session changes, faster clone, requires 3.1.2 MU2 firmware.
@@ -306,6 +309,8 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         This driver returns a driver_volume_type of 'iscsi'.
         The format of the driver data is defined in _get_iscsi_properties.
         Example return value:
+
+        .. code-block:: json
 
             {
                 'driver_volume_type': 'iscsi'

@@ -17,7 +17,7 @@
 """
 
 This driver connects Cinder to an installed DRBDmanage instance, see
-  http://drbd.linbit.com/users-guide-9.0/ch-openstack.html
+http://drbd.linbit.com/users-guide-9.0/ch-openstack.html
 for more details.
 
 """

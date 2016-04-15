@@ -147,6 +147,9 @@ class HPE3PARCommon(object):
     """Class that contains common code for the 3PAR drivers.
 
     Version history:
+
+    .. code-block:: none
+
         1.2.0 - Updated hp3parclient API use to 2.0.x
         1.2.1 - Check that the VVS exists
         1.2.2 - log prior to raising exceptions

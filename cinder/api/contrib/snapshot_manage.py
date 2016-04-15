@@ -53,13 +53,15 @@ class SnapshotManageController(wsgi.Controller):
 
         Required HTTP Body:
 
-        {
-         "snapshot":
-          {
-           "volume_id": <Cinder volume already exists in volume backend>,
-           "ref":  <Driver-specific reference to the existing storage object>,
-          }
-        }
+        .. code-block:: json
+
+         {
+           "snapshot":
+           {
+             "volume_id": <Cinder volume already exists in volume backend>,
+             "ref":  <Driver-specific reference to the existing storage object>
+           }
+         }
 
         See the appropriate Cinder drivers' implementations of the
         manage_snapshot method to find out the accepted format of 'ref'.
@@ -73,11 +75,12 @@ class SnapshotManageController(wsgi.Controller):
         The snapshot will later enter the error state if it is discovered that
         'ref' is bad.
 
-        Optional elements to 'snapshot' are:
-            name               A name for the new snapshot.
-            description        A description for the new snapshot.
-            metadata           Key/value pairs to be associated with the new
-                               snapshot.
+        Optional elements to 'snapshot' are::
+
+         name           A name for the new snapshot.
+         description    A description for the new snapshot.
+         metadata       Key/value pairs to be associated with the new snapshot.
+
         """
         context = req.environ['cinder.context']
         authorize(context)

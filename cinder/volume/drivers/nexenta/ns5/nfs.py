@@ -12,12 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-"""
-:mod:`nexenta.nfs` -- Driver to store volumes on NexentaStor Appliance.
-=======================================================================
-
-.. automodule:: nexenta.nfs
-"""
 
 import hashlib
 import os

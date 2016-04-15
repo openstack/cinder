@@ -243,7 +243,7 @@ will get updated before clients by stating the recommended order of upgrades
 for that release.
 
 RPC payload changes (oslo.versionedobjects)
-------------------------------------------
+-------------------------------------------
 
 `oslo.versionedobjects
 <http://docs.openstack.org/developer/oslo.versionedobjects>`_ is a library that

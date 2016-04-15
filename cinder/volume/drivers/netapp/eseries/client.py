@@ -366,18 +366,18 @@ class RestClient(WebserviceClient):
         """Creates a volume on array with the configured attributes
 
         Note: if read_cache, write_cache, flash_cache, or data_assurance
-         are not provided, the default will be utilized by the Webservice.
+        are not provided, the default will be utilized by the Webservice.
 
         :param pool: The pool unique identifier
         :param label: The unqiue label for the volume
         :param size: The capacity in units
         :param unit: The unit for capacity
         :param seg_size: The segment size for the volume, expressed in KB.
-        Default will allow the Webservice to choose.
+                         Default will allow the Webservice to choose.
         :param read_cache: If true, enable read caching, if false,
-        explicitly disable it.
+                           explicitly disable it.
         :param write_cache: If true, enable write caching, if false,
-        explicitly disable it.
+                            explicitly disable it.
         :param flash_cache: If true, add the volume to a Flash Cache
         :param data_assurance: If true, enable the Data Assurance capability
         :returns: The created volume
@@ -558,8 +558,9 @@ class RestClient(WebserviceClient):
         :param name: the label for the view
         :param snap_id: E-Series snapshot view to locate
         :raise NetAppDriverException: if the snapshot view cannot be
-        located for the snapshot identified by snap_id
-        :return snapshot view for snapshot identified by snap_id
+                                      located for the snapshot identified
+                                      by snap_id
+        :return: snapshot view for snapshot identified by snap_id
         """
         path = self.RESOURCE_PATHS.get('cgroup_cgsnap_views')
 
@@ -603,15 +604,18 @@ class RestClient(WebserviceClient):
         """Retrieve the progress long-running operations on a storage pool
 
         Example:
-        [
-            {
-                "volumeRef": "3232....", # Volume being referenced
-                "progressPercentage": 0, # Approxmate percent complete
-                "estimatedTimeToCompletion": 0, # ETA in minutes
-                "currentAction": "none" # Current volume action
-            }
-            ...
-        ]
+
+        .. code-block:: python
+
+          [
+              {
+                  "volumeRef": "3232....", # Volume being referenced
+                  "progressPercentage": 0, # Approxmate percent complete
+                  "estimatedTimeToCompletion": 0, # ETA in minutes
+                  "currentAction": "none" # Current volume action
+              }
+              ...
+          ]
 
         :param object_id: A pool id
         :returns: A dict representing the action progress
@@ -997,8 +1001,8 @@ class RestClient(WebserviceClient):
         Example response: {"key": "cinder-snapshots", "value": "[]"}
 
         :param key: the persistent store to retrieve
-        :return a json body representing the value of the store,
-        or an empty json object
+        :returns: a json body representing the value of the store,
+                  or an empty json object
         """
         path = self.RESOURCE_PATHS.get('persistent-store')
         try:
@@ -1019,7 +1023,7 @@ class RestClient(WebserviceClient):
 
         :param key: The key utilized for storing/retrieving the data
         :param store_data: a python data structure that will be stored as a
-        json value
+                           json value
         """
         path = self.RESOURCE_PATHS.get('persistent-stores')
         store_data = json.dumps(store_data, separators=(',', ':'))

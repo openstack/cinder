@@ -842,6 +842,9 @@ class NetAppBlockStorageLibrary(object):
         The target_wwn can be a single entry or a list of wwns that
         correspond to the list of remote wwn(s) that will export the volume.
         Example return values:
+
+        .. code-block:: json
+
             {
                 'driver_volume_type': 'fibre_channel'
                 'data': {
@@ -872,6 +875,7 @@ class NetAppBlockStorageLibrary(object):
                     }
                 }
             }
+
         """
 
         initiators = [fczm_utils.get_formatted_wwn(wwpn)
@@ -998,7 +1002,7 @@ class NetAppBlockStorageLibrary(object):
         """Driver entry point for deleting a consistency group.
 
         :return: Updated consistency group model and list of volume models
-        for the volumes that were deleted.
+                 for the volumes that were deleted.
         """
         model_update = {'status': 'deleted'}
         volumes_model_update = []
@@ -1040,7 +1044,8 @@ class NetAppBlockStorageLibrary(object):
         backing the Cinder volumes in the Cinder CG.
 
         :return: An implicit update for cgsnapshot and snapshots models that
-        is interpreted by the manager to set their models to available.
+                 is interpreted by the manager to set their models to
+                 available.
         """
         flexvols = set()
         for snapshot in snapshots:
@@ -1084,7 +1089,7 @@ class NetAppBlockStorageLibrary(object):
         """Delete LUNs backing each snapshot in the cgsnapshot.
 
         :return: An implicit update for snapshots models that is interpreted
-        by the manager to set their models to deleted.
+                 by the manager to set their models to deleted.
         """
         for snapshot in snapshots:
             self._delete_lun(snapshot['name'])
@@ -1098,7 +1103,7 @@ class NetAppBlockStorageLibrary(object):
         """Creates a CG from a either a cgsnapshot or group of cinder vols.
 
         :return: An implicit update for the volumes model that is
-        interpreted by the manager as a successful operation.
+                 interpreted by the manager as a successful operation.
         """
         LOG.debug("VOLUMES %s ", [dict(vol) for vol in volumes])
 
