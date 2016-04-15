@@ -145,17 +145,25 @@ class BackupMetadataAPI(base.Base):
             LOG.debug("No metadata type '%s' available", type_tag)
 
     @staticmethod
-    def _filter(metadata, fields):
+    def _filter(metadata, fields, excludes=None):
         """Returns set of metadata restricted to required fields.
 
         If fields is empty list, the full set is returned.
+
+        :param metadata: master set of metadata
+        :param fields: list of fields we want to extract
+        :param excludes: fields to be exluded
+        :returns: filtered metadata
         """
         if not fields:
             return metadata
 
+        if not excludes:
+            excludes = []
+
         subset = {}
         for field in fields:
-            if field in metadata:
+            if field in metadata and field not in excludes:
                 subset[field] = metadata[field]
             else:
                 LOG.debug("Excluding field '%s'", field)
@@ -165,6 +173,7 @@ class BackupMetadataAPI(base.Base):
     def _restore_vol_base_meta(self, metadata, volume_id, fields):
         """Restore values to Volume object for provided fields."""
         LOG.debug("Restoring volume base metadata")
+        excludes = []
 
         # Ignore unencrypted backups.
         key = 'encryption_key_id'
@@ -172,7 +181,22 @@ class BackupMetadataAPI(base.Base):
             self._restore_vol_encryption_meta(volume_id,
                                               metadata['volume_type_id'])
 
-        metadata = self._filter(metadata, fields)
+        # NOTE(dosaboy): if the target volume looks like it was auto-created
+        # as part of this restore operation and we have a name to restore
+        # then apply the name to the target volume. However, if that target
+        # volume already existed and it has a name or we do not have a name to
+        # restore, then ignore this key. This is intended to be a less drastic
+        # solution than commit 7ee80f7.
+        key = 'display_name'
+        if key in fields and key in metadata:
+            target_vol = self.db.volume_get(self.context, volume_id)
+            name = target_vol.get(key, '')
+            if (not metadata.get(key) or name and
+                    not name.startswith('restore_backup_')):
+                excludes.append(key)
+                excludes.append('display_description')
+
+        metadata = self._filter(metadata, fields, excludes=excludes)
         self.db.volume_update(self.context, volume_id, metadata)
 
     def _restore_vol_encryption_meta(self, volume_id, src_volume_type_id):
@@ -252,7 +276,10 @@ class BackupMetadataAPI(base.Base):
         Empty field list indicates that all backed up fields should be
         restored.
         """
-        return {self.TYPE_TAG_VOL_META:
+        return {self.TYPE_TAG_VOL_BASE_META:
+                (self._restore_vol_base_meta,
+                 ['display_name', 'display_description']),
+                self.TYPE_TAG_VOL_META:
                 (self._restore_vol_meta, []),
                 self.TYPE_TAG_VOL_GLANCE_META:
                 (self._restore_vol_glance_meta, [])}
@@ -269,7 +296,7 @@ class BackupMetadataAPI(base.Base):
         """
         return {self.TYPE_TAG_VOL_BASE_META:
                 (self._restore_vol_base_meta,
-                 ['encryption_key_id']),
+                 ['display_name', 'display_description', 'encryption_key_id']),
                 self.TYPE_TAG_VOL_META:
                 (self._restore_vol_meta, []),
                 self.TYPE_TAG_VOL_GLANCE_META:

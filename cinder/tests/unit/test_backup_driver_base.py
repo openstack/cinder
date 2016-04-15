@@ -26,6 +26,7 @@ from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.backup import fake_service
+from cinder.volume import volume_types
 
 _backup_db_fields = ['id', 'user_id', 'project_id',
                      'volume_id', 'host', 'availability_zone',
@@ -96,6 +97,7 @@ class BackupMetadataAPITestCase(test.TestCase):
         super(BackupMetadataAPITestCase, self).setUp()
         self.ctxt = context.get_admin_context()
         self.volume_id = str(uuid.uuid4())
+        self.backup_id = str(uuid.uuid4())
         self.volume_display_name = 'vol-1'
         self.volume_display_description = 'test vol'
         self._create_volume_db_entry(self.volume_id, 1,
@@ -162,15 +164,46 @@ class BackupMetadataAPITestCase(test.TestCase):
     def test_v1_restore_factory(self):
         fact = self.bak_meta_api._v1_restore_factory()
 
-        keys = [self.bak_meta_api.TYPE_TAG_VOL_META,
+        keys = [self.bak_meta_api.TYPE_TAG_VOL_BASE_META,
+                self.bak_meta_api.TYPE_TAG_VOL_META,
                 self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META]
 
         self.assertEqual(set([]),
                          set(keys).symmetric_difference(set(fact.keys())))
 
         meta_container = {self.bak_meta_api.TYPE_TAG_VOL_BASE_META:
-                          {'display_name': 'vol-2',
-                           'display_description': 'description'},
+                          {'display_name': 'my-backed-up-volume',
+                           'display_description': 'backed up description'},
+                          self.bak_meta_api.TYPE_TAG_VOL_META: {},
+                          self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META: {}}
+
+        # Emulate restore to new volume
+        volume_id = str(uuid.uuid4())
+        vol_name = 'restore_backup_%s' % (self.backup_id)
+        self._create_volume_db_entry(volume_id, 1, vol_name, 'fake volume')
+
+        for f in fact:
+            func = fact[f][0]
+            fields = fact[f][1]
+            func(meta_container[f], volume_id, fields)
+
+        vol = db.volume_get(self.ctxt, volume_id)
+        self.assertEqual('my-backed-up-volume', vol['display_name'])
+        self.assertEqual('backed up description', vol['display_description'])
+
+    def test_v1_restore_factory_no_restore_name(self):
+        fact = self.bak_meta_api._v1_restore_factory()
+
+        keys = [self.bak_meta_api.TYPE_TAG_VOL_BASE_META,
+                self.bak_meta_api.TYPE_TAG_VOL_META,
+                self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META]
+
+        self.assertEqual(set([]),
+                         set(keys).symmetric_difference(set(fact.keys())))
+
+        meta_container = {self.bak_meta_api.TYPE_TAG_VOL_BASE_META:
+                          {'display_name': 'my-backed-up-volume',
+                           'display_description': 'backed up description'},
                           self.bak_meta_api.TYPE_TAG_VOL_META: {},
                           self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META: {}}
         for f in fact:
@@ -193,10 +226,27 @@ class BackupMetadataAPITestCase(test.TestCase):
         self.assertEqual(set([]),
                          set(keys).symmetric_difference(set(fact.keys())))
 
+        volume_types.create(self.ctxt, 'faketype')
+        vol_type = volume_types.get_volume_type_by_name(self.ctxt, 'faketype')
+
+        meta_container = {self.bak_meta_api.TYPE_TAG_VOL_BASE_META:
+                          {'encryption_key_id': '123',
+                           'volume_type_id': vol_type.get('id'),
+                           'display_name': 'vol-2',
+                           'display_description': 'description'},
+                          self.bak_meta_api.TYPE_TAG_VOL_META: {},
+                          self.bak_meta_api.TYPE_TAG_VOL_GLANCE_META: {}}
+
         for f in fact:
             func = fact[f][0]
             fields = fact[f][1]
-            func({}, self.volume_id, fields)
+            func(meta_container[f], self.volume_id, fields)
+
+        vol = db.volume_get(self.ctxt, self.volume_id)
+        self.assertEqual(self.volume_display_name, vol['display_name'])
+        self.assertEqual(self.volume_display_description,
+                         vol['display_description'])
+        self.assertEqual('123', vol['encryption_key_id'])
 
     def test_restore_vol_glance_meta(self):
         # Fields is an empty list for _restore_vol_glance_meta method.
