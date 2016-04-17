@@ -105,7 +105,7 @@ they must refer to different back-ends.
 
 Configurations
 --------------
-To set up a an environment to try the volume migration, we need to
+To set up an environment to try the volume migration, we need to
 configure at least two different back-ends on the same node of cinder
 volume service, c-vol node or two back-ends on two different volume
 nodes of cinder volume service, c-vol nodes. Which command to use,
@@ -135,9 +135,9 @@ For Node 2:
     ...
 
 If a volume with a predefined volume type is going to migrate,
-the back-end drivers from Node 1 and Node2 should have the same
+the back-end drivers from Node 1 and Node 2 should have the same
 value for volume_backend_name, which means <driver-backend> should be
-the same for Noe 1 and Node 2. The volume type can be created
+the same for Node 1 and Node 2. The volume type can be created
 with the extra specs {volume_backend_name: driver-biz}.
 
 If we are going to migrate a volume with a volume type of none, it
@@ -181,7 +181,7 @@ contains the following entries:
     volume_backend_name=driver-net
     ...
 
-Two volume type needs to be created. One is with the extra specs:
+Two volume types need to be created. One is with the extra specs:
 {volume_backend_name: driver-biz}. The other is with the extra specs:
 {volume_backend_name: driver-net}.
 
