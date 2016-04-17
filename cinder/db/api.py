@@ -37,7 +37,7 @@ these objects be simple dictionaries.
 """
 
 from oslo_config import cfg
-from oslo_db import concurrency as db_concurrency
+from oslo_db import api as oslo_db_api
 from oslo_db import options as db_options
 
 from cinder.api import common
@@ -67,7 +67,9 @@ CONF.set_default('sqlite_db', 'cinder.sqlite', group='database')
 _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
 
 
-IMPL = db_concurrency.TpoolDbapiWrapper(CONF, _BACKEND_MAPPING)
+IMPL = oslo_db_api.DBAPI.from_config(conf=CONF,
+                                     backend_mapping=_BACKEND_MAPPING,
+                                     lazy=True)
 
 # The maximum value a signed INT type may have
 MAX_INT = constants.DB_MAX_INT
