@@ -1543,12 +1543,13 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
         volume_get_active_by_window.assert_called_once_with(ctxt, begin, end)
-        notify_about_volume_usage.assert_any_call(ctxt, volume1, 'exists',
-                                                  extra_usage_info=extra_info)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'create.start', extra_usage_info=local_extra_info)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'create.end', extra_usage_info=local_extra_info)
+        notify_about_volume_usage.assert_has_calls([
+            mock.call(ctxt, volume1, 'exists', extra_usage_info=extra_info),
+            mock.call(ctxt, volume1, 'create.start',
+                      extra_usage_info=local_extra_info),
+            mock.call(ctxt, volume1, 'create.end',
+                      extra_usage_info=local_extra_info)
+        ])
 
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
     @mock.patch('cinder.db.volume_get_active_by_window')
@@ -1609,20 +1610,17 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
         volume_get_active_by_window.assert_called_once_with(ctxt, begin, end)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'exists', extra_usage_info=extra_info)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'create.start',
-            extra_usage_info=local_extra_info_create)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'create.end',
-            extra_usage_info=local_extra_info_create)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'delete.start',
-            extra_usage_info=local_extra_info_delete)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'delete.end',
-            extra_usage_info=local_extra_info_delete)
+        notify_about_volume_usage.assert_has_calls([
+            mock.call(ctxt, volume1, 'exists', extra_usage_info=extra_info),
+            mock.call(ctxt, volume1, 'create.start',
+                      extra_usage_info=local_extra_info_create),
+            mock.call(ctxt, volume1, 'create.end',
+                      extra_usage_info=local_extra_info_create),
+            mock.call(ctxt, volume1, 'delete.start',
+                      extra_usage_info=local_extra_info_delete),
+            mock.call(ctxt, volume1, 'delete.end',
+                      extra_usage_info=local_extra_info_delete)
+        ])
 
     @mock.patch('cinder.volume.utils.notify_about_snapshot_usage')
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_active_by_window')
@@ -1688,14 +1686,13 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         last_completed_audit_period.assert_called_once_with()
         volume_get_active_by_window.assert_called_once_with(ctxt, begin, end)
         self.assertFalse(notify_about_volume_usage.called)
-        notify_about_snapshot_usage.assert_any_call(ctxt, snapshot1, 'exists',
-                                                    extra_info)
-        notify_about_snapshot_usage.assert_any_call(
-            ctxt, snapshot1, 'create.start',
-            extra_usage_info=local_extra_info_create)
-        notify_about_snapshot_usage.assert_any_call(
-            ctxt, snapshot1, 'delete.start',
-            extra_usage_info=local_extra_info_delete)
+        notify_about_snapshot_usage.assert_has_calls([
+            mock.call(ctxt, snapshot1, 'exists', extra_info),
+            mock.call(ctxt, snapshot1, 'create.start',
+                      extra_usage_info=local_extra_info_create),
+            mock.call(ctxt, snapshot1, 'delete.start',
+                      extra_usage_info=local_extra_info_delete)
+        ])
 
     @mock.patch('cinder.volume.utils.notify_about_snapshot_usage')
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_active_by_window')
@@ -1764,32 +1761,26 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         rpc_init.assert_called_once_with(CONF)
         last_completed_audit_period.assert_called_once_with()
         volume_get_active_by_window.assert_called_once_with(ctxt, begin, end)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'exists', extra_usage_info=extra_info)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'create.start',
-            extra_usage_info=extra_info_volume_create)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'create.end',
-            extra_usage_info=extra_info_volume_create)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'delete.start',
-            extra_usage_info=extra_info_volume_delete)
-        notify_about_volume_usage.assert_any_call(
-            ctxt, volume1, 'delete.end',
-            extra_usage_info=extra_info_volume_delete)
+        notify_about_volume_usage.assert_has_calls([
+            mock.call(ctxt, volume1, 'exists', extra_usage_info=extra_info),
+            mock.call(ctxt, volume1, 'create.start',
+                      extra_usage_info=extra_info_volume_create),
+            mock.call(ctxt, volume1, 'create.end',
+                      extra_usage_info=extra_info_volume_create),
+            mock.call(ctxt, volume1, 'delete.start',
+                      extra_usage_info=extra_info_volume_delete),
+            mock.call(ctxt, volume1, 'delete.end',
+                      extra_usage_info=extra_info_volume_delete)
+        ])
 
-        notify_about_snapshot_usage.assert_any_call(ctxt, snapshot1,
-                                                    'exists', extra_info)
-        notify_about_snapshot_usage.assert_any_call(
-            ctxt, snapshot1, 'create.start',
-            extra_usage_info=extra_info_snapshot_create)
-        notify_about_snapshot_usage.assert_any_call(
-            ctxt, snapshot1, 'create.end',
-            extra_usage_info=extra_info_snapshot_create)
-        notify_about_snapshot_usage.assert_any_call(
-            ctxt, snapshot1, 'delete.start',
-            extra_usage_info=extra_info_snapshot_delete)
-        notify_about_snapshot_usage.assert_any_call(
-            ctxt, snapshot1, 'delete.end',
-            extra_usage_info=extra_info_snapshot_delete)
+        notify_about_snapshot_usage.assert_has_calls([
+            mock.call(ctxt, snapshot1, 'exists', extra_info),
+            mock.call(ctxt, snapshot1, 'create.start',
+                      extra_usage_info=extra_info_snapshot_create),
+            mock.call(ctxt, snapshot1, 'create.end',
+                      extra_usage_info=extra_info_snapshot_create),
+            mock.call(ctxt, snapshot1, 'delete.start',
+                      extra_usage_info=extra_info_snapshot_delete),
+            mock.call(ctxt, snapshot1, 'delete.end',
+                      extra_usage_info=extra_info_snapshot_delete)
+        ])
