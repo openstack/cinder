@@ -7,19 +7,12 @@
 # Ray Akimoto <ray.akimoto@gmail.com>, 2015
 # Ryo Fujita <rfujita@redhat.com>, 2013
 # Tomoyuki KATO <tomo@dream.daynight.jp>, 2013
-# Akihiro Motoki <amotoki@gmail.com>, 2015. #zanata
-# KATO Tomoyuki <kato.tomoyuki@jp.fujitsu.com>, 2015. #zanata
-# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
-# Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
-# Kyohei Moriyama <flogofrein@gmail.com>, 2016. #zanata
-# Tsutomu Kimura <ebb0de2@jp.ibm.com>, 2016. #zanata
-# 笹原 昌美 <ebb0de1@jp.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev58\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-08 04:58+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -5139,12 +5132,6 @@ msgstr "RPC サーバーからの無効な応答ヘッダー"
 msgid "Invalid secondary id %s."
 msgstr "無効なセカンダリー ID %s。"
 
-#, python-format
-msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
-msgstr ""
-"無効な secondary_backend_id が指定されました。有効なバックエンド ID は %s で"
-"す。"
-
 msgid "Invalid service catalog json."
 msgstr "無効なサービスカタログ JSON。"
 
@@ -6881,11 +6868,6 @@ msgstr "SMBFS 構成ファイルが設定されていません (smbfs_shares_con
 msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr ""
 "'%(total_attempts)r' 回の試行後に SSH コマンドが失敗しました: '%(command)s'"
-
-#, python-format
-msgid "SSH Command failed with error: '%(err)s', Command: '%(command)s'"
-msgstr ""
-"SSH コマンドがエラー: '%(err)s' 、コマンド: '%(command)s' で失敗しました。"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"

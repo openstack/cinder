@@ -4,15 +4,12 @@
 #
 # Translators:
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
-# Lucas Palm <lapalm@us.ibm.com>, 2015. #zanata
-# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
-# Jennifer <cristxu@tw.ibm.com>, 2016. #zanata
-# Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev58\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-08 04:58+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4670,10 +4667,6 @@ msgstr "來自 RPC 伺服器的回應標頭無效"
 msgid "Invalid secondary id %s."
 msgstr "次要 ID %s 無效。"
 
-#, python-format
-msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
-msgstr "指定的 secondary_backend_id 無效。有效的後端 ID 是 %s。"
-
 msgid "Invalid service catalog json."
 msgstr "無效的服務型錄 JSON。"
 
@@ -6272,10 +6265,6 @@ msgstr "未設定 SMBFS 配置檔 (smbfs_shares_config)。"
 #, python-format
 msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr "嘗試 '%(total_attempts)r' 次之後 SSH 指令仍失敗：'%(command)s'"
-
-#, python-format
-msgid "SSH Command failed with error: '%(err)s', Command: '%(command)s'"
-msgstr "SSH 指令失敗，錯誤為：'%(err)s'，指令為：'%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"

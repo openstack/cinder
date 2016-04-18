@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev58\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-08 04:58+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1186,10 +1186,6 @@ msgid "Failing backend to %s"
 msgstr "%s의 백엔드 실패"
 
 #, python-format
-msgid "Failing over volume %(id)s replication: %(res)s."
-msgstr "볼륨 %(id)s 복제 장애 복구: %(res)s."
-
-#, python-format
 msgid "Fault thrown: %s"
 msgstr "처리된 결함: %s"
 
@@ -1283,9 +1279,6 @@ msgstr "임시 스냅샷 %(name)s 발견"
 #, python-format
 msgid "Found existing masking view: %(maskingViewName)s."
 msgstr "기존 마스킹 보기 발견: %(maskingViewName)s."
-
-msgid "Found failover volume. Competing failover."
-msgstr "장애 복구 볼륨이 발견되었습니다. 장애 복구 경쟁."
 
 #, python-format
 msgid "Free capacity for backend is: %(free)s, total capacity: %(total)s."
@@ -2736,10 +2729,6 @@ msgstr "XML 입력을 구문 분석할 수 없습니다."
 #, python-format
 msgid "Unable to serialize field '%s' - excluding from backup"
 msgstr "필드 '%s'을(를) 직렬화할 수 없음 - 백업에서 제외"
-
-#, python-format
-msgid "Unable to unprotect snapshot %s."
-msgstr "스냅샷 %s의 보호를 해제할 수 없습니다."
 
 msgid "Unable to update the metadata for volume, because it is in maintenance."
 msgstr "볼륨이 유지보수 중이므로 메타데이터를 업데이트할 수 없습니다."

@@ -7,16 +7,12 @@
 # NaleeJang <nalee999@nate.com>, 2013
 # Sungjin Kang <potopro@gmail.com>, 2013
 # Yongbok Kim <ruo91@yongbok.net>, 2014
-# Lucas Palm <lapalm@us.ibm.com>, 2015. #zanata
-# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
-# Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
-# SeYeon Lee <sy_lee@kr.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev58\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-08 04:58+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4910,12 +4906,6 @@ msgstr "RPC 서버의 올바르지 않은 응답 헤더"
 msgid "Invalid secondary id %s."
 msgstr "올바르지 않은 보조 id %s."
 
-#, python-format
-msgid "Invalid secondary_backend_id specified. Valid backend id is %s."
-msgstr ""
-"올바르지 않은 secondary_backend_id가 지정되었습니다. 올바른 백엔드 id는 %s입"
-"니다."
-
 msgid "Invalid service catalog json."
 msgstr "올바르지 않은 서비스 카탈로그 json입니다. "
 
@@ -6591,10 +6581,6 @@ msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr ""
 "'%(command)s' 명령을 '%(total_attempts)r'번 시도한 후에 SSH 명령이 실패했습니"
 "다. "
-
-#, python-format
-msgid "SSH Command failed with error: '%(err)s', Command: '%(command)s'"
-msgstr "SSH 명령이 실패하여 오류 발생: '%(err)s', 명령: '%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"

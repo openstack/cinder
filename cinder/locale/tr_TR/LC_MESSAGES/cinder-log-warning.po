@@ -5,11 +5,12 @@
 # Translators:
 # Ying Chun Guo <daisy.ycguo@gmail.com>, 2015
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev58\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-08 04:58+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -28,6 +29,10 @@ msgstr "%(path)s açık izinlerle ayarlanıyor: %(perm)s"
 #, python-format
 msgid "%s"
 msgstr "%s"
+
+#, python-format
+msgid "%s is already mounted"
+msgstr "%s zaten bağlı"
 
 #, python-format
 msgid "AttachSnapTask.revert: detach mount point %s"
@@ -282,6 +287,10 @@ msgid "Error refreshing volume info. Message: %s"
 msgstr "Mantıksal sürücü bilgisi tazelenirken hata. İleti: %s"
 
 #, python-format
+msgid "Error running SSH command: %s"
+msgstr "SSH komutu çalıştırılırken hata: %s"
+
+#, python-format
 msgid "Error unmapping LUN. Code :%(code)s, Message: %(message)s"
 msgstr "LUN eşleştirmesi kaldırmada hata. Kod :%(code)s, İleti: %(message)s"
 
@@ -292,6 +301,10 @@ msgstr "%(share)s zula temizliği sırasında istisna. İleti - %(ex)s"
 #, python-format
 msgid "Exception during deleting %s"
 msgstr "%s silme sırasında istisna"
+
+#, python-format
+msgid "Exception during mounting %s"
+msgstr "%s bağlama sırasında olağandışı durum"
 
 #, python-format
 msgid "Exception during unmounting %s"
@@ -591,17 +604,6 @@ msgstr "IQN eşleştirme oluşturmak için kullanılmış."
 
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr "ISCSI provider_location kaydedilmemiş, keşif kullanılıyor"
-
-msgid ""
-"ISERTgtAdm is deprecated, you should now just use LVMVolumeDriver and "
-"specify iscsi_helper for the target driver you wish to use. In order to "
-"enable iser, please set iscsi_protocol=iser with lioadm or tgtadm target "
-"helpers."
-msgstr ""
-"ISERTgtAdm artık kullanılmıyor, artık yalnızca LVMVolumeDriver kullanmalı ve "
-"kullanmak istediğiniz hedef sürücü için iscsi_helper belirtmelisiniz. iser'i "
-"etkinleştirmek için, lütfen iscsi_protocol=iser ayarını hedef yardımcılar "
-"olarak lioadm veya tgtadm ile ayarlayın."
 
 msgid "Id not in sort_keys; is sort_keys unique?"
 msgstr "Id sort_keys içinde değil, sort_keys benzersiz mi?"
@@ -921,6 +923,13 @@ msgstr "Geçici mantıksal sürücü temizleme işi hala çalıştığından dö
 msgid "See unavailable iSCSI target: %s"
 msgstr "Kullanılamaz iSCSI hedefine bak: %s"
 
+#, python-format
+msgid ""
+"Share %s ignored due to invalid format. Must be of form address:/export."
+msgstr ""
+"%s paylaşımı geçersiz biçim nedeniyle yoksayılır. Form adresi olmalıdır:/"
+"export."
+
 msgid "Silent failure of target removal detected, retry...."
 msgstr "Hedef silmenin sessizce başarısız olduğu algılandı, tekrar dene..."
 
@@ -1158,6 +1167,9 @@ msgstr "Kullanılan paylaşım kısaca listelenirken beklenmedik istisna."
 msgid "Update driver status failed: %(config_group)s is uninitialized."
 msgstr "Sürücü durumu güncelleme başarısız: %(config_group)s ilklendirilmemiş."
 
+msgid "Use of empty request context is deprecated"
+msgstr "Boş istek içeriği kullanımı önerilmiyor"
+
 msgid "Verify certificate is not set, using default of False."
 msgstr ""
 "Sertifika doğrulama ayarlanmamış, varsayılan değer olan False kullanılıyor."
@@ -1228,8 +1240,10 @@ msgid "Volume deletion failed with message: %s"
 msgstr "Mantıksal sürücü silme şu iletiyle başarısız oldu: %s"
 
 #, python-format
-msgid "Volume initialization failure. (%s)"
-msgstr "Mantıksal sürücü ilklendirme başarısız. (%s)"
+msgid "Volume is not writable. Please broaden the file permissions. Mount: %s"
+msgstr ""
+"Mantıksal sürücü yazılabilir değil. Lütfen dosya izinlerinin kapsamını "
+"artırın. Bağlama yeri: %s"
 
 #, python-format
 msgid "Volume path %s does not exist, nothing to remove."
@@ -1309,10 +1323,6 @@ msgid ""
 msgstr ""
 "keymgr.fixed_key yapılandırma seçeneği tanımlanmamış. bazı işlemler "
 "beklenmedik şekilde başarısız olabilir"
-
-#, python-format
-msgid "delete_volume: unable to find volume %s"
-msgstr "delete_volume: %s mantıksal sürücüsü bulunamadı"
 
 msgid ""
 "destroy_empty_storage_group: True. Empty storage group will be deleted after "
