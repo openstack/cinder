@@ -24,6 +24,7 @@ import warnings
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import excutils
 from oslo_utils import timeutils
 from oslo_utils import units
 import requests
@@ -144,6 +145,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         2.0.0 - Move from httplib to requests
         2.0.1 - Implement SolidFire Snapshots
         2.0.2 - Implement secondary account
+        2.0.3 - Implement cluster pairing
 
     """
 
@@ -181,6 +183,8 @@ class SolidFireDriver(san.SanISCSIDriver):
         self.template_account_id = None
         self.max_volumes_per_account = 1990
         self.volume_map = {}
+        self.cluster_pairs = []
+        self.replication_enabled = False
         self.target_driver = SolidFireISCSI(solidfire_driver=self,
                                             configuration=self.configuration)
         self._set_active_cluster_info()
@@ -192,6 +196,7 @@ class SolidFireDriver(san.SanISCSIDriver):
         if self.configuration.sf_allow_template_caching:
             account = self.configuration.sf_template_account_name
             self.template_account_id = self._create_template_account(account)
+        self._set_cluster_pairs()
 
     def __getattr__(self, attr):
         if hasattr(self.target_driver, attr):
@@ -199,6 +204,56 @@ class SolidFireDriver(san.SanISCSIDriver):
         else:
             msg = _('Attribute: %s not found.') % attr
             raise NotImplementedError(msg)
+
+    def _create_remote_pairing(self, remote_device):
+        try:
+            pairing_info = self._issue_api_request('StartClusterPairing',
+                                                   {}, version='8.0')['result']
+            pair_id = self._issue_api_request(
+                'CompleteClusterPairing',
+                {'clusterPairingKey': pairing_info['clusterPairingKey']},
+                version='8.0',
+                endpoint=remote_device['endpoint'])['result']['clusterPairID']
+        except exception.SolidFireAPIException as ex:
+            if 'xPairingAlreadExists' in ex.msg:
+                LOG.debug('Pairing already exists during init.')
+            else:
+                with excutils.save_and_reraise_exception():
+                    LOG.error(_LE('Cluster pairing failed: %s'), ex.msg)
+        LOG.debug(('Initialized Cluster pair with ID: %s'), pair_id)
+        return pair_id
+
+    def _get_remote_cluster_info(self, remote_endpoint):
+        return self._issue_api_request(
+            'GetClusterInfo',
+            {},
+            endpoint=remote_endpoint)['result']['clusterInfo']
+
+    def _set_cluster_pairs(self):
+        if not self.configuration.get('replication_device', None):
+            self.replication = False
+            return
+
+        existing_pairs = self._issue_api_request(
+            'ListClusterPairs',
+            {},
+            version='8.0')['result']['clusterPairs']
+
+        remote_pair = {}
+        for rd in self.configuration.get('replication_device', []):
+            remote_endpoint = self._build_endpoint_info(**rd)
+            remote_info = self._get_remote_cluster_info(remote_endpoint)
+            remote_info['endpoint'] = remote_endpoint
+
+            for ep in existing_pairs:
+                if rd['backend_id'] == ep['mvip']:
+                    remote_pair = ep
+                    LOG.debug("Found remote pair: %s", remote_pair)
+
+            if not remote_pair:
+                self._create_remote_pairing(remote_info)
+            self.cluster_pairs.append(remote_info)
+            self.replication_enabled = True
 
     def _set_active_cluster_info(self):
         self.active_cluster_info['endpoint'] = self._build_endpoint_info()
@@ -211,6 +266,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         self.active_cluster_info['clusterAPIVersion'] = (
             self._issue_api_request('GetClusterVersionInfo',
                                     {})['result']['clusterAPIVersion'])
+        if self.configuration.get('sf_svip', None):
+            self.active_cluster_info['svip'] = (
+                self.configuration.get('sf_svip'))
 
     def _parse_provider_id_string(self, id_string):
         return tuple(id_string.split())
@@ -301,6 +359,8 @@ class SolidFireDriver(san.SanISCSIDriver):
             kwargs.get('port', self.configuration.sf_api_port))
         endpoint['url'] = 'https://%s:%s' % (endpoint['mvip'],
                                              endpoint['port'])
+        if not endpoint.get('mvip', None) and kwargs.get('backend_id', None):
+            endpoint['mvip'] = kwargs.get('backend_id')
 
         # TODO(jdg): consider a call to GetAPI and setting version
         return endpoint
@@ -405,10 +465,9 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def _get_model_info(self, sfaccount, sf_volume_id):
         """Gets the connection info for specified account and volume."""
-        if self.configuration.sf_svip is None:
-            iscsi_portal = self.active_cluster_info['svip'] + ':3260'
-        else:
-            iscsi_portal = self.configuration.sf_svip
+        iscsi_portal = self.active_cluster_info['svip']
+        if ':' not in iscsi_portal:
+            iscsi_portal += ':3260'
         chap_secret = sfaccount['targetSecret']
 
         found_volume = False
@@ -1393,7 +1452,9 @@ class SolidFireDriver(san.SanISCSIDriver):
         data["driver_version"] = self.VERSION
         data["storage_protocol"] = 'iSCSI'
         data['consistencygroup_support'] = True
-        data['replication_enabled'] = True
+        data['replication_enabled'] = self.replication_enabled
+        if self.replication_enabled:
+            data['replication'] = 'enabled'
 
         data['total_capacity_gb'] = (
             float(results['maxProvisionedSpace'] / units.Gi))
@@ -1538,7 +1599,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         Renames the Volume to match the expected name for the volume.
         Also need to consider things like QoS, Emulation, account/tenant.
         """
-
         sfid = external_ref.get('source-id', None)
         sfname = external_ref.get('name', None)
         if sfid is None:
@@ -1581,7 +1641,6 @@ class SolidFireDriver(san.SanISCSIDriver):
         existing_ref is a dictionary of the form:
         {'name': <name of existing volume on SF Cluster>}
         """
-
         sfid = external_ref.get('source-id', None)
         if sfid is None:
             raise exception.SolidFireAPIException(_("Manage existing get size "
@@ -1595,7 +1654,6 @@ class SolidFireDriver(san.SanISCSIDriver):
 
     def unmanage(self, volume):
         """Mark SolidFire Volume as unmanaged (export from Cinder)."""
-
         sfaccount = self._get_sfaccount(volume['project_id'])
         if sfaccount is None:
             LOG.error(_LE("Account for Volume ID %s was not found on "
@@ -1625,7 +1683,11 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
         self.sf_driver = kwargs.get('solidfire_driver')
 
     def __getattr__(self, attr):
-        return getattr(self.sf_driver, attr)
+        if hasattr(self.sf_driver, attr):
+            return getattr(self.sf_driver, attr)
+        else:
+            msg = _('Attribute: %s not found.') % attr
+            raise NotImplementedError(msg)
 
     def _do_iscsi_export(self, volume):
         sfaccount = self._get_sfaccount(volume['project_id'])
