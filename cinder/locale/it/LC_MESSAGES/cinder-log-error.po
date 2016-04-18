@@ -5,16 +5,18 @@
 # Translators:
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Alessandra <alessandra@translated.net>, 2016. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Remo Mattei <remo@rm.ht>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev58\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-08 04:58+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-14 12:54+0000\n"
-"Last-Translator: Alessandra <alessandra@translated.net>\n"
+"PO-Revision-Date: 2016-04-07 03:39+0000\n"
+"Last-Translator: Remo Mattei <remo@rm.ht>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -100,10 +102,6 @@ msgid ""
 msgstr ""
 "L'account per l'ID volume %s non è stato trovato nel cluster SolidFire nel "
 "tentativo di eseguire l'operazione di annullamento gestione."
-
-#, python-format
-msgid "AddHba error: %(wwn)s to %(srvname)s"
-msgstr "Errore AddHba: %(wwn)s su %(srvname)s"
 
 #, python-format
 msgid "Array Serial Number must be in the file %(fileName)s."
@@ -602,10 +600,6 @@ msgstr ""
 
 msgid "DB error:"
 msgstr "Errore DB:"
-
-#, python-format
-msgid "DBError detected when purging from table=%(table)s"
-msgstr "DBError rilevato durante l'analisi dalla tabella=%(table)s"
 
 msgid "DBError encountered: "
 msgstr "Rilevato DBError: "
@@ -1363,12 +1357,6 @@ msgstr ""
 msgid "Failed collecting name server info from fabric %s"
 msgstr ""
 "Impossibile raccogliere le informazioni sul server dei nomi da fabric %s"
-
-msgid "Failed collecting nscamshow"
-msgstr "Impossibile raccogliere nscamshow"
-
-msgid "Failed collecting nsshow info for fabric"
-msgstr "Impossibile raccogliere le informazioni nsshow per fabric"
 
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
@@ -3084,21 +3072,9 @@ msgstr ""
 "Impossibile eseguire il failover sul backend secondario, Accertarsi che il "
 "backend secondario sia pronto."
 
-msgid "Unable to find FC initiators"
-msgstr "Impossibile trovare gli iniziatori FC"
-
 #, python-format
 msgid "Unable to find VG: %s"
 msgstr "Impossibile trovare VG: %s"
-
-#, python-format
-msgid "Unable to find controller port iscsi configuration: %s"
-msgstr ""
-"Impossibile trovare la configurazione iscsi della porta del controller: %s"
-
-#, python-format
-msgid "Unable to find controller port: %s"
-msgstr "Impossibile trovare la porta del controller: %s"
 
 #, python-format
 msgid ""
@@ -3202,10 +3178,6 @@ msgstr ""
 #, python-format
 msgid "Unable to terminate volume connection: %(err)s."
 msgstr "Impossibile terminare la connessione del volume: %(err)s"
-
-#, python-format
-msgid "Unable to unmap Volume %s"
-msgstr "Impossibile annullare l'associazione del volume %s"
 
 msgid "Unexpected build error:"
 msgstr "Errore di generazione non previsto:"
@@ -3325,6 +3297,12 @@ msgstr ""
 "la riscrittura."
 
 #, python-format
+msgid "Volume %(vol)s in the consistency group could not be deleted."
+msgstr ""
+"Il volume %(vol)s ha un problema di consistenza del gruppo e non è possibile "
+"cancellarlo. "
+
+#, python-format
 msgid ""
 "Volume %(volumeid)s failed to send assign command, ret: %(status)s output: "
 "%(output)s"
@@ -3439,9 +3417,6 @@ msgstr ""
 #, python-format
 msgid "Volume already exists. %s"
 msgstr "Il volume esiste già. %s"
-
-msgid "Volume appears unmapped"
-msgstr "Il volume risulta non associato"
 
 #, python-format
 msgid ""

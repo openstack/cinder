@@ -4,13 +4,13 @@
 #
 # Translators:
 # ADİL REŞİT DURSUN <ardursun@deltanoc.com>, 2015
-# Andreas Jaeger <jaegerandi@gmail.com>, 2015. #zanata
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev274\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 02:55+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -333,10 +333,6 @@ msgstr "%s mantıksal sürücü oluşturma başarısız oldu."
 msgid "DB error:"
 msgstr "DB hatası:"
 
-#, python-format
-msgid "DBError detected when purging from table=%(table)s"
-msgstr "Tablo=%(table)s temizlenirken DBError tespit edildi"
-
 msgid "DBError encountered: "
 msgstr "DBError ile karşılaşıldı: "
 
@@ -454,7 +450,7 @@ msgid "Error creating QOS rule %s"
 msgstr "QOS kuralı %s oluşturulurken hata"
 
 msgid "Error creating Volume"
-msgstr "Mantıksal sürücü oluşturulurken hata"
+msgstr "Mantıksal sürücü oluşturmada hata"
 
 msgid "Error creating Volume Group"
 msgstr "Mantıksal Sürücü Grubu oluşturulurken hata"
@@ -844,12 +840,6 @@ msgstr "Fabric %s için fcns veritabanı bilgisi toplanamadı"
 msgid "Failed collecting name server info from fabric %s"
 msgstr "Fabric %s'den ad sunucu bilgisi toplanamadı"
 
-msgid "Failed collecting nscamshow"
-msgstr "nscamshow toplanamadı"
-
-msgid "Failed collecting nsshow info for fabric"
-msgstr "Fabric için nsshow bilgisi toplanamadı"
-
 #, python-format
 msgid "Failed collecting nsshow info for fabric %s"
 msgstr "Fabric %s için nsshow bilgisi toplanamadı"
@@ -1034,6 +1024,10 @@ msgstr "blkio cgroup '%(name)s' oluşturma başarısız."
 #, python-format
 msgid "Failed to create clone of volume \"%s\"."
 msgstr "\"%s\" mantıksal sürücüsünün klonu oluşturulamadı."
+
+#, python-format
+msgid "Failed to create cloned volume %s."
+msgstr "Kopyalanmış %s mantıksal sürücüsü oluşturulamadı."
 
 #, python-format
 msgid "Failed to create consistency group %(group_id)s."
@@ -1945,16 +1939,9 @@ msgid "Unable to determine whether %(volumeName)s is composite or not."
 msgstr ""
 "%(volumeName)s mantıksal sürücüsünün bileşik olup olmadığı belirlenemedi."
 
-msgid "Unable to find FC initiators"
-msgstr "FC başlatıcısı bulunamadı"
-
 #, python-format
 msgid "Unable to find VG: %s"
 msgstr "VG bulunamadı: %s"
-
-#, python-format
-msgid "Unable to find controller port: %s"
-msgstr "Bağlantı noktası bağlayıcısı bulunamadı: %s"
 
 #, python-format
 msgid ""
@@ -2000,10 +1987,6 @@ msgstr "Mantıksal Sürücü Yapılandırması alınamadı: %s"
 #, python-format
 msgid "Unable to retrieve pool instance of %(poolName)s on array %(array)s."
 msgstr "%(array)s dizisindeki %(poolName)s havuz örneği alınamadı."
-
-#, python-format
-msgid "Unable to unmap Volume %s"
-msgstr "Mantıksal sürücü %s eşleştirmesi kaldırılamadı"
 
 msgid "Unexpected build error:"
 msgstr "Beklenmeyen inşa hatası:"

@@ -5,11 +5,12 @@
 # Translators:
 # OpenStack Infra <zanata@openstack.org>, 2015. #zanata
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev58\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-08 04:58+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -715,17 +716,6 @@ msgstr "IQN bylo použito k vytvoření mapy."
 msgid "ISCSI provider_location not stored, using discovery"
 msgstr "Umístění poskytovatele ISCSI neuloženo, bude se zjišťovat"
 
-msgid ""
-"ISERTgtAdm is deprecated, you should now just use LVMVolumeDriver and "
-"specify iscsi_helper for the target driver you wish to use. In order to "
-"enable iser, please set iscsi_protocol=iser with lioadm or tgtadm target "
-"helpers."
-msgstr ""
-"ISERTgtAdm je zastaralé, nyní byste měli používat LVMVolumeDriver a zadat "
-"pomocníka iscsi pro cílový ovladač, který chcete použít. Abyste mohli použít "
-"iser, prosím nastavte protokol iscsi s hodnotou iser s cílovými pomocníky "
-"lioadm nebo tgtadm."
-
 msgid "Id not in sort_keys; is sort_keys unique?"
 msgstr "id není v seřazení klíčů; je seřazení jedinečné?"
 
@@ -1103,6 +1093,13 @@ msgstr ""
 #, python-format
 msgid "See unavailable iSCSI target: %s"
 msgstr "Prohlédněte si nedostupný cíl iSCSI: %s"
+
+#, python-format
+msgid ""
+"Share %s ignored due to invalid format. Must be of form address:/export."
+msgstr ""
+"Sdílení %s ignorováno kvůli neplatnému formátu. Musí být ve formátu adresa:/"
+"export."
 
 msgid "Silent failure of target removal detected, retry...."
 msgstr "Zjištěno tiché selhání odstranění cíle, bude provede nový pokus..."
@@ -1543,10 +1540,6 @@ msgid "Volume deletion failed with message: %s"
 msgstr "Smazání svazku selhalo se zprávou: %s"
 
 #, python-format
-msgid "Volume initialization failure. (%s)"
-msgstr "Zavedení ovladače selhalo. (%s)"
-
-#, python-format
 msgid ""
 "Volume is masked but not to host %(host)s as expected. Returning empty "
 "dictionary."
@@ -1628,10 +1621,6 @@ msgid ""
 msgstr ""
 "Volba nastavení keymgr.fixed_key není zadána: některé operace mohou nečekaně "
 "selhat"
-
-#, python-format
-msgid "delete_volume: unable to find volume %s"
-msgstr "Smazání svazku: Nelze najít svazek %s"
 
 msgid ""
 "destroy_empty_storage_group: True. Empty storage group will be deleted after "

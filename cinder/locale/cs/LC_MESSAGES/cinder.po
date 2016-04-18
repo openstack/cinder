@@ -5,14 +5,12 @@
 # Translators:
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015
-# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
-# Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2015. #zanata
-# Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0b4.dev274\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-17 02:55+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-18 05:44+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -341,12 +339,24 @@ msgstr "Stav svazku je neplatný. (Stav: %(status)s)"
 msgid "API %(name)s failed with error string %(err)s"
 msgstr "API %(name)s selhalo s chybovým řetězcem %(err)s"
 
+#, python-format
+msgid ""
+"API Version String %(version)s is of invalid format. Must be of format "
+"MajorNum.MinorNum."
+msgstr ""
+"Řetězec verze API %(version)s je v neplatném formátu- Musí být ve formátu "
+"Hlavní číslo verze a Vedlejší číslo verze"
+
 msgid "API key is missing for CloudByte driver."
 msgstr "Ovladači CloudByte chybí klíč API."
 
 #, python-format
 msgid "API response: %s"
 msgstr "Odpověď API: %s"
+
+#, python-format
+msgid "API version %(version)s is not supported on this method."
+msgstr "API s verzí %(version)s není v této metodě podporován."
 
 msgid "API version could not be determined."
 msgstr "Nelze zjistit verzi API."
@@ -4410,6 +4420,12 @@ msgstr "Při čekání na úkol se vyskytl problém."
 msgid "Issue encountered waiting for synchronization."
 msgstr "Při čekání na synchronizaci se vyskytl problém."
 
+msgid ""
+"Issuing a fail-over failed because replication is not properly configured."
+msgstr ""
+"Vyvolání zavedení záložního systému, protože replikace není správně "
+"nastavena."
+
 msgid "Item not found"
 msgstr "Položka nenalezena"
 
@@ -5723,10 +5739,6 @@ msgstr "Soubor s nastavením SMBFS není zadán "
 #, python-format
 msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr "Příkaz SSH selhal po '%(total_attempts)r' pokusech : '%(command)s'"
-
-#, python-format
-msgid "SSH Command failed with error: '%(err)s', Command: '%(command)s'"
-msgstr "Příkaz SSH selhal s chybou: '%(err)s', příkaz: '%(command)s'"
 
 #, python-format
 msgid "SSH command injection detected: %(command)s"
@@ -7125,6 +7137,14 @@ msgstr "Chyba hodnoty: %s"
 #, python-format
 msgid "Vdisk %(name)s not involved in mapping %(src)s -> %(tgt)s."
 msgstr "Virtuální disk %(name)s není součástí mapování %(src)s -> %(tgt)s."
+
+#, python-format
+msgid ""
+"Version %(req_ver)s is not supported by the API. Minimum is %(min_ver)s and "
+"maximum is %(max_ver)s."
+msgstr ""
+"Verze  %(req_ver)s není API podporována. Minimální verze je %(min_ver)s a "
+"maximální %(max_ver)s."
 
 #, python-format
 msgid "VersionedObject %s cannot retrieve object by id."
