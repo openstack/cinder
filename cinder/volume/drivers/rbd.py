@@ -263,7 +263,7 @@ class RADOSClient(object):
 
 class RBDDriver(driver.TransferVD, driver.ExtendVD,
                 driver.CloneableImageVD, driver.SnapshotVD,
-                driver.MigrateVD, driver.BaseVD):
+                driver.MigrateVD, driver.ManageableVD, driver.BaseVD):
     """Implements RADOS block device (RBD) volume commands."""
 
     VERSION = '1.2.0'
@@ -1066,6 +1066,9 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                                         'size': image_size})
                 raise exception.VolumeBackendAPIException(
                     data=exception_message)
+
+    def unmanage(self, volume):
+        pass
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
                                original_volume_status):
