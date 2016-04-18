@@ -82,6 +82,13 @@ class AdminActionsTest(BaseAdminTest):
         cast_as_call.mock_cast_as_call(self.volume_api.volume_rpcapi.client)
         cast_as_call.mock_cast_as_call(self.volume_api.scheduler_rpcapi.client)
 
+        # start service to handle rpc messages for attach requests
+        self.svc = self.start_service('volume', host='test')
+
+    def tearDown(self):
+        self.svc.stop()
+        super(AdminActionsTest, self).tearDown()
+
     def _issue_volume_reset(self, ctx, volume, updated_status):
         req = webob.Request.blank('/v2/fake/volumes/%s/action' % volume['id'])
         req.method = 'POST'
@@ -312,20 +319,48 @@ class AdminActionsTest(BaseAdminTest):
                           'missing-volume-id')
 
     def test_reset_attached_status(self):
-        volume = db.volume_create(self.ctx,
-                                  {'status': 'available', 'host': 'test',
-                                   'provider_location': '', 'size': 1,
-                                   'attach_status': 'attached'})
+        # current status is available
+        volume = self._create_volume(self.ctx, {'provider_location': '',
+                                                'size': 1})
+        self.volume_api.reserve_volume(self.ctx, volume)
+        mountpoint = '/dev/vdb'
+        attachment = self.volume_api.attach(self.ctx, volume, fake.instance_id,
+                                            None, mountpoint, 'rw')
+        # volume is attached
+        volume = db.volume_get(self.ctx.elevated(), volume['id'])
+        attachment = db.volume_attachment_get(self.ctx, attachment['id'])
 
+        self.assertEqual('in-use', volume['status'])
+        self.assertEqual('attached', volume['attach_status'])
+        self.assertEqual(stubs.fake.instance_id, attachment['instance_uuid'])
+        self.assertEqual(mountpoint, attachment['mountpoint'])
+        self.assertEqual('attached', attachment['attach_status'])
+        admin_metadata = volume['volume_admin_metadata']
+        self.assertEqual(2, len(admin_metadata))
+        self.assertEqual('readonly', admin_metadata[0]['key'])
+        self.assertEqual('False', admin_metadata[0]['value'])
+        self.assertEqual('attached_mode', admin_metadata[1]['key'])
+        self.assertEqual('rw', admin_metadata[1]['value'])
+
+        # Reset attach_status
         resp = self._issue_volume_reset(self.ctx,
                                         volume,
                                         {'status': 'available',
                                          'attach_status': 'detached'})
-
+        # request is accepted
         self.assertEqual(202, resp.status_int)
+
+        # volume is detached
         volume = db.volume_get(self.ctx, volume['id'])
         self.assertEqual('detached', volume['attach_status'])
         self.assertEqual('available', volume['status'])
+        admin_metadata = volume['volume_admin_metadata']
+        self.assertEqual(1, len(admin_metadata))
+        self.assertEqual('readonly', admin_metadata[0]['key'])
+        self.assertEqual('False', admin_metadata[0]['value'])
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          db.volume_attachment_get,
+                          self.ctx, attachment['id'])
 
     def test_invalid_reset_attached_status(self):
         volume = db.volume_create(self.ctx,
