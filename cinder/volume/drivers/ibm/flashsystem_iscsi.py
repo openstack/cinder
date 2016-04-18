@@ -70,10 +70,14 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
                 terminate_connection
         1.0.7 - Fix bug #1505477, add host name check in
                 _find_host_exhaustive for FC
+        1.0.8 - Fix bug #1572743, multi-attach attribute
+                should not be hardcoded, only in iSCSI
+        1.0.9 - Fix bug #1570574, Cleanup host resource
+                leaking, changes only in iSCSI
 
     """
 
-    VERSION = "1.0.7"
+    VERSION = "1.0.9"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemISCSIDriver, self).__init__(*args, **kwargs)
@@ -280,7 +284,12 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
 
         vdisk_name = volume['name']
         self._wait_vdisk_copy_completed(vdisk_name)
-        self._unmap_vdisk_from_host(vdisk_name, connector)
+        host_name = self._unmap_vdisk_from_host(vdisk_name, connector)
+        # checking if host_name none, if not then, check if the host has
+        # any mappings, if not the host gets deleted.
+        if host_name:
+            if not self._get_hostvdisk_mappings(host_name):
+                self._delete_host(host_name)
 
         LOG.debug(
             'leave: terminate_connection: volume %(vol)s with '

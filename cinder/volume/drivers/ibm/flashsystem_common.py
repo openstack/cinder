@@ -80,10 +80,14 @@ class FlashSystemDriver(san.SanDriver):
                 terminate_connection
         1.0.7 - Fix bug #1505477, add host name check in
                 _find_host_exhaustive for FC
+        1.0.8 - Fix bug #1572743, multi-attach attribute
+                should not be hardcoded, only in iSCSI
+        1.0.9 - Fix bug #1570574, Cleanup host resource
+                leaking, changes only in iSCSI
 
     """
 
-    VERSION = "1.0.7"
+    VERSION = "1.0.9"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemDriver, self).__init__(*args, **kwargs)
@@ -814,7 +818,7 @@ class FlashSystemDriver(san.SanDriver):
             LOG.warning(_LW('_unmap_vdisk_from_host: No mapping of volume '
                             '%(vol_name)s to any host found.'),
                         {'vol_name': vdisk_name})
-            return
+            return host_name
         if host_name is None:
             if len(mapping_data) > 1:
                 LOG.warning(_LW('_unmap_vdisk_from_host: Multiple mappings of '
@@ -829,7 +833,7 @@ class FlashSystemDriver(san.SanDriver):
                 LOG.error(_LE('_unmap_vdisk_from_host: No mapping of volume '
                               '%(vol_name)s to host %(host_name)s found.'),
                           {'vol_name': vdisk_name, 'host_name': host_name})
-                return
+                return host_name
 
         # We have a valid host_name now
         ssh_cmd = ['svctask', 'rmvdiskhostmap',

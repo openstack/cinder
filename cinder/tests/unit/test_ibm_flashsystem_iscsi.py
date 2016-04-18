@@ -261,3 +261,45 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
 
         # case 4: If there is no vdisk mapped to host, host should be removed
         self.assertIsNone(self.driver._get_host_from_connector(self.connector))
+
+    def test_terminate_connection_with_normal_path(self):
+        connector = {'host': 'flashsystem-host',
+                     'wwnns': ['10000090fa17311e', '10000090fa17311f'],
+                     'wwpns': ['20000090fa17311e', '20000090fa17311f'],
+                     'initiator': 'iqn.1993-08.org.debian:01:89ad29bbdc43'}
+        # create test volume
+        volume_iscsi = self._generate_vol_info(None)
+        self.driver.create_volume(volume_iscsi)
+
+        # normal connection test
+        self.driver.initialize_connection(volume_iscsi, connector)
+        host = self.driver._get_host_from_connector(connector)
+        self.assertIsNotNone(host)
+        self.driver.terminate_connection(volume_iscsi, connector)
+        host = self.driver._get_host_from_connector(connector)
+        self.assertIsNone(host)
+
+        # clean environment
+        self.driver.delete_volume(volume_iscsi)
+
+    def test_terminate_connection_with_resource_leak_check(self):
+        connector = {'host': 'flashsystem-host',
+                     'wwnns': ['10000090fa17311e', '10000090fa17311f'],
+                     'wwpns': ['20000090fa17311e', '20000090fa17311f'],
+                     'initiator': 'iqn.1993-08.org.debian:01:89ad29bbdc43'}
+        # create test volume
+        volume_iscsi = self._generate_vol_info(None)
+        self.driver.create_volume(volume_iscsi)
+
+        # volume mapping removed before terminate connection
+        self.driver.initialize_connection(volume_iscsi, connector)
+        host = self.driver._get_host_from_connector(connector)
+        self.assertIsNotNone(host)
+        rmmap_cmd = {'host': host, 'obj': volume_iscsi['name']}
+        self.sim._cmd_rmvdiskhostmap(**rmmap_cmd)
+        self.driver.terminate_connection(volume_iscsi, connector)
+        host = self.driver._get_host_from_connector(connector)
+        self.assertIsNone(host)
+
+        # clean environment
+        self.driver.delete_volume(volume_iscsi)
