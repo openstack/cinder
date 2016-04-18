@@ -1306,6 +1306,7 @@ class EMCVMAXCommon(object):
         :returns: string -- configuration file
         """
         extraSpecs = self.utils.get_volumetype_extraspecs(volume, volumeTypeId)
+        qosSpecs = self.utils.get_volumetype_qosspecs(volume, volumeTypeId)
         configGroup = None
 
         # If there are no extra specs then the default case is assumed.
@@ -1313,8 +1314,7 @@ class EMCVMAXCommon(object):
             configGroup = self.configuration.config_group
         configurationFile = self._register_config_file_from_config_group(
             configGroup)
-
-        return extraSpecs, configurationFile
+        return extraSpecs, configurationFile, qosSpecs
 
     def _get_ecom_connection(self):
         """Get the ecom connection.
@@ -1751,7 +1751,7 @@ class EMCVMAXCommon(object):
         :raises: VolumeBackendAPIException
         """
         try:
-            extraSpecs, configurationFile = (
+            extraSpecs, configurationFile, qosSpecs = (
                 self._set_config_file_and_get_extra_specs(
                     volume, volumeTypeId))
 
@@ -1777,6 +1777,9 @@ class EMCVMAXCommon(object):
             else:
                 # V2 extra specs
                 extraSpecs = self._set_v2_extra_specs(extraSpecs, poolRecord)
+            if (qosSpecs.get('qos_spec')
+                    and qosSpecs['qos_specs']['consumer'] != "front-end"):
+                extraSpecs['qos'] = qosSpecs['qos_specs']['specs']
         except Exception:
             import sys
             exceptionMessage = (_(
@@ -2893,6 +2896,10 @@ class EMCVMAXCommon(object):
                 LOG.error(exceptionMessage)
                 raise exception.VolumeBackendAPIException(
                     data=exceptionMessage)
+            # If qos exists, update storage group to reflect qos parameters
+            if 'qos' in extraSpecs:
+                self.utils.update_storagegroup_qos(
+                    self.conn, defaultStorageGroupInstanceName, extraSpecs)
 
             self._add_volume_to_default_storage_group_on_create(
                 volumeDict, volumeName, storageConfigService,
@@ -2981,6 +2988,10 @@ class EMCVMAXCommon(object):
             sgInstanceName = self.provisionv3.create_storage_group_v3(
                 self.conn, controllerConfigService, storageGroupName,
                 poolName, slo, workload, extraSpecs)
+        # If qos exists, update storage group to reflect qos parameters
+        if 'qos' in extraSpecs:
+            self.utils.update_storagegroup_qos(
+                self.conn, sgInstanceName, extraSpecs)
 
         return sgInstanceName
 
