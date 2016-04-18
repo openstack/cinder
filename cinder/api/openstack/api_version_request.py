@@ -55,6 +55,7 @@ REST_API_VERSION_HISTORY = """
     * 3.6 - Allows to set empty description and empty name for consistency
             group in consisgroup-update operation.
     * 3.7 - Add cluster API and cluster_name field to service list API
+    * 3.8 - Adds resources from volume_manage and snapshot_manage extensions.
 
 """
 
@@ -63,7 +64,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.7"
+_MAX_API_VERSION = "3.8"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

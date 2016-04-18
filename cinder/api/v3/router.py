@@ -29,6 +29,8 @@ from cinder.api.v2 import volume_metadata
 from cinder.api.v3 import clusters
 from cinder.api.v3 import consistencygroups
 from cinder.api.v3 import messages
+from cinder.api.v3 import snapshot_manage
+from cinder.api.v3 import volume_manage
 from cinder.api.v3 import volumes
 from cinder.api import versions
 
@@ -112,3 +114,14 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         controller=self.resources['consistencygroups'],
                         collection={'detail': 'GET'},
                         member={'action': 'POST'})
+
+        self.resources['manageable_volumes'] = volume_manage.create_resource()
+        mapper.resource("manageable_volume", "manageable_volumes",
+                        controller=self.resources['manageable_volumes'],
+                        collection={'detail': 'GET'})
+
+        self.resources['manageable_snapshots'] = \
+            snapshot_manage.create_resource()
+        mapper.resource("manageable_snapshot", "manageable_snapshots",
+                        controller=self.resources['manageable_snapshots'],
+                        collection={'detail': 'GET'})

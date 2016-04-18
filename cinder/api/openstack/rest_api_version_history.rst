@@ -146,3 +146,9 @@ user documentation.
              ...
          }
      ]
+
+3.8
+---
+  Adds the following resources that were previously in extensions:
+  - os-volume-manage => /v3/<project_id>/manageable_volumes
+  - os-snapshot-manage => /v3/<project_id>/manageable_snapshots

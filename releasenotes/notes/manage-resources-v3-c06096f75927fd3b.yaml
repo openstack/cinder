@@ -1,0 +1,4 @@
+---
+features:
+  - The v2 API extensions os-volume-manage and os-snapshot-manage have been
+    mapped to the v3 resources manageable_volumes and manageable_snapshots
