@@ -94,8 +94,7 @@ class SnapshotsController(wsgi.Controller):
 
         # NOTE(thingee): v2 API allows name instead of display_name
         if 'name' in search_opts:
-            search_opts['display_name'] = search_opts['name']
-            del search_opts['name']
+            search_opts['display_name'] = search_opts.pop('name')
 
         snapshots = self.volume_api.get_all_snapshots(context,
                                                       search_opts=search_opts,
