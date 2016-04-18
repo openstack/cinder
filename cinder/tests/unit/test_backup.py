@@ -293,11 +293,13 @@ class BackupTestCase(BaseBackupTest):
         mock_add_threadpool.assert_has_calls(calls, any_order=True)
         self.assertEqual(2, mock_add_threadpool.call_count)
 
+    @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
+    @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-backup': '1.3',
                                                  'cinder-volume': '1.7'})
     @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-backup': '1.5',
                                                  'cinder-volume': '1.4'})
-    def test_reset(self):
+    def test_reset(self, get_min_obj, get_min_rpc):
         backup_mgr = manager.BackupManager()
 
         backup_rpcapi = backup_mgr.backup_rpcapi
@@ -312,10 +314,14 @@ class BackupTestCase(BaseBackupTest):
 
         backup_rpcapi = backup_mgr.backup_rpcapi
         volume_rpcapi = backup_mgr.volume_rpcapi
-        self.assertIsNone(backup_rpcapi.client.version_cap)
-        self.assertIsNone(backup_rpcapi.client.serializer._base.version_cap)
-        self.assertIsNone(volume_rpcapi.client.version_cap)
-        self.assertIsNone(volume_rpcapi.client.serializer._base.version_cap)
+        self.assertEqual(get_min_rpc.return_value,
+                         backup_rpcapi.client.version_cap)
+        self.assertEqual(get_min_obj.return_value,
+                         backup_rpcapi.client.serializer._base.version_cap)
+        self.assertEqual(get_min_rpc.return_value,
+                         volume_rpcapi.client.version_cap)
+        self.assertEqual(get_min_obj.return_value,
+                         volume_rpcapi.client.serializer._base.version_cap)
 
     def test_is_working(self):
         self.assertTrue(self.backup_mgr.is_working())

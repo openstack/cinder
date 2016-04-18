@@ -14,6 +14,7 @@
 
 import mock
 
+from cinder.objects import base
 from cinder import rpc
 from cinder import test
 
@@ -63,6 +64,23 @@ class RPCAPITestCase(test.TestCase):
 
         get_client.side_effect = fake_get_client
         FakeAPI()
+
+    @mock.patch('cinder.objects.Service.get_minimum_rpc_version',
+                return_value=None)
+    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
+                return_value=None)
+    @mock.patch('cinder.objects.base.CinderObjectSerializer')
+    @mock.patch('cinder.rpc.get_client')
+    def test_init_none_caps(self, get_client, serializer, get_min_obj,
+                            get_min_rpc):
+        """Test that with no service latest versions are selected."""
+        FakeAPI()
+        serializer.assert_called_once_with(base.OBJ_VERSIONS.get_current())
+        get_client.assert_called_once_with(mock.ANY,
+                                           version_cap=FakeAPI.RPC_API_VERSION,
+                                           serializer=serializer.return_value)
+        self.assertTrue(get_min_obj.called)
+        self.assertTrue(get_min_rpc.called)
 
     @mock.patch('cinder.objects.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.Service.get_minimum_obj_version')
