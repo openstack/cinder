@@ -697,14 +697,19 @@ class EMCVMAXFast(object):
         :param policyName: the name of policy rule, a string value
         :returns: int -- total capacity in GB of all pools associated with
             the policy
-        :returns: int  -- (total capacity-EMCSubscribedCapacity) in GB of all
-            pools associated with the policy
+        :returns: int  -- real physical capacity in GB of all pools
+            available to be used
+        :returns: int -- (Provisioned capacity-EMCSubscribedCapacity) in GB
+            is the the capacity that has been provisioned
+        :returns: int -- the maximum oversubscription ration
         """
         policyInstanceName = self.get_tier_policy_by_name(
             conn, arrayName, policyName)
 
         total_capacity_gb = 0
-        allocated_capacity_gb = 0
+        provisioned_capacity_gb = 0
+        free_capacity_gb = 0
+        array_max_over_subscription = None
 
         tierInstanceNames = self.get_associated_tier_from_tier_policy(
             conn, policyInstanceName)
@@ -726,17 +731,25 @@ class EMCVMAXFast(object):
                     break
                 total_capacity_gb += self.utils.convert_bits_to_gbs(
                     storagePoolInstance['TotalManagedSpace'])
-                allocated_capacity_gb += self.utils.convert_bits_to_gbs(
+                provisioned_capacity_gb += self.utils.convert_bits_to_gbs(
                     storagePoolInstance['EMCSubscribedCapacity'])
+                free_capacity_gb += self.utils.convert_bits_to_gbs(
+                    storagePoolInstance['RemainingManagedSpace'])
+                try:
+                    array_max_over_subscription = (
+                        self.utils.get_ratio_from_max_sub_per(
+                            storagePoolInstance['EMCMaxSubscriptionPercent']))
+                except KeyError:
+                    array_max_over_subscription = 65534
                 LOG.debug(
                     "PolicyName:%(policyName)s, pool: %(poolInstanceName)s, "
-                    "allocated_capacity_gb = %(allocated_capacity_gb)lu.",
+                    "provisioned_capacity_gb = %(provisioned_capacity_gb)lu.",
                     {'policyName': policyName,
                      'poolInstanceName': poolInstanceName,
-                     'allocated_capacity_gb': allocated_capacity_gb})
+                     'provisioned_capacity_gb': provisioned_capacity_gb})
 
-        free_capacity_gb = total_capacity_gb - allocated_capacity_gb
-        return (total_capacity_gb, free_capacity_gb)
+        return (total_capacity_gb, free_capacity_gb,
+                provisioned_capacity_gb, array_max_over_subscription)
 
     def get_or_create_default_storage_group(
             self, conn, controllerConfigService, fastPolicyName,

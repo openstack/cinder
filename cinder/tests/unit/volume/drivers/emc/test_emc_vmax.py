@@ -301,8 +301,11 @@ class EMCVMAXCommonData(object):
     poolname = 'gold'
     totalmanagedspace_bits = '1000000000000'
     subscribedcapacity_bits = '500000000000'
+    remainingmanagedspace_bits = '500000000000'
+    maxsubscriptionpercent = 150
     totalmanagedspace_gbs = 931
-    subscribedcapacity_gbs = 466
+    subscribedcapacity_gbs = 465
+    remainingmanagedspace_gbs = 465
     fake_host = 'HostX@Backend#gold+1234567891011'
     fake_host_v3 = 'HostX@Backend#Bronze+SRP_1+1234567891011'
     fake_host_2_v3 = 'HostY@Backend#SRP_1+1234567891011'
@@ -1114,6 +1117,8 @@ class FakeEcomConnection(object):
         pool['SystemName'] = self.data.storage_system
         pool['TotalManagedSpace'] = self.data.totalmanagedspace_bits
         pool['EMCSubscribedCapacity'] = self.data.subscribedcapacity_bits
+        pool['RemainingManagedSpace'] = self.data.remainingmanagedspace_bits
+        pool['EMCMaxSubscriptionPercent'] = self.data.maxsubscriptionpercent
         return pool
 
     def _getinstance_replicationgroup(self, objectpath):
@@ -2843,22 +2848,25 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     # Bug 1393555 - policy has been deleted by another process.
     def test_get_capacities_associated_to_policy(self):
         conn = self.fake_ecom_connection()
-        total_capacity_gb, free_capacity_gb = (
+        (total_capacity_gb, free_capacity_gb, provisioned_capacity_gb,
+         array_max_over_subscription) = (
             self.driver.common.fast.get_capacities_associated_to_policy(
                 conn, self.data.storage_system, self.data.policyrule))
         # The capacities associated to the policy have been found.
         self.assertEqual(self.data.totalmanagedspace_gbs, total_capacity_gb)
-        self.assertEqual(self.data.subscribedcapacity_gbs, free_capacity_gb)
+        self.assertEqual(self.data.remainingmanagedspace_gbs, free_capacity_gb)
 
         self.driver.common.fast.utils.get_existing_instance = mock.Mock(
             return_value=None)
-        total_capacity_gb_2, free_capacity_gb_2 = (
+        (total_capacity_gb_2, free_capacity_gb_2, provisioned_capacity_gb_2,
+         array_max_over_subscription_2) = (
             self.driver.common.fast.get_capacities_associated_to_policy(
                 conn, self.data.storage_system, self.data.policyrule))
         # The capacities have not been found as the policy has been
         # removed externally.
         self.assertEqual(0, total_capacity_gb_2)
         self.assertEqual(0, free_capacity_gb_2)
+        self.assertEqual(0, provisioned_capacity_gb_2)
 
     # Bug 1393555 - storage group has been deleted by another process.
     def test_find_storage_masking_group(self):
@@ -2994,7 +3002,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
         'get_pool_capacities',
-        return_value=(1234, 1200))
+        return_value=(1234, 1200, 1200, 1))
     @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'is_tiering_policy_enabled',
@@ -3824,7 +3832,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_update_pool_stats',
-        return_value={1, 2, 3})
+        return_value={1, 2, 3, 4, 5})
     def test_ssl_support(self, pool_stats):
         self.driver.common.update_volume_stats()
         self.assertTrue(self.driver.common.ecomUseSSL)
@@ -3955,7 +3963,11 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'get_capacities_associated_to_policy',
-        return_value=(1234, 1200))
+        return_value=(1234, 1200, 1200, 1))
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_pool_capacities',
+        return_value=(1234, 1200, 1200, 1))
     @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'get_tier_policy_by_name',
@@ -3972,7 +3984,8 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
                                    mock_storage_system,
                                    mock_is_fast_enabled,
                                    mock_get_policy,
-                                   mock_capacity):
+                                   mock_pool_capacities,
+                                   mock_capacities_associated_to_policy):
         self.driver.get_volume_stats(True)
 
     @mock.patch.object(
@@ -4591,7 +4604,7 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
         'get_pool_capacities',
-        return_value=(1234, 1200))
+        return_value=(1234, 1200, 1200, 1))
     @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'is_tiering_policy_enabled',
@@ -5163,7 +5176,11 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'get_capacities_associated_to_policy',
-        return_value=(1234, 1200))
+        return_value=(1234, 1200, 1200, 1))
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_pool_capacities',
+        return_value=(1234, 1200, 1200, 1))
     @mock.patch.object(
         emc_vmax_fast.EMCVMAXFast,
         'get_tier_policy_by_name',
@@ -5180,7 +5197,8 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
                                    mock_storage_system,
                                    mock_is_fast_enabled,
                                    mock_get_policy,
-                                   mock_capacity):
+                                   mock_pool_capacities,
+                                   mock_capacities_associated_to_policy):
         self.driver.get_volume_stats(True)
 
     @mock.patch.object(
@@ -5734,7 +5752,7 @@ class EMCV3DriverTestCase(test.TestCase):
     def set_configuration(self):
         configuration = mock.Mock()
         configuration.cinder_emc_config_file = self.config_file_path
-        configuration.safe_get.return_value = 'V3'
+        configuration.safe_get.return_value = 3
         configuration.config_group = 'V3'
 
         self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
@@ -7943,6 +7961,45 @@ class EMCVMAXUtilsTest(test.TestCase):
             return_value=capabilityInstanceName)
         self.assertFalse(self.driver.utils.is_clone_licensed(
             conn, capabilityInstanceName, isV3))
+
+    def test_get_pool_capacities(self):
+        conn = FakeEcomConnection()
+
+        (total_capacity_gb, free_capacity_gb, provisioned_capacity_gb,
+         array_max_over_subscription) = (
+            self.driver.utils.get_pool_capacities(
+                conn, self.data.poolname, self.data.storage_system))
+        self.assertEqual(931, total_capacity_gb)
+        self.assertEqual(465, free_capacity_gb)
+        self.assertEqual(465, provisioned_capacity_gb)
+        self.assertEqual(1.5, array_max_over_subscription)
+
+    def test_get_pool_capacities_none_array_max_oversubscription(self):
+        conn = FakeEcomConnection()
+        null_emcmaxsubscriptionpercent = {
+            'TotalManagedSpace': '1000000000000',
+            'ElementName': 'gold',
+            'RemainingManagedSpace': '500000000000',
+            'SystemName': 'SYMMETRIX+000195900551',
+            'CreationClassName': 'Symm_VirtualProvisioningPool',
+            'EMCSubscribedCapacity': '500000000000'}
+        conn.GetInstance = mock.Mock(
+            return_value=null_emcmaxsubscriptionpercent)
+        (total_capacity_gb, free_capacity_gb, provisioned_capacity_gb,
+         array_max_over_subscription) = (
+            self.driver.utils.get_pool_capacities(
+                conn, self.data.poolname, self.data.storage_system))
+        self.assertEqual(65534, array_max_over_subscription)
+
+    def test_get_ratio_from_max_sub_per(self):
+        max_subscription_percent_float = (
+            self.driver.utils.get_ratio_from_max_sub_per(150))
+        self.assertEqual(1.5, max_subscription_percent_float)
+
+    def test_get_ratio_from_max_sub_per_none_value(self):
+        max_subscription_percent_float = (
+            self.driver.utils.get_ratio_from_max_sub_per(str(0)))
+        self.assertIsNone(max_subscription_percent_float)
 
 
 class EMCVMAXCommonTest(test.TestCase):

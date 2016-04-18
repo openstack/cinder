@@ -978,7 +978,8 @@ class EMCVMAXUtils(object):
         :param conn: connection to the ecom server
         :param poolName: string value of the storage pool name
         :param storageSystemName: the storage system name
-        :returns: tuple -- (total_capacity_gb, free_capacity_gb)
+        :returns: tuple -- (total_capacity_gb, free_capacity_gb,
+        provisioned_capacity_gb)
         """
         LOG.debug(
             "Retrieving capacity for pool %(poolName)s on array %(array)s.",
@@ -997,10 +998,17 @@ class EMCVMAXUtils(object):
             poolInstanceName, LocalOnly=False)
         total_capacity_gb = self.convert_bits_to_gbs(
             storagePoolInstance['TotalManagedSpace'])
-        allocated_capacity_gb = self.convert_bits_to_gbs(
+        provisioned_capacity_gb = self.convert_bits_to_gbs(
             storagePoolInstance['EMCSubscribedCapacity'])
-        free_capacity_gb = total_capacity_gb - allocated_capacity_gb
-        return (total_capacity_gb, free_capacity_gb)
+        free_capacity_gb = self.convert_bits_to_gbs(
+            storagePoolInstance['RemainingManagedSpace'])
+        try:
+            array_max_over_subscription = self.get_ratio_from_max_sub_per(
+                storagePoolInstance['EMCMaxSubscriptionPercent'])
+        except KeyError:
+            array_max_over_subscription = 65534
+        return (total_capacity_gb, free_capacity_gb,
+                provisioned_capacity_gb, array_max_over_subscription)
 
     def get_pool_by_name(self, conn, storagePoolName, storageSystemName):
         """Returns the instance name associated with a storage pool name.
@@ -2598,3 +2606,42 @@ class EMCVMAXUtils(object):
         sgInstanceName = self.find_storage_masking_group(
             conn, controllerConfigService, storageGroupName)
         return storageGroupName, controllerConfigService, sgInstanceName
+
+    def get_ratio_from_max_sub_per(self, max_subscription_percent):
+        """Get ratio from max subscription percent if it exists.
+
+        Check if the max subscription is set on the pool, if it is convert
+        it to a ratio.
+
+        :param max_subscription_percent: max subscription percent
+        :returns: max_over_subscription_ratio
+        """
+        if max_subscription_percent == '0':
+            return None
+        try:
+            max_subscription_percent_int = int(max_subscription_percent)
+        except ValueError:
+            LOG.error(_LE("Cannot convert max subscription percent to int."))
+            return None
+        return float(max_subscription_percent_int) / 100
+
+    def override_ratio(self, max_over_sub_ratio, max_sub_ratio_from_per):
+        """Override ratio if necessary
+
+        The over subscription ratio will be overriden if the max subscription
+        percent is less than the user supplied max oversubscription ratio.
+
+        :param max_over_sub_ratio: user supplied over subscription ratio
+        :param max_sub_ratio_from_per: property on the pool
+        :returns: max_over_sub_ratio
+        """
+        if max_over_sub_ratio:
+            try:
+                max_over_sub_ratio = max(float(max_over_sub_ratio),
+                                         float(max_sub_ratio_from_per))
+            except ValueError:
+                max_over_sub_ratio = float(max_sub_ratio_from_per)
+        elif max_sub_ratio_from_per:
+            max_over_sub_ratio = float(max_sub_ratio_from_per)
+
+        return max_over_sub_ratio
