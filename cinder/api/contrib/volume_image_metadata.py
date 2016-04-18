@@ -13,7 +13,6 @@
 #   under the License.
 
 """The Volume Image Metadata API extension."""
-import six
 import webob
 
 from oslo_log import log as logging
@@ -46,16 +45,6 @@ class VolumeImageMetadataController(wsgi.Controller):
             msg = _('Volume with volume id %s does not exist.') % volume_id
             raise webob.exc.HTTPNotFound(explanation=msg)
         return (volume, meta)
-
-    def _get_all_images_metadata(self, context):
-        """Returns the image metadata for all volumes."""
-        try:
-            all_metadata = self.volume_api.get_volumes_image_metadata(context)
-        except Exception as e:
-            LOG.debug('Problem retrieving volume image metadata. '
-                      'It will be skipped. Error: %s', six.text_type(e))
-            all_metadata = {}
-        return all_metadata
 
     def _add_image_metadata(self, context, resp_volume_list, image_metas=None):
         """Appends the image metadata to each of the given volume.
@@ -95,8 +84,9 @@ class VolumeImageMetadataController(wsgi.Controller):
         if authorize(context):
             resp_obj.attach(xml=VolumesImageMetadataTemplate())
             # Just get the image metadata of those volumes in response.
-            self._add_image_metadata(context,
-                                     list(resp_obj.obj.get('volumes', [])))
+            volumes = list(resp_obj.obj.get('volumes', []))
+            if volumes:
+                self._add_image_metadata(context, volumes)
 
     @wsgi.action("os-set_image_metadata")
     @wsgi.serializers(xml=common.MetadataTemplate)

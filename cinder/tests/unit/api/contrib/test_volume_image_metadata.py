@@ -61,6 +61,10 @@ def fake_volume_get_all(*args, **kwargs):
     return objects.VolumeList(objects=[fake_volume_api_get()])
 
 
+def fake_volume_get_all_empty(*args, **kwargs):
+    return objects.VolumeList(objects=[])
+
+
 fake_image_metadata = {
     'image_id': 'someid',
     'image_name': 'fake',
@@ -149,6 +153,18 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertEqual(fake_image_metadata,
                          self._get_image_metadata_list(res.body)[0])
+
+    def test_list_detail_empty_volumes(self):
+        def fake_dont_call_this(*args, **kwargs):
+            fake_dont_call_this.called = True
+        fake_dont_call_this.called = False
+        self.stubs.Set(volume.api.API, 'get_list_volumes_image_metadata',
+                       fake_dont_call_this)
+        self.stubs.Set(volume.api.API, 'get_all', fake_volume_get_all_empty)
+
+        res = self._make_request('/v2/fake/volumes/detail')
+        self.assertEqual(200, res.status_int)
+        self.assertFalse(fake_dont_call_this.called)
 
     def test_list_detail_volumes_with_limit(self):
         ctxt = context.get_admin_context()
