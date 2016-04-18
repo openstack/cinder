@@ -763,10 +763,13 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             try:
                 volume.unprotect_snap(snap_name)
             except self.rbd.InvalidArgument:
-                LOG.info(_LI("Unable to unprotect snapshot %s."), snap_name)
+                LOG.info(
+                    _LI("InvalidArgument: Unable to unprotect snapshot %s."),
+                    snap_name)
             except self.rbd.ImageNotFound:
-                LOG.info(_LI("Snapshot %s does not exist in backend."),
-                         snap_name)
+                LOG.info(
+                    _LI("ImageNotFound: Unable to unprotect snapshot %s."),
+                    snap_name)
             except self.rbd.ImageBusy:
                 children_list = self._get_children_info(volume, snap_name)
 
@@ -779,7 +782,11 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                                   'snap': snap_name})
 
                 raise exception.SnapshotIsBusy(snapshot_name=snap_name)
-            volume.remove_snap(snap_name)
+            try:
+                volume.remove_snap(snap_name)
+            except self.rbd.ImageNotFound:
+                LOG.info(_LI("Snapshot %s does not exist in backend."),
+                         snap_name)
 
     def retype(self, context, volume, new_type, diff, host):
         """Retypes a volume, allow Qos and extra_specs change."""
