@@ -6,6 +6,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
+from cinder import utils as cinder_utils
 from cinder.i18n import _LE
 from cinder.image import image_utils
 from cinder.volume import driver
@@ -13,6 +14,7 @@ from cinder.volume import utils as volutils
 from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta.nexentaedge import jsonrpc
 
+import os
 
 LOG = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     VERSION = '1.0.0'
 
     def __init__(self, vg_obj=None, *args, **kwargs):
+        LOG.debug('NexentaEdgeNBDDriver. Trying to initialize.')
         super(NexentaEdgeNBDDriver, self).__init__(*args, **kwargs)
 
         if self.configuration:
@@ -44,6 +47,8 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         self.bucket_url = ('clusters/' + self.cluster + '/tenants/' +
                            self.tenant + '/buckets/' + self.bucket)
         self.hostname = socket.gethostname()
+        self.symlinks_dir = self.configuration.nexenta_nbd_symlinks_dir
+        LOG.debug('NexentaEdgeNBDDriver. Initialized successfully.')
 
     @property
     def backend_name(self):
@@ -66,6 +71,12 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
 
     def check_for_setup_error(self):
         try:
+            if not self.symlinks_dir:
+                raise exception.NexentaException(
+                    "nexenta_nbd_symlinks_dir option is not specified")
+            if not os.path.exists(self.symlinks_dir):
+                raise exception.NexentaException(
+                    "NexentaEdge NBD symlinks directory doesn't exist")
             self.restapi.get(self.bucket_url + '/objects/')
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
@@ -105,14 +116,18 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     def _get_remote_url(self, host):
         return '?remote=' + str(self._get_host_info(host)['ipv6addr'])
 
+    def _get_symlink_path(self, number):
+        return os.path.join(self.symlinks_dir, 'nbd' + str(number))
+
     def local_path(self, volume):
         number = self._get_nbd_number(volume)
         if number == -1:
             raise exception.VolumeBackendAPIException(
                 'No NBD device for volume %s' % volume['name'])
-        return '/dev/nbd' + str(number)
+        return self._get_symlink_path(number)
 
     def create_volume(self, volume):
+        LOG.debug('Create volume')
         host = volutils.extract_host(volume['host'], 'host')
         try:
             self.restapi.post('nbd' + self._get_remote_url(host), {
@@ -121,11 +136,17 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 'blockSize': self.blocksize,
                 'chunkSize': self.chunksize
             })
+            number = self._get_nbd_number(volume)
+            cinder_utils.execute(
+                'ln', '--symbolic', '--force', '/dev/nbd' + str(number),
+                self._get_symlink_path(number), run_as_root=True,
+                check_exit_code=True)
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Error creating volume'))
 
     def delete_volume(self, volume):
+        LOG.debug('Delete volume')
         number = self._get_nbd_number(volume)
         if number == -1:
             return
@@ -140,6 +161,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error deleting volume'))
 
     def extend_volume(self, volume, new_size):
+        LOG.debug('Extend volume')
         host = volutils.extract_host(volume['host'], 'host')
         try:
             self.restapi.put('nbd/resize' + self._get_remote_url(host), {
@@ -151,6 +173,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error extending volume'))
 
     def create_snapshot(self, snapshot):
+        LOG.debug('Create snapshot')
         try:
             self.restapi.post('nbd/snapshot', {
                 'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
@@ -161,6 +184,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error creating snapshot'))
 
     def delete_snapshot(self, snapshot):
+        LOG.debug('Delete snapshot')
         try:
             self.restapi.delete('nbd/snapshot', {
                 'objectPath': self.bucket_path + '/' + snapshot['volume_name'],
@@ -171,6 +195,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error deleting snapshot'))
 
     def create_volume_from_snapshot(self, volume, snapshot):
+        LOG.debug('Create volume from snapshot')
         host = volutils.extract_host(volume['host'], 'host')
         remotehost = self._get_remote_url(host)
         try:
@@ -184,6 +209,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error cloning snapshot'))
 
     def create_cloned_volume(self, volume, src_vref):
+        LOG.debug('Create cloned volume')
         vol_url = (self.bucket_url + '/objects/' +
                    src_vref['name'] + '/clone')
         clone_body = {
@@ -208,6 +234,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         raise NotImplemented
 
     def get_volume_stats(self, refresh=False):
+        LOG.debug('Get volume stats')
         location_info = '%(driver)s:%(host)s:%(bucket)s' % {
             'driver': self.__class__.__name__,
             'host': self.hostname,
@@ -227,6 +254,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         }
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        LOG.debug('Copy image to volume')
         image_utils.fetch_to_raw(context,
                                  image_service,
                                  image_id,
@@ -235,6 +263,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                                  size=volume['size'])
 
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        LOG.debug('Copy volume to image')
         image_utils.upload_volume(context,
                                   image_service,
                                   image_meta,
@@ -250,6 +279,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         pass
 
     def validate_connector(self, connector):
+        LOG.debug('Validate connector')
         try:
             res = self.restapi.get('system/stats')
             servers = res['stats']['servers']
@@ -264,6 +294,8 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
             'No %s hostname in NEdge cluster' % connector['host'])
 
     def initialize_connection(self, volume, connector):
+        LOG.debug('Initialize connection')
+        LOG.debug('HOST: %s, again: %s', connector['host'], volutils.extract_host(volume['host'], 'host'))
         if connector['host'] != volutils.extract_host(volume['host'], 'host'):
             return self.target_driver.initialize_connection(volume, connector)
         else:
