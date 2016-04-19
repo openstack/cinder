@@ -108,7 +108,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                          'thinProvisioningPercent': 100}}}
             return data
 
-        elif method is 'GetClusterInfo' and version == '1.0':
+        elif method is 'GetClusterInfo':
             results = {
                 'result':
                     {'clusterInfo':
@@ -122,7 +122,13 @@ class SolidFireVolumeTestCase(test.TestCase):
             return results
 
         elif method is 'GetClusterVersionInfo':
-            return {'result': {'clusterAPIVersion': '8.0'}}
+            return {'id': None, 'result': {'softwareVersionInfo':
+                                           {'pendingVersion': '8.2.1.4',
+                                            'packageName': '',
+                                            'currentVersion': '8.2.1.4',
+                                            'nodeID': 0, 'startTime': ''},
+                                           'clusterVersion': '8.2.1.4',
+                                           'clusterAPIVersion': '8.2'}}
 
         elif method is 'AddAccount' and version == '1.0':
             return {'result': {'accountID': 25}, 'id': 1}
@@ -192,6 +198,8 @@ class SolidFireVolumeTestCase(test.TestCase):
             return {'result': {}}
         elif method is 'GetClusterVersionInfo':
             return {'result': {'clusterAPIVersion': '8.0'}}
+        elif method is 'StartVolumePairing':
+            return {'result': {'volumePairingKey': 'fake-pairing-key'}}
         else:
             # Crap, unimplemented API call in Fake
             return None
@@ -221,7 +229,7 @@ class SolidFireVolumeTestCase(test.TestCase):
     def fake_get_cluster_version_info(self):
         return
 
-    def fake_get_model_info(self, account, vid):
+    def fake_get_model_info(self, account, vid, endpoint=None):
         return {'fake': 'fake-model'}
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
@@ -849,6 +857,7 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.assertEqual('UUID-a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                              sf_vol_object['name'])
 
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
     @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
@@ -857,7 +866,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                                              _mock_create_image_volume,
                                              _mock_get_sf_volume,
                                              _mock_get_sfaccount,
-                                             _mock_issue_api_request):
+                                             _mock_issue_api_request,
+                                             _mock_update_cluster_status):
         fake_sf_vref = {
             'status': 'active', 'volumeID': 1,
             'attributes': {
@@ -867,7 +877,8 @@ class SolidFireVolumeTestCase(test.TestCase):
                      'image_name': 'fake-image',
                      'image_created_at': '2014-12-17T00:16:23+00:00'}}}
 
-        _mock_issue_api_request.return_value.side_effect = (
+        _mock_update_cluster_status.return_value = None
+        _mock_issue_api_request.side_effect = (
             self.fake_issue_api_request)
         _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
                                             'accountID': 7777}
@@ -881,10 +892,10 @@ class SolidFireVolumeTestCase(test.TestCase):
         image_service = 'null'
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        _mock_issue_api_request.return_value = {'result': 'ok'}
         sfv._verify_image_volume(self.ctxt, image_meta, image_service)
         self.assertTrue(_mock_create_image_volume.called)
 
+    @mock.patch.object(solidfire.SolidFireDriver, '_update_cluster_status')
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     @mock.patch.object(solidfire.SolidFireDriver, '_get_sfaccount')
     @mock.patch.object(solidfire.SolidFireDriver, '_get_sf_volume')
@@ -893,8 +904,11 @@ class SolidFireVolumeTestCase(test.TestCase):
                                     _mock_create_image_volume,
                                     _mock_get_sf_volume,
                                     _mock_get_sfaccount,
-                                    _mock_issue_api_request):
+                                    _mock_issue_api_request,
+                                    _mock_update_cluster_status):
 
+        _mock_issue_api_request.side_effect = self.fake_issue_api_request
+        _mock_update_cluster_status.return_value = None
         _mock_get_sfaccount.return_value = {'username': 'openstack-vtemplate',
                                             'accountID': 7777}
         _mock_get_sf_volume.return_value =\
@@ -913,10 +927,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                                                       325355)}
         image_service = 'null'
 
-        _mock_issue_api_request.return_value.side_effect = (
-            self.fake_issue_api_request)
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        _mock_issue_api_request.return_value = {'result': 'ok'}
 
         sfv._verify_image_volume(self.ctxt, image_meta, image_service)
         self.assertFalse(_mock_create_image_volume.called)
@@ -1001,12 +1012,13 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_configured_svip(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
 
-        def _fake_get_volumes(account_id):
+        def _fake_get_volumes(account_id, endpoint=None):
             return [{'volumeID': 1,
                      'iqn': ''}]
 
         def _fake_get_cluster_info():
-            return {'clusterInfo': {'svip': 1}}
+            return {'clusterInfo': {'svip': '10.10.10.10',
+                                    'mvip': '1.1.1.1'}}
 
         with mock.patch.object(sfv,
                                '_get_volumes_by_sfaccount',
@@ -1116,7 +1128,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    }
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         provider_id = testvol['provider_id']
-        vol_id = int(sfv._parse_provider_id_string(provider_id)[0])
+        vol_id = int(provider_id.split()[0])
         vag_id = 1
 
         with mock.patch.object(sfv,
@@ -1190,7 +1202,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'multiattach': False
                    }
         provider_id = testvol['provider_id']
-        vol_id = int(sfv._parse_provider_id_string(provider_id)[0])
+        vol_id = int(provider_id.split()[0])
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
         vag_id = 1
         vags = [{'attributes': {},
@@ -1731,3 +1743,49 @@ class SolidFireVolumeTestCase(test.TestCase):
             self.fail("Should have thrown Error")
         except Exception:
             pass
+
+    def test_set_rep_by_volume_type(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.cluster_pairs = [{'cluster_id': 'fake-id', 'cluster_mvip':
+                              'fake-mvip'}]
+        ctxt = None
+        type_id = '290edb2a-f5ea-11e5-9ce9-5e5517507c66'
+        fake_type = {'extra_specs': {'replication': 'enabled'}}
+        with mock.patch.object(volume_types,
+                               'get_volume_type',
+                               return_value=fake_type):
+            self.assertEqual('fake-id', sfv._set_rep_by_volume_type(
+                ctxt,
+                type_id)['targets']['cluster_id'])
+
+    def test_replicate_volume(self):
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        sfv.cluster_pairs = (
+            [{'uniqueID': 'lu9f', 'endpoint': {'passwd': 'admin', 'port':
+                                               443, 'url':
+                                               'https://192.168.139.102:443',
+                                               'svip': '10.10.8.134', 'mvip':
+                                               '192.168.139.102', 'login':
+                                               'admin'}, 'name':
+              'AutoTest2-6AjG-FOR-TEST-ONLY', 'clusterPairID': 33, 'uuid':
+              '9c499d4b-8fff-48b4-b875-27601d5d9889', 'svip': '10.10.23.2',
+              'mvipNodeID': 1, 'repCount': 1, 'encryptionAtRestState':
+              'disabled', 'attributes': {}, 'mvip': '192.168.139.102',
+              'ensemble': ['10.10.5.130'], 'svipNodeID': 1}])
+
+        with mock.patch.object(sfv,
+                               '_issue_api_request',
+                               self.fake_issue_api_request),\
+                mock.patch.object(sfv,
+                                  '_get_sfaccount_by_name',
+                                  return_value={'accountID': 1}),\
+                mock.patch.object(sfv,
+                                  '_do_volume_create',
+                                  return_value={'provider_id': '1 2 xxxx'}):
+            self.assertEqual({'provider_id': '1 2 xxxx'},
+                             sfv._replicate_volume(
+                                 {'project_id': 1, 'volumeID': 1},
+                                 {'attributes': {}},
+                                 {'initiatorSecret': 'shhh',
+                                  'targetSecret': 'dont-tell'},
+                                 {}))
