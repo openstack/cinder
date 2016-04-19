@@ -15,14 +15,17 @@
 import copy
 import os
 
+import ddt
 import mock
 
 from cinder import exception
+from cinder.image import image_utils
 from cinder import test
 from cinder import utils
 from cinder.volume.drivers import remotefs
 
 
+@ddt.ddt
 class RemoteFsSnapDriverTestCase(test.TestCase):
 
     _FAKE_CONTEXT = 'fake_context'
@@ -356,3 +359,65 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._locked_volume_operation_test_helper(
             func=synchronized_func,
             expected_exception=exception.VolumeBackendAPIException)
+
+    @mock.patch.object(image_utils, 'qemu_img_info')
+    @mock.patch('os.path.basename')
+    def _test_qemu_img_info(self, mock_basename,
+                            mock_qemu_img_info, backing_file, basedir,
+                            valid_backing_file=True):
+        fake_vol_name = 'fake_vol_name'
+        mock_info = mock_qemu_img_info.return_value
+        mock_info.image = mock.sentinel.image_path
+        mock_info.backing_file = backing_file
+
+        self._driver._VALID_IMAGE_EXTENSIONS = ['vhd', 'vhdx', 'raw', 'qcow2']
+
+        mock_basename.side_effect = [mock.sentinel.image_basename,
+                                     mock.sentinel.backing_file_basename]
+
+        if valid_backing_file:
+            img_info = self._driver._qemu_img_info_base(
+                mock.sentinel.image_path, fake_vol_name, basedir)
+            self.assertEqual(mock_info, img_info)
+            self.assertEqual(mock.sentinel.image_basename,
+                             mock_info.image)
+            expected_basename_calls = [mock.call(mock.sentinel.image_path)]
+            if backing_file:
+                self.assertEqual(mock.sentinel.backing_file_basename,
+                                 mock_info.backing_file)
+                expected_basename_calls.append(mock.call(backing_file))
+            mock_basename.assert_has_calls(expected_basename_calls)
+        else:
+            self.assertRaises(exception.RemoteFSException,
+                              self._driver._qemu_img_info_base,
+                              mock.sentinel.image_path,
+                              fake_vol_name, basedir)
+
+        mock_qemu_img_info.assert_called_with(mock.sentinel.image_path)
+
+    @ddt.data([None, '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.vhd', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.404f-404',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.tmp-snap-404f-404',
+               '/fake_basedir'])
+    @ddt.unpack
+    def test_qemu_img_info_valid_backing_file(self, backing_file, basedir):
+        self._test_qemu_img_info(backing_file=backing_file,
+                                 basedir=basedir)
+
+    @ddt.data(['/other_random_path', '/fake_basedir'],
+              ['/other_basedir/cb2016/fake_vol_name', '/fake_basedir'],
+              ['/fake_basedir/invalid_hash/fake_vol_name', '/fake_basedir'],
+              ['/fake_basedir/cb2016/invalid_vol_name', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.info', '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name-random-suffix',
+               '/fake_basedir'],
+              ['/fake_basedir/cb2016/fake_vol_name.invalidext',
+               '/fake_basedir'])
+    @ddt.unpack
+    def test_qemu_img_info_invalid_backing_file(self, backing_file, basedir):
+        self._test_qemu_img_info(backing_file=backing_file,
+                                 basedir=basedir,
+                                 valid_backing_file=False)

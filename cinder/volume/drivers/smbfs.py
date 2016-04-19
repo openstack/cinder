@@ -114,6 +114,10 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     _DISK_FORMAT_RAW = 'raw'
     _DISK_FORMAT_QCOW2 = 'qcow2'
 
+    _SUPPORTED_IMAGE_FORMATS = [_DISK_FORMAT_RAW, _DISK_FORMAT_QCOW2,
+                                _DISK_FORMAT_VHD, _DISK_FORMAT_VHDX]
+    _VALID_IMAGE_EXTENSIONS = _SUPPORTED_IMAGE_FORMATS
+
     def __init__(self, execute=putils.execute, *args, **kwargs):
         self._remotefsclient = None
         super(SmbfsDriver, self).__init__(*args, **kwargs)
@@ -143,10 +147,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """
         # Find active image
         active_file = self.get_active_image_from_info(volume)
-        active_file_path = os.path.join(self._local_volume_dir(volume),
-                                        active_file)
-        info = self._qemu_img_info(active_file_path, volume['name'])
-        fmt = info.file_format
+        fmt = self.get_volume_format(volume)
 
         data = {'export': volume['provider_location'],
                 'format': fmt,
@@ -251,10 +252,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         # The image does not exist, so retrieve the volume format
         # in order to build the path.
         fmt = self.get_volume_format(volume)
-        if fmt in (self._DISK_FORMAT_VHD, self._DISK_FORMAT_VHDX):
-            volume_path = volume_path_template + '.' + fmt
-        else:
-            volume_path = volume_path_template
+        volume_path = volume_path_template + '.' + fmt
         return volume_path
 
     def _get_local_volume_path_template(self, volume):
@@ -263,7 +261,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return local_path_template
 
     def _lookup_local_volume_path(self, volume_path_template):
-        for ext in ['', self._DISK_FORMAT_VHD, self._DISK_FORMAT_VHDX]:
+        for ext in [''] + self._SUPPORTED_IMAGE_FORMATS:
             volume_path = (volume_path_template + '.' + ext
                            if ext else volume_path_template)
             if os.path.exists(volume_path):
@@ -283,8 +281,12 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         volume_path = self._lookup_local_volume_path(volume_path_template)
 
         if volume_path:
-            info = self._qemu_img_info(volume_path, volume['name'])
-            volume_format = info.file_format
+            ext = os.path.splitext(volume_path)[1].strip('.').lower()
+            if ext in self._SUPPORTED_IMAGE_FORMATS:
+                volume_format = ext
+            else:
+                info = self._qemu_img_info(volume_path, volume['name'])
+                volume_format = info.file_format
         else:
             volume_format = (
                 self._get_volume_format_spec(volume) or

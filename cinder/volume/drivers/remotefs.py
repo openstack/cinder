@@ -631,6 +631,8 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
          _local_volume_dir(self, volume)
     """
 
+    _VALID_IMAGE_EXTENSIONS = []
+
     def __init__(self, *args, **kwargs):
         self._remotefsclient = None
         self.base = None
@@ -689,11 +691,18 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
         if info.image:
             info.image = os.path.basename(info.image)
         if info.backing_file:
+            if self._VALID_IMAGE_EXTENSIONS:
+                valid_ext = r'(\.(%s))?' % '|'.join(
+                    self._VALID_IMAGE_EXTENSIONS)
+            else:
+                valid_ext = ''
+
             backing_file_template = \
                 "(%(basedir)s/[0-9a-f]+/)?%" \
-                "(volname)s(.(tmp-snap-)?[0-9a-f-]+)?$" % {
+                "(volname)s(.(tmp-snap-)?[0-9a-f-]+)?%(valid_ext)s$" % {
                     'basedir': basedir,
-                    'volname': volume_name
+                    'volname': volume_name,
+                    'valid_ext': valid_ext,
                 }
             if not re.match(backing_file_template, info.backing_file):
                 msg = _("File %(path)s has invalid backing file "
@@ -1326,7 +1335,7 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
     def _delete_snapshot_online(self, context, snapshot, info):
         # Update info over the course of this method
         # active file never changes
-        info_path = self._local_path_volume(snapshot['volume']) + '.info'
+        info_path = self._local_path_volume_info(snapshot['volume'])
         snap_info = self._read_info_file(info_path)
 
         if info['active_file'] == info['snapshot_file']:

@@ -94,6 +94,8 @@ class SmbFsTestCase(test.TestCase):
         self._smbfs_driver._alloc_info_file_path = (
             self._FAKE_ALLOCATION_DATA_PATH)
 
+        self.addCleanup(mock.patch.stopall)
+
     def _get_fake_allocation_data(self):
         return {self._FAKE_SHARE_HASH: {
                 'total_allocated': self._FAKE_TOTAL_ALLOCATED}}
@@ -242,51 +244,49 @@ class SmbFsTestCase(test.TestCase):
         fake_config.smbfs_used_ratio = 1.1
         self._test_setup(config=fake_config)
 
-    def _test_create_volume(self, volume_exists=False, volume_format=None):
-        fake_method = mock.MagicMock()
+    @mock.patch('os.path.exists')
+    def _test_create_volume(self, mock_exists, volume_exists=False,
+                            volume_format=None, use_sparsed_file=False):
+        mock.patch.multiple(smbfs.SmbfsDriver,
+                            _create_windows_image=mock.DEFAULT,
+                            _create_regular_file=mock.DEFAULT,
+                            _create_qcow2_file=mock.DEFAULT,
+                            _create_sparsed_file=mock.DEFAULT,
+                            get_volume_format=mock.DEFAULT,
+                            local_path=mock.DEFAULT,
+                            _set_rw_permissions_for_all=mock.DEFAULT).start()
         self._smbfs_driver.configuration = copy.copy(self._FAKE_SMBFS_CONFIG)
-        self._smbfs_driver._set_rw_permissions_for_all = mock.MagicMock()
-        fake_set_permissions = self._smbfs_driver._set_rw_permissions_for_all
-        self._smbfs_driver.get_volume_format = mock.MagicMock()
+        self._smbfs_driver.configuration.smbfs_sparsed_volumes = (
+            use_sparsed_file)
 
-        windows_image_format = False
-        fake_vol_path = self._FAKE_VOLUME_PATH
         self._smbfs_driver.get_volume_format.return_value = volume_format
+        self._smbfs_driver.local_path.return_value = mock.sentinel.vol_path
+        mock_exists.return_value = volume_exists
 
-        if volume_format:
-            if volume_format in ('vhd', 'vhdx'):
-                windows_image_format = volume_format
-                if volume_format == 'vhd':
-                    windows_image_format = 'vpc'
-                method = '_create_windows_image'
-                fake_vol_path += '.' + volume_format
-            else:
-                method = '_create_%s_file' % volume_format
-                if volume_format == 'sparsed':
-                    self._smbfs_driver.configuration.smbfs_sparsed_volumes = (
-                        True)
+        if volume_exists:
+            self.assertRaises(exception.InvalidVolume,
+                              self._smbfs_driver._do_create_volume,
+                              self._FAKE_VOLUME)
+            return
+
+        self._smbfs_driver._do_create_volume(self._FAKE_VOLUME)
+        expected_create_args = [mock.sentinel.vol_path,
+                                self._FAKE_VOLUME['size']]
+        if volume_format in [self._smbfs_driver._DISK_FORMAT_VHDX,
+                             self._smbfs_driver._DISK_FORMAT_VHD]:
+            expected_create_args.append(volume_format)
+            exp_create_method = self._smbfs_driver._create_windows_image
         else:
-            method = '_create_regular_file'
-
-        setattr(self._smbfs_driver, method, fake_method)
-
-        with mock.patch('os.path.exists', new=lambda x: volume_exists):
-            if volume_exists:
-                self.assertRaises(exception.InvalidVolume,
-                                  self._smbfs_driver._do_create_volume,
-                                  self._FAKE_VOLUME)
-                return
-
-            self._smbfs_driver._do_create_volume(self._FAKE_VOLUME)
-            if windows_image_format:
-                fake_method.assert_called_once_with(
-                    fake_vol_path,
-                    self._FAKE_VOLUME['size'],
-                    windows_image_format)
+            if volume_format == self._smbfs_driver._DISK_FORMAT_QCOW2:
+                exp_create_method = self._smbfs_driver._create_qcow2_file
+            elif use_sparsed_file:
+                exp_create_method = self._smbfs_driver._create_sparsed_file
             else:
-                fake_method.assert_called_once_with(
-                    fake_vol_path, self._FAKE_VOLUME['size'])
-            fake_set_permissions.assert_called_once_with(fake_vol_path)
+                exp_create_method = self._smbfs_driver._create_regular_file
+
+        exp_create_method.assert_called_once_with(*expected_create_args)
+        mock_set_permissions = self._smbfs_driver._set_rw_permissions_for_all
+        mock_set_permissions.assert_called_once_with(mock.sentinel.vol_path)
 
     def test_create_existing_volume(self):
         self._test_create_volume(volume_exists=True)
@@ -298,7 +298,8 @@ class SmbFsTestCase(test.TestCase):
         self._test_create_volume(volume_format='qcow2')
 
     def test_create_sparsed(self):
-        self._test_create_volume(volume_format='sparsed')
+        self._test_create_volume(volume_format='raw',
+                                 use_sparsed_file=True)
 
     def test_create_regular(self):
         self._test_create_volume()
@@ -392,14 +393,12 @@ class SmbFsTestCase(test.TestCase):
     @mock.patch.object(smbfs.SmbfsDriver, '_lookup_local_volume_path')
     @mock.patch.object(smbfs.SmbfsDriver, 'get_volume_format')
     def _test_get_volume_path(self, mock_get_volume_format, mock_lookup_volume,
-                              mock_get_path_template, volume_exists=True,
-                              volume_format='raw'):
+                              mock_get_path_template, volume_exists=True):
         drv = self._smbfs_driver
         mock_get_path_template.return_value = self._FAKE_VOLUME_PATH
+        volume_format = 'raw'
 
-        expected_vol_path = self._FAKE_VOLUME_PATH
-        if volume_format in (drv._DISK_FORMAT_VHD, drv._DISK_FORMAT_VHDX):
-            expected_vol_path += '.' + volume_format
+        expected_vol_path = self._FAKE_VOLUME_PATH + '.' + volume_format
 
         mock_lookup_volume.return_value = (
             expected_vol_path if volume_exists else None)
@@ -416,11 +415,8 @@ class SmbFsTestCase(test.TestCase):
     def test_get_existing_volume_path(self):
         self._test_get_volume_path()
 
-    def test_get_new_raw_volume_path(self):
+    def test_get_new_volume_path(self):
         self._test_get_volume_path(volume_exists=False)
-
-    def test_get_new_vhd_volume_path(self):
-        self._test_get_volume_path(volume_exists=False, volume_format='vhd')
 
     @mock.patch.object(smbfs.SmbfsDriver, '_local_volume_dir')
     def test_get_local_volume_path_template(self, mock_get_local_dir):
@@ -437,8 +433,11 @@ class SmbFsTestCase(test.TestCase):
         ret_val = self._smbfs_driver._lookup_local_volume_path(
             self._FAKE_VOLUME_PATH)
 
+        extensions = [''] + [
+            ".%s" % ext
+            for ext in self._smbfs_driver._SUPPORTED_IMAGE_FORMATS]
         possible_paths = [self._FAKE_VOLUME_PATH + ext
-                          for ext in ('', '.vhd', '.vhdx')]
+                          for ext in extensions]
         mock_exists.assert_has_calls(
             [mock.call(path) for path in possible_paths])
         self.assertEqual(expected_path, ret_val)
@@ -495,11 +494,11 @@ class SmbFsTestCase(test.TestCase):
         self._smbfs_driver._get_mount_point_base = mock.Mock(
             return_value=self._FAKE_MNT_BASE)
         self._smbfs_driver.shares = {self._FAKE_SHARE: self._FAKE_SHARE_OPTS}
-        self._smbfs_driver._qemu_img_info = mock.Mock(
-            return_value=mock.Mock(file_format='raw'))
+        self._smbfs_driver.get_volume_format = mock.Mock(
+            return_value=mock.sentinel.format)
 
         fake_data = {'export': self._FAKE_SHARE,
-                     'format': 'raw',
+                     'format': mock.sentinel.format,
                      'name': self._FAKE_VOLUME_NAME,
                      'options': self._FAKE_SHARE_OPTS}
         expected = {
