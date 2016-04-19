@@ -280,22 +280,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             None)
         self.assertEqual(1, self.library._update_stale_vols.call_count)
 
-    @mock.patch.object(ssc_cmode, 'get_volumes_for_specs')
-    @mock.patch.object(ssc_cmode, 'get_cluster_latest_ssc')
-    def test_check_volume_type_for_lun_fail(self, get_ssc, get_vols):
-        self.library.ssc_vols = ['vol']
-        fake_extra_specs = {'specs': 's'}
-        get_vols.return_value = [ssc_cmode.NetAppVolume(name='name',
-                                                        vserver='vs')]
-        mock_lun = block_base.NetAppLun('handle', 'name', '1',
-                                        {'Volume': 'fake', 'Path': '/vol/lun'})
-        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
-                          self.library._check_volume_type_for_lun,
-                          {'vol': 'vol'}, mock_lun, {'ref': 'ref'},
-                          fake_extra_specs)
-        get_vols.assert_called_with(['vol'], {'specs': 's'})
-        self.assertEqual(1, get_ssc.call_count)
-
     def test_get_preferred_target_from_list(self):
         target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
         operational_addresses = [

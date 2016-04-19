@@ -120,13 +120,6 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                                          qos_policy_group_name,
                                          target_path)
 
-    def _check_volume_type(self, volume, share, file_name, extra_specs):
-        """Match volume type for share file."""
-        if not self._is_share_vol_type_match(volume, share):
-            raise exception.ManageExistingVolumeTypeMismatch(
-                reason=(_("Volume type does not match for share %s."),
-                        share))
-
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
                                        volume_id, share=None):
         """Clone backing file for Cinder volume."""

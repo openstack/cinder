@@ -17,7 +17,6 @@
 import itertools
 import os
 import shutil
-import unittest
 
 from lxml import etree
 import mock
@@ -887,19 +886,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         configuration.netapp_vserver = 'openstack'
         configuration.nfs_shares_config = '/nfs'
         return configuration
-
-    @mock.patch.object(utils, 'get_volume_extra_specs')
-    def test_check_volume_type_mismatch(self, get_specs):
-        if not hasattr(self._driver, 'vserver'):
-            return unittest.skip("Test only applies to cmode driver")
-        get_specs.return_value = {'thin_volume': 'true'}
-        self._driver._is_share_vol_type_match = mock.Mock(return_value=False)
-        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
-                          self._driver._check_volume_type, 'vol',
-                          'share', 'file')
-        get_specs.assert_called_once_with('vol')
-        self._driver._is_share_vol_type_match.assert_called_once_with(
-            'vol', 'share', 'file')
 
     @mock.patch.object(client_base.Client, 'get_ontapi_version',
                        mock.Mock(return_value=(1, 20)))
