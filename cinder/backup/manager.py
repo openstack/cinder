@@ -61,9 +61,11 @@ backup_manager_opts = [
                default='cinder.backup.drivers.swift',
                help='Driver to use for backups.',),
     cfg.BoolOpt('backup_service_inithost_offload',
-                default=False,
+                default=True,
                 help='Offload pending backup delete during '
-                     'backup service startup.',),
+                     'backup service startup. If false, the backup service '
+                     'will remain down until all pending backups are '
+                     'deleted.',),
 ]
 
 # This map doesn't need to be extended in the future since it's only
@@ -192,7 +194,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 # from being blocked.
                 self._add_to_threadpool(self.delete_backup, ctxt, backup)
             else:
-                # By default, delete backups sequentially
+                # Delete backups sequentially
                 self.delete_backup(ctxt, backup)
 
     def _detach_all_attachments(self, ctxt, volume):
