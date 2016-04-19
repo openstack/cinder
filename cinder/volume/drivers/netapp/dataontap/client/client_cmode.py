@@ -651,20 +651,6 @@ class Client(client_base.Client):
                   {'path': path, 'bytes': unique_bytes})
         return unique_bytes
 
-    def get_vserver_ips(self, vserver):
-        """Get ips for the vserver."""
-        result = netapp_api.invoke_api(
-            self.connection, api_name='net-interface-get-iter',
-            is_iter=True, tunnel=vserver)
-        if_list = []
-        for res in result:
-            records = res.get_child_content('num-records')
-            if records > 0:
-                attr_list = res['attributes-list']
-                ifs = attr_list.get_children()
-                if_list.extend(ifs)
-        return if_list
-
     def check_cluster_api(self, object_name, operation_name, api):
         """Checks the availability of a cluster API.
 
@@ -749,10 +735,10 @@ class Client(client_base.Client):
 
         return True
 
-    def get_operational_network_interface_addresses(self):
+    def get_operational_lif_addresses(self):
         """Gets the IP addresses of operational LIFs on the vserver."""
 
-        api_args = {
+        net_interface_get_iter_args = {
             'query': {
                 'net-interface-info': {
                     'operational-status': 'up'
@@ -764,7 +750,8 @@ class Client(client_base.Client):
                 }
             }
         }
-        result = self.send_request('net-interface-get-iter', api_args)
+        result = self.send_iter_request('net-interface-get-iter',
+                                        net_interface_get_iter_args)
 
         lif_info_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -797,7 +784,7 @@ class Client(client_base.Client):
             },
         }
 
-        result = self.send_request('volume-get-iter', api_args)
+        result = self.send_iter_request('volume-get-iter', api_args)
         if self._get_record_count(result) != 1:
             msg = _('Volume %s not found.')
             msg_args = flexvol_path or flexvol_name
@@ -818,6 +805,203 @@ class Client(client_base.Client):
             'size-total': size_total,
             'size-available': size_available,
         }
+
+    def list_flexvols(self):
+        """Returns the names of the flexvols on the controller."""
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'type': 'rw',
+                        'style': 'flex',
+                    },
+                    'volume-state-attributes': {
+                        'is-vserver-root': 'false',
+                        'is-inconsistent': 'false',
+                        'is-invalid': 'false',
+                        'state': 'online',
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                    },
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+        if not self._has_records(result):
+            return []
+
+        volumes = []
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for volume_attributes in attributes_list.get_children():
+
+            volume_id_attributes = volume_attributes.get_child_by_name(
+                'volume-id-attributes') or netapp_api.NaElement('none')
+
+            volumes.append(volume_id_attributes.get_child_content('name'))
+
+        return volumes
+
+    def get_flexvol(self, flexvol_path=None, flexvol_name=None):
+        """Get flexvol attributes needed for the storage service catalog."""
+
+        volume_id_attributes = {'type': 'rw', 'style': 'flex'}
+        if flexvol_path:
+            volume_id_attributes['junction-path'] = flexvol_path
+        if flexvol_name:
+            volume_id_attributes['name'] = flexvol_name
+
+        api_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': volume_id_attributes,
+                    'volume-state-attributes': {
+                        'is-vserver-root': 'false',
+                        'is-inconsistent': 'false',
+                        'is-invalid': 'false',
+                        'state': 'online',
+                    },
+                },
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None,
+                        'owning-vserver-name': None,
+                        'junction-path': None,
+                        'containing-aggregate-name': None,
+                    },
+                    'volume-mirror-attributes': {
+                        'is-data-protection-mirror': None,
+                        'is-replica-volume': None,
+                    },
+                    'volume-space-attributes': {
+                        'is-space-guarantee-enabled': None,
+                        'space-guarantee': None,
+                    },
+                    'volume-qos-attributes': {
+                        'policy-group-name': None,
+                    }
+                },
+            },
+        }
+        result = self.send_iter_request('volume-get-iter', api_args)
+
+        if self._get_record_count(result) != 1:
+            msg = _('Could not find unique volume %(vol)s.')
+            msg_args = {'vol': flexvol_name}
+            raise exception.VolumeBackendAPIException(data=msg % msg_args)
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        volume_attributes = attributes_list.get_child_by_name(
+            'volume-attributes') or netapp_api.NaElement('none')
+
+        volume_id_attributes = volume_attributes.get_child_by_name(
+            'volume-id-attributes') or netapp_api.NaElement('none')
+        volume_space_attributes = volume_attributes.get_child_by_name(
+            'volume-space-attributes') or netapp_api.NaElement('none')
+        volume_qos_attributes = volume_attributes.get_child_by_name(
+            'volume-qos-attributes') or netapp_api.NaElement('none')
+
+        volume = {
+            'name': volume_id_attributes.get_child_content('name'),
+            'vserver': volume_id_attributes.get_child_content(
+                'owning-vserver-name'),
+            'junction-path': volume_id_attributes.get_child_content(
+                'junction-path'),
+            'aggregate': volume_id_attributes.get_child_content(
+                'containing-aggregate-name'),
+            'space-guarantee-enabled': strutils.bool_from_string(
+                volume_space_attributes.get_child_content(
+                    'is-space-guarantee-enabled')),
+            'space-guarantee': volume_space_attributes.get_child_content(
+                'space-guarantee'),
+            'qos-policy-group': volume_qos_attributes.get_child_content(
+                'policy-group-name')
+        }
+
+        return volume
+
+    def get_flexvol_dedupe_info(self, flexvol_name):
+        """Get dedupe attributes needed for the storage service catalog."""
+
+        api_args = {
+            'query': {
+                'sis-status-info': {
+                    'path': '/vol/%s' % flexvol_name,
+                },
+            },
+            'desired-attributes': {
+                'sis-status-info': {
+                    'state': None,
+                    'is-compression-enabled': None,
+                },
+            },
+        }
+
+        try:
+            result = self.send_iter_request('sis-get-iter', api_args)
+        except netapp_api.NaApiError:
+            msg = _('Failed to get dedupe info for volume %s.')
+            LOG.exception(msg % flexvol_name)
+            return {'compression': False, 'dedupe': False}
+
+        if self._get_record_count(result) != 1:
+            return {'compression': False, 'dedupe': False}
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        sis_status_info = attributes_list.get_child_by_name(
+            'sis-status-info') or netapp_api.NaElement('none')
+
+        sis = {
+            'compression': strutils.bool_from_string(
+                sis_status_info.get_child_content('is-compression-enabled')),
+            'dedupe': na_utils.to_bool(
+                sis_status_info.get_child_content('state')),
+        }
+
+        return sis
+
+    def is_flexvol_mirrored(self, flexvol_name, vserver_name):
+        """Check if flexvol is a SnapMirror source."""
+
+        api_args = {
+            'query': {
+                'snapmirror-info': {
+                    'source-vserver': vserver_name,
+                    'source-volume': flexvol_name,
+                    'mirror-state': 'snapmirrored',
+                    'relationship-type': 'data_protection',
+                },
+            },
+            'desired-attributes': {
+                'snapmirror-info': None,
+            },
+        }
+
+        try:
+            result = self.send_iter_request('snapmirror-get-iter', api_args)
+        except netapp_api.NaApiError:
+            msg = _('Failed to get SnapMirror info for volume %s.')
+            LOG.exception(msg % flexvol_name)
+            return False
+
+        if not self._has_records(result):
+            return False
+
+        return True
 
     @utils.trace_method
     def delete_file(self, path_to_file):
@@ -887,6 +1071,91 @@ class Client(client_base.Client):
         aggr_ownership_attrs = aggrs[0].get_child_by_name(
             'aggr-ownership-attributes') or netapp_api.NaElement('none')
         return aggr_ownership_attrs.get_child_content('home-name')
+
+    def get_aggregate(self, aggregate_name):
+        """Get aggregate attributes needed for the storage service catalog."""
+
+        if not aggregate_name:
+            return {}
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggregate-name': None,
+                'aggr-raid-attributes': {
+                    'raid-type': None,
+                },
+            },
+        }
+
+        try:
+            aggrs = self._get_aggregates(aggregate_names=[aggregate_name],
+                                         desired_attributes=desired_attributes)
+        except netapp_api.NaApiError:
+            msg = _('Failed to get info for aggregate %s.')
+            LOG.exception(msg % aggregate_name)
+            return {}
+
+        if len(aggrs) < 1:
+            return {}
+
+        aggr_attributes = aggrs[0]
+        aggr_raid_attrs = aggr_attributes.get_child_by_name(
+            'aggr-raid-attributes') or netapp_api.NaElement('none')
+
+        aggregate = {
+            'name': aggr_attributes.get_child_content('aggregate-name'),
+            'raid-type': aggr_raid_attrs.get_child_content('raid-type'),
+        }
+
+        return aggregate
+
+    def get_aggregate_disk_type(self, aggregate_name):
+        """Get the disk type of an aggregate."""
+
+        # Note(cknight): Only get 1 disk, since apart from hybrid
+        # aggregates all disks must be the same type.
+        api_args = {
+            'max-records': 1,
+            'query': {
+                'storage-disk-info': {
+                    'disk-raid-info': {
+                        'disk-aggregate-info': {
+                            'aggregate-name': aggregate_name,
+                        },
+                    },
+                },
+            },
+            'desired-attributes': {
+                'storage-disk-info': {
+                    'disk-raid-info': {
+                        'effective-disk-type': None,
+                    },
+                },
+            },
+        }
+        try:
+            result = self.send_request('storage-disk-get-iter', api_args,
+                                       enable_tunneling=False)
+        except netapp_api.NaApiError:
+            msg = _('Failed to get disk info for aggregate %s.')
+            LOG.exception(msg % aggregate_name)
+            return 'unknown'
+
+        if self._get_record_count(result) != 1:
+            return 'unknown'
+
+        attributes_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for storage_disk_info in attributes_list.get_children():
+
+            disk_raid_info = storage_disk_info.get_child_by_name(
+                'disk-raid-info') or netapp_api.NaElement('none')
+            disk_type = disk_raid_info.get_child_content(
+                'effective-disk-type') or 'unknown'
+            return disk_type
+
+        return 'unknown'
 
     def get_performance_instance_uuids(self, object_name, node_name):
         """Get UUIDs of performance instances for a cluster node."""

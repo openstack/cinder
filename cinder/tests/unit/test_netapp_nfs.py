@@ -224,10 +224,14 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     @mock.patch.object(nfs_base.NetAppNfsDriver, 'check_for_setup_error')
     def test_check_for_setup_error(self, mock_super_check_for_setup_error):
         self._driver.zapi_client = mock.Mock()
+        self._driver._start_periodic_tasks = mock.Mock()
+
         self._driver.check_for_setup_error()
+
         (self._driver.ssc_library.check_api_permissions.
          assert_called_once_with())
         mock_super_check_for_setup_error.assert_called_once_with()
+        self._driver._start_periodic_tasks.assert_called_once_with()
 
     def _prepare_clone_mock(self, status):
         drv = self._driver
@@ -239,7 +243,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv.zapi_client = mox.CreateMockAnything()
         mox.StubOutWithMock(drv, '_get_host_ip')
         mox.StubOutWithMock(drv, '_get_export_path')
-        mox.StubOutWithMock(drv, '_post_prov_deprov_in_ssc')
 
         drv.zapi_client.get_if_info_by_ip('127.0.0.1').AndReturn(
             self._prepare_info_by_ip_response())
@@ -249,7 +252,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                                    'openstack')
         drv._get_host_ip(mox_lib.IgnoreArg()).AndReturn('127.0.0.1')
         drv._get_export_path(mox_lib.IgnoreArg()).AndReturn('/nfs')
-        drv._post_prov_deprov_in_ssc(mox_lib.IgnoreArg())
         return mox
 
     def _prepare_info_by_ip_response(self):
@@ -1174,7 +1176,6 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         kwargs['netapp_mode'] = 'proxy'
         kwargs['configuration'] = create_configuration()
         self._driver = netapp_nfs_cmode.NetAppCmodeNfsDriver(**kwargs)
-        self._driver.ssc_enabled = True
         self._driver.configuration.netapp_copyoffload_tool_path = 'cof_path'
         self._driver.zapi_client = mock.Mock()
         self.mock_object(netapp_nfs_cmode, 'LOG')
@@ -1194,7 +1195,6 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
     @mock.patch.object(utils, 'LOG', mock.Mock())
     def test_create_volume(self):
         drv = self._driver
-        drv.ssc_enabled = False
         fake_extra_specs = {}
         fake_share = 'localhost:myshare'
         host = 'hostname@backend#' + fake_share
@@ -1213,7 +1213,6 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
 
     def test_create_volume_no_pool_specified(self):
         drv = self._driver
-        drv.ssc_enabled = False
         host = 'hostname@backend'  # missing pool
         with mock.patch.object(drv, '_ensure_shares_mounted'):
             self.assertRaises(exception.InvalidHost,
@@ -1221,7 +1220,6 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
 
     def test_create_volume_with_legacy_qos_policy(self):
         drv = self._driver
-        drv.ssc_enabled = False
         fake_extra_specs = {'netapp:qos_policy_group': 'qos_policy_1'}
         fake_share = 'localhost:myshare'
         host = 'hostname@backend#' + fake_share
@@ -1252,14 +1250,12 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         drv._copy_from_img_service = mock.Mock()
         drv._get_provider_location = mock.Mock(return_value='share')
         drv._get_vol_for_share = mock.Mock(return_value=volume.id)
-        drv._update_stale_vols = mock.Mock()
 
         drv.copy_image_to_volume(self.context, volume, image_service, image_id)
         drv._copy_from_img_service.assert_called_once_with(self.context,
                                                            volume,
                                                            image_service,
                                                            image_id)
-        drv._update_stale_vols.assert_called_once_with(volume.id)
 
     def test_copy_img_to_vol_copyoffload_failure(self):
         drv = self._driver
@@ -1272,7 +1268,6 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
         nfs_base.NetAppNfsDriver.copy_image_to_volume = mock.Mock()
         drv._get_provider_location = mock.Mock(return_value='share')
         drv._get_vol_for_share = mock.Mock(return_value=volume.id)
-        drv._update_stale_vols = mock.Mock()
 
         drv.copy_image_to_volume(self.context, volume, image_service, image_id)
         drv._copy_from_img_service.assert_called_once_with(self.context,
@@ -1280,9 +1275,8 @@ class NetAppCmodeNfsDriverOnlyTestCase(test.TestCase):
                                                            image_service,
                                                            image_id)
         nfs_base.NetAppNfsDriver.copy_image_to_volume. \
-            assert_called_once_with(self.context, volume,
-                                    image_service, image_id)
-        drv._update_stale_vols.assert_called_once_with(volume.id)
+            assert_called_once_with(
+                self.context, volume, image_service, image_id)
 
     def test_copy_img_to_vol_copyoffload_nonexistent_binary_path(self):
         drv = self._driver
@@ -1432,7 +1426,6 @@ class NetApp7modeNfsDriverTestCase(NetAppCmodeNfsDriverTestCase):
 
     def test_create_volume_no_pool_specified(self):
         drv = self._driver
-        drv.ssc_enabled = False
         host = 'hostname@backend'  # missing pool
         with mock.patch.object(drv, '_ensure_shares_mounted'):
             self.assertRaises(exception.InvalidHost,

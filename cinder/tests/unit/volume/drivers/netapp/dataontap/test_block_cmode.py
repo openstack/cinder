@@ -31,7 +31,6 @@ from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -51,7 +50,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.perf_library = mock.Mock()
         self.library.ssc_library = mock.Mock()
         self.library.vserver = mock.Mock()
-        self.library.ssc_vols = None
         self.fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_NAME,
                                              fake.SIZE, None)
         self.fake_snapshot_lun = block_base.NetAppLun(
@@ -98,15 +96,16 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.library.ssc_library, 'check_api_permissions')
         mock_start_periodic_tasks = self.mock_object(
             self.library, '_start_periodic_tasks')
-        self.mock_object(ssc_cmode, 'refresh_cluster_ssc')
-        self.mock_object(self.library, '_get_filtered_pools',
-                         mock.Mock(return_value=fake.FAKE_CMODE_POOLS))
+        mock_get_pool_map = self.mock_object(
+            self.library, '_get_flexvol_to_pool_map',
+            mock.Mock(return_value={'fake_map': None}))
 
         self.library.check_for_setup_error()
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
         mock_check_api_permissions.assert_called_once_with()
         self.assertEqual(1, mock_start_periodic_tasks.call_count)
+        mock_get_pool_map.assert_called_once_with()
 
     def test_check_for_setup_error_no_filtered_pools(self):
         self.mock_object(block_base.NetAppBlockStorageLibrary,
@@ -114,9 +113,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_check_api_permissions = self.mock_object(
             self.library.ssc_library, 'check_api_permissions')
         self.mock_object(self.library, '_start_periodic_tasks')
-        self.mock_object(ssc_cmode, 'refresh_cluster_ssc')
-        self.mock_object(self.library, '_get_filtered_pools',
-                         mock.Mock(return_value=[]))
+        self.mock_object(
+            self.library, '_get_flexvol_to_pool_map',
+            mock.Mock(return_value={}))
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
@@ -262,7 +261,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertSetEqual(set(ports), set(result))
 
-    @mock.patch.object(ssc_cmode, 'refresh_cluster_ssc', mock.Mock())
     @mock.patch.object(block_cmode.NetAppBlockStorageCmodeLibrary,
                        '_get_pool_stats', mock.Mock())
     def test_vol_stats_calls_provide_ems(self):
@@ -273,22 +271,19 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertEqual(1, self.library.zapi_client.provide_ems.call_count)
 
     def test_create_lun(self):
-        self.library._update_stale_vols = mock.Mock()
-
-        self.library._create_lun(fake.VOLUME_ID, fake.LUN_ID,
-                                 fake.LUN_SIZE, fake.LUN_METADATA)
+        self.library._create_lun(
+            fake.VOLUME_ID, fake.LUN_ID, fake.LUN_SIZE, fake.LUN_METADATA)
 
         self.library.zapi_client.create_lun.assert_called_once_with(
             fake.VOLUME_ID, fake.LUN_ID, fake.LUN_SIZE, fake.LUN_METADATA,
             None)
-        self.assertEqual(1, self.library._update_stale_vols.call_count)
 
     def test_get_preferred_target_from_list(self):
         target_details_list = fake.ISCSI_TARGET_DETAILS_LIST
         operational_addresses = [
             target['address']
             for target in target_details_list[2:]]
-        self.zapi_client.get_operational_network_interface_addresses = (
+        self.zapi_client.get_operational_lif_addresses = (
             mock.Mock(return_value=operational_addresses))
 
         result = self.library._get_preferred_target_from_list(
@@ -296,59 +291,28 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertEqual(target_details_list[2], result)
 
-    def test_get_pool_stats_no_volumes(self):
+    def test_get_pool_stats(self):
 
-        self.library.ssc_vols = []
-
-        result = self.library._get_pool_stats()
-
-        self.assertListEqual([], result)
-
-    @ddt.data({'thin': True, 'netapp_lun_space_reservation': 'enabled'},
-              {'thin': True, 'netapp_lun_space_reservation': 'disabled'},
-              {'thin': False, 'netapp_lun_space_reservation': 'enabled'},
-              {'thin': False, 'netapp_lun_space_reservation': 'disabled'})
-    @ddt.unpack
-    def test_get_pool_stats(self, thin, netapp_lun_space_reservation):
-
-        class test_volume(object):
-            self.id = None
-            self.aggr = None
-
-        test_volume = test_volume()
-        test_volume.id = {'vserver': 'openstack', 'name': 'vola'}
-        test_volume.aggr = {
-            'disk_type': 'SSD',
-            'ha_policy': 'cfo',
-            'junction': '/vola',
-            'name': 'aggr1',
-            'raid_type': 'raiddp'
+        ssc = {
+            'vola': {
+                'pool_name': 'vola',
+                'thick_provisioning_support': True,
+                'thin_provisioning_support': False,
+                'netapp_thin_provisioned': 'false',
+                'netapp_compression': 'false',
+                'netapp_mirrored': 'false',
+                'netapp_dedup': 'true',
+                'aggregate': 'aggr1',
+                'netapp_raid_type': 'raid_dp',
+                'netapp_disk_type': 'SSD',
+            },
         }
-        test_volume.space = {
-            'space-guarantee': 'file',
-            'space-guarantee-enabled': False,
-            'thin_provisioned': False
-        }
-        test_volume.sis = {'dedup': False, 'compression': False}
-        test_volume.state = {
-            'status': 'online',
-            'vserver_root': False,
-            'junction_active': True
-        }
-        test_volume.qos = {'qos_policy_group': None}
+        mock_get_ssc = self.mock_object(self.library.ssc_library,
+                                        'get_ssc',
+                                        mock.Mock(return_value=ssc))
 
-        ssc_map = {
-            'mirrored': {},
-            'dedup': {},
-            'compression': {},
-            'thin': {test_volume if thin else None},
-            'all': [test_volume]
-        }
-        self.library.ssc_vols = ssc_map
         self.library.reserved_percentage = 5
         self.library.max_over_subscription_ratio = 10
-        self.library.configuration.netapp_lun_space_reservation = (
-            netapp_lun_space_reservation)
         self.library.perf_library.get_node_utilization_for_pool = (
             mock.Mock(return_value=30.0))
         mock_capacities = {
@@ -359,44 +323,118 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.zapi_client, 'get_flexvol_capacity',
             mock.Mock(return_value=mock_capacities))
 
-        netapp_thin = 'true' if thin else 'false'
-        netapp_thick = 'false' if thin else 'true'
-
-        thick = not thin and (netapp_lun_space_reservation == 'enabled')
-
         result = self.library._get_pool_stats(filter_function='filter',
                                               goodness_function='goodness')
 
-        expected = [{'pool_name': 'vola',
-                     'consistencygroup_support': True,
-                     'netapp_unmirrored': 'true',
-                     'QoS_support': True,
-                     'thin_provisioning_support': not thick,
-                     'thick_provisioning_support': thick,
-                     'provisioned_capacity_gb': 8.0,
-                     'netapp_thick_provisioned': netapp_thick,
-                     'netapp_nocompression': 'true',
-                     'free_capacity_gb': 2.0,
-                     'netapp_thin_provisioned': netapp_thin,
-                     'total_capacity_gb': 10.0,
-                     'netapp_compression': 'false',
-                     'netapp_mirrored': 'false',
-                     'netapp_dedup': 'false',
-                     'reserved_percentage': 5,
-                     'max_over_subscription_ratio': 10.0,
-                     'netapp_raid_type': 'raiddp',
-                     'netapp_disk_type': 'SSD',
-                     'netapp_nodedup': 'true',
-                     'utilization': 30.0,
-                     'filter_function': 'filter',
-                     'goodness_function': 'goodness'}]
+        expected = [{
+            'pool_name': 'vola',
+            'QoS_support': True,
+            'consistencygroup_support': True,
+            'reserved_percentage': 5,
+            'max_over_subscription_ratio': 10.0,
+            'total_capacity_gb': 10.0,
+            'free_capacity_gb': 2.0,
+            'provisioned_capacity_gb': 8.0,
+            'utilization': 30.0,
+            'filter_function': 'filter',
+            'goodness_function': 'goodness',
+            'thick_provisioning_support': True,
+            'thin_provisioning_support': False,
+            'netapp_thin_provisioned': 'false',
+            'netapp_compression': 'false',
+            'netapp_mirrored': 'false',
+            'netapp_dedup': 'true',
+            'aggregate': 'aggr1',
+            'netapp_raid_type': 'raid_dp',
+            'netapp_disk_type': 'SSD',
+        }]
 
         self.assertEqual(expected, result)
+        mock_get_ssc.assert_called_once_with()
+
+    @ddt.data({}, None)
+    def test_get_pool_stats_no_ssc_vols(self, ssc):
+
+        mock_get_ssc = self.mock_object(self.library.ssc_library,
+                                        'get_ssc',
+                                        mock.Mock(return_value=ssc))
+
+        pools = self.library._get_pool_stats()
+
+        self.assertListEqual([], pools)
+        mock_get_ssc.assert_called_once_with()
+
+    @ddt.data('open+|demix+', 'open.+', '.+\d', '^((?!mix+).)*$',
+              'open123, open321')
+    def test_get_pool_map_match_selected_pools(self, patterns):
+
+        self.library.configuration.netapp_pool_name_search_pattern = patterns
+        mock_list_flexvols = self.mock_object(
+            self.zapi_client, 'list_flexvols',
+            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+
+        result = self.library._get_flexvol_to_pool_map()
+
+        expected = {
+            'open123': {
+                'pool_name': 'open123',
+            },
+            'open321': {
+                'pool_name': 'open321',
+            },
+        }
+        self.assertEqual(expected, result)
+        mock_list_flexvols.assert_called_once_with()
+
+    @ddt.data('', 'mix.+|open.+', '.+', 'open123, mixed, open321',
+              '.*?')
+    def test_get_pool_map_match_all_pools(self, patterns):
+
+        self.library.configuration.netapp_pool_name_search_pattern = patterns
+        mock_list_flexvols = self.mock_object(
+            self.zapi_client, 'list_flexvols',
+            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+
+        result = self.library._get_flexvol_to_pool_map()
+
+        self.assertEqual(fake.FAKE_CMODE_POOL_MAP, result)
+        mock_list_flexvols.assert_called_once_with()
+
+    def test_get_pool_map_invalid_conf(self):
+        """Verify an exception is raised if the regex pattern is invalid"""
+        self.library.configuration.netapp_pool_name_search_pattern = '(.+'
+
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.library._get_flexvol_to_pool_map)
+
+    @ddt.data('abc|stackopen|openstack|abc*', 'abc', 'stackopen', 'openstack',
+              'abc*', '^$')
+    def test_get_pool_map_non_matching_patterns(self, patterns):
+
+        self.library.configuration.netapp_pool_name_search_pattern = patterns
+        mock_list_flexvols = self.mock_object(
+            self.zapi_client, 'list_flexvols',
+            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+
+        result = self.library._get_flexvol_to_pool_map()
+
+        self.assertEqual({}, result)
+        mock_list_flexvols.assert_called_once_with()
+
+    def test_update_ssc(self):
+
+        mock_get_pool_map = self.mock_object(
+            self.library, '_get_flexvol_to_pool_map',
+            mock.Mock(return_value=fake.FAKE_CMODE_VOLUMES))
+
+        result = self.library._update_ssc()
+
+        self.assertIsNone(result)
+        mock_get_pool_map.assert_called_once_with()
+        self.library.ssc_library.update_ssc.assert_called_once_with(
+            fake.FAKE_CMODE_VOLUMES)
 
     def test_delete_volume(self):
-        self.mock_object(block_base.NetAppLun, 'get_metadata_property',
-                         mock.Mock(return_value=fake.POOL_NAME))
-        self.mock_object(self.library, '_update_stale_vols')
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
                          mock.Mock(
                              return_value=fake.QOS_POLICY_GROUP_INFO))
@@ -404,76 +442,24 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.library.delete_volume(fake.VOLUME)
 
-        self.assertEqual(1,
-                         block_base.NetAppLun.get_metadata_property.call_count)
-        block_base.NetAppBlockStorageLibrary.delete_volume\
-            .assert_called_once_with(fake.VOLUME)
+        (block_base.NetAppBlockStorageLibrary.delete_volume.
+            assert_called_once_with(fake.VOLUME))
         na_utils.get_valid_qos_policy_group_info.assert_called_once_with(
             fake.VOLUME)
-        self.library._mark_qos_policy_group_for_deletion\
-            .assert_called_once_with(fake.QOS_POLICY_GROUP_INFO)
-        self.assertEqual(1, self.library._update_stale_vols.call_count)
-
-    def test_delete_volume_no_netapp_vol(self):
-        self.mock_object(block_base.NetAppLun, 'get_metadata_property',
-                         mock.Mock(return_value=None))
-        self.mock_object(self.library, '_update_stale_vols')
-        self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
-                         mock.Mock(
-                             return_value=fake.QOS_POLICY_GROUP_INFO))
-        self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
-
-        self.library.delete_volume(fake.VOLUME)
-
-        block_base.NetAppLun.get_metadata_property.assert_called_once_with(
-            'Volume')
-        block_base.NetAppBlockStorageLibrary.delete_volume\
-            .assert_called_once_with(fake.VOLUME)
-        self.library._mark_qos_policy_group_for_deletion\
-            .assert_called_once_with(fake.QOS_POLICY_GROUP_INFO)
-        self.assertEqual(0, self.library._update_stale_vols.call_count)
+        (self.library._mark_qos_policy_group_for_deletion.
+            assert_called_once_with(fake.QOS_POLICY_GROUP_INFO))
 
     def test_delete_volume_get_valid_qos_policy_group_info_exception(self):
-        self.mock_object(block_base.NetAppLun, 'get_metadata_property',
-                         mock.Mock(return_value=fake.NETAPP_VOLUME))
-        self.mock_object(self.library, '_update_stale_vols')
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
                          mock.Mock(side_effect=exception.Invalid))
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
 
         self.library.delete_volume(fake.VOLUME)
 
-        block_base.NetAppLun.get_metadata_property.assert_called_once_with(
-            'Volume')
-        block_base.NetAppBlockStorageLibrary.delete_volume\
-            .assert_called_once_with(fake.VOLUME)
-        self.library._mark_qos_policy_group_for_deletion\
-            .assert_called_once_with(None)
-        self.assertEqual(1, self.library._update_stale_vols.call_count)
-
-    def test_delete_snapshot(self):
-        self.mock_object(block_base.NetAppLun, 'get_metadata_property',
-                         mock.Mock(return_value=fake.NETAPP_VOLUME))
-        mock_super_delete_snapshot = self.mock_object(
-            block_base.NetAppBlockStorageLibrary, 'delete_snapshot')
-        mock_update_stale_vols = self.mock_object(self.library,
-                                                  '_update_stale_vols')
-        self.library.delete_snapshot(fake.SNAPSHOT)
-
-        mock_super_delete_snapshot.assert_called_once_with(fake.SNAPSHOT)
-        self.assertTrue(mock_update_stale_vols.called)
-
-    def test_delete_snapshot_no_netapp_vol(self):
-        self.mock_object(block_base.NetAppLun, 'get_metadata_property',
-                         mock.Mock(return_value=None))
-        mock_super_delete_snapshot = self.mock_object(
-            block_base.NetAppBlockStorageLibrary, 'delete_snapshot')
-        mock_update_stale_vols = self.mock_object(self.library,
-                                                  '_update_stale_vols')
-        self.library.delete_snapshot(fake.SNAPSHOT)
-
-        mock_super_delete_snapshot.assert_called_once_with(fake.SNAPSHOT)
-        self.assertFalse(mock_update_stale_vols.called)
+        (block_base.NetAppBlockStorageLibrary.delete_volume.
+            assert_called_once_with(fake.VOLUME))
+        (self.library._mark_qos_policy_group_for_deletion.
+            assert_called_once_with(None))
 
     def test_setup_qos_for_volume(self):
         self.mock_object(na_utils, 'get_valid_qos_policy_group_info',
@@ -589,105 +575,23 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
     def test_start_periodic_tasks(self):
 
+        mock_update_ssc = self.mock_object(
+            self.library, '_update_ssc')
         mock_remove_unused_qos_policy_groups = self.mock_object(
-            self.zapi_client,
-            'remove_unused_qos_policy_groups')
+            self.zapi_client, 'remove_unused_qos_policy_groups')
 
+        update_ssc_periodic_task = mock.Mock()
         harvest_qos_periodic_task = mock.Mock()
+        side_effect = [update_ssc_periodic_task, harvest_qos_periodic_task]
         mock_loopingcall = self.mock_object(
-            loopingcall,
-            'FixedIntervalLoopingCall',
-            mock.Mock(side_effect=[harvest_qos_periodic_task]))
+            loopingcall, 'FixedIntervalLoopingCall',
+            mock.Mock(side_effect=side_effect))
 
         self.library._start_periodic_tasks()
 
         mock_loopingcall.assert_has_calls([
+            mock.call(mock_update_ssc),
             mock.call(mock_remove_unused_qos_policy_groups)])
+        self.assertTrue(update_ssc_periodic_task.start.called)
         self.assertTrue(harvest_qos_periodic_task.start.called)
-
-    @ddt.data('open+|demix+', 'open.+', '.+\d', '^((?!mix+).)*$',
-              'open123, open321')
-    def test_get_filtered_pools_match_selected_pools(self, patterns):
-
-        self.library.ssc_vols = fake.FAKE_CMODE_VOLUME
-        self.library.configuration.netapp_pool_name_search_pattern = patterns
-
-        filtered_pools = self.library._get_filtered_pools()
-
-        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][0].id['name'],
-                         filtered_pools[0].id['name'])
-        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][2].id['name'],
-                         filtered_pools[1].id['name'])
-
-    @ddt.data('', 'mix.+|open.+', '.+', 'open123, mixed, open321',
-              '.*?')
-    def test_get_filtered_pools_match_all_pools(self, patterns):
-
-        self.library.ssc_vols = fake.FAKE_CMODE_VOLUME
-        self.library.configuration.netapp_pool_name_search_pattern = patterns
-
-        filtered_pools = self.library._get_filtered_pools()
-
-        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][0].id['name'],
-                         filtered_pools[0].id['name'])
-        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][1].id['name'],
-                         filtered_pools[1].id['name'])
-        self.assertEqual(fake.FAKE_CMODE_VOLUME['all'][2].id['name'],
-                         filtered_pools[2].id['name'])
-
-    def test_get_filtered_pools_invalid_conf(self):
-        """Verify an exception is raised if the regex pattern is invalid"""
-        self.library.configuration.netapp_pool_name_search_pattern = '(.+'
-
-        self.assertRaises(exception.InvalidConfigurationValue,
-                          self.library._get_filtered_pools)
-
-    @ddt.data('abc|stackopen|openstack|abc*', 'abc', 'stackopen', 'openstack',
-              'abc*', '^$')
-    def test_get_filtered_pools_non_matching_patterns(self, patterns):
-
-        self.library.ssc_vols = fake.FAKE_CMODE_VOLUME
-        self.library.configuration.netapp_pool_name_search_pattern = patterns
-
-        filtered_pools = self.library._get_filtered_pools()
-
-        self.assertListEqual([], filtered_pools)
-
-    @ddt.data({}, None)
-    def test_get_pool_stats_no_ssc_vols(self, vols):
-
-        self.library.ssc_vols = vols
-
-        pools = self.library._get_pool_stats()
-
-        self.assertListEqual([], pools)
-
-    def test_get_pool_stats_with_filtered_pools(self):
-
-        self.library.ssc_vols = fake.ssc_map
-        self.mock_object(self.library, '_get_filtered_pools',
-                         mock.Mock(return_value=[fake.FAKE_CMODE_VOL1]))
-        self.library.perf_library.get_node_utilization_for_pool = (
-            mock.Mock(return_value=30.0))
-        mock_capacities = {
-            'size-total': 5000000000.0,
-            'size-available': 4000000000.0,
-        }
-        self.mock_object(
-            self.zapi_client, 'get_flexvol_capacity',
-            mock.Mock(return_value=mock_capacities))
-
-        pools = self.library._get_pool_stats(filter_function='filter',
-                                             goodness_function='goodness')
-
-        self.assertListEqual(fake.FAKE_CMODE_POOLS, pools)
-
-    def test_get_pool_stats_no_filtered_pools(self):
-
-        self.library.ssc_vols = fake.ssc_map
-        self.mock_object(self.library, '_get_filtered_pools',
-                         mock.Mock(return_value=[]))
-
-        pools = self.library._get_pool_stats()
-
-        self.assertListEqual([], pools)
+        mock_update_ssc.assert_called_once_with()

@@ -24,8 +24,6 @@
 Volume driver library for NetApp C-mode block storage systems.
 """
 
-import copy
-
 from oslo_log import log as logging
 from oslo_service import loopingcall
 from oslo_utils import units
@@ -37,7 +35,6 @@ from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -45,6 +42,7 @@ from cinder.volume.drivers.netapp import utils as na_utils
 
 LOG = logging.getLogger(__name__)
 QOS_CLEANUP_INTERVAL_SECONDS = 60
+SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
 
 
 @six.add_metaclass(utils.TraceWrapperMetaclass)
@@ -74,26 +72,38 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             port=self.configuration.netapp_server_port,
             vserver=self.vserver)
 
-        self.ssc_vols = {}
-        self.stale_vols = set()
         self.perf_library = perf_cmode.PerformanceCmodeLibrary(
             self.zapi_client)
-        self.ssc_library = capabilities.CapabilitiesLibrary(self.zapi_client)
+        self.ssc_library = capabilities.CapabilitiesLibrary(
+            self.driver_protocol, self.vserver, self.zapi_client,
+            self.configuration)
 
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
         self.ssc_library.check_api_permissions()
-        ssc_cmode.refresh_cluster_ssc(self, self.zapi_client.get_connection(),
-                                      self.vserver, synchronous=True)
-        if not self._get_filtered_pools():
+
+        if not self._get_flexvol_to_pool_map():
             msg = _('No pools are available for provisioning volumes. '
                     'Ensure that the configuration option '
                     'netapp_pool_name_search_pattern is set correctly.')
             raise exception.NetAppDriverException(msg)
+
         super(NetAppBlockStorageCmodeLibrary, self).check_for_setup_error()
         self._start_periodic_tasks()
 
     def _start_periodic_tasks(self):
+
+        # Note(cknight): Run the task once in the current thread to prevent a
+        # race with the first invocation of _update_volume_stats.
+        self._update_ssc()
+
+        # Start the task that updates the slow-changing storage service catalog
+        ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self._update_ssc)
+        ssc_periodic_task.start(
+            interval=SSC_UPDATE_INTERVAL_SECONDS,
+            initial_delay=SSC_UPDATE_INTERVAL_SECONDS)
+
         # Start the task that harvests soft-deleted QoS policy groups.
         harvest_qos_periodic_task = loopingcall.FixedIntervalLoopingCall(
             self.zapi_client.remove_unused_qos_policy_groups)
@@ -107,9 +117,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
 
         self.zapi_client.create_lun(
             volume_name, lun_name, size, metadata, qos_policy_group_name)
-
-        self._update_stale_vols(
-            volume=ssc_cmode.NetAppVolume(volume_name, self.vserver))
 
     def _create_lun_handle(self, metadata):
         """Returns LUN handle based on filer type."""
@@ -158,8 +165,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
                                  new_name,
                                  lun[0].get_child_content('size'),
                                  clone_meta))
-        self._update_stale_vols(
-            volume=ssc_cmode.NetAppVolume(volume, self.vserver))
 
     def _create_lun_meta(self, lun):
         """Creates LUN metadata dictionary."""
@@ -178,20 +183,9 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
     def _get_fc_target_wwpns(self, include_partner=True):
         return self.zapi_client.get_fc_target_wwpns()
 
-    def _configure_tunneling(self, do_tunneling=False):
-        """Configures tunneling for Data ONTAP cluster."""
-        if do_tunneling:
-            self.zapi_client.set_vserver(self.vserver)
-        else:
-            self.zapi_client.set_vserver(None)
-
     def _update_volume_stats(self, filter_function=None,
                              goodness_function=None):
         """Retrieve stats info from vserver."""
-
-        sync = True if self.ssc_vols is None else False
-        ssc_cmode.refresh_cluster_ssc(self, self.zapi_client.get_connection(),
-                                      self.vserver, synchronous=sync)
 
         LOG.debug('Updating volume stats')
         data = {}
@@ -209,30 +203,38 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         self._stats = data
 
     def _get_pool_stats(self, filter_function=None, goodness_function=None):
-        """Retrieve pool (Data ONTAP volume) stats info from SSC volumes."""
+        """Retrieve pool (Data ONTAP flexvol) stats.
+
+        Pool statistics are assembled from static driver capabilities, the
+        Storage Service Catalog of flexvol attributes, and real-time capacity
+        and controller utilization metrics.  The pool name is the flexvol name.
+        """
 
         pools = []
 
-        if not self.ssc_vols:
+        ssc = self.ssc_library.get_ssc()
+        if not ssc:
             return pools
 
-        filtered_pools = self._get_filtered_pools()
-        self.perf_library.update_performance_cache(filtered_pools)
+        self.perf_library.update_performance_cache(ssc)
 
-        for vol in filtered_pools:
-            pool_name = vol.id['name']
+        for ssc_vol_name, ssc_vol_info in ssc.items():
 
             pool = dict()
-            pool['pool_name'] = pool_name
+
+            # Add storage service catalog data
+            pool.update(ssc_vol_info)
+
+            # Add driver capabilities and config info
             pool['QoS_support'] = True
-            pool['reserved_percentage'] = (
-                self.reserved_percentage)
+            pool['consistencygroup_support'] = True
+            pool['reserved_percentage'] = self.reserved_percentage
             pool['max_over_subscription_ratio'] = (
                 self.max_over_subscription_ratio)
 
-            # Get capacity info and convert to GB
+            # Add up-to-date capacity info
             capacity = self.zapi_client.get_flexvol_capacity(
-                flexvol_name=pool_name)
+                flexvol_name=ssc_vol_name)
 
             size_total_gb = capacity['size-total'] / units.Gi
             pool['total_capacity_gb'] = na_utils.round_down(size_total_gb)
@@ -240,88 +242,56 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             size_available_gb = capacity['size-available'] / units.Gi
             pool['free_capacity_gb'] = na_utils.round_down(size_available_gb)
 
-            pool['provisioned_capacity_gb'] = (round(
-                pool['total_capacity_gb'] - pool['free_capacity_gb'], 2))
+            pool['provisioned_capacity_gb'] = round(
+                pool['total_capacity_gb'] - pool['free_capacity_gb'], 2)
 
-            pool['netapp_raid_type'] = vol.aggr['raid_type']
-            pool['netapp_disk_type'] = vol.aggr['disk_type']
-
-            mirrored = vol in self.ssc_vols['mirrored']
-            pool['netapp_mirrored'] = six.text_type(mirrored).lower()
-            pool['netapp_unmirrored'] = six.text_type(not mirrored).lower()
-
-            dedup = vol in self.ssc_vols['dedup']
-            pool['netapp_dedup'] = six.text_type(dedup).lower()
-            pool['netapp_nodedup'] = six.text_type(not dedup).lower()
-
-            compression = vol in self.ssc_vols['compression']
-            pool['netapp_compression'] = six.text_type(compression).lower()
-            pool['netapp_nocompression'] = six.text_type(
-                not compression).lower()
-
-            thin = vol in self.ssc_vols['thin']
-            pool['netapp_thin_provisioned'] = six.text_type(thin).lower()
-            pool['netapp_thick_provisioned'] = six.text_type(not thin).lower()
-            thick = (not thin and
-                     self.configuration.netapp_lun_space_reservation
-                     == 'enabled')
-            pool['thick_provisioning_support'] = thick
-            pool['thin_provisioning_support'] = not thick
-
+            # Add utilization data
             utilization = self.perf_library.get_node_utilization_for_pool(
-                pool_name)
-            pool['utilization'] = na_utils.round_down(utilization, '0.01')
+                ssc_vol_name)
+            pool['utilization'] = na_utils.round_down(utilization)
             pool['filter_function'] = filter_function
             pool['goodness_function'] = goodness_function
-
-            pool['consistencygroup_support'] = True
 
             pools.append(pool)
 
         return pools
 
-    def _get_filtered_pools(self):
-        """Return filtered pools given a pool name search pattern."""
+    def _update_ssc(self):
+        """Refresh the storage service catalog with the latest set of pools."""
+
+        self.ssc_library.update_ssc(self._get_flexvol_to_pool_map())
+
+    def _get_flexvol_to_pool_map(self):
+        """Get the flexvols that match the pool name search pattern.
+
+        The map is of the format suitable for seeding the storage service
+        catalog: {<flexvol_name> : {'pool_name': <flexvol_name>}}
+        """
+
         pool_regex = na_utils.get_pool_name_filter_regex(self.configuration)
 
-        filtered_pools = []
-        for vol in self.ssc_vols.get('all', []):
-            vol_name = vol.id['name']
-            if pool_regex.match(vol_name):
-                msg = ("Volume '%(vol_name)s' matches against regular "
-                       "expression: %(vol_pattern)s")
-                LOG.debug(msg, {'vol_name': vol_name,
-                                'vol_pattern': pool_regex.pattern})
-                filtered_pools.append(vol)
+        pools = {}
+        flexvol_names = self.zapi_client.list_flexvols()
+
+        for flexvol_name in flexvol_names:
+
+            msg_args = {
+                'flexvol': flexvol_name,
+                'vol_pattern': pool_regex.pattern,
+            }
+
+            if pool_regex.match(flexvol_name):
+                msg = "Volume '%(flexvol)s' matches %(vol_pattern)s"
+                LOG.debug(msg, msg_args)
+                pools[flexvol_name] = {'pool_name': flexvol_name}
             else:
-                msg = ("Volume '%(vol_name)s' does not match against regular "
-                       "expression: %(vol_pattern)s")
-                LOG.debug(msg, {'vol_name': vol_name,
-                                'vol_pattern': pool_regex.pattern})
+                msg = "Volume '%(flexvol)s' does not match %(vol_pattern)s"
+                LOG.debug(msg, msg_args)
 
-        return filtered_pools
-
-    @utils.synchronized('update_stale')
-    def _update_stale_vols(self, volume=None, reset=False):
-        """Populates stale vols with vol and returns set copy if reset."""
-        if volume:
-            self.stale_vols.add(volume)
-        if reset:
-            set_copy = copy.deepcopy(self.stale_vols)
-            self.stale_vols.clear()
-            return set_copy
-
-    @utils.synchronized("refresh_ssc_vols")
-    def refresh_ssc_vols(self, vols):
-        """Refreshes ssc_vols with latest entries."""
-        self.ssc_vols = vols
+        return pools
 
     def delete_volume(self, volume):
         """Driver entry point for destroying existing volumes."""
-        lun = self.lun_table.get(volume['name'])
-        netapp_vol = None
-        if lun:
-            netapp_vol = lun.get_metadata_property('Volume')
         super(NetAppBlockStorageCmodeLibrary, self).delete_volume(volume)
         try:
             qos_policy_group_info = na_utils.get_valid_qos_policy_group_info(
@@ -331,22 +301,9 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             # volume.
             qos_policy_group_info = None
         self._mark_qos_policy_group_for_deletion(qos_policy_group_info)
-        if netapp_vol:
-            self._update_stale_vols(
-                volume=ssc_cmode.NetAppVolume(netapp_vol, self.vserver))
+
         msg = 'Deleted LUN with name %(name)s and QoS info %(qos)s'
         LOG.debug(msg, {'name': volume['name'], 'qos': qos_policy_group_info})
-
-    def delete_snapshot(self, snapshot):
-        """Driver entry point for deleting a snapshot."""
-        lun = self.lun_table.get(snapshot['name'])
-        netapp_vol = lun.get_metadata_property('Volume') if lun else None
-
-        super(NetAppBlockStorageCmodeLibrary, self).delete_snapshot(snapshot)
-
-        if netapp_vol:
-            self._update_stale_vols(
-                volume=ssc_cmode.NetAppVolume(netapp_vol, self.vserver))
 
     def _get_preferred_target_from_list(self, target_details_list,
                                         filter=None):
@@ -365,7 +322,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         # Nova uses the target.
 
         operational_addresses = (
-            self.zapi_client.get_operational_network_interface_addresses())
+            self.zapi_client.get_operational_lif_addresses())
 
         return (super(NetAppBlockStorageCmodeLibrary, self)
                 ._get_preferred_target_from_list(target_details_list,

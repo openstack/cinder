@@ -52,7 +52,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
             with mock.patch.object(remotefs_brick, 'RemoteFsClient',
                                    return_value=mock.Mock()):
                 self.driver = nfs_base.NetAppNfsDriver(**kwargs)
-                self.driver.ssc_enabled = False
                 self.driver.db = mock.Mock()
 
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
@@ -111,13 +110,11 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.mock_object(na_utils, 'get_volume_extra_specs')
         self.mock_object(self.driver, '_do_create_volume')
         self.mock_object(self.driver, '_do_qos_for_volume')
-        update_ssc = self.mock_object(self.driver, '_update_stale_vols')
         expected = {'provider_location': fake.NFS_SHARE}
 
         result = self.driver.create_volume(fake.NFS_VOLUME)
 
         self.assertEqual(expected, result)
-        self.assertEqual(0, update_ssc.call_count)
 
     def test_create_volume_no_pool(self):
         volume = copy.deepcopy(fake.NFS_VOLUME)
@@ -133,13 +130,10 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.mock_object(na_utils, 'get_volume_extra_specs')
         mock_create = self.mock_object(self.driver, '_do_create_volume')
         mock_create.side_effect = Exception
-        update_ssc = self.mock_object(self.driver, '_update_stale_vols')
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume,
                           fake.NFS_VOLUME)
-
-        self.assertEqual(0, update_ssc.call_count)
 
     def test_create_volume_from_snapshot(self):
         provider_location = fake.POOL_NAME
@@ -286,11 +280,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.driver._cleanup_volume_on_failure(fake.NFS_VOLUME)
 
         self.assertEqual(0, mock_delete.call_count)
-
-    def test_get_vol_for_share(self):
-        self.assertRaises(NotImplementedError,
-                          self.driver._get_vol_for_share,
-                          fake.NFS_SHARE)
 
     def test_get_export_ip_path_volume_id_provided(self):
         mock_get_host_ip = self.mock_object(self.driver, '_get_host_ip')

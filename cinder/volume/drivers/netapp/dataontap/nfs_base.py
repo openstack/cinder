@@ -82,7 +82,6 @@ class NetAppNfsDriver(driver.ManageableVD,
         self._context = context
         na_utils.check_flags(self.REQUIRED_FLAGS, self.configuration)
         self.zapi_client = None
-        self.ssc_enabled = False
 
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
@@ -127,9 +126,6 @@ class NetAppNfsDriver(driver.ManageableVD,
             # We need to set this for the model update in order for the
             # manager to behave correctly.
             volume['provider_location'] = None
-        finally:
-            if self.ssc_enabled:
-                self._update_stale_vols(self._get_vol_for_share(pool_name))
 
         msg = _("Volume %(vol)s could not be created in pool %(pool)s.")
         raise exception.VolumeBackendAPIException(data=msg % {
@@ -986,12 +982,3 @@ class NetAppNfsDriver(driver.ManageableVD,
         vol_path = os.path.join(volume['provider_location'], vol_str)
         LOG.info(_LI("Cinder NFS volume with current path \"%(cr)s\" is "
                      "no longer being managed."), {'cr': vol_path})
-
-    @utils.synchronized('update_stale')
-    def _update_stale_vols(self, volume=None, reset=False):
-        """Populates stale vols with vol and returns set copy."""
-        raise NotImplementedError
-
-    def _get_vol_for_share(self, nfs_share):
-        """Gets the ssc vol with given share."""
-        raise NotImplementedError

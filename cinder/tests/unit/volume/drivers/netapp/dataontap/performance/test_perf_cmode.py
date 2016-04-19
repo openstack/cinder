@@ -43,20 +43,17 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
     def _set_up_fake_pools(self):
 
-        class test_volume(object):
-            self.id = None
-            self.aggr = None
-
-        volume1 = test_volume()
-        volume1.id = {'name': 'pool1'}
-        volume1.aggr = {'name': 'aggr1'}
-        volume2 = test_volume()
-        volume2.id = {'name': 'pool2'}
-        volume2.aggr = {'name': 'aggr2'}
-        volume3 = test_volume()
-        volume3.id = {'name': 'pool3'}
-        volume3.aggr = {'name': 'aggr2'}
-        self.fake_volumes = [volume1, volume2, volume3]
+        self.fake_volumes = {
+            'pool1': {
+                'aggregate': 'aggr1',
+            },
+            'pool2': {
+                'aggregate': 'aggr2',
+            },
+            'pool3': {
+                'aggregate': 'aggr2',
+            },
+        }
 
         self.fake_aggrs = set(['aggr1', 'aggr2', 'aggr3'])
         self.fake_nodes = set(['node1', 'node2'])
@@ -336,18 +333,7 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
     def test_get_aggregates_for_pools(self):
 
-        class test_volume(object):
-            self.aggr = None
-
-        volume1 = test_volume()
-        volume1.aggr = {'name': 'aggr1'}
-        volume2 = test_volume()
-        volume2.aggr = {'name': 'aggr2'}
-        volume3 = test_volume()
-        volume3.aggr = {'name': 'aggr2'}
-        volumes = [volume1, volume2, volume3]
-
-        result = self.perf_library._get_aggregates_for_pools(volumes)
+        result = self.perf_library._get_aggregates_for_pools(self.fake_volumes)
 
         expected_aggregate_names = set(['aggr1', 'aggr2'])
         self.assertEqual(expected_aggregate_names, result)
