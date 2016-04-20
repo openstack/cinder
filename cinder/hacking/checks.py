@@ -415,15 +415,19 @@ def check_unicode_usage(logical_line, noqa):
 
 
 def check_no_print_statements(logical_line, filename, noqa):
-    # The files in cinder/cmd do need to use 'print()' so
-    # we don't need to check those files.  Other exemptions
-    # should use '# noqa' to avoid failing here.
-    if "cinder/cmd" not in filename and not noqa:
-        if re.match(no_print_statements, logical_line):
-            msg = ("C303: print() should not be used. "
-                   "Please use LOG.[info|error|warning|exception|debug]. "
-                   "If print() must be used, use '# noqa' to skip this check.")
-            yield(0, msg)
+    # CLI and utils programs do need to use 'print()' so
+    # we shouldn't check those files.
+    if noqa:
+        return
+
+    if "cinder/cmd" in filename or "tools/" in filename:
+        return
+
+    if re.match(no_print_statements, logical_line):
+        msg = ("C303: print() should not be used. "
+               "Please use LOG.[info|error|warning|exception|debug]. "
+               "If print() must be used, use '# noqa' to skip this check.")
+        yield(0, msg)
 
 
 def check_no_log_audit(logical_line):
