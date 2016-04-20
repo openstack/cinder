@@ -35,6 +35,7 @@ from oslo_utils import strutils
 
 LOG = logging.getLogger(__name__)
 DELETED_PREFIX = 'deleted_cinder_'
+DEFAULT_MAX_PAGE_LENGTH = 50
 
 
 @six.add_metaclass(utils.TraceWrapperMetaclass)
@@ -86,6 +87,52 @@ class Client(client_base.Client):
 
     def set_vserver(self, vserver):
         self.connection.set_vserver(vserver)
+
+    def send_iter_request(self, api_name, api_args=None, enable_tunneling=True,
+                          max_page_length=DEFAULT_MAX_PAGE_LENGTH):
+        """Invoke an iterator-style getter API."""
+
+        if not api_args:
+            api_args = {}
+
+        api_args['max-records'] = max_page_length
+
+        # Get first page
+        result = self.send_request(
+            api_name, api_args, enable_tunneling=enable_tunneling)
+
+        # Most commonly, we can just return here if there is no more data
+        next_tag = result.get_child_content('next-tag')
+        if not next_tag:
+            return result
+
+        # Ensure pagination data is valid and prepare to store remaining pages
+        num_records = self._get_record_count(result)
+        attributes_list = result.get_child_by_name('attributes-list')
+        if not attributes_list:
+            msg = _('Missing attributes list for API %s.') % api_name
+            raise exception.NetAppDriverException(msg)
+
+        # Get remaining pages, saving data into first page
+        while next_tag is not None:
+            next_api_args = copy.deepcopy(api_args)
+            next_api_args['tag'] = next_tag
+            next_result = self.send_request(
+                api_name, next_api_args, enable_tunneling=enable_tunneling)
+
+            next_attributes_list = next_result.get_child_by_name(
+                'attributes-list') or netapp_api.NaElement('none')
+
+            for record in next_attributes_list.get_children():
+                attributes_list.add_child_elem(record)
+
+            num_records += self._get_record_count(next_result)
+            next_tag = next_result.get_child_content('next-tag')
+
+        result.get_child_by_name('num-records').set_content(
+            six.text_type(num_records))
+        result.get_child_by_name('next-tag').set_content('')
+        return result
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""
