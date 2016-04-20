@@ -337,7 +337,7 @@ class NfsDriverTestCase(test.TestCase):
         self.configuration.nfs_qcow2_volumes = False
         self.configuration.nas_secure_file_permissions = 'false'
         self.configuration.nas_secure_file_operations = 'false'
-        self.configuration.nas_ip = None
+        self.configuration.nas_host = None
         self.configuration.nas_share_path = None
         self.configuration.nas_mount_options = None
         self.configuration.volume_dd_blocksize = '1M'
@@ -495,7 +495,7 @@ class NfsDriverTestCase(test.TestCase):
 
     def test_load_shares_config_nas_opts(self):
         drv = self._driver
-        drv.configuration.nas_ip = self.TEST_NFS_HOST
+        drv.configuration.nas_host = self.TEST_NFS_HOST
         drv.configuration.nas_share_path = self.TEST_NFS_SHARE_PATH
         drv.configuration.nfs_shares_config = self.TEST_SHARES_CONFIG_FILE
 

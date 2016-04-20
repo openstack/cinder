@@ -1,0 +1,7 @@
+---
+deprecations:
+    - Deprecate the nas_ip configuration option
+      and change it to nas_host. It will be more
+      clear to use the nas_host configuration
+      option instead of the nas_ip as IP address
+      or Hostname of NAS system.
