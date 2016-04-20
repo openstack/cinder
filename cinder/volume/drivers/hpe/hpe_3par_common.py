@@ -234,10 +234,11 @@ class HPE3PARCommon(object):
         3.0.16 - Use same LUN ID for each VLUN path #1551994
         3.0.17 - Don't fail on clearing 3PAR object volume key. bug #1546392
         3.0.18 - create_cloned_volume account for larger size.  bug #1554740
+        3.0.19 - Remove metadata that tracks the instance ID. bug #1572665
 
     """
 
-    VERSION = "3.0.18"
+    VERSION = "3.0.19"
 
     stats = {}
 
@@ -2282,72 +2283,6 @@ class HPE3PARCommon(object):
         except hpeexceptions.HTTPNotFound as ex:
             LOG.error(_LE("Exception: %s"), ex)
             raise exception.NotFound()
-
-    def update_volume_key_value_pair(self, volume, key, value):
-        """Updates key,value pair as metadata onto virtual volume.
-
-        If key already exists, the value will be replaced.
-        """
-        LOG.debug("VOLUME (%(disp_name)s : %(vol_name)s %(id)s) "
-                  "Updating KEY-VALUE pair: (%(key)s : %(val)s)",
-                  {'disp_name': volume['display_name'],
-                   'vol_name': volume['name'],
-                   'id': self._get_3par_vol_name(volume['id']),
-                   'key': key,
-                   'val': value})
-        try:
-            volume_name = self._get_3par_vol_name(volume['id'])
-            if value is None:
-                value = ''
-            self.client.setVolumeMetaData(volume_name, key, value)
-        except Exception as ex:
-            msg = _('Failure in update_volume_key_value_pair:%s') % ex
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
-
-    def clear_volume_key_value_pair(self, volume, key):
-        """Clears key,value pairs metadata from virtual volume."""
-
-        LOG.debug("VOLUME (%(disp_name)s : %(vol_name)s %(id)s) "
-                  "Clearing Key : %(key)s)",
-                  {'disp_name': volume['display_name'],
-                   'vol_name': volume['name'],
-                   'id': self._get_3par_vol_name(volume['id']),
-                   'key': key})
-        try:
-            volume_name = self._get_3par_vol_name(volume['id'])
-            self.client.removeVolumeMetaData(volume_name, key)
-        except Exception as ex:
-            LOG.warning(_LW('Issue occurred in clear_volume_key_value_pair: '
-                            '%s'), six.text_type(ex))
-
-    def attach_volume(self, volume, instance_uuid):
-        """Save the instance UUID in the volume.
-
-           TODO: add support for multi-attach
-
-        """
-        LOG.debug("Attach Volume\n%s", pprint.pformat(volume))
-        try:
-            self.update_volume_key_value_pair(volume,
-                                              'HPQ-CS-instance_uuid',
-                                              instance_uuid)
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error attaching volume %s"), volume)
-
-    def detach_volume(self, volume, attachment=None):
-        """Remove the instance uuid from the volume.
-
-           TODO: add support for multi-attach.
-
-        """
-        LOG.debug("Detach Volume\n%s", pprint.pformat(volume))
-        try:
-            self.clear_volume_key_value_pair(volume, 'HPQ-CS-instance_uuid')
-        except Exception:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE("Error detaching volume %s"), volume)
 
     def migrate_volume(self, volume, host):
         """Migrate directly if source and dest are managed by same storage.
