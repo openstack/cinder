@@ -21,6 +21,7 @@ import time
 
 from oslo_log import log as logging
 from oslo_serialization import jsonutils
+from oslo_utils import encodeutils
 from oslo_utils import excutils
 from oslo_utils import strutils
 import six
@@ -862,9 +863,10 @@ class Resource(wsgi.Application):
             return Fault(webob.exc.HTTPBadRequest(explanation=msg))
 
         if body:
+            decoded_body = encodeutils.safe_decode(body, errors='ignore')
             msg = ("Action: '%(action)s', calling method: %(meth)s, body: "
                    "%(body)s") % {'action': action,
-                                  'body': six.text_type(body),
+                                  'body': six.text_type(decoded_body),
                                   'meth': six.text_type(meth)}
             LOG.debug(strutils.mask_password(msg))
         else:
