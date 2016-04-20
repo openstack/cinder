@@ -3685,9 +3685,7 @@ class HPE3PARBaseDriver(object):
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
         comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group',
+            'consistency_group_id': self.CONSIS_GROUP_ID
         })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
@@ -3729,9 +3727,8 @@ class HPE3PARBaseDriver(object):
              'readOnly': False})
 
         cg_comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group'})
+            'consistency_group_id': self.CONSIS_GROUP_ID
+        })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -3811,9 +3808,8 @@ class HPE3PARBaseDriver(object):
             {'expirationHours': 1})
 
         cg_comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group'})
+            'consistency_group_id': self.CONSIS_GROUP_ID
+        })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -3860,9 +3856,8 @@ class HPE3PARBaseDriver(object):
         mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
 
         comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group'})
+            'consistency_group_id': self.CONSIS_GROUP_ID
+        })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -3911,9 +3906,8 @@ class HPE3PARBaseDriver(object):
         volume = self.volume
 
         comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group'})
+            'consistency_group_id': self.CONSIS_GROUP_ID
+        })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -3964,9 +3958,8 @@ class HPE3PARBaseDriver(object):
         volume = self.volume
 
         comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group'})
+            'consistency_group_id': self.CONSIS_GROUP_ID
+        })
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -4036,9 +4029,8 @@ class HPE3PARBaseDriver(object):
         volume = self.volume
 
         cg_comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group'})
+            'consistency_group_id': self.CONSIS_GROUP_ID
+        })
 
         cgsnap_comment = Comment({
             "consistency_group_id": "6044fedf-c889-4752-900f-2039d247a5df",
@@ -4118,9 +4110,8 @@ class HPE3PARBaseDriver(object):
         cgsnapshot = self.fake_cgsnapshot_object()
 
         cg_comment = Comment({
-            'display_name': 'cg_name',
-            'consistency_group_id': self.CONSIS_GROUP_ID,
-            'description': 'consistency group'})
+            'consistency_group_id': self.CONSIS_GROUP_ID
+        })
 
         cgsnap_comment = Comment({
             "consistency_group_id": "6044fedf-c889-4752-900f-2039d247a5df",

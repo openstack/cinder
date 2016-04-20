@@ -239,10 +239,12 @@ class HPE3PARCommon(object):
         3.0.21 - Driver no longer fails to initialize if
                  System Reporter license is missing. bug #1568078
         3.0.22 - Rework delete_vlun. Bug #1582922
+        3.0.23 - Fix CG create failures with long display name or special
+                 characters. bug #1573647
 
     """
 
-    VERSION = "3.0.22"
+    VERSION = "3.0.23"
 
     stats = {}
 
@@ -518,8 +520,6 @@ class HPE3PARCommon(object):
         cg_name = self._get_3par_vvs_name(group.id)
 
         extra = {'consistency_group_id': group.id}
-        extra['description'] = group.description
-        extra['display_name'] = group.name
         if group.cgsnapshot_id:
             extra['cgsnapshot_id'] = group.cgsnapshot_id
 
