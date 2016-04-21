@@ -211,6 +211,8 @@ class BackupTestCase(BaseBackupTest):
         def get_admin_context():
             return self.ctxt
 
+        self.override_config('backup_service_inithost_offload', False)
+
         vol1_id = self._create_volume_db_entry()
         self._create_volume_attach(vol1_id)
         db.volume_update(self.ctxt, vol1_id, {'status': 'backing-up'})
@@ -276,7 +278,6 @@ class BackupTestCase(BaseBackupTest):
     def test_init_host_with_service_inithost_offload(self,
                                                      mock_add_threadpool,
                                                      mock_get_all_by_host):
-        self.override_config('backup_service_inithost_offload', True)
         vol1_id = self._create_volume_db_entry()
         db.volume_update(self.ctxt, vol1_id, {'status': 'available'})
         backup1 = self._create_backup_db_entry(
@@ -409,6 +410,8 @@ class BackupTestCase(BaseBackupTest):
 
     def test_cleanup_one_deleting_backup(self):
         """Test cleanup_one_backup for volume status 'deleting'."""
+
+        self.override_config('backup_service_inithost_offload', False)
 
         backup = self._create_backup_db_entry(
             status=fields.BackupStatus.DELETING)
