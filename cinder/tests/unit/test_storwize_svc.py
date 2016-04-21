@@ -2687,11 +2687,6 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         super(StorwizeSVCCommonDriverTestCase, self).setUp()
         self.USESIM = True
         if self.USESIM:
-            self.driver = StorwizeSVCISCSIFakeDriver(
-                configuration=conf.Configuration(None))
-            self._driver = storwize_svc_iscsi.StorwizeSVCISCSIDriver(
-                configuration=conf.Configuration(None))
-
             self._def_flags = {'san_ip': 'hostname',
                                'storwize_san_secondary_ip': 'secondaryname',
                                'san_login': 'user',
@@ -2701,6 +2696,13 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                                'storwize_svc_flashcopy_timeout': 20,
                                'storwize_svc_flashcopy_rate': 49,
                                'storwize_svc_allow_tenant_qos': True}
+            config = conf.Configuration(None)
+            # Override any configs that may get set in __init__
+            self._reset_flags(config)
+            self.driver = StorwizeSVCISCSIFakeDriver(
+                configuration=config)
+            self._driver = storwize_svc_iscsi.StorwizeSVCISCSIDriver(
+                configuration=config)
             wwpns = [
                 six.text_type(random.randint(0, 9999999999999999)).zfill(16),
                 six.text_type(random.randint(0, 9999999999999999)).zfill(16)]
@@ -2715,7 +2717,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             self.driver.set_fake_storage(self.sim)
             self.ctxt = context.get_admin_context()
 
-        self._reset_flags()
+        else:
+            self._reset_flags()
         self.ctxt = context.get_admin_context()
         db_driver = self.driver.configuration.db_driver
         self.db = importutils.import_module(db_driver)
@@ -2724,14 +2727,18 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.check_for_setup_error()
         self.driver._helpers.check_fcmapping_interval = 0
 
-    def _set_flag(self, flag, value):
-        group = self.driver.configuration.config_group
-        self.driver.configuration.set_override(flag, value, group)
+    def _set_flag(self, flag, value, configuration=None):
+        if not configuration:
+            configuration = self.driver.configuration
+        group = configuration.config_group
+        configuration.set_override(flag, value, group)
 
-    def _reset_flags(self):
-        self.driver.configuration.local_conf.reset()
+    def _reset_flags(self, configuration=None):
+        if not configuration:
+            configuration = self.driver.configuration
+        configuration.local_conf.reset()
         for k, v in self._def_flags.items():
-            self._set_flag(k, v)
+            self._set_flag(k, v, configuration)
 
     def _assert_vol_exists(self, name, exists):
         is_vol_defined = self.driver._helpers.is_vdisk_defined(name)
@@ -2884,6 +2891,49 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
             privatekey=self._driver.configuration.san_private_key,
             min_size=self._driver.configuration.ssh_min_pool_conn,
             max_size=self._driver.configuration.ssh_max_pool_conn)
+
+    @mock.patch.object(ssh_utils, 'SSHPool')
+    @mock.patch.object(processutils, 'ssh_execute')
+    def test_run_ssh_both_ip_set_failure(self, mock_ssh_execute,
+                                         mock_ssh_pool):
+        mock_ssh_pool.side_effect = [
+            paramiko.SSHException,
+            mock.MagicMock(),
+            mock.MagicMock()]
+        mock_ssh_execute.side_effect = [processutils.ProcessExecutionError,
+                                        processutils.ProcessExecutionError]
+        ssh_cmd = ['svcinfo']
+        self.assertRaises(processutils.ProcessExecutionError,
+                          self._driver._run_ssh, ssh_cmd)
+
+    @mock.patch.object(ssh_utils, 'SSHPool')
+    @mock.patch.object(processutils, 'ssh_execute')
+    def test_run_ssh_second_ip_not_set_failure(self, mock_ssh_execute,
+                                               mock_ssh_pool):
+        mock_ssh_execute.side_effect = [processutils.ProcessExecutionError,
+                                        mock.MagicMock()]
+        self._set_flag('storwize_san_secondary_ip', None)
+        ssh_cmd = ['svcinfo']
+        self.assertRaises(processutils.ProcessExecutionError,
+                          self._driver._run_ssh, ssh_cmd)
+
+    @mock.patch.object(random, 'randint', mock.Mock(return_value=0))
+    @mock.patch.object(ssh_utils, 'SSHPool')
+    @mock.patch.object(processutils, 'ssh_execute')
+    def test_run_ssh_consistent_active_ip(self, mock_ssh_execute,
+                                          mock_ssh_pool):
+        ssh_cmd = ['svcinfo']
+        self._driver._run_ssh(ssh_cmd)
+        self._driver._run_ssh(ssh_cmd)
+        self._driver._run_ssh(ssh_cmd)
+        self.assertEqual(self._driver.configuration.san_ip,
+                         self._driver.active_ip)
+        mock_ssh_execute.side_effect = [paramiko.SSHException,
+                                        mock.MagicMock(), mock.MagicMock()]
+        self._driver._run_ssh(ssh_cmd)
+        self._driver._run_ssh(ssh_cmd)
+        self.assertEqual(self._driver.configuration.storwize_san_secondary_ip,
+                         self._driver.active_ip)
 
     def _generate_vol_info(self, vol_name, vol_id):
         pool = _get_test_pool()
