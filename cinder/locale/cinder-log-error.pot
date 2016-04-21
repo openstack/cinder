@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Project-Id-Version: cinder 8.0.1.dev143\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-18 07:12+0000\n"
+"POT-Creation-Date: 2016-04-21 07:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -48,26 +48,26 @@ msgstr ""
 msgid "Failed to roll back reservations %s"
 msgstr ""
 
-#: cinder/service.py:305
+#: cinder/service.py:310
 #, python-format
 msgid ""
 "Manager for service %(binary)s %(host)s is reporting problems, not "
 "sending heartbeat. Service will appear \"down\"."
 msgstr ""
 
-#: cinder/service.py:332
+#: cinder/service.py:337
 msgid "Recovered model server connection!"
 msgstr ""
 
-#: cinder/service.py:337
+#: cinder/service.py:342
 msgid "model server went away"
 msgstr ""
 
-#: cinder/service.py:344
+#: cinder/service.py:349
 msgid "DBError encountered: "
 msgstr ""
 
-#: cinder/service.py:349
+#: cinder/service.py:354
 msgid "Exception encountered: "
 msgstr ""
 
@@ -1001,7 +1001,7 @@ msgstr ""
 msgid "Failed to umount %(share)s, reason=%(stderr)s"
 msgstr ""
 
-#: cinder/volume/drivers/glusterfs.py:372 cinder/volume/drivers/remotefs.py:270
+#: cinder/volume/drivers/glusterfs.py:372 cinder/volume/drivers/remotefs.py:271
 #, python-format
 msgid "Exception during mounting %s"
 msgstr ""
@@ -1042,12 +1042,12 @@ msgstr ""
 msgid "Unable to delete due to existing snapshot for volume: %s"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:691
+#: cinder/volume/drivers/lvm.py:698
 #, python-format
 msgid "Destination Volume Group %s does not exist"
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:723
+#: cinder/volume/drivers/lvm.py:730
 #, python-format
 msgid "Volume migration failed due to exception: %(reason)s."
 msgstr ""
@@ -1116,21 +1116,21 @@ msgstr ""
 msgid "Unable to rename the logical volume for volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:482
+#: cinder/volume/drivers/remotefs.py:483
 #, python-format
 msgid "Share %s ignored due to invalid format. Must be of form address:/export."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:616
+#: cinder/volume/drivers/remotefs.py:617
 #, python-format
 msgid "Failed to created Cinder secure environment indicator file: %s"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1278
+#: cinder/volume/drivers/remotefs.py:1288
 msgid "Call to Nova to create snapshot failed"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1370
+#: cinder/volume/drivers/remotefs.py:1380
 msgid "Call to Nova delete snapshot failed"
 msgstr ""
 
@@ -1255,89 +1255,109 @@ msgstr ""
 msgid "Failed to create cloned volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:222
+#: cinder/volume/drivers/solidfire.py:199
+#, python-format
+msgid ""
+"Failed to initialize SolidFire driver to a remote cluster specified at "
+"id: %s"
+msgstr ""
+
+#: cinder/volume/drivers/solidfire.py:250
 #, python-format
 msgid "Cluster pairing failed: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:489
+#: cinder/volume/drivers/solidfire.py:534
 #, python-format
 msgid "Failed to retrieve volume SolidFire-ID: %s in get_by_account!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:682
+#: cinder/volume/drivers/solidfire.py:728
 #, python-format
 msgid "Volume %s, not found on SF Cluster."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:685
+#: cinder/volume/drivers/solidfire.py:731
 #, python-format
 msgid "Found %(count)s volumes mapped to id: %(uuid)s."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:767
+#: cinder/volume/drivers/solidfire.py:813
 #, python-format
 msgid "Failed image conversion during cache creation: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1162
+#: cinder/volume/drivers/solidfire.py:1307
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting delete_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1165
+#: cinder/volume/drivers/solidfire.py:1310
 msgid "This usually means the volume was never successfully created."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1182
+#: cinder/volume/drivers/solidfire.py:1341
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "delete_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1212
+#: cinder/volume/drivers/solidfire.py:1371
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting create_snapshot operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1424
+#: cinder/volume/drivers/solidfire.py:1601
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "extend_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1493
+#: cinder/volume/drivers/solidfire.py:1673
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "attach_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1519
+#: cinder/volume/drivers/solidfire.py:1699
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "detach_volume operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1541
+#: cinder/volume/drivers/solidfire.py:1721
 #, python-format
 msgid ""
 "Volume ID %s was not found on the SolidFire Cluster while attempting "
 "accept_transfer operation!"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1659
+#: cinder/volume/drivers/solidfire.py:1839
 #, python-format
 msgid ""
 "Account for Volume ID %s was not found on the SolidFire Cluster while "
 "attempting unmanage operation!"
+msgstr ""
+
+#: cinder/volume/drivers/solidfire.py:1882
+#, python-format
+msgid ""
+"SolidFire driver received failover_host but was unable to find specified "
+"replication pair with id: %s."
+msgstr ""
+
+#: cinder/volume/drivers/solidfire.py:1890
+msgid ""
+"SolidFire driver received failover_host request, however replication is "
+"NOT enabled, or there are no available targets to fail-over to."
 msgstr ""
 
 #: cinder/volume/drivers/tintri.py:161

@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Project-Id-Version: cinder 8.0.1.dev143\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-18 07:12+0000\n"
+"POT-Creation-Date: 2016-04-21 07:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1107,12 +1107,12 @@ msgid ""
 "allows cloud admin to list and get any project."
 msgstr ""
 
-#: cinder/service.py:377
+#: cinder/service.py:382
 #, python-format
 msgid "%(worker_name)s value of %(workers)d is invalid, must be greater than 0."
 msgstr ""
 
-#: cinder/service.py:463
+#: cinder/service.py:468
 msgid "serve() can only be called once"
 msgstr ""
 
@@ -1228,32 +1228,32 @@ msgstr ""
 msgid "Must specify a valid status"
 msgstr ""
 
-#: cinder/api/contrib/admin_actions.py:162
+#: cinder/api/contrib/admin_actions.py:173
 msgid "Must specify a valid attach status"
 msgstr ""
 
-#: cinder/api/contrib/admin_actions.py:169
+#: cinder/api/contrib/admin_actions.py:180
 msgid "Must specify a valid migration status"
 msgstr ""
 
-#: cinder/api/contrib/admin_actions.py:175
+#: cinder/api/contrib/admin_actions.py:186
 msgid "Must specify 'status', 'attach_status' or 'migration_status' for update."
 msgstr ""
 
-#: cinder/api/contrib/admin_actions.py:192
+#: cinder/api/contrib/admin_actions.py:203
 msgid "Must specify 'connector'."
 msgstr ""
 
-#: cinder/api/contrib/admin_actions.py:196
+#: cinder/api/contrib/admin_actions.py:207
 #: cinder/api/contrib/volume_actions.py:258
 msgid "Unable to terminate volume connection from backend."
 msgstr ""
 
-#: cinder/api/contrib/admin_actions.py:231
+#: cinder/api/contrib/admin_actions.py:242
 msgid "Must specify 'host'."
 msgstr ""
 
-#: cinder/api/contrib/admin_actions.py:252
+#: cinder/api/contrib/admin_actions.py:263
 msgid "Must specify 'new_volume'"
 msgstr ""
 
@@ -2715,7 +2715,7 @@ msgid ""
 msgstr ""
 
 #: cinder/image/image_utils.py:204 cinder/image/image_utils.py:314
-#: cinder/volume/drivers/solidfire.py:709
+#: cinder/volume/drivers/solidfire.py:755
 msgid "'qemu-img info' parsing failed."
 msgstr ""
 
@@ -2745,12 +2745,12 @@ msgid ""
 msgstr ""
 
 #: cinder/image/image_utils.py:321 cinder/image/image_utils.py:384
-#: cinder/volume/drivers/solidfire.py:716
+#: cinder/volume/drivers/solidfire.py:762
 #, python-format
 msgid "fmt=%(fmt)s backed by:%(backing_file)s"
 msgstr ""
 
-#: cinder/image/image_utils.py:340 cinder/volume/drivers/solidfire.py:761
+#: cinder/image/image_utils.py:340 cinder/volume/drivers/solidfire.py:807
 #, python-format
 msgid "Converted to %(vol_format)s, but format is now %(file_format)s"
 msgstr ""
@@ -4291,7 +4291,7 @@ msgid ""
 "%(size)s was not a floating-point number."
 msgstr ""
 
-#: cinder/volume/drivers/lvm.py:731
+#: cinder/volume/drivers/lvm.py:687
 #, python-format
 msgid ""
 "Refusing to migrate volume ID: %(id)s. Please check your configuration "
@@ -4487,7 +4487,7 @@ msgid ""
 "host>/<volume name>"
 msgstr ""
 
-#: cinder/volume/drivers/quobyte.py:298 cinder/volume/drivers/smbfs.py:520
+#: cinder/volume/drivers/quobyte.py:298 cinder/volume/drivers/smbfs.py:522
 #: cinder/volume/drivers/vzstorage.py:256
 msgid "Extend volume is only supported for this driver when no snapshots exist."
 msgstr ""
@@ -4572,99 +4572,99 @@ msgid ""
 " was not a floating-point number."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:123
+#: cinder/volume/drivers/remotefs.py:124
 msgid "The decorated method must accept either a volume or a snapshot object"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:191
+#: cinder/volume/drivers/remotefs.py:192
 #, python-format
 msgid ""
 "NAS config '%(name)s=%(value)s' invalid. Must be 'auto', 'true', or "
 "'false'"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:420 cinder/volume/drivers/smbfs.py:590
+#: cinder/volume/drivers/remotefs.py:421 cinder/volume/drivers/smbfs.py:592
 #, python-format
 msgid "Expected volume size was %d"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:421
+#: cinder/volume/drivers/remotefs.py:422
 #, python-format
 msgid " but size is now %d"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:448
+#: cinder/volume/drivers/remotefs.py:449
 #, python-format
 msgid ""
 "Share %s ignored due to invalid format. Must be of form address:/export. "
-"Please check the nas_ip and nas_share_path settings."
+"Please check the nas_host and nas_share_path settings."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:676
+#: cinder/volume/drivers/remotefs.py:679
 msgid "'active' must be present when writing snap_info."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:699
+#: cinder/volume/drivers/remotefs.py:709
 #, python-format
 msgid "File %(path)s has invalid backing file %(bfile)s, aborting."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:824
+#: cinder/volume/drivers/remotefs.py:834
 #, python-format
 msgid ""
 "Share at %(dir)s is not writable by the Cinder volume service. Snapshot "
 "operations will not be supported."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:882
+#: cinder/volume/drivers/remotefs.py:892
 msgid "Volume status must be 'available'."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:945
+#: cinder/volume/drivers/remotefs.py:955
 msgid "Volume status must be \"available\" or \"in-use\"."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1049
+#: cinder/volume/drivers/remotefs.py:1059
 #, python-format
 msgid "No file found with %s as backing file."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1058
+#: cinder/volume/drivers/remotefs.py:1068
 #, python-format
 msgid "No snap found with %s as backing file."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1079
+#: cinder/volume/drivers/remotefs.py:1089
 msgid "Snapshot status must be \"available\" to clone."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1233
+#: cinder/volume/drivers/remotefs.py:1243
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1303
+#: cinder/volume/drivers/remotefs.py:1313
 msgid "Nova returned \"error\" status while creating snapshot."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1308
+#: cinder/volume/drivers/remotefs.py:1318
 #, python-format
 msgid ""
 "Snapshot %(id)s has been asked to be deleted while waiting for it to "
 "become available. Perhaps a concurrent request was made."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1322
+#: cinder/volume/drivers/remotefs.py:1332
 #, python-format
 msgid "Timed out while waiting for Nova update for creation of snapshot %s."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1392
+#: cinder/volume/drivers/remotefs.py:1402
 #, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:1405
+#: cinder/volume/drivers/remotefs.py:1415
 #, python-format
 msgid "Timed out while waiting for Nova update for deletion of snapshot %(id)s."
 msgstr ""
@@ -4732,49 +4732,49 @@ msgstr ""
 msgid "Failed to create a temporary snapshot for volume %s."
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:167
+#: cinder/volume/drivers/smbfs.py:168
 msgid "SMBFS config file not set (smbfs_shares_config)."
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:171
+#: cinder/volume/drivers/smbfs.py:172
 #, python-format
 msgid "SMBFS config file at %(config)s doesn't exist."
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:176
+#: cinder/volume/drivers/smbfs.py:177
 #, python-format
 msgid "Invalid mount point base: %s"
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:180
+#: cinder/volume/drivers/smbfs.py:181
 #, python-format
 msgid "SMBFS config 'smbfs_oversub_ratio' invalid.  Must be > 0: %s"
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:188
+#: cinder/volume/drivers/smbfs.py:189
 #, python-format
 msgid "SMBFS config 'smbfs_used_ratio' invalid.  Must be > 0 and <= 1.0: %s"
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:349
+#: cinder/volume/drivers/smbfs.py:351
 #, python-format
 msgid "File already exists at %s."
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:458
+#: cinder/volume/drivers/smbfs.py:460
 msgid "This driver does not support snapshotting in-use volumes."
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:462
+#: cinder/volume/drivers/smbfs.py:464
 msgid "This driver does not support deleting in-use snapshots."
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:474
+#: cinder/volume/drivers/smbfs.py:476
 #, python-format
 msgid "Snapshots are not supported for this volume format: %s"
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:591
+#: cinder/volume/drivers/smbfs.py:593
 #, python-format
 msgid " but size is now %d."
 msgstr ""
@@ -4784,58 +4784,58 @@ msgstr ""
 msgid "Retry count exceeded for command: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:205
-#: cinder/volume/drivers/solidfire.py:1689
+#: cinder/volume/drivers/solidfire.py:221
+#: cinder/volume/drivers/solidfire.py:1952
 #, python-format
 msgid "Attribute: %s not found."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:394
-#: cinder/volume/drivers/solidfire.py:555
+#: cinder/volume/drivers/solidfire.py:430
+#: cinder/volume/drivers/solidfire.py:600
 #, python-format
 msgid "API response: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:574
+#: cinder/volume/drivers/solidfire.py:619
 msgid "Failed to get model update from clone"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:808
+#: cinder/volume/drivers/solidfire.py:854
 msgid "Failed to create SolidFire Image-Volume"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:868
+#: cinder/volume/drivers/solidfire.py:913
 msgid "Volumes/account exceeded on both primary and secondary SolidFire accounts."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1254
+#: cinder/volume/drivers/solidfire.py:1413
 #, python-format
 msgid ""
 "Retrieved a different amount of SolidFire volumes for the provided Cinder"
 " volumes. Retrieved: %(ret)s Desired: %(des)s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1295
+#: cinder/volume/drivers/solidfire.py:1454
 #, python-format
 msgid "Failed to find group snapshot named: %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1374
+#: cinder/volume/drivers/solidfire.py:1551
 #, python-format
 msgid ""
 "Retrieved a different amount of SolidFire volumes for the provided Cinder"
 " snapshots. Retrieved: %(ret)s Desired: %(des)s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1605
+#: cinder/volume/drivers/solidfire.py:1785
 msgid "Manage existing volume requires 'source-id'."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1646
+#: cinder/volume/drivers/solidfire.py:1826
 msgid "Manage existing get size requires 'id'."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1662
+#: cinder/volume/drivers/solidfire.py:1842
 msgid "Failed to find account for volume."
 msgstr ""
 
