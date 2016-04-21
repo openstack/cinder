@@ -101,10 +101,12 @@ class HPE3PARFCDriver(driver.TransferVD,
         3.0.5 - Optimize array ID retrieval
         3.0.6 - Update replication to version 2.1
         3.0.7 - Remove metadata that tracks the instance ID. bug #1572665
+        3.0.8 - NSP feature, creating FC Vlun as match set instead of
+                host sees. bug #1577993
 
     """
 
-    VERSION = "3.0.7"
+    VERSION = "3.0.8"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
@@ -265,26 +267,69 @@ class HPE3PARFCDriver(driver.TransferVD,
         try:
             # we have to make sure we have a host
             host = self._create_host(common, volume, connector)
-
             target_wwns, init_targ_map, numPaths = \
                 self._build_initiator_target_map(common, connector)
-
             # check if a VLUN already exists for this host
             existing_vlun = common.find_existing_vlun(volume, host)
 
             vlun = None
             if existing_vlun is None:
                 # now that we have a host, create the VLUN
-                if self.lookup_service is not None and numPaths == 1:
-                    nsp = None
-                    active_fc_port_list = common.get_active_fc_target_ports()
-                    for port in active_fc_port_list:
-                        if port['portWWN'].lower() == target_wwns[0].lower():
-                            nsp = port['nsp']
-                            break
-                    vlun = common.create_vlun(volume, host, nsp)
+                nsp = None
+                lun_id = None
+                active_fc_port_list = common.get_active_fc_target_ports()
+
+                if self.lookup_service:
+                    if not init_targ_map:
+                        msg = _("Setup is incomplete. Device mapping "
+                                "not found from FC network. "
+                                "Cannot perform VLUN creation.")
+                        LOG.error(msg)
+                        raise exception.FCSanLookupServiceException(msg)
+
+                    for target_wwn in target_wwns:
+                        for port in active_fc_port_list:
+                            if port['portWWN'].lower() == target_wwn.lower():
+                                nsp = port['nsp']
+                                vlun = common.create_vlun(volume,
+                                                          host,
+                                                          nsp,
+                                                          lun_id=lun_id)
+                                if lun_id is None:
+                                    lun_id = vlun['lun']
+                                break
                 else:
-                    vlun = common.create_vlun(volume, host)
+                    init_targ_map.clear()
+                    del target_wwns[:]
+                    host_connected_nsp = []
+                    for fcpath in host['FCPaths']:
+                        if 'portPos' in fcpath:
+                            host_connected_nsp.append(
+                                common.build_nsp(fcpath['portPos']))
+                    for port in active_fc_port_list:
+                        if (
+                            port['type'] == common.client.PORT_TYPE_HOST and
+                            port['nsp'] in host_connected_nsp
+                        ):
+                            nsp = port['nsp']
+                            vlun = common.create_vlun(volume,
+                                                      host,
+                                                      nsp,
+                                                      lun_id=lun_id)
+                            target_wwns.append(port['portWWN'])
+                            if vlun['remoteName'] in init_targ_map:
+                                init_targ_map[vlun['remoteName']].append(
+                                    port['portWWN'])
+                            else:
+                                init_targ_map[vlun['remoteName']] = [
+                                    port['portWWN']]
+                            if lun_id is None:
+                                lun_id = vlun['lun']
+                if lun_id is None:
+                    # New vlun creation failed
+                    msg = _('No new vlun(s) were created')
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(msg)
             else:
                 vlun = existing_vlun
 
@@ -296,7 +341,6 @@ class HPE3PARFCDriver(driver.TransferVD,
 
             encryption_key_id = volume.get('encryption_key_id', None)
             info['data']['encrypted'] = encryption_key_id is not None
-
             return info
         finally:
             self._logout(common)

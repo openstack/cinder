@@ -121,11 +121,13 @@ class HPE3PARBaseDriver(object):
     VOLUME_ID_SNAP = '761fc5e5-5191-4ec7-aeba-33e36de44156'
     FAKE_DESC = 'test description name'
     FAKE_FC_PORTS = [{'portPos': {'node': 7, 'slot': 1, 'cardPort': 1},
+                      'type': 1,
                       'portWWN': '0987654321234',
                       'protocol': 1,
                       'mode': 2,
                       'linkState': 4},
                      {'portPos': {'node': 6, 'slot': 1, 'cardPort': 1},
+                      'type': 1,
                       'portWWN': '123456789000987',
                       'protocol': 1,
                       'mode': 2,
@@ -334,6 +336,7 @@ class HPE3PARBaseDriver(object):
         'PORT_STATE_READY': 4,
         'PORT_PROTO_ISCSI': 2,
         'PORT_PROTO_FC': 1,
+        'PORT_TYPE_HOST': 1,
         'TASK_DONE': TASK_DONE,
         'TASK_ACTIVE': TASK_ACTIVE,
         'HOST_EDIT_ADD': 1,
@@ -4487,16 +4490,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                              'firmwareVersion': None,
                              'hostSpeed': 0,
                              'model': None,
-                             'portPos': {'cardPort': 1, 'node': 1,
-                                         'slot': 2},
+                             'portPos': {'cardPort': 1, 'node': 7,
+                                         'slot': 1},
                              'vendor': None,
                              'wwn': self.wwn[0]},
                             {'driverVersion': None,
                              'firmwareVersion': None,
                              'hostSpeed': 0,
                              'model': None,
-                             'portPos': {'cardPort': 1, 'node': 0,
-                                         'slot': 2},
+                             'portPos': {'cardPort': 1, 'node': 6,
+                                         'slot': 1},
                              'vendor': None,
                              'wwn': self.wwn[1]}]}]
         mock_client.queryHost.return_value = {
@@ -4509,6 +4512,13 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
+              'portPos': {'node': 7, 'slot': 1, 'cardPort': 1},
+              'remoteName': self.wwn[1],
+              'lun': 90, 'type': 0}],
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'portPos': {'node': 6, 'slot': 1, 'cardPort': 1},
+              'remoteName': self.wwn[0],
               'lun': 90, 'type': 0}]]
 
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
@@ -4517,6 +4527,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                      'host': self.FAKE_HOST,
                      'nsp': 'something'})
         mock_client.createVLUN.return_value = location
+        expected_properties = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'encrypted': False,
+                'target_lun': 90,
+                'target_wwn': ['0987654321234', '123456789000987'],
+                'target_discovered': True,
+                'initiator_target_map':
+                    {'123456789012345': ['123456789000987'],
+                     '123456789054321': ['0987654321234']}}}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -4534,11 +4554,20 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.getPorts(),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.getPorts(),
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,
                     hostname=self.FAKE_HOST,
-                    lun=None),
+                    lun=None,
+                    portPos={'node': 7, 'slot': 1, 'cardPort': 1}),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.createVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    auto=False,
+                    hostname=self.FAKE_HOST,
+                    lun=90,
+                    portPos={'node': 6, 'slot': 1, 'cardPort': 1}),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
@@ -4546,7 +4575,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            self.assertDictMatch(self.properties, result)
+            self.assertDictMatch(expected_properties, result)
 
     @mock.patch('cinder.zonemanager.utils.create_lookup_service')
     def test_initialize_connection_with_lookup_single_nsp(self, mock_lookup):
@@ -4587,7 +4616,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
               'lun': 90, 'type': 0,
-              'portPos': {'cardPort': 1, 'node': 7, 'slot': 1}, }]]
+              'portPos': {'cardPort': 1, 'node': 7, 'slot': 1}}]]
 
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
                     {'volume_name': self.VOLUME_3PAR_NAME,
@@ -4655,16 +4684,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                              'firmwareVersion': None,
                              'hostSpeed': 0,
                              'model': None,
-                             'portPos': {'cardPort': 1, 'node': 1,
-                                         'slot': 2},
+                             'portPos': {'cardPort': 1, 'node': 7,
+                                         'slot': 1},
                              'vendor': None,
                              'wwn': self.wwn[0]},
                             {'driverVersion': None,
                              'firmwareVersion': None,
                              'hostSpeed': 0,
                              'model': None,
-                             'portPos': {'cardPort': 1, 'node': 0,
-                                         'slot': 2},
+                             'portPos': {'cardPort': 1, 'node': 6,
+                                         'slot': 1},
                              'vendor': None,
                              'wwn': self.wwn[1]}]}]
         mock_client.queryHost.return_value = {
@@ -4677,6 +4706,13 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             hpeexceptions.HTTPNotFound('fake'),
             [{'active': True,
               'volumeName': self.VOLUME_3PAR_NAME,
+              'lun': 90, 'type': 0,
+              'remoteName': self.wwn[1],
+              'portPos': {'cardPort': 1, 'node': 7, 'slot': 1}}],
+            [{'active': True,
+              'volumeName': self.VOLUME_3PAR_NAME,
+              'portPos': {'node': 6, 'slot': 1, 'cardPort': 1},
+              'remoteName': self.wwn[0],
               'lun': 90, 'type': 0}]]
 
         location = ("%(volume_name)s,%(lun_id)s,%(host)s,%(nsp)s" %
@@ -4685,6 +4721,16 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                      'host': self.FAKE_HOST,
                      'nsp': 'something'})
         mock_client.createVLUN.return_value = location
+        expected_properties = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'encrypted': True,
+                'target_lun': 90,
+                'target_wwn': ['0987654321234', '123456789000987'],
+                'target_discovered': True,
+                'initiator_target_map':
+                    {'123456789012345': ['123456789000987'],
+                     '123456789054321': ['0987654321234']}}}
 
         with mock.patch.object(hpecommon.HPE3PARCommon,
                                '_create_client') as mock_create_client:
@@ -4702,11 +4748,20 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 mock.call.getHost(self.FAKE_HOST),
                 mock.call.getPorts(),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.getPorts(),
                 mock.call.createVLUN(
                     self.VOLUME_3PAR_NAME,
                     auto=True,
                     hostname=self.FAKE_HOST,
-                    lun=None),
+                    lun=None,
+                    portPos={'node': 7, 'slot': 1, 'cardPort': 1}),
+                mock.call.getHostVLUNs(self.FAKE_HOST),
+                mock.call.createVLUN(
+                    self.VOLUME_3PAR_NAME,
+                    auto=False,
+                    hostname=self.FAKE_HOST,
+                    lun=90,
+                    portPos={'node': 6, 'slot': 1, 'cardPort': 1}),
                 mock.call.getHostVLUNs(self.FAKE_HOST)]
 
             mock_client.assert_has_calls(
@@ -4714,8 +4769,6 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
                 expected +
                 self.standard_logout)
 
-            expected_properties = self.properties
-            expected_properties['data']['encrypted'] = True
             self.assertDictMatch(expected_properties, result)
 
     def test_terminate_connection(self):
