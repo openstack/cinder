@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Project-Id-Version: cinder 8.0.1.dev143\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-18 05:44+0000\n"
+"POT-Creation-Date: 2016-04-20 17:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6866,14 +6866,6 @@ msgid ""
 msgstr ""
 "Установка группы стратегий QoS для файлов не поддерживается в этом семействе "
 "памяти и версии ontap."
-
-#, python-format
-msgid ""
-"Share %s ignored due to invalid format. Must be of form address:/export. "
-"Please check the nas_ip and nas_share_path settings."
-msgstr ""
-"Общий ресурс %s проигнорирован: недопустимый формат. Должен быть формат "
-"адрес:/экспорт. Проверьте параметры nas_ip и nas_share_path."
 
 #, python-format
 msgid ""
