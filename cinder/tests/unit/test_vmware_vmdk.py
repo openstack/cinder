@@ -822,12 +822,18 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch.object(VMDK_DRIVER, '_validate_disk_format')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_create_backing')
     @mock.patch('oslo_vmware.image_transfer.upload_image')
     @mock.patch.object(VMDK_DRIVER, 'session')
-    def test_copy_volume_to_image(
-            self, session, upload_image, vops, validate_disk_format):
+    def _test_copy_volume_to_image(
+            self, session, upload_image, create_backing, vops,
+            validate_disk_format, backing_exists=True):
         backing = mock.sentinel.backing
-        vops.get_backing.return_value = backing
+        if backing_exists:
+            vops.get_backing.return_value = backing
+        else:
+            vops.get_backing.return_value = None
+            create_backing.return_value = backing
 
         vmdk_file_path = mock.sentinel.vmdk_file_path
         vops.get_vmdk_path.return_value = vmdk_file_path
@@ -841,6 +847,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         validate_disk_format.assert_called_once_with(image_meta['disk_format'])
         vops.get_backing.assert_called_once_with(volume['name'])
+        if not backing_exists:
+            create_backing.assert_called_once_with(volume)
         vops.get_vmdk_path.assert_called_once_with(backing)
         upload_image.assert_called_once_with(
             context,
@@ -858,208 +866,309 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             image_version=1,
             is_public=image_meta['is_public'])
 
-    @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
-    @mock.patch('oslo_utils.uuidutils.generate_uuid')
-    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
-    @mock.patch('cinder.volume.volume_types.get_volume_type_extra_specs')
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_retype(self, ds_sel, vops, get_volume_type_extra_specs,
-                    get_volume_group_folder, generate_uuid,
-                    delete_temp_backing):
-        self._test_retype(ds_sel, vops, get_volume_type_extra_specs,
-                          get_volume_group_folder, generate_uuid,
-                          delete_temp_backing)
+    def test_copy_volume_to_image(self):
+        self._test_copy_volume_to_image()
+
+    def test_copy_volume_to_image_with_no_backing(self):
+        self._test_copy_volume_to_image(backing_exists=False)
 
     def test_in_use(self):
-        # Test with in-use volume.
-        vol = {'size': 1, 'status': 'in-use', 'name': 'vol-1',
-               'volume_type_id': 'def'}
-        vol['volume_attachment'] = [mock.sentinel.volume_attachment]
-        self.assertTrue(self._driver._in_use(vol))
+        volume = self._create_volume_dict(
+            attachment=[mock.sentinel.attachment_1])
+        self.assertTrue(self._driver._in_use(volume))
 
-        # Test with available volume.
-        vol['status'] = 'available'
-        vol['volume_attachment'] = None
-        self.assertIsNone(self._driver._in_use(vol))
+    def test_in_use_with_available_volume(self):
+        volume = self._create_volume_dict()
+        self.assertFalse(self._driver._in_use(volume))
 
-        vol['volume_attachment'] = []
-        ret = self._driver._in_use(vol)
-        # _in_use returns [] here
-        self.assertFalse(ret)
-        self.assertEqual(0, len(ret))
-
-    def _test_retype(self, ds_sel, vops, get_volume_type_extra_specs,
-                     get_volume_group_folder, genereate_uuid,
-                     delete_temp_backing):
-        self._driver._storage_policy_enabled = True
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=True)
+    def test_retype_with_in_use_volume(self, in_use):
         context = mock.sentinel.context
+        volume = self._create_volume_dict(
+            status='retyping', attachment=[mock.sentinel.attachment_1])
+        new_type = mock.sentinel.new_type
         diff = mock.sentinel.diff
         host = mock.sentinel.host
-        new_type = {'id': 'abc'}
-
-        # Test with in-use volume.
-        vol = {'size': 1, 'status': 'retyping', 'name': 'vol-1',
-               'id': 'd11a82de-ddaa-448d-b50a-a255a7e61a1e',
-               'volume_type_id': 'def',
-               'project_id': '63c19a12292549818c09946a5e59ddaf'}
-        vol['volume_attachment'] = [mock.sentinel.volume_attachment]
-        self.assertFalse(self._driver.retype(context, vol, new_type, diff,
+        self.assertFalse(self._driver.retype(context, volume, new_type, diff,
                                              host))
+        in_use.assert_called_once_with(volume)
 
-        # Test with no backing.
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_retype_with_no_volume_backing(self, vops, in_use):
         vops.get_backing.return_value = None
-        vol['volume_attachment'] = None
-        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+
+        context = mock.sentinel.context
+        volume = self._create_volume_dict(status='retyping')
+        new_type = mock.sentinel.new_type
+        diff = mock.sentinel.diff
+        host = mock.sentinel.host
+        self.assertTrue(self._driver.retype(context, volume, new_type, diff,
                                             host))
 
-        # Test with no disk type conversion, no profile change and
-        # compliant datastore.
-        ds_value = mock.sentinel.datastore_value
-        datastore = mock.Mock(value=ds_value)
-        vops.get_datastore.return_value = datastore
-
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_disk_type')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_extra_spec_disk_type')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_retype_with_diff_profile_and_ds_compliance(
+            self, ds_sel, get_extra_spec_storage_profile, get_storage_profile,
+            get_extra_spec_disk_type, get_disk_type, vops, in_use):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
-        get_volume_type_extra_specs.side_effect = [vmdk.THIN_VMDK_TYPE,
-                                                   vmdk.THIN_VMDK_TYPE,
-                                                   None,
-                                                   None]
-        ds_sel.is_datastore_compliant.return_value = True
-        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
-                                            host))
+        datastore = mock.Mock(value='ds1')
+        vops.get_datastore.return_value = datastore
 
-        # Test with no disk type conversion, profile change and
-        # compliant datastore.
-        new_profile = mock.sentinel.new_profile
-        get_volume_type_extra_specs.side_effect = [vmdk.THIN_VMDK_TYPE,
-                                                   vmdk.THIN_VMDK_TYPE,
-                                                   'gold-1',
-                                                   new_profile]
-        ds_sel.is_datastore_compliant.return_value = True
-        profile_id = mock.sentinel.profile_id
-        ds_sel.get_profile_id.return_value = profile_id
+        disk_type = mock.sentinel.disk_type
+        get_disk_type.return_value = disk_type
+        get_extra_spec_disk_type.return_value = disk_type
 
-        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+        self._driver._storage_policy_enabled = True
+        profile = 'gold'
+        get_storage_profile.return_value = profile
+        new_profile = 'silver'
+        get_extra_spec_storage_profile.return_value = new_profile
+
+        ds_sel.is_datastore_compliant.return_value = True
+
+        new_profile_id = mock.sentinel.new_profile_id
+        ds_sel.get_profile_id.return_value = new_profile_id
+
+        context = mock.sentinel.context
+        volume = self._create_volume_dict(status='retyping')
+        new_type = {'id': 'f04a65e0-d10c-4db7-b4a5-f933d57aa2b5'}
+        diff = mock.sentinel.diff
+        host = mock.sentinel.host
+        self.assertTrue(self._driver.retype(context, volume, new_type, diff,
                                             host))
+        ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
+                                                              new_profile)
+        self.assertFalse(ds_sel.select_datastore.called)
         vops.change_backing_profile.assert_called_once_with(backing,
-                                                            profile_id)
+                                                            new_profile_id)
 
-        # Test with disk type conversion, profile change and a backing with
-        # snapshots. Also test the no candidate datastore case.
-        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
-                                                   vmdk.THIN_VMDK_TYPE,
-                                                   'gold-1',
-                                                   new_profile]
-        vops.snapshot_exists.return_value = True
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_disk_type')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_extra_spec_disk_type')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_retype_with_diff_profile_and_ds_sel_no_candidate(
+            self, ds_sel, get_extra_spec_storage_profile, get_storage_profile,
+            get_extra_spec_disk_type, get_disk_type, vops, in_use):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        datastore = mock.Mock(value='ds1')
+        vops.get_datastore.return_value = datastore
+
+        disk_type = mock.sentinel.disk_type
+        get_disk_type.return_value = disk_type
+        get_extra_spec_disk_type.return_value = disk_type
+
+        vops.snapshot_exists.return_value = False
+
+        self._driver._storage_policy_enabled = True
+        profile = 'gold'
+        get_storage_profile.return_value = profile
+        new_profile = 'silver'
+        get_extra_spec_storage_profile.return_value = new_profile
+
+        ds_sel.is_datastore_compliant.return_value = False
         ds_sel.select_datastore.return_value = ()
 
-        self.assertFalse(self._driver.retype(context, vol, new_type, diff,
+        context = mock.sentinel.context
+        volume = self._create_volume_dict(status='retyping')
+        new_type = {'id': 'f04a65e0-d10c-4db7-b4a5-f933d57aa2b5'}
+        diff = mock.sentinel.diff
+        host = mock.sentinel.host
+        self.assertFalse(self._driver.retype(context, volume, new_type, diff,
                                              host))
-        exp_req = {hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: [ds_value],
-                   hub.DatastoreSelector.PROFILE_NAME: new_profile,
-                   hub.DatastoreSelector.SIZE_BYTES: units.Gi}
-        ds_sel.select_datastore.assert_called_once_with(exp_req)
+        ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
+                                                              new_profile)
+        ds_sel.select_datastore.assert_called_once_with(
+            {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
+             hub.DatastoreSelector.PROFILE_NAME: new_profile})
 
-        # Modify the previous case with a candidate datastore which is
-        # different than the backing's current datastore.
-        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
-                                                   vmdk.THIN_VMDK_TYPE,
-                                                   'gold-1',
-                                                   new_profile]
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_disk_type')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_extra_spec_disk_type')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    def test_retype_with_diff_extra_spec_and_vol_snapshot(
+            self,
+            get_volume_group_folder,
+            ds_sel, get_extra_spec_storage_profile,
+            get_storage_profile,
+            get_extra_spec_disk_type,
+            get_disk_type,
+            vops,
+            in_use):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        datastore = mock.Mock(value='ds1')
+        vops.get_datastore.return_value = datastore
+
+        get_disk_type.return_value = 'thin'
+        new_disk_type = 'thick'
+        get_extra_spec_disk_type.return_value = new_disk_type
+
         vops.snapshot_exists.return_value = True
 
+        self._driver._storage_policy_enabled = True
+        profile = 'gold'
+        get_storage_profile.return_value = profile
+        new_profile = 'silver'
+        get_extra_spec_storage_profile.return_value = new_profile
+
+        ds_sel.is_datastore_compliant.return_value = False
         host = mock.sentinel.host
         rp = mock.sentinel.rp
-        candidate_ds = mock.Mock(value=mock.sentinel.candidate_ds_value)
-        summary = mock.Mock(datastore=candidate_ds)
+        new_datastore = mock.Mock(value='ds2')
+        summary = mock.Mock(datastore=new_datastore)
         ds_sel.select_datastore.return_value = (host, rp, summary)
 
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
 
-        vops.change_backing_profile.reset_mock()
+        new_profile_id = mock.sentinel.new_profile_id
+        ds_sel.get_profile_id.return_value = new_profile_id
 
-        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
+        context = mock.sentinel.context
+        volume = self._create_volume_dict(status='retyping')
+        new_type = {'id': 'f04a65e0-d10c-4db7-b4a5-f933d57aa2b5'}
+        diff = mock.sentinel.diff
+        host = mock.sentinel.host
+        self.assertTrue(self._driver.retype(context, volume, new_type, diff,
                                             host))
+        ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
+                                                              new_profile)
+        ds_sel.select_datastore.assert_called_once_with(
+            {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
+             hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: ['ds1'],
+             hub.DatastoreSelector.PROFILE_NAME: new_profile})
         vops.relocate_backing.assert_called_once_with(
-            backing, candidate_ds, rp, host, vmdk.THIN_VMDK_TYPE)
+            backing, new_datastore, rp, host, new_disk_type)
         vops.move_backing_to_folder.assert_called_once_with(backing, folder)
         vops.change_backing_profile.assert_called_once_with(backing,
-                                                            profile_id)
+                                                            new_profile_id)
 
-        # Modify the previous case with no profile change.
-        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
-                                                   vmdk.THIN_VMDK_TYPE,
-                                                   'gold-1',
-                                                   'gold-1']
-        ds_sel.select_datastore.reset_mock()
-        vops.relocate_backing.reset_mock()
-        vops.move_backing_to_folder.reset_mock()
-        vops.change_backing_profile.reset_mock()
+    @mock.patch.object(VMDK_DRIVER, '_in_use', return_value=False)
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_disk_type')
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
+                '_get_extra_spec_disk_type')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    @mock.patch('oslo_utils.uuidutils.generate_uuid')
+    @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
+    def _test_retype_with_diff_extra_spec_and_ds_compliance(
+            self,
+            delete_temp_backing,
+            generate_uuid,
+            get_volume_group_folder,
+            ds_sel, get_extra_spec_storage_profile,
+            get_storage_profile,
+            get_extra_spec_disk_type,
+            get_disk_type,
+            vops,
+            in_use,
+            clone_error=False):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
 
-        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
-                                            host))
-        exp_req = {hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: [ds_value],
-                   hub.DatastoreSelector.PROFILE_NAME: 'gold-1',
-                   hub.DatastoreSelector.SIZE_BYTES: units.Gi}
-        ds_sel.select_datastore.assert_called_once_with(exp_req)
-        vops.relocate_backing.assert_called_once_with(
-            backing, candidate_ds, rp, host, vmdk.THIN_VMDK_TYPE)
-        vops.move_backing_to_folder.assert_called_once_with(backing, folder)
-        self.assertFalse(vops.change_backing_profile.called)
+        datastore = mock.Mock(value='ds1')
+        vops.get_datastore.return_value = datastore
 
-        # Test with disk type conversion, profile change, backing with
-        # no snapshots and candidate datastore which is same as the backing
-        # datastore.
-        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
-                                                   vmdk.THIN_VMDK_TYPE,
-                                                   'gold-1',
-                                                   new_profile]
+        get_disk_type.return_value = 'thin'
+        new_disk_type = 'thick'
+        get_extra_spec_disk_type.return_value = new_disk_type
+
         vops.snapshot_exists.return_value = False
-        summary.datastore = datastore
+
+        self._driver._storage_policy_enabled = True
+        profile = 'gold'
+        get_storage_profile.return_value = profile
+        new_profile = 'silver'
+        get_extra_spec_storage_profile.return_value = new_profile
+
+        ds_sel.is_datastore_compliant.return_value = True
+        host = mock.sentinel.host
+        rp = mock.sentinel.rp
+        summary = mock.Mock(datastore=datastore)
+        ds_sel.select_datastore.return_value = (host, rp, summary)
+
+        folder = mock.sentinel.folder
+        get_volume_group_folder.return_value = folder
+
+        new_profile_id = mock.sentinel.new_profile_id
+        ds_sel.get_profile_id.return_value = new_profile_id
 
         uuid = '025b654b-d4ed-47f9-8014-b71a7744eafc'
-        genereate_uuid.return_value = uuid
+        generate_uuid.return_value = uuid
 
-        clone = mock.sentinel.clone
-        vops.clone_backing.return_value = clone
+        if clone_error:
+            vops.clone_backing.side_effect = exceptions.VimException
+        else:
+            new_backing = mock.sentinel.new_backing
+            vops.clone_backing.return_value = new_backing
 
-        vops.change_backing_profile.reset_mock()
-
-        self.assertTrue(self._driver.retype(context, vol, new_type, diff,
-                                            host))
-        vops.rename_backing.assert_called_once_with(backing, uuid)
+        context = mock.sentinel.context
+        volume = self._create_volume_dict(status='retyping')
+        new_type = {'id': 'f04a65e0-d10c-4db7-b4a5-f933d57aa2b5'}
+        diff = mock.sentinel.diff
+        host = mock.sentinel.host
+        if clone_error:
+            self.assertRaises(exceptions.VimException, self._driver.retype,
+                              context, volume, new_type, diff, host)
+        else:
+            self.assertTrue(self._driver.retype(context, volume, new_type,
+                                                diff, host))
+        ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
+                                                              new_profile)
+        ds_sel.select_datastore.assert_called_once_with(
+            {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
+             hub.DatastoreSelector.PROFILE_NAME: new_profile})
         vops.clone_backing.assert_called_once_with(
-            vol['name'], backing, None, volumeops.FULL_CLONE_TYPE,
-            datastore, disk_type=vmdk.THIN_VMDK_TYPE, host=host,
-            resource_pool=rp, folder=folder)
-        vops.update_backing_disk_uuid.assert_called_once_with(clone, vol['id'])
-        delete_temp_backing.assert_called_once_with(backing)
-        vops.change_backing_profile.assert_called_once_with(clone,
-                                                            profile_id)
+            volume['name'], backing, None, volumeops.FULL_CLONE_TYPE,
+            datastore, disk_type=new_disk_type, host=host, resource_pool=rp,
+            folder=folder)
+        if clone_error:
+            exp_rename_calls = [mock.call(backing, uuid),
+                                mock.call(backing, volume['name'])]
+            self.assertEqual(exp_rename_calls,
+                             vops.rename_backing.call_args_list)
+        else:
+            vops.rename_backing.assert_called_once_with(backing, uuid)
+            vops.update_backing_disk_uuid.assert_called_once_with(
+                new_backing, volume['id'])
+            delete_temp_backing.assert_called_once_with(backing)
+            vops.change_backing_profile.assert_called_once_with(new_backing,
+                                                                new_profile_id)
 
-        # Modify the previous case with exception during clone.
-        get_volume_type_extra_specs.side_effect = [vmdk.THICK_VMDK_TYPE,
-                                                   vmdk.THIN_VMDK_TYPE,
-                                                   'gold-1',
-                                                   new_profile]
+    def test_retype_with_diff_extra_spec_and_ds_compliance(self):
+        self._test_retype_with_diff_extra_spec_and_ds_compliance()
 
-        vops.clone_backing.side_effect = exceptions.VimException('error')
-
-        vops.update_backing_disk_uuid.reset_mock()
-        vops.rename_backing.reset_mock()
-        vops.change_backing_profile.reset_mock()
-
-        self.assertRaises(
-            exceptions.VimException, self._driver.retype, context, vol,
-            new_type, diff, host)
-        self.assertFalse(vops.update_backing_disk_uuid.called)
-        exp_rename_calls = [mock.call(backing, uuid),
-                            mock.call(backing, vol['name'])]
-        self.assertEqual(exp_rename_calls, vops.rename_backing.call_args_list)
-        self.assertFalse(vops.change_backing_profile.called)
+    def test_retype_with_diff_extra_spec_ds_compliance_and_clone_error(self):
+        self._test_retype_with_diff_extra_spec_and_ds_compliance(
+            clone_error=True)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_extend_backing(self, vops):
