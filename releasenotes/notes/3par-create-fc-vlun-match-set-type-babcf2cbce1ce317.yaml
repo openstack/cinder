@@ -1,0 +1,5 @@
+---
+fixes:
+  - 3PAR driver creates FC VLUN of match-set type instead of host sees.
+    With match-set, the host will see the virtual volume on specified
+    NSP (Node-Slot-Port). This change in vlun type fixes bug 1577993.
