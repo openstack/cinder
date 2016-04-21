@@ -522,6 +522,13 @@ class EMCVMAXCommonData(object):
                    'storagetype:array': u'1234567891011',
                    'isV3': True,
                    'portgroupname': u'OS-portgroup-PG'}
+    extra_specs_no_slo = {'storagetype:pool': 'SRP_1',
+                          'volume_backend_name': 'V3_BE',
+                          'storagetype:workload': None,
+                          'storagetype:slo': None,
+                          'storagetype:array': '1234567891011',
+                          'isV3': True,
+                          'portgroupname': 'OS-portgroup-PG'}
     remainingSLOCapacity = '123456789'
     SYNCHRONIZED = 4
     UNSYNCHRONIZED = 3
@@ -1932,6 +1939,32 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def fake_is_v3(self, conn, serialNumber):
         return False
+
+    def test_slo_empty_tag(self):
+        filename = 'cinder_emc_config_slo_empty_tag'
+        tempdir = tempfile.mkdtemp()
+        config_file = tempdir + '/' + filename
+        text_file = open(config_file, "w")
+        text_file.write("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
+                        "<EcomServerIp>10.10.10.10</EcomServerIp>\n"
+                        "<EcomServerPort>5988</EcomServerPort>\n"
+                        "<EcomUserName>user</EcomUserName>\n"
+                        "<EcomPassword>password</EcomPassword>\n"
+                        "<PortGroups>\n"
+                        "<PortGroup>OS-PORTGROUP1-PG</PortGroup>\n"
+                        "</PortGroups>\n"
+                        "<Pool>SRP_1</Pool>\n"
+                        "<Slo></Slo>\n"
+                        "<Workload></Workload>\n"
+                        "</EMC>")
+        text_file.close()
+
+        arrayInfo = self.driver.utils.parse_file_to_get_array_map(config_file)
+        self.assertIsNone(arrayInfo[0]['SLO'])
+        self.assertIsNone(arrayInfo[0]['Workload'])
+        bExists = os.path.exists(config_file)
+        if bExists:
+            os.remove(config_file)
 
     def populate_masking_dict_setup(self):
         extraSpecs = {'storagetype:pool': u'gold_pool',
@@ -5894,6 +5927,41 @@ class EMCV3DriverTestCase(test.TestCase):
         storagegroup['ElementName'] = 'no_masking_view'
         return storagegroup
 
+    def test_populate_masking_dict_no_slo(self):
+        extraSpecs = {'storagetype:pool': 'SRP_1',
+                      'volume_backend_name': 'V3_BE',
+                      'storagetype:workload': None,
+                      'storagetype:slo': None,
+                      'storagetype:array': '1234567891011',
+                      'isV3': True,
+                      'portgroupname': 'OS-portgroup-PG'}
+        # If fast is enabled it will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-No_SLO-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-No_SLO-MV', maskingViewDict['maskingViewName'])
+
+    def test_populate_masking_dict_slo_NONE(self):
+        extraSpecs = {'storagetype:pool': 'SRP_1',
+                      'volume_backend_name': 'V3_BE',
+                      'storagetype:workload': 'NONE',
+                      'storagetype:slo': 'NONE',
+                      'storagetype:array': '1234567891011',
+                      'isV3': True,
+                      'portgroupname': 'OS-portgroup-PG'}
+        # If fast is enabled it will uniquely determine the SG and MV
+        # on the host along with the protocol(iSCSI) e.g. I
+        maskingViewDict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        self.assertEqual(
+            'OS-fakehost-SRP_1-NONE-NONE-SG', maskingViewDict['sgGroupName'])
+        self.assertEqual(
+            'OS-fakehost-SRP_1-NONE-NONE-MV',
+            maskingViewDict['maskingViewName'])
+
     def test_last_vol_in_SG_with_MV(self):
         conn = self.fake_ecom_connection()
         controllerConfigService = (
@@ -5977,6 +6045,14 @@ class EMCV3DriverTestCase(test.TestCase):
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
+        '_initial_setup',
+        return_value=(EMCVMAXCommonData.extra_specs_no_slo))
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_or_create_storage_group_v3',
+        return_value=(EMCVMAXCommonData.default_sg_instance_name))
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
     @mock.patch.object(
@@ -5984,7 +6060,24 @@ class EMCV3DriverTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'V3_BE'})
     def test_create_volume_v3_no_slo_success(
+            self, _mock_volume_type, mock_storage_system, mock_sg,
+            mock_initial_setup):
+        # This the no fast scenario
+        v3_vol = self.data.test_volume_v3
+        v3_vol['host'] = 'HostX@Backend#NONE+SRP_1+1234567891011'
+        self.driver.create_volume(v3_vol)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_get_pool_and_storage_system',
+        return_value=(None, EMCVMAXCommonData.storage_system))
+    @mock.patch.object(
+        volume_types,
+        'get_volume_type_extra_specs',
+        return_value={'volume_backend_name': 'V3_BE'})
+    def test_create_volume_v3_slo_NONE_success(
             self, _mock_volume_type, mock_storage_system):
+        # NONE is a valid SLO
         v3_vol = self.data.test_volume_v3
         v3_vol['host'] = 'HostX@Backend#NONE+SRP_1+1234567891011'
         instid = 'SYMMETRIX-+-000197200056-+-NONE:DSS-+-F-+-0-+-SR-+-SRP_1'

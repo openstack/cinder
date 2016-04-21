@@ -428,8 +428,8 @@ class EMCVMAXProvisionV3(object):
 
             foundStorageGroupInstanceName = self._find_new_storage_group(
                 conn, job, groupName)
-
             return foundStorageGroupInstanceName
+
         return do_create_storage_group_v3()
 
     def get_storage_pool_capability(self, conn, poolInstanceName):
@@ -781,28 +781,28 @@ class EMCVMAXProvisionV3(object):
         :returns: remainingCapacityGb
         """
         remainingCapacityGb = -1
-        storageConfigService = (
-            self.utils.find_storage_configuration_service(
-                conn, systemName))
+        if arrayInfo['SLO']:
+            storageConfigService = (
+                self.utils.find_storage_configuration_service(
+                    conn, systemName))
 
-        supportedSizeDict = (
-            self.get_volume_range(
-                conn, storageConfigService, srpPoolInstanceName,
-                arrayInfo['SLO'], arrayInfo['Workload'],
-                None))
-        try:
-            # Information source is V3.
-            if supportedSizeDict['EMCInformationSource'] == INFO_SRC_V3:
-                remainingCapacityGb = self.utils.convert_bits_to_gbs(
-                    supportedSizeDict['EMCRemainingSLOCapacity'])
-                LOG.debug("Received remaining SLO Capacity "
-                          "%(remainingCapacityGb)s GBs for SLO "
-                          "%(SLO)s and workload %(workload)s.",
-                          {'remainingCapacityGb': remainingCapacityGb,
-                           'SLO': arrayInfo['SLO'],
-                           'workload': arrayInfo['Workload']})
-        except KeyError:
-            pass
+            supportedSizeDict = (
+                self.get_volume_range(
+                    conn, storageConfigService, srpPoolInstanceName,
+                    arrayInfo['SLO'], arrayInfo['Workload'],
+                    None))
+            try:
+                if supportedSizeDict['EMCInformationSource'] == INFO_SRC_V3:
+                    remainingCapacityGb = self.utils.convert_bits_to_gbs(
+                        supportedSizeDict['EMCRemainingSLOCapacity'])
+                    LOG.debug("Received remaining SLO Capacity "
+                              "%(remainingCapacityGb)s GBs for SLO "
+                              "%(SLO)s and workload %(workload)s.",
+                              {'remainingCapacityGb': remainingCapacityGb,
+                               'SLO': arrayInfo['SLO'],
+                               'workload': arrayInfo['Workload']})
+            except KeyError:
+                pass
         return remainingCapacityGb
 
     def extend_volume_in_SG(
