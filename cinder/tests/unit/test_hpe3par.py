@@ -2848,6 +2848,63 @@ class HPE3PARBaseDriver(object):
                 None)
             self.assertEqual(expected_info, vlun_info)
 
+    def test_create_vlun_vlunid_zero(self):
+        # This will test "auto" for deactive when Lun ID is 0
+        host = 'fake-host'
+        lun_id = 0
+        nsp = '0:1:1'
+        port = {'node': 0, 'slot': 1, 'cardPort': 1}
+
+        mock_client = self.setup_driver()
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            # _create_3par_vlun with nsp
+            location = ("%(name)s,%(lunid)s,%(host)s,%(nsp)s" %
+                        {'name': self.VOLUME_NAME,
+                         'lunid': lun_id,
+                         'host': host,
+                         'nsp': nsp})
+            mock_client.createVLUN.return_value = location
+            expected_info = {'volume_name': self.VOLUME_NAME,
+                             'lun_id': lun_id,
+                             'host_name': host,
+                             'nsp': nsp}
+            common = self.driver._login()
+            vlun_info = common._create_3par_vlun(
+                self.VOLUME_NAME,
+                host,
+                nsp,
+                lun_id=lun_id)
+            self.assertEqual(expected_info, vlun_info)
+            mock_client.createVLUN.assert_called_once_with(self.VOLUME_NAME,
+                                                           hostname=host,
+                                                           auto=False,
+                                                           portPos=port,
+                                                           lun=lun_id)
+
+            # _create_3par_vlun without nsp
+            mock_client.reset_mock()
+            location = ("%(name)s,%(lunid)s,%(host)s" %
+                        {'name': self.VOLUME_NAME,
+                         'lunid': lun_id,
+                         'host': host})
+            mock_client.createVLUN.return_value = location
+            expected_info = {'volume_name': self.VOLUME_NAME,
+                             'lun_id': lun_id,
+                             'host_name': host}
+            vlun_info = common._create_3par_vlun(
+                self.VOLUME_NAME,
+                host,
+                None,
+                lun_id=lun_id)
+            self.assertEqual(expected_info, vlun_info)
+            mock_client.createVLUN.assert_called_once_with(self.VOLUME_NAME,
+                                                           hostname=host,
+                                                           auto=False,
+                                                           lun=lun_id)
+
     def test__get_existing_volume_ref_name(self):
         mock_client = self.setup_driver()
         with mock.patch.object(hpecommon.HPE3PARCommon,

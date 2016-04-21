@@ -235,10 +235,11 @@ class HPE3PARCommon(object):
         3.0.17 - Don't fail on clearing 3PAR object volume key. bug #1546392
         3.0.18 - create_cloned_volume account for larger size.  bug #1554740
         3.0.19 - Remove metadata that tracks the instance ID. bug #1572665
+        3.0.20 - Fix lun_id of 0 issue. bug #1573298
 
     """
 
-    VERSION = "3.0.19"
+    VERSION = "3.0.20"
 
     stats = {}
 
@@ -1116,7 +1117,7 @@ class HPE3PARCommon(object):
             location = None
             auto = True
 
-            if lun_id:
+            if lun_id is not None:
                 auto = False
 
             if nsp is None:
