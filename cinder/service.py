@@ -129,6 +129,22 @@ class Service(service.Service):
         if CONF.profiler.enabled:
             manager_class = profiler.trace_cls("rpc")(manager_class)
 
+        # NOTE(geguileo): We need to create the Service DB entry before we
+        # create the manager, otherwise capped versions for serializer and rpc
+        # client would used existing DB entries not including us, which could
+        # result in us using None (if it's the first time the service is run)
+        # or an old version (if this is a normal upgrade of a single service).
+        ctxt = context.get_admin_context()
+        try:
+            service_ref = objects.Service.get_by_args(ctxt, host, binary)
+            service_ref.rpc_current_version = manager_class.RPC_API_VERSION
+            obj_version = objects_base.OBJ_VERSIONS.get_current()
+            service_ref.object_current_version = obj_version
+            service_ref.save()
+            self.service_id = service_ref.id
+        except exception.NotFound:
+            self._create_service_ref(ctxt, manager_class.RPC_API_VERSION)
+
         self.manager = manager_class(host=self.host,
                                      service_name=service_name,
                                      *args, **kwargs)
@@ -148,17 +164,6 @@ class Service(service.Service):
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
         self.manager.init_host()
-        ctxt = context.get_admin_context()
-        try:
-            service_ref = objects.Service.get_by_args(
-                ctxt, self.host, self.binary)
-            service_ref.rpc_current_version = self.manager.RPC_API_VERSION
-            obj_version = objects_base.OBJ_VERSIONS.get_current()
-            service_ref.object_current_version = obj_version
-            service_ref.save()
-            self.service_id = service_ref.id
-        except exception.NotFound:
-            self._create_service_ref(ctxt)
 
         LOG.debug("Creating RPC server for service %s", self.topic)
 
@@ -207,7 +212,7 @@ class Service(service.Service):
                      'new_down_time': new_down_time})
                 CONF.set_override('service_down_time', new_down_time)
 
-    def _create_service_ref(self, context):
+    def _create_service_ref(self, context, rpc_version=None):
         zone = CONF.storage_availability_zone
         kwargs = {
             'host': self.host,
@@ -215,7 +220,7 @@ class Service(service.Service):
             'topic': self.topic,
             'report_count': 0,
             'availability_zone': zone,
-            'rpc_current_version': self.manager.RPC_API_VERSION,
+            'rpc_current_version': rpc_version or self.manager.RPC_API_VERSION,
             'object_current_version': objects_base.OBJ_VERSIONS.get_current(),
         }
         service_ref = objects.Service(context=context, **kwargs)
