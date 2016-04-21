@@ -1348,15 +1348,19 @@ class BaseVD(object):
         }
         temp_vol_ref = self.db.volume_create(context, temp_volume)
         try:
-            self.create_cloned_volume(temp_vol_ref, volume)
+            # Some drivers return None, because they do not need to update the
+            # model for the volume. For those cases we set the model_update to
+            # an empty dictionary.
+            model_update = self.create_cloned_volume(temp_vol_ref,
+                                                     volume) or {}
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_destroy(context.elevated(),
                                        temp_vol_ref['id'])
 
-        self.db.volume_update(context, temp_vol_ref['id'],
-                              {'status': 'available'})
-        return temp_vol_ref
+        model_update['status'] = 'available'
+        self.db.volume_update(context, temp_vol_ref['id'], model_update)
+        return self.db.volume_get(context, temp_vol_ref['id'])
 
     def _create_temp_volume_from_snapshot(self, context, volume, snapshot):
         temp_volume = {
