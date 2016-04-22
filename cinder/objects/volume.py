@@ -85,7 +85,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'display_name': fields.StringField(nullable=True),
         'display_description': fields.StringField(nullable=True),
 
-        'provider_id': fields.UUIDField(nullable=True),
+        'provider_id': fields.StringField(nullable=True),
         'provider_location': fields.StringField(nullable=True),
         'provider_auth': fields.StringField(nullable=True),
         'provider_geometry': fields.StringField(nullable=True),
