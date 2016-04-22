@@ -14,14 +14,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from xml.dom import minidom
-
-from lxml import etree
 import mock
 import webob
 
 from cinder.api.contrib import qos_specs_manage
-from cinder.api import xmlutil
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -183,28 +179,6 @@ class QoSSpecManageApiTest(test.TestCase):
         for item in res['qos_specs']:
             self.assertEqual('value1', item['specs']['key1'])
             names.add(item['name'])
-        expected_names = ['qos_specs_1', 'qos_specs_2', 'qos_specs_3']
-        self.assertEqual(set(expected_names), names)
-
-    @mock.patch('cinder.volume.qos_specs.get_all_specs',
-                side_effect=return_qos_specs_get_all)
-    def test_index_xml_response(self, mock_get_all_specs):
-        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs')
-        res = self.controller.index(req)
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        qos_specs_response = dom.getElementsByTagName('qos_spec')
-
-        names = set()
-        for qos_spec in qos_specs_response:
-            name = qos_spec.getAttribute('name')
-            names.add(name)
-
         expected_names = ['qos_specs_1', 'qos_specs_2', 'qos_specs_3']
         self.assertEqual(set(expected_names), names)
 
@@ -532,29 +506,6 @@ class QoSSpecManageApiTest(test.TestCase):
         self.assertEqual('1', res_dict['qos_specs']['id'])
         self.assertEqual('qos_specs_1', res_dict['qos_specs']['name'])
 
-    @mock.patch('cinder.volume.qos_specs.get_qos_specs',
-                side_effect=return_qos_specs_get_qos_specs)
-    def test_show_xml_response(self, mock_get_qos_specs):
-        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/1')
-        res = self.controller.show(req, '1')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        qos_spec_response = dom.getElementsByTagName('qos_spec')
-        qos_spec = qos_spec_response.item(0)
-
-        id = qos_spec.getAttribute('id')
-        name = qos_spec.getAttribute('name')
-        consumer = qos_spec.getAttribute('consumer')
-
-        self.assertEqual(u'1', id)
-        self.assertEqual('qos_specs_1', name)
-        self.assertEqual('back-end', consumer)
-
     @mock.patch('cinder.volume.qos_specs.get_associations',
                 side_effect=return_get_qos_associations)
     def test_get_associations(self, mock_get_assciations):
@@ -566,29 +517,6 @@ class QoSSpecManageApiTest(test.TestCase):
                          res['qos_associations'][0]['name'])
         self.assertEqual('FakeVolTypeID',
                          res['qos_associations'][0]['id'])
-
-    @mock.patch('cinder.volume.qos_specs.get_associations',
-                side_effect=return_get_qos_associations)
-    def test_get_associations_xml_response(self, mock_get_assciations):
-        req = fakes.HTTPRequest.blank('/v2/fake/qos-specs/1/associations')
-        res = self.controller.associations(req, '1')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        associations_response = dom.getElementsByTagName('associations')
-        association = associations_response.item(0)
-
-        id = association.getAttribute('id')
-        name = association.getAttribute('name')
-        association_type = association.getAttribute('association_type')
-
-        self.assertEqual('FakeVolTypeID', id)
-        self.assertEqual('FakeVolTypeName', name)
-        self.assertEqual('volume_type', association_type)
 
     @mock.patch('cinder.volume.qos_specs.get_associations',
                 side_effect=return_get_qos_associations)
@@ -731,108 +659,3 @@ class QoSSpecManageApiTest(test.TestCase):
             '/v2/fake/qos-specs/222/disassociate_all')
         self.assertRaises(webob.exc.HTTPInternalServerError,
                           self.controller.disassociate_all, req, '222')
-
-
-class TestQoSSpecsTemplate(test.TestCase):
-    def setUp(self):
-        super(TestQoSSpecsTemplate, self).setUp()
-        self.serializer = qos_specs_manage.QoSSpecsTemplate()
-
-    def test_qos_specs_serializer(self):
-        fixture = {
-            "qos_specs": [
-                {
-                    "specs": {
-                        "key1": "v1",
-                        "key2": "v2",
-                    },
-                    "consumer": "back-end",
-                    "name": "qos-2",
-                    "id": "61e7b72f-ef15-46d9-b00e-b80f699999d0"
-                },
-                {
-                    "specs": {"total_iops_sec": "200"},
-                    "consumer": "front-end",
-                    "name": "qos-1",
-                    "id": "e44bba5e-b629-4b96-9aa3-0404753a619b"
-                }
-            ]
-        }
-
-        output = self.serializer.serialize(fixture)
-        root = etree.XML(output)
-        xmlutil.validate_schema(root, 'qos_specs')
-        qos_elems = root.findall("qos_spec")
-        self.assertEqual(2, len(qos_elems))
-        for i, qos_elem in enumerate(qos_elems):
-            qos_dict = fixture['qos_specs'][i]
-
-            # check qos_spec attributes
-            for key in ['name', 'id', 'consumer']:
-                self.assertEqual(str(qos_dict[key]), qos_elem.get(key))
-
-            # check specs
-            specs = qos_elem.find("specs")
-            new_dict = {}
-            for element in specs.iter(tag=etree.Element):
-                # skip root element for specs
-                if element.tag == "specs":
-                    continue
-                new_dict.update({element.tag: element.text})
-
-            self.assertDictMatch(qos_dict['specs'], new_dict)
-
-
-class TestAssociationsTemplate(test.TestCase):
-    def setUp(self):
-        super(TestAssociationsTemplate, self).setUp()
-        self.serializer = qos_specs_manage.AssociationsTemplate()
-
-    def test_qos_associations_serializer(self):
-        fixture = {
-            "qos_associations": [
-                {
-                    "association_type": "volume_type",
-                    "name": "type-4",
-                    "id": "14d54d29-51a4-4046-9f6f-cf9800323563"
-                },
-                {
-                    "association_type": "volume_type",
-                    "name": "type-2",
-                    "id": "3689ce83-308d-4ba1-8faf-7f1be04a282b"}
-            ]
-        }
-
-        output = self.serializer.serialize(fixture)
-        root = etree.XML(output)
-        xmlutil.validate_schema(root, 'qos_associations')
-        association_elems = root.findall("associations")
-        self.assertEqual(2, len(association_elems))
-        for i, association_elem in enumerate(association_elems):
-            association_dict = fixture['qos_associations'][i]
-
-            # check qos_spec attributes
-            for key in ['name', 'id', 'association_type']:
-                self.assertEqual(str(association_dict[key]),
-                                 association_elem.get(key))
-
-
-class TestQoSSpecsKeyDeserializer(test.TestCase):
-    def setUp(self):
-        super(TestQoSSpecsKeyDeserializer, self).setUp()
-        self.deserializer = qos_specs_manage.QoSSpecsKeyDeserializer()
-
-    def test_keys(self):
-        self_request = """
-<keys><xyz /><abc /></keys>"""
-        request = self.deserializer.deserialize(self_request)
-        expected = {
-            "keys": ["xyz", "abc"]
-        }
-        self.assertEqual(expected, request['body'])
-
-    def test_bad_format(self):
-        self_request = """
-<qos_specs><keys><xyz /><abc /></keys></qos_specs>"""
-        self.assertRaises(webob.exc.HTTPBadRequest,
-                          self.deserializer.deserialize, self_request)

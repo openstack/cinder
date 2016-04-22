@@ -205,25 +205,6 @@ class VolumeTypeEncryptionTest(test.TestCase):
             self._create('fake_cipher', 'front-end', 128, 'fake_encryptor')
             self.assertTrue(mock_validate_integer.called)
 
-    def test_create_xml(self):
-        volume_type = self._default_volume_type
-        db.volume_type_create(context.get_admin_context(), volume_type)
-
-        ctxt = context.RequestContext('fake', 'fake', is_admin=True)
-
-        req = webob.Request.blank('/v2/fake/types/%s/encryption'
-                                  % volume_type['id'])
-        req.method = 'POST'
-        req.body = (b'<encryption provider="test_provider" '
-                    b'cipher="cipher" control_location="front-end" />')
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app(fake_auth_context=ctxt))
-
-        self.assertEqual(200, res.status_int)
-
-        db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
-
     def test_create_invalid_volume_type(self):
         volume_type = self._default_volume_type
         body = {"encryption": stub_volume_type_encryption()}

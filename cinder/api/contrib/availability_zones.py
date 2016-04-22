@@ -16,27 +16,8 @@
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 import cinder.api.views.availability_zones
-from cinder.api import xmlutil
 import cinder.exception
 import cinder.volume.api
-
-
-def make_availability_zone(elem):
-    elem.set('name', 'zoneName')
-    zoneStateElem = xmlutil.SubTemplateElement(elem, 'zoneState',
-                                               selector='zoneState')
-    zoneStateElem.set('available')
-
-
-class ListTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('availabilityZones')
-        elem = xmlutil.SubTemplateElement(root, 'availabilityZone',
-                                          selector='availabilityZoneInfo')
-        make_availability_zone(elem)
-        alias = Availability_zones.alias
-        namespace = Availability_zones.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
 
 
 class Controller(wsgi.Controller):
@@ -47,7 +28,6 @@ class Controller(wsgi.Controller):
         super(Controller, self).__init__(*args, **kwargs)
         self.volume_api = cinder.volume.api.API()
 
-    @wsgi.serializers(xml=ListTemplate)
     def index(self, req):
         """Describe all known availability zones."""
         azs = self.volume_api.list_availability_zones()
@@ -59,8 +39,6 @@ class Availability_zones(extensions.ExtensionDescriptor):
 
     name = 'AvailabilityZones'
     alias = 'os-availability-zone'
-    namespace = ('http://docs.openstack.org/volume/ext/'
-                 'os-availability-zone/api/v1')
     updated = '2013-06-27T00:00:00+00:00'
 
     def get_resources(self):

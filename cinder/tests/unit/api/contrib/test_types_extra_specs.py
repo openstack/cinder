@@ -15,7 +15,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from lxml import etree
 import mock
 import webob
 
@@ -266,35 +265,3 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
     def test_create_invalid_too_many_key(self):
         body = {"key1": "value1", "ke/y2": "value2", "key3": "value3"}
         self._extra_specs_create_bad_body(body=body)
-
-
-class VolumeTypeExtraSpecsSerializerTest(test.TestCase):
-    def test_index_create_serializer(self):
-        serializer = types_extra_specs.VolumeTypeExtraSpecsTemplate()
-
-        # Just getting some input data
-        extra_specs = stub_volume_type_extra_specs()
-        text = serializer.serialize(dict(extra_specs=extra_specs))
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('extra_specs', tree.tag)
-        self.assertEqual(len(extra_specs), len(tree))
-        seen = set(extra_specs.keys())
-        for child in tree:
-            self.assertIn(child.tag, seen)
-            self.assertEqual(extra_specs[child.tag], child.text)
-            seen.remove(child.tag)
-        self.assertEqual(0, len(seen))
-
-    def test_update_show_serializer(self):
-        serializer = types_extra_specs.VolumeTypeExtraSpecTemplate()
-
-        exemplar = dict(key1='value1')
-        text = serializer.serialize(exemplar)
-
-        tree = etree.fromstring(text)
-
-        self.assertEqual('key1', tree.tag)
-        self.assertEqual('value1', tree.text)
-        self.assertEqual(0, len(tree))

@@ -17,8 +17,6 @@
 Tests for consistency group code.
 """
 
-from xml.dom import minidom
-
 import ddt
 import mock
 from oslo_serialization import jsonutils
@@ -94,21 +92,6 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup.destroy()
 
-    def test_show_consistencygroup_xml_content_type(self):
-        consistencygroup = self._create_consistencygroup()
-        req = webob.Request.blank('/v2/fake/consistencygroups/%s' %
-                                  consistencygroup.id)
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        consistencygroups = dom.getElementsByTagName('consistencygroup')
-        name = consistencygroups.item(0).getAttribute('name')
-        self.assertEqual("test_consistencygroup", name.strip())
-        consistencygroup.destroy()
-
     def test_show_consistencygroup_with_consistencygroup_NotFound(self):
         req = webob.Request.blank('/v2/fake/consistencygroups/9999')
         req.method = 'GET'
@@ -171,32 +154,6 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup1.destroy()
         consistencygroup2.destroy()
         consistencygroup3.destroy()
-
-    def test_list_consistencygroups_xml(self):
-        consistencygroup1 = self._create_consistencygroup()
-        consistencygroup2 = self._create_consistencygroup()
-        consistencygroup3 = self._create_consistencygroup()
-
-        req = webob.Request.blank('/v2/fake/consistencygroups')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        consistencygroup_list = dom.getElementsByTagName('consistencygroup')
-
-        self.assertEqual(consistencygroup3.id,
-                         consistencygroup_list.item(0).getAttribute('id'))
-        self.assertEqual(consistencygroup2.id,
-                         consistencygroup_list.item(1).getAttribute('id'))
-        self.assertEqual(consistencygroup1.id,
-                         consistencygroup_list.item(2).getAttribute('id'))
-
-        consistencygroup3.destroy()
-        consistencygroup2.destroy()
-        consistencygroup1.destroy()
 
     @ddt.data(False, True)
     def test_list_consistencygroups_with_limit(self, is_detail):
@@ -394,73 +351,6 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup1.destroy()
         consistencygroup2.destroy()
         consistencygroup3.destroy()
-
-    def test_list_consistencygroups_detail_xml(self):
-        consistencygroup1 = self._create_consistencygroup()
-        consistencygroup2 = self._create_consistencygroup()
-        consistencygroup3 = self._create_consistencygroup()
-
-        req = webob.Request.blank('/v2/fake/consistencygroups/detail')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        consistencygroup_detail = dom.getElementsByTagName('consistencygroup')
-
-        self.assertEqual(
-            'az1',
-            consistencygroup_detail.item(0).getAttribute('availability_zone'))
-        self.assertEqual(
-            'this is a test consistency group',
-            consistencygroup_detail.item(0).getAttribute('description'))
-        self.assertEqual(
-            'test_consistencygroup',
-            consistencygroup_detail.item(0).getAttribute('name'))
-        self.assertEqual(
-            consistencygroup3.id,
-            consistencygroup_detail.item(0).getAttribute('id'))
-        self.assertEqual(
-            'creating',
-            consistencygroup_detail.item(0).getAttribute('status'))
-
-        self.assertEqual(
-            'az1',
-            consistencygroup_detail.item(1).getAttribute('availability_zone'))
-        self.assertEqual(
-            'this is a test consistency group',
-            consistencygroup_detail.item(1).getAttribute('description'))
-        self.assertEqual(
-            'test_consistencygroup',
-            consistencygroup_detail.item(1).getAttribute('name'))
-        self.assertEqual(
-            consistencygroup2.id,
-            consistencygroup_detail.item(1).getAttribute('id'))
-        self.assertEqual(
-            'creating',
-            consistencygroup_detail.item(1).getAttribute('status'))
-
-        self.assertEqual(
-            'az1',
-            consistencygroup_detail.item(2).getAttribute('availability_zone'))
-        self.assertEqual(
-            'this is a test consistency group',
-            consistencygroup_detail.item(2).getAttribute('description'))
-        self.assertEqual(
-            'test_consistencygroup',
-            consistencygroup_detail.item(2).getAttribute('name'))
-        self.assertEqual(
-            consistencygroup1.id,
-            consistencygroup_detail.item(2).getAttribute('id'))
-        self.assertEqual(
-            'creating',
-            consistencygroup_detail.item(2).getAttribute('status'))
-
-        consistencygroup3.destroy()
-        consistencygroup2.destroy()
-        consistencygroup1.destroy()
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')

@@ -25,7 +25,6 @@ from webob import exc
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
-from cinder.api import xmlutil
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder.i18n import _, _LI
@@ -38,122 +37,6 @@ from cinder.volume import volume_types
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
-SCHEDULER_HINTS_NAMESPACE =\
-    "http://docs.openstack.org/block-service/ext/scheduler-hints/api/v2"
-
-
-def make_attachment(elem):
-    elem.set('id')
-    elem.set('attachment_id')
-    elem.set('server_id')
-    elem.set('host_name')
-    elem.set('volume_id')
-    elem.set('device')
-
-
-def make_volume(elem):
-    elem.set('id')
-    elem.set('status')
-    elem.set('size')
-    elem.set('availability_zone')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('bootable')
-    elem.set('description')
-    elem.set('volume_type')
-    elem.set('snapshot_id')
-    elem.set('source_volid')
-    elem.set('consistencygroup_id')
-    elem.set('multiattach')
-
-    attachments = xmlutil.SubTemplateElement(elem, 'attachments')
-    attachment = xmlutil.SubTemplateElement(attachments, 'attachment',
-                                            selector='attachments')
-    make_attachment(attachment)
-
-    # Attach metadata node
-    elem.append(common.MetadataTemplate())
-
-
-volume_nsmap = {None: xmlutil.XMLNS_VOLUME_V2, 'atom': xmlutil.XMLNS_ATOM}
-
-
-class VolumeTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volume', selector='volume')
-        make_volume(root)
-        return xmlutil.MasterTemplate(root, 1, nsmap=volume_nsmap)
-
-
-class VolumesTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('volumes')
-        elem = xmlutil.SubTemplateElement(root, 'volume', selector='volumes')
-        make_volume(elem)
-        return xmlutil.MasterTemplate(root, 1, nsmap=volume_nsmap)
-
-
-class CommonDeserializer(wsgi.MetadataXMLDeserializer):
-    """Common deserializer to handle xml-formatted volume requests.
-
-       Handles standard volume attributes as well as the optional metadata
-       attribute
-    """
-
-    metadata_deserializer = common.MetadataXMLDeserializer()
-
-    def _extract_scheduler_hints(self, volume_node):
-        """Marshal the scheduler hints attribute of a parsed request."""
-        node =\
-            self.find_first_child_named_in_namespace(volume_node,
-                                                     SCHEDULER_HINTS_NAMESPACE,
-                                                     "scheduler_hints")
-        if node:
-            scheduler_hints = {}
-            for child in self.extract_elements(node):
-                scheduler_hints.setdefault(child.nodeName, [])
-                value = self.extract_text(child).strip()
-                scheduler_hints[child.nodeName].append(value)
-            return scheduler_hints
-        else:
-            return None
-
-    def _extract_volume(self, node):
-        """Marshal the volume attribute of a parsed request."""
-        volume = {}
-        volume_node = self.find_first_child_named(node, 'volume')
-
-        attributes = ['name', 'description', 'size',
-                      'volume_type', 'availability_zone', 'imageRef',
-                      'image_id', 'snapshot_id', 'source_volid',
-                      'consistencygroup_id']
-        for attr in attributes:
-            if volume_node.getAttribute(attr):
-                volume[attr] = volume_node.getAttribute(attr)
-
-        metadata_node = self.find_first_child_named(volume_node, 'metadata')
-        if metadata_node is not None:
-            volume['metadata'] = self.extract_metadata(metadata_node)
-
-        scheduler_hints = self._extract_scheduler_hints(volume_node)
-        if scheduler_hints:
-            volume['scheduler_hints'] = scheduler_hints
-
-        return volume
-
-
-class CreateDeserializer(CommonDeserializer):
-    """Deserializer to handle xml-formatted create volume requests.
-
-       Handles standard volume attributes as well as the optional metadata
-       attribute
-    """
-
-    def default(self, string):
-        """Deserialize an xml-formatted volume create request."""
-        dom = utils.safe_minidom_parse_string(string)
-        volume = self._extract_volume(dom)
-        return {'body': {'volume': volume}}
 
 
 class VolumeController(wsgi.Controller):
@@ -167,7 +50,6 @@ class VolumeController(wsgi.Controller):
         self.ext_mgr = ext_mgr
         super(VolumeController, self).__init__()
 
-    @wsgi.serializers(xml=VolumeTemplate)
     def show(self, req, id):
         """Return data about the given volume."""
         context = req.environ['cinder.context']
@@ -197,12 +79,10 @@ class VolumeController(wsgi.Controller):
             raise exc.HTTPNotFound(explanation=error.msg)
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=VolumesTemplate)
     def index(self, req):
         """Returns a summary list of volumes."""
         return self._get_volumes(req, is_detail=False)
 
-    @wsgi.serializers(xml=VolumesTemplate)
     def detail(self, req):
         """Returns a detailed list of volumes."""
         return self._get_volumes(req, is_detail=True)
@@ -292,8 +172,6 @@ class VolumeController(wsgi.Controller):
         raise exc.HTTPBadRequest(explanation=msg)
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=VolumeTemplate)
-    @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Creates a new volume."""
         self.assert_valid_body(body, 'volume')
@@ -415,7 +293,6 @@ class VolumeController(wsgi.Controller):
         """Return volume search options allowed by non-admin."""
         return CONF.query_volume_filters
 
-    @wsgi.serializers(xml=VolumeTemplate)
     def update(self, req, id, body):
         """Update a volume."""
         context = req.environ['cinder.context']

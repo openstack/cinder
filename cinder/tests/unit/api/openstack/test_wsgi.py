@@ -40,9 +40,7 @@ class RequestTest(test.TestCase):
         self.assertEqual("application/json", result)
 
     def test_content_type_from_accept(self):
-        for content_type in ('application/xml',
-                             'application/vnd.openstack.volume+xml',
-                             'application/json',
+        for content_type in ('application/json',
                              'application/vnd.openstack.volume+json'):
             request = wsgi.Request.blank('/tests/123')
             request.headers["Accept"] = content_type
@@ -51,21 +49,11 @@ class RequestTest(test.TestCase):
 
     def test_content_type_from_accept_best(self):
         request = wsgi.Request.blank('/tests/123')
-        request.headers["Accept"] = "application/xml, application/json"
+        request.headers["Accept"] = "application/json"
         result = request.best_match_content_type()
         self.assertEqual("application/json", result)
 
-        request = wsgi.Request.blank('/tests/123')
-        request.headers["Accept"] = ("application/json; q=0.3, "
-                                     "application/xml; q=0.9")
-        result = request.best_match_content_type()
-        self.assertEqual("application/xml", result)
-
     def test_content_type_from_query_extension(self):
-        request = wsgi.Request.blank('/tests/123.xml')
-        result = request.best_match_content_type()
-        self.assertEqual("application/xml", result)
-
         request = wsgi.Request.blank('/tests/123.json')
         result = request.best_match_content_type()
         self.assertEqual("application/json", result)
@@ -73,12 +61,6 @@ class RequestTest(test.TestCase):
         request = wsgi.Request.blank('/tests/123.invalid')
         result = request.best_match_content_type()
         self.assertEqual("application/json", result)
-
-    def test_content_type_accept_and_query_extension(self):
-        request = wsgi.Request.blank('/tests/123.xml')
-        request.headers["Accept"] = "application/json"
-        result = request.best_match_content_type()
-        self.assertEqual("application/xml", result)
 
     def test_content_type_accept_default(self):
         request = wsgi.Request.blank('/tests/123.unsupported')
@@ -203,16 +185,6 @@ class DictSerializerTest(test.TestCase):
         self.assertEqual('', serializer.serialize({}, 'update'))
 
 
-class XMLDictSerializerTest(test.TestCase):
-    def test_xml(self):
-        input_dict = dict(servers=dict(a=(2, 3)))
-        expected_xml = b'<serversxmlns="asdf"><a>(2,3)</a></servers>'
-        serializer = wsgi.XMLDictSerializer(xmlns="asdf")
-        result = serializer.serialize(input_dict)
-        result = result.replace(b'\n', b'').replace(b' ', b'')
-        self.assertEqual(expected_xml, result)
-
-
 class JSONDictSerializerTest(test.TestCase):
     def test_json(self):
         input_dict = dict(servers=dict(a=(2, 3)))
@@ -250,62 +222,6 @@ class JSONDeserializerTest(test.TestCase):
         }
         deserializer = wsgi.JSONDeserializer()
         self.assertEqual(as_dict, deserializer.deserialize(data))
-
-
-class XMLDeserializerTest(test.TestCase):
-    def test_xml(self):
-        xml = """
-            <a a1="1" a2="2">
-              <bs><b>1</b><b>2</b><b>3</b><b><c c1="1"/></b></bs>
-              <d><e>1</e></d>
-              <f>1</f>
-            </a>
-            """.strip()
-        as_dict = {
-            'body': {
-                'a': {
-                    'a1': '1',
-                    'a2': '2',
-                    'bs': ['1', '2', '3', {'c': {'c1': '1'}}],
-                    'd': {'e': '1'},
-                    'f': '1',
-                },
-            },
-        }
-        metadata = {'plurals': {'bs': 'b', 'ts': 't'}}
-        deserializer = wsgi.XMLDeserializer(metadata=metadata)
-        self.assertEqual(as_dict, deserializer.deserialize(xml))
-
-    def test_xml_empty(self):
-        xml = """<a></a>"""
-        as_dict = {"body": {"a": {}}}
-        deserializer = wsgi.XMLDeserializer()
-        self.assertEqual(as_dict, deserializer.deserialize(xml))
-
-
-class MetadataXMLDeserializerTest(test.TestCase):
-    def test_xml_meta_parsing_special_character(self):
-        """Test XML meta parsing with special characters.
-
-        Test that when a SaxParser splits a string containing special
-        characters into multiple childNodes there are no issues extracting
-        the text.
-        """
-        meta_xml_str = """
-            <metadata>
-                <meta key="key3">value&amp;3</meta>
-                <meta key="key2">value2</meta>
-                <meta key="key1">value1</meta>
-            </metadata>
-            """.strip()
-        meta_expected = {'key1': 'value1',
-                         'key2': 'value2',
-                         'key3': 'value&3'}
-        meta_deserializer = wsgi.MetadataXMLDeserializer()
-        document = wsgi.utils.safe_minidom_parse_string(meta_xml_str)
-        root_node = document.childNodes[0]
-        meta_extracted = meta_deserializer.extract_metadata(root_node)
-        self.assertEqual(meta_expected, meta_extracted)
 
 
 class ResourceTest(test.TestCase):
@@ -365,18 +281,6 @@ class ResourceTest(test.TestCase):
                                                   '{"fooAction": true}')
         self.assertEqual(controller._action_foo, method)
 
-    def test_get_method_action_xml(self):
-        class Controller(wsgi.Controller):
-            @wsgi.action('fooAction')
-            def _action_foo(self, req, id, body):
-                return body
-
-        controller = Controller()
-        resource = wsgi.Resource(controller)
-        method, _extensions = resource.get_method(
-            None, 'action', 'application/xml', '<fooAction>true</fooAction>')
-        self.assertEqual(controller._action_foo, method)
-
     def test_get_method_action_bad_body(self):
         class Controller(wsgi.Controller):
             @wsgi.action('fooAction')
@@ -399,18 +303,6 @@ class ResourceTest(test.TestCase):
         self.assertRaises(KeyError, resource.get_method,
                           None, 'action', 'application/json',
                           '{"barAction": true}')
-
-    def test_get_method_action_method(self):
-        class Controller(object):
-            def action(self, req, pants=None):
-                return pants
-
-        controller = Controller()
-        resource = wsgi.Resource(controller)
-        method, _extensions = resource.get_method(None, 'action',
-                                                  'application/xml',
-                                                  '<fooAction>true</fooAction')
-        self.assertEqual(controller.action, method)
 
     def test_get_action_args(self):
         class Controller(object):
@@ -512,12 +404,7 @@ class ResourceTest(test.TestCase):
             def deserialize(self, body):
                 return 'json'
 
-        class XMLDeserializer(object):
-            def deserialize(self, body):
-                return 'xml'
-
         class Controller(object):
-            @wsgi.deserializers(xml=XMLDeserializer)
             def index(self, req, pants=None):
                 return pants
 
@@ -526,26 +413,6 @@ class ResourceTest(test.TestCase):
 
         obj = resource.deserialize(controller.index, 'application/json', 'foo')
         self.assertEqual('json', obj)
-
-    def test_deserialize_decorator(self):
-        class JSONDeserializer(object):
-            def deserialize(self, body):
-                return 'json'
-
-        class XMLDeserializer(object):
-            def deserialize(self, body):
-                return 'xml'
-
-        class Controller(object):
-            @wsgi.deserializers(xml=XMLDeserializer)
-            def index(self, req, pants=None):
-                return pants
-
-        controller = Controller()
-        resource = wsgi.Resource(controller, json=JSONDeserializer)
-
-        obj = resource.deserialize(controller.index, 'application/xml', 'foo')
-        self.assertEqual('xml', obj)
 
     def test_register_actions(self):
         class Controller(object):
@@ -924,57 +791,6 @@ class ResponseObjectTest(test.TestCase):
     def test_default_serializers(self):
         robj = wsgi.ResponseObject({})
         self.assertEqual({}, robj.serializers)
-
-    def test_bind_serializers(self):
-        robj = wsgi.ResponseObject({}, json='foo')
-        robj._bind_method_serializers(dict(xml='bar', json='baz'))
-        self.assertEqual(dict(xml='bar', json='foo'), robj.serializers)
-
-    def test_get_serializer(self):
-        robj = wsgi.ResponseObject({}, json='json', xml='xml', atom='atom')
-        for content_type, mtype in wsgi._MEDIA_TYPE_MAP.items():
-            _mtype, serializer = robj.get_serializer(content_type)
-            self.assertEqual(mtype, serializer)
-
-    def test_get_serializer_defaults(self):
-        robj = wsgi.ResponseObject({})
-        default_serializers = dict(json='json', xml='xml', atom='atom')
-        for content_type, mtype in wsgi._MEDIA_TYPE_MAP.items():
-            self.assertRaises(exception.InvalidContentType,
-                              robj.get_serializer, content_type)
-            _mtype, serializer = robj.get_serializer(content_type,
-                                                     default_serializers)
-            self.assertEqual(mtype, serializer)
-
-    def test_serialize(self):
-        class JSONSerializer(object):
-            def serialize(self, obj):
-                return 'json'
-
-        class XMLSerializer(object):
-            def serialize(self, obj):
-                return 'xml'
-
-        class AtomSerializer(object):
-            def serialize(self, obj):
-                return 'atom'
-
-        robj = wsgi.ResponseObject({}, code=202,
-                                   json=JSONSerializer,
-                                   xml=XMLSerializer,
-                                   atom=AtomSerializer)
-        robj['X-header1'] = 'header1'
-        robj['X-header2'] = 'header2'
-
-        for content_type, mtype in wsgi._MEDIA_TYPE_MAP.items():
-            request = wsgi.Request.blank('/tests/123')
-            response = robj.serialize(request, content_type)
-
-            self.assertEqual(content_type, response.headers['Content-Type'])
-            self.assertEqual('header1', response.headers['X-header1'])
-            self.assertEqual('header2', response.headers['X-header2'])
-            self.assertEqual(202, response.status_int)
-            self.assertEqual(mtype, response.body.decode('utf-8'))
 
 
 class ValidBodyTest(test.TestCase):

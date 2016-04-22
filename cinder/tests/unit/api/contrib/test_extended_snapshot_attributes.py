@@ -14,12 +14,10 @@
 #    under the License.
 
 
-from lxml import etree
 import mock
 from oslo_serialization import jsonutils
 import webob
 
-from cinder.api.contrib import extended_snapshot_attributes
 from cinder import context
 from cinder import test
 from cinder.tests.unit.api import fakes
@@ -107,15 +105,3 @@ class ExtendedSnapshotAttributesTest(test.TestCase):
             self.assertSnapshotAttributes(snapshot,
                                           project_id='fake',
                                           progress='0%')
-
-
-class ExtendedSnapshotAttributesXmlTest(ExtendedSnapshotAttributesTest):
-    content_type = 'application/xml'
-    ext = extended_snapshot_attributes
-    prefix = '{%s}' % ext.Extended_snapshot_attributes.namespace
-
-    def _get_snapshot(self, body):
-        return etree.XML(body)
-
-    def _get_snapshots(self, body):
-        return etree.XML(body).getchildren()

@@ -24,9 +24,8 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import qos_specs as view_qos_specs
-from cinder.api import xmlutil
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder import rpc
 from cinder import utils
 from cinder.volume import qos_specs
@@ -35,62 +34,6 @@ from cinder.volume import qos_specs
 LOG = logging.getLogger(__name__)
 
 authorize = extensions.extension_authorizer('volume', 'qos_specs_manage')
-
-
-def make_qos_specs(elem):
-    elem.set('id')
-    elem.set('name')
-    elem.set('consumer')
-    elem.append(SpecsTemplate())
-
-
-def make_associations(elem):
-    elem.set('association_type')
-    elem.set('name')
-    elem.set('id')
-
-
-class SpecsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        return xmlutil.MasterTemplate(xmlutil.make_flat_dict('specs'), 1)
-
-
-class QoSSpecsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('qos_specs')
-        elem = xmlutil.SubTemplateElement(root, 'qos_spec',
-                                          selector='qos_specs')
-        make_qos_specs(elem)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class QoSSpecsKeyDeserializer(wsgi.XMLDeserializer):
-    def _extract_keys(self, key_node):
-        keys = []
-        for key in key_node.childNodes:
-            key_name = key.tagName
-            keys.append(key_name)
-
-        return keys
-
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        key_node = self.find_first_child_named(dom, 'keys')
-        if not key_node:
-            LOG.info(_LI("Unable to parse XML input."))
-            msg = _("Unable to parse XML request. "
-                    "Please provide XML in correct format.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
-        return {'body': {'keys': self._extract_keys(key_node)}}
-
-
-class AssociationsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('qos_associations')
-        elem = xmlutil.SubTemplateElement(root, 'associations',
-                                          selector='qos_associations')
-        make_associations(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 def _check_specs(context, specs_id):
@@ -111,7 +54,6 @@ class QoSSpecsController(wsgi.Controller):
                                            method,
                                            payload)
 
-    @wsgi.serializers(xml=QoSSpecsTemplate)
     def index(self, req):
         """Returns the list of qos_specs."""
         context = req.environ['cinder.context']
@@ -132,7 +74,6 @@ class QoSSpecsController(wsgi.Controller):
                                         sort_dirs=sort_dirs)
         return self._view_builder.summary_list(req, specs)
 
-    @wsgi.serializers(xml=QoSSpecsTemplate)
     def create(self, req, body=None):
         context = req.environ['cinder.context']
         authorize(context)
@@ -178,7 +119,6 @@ class QoSSpecsController(wsgi.Controller):
 
         return self._view_builder.detail(req, spec)
 
-    @wsgi.serializers(xml=QoSSpecsTemplate)
     def update(self, req, id, body=None):
         context = req.environ['cinder.context']
         authorize(context)
@@ -213,7 +153,6 @@ class QoSSpecsController(wsgi.Controller):
 
         return body
 
-    @wsgi.serializers(xml=QoSSpecsTemplate)
     def show(self, req, id):
         """Return a single qos spec item."""
         context = req.environ['cinder.context']
@@ -263,7 +202,6 @@ class QoSSpecsController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.deserializers(xml=QoSSpecsKeyDeserializer)
     def delete_keys(self, req, id, body):
         """Deletes specified keys in qos specs."""
         context = req.environ['cinder.context']
@@ -297,7 +235,6 @@ class QoSSpecsController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=AssociationsTemplate)
     def associations(self, req, id):
         """List all associations of given qos specs."""
         context = req.environ['cinder.context']
@@ -461,7 +398,6 @@ class Qos_specs_manage(extensions.ExtensionDescriptor):
 
     name = "Qos_specs_manage"
     alias = "qos-specs"
-    namespace = "http://docs.openstack.org/volume/ext/qos-specs/api/v1"
     updated = "2013-08-02T00:00:00+00:00"
 
     def get_resources(self):

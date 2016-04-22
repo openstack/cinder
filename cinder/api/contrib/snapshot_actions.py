@@ -100,8 +100,6 @@ class Snapshot_actions(extensions.ExtensionDescriptor):
 
     name = "SnapshotActions"
     alias = "os-snapshot-actions"
-    namespace = \
-        "http://docs.openstack.org/volume/ext/snapshot-actions/api/v1.1"
     updated = "2013-07-16T00:00:00+00:00"
 
     def get_controller_extensions(self):

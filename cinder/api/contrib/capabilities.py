@@ -65,7 +65,6 @@ class Capabilities(extensions.ExtensionDescriptor):
 
     name = "Capabilities"
     alias = "capabilities"
-    namespace = "http://docs.openstack.org/volume/ext/capabilities/api/v2"
     updated = "2015-08-31T00:00:00+00:00"
 
     def get_resources(self):

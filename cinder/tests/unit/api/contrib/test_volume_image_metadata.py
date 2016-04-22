@@ -13,15 +13,12 @@
 #   under the License.
 
 import uuid
-from xml.dom import minidom
 
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
 
-from cinder.api import common
 from cinder.api.contrib import volume_image_metadata
-from cinder.api.openstack import wsgi
 from cinder import context
 from cinder import db
 from cinder import exception
@@ -330,34 +327,3 @@ class VolumeImageMetadataTest(test.TestCase):
         self.assertEqual(200, res.status_int)
         self.assertEqual(fake_image_metadata,
                          jsonutils.loads(res.body)["metadata"])
-
-
-class ImageMetadataXMLDeserializer(common.MetadataXMLDeserializer):
-    metadata_node_name = "volume_image_metadata"
-
-
-class VolumeImageMetadataXMLTest(VolumeImageMetadataTest):
-    content_type = 'application/xml'
-
-    def _get_image_metadata(self, body):
-        deserializer = wsgi.XMLDeserializer()
-        volume = deserializer.find_first_child_named(
-            minidom.parseString(body), 'volume')
-        image_metadata = deserializer.find_first_child_named(
-            volume, 'volume_image_metadata')
-        return wsgi.MetadataXMLDeserializer().extract_metadata(image_metadata)
-
-    def _get_image_metadata_list(self, body):
-        deserializer = wsgi.XMLDeserializer()
-        volumes = deserializer.find_first_child_named(
-            minidom.parseString(body), 'volumes')
-        volume_list = deserializer.find_children_named(volumes, 'volume')
-        image_metadata_list = [
-            deserializer.find_first_child_named(
-                volume, 'volume_image_metadata'
-            )
-            for volume in volume_list]
-
-        metadata_deserializer = wsgi.MetadataXMLDeserializer()
-        return [metadata_deserializer.extract_metadata(image_metadata)
-                for image_metadata in image_metadata_list]

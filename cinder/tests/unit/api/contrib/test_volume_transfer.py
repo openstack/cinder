@@ -18,10 +18,8 @@ Tests for volume transfer code.
 """
 
 import mock
-from xml.dom import minidom
 
 from oslo_serialization import jsonutils
-import six
 import webob
 
 from cinder.api.contrib import volume_transfer
@@ -84,24 +82,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.transfer_destroy(context.get_admin_context(), transfer['id'])
         db.volume_destroy(context.get_admin_context(), volume_id)
 
-    def test_show_transfer_xml_content_type(self):
-        volume_id = self._create_volume(size=5)
-        transfer = self._create_transfer(volume_id)
-        req = webob.Request.blank('/v2/fake/os-volume-transfer/%s' %
-                                  transfer['id'])
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        transfer_xml = dom.getElementsByTagName('transfer')
-        name = transfer_xml.item(0).getAttribute('name')
-        self.assertEqual('test_transfer', name.strip())
-
-        db.transfer_destroy(context.get_admin_context(), transfer['id'])
-        db.volume_destroy(context.get_admin_context(), volume_id)
-
     def test_show_transfer_with_transfer_NotFound(self):
         req = webob.Request.blank('/v2/fake/os-volume-transfer/1234')
         req.method = 'GET'
@@ -138,33 +118,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(), volume_id_1)
         db.volume_destroy(context.get_admin_context(), volume_id_2)
 
-    def test_list_transfers_xml(self):
-        volume_id_1 = self._create_volume(size=5)
-        volume_id_2 = self._create_volume(size=5)
-        transfer1 = self._create_transfer(volume_id_1)
-        transfer2 = self._create_transfer(volume_id_2)
-
-        req = webob.Request.blank('/v2/fake/os-volume-transfer')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        transfer_list = dom.getElementsByTagName('transfer')
-        self.assertEqual(3, transfer_list.item(0).attributes.length)
-        self.assertEqual(transfer1['id'],
-                         transfer_list.item(0).getAttribute('id'))
-        self.assertEqual(3, transfer_list.item(1).attributes.length)
-        self.assertEqual(transfer2['id'],
-                         transfer_list.item(1).getAttribute('id'))
-
-        db.transfer_destroy(context.get_admin_context(), transfer2['id'])
-        db.transfer_destroy(context.get_admin_context(), transfer1['id'])
-        db.volume_destroy(context.get_admin_context(), volume_id_2)
-        db.volume_destroy(context.get_admin_context(), volume_id_1)
-
     def test_list_transfers_detail_json(self):
         volume_id_1 = self._create_volume(size=5)
         volume_id_2 = self._create_volume(size=5)
@@ -190,43 +143,6 @@ class VolumeTransferAPITestCase(test.TestCase):
                          res_dict['transfers'][1]['name'])
         self.assertEqual(transfer2['id'], res_dict['transfers'][1]['id'])
         self.assertEqual(volume_id_2, res_dict['transfers'][1]['volume_id'])
-
-        db.transfer_destroy(context.get_admin_context(), transfer2['id'])
-        db.transfer_destroy(context.get_admin_context(), transfer1['id'])
-        db.volume_destroy(context.get_admin_context(), volume_id_2)
-        db.volume_destroy(context.get_admin_context(), volume_id_1)
-
-    def test_list_transfers_detail_xml(self):
-        volume_id_1 = self._create_volume(size=5)
-        volume_id_2 = self._create_volume(size=5)
-        transfer1 = self._create_transfer(volume_id_1)
-        transfer2 = self._create_transfer(volume_id_2)
-
-        req = webob.Request.blank('/v2/fake/os-volume-transfer/detail')
-        req.method = 'GET'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(200, res.status_int)
-        dom = minidom.parseString(res.body)
-        transfer_detail = dom.getElementsByTagName('transfer')
-
-        self.assertEqual(4, transfer_detail.item(0).attributes.length)
-        self.assertEqual(
-            'test_transfer', transfer_detail.item(0).getAttribute('name'))
-        self.assertEqual(
-            transfer1['id'], transfer_detail.item(0).getAttribute('id'))
-        self.assertEqual(volume_id_1,
-                         transfer_detail.item(0).getAttribute('volume_id'))
-
-        self.assertEqual(4, transfer_detail.item(1).attributes.length)
-        self.assertEqual(
-            'test_transfer', transfer_detail.item(1).getAttribute('name'))
-        self.assertEqual(
-            transfer2['id'], transfer_detail.item(1).getAttribute('id'))
-        self.assertEqual(
-            volume_id_2, transfer_detail.item(1).getAttribute('volume_id'))
 
         db.transfer_destroy(context.get_admin_context(), transfer2['id'])
         db.transfer_destroy(context.get_admin_context(), transfer1['id'])
@@ -276,35 +192,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertIn('created_at', res_dict['transfer'])
         self.assertIn('name', res_dict['transfer'])
         self.assertIn('volume_id', res_dict['transfer'])
-        self.assertTrue(mock_validate.called)
-
-        db.volume_destroy(context.get_admin_context(), volume_id)
-
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_string_length')
-    def test_create_transfer_xml(self, mock_validate):
-        volume_size = 2
-        volume_id = self._create_volume(status='available', size=volume_size)
-
-        body = '<transfer name="transfer-001" volume_id="%s"/>' % volume_id
-        if isinstance(body, six.text_type):
-            body = body.encode('utf-8')
-
-        req = webob.Request.blank('/v2/fake/os-volume-transfer')
-        req.body = body
-        req.method = 'POST'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(202, res.status_int)
-        dom = minidom.parseString(res.body)
-        transfer = dom.getElementsByTagName('transfer')
-        self.assertTrue(transfer.item(0).hasAttribute('id'))
-        self.assertTrue(transfer.item(0).hasAttribute('auth_key'))
-        self.assertTrue(transfer.item(0).hasAttribute('created_at'))
-        self.assertEqual('transfer-001', transfer.item(0).getAttribute('name'))
-        self.assertTrue(transfer.item(0).hasAttribute('volume_id'))
         self.assertTrue(mock_validate.called)
 
         db.volume_destroy(context.get_admin_context(), volume_id)
@@ -430,34 +317,6 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.assertEqual(202, res.status_int)
         self.assertEqual(transfer['id'], res_dict['transfer']['id'])
         self.assertEqual(volume_id, res_dict['transfer']['volume_id'])
-        # cleanup
-        svc.stop()
-
-    def test_accept_transfer_volume_id_specified_xml(self):
-        volume_id = self._create_volume(size=5)
-        transfer = self._create_transfer(volume_id)
-        svc = self.start_service('volume', host='fake_host')
-
-        body = '<accept auth_key="%s"/>' % transfer['auth_key']
-        if isinstance(body, six.text_type):
-            body = body.encode('utf-8')
-
-        req = webob.Request.blank('/v2/fake/os-volume-transfer/%s/accept' %
-                                  transfer['id'])
-        req.body = body
-        req.method = 'POST'
-        req.headers['Content-Type'] = 'application/xml'
-        req.headers['Accept'] = 'application/xml'
-        res = req.get_response(fakes.wsgi_app())
-
-        self.assertEqual(202, res.status_int)
-        dom = minidom.parseString(res.body)
-        accept = dom.getElementsByTagName('transfer')
-        self.assertEqual(transfer['id'],
-                         accept.item(0).getAttribute('id'))
-        self.assertEqual(volume_id, accept.item(0).getAttribute('volume_id'))
-
-        db.volume_destroy(context.get_admin_context(), volume_id)
         # cleanup
         svc.stop()
 

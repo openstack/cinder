@@ -24,106 +24,11 @@ from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import consistencygroups as consistencygroup_views
-from cinder.api import xmlutil
 from cinder import consistencygroup as consistencygroupAPI
 from cinder import exception
 from cinder.i18n import _, _LI
-from cinder import utils
 
 LOG = logging.getLogger(__name__)
-
-
-def make_consistencygroup(elem):
-    elem.set('id')
-    elem.set('status')
-    elem.set('availability_zone')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('description')
-
-
-def make_consistencygroup_from_src(elem):
-    elem.set('id')
-    elem.set('status')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('description')
-    elem.set('cgsnapshot_id')
-    elem.set('source_cgid')
-
-
-class ConsistencyGroupTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('consistencygroup',
-                                       selector='consistencygroup')
-        make_consistencygroup(root)
-        alias = Consistencygroups.alias
-        namespace = Consistencygroups.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class ConsistencyGroupsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('consistencygroups')
-        elem = xmlutil.SubTemplateElement(root, 'consistencygroup',
-                                          selector='consistencygroups')
-        make_consistencygroup(elem)
-        alias = Consistencygroups.alias
-        namespace = Consistencygroups.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class ConsistencyGroupFromSrcTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('consistencygroup-from-src',
-                                       selector='consistencygroup-from-src')
-        make_consistencygroup_from_src(root)
-        alias = Consistencygroups.alias
-        namespace = Consistencygroups.namespace
-        return xmlutil.MasterTemplate(root, 1, nsmap={alias: namespace})
-
-
-class CreateDeserializer(wsgi.MetadataXMLDeserializer):
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        consistencygroup = self._extract_consistencygroup(dom)
-        return {'body': {'consistencygroup': consistencygroup}}
-
-    def _extract_consistencygroup(self, node):
-        consistencygroup = {}
-        consistencygroup_node = self.find_first_child_named(
-            node,
-            'consistencygroup')
-
-        attributes = ['name',
-                      'description']
-
-        for attr in attributes:
-            if consistencygroup_node.getAttribute(attr):
-                consistencygroup[attr] = consistencygroup_node.\
-                    getAttribute(attr)
-        return consistencygroup
-
-
-class CreateFromSrcDeserializer(wsgi.MetadataXMLDeserializer):
-    def default(self, string):
-        dom = utils.safe_minidom_parse_string(string)
-        consistencygroup = self._extract_consistencygroup(dom)
-        retval = {'body': {'consistencygroup-from-src': consistencygroup}}
-        return retval
-
-    def _extract_consistencygroup(self, node):
-        consistencygroup = {}
-        consistencygroup_node = self.find_first_child_named(
-            node, 'consistencygroup-from-src')
-
-        attributes = ['cgsnapshot', 'source_cgid', 'name', 'description']
-
-        for attr in attributes:
-            if consistencygroup_node.getAttribute(attr):
-                consistencygroup[attr] = (
-                    consistencygroup_node.getAttribute(attr))
-        return consistencygroup
 
 
 class ConsistencyGroupsController(wsgi.Controller):
@@ -135,7 +40,6 @@ class ConsistencyGroupsController(wsgi.Controller):
         self.consistencygroup_api = consistencygroupAPI.API()
         super(ConsistencyGroupsController, self).__init__()
 
-    @wsgi.serializers(xml=ConsistencyGroupTemplate)
     def show(self, req, id):
         """Return data about the given consistency group."""
         LOG.debug('show called for member %s', id)
@@ -182,12 +86,10 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=ConsistencyGroupsTemplate)
     def index(self, req):
         """Returns a summary list of consistency groups."""
         return self._get_consistencygroups(req, is_detail=False)
 
-    @wsgi.serializers(xml=ConsistencyGroupsTemplate)
     def detail(self, req):
         """Returns a detailed list of consistency groups."""
         return self._get_consistencygroups(req, is_detail=True)
@@ -212,8 +114,6 @@ class ConsistencyGroupsController(wsgi.Controller):
         return consistencygroups
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=ConsistencyGroupTemplate)
-    @wsgi.deserializers(xml=CreateDeserializer)
     def create(self, req, body):
         """Create a new consistency group."""
         LOG.debug('Creating new consistency group %s', body)
@@ -250,8 +150,6 @@ class ConsistencyGroupsController(wsgi.Controller):
         return retval
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=ConsistencyGroupFromSrcTemplate)
-    @wsgi.deserializers(xml=CreateFromSrcDeserializer)
     def create_from_src(self, req, body):
         """Create a new consistency group from a source.
 
@@ -307,7 +205,6 @@ class ConsistencyGroupsController(wsgi.Controller):
         retval = self._view_builder.summary(req, new_consistencygroup)
         return retval
 
-    @wsgi.serializers(xml=ConsistencyGroupTemplate)
     def update(self, req, id, body):
         """Update the consistency group.
 
@@ -375,7 +272,6 @@ class Consistencygroups(extensions.ExtensionDescriptor):
 
     name = 'Consistencygroups'
     alias = 'consistencygroups'
-    namespace = 'http://docs.openstack.org/volume/ext/consistencygroups/api/v1'
     updated = '2014-08-18T00:00:00+00:00'
 
     def get_resources(self):

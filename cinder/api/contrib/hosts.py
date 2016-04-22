@@ -15,8 +15,6 @@
 
 """The hosts admin extension."""
 
-from xml.parsers import expat
-
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
@@ -24,12 +22,10 @@ import webob.exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api import xmlutil
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder import objects
-from cinder import utils
 from cinder.volume import api as volume_api
 
 
@@ -37,62 +33,6 @@ CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('volume', 'hosts')
-
-
-class HostIndexTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('hosts')
-        elem = xmlutil.SubTemplateElement(root, 'host', selector='hosts')
-        elem.set('service-status')
-        elem.set('service')
-        elem.set('zone')
-        elem.set('service-state')
-        elem.set('host_name')
-        elem.set('last-update')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class HostUpdateTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('host')
-        root.set('host')
-        root.set('status')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class HostActionTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('host')
-        root.set('host')
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class HostShowTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('host')
-        elem = xmlutil.make_flat_dict('resource', selector='host',
-                                      subselector='resource')
-        root.append(elem)
-
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class HostDeserializer(wsgi.XMLDeserializer):
-    def default(self, string):
-        try:
-            node = utils.safe_minidom_parse_string(string)
-        except expat.ExpatError:
-            msg = _("cannot understand XML")
-            raise exception.MalformedRequestBody(reason=msg)
-
-        updates = {}
-        for child in node.childNodes[0].childNodes:
-            updates[child.tagName] = self.extract_text(child)
-
-        return dict(body=updates)
 
 
 def _list_hosts(req, service=None):
@@ -151,13 +91,10 @@ class HostController(wsgi.Controller):
         self.api = volume_api.HostAPI()
         super(HostController, self).__init__()
 
-    @wsgi.serializers(xml=HostIndexTemplate)
     def index(self, req):
         authorize(req.environ['cinder.context'])
         return {'hosts': _list_hosts(req)}
 
-    @wsgi.serializers(xml=HostUpdateTemplate)
-    @wsgi.deserializers(xml=HostDeserializer)
     @check_host
     def update(self, req, id, body):
         authorize(req.environ['cinder.context'])
@@ -194,7 +131,6 @@ class HostController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=result)
         return {"host": host, "status": result}
 
-    @wsgi.serializers(xml=HostShowTemplate)
     def show(self, req, id):
         """Shows the volume usage info given by hosts.
 
@@ -260,7 +196,6 @@ class Hosts(extensions.ExtensionDescriptor):
 
     name = "Hosts"
     alias = "os-hosts"
-    namespace = "http://docs.openstack.org/volume/ext/hosts/api/v1.1"
     updated = "2011-06-29T00:00:00+00:00"
 
     def get_resources(self):

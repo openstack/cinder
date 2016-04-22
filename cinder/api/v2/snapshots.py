@@ -24,7 +24,6 @@ from webob import exc
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.views import snapshots as snapshot_views
-from cinder.api import xmlutil
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder import utils
@@ -33,33 +32,6 @@ from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
-
-
-def make_snapshot(elem):
-    elem.set('id')
-    elem.set('status')
-    elem.set('size')
-    elem.set('created_at')
-    elem.set('name')
-    elem.set('description')
-    elem.set('volume_id')
-    elem.append(common.MetadataTemplate())
-
-
-class SnapshotTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('snapshot', selector='snapshot')
-        make_snapshot(root)
-        return xmlutil.MasterTemplate(root, 1)
-
-
-class SnapshotsTemplate(xmlutil.TemplateBuilder):
-    def construct(self):
-        root = xmlutil.TemplateElement('snapshots')
-        elem = xmlutil.SubTemplateElement(root, 'snapshot',
-                                          selector='snapshots')
-        make_snapshot(elem)
-        return xmlutil.MasterTemplate(root, 1)
 
 
 class SnapshotsController(wsgi.Controller):
@@ -72,7 +44,6 @@ class SnapshotsController(wsgi.Controller):
         self.ext_mgr = ext_mgr
         super(SnapshotsController, self).__init__()
 
-    @wsgi.serializers(xml=SnapshotTemplate)
     def show(self, req, id):
         """Return data about the given snapshot."""
         context = req.environ['cinder.context']
@@ -99,12 +70,10 @@ class SnapshotsController(wsgi.Controller):
 
         return webob.Response(status_int=202)
 
-    @wsgi.serializers(xml=SnapshotsTemplate)
     def index(self, req):
         """Returns a summary list of snapshots."""
         return self._items(req, is_detail=False)
 
-    @wsgi.serializers(xml=SnapshotsTemplate)
     def detail(self, req):
         """Returns a detailed list of snapshots."""
         return self._items(req, is_detail=True)
@@ -145,7 +114,6 @@ class SnapshotsController(wsgi.Controller):
         return snapshots
 
     @wsgi.response(202)
-    @wsgi.serializers(xml=SnapshotTemplate)
     def create(self, req, body):
         """Creates a new snapshot."""
         kwargs = {}
@@ -200,7 +168,6 @@ class SnapshotsController(wsgi.Controller):
 
         return self._view_builder.detail(req, new_snapshot)
 
-    @wsgi.serializers(xml=SnapshotTemplate)
     def update(self, req, id, body):
         """Update a snapshot."""
         context = req.environ['cinder.context']

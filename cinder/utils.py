@@ -160,11 +160,6 @@ def check_ssh_injection(cmd_list):
                     raise exception.SSHInjectionThreat(command=cmd_list)
 
 
-def cinderdir():
-    import cinder
-    return os.path.abspath(cinder.__file__).split('cinder/__init__.py')[0]
-
-
 def last_completed_audit_period(unit=None):
     """This method gives you the most recently *completed* audit period.
 

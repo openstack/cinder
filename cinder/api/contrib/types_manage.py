@@ -20,7 +20,6 @@ import webob
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
-from cinder.api.v1 import types
 from cinder.api.views import types as views_types
 from cinder import exception
 from cinder.i18n import _
@@ -48,7 +47,6 @@ class VolumeTypesManageController(wsgi.Controller):
         rpc.get_notifier('volumeType').info(context, method, payload)
 
     @wsgi.action("create")
-    @wsgi.serializers(xml=types.VolumeTypeTemplate)
     def _create(self, req, body):
         """Creates a new volume type."""
         context = req.environ['cinder.context']
@@ -101,7 +99,6 @@ class VolumeTypesManageController(wsgi.Controller):
         return self._view_builder.show(req, vol_type)
 
     @wsgi.action("update")
-    @wsgi.serializers(xml=types.VolumeTypeTemplate)
     def _update(self, req, id, body):
         # Update description for a given volume type.
         context = req.environ['cinder.context']
@@ -192,7 +189,6 @@ class Types_manage(extensions.ExtensionDescriptor):
 
     name = "TypesManage"
     alias = "os-types-manage"
-    namespace = "http://docs.openstack.org/volume/ext/types-manage/api/v1"
     updated = "2011-08-24T00:00:00+00:00"
 
     def get_controller_extensions(self):

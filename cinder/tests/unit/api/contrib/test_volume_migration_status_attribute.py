@@ -14,7 +14,6 @@
 
 import uuid
 
-from lxml import etree
 from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
@@ -121,33 +120,3 @@ class VolumeMigStatusAttributeTest(test.TestCase):
         vol = jsonutils.loads(res.body)['volumes']
         self.assertNotIn('os-vol-mig-status-attr:migstat', vol[0])
         self.assertNotIn('os-vol-mig-status-attr:name_id', vol[0])
-
-    def test_get_volume_xml(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/%s' % self.UUID)
-        req.method = 'GET'
-        req.accept = 'application/xml'
-        req.environ['cinder.context'] = ctx
-        res = req.get_response(app())
-        vol = etree.XML(res.body)
-        mig_key = ('{http://docs.openstack.org/volume/ext/'
-                   'volume_mig_status_attribute/api/v1}migstat')
-        self.assertEqual('migrating', vol.get(mig_key))
-        mig_key = ('{http://docs.openstack.org/volume/ext/'
-                   'volume_mig_status_attribute/api/v1}name_id')
-        self.assertEqual('fake2', vol.get(mig_key))
-
-    def test_list_volumes_detail_xml(self):
-        ctx = context.RequestContext('admin', 'fake', True)
-        req = webob.Request.blank('/v2/fake/volumes/detail')
-        req.method = 'GET'
-        req.accept = 'application/xml'
-        req.environ['cinder.context'] = ctx
-        res = req.get_response(app())
-        vol = list(etree.XML(res.body))[0]
-        mig_key = ('{http://docs.openstack.org/volume/ext/'
-                   'volume_mig_status_attribute/api/v1}migstat')
-        self.assertEqual('migrating', vol.get(mig_key))
-        mig_key = ('{http://docs.openstack.org/volume/ext/'
-                   'volume_mig_status_attribute/api/v1}name_id')
-        self.assertEqual('fake2', vol.get(mig_key))
