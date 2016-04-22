@@ -858,7 +858,7 @@ class FlashSystemDriver(san.SanDriver):
             'free_capacity_gb': 0,
             'reserved_percentage': self.configuration.reserved_percentage,
             'QoS_support': False,
-            'multiattach': True,
+            'multiattach': self.configuration.flashsystem_multihostmap_enabled,
         }
 
         pool = FLASHSYSTEM_VOLPOOL_NAME
