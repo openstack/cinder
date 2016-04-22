@@ -45,7 +45,7 @@ This script is a wrapper around the testr testrunner and the flake8 checker. Not
 there has been talk around deprecating this wrapper and this method of testing, it's currently
 available still but it may be good to get used to using tox or even ostestr directly.
 
-Documenation is left in place for those that still use it.
+Documentation is left in place for those that still use it.
 
 Flags
 -----
