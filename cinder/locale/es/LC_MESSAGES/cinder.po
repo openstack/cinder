@@ -14,13 +14,13 @@
 # Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc2.dev32\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-03-29 10:44+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev24\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-21 16:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-27 07:57+0000\n"
+"PO-Revision-Date: 2016-04-21 02:00+0000\n"
 "Last-Translator: Eugènia Torrella <tester03@es.ibm.com>\n"
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -508,7 +508,7 @@ msgstr ""
 "%(tno)s, alias: %(alias)s)"
 
 msgid "An unknown exception occurred."
-msgstr "Una excepción desconocida ha ocurrido"
+msgstr "Se ha producido una excepción desconocida"
 
 msgid ""
 "An user with a token scoped to a subproject is not allowed to see the quota "
@@ -10679,7 +10679,7 @@ msgstr "no se han encontrado las bibliotecas rados y rbd python"
 
 #, python-format
 msgid "read_deleted can only be one of 'no', 'yes' or 'only', not %r"
-msgstr "read_deleted solo puede ser 'no', 'yes' o 'only', no %r"
+msgstr "read_deleted solo puede ser 'no', 'yes' o 'only', pero no %r"
 
 #, python-format
 msgid "replication_device should be configured on backend: %s."

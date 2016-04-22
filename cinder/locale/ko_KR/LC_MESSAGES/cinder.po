@@ -12,16 +12,17 @@
 # Ian Y. Choi <ianyrchoi@gmail.com>, 2016. #zanata
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 # SeYeon Lee <sy_lee@kr.ibm.com>, 2016. #zanata
+# Sungjin Kang <gang.sungjin@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.0.0rc3.dev3\n"
-"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2016-04-02 08:10+0000\n"
+"Project-Id-Version: cinder 8.0.1.dev24\n"
+"Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
+"POT-Creation-Date: 2016-04-21 16:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-04-08 03:35+0000\n"
-"Last-Translator: Ian Y. Choi <ianyrchoi@gmail.com>\n"
+"PO-Revision-Date: 2016-04-19 04:08+0000\n"
+"Last-Translator: Lucas Palm <lapalm@us.ibm.com>\n"
 "Language: ko-KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -239,7 +240,7 @@ msgstr "%s이(가) 설정되지 않았습니다."
 
 #, python-format
 msgid "%s must be a valid raw or qcow2 image."
-msgstr "%s은(는) 유효한 원시 또는 qcow2 이미지여야 합니다. "
+msgstr "%s은(는) 유효한 raw 또는 qcow2 이미지여야 합니다. "
 
 #, python-format
 msgid "%s must be an absolute path."
@@ -634,7 +635,7 @@ msgid "Backup is only supported for SOFS volumes without backing file."
 msgstr "백업 파일 없는 SOFS 볼륨에 대해서만 백업이 지원됩니다."
 
 msgid "Backup is only supported for raw-formatted GlusterFS volumes."
-msgstr "백업은 원시 형식화 GlusterFS 볼륨에 대해서만 지원됩니다."
+msgstr "백업은 raw 포맷된 GlusterFS 볼륨에 대해서만 지원됩니다."
 
 msgid "Backup is only supported for raw-formatted SOFS volumes."
 msgstr "원시 형식화 SOFS 볼륨에 대해서만 백업이 지원됩니다."
@@ -670,7 +671,7 @@ msgid "Backup status must be available and not %s."
 msgstr "백업 상태는 사용 가능해야 하며 %s이(가) 아니어야 합니다."
 
 msgid "Backup status must be available or error"
-msgstr "백업 상태는 사용 가능 또는 오류여야 함"
+msgstr "백업 상태는 사용 가능 또는 오류여야 합니다"
 
 msgid "Backup to be restored has invalid size"
 msgstr "복원할 백업이 올바르지 않은 크기임"
@@ -1131,8 +1132,8 @@ msgid ""
 "Cannot find Controller Configuration Service for storage system "
 "%(storage_system)s."
 msgstr ""
-"스토리지 시스템 %(storage_system)s에 대한 제어기 구성 서비스를 찾을 수 없습니"
-"다."
+"스토리지 시스템 %(storage_system)s에 대한 컨트롤러 구성 서비스를 찾을 수 없습"
+"니다."
 
 #, python-format
 msgid "Cannot find Replication Service to create volume for snapshot %s."
@@ -1317,7 +1318,7 @@ msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cgsnahost가 비어 있습니다. 일관성 그룹이 작성되지 않습니다. "
 
 msgid "Cgsnapshot status must be available or error"
-msgstr "cg 스냅샷 상태는 사용 가능 또는 오류여야 함"
+msgstr "Cgsnapshot 상태는 사용 가능 또는 오류여야 함"
 
 msgid "Change hostlun id error."
 msgstr "hostlun id 변경 오류."
@@ -1359,7 +1360,7 @@ msgstr ""
 "번호 중 하나인지도 확인하십시오."
 
 msgid "Chunk size is not multiple of block size for creating hash."
-msgstr "청크 크기가 해시 작성을 위한 블록 크기의 배수가 아닙니다. "
+msgstr "Chunk 크기가 해시 작성을 위한 블록 크기의 배수가 아닙니다. "
 
 #, python-format
 msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
@@ -1380,7 +1381,7 @@ msgstr ""
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
 msgstr ""
-"클러스터가 형식화되지 않았습니다. \"dog 클러스터 형식화\"를 수행해야 할 수 있"
+"클러스터가 형식화되지 않았습니다. \"dog cluster format\"를 수행해야 할 수 있"
 "습니다. "
 
 #, python-format
@@ -1525,7 +1526,7 @@ msgstr "%(vol_format)s(으)로 변환되었지만 이제 형식이 %(file_format
 
 #, python-format
 msgid "Converted to raw, but format is now %s"
-msgstr "원시로 변환되었지만 형식은 지금 %s임"
+msgstr "Raw 로 변환되었지만 형식은 지금 %s임"
 
 #, python-format
 msgid "Converted to raw, but format is now %s."
@@ -1662,16 +1663,16 @@ msgid ""
 "Create backup aborted, expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"백업 작성 중단. 예상 백업 상태는 %(expected_status)s이지만 %(actual_status)s"
-"인 동안에는 인스턴스 연관을 변경할 수 없습니다."
+"백업 작성 중단. 예상 백업 상태는 %(expected_status)s 이지만 "
+"%(actual_status)s 을(를) 얻었습니다."
 
 #, python-format
 msgid ""
 "Create backup aborted, expected volume status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"백업 작성 중단. 예상 볼륨 상태는 %(expected_status)s이지만 %(actual_status)s"
-"인 동안에는 인스턴스 연관을 변경할 수 없습니다."
+"백업 작성 중단. 예상 볼륨 상태는 %(expected_status)s 이지만 "
+"%(actual_status)s 을(를) 얻었습니다."
 
 msgid "Create consistency group failed."
 msgstr "일관성 그룹을 생성하는 데 실패했습니다."
@@ -1768,10 +1769,10 @@ msgstr ""
 "는 호스트 그룹에 있습니다. "
 
 msgid "DEPRECATED: Deploy v1 of the Cinder API."
-msgstr "더 이상 사용되지 않음: Cinder API의 v1 배치"
+msgstr "더 이상 사용되지 않음: Cinder API의 v1 배포"
 
 msgid "DEPRECATED: Deploy v2 of the Cinder API."
-msgstr "더 이상 사용되지 않음: Cinder API의 v2 배치"
+msgstr "더 이상 사용되지 않음: Cinder API의 v2 배포"
 
 #, python-format
 msgid ""
@@ -1894,9 +1895,9 @@ msgid ""
 "[%(configured_service)s] is not the backup service that was used to create "
 "this backup [%(backup_service)s]."
 msgstr ""
-"백업 삭제가 중단되었습니다. 현재 구성된 백업 서비스 [%(configured_service)s]"
-"은(는) 이 백업 [%(backup_service)s]을(를) 작성하기 위해 사용된 백업 서비스가 "
-"아닙니다."
+"백업 삭제가 중단되었습니다. 현재 구성된 백업 서비스 [%(configured_service)s] "
+"은(는) 이 백업 [%(backup_service)s] 을(를) 작성하기 위해 사용된 백업 서비스"
+"가 아닙니다."
 
 msgid "Delete consistency group failed."
 msgstr "일관성 그룹 삭제에 실패했습니다. "
@@ -1940,8 +1941,8 @@ msgid ""
 "Delete_backup aborted, expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"Delete_backup 중단. 예상 백업 상태는 %(expected_status)s이지만 "
-"%(actual_status)s인 동안에는 인스턴스 연관을 변경할 수 없습니다."
+"Delete_backup 중단. 예상 백업 상태는 %(expected_status)s 이지만 "
+"%(actual_status)s 을(를) 얻었습니다."
 
 msgid "Deleting volume from database and skipping rpc."
 msgstr "데이터베이스에서 볼륨을 삭제하고 rpc를 건너뜁니다."
@@ -1965,7 +1966,7 @@ msgstr ""
 "Dell Cinder 드라이버 구성 오류 replication_device %s을(를) 찾을 수 없음"
 
 msgid "Deploy v3 of the Cinder API."
-msgstr "Cinder API의 v3 배치"
+msgstr "Cinder API의 v3 배포"
 
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource 기능은 관리자만 사용가능"
@@ -2520,7 +2521,7 @@ msgstr ""
 "%(error)s."
 
 msgid "Error connecting to ceph cluster."
-msgstr "ceph 클러스터 연결 중에 오류가 발생했습니다. "
+msgstr "Ceph 클러스터 연결 중에 오류가 발생했습니다. "
 
 #, python-format
 msgid "Error connecting via ssh: %s"
@@ -2995,8 +2996,8 @@ msgid ""
 "Export backup aborted, expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"백업 내보내기가 중단되었습니다. 예상 백업 상태는 %(expected_status)s이지만 "
-"%(actual_status)s인 동안에는 인스턴스 연관을 변경할 수 없습니다."
+"백업 내보내기가 중단되었습니다. 예상 백업 상태는 %(expected_status)s 이지만 "
+"%(actual_status)s 을(를) 얻었습니다."
 
 #, python-format
 msgid ""
@@ -3151,7 +3152,7 @@ msgstr "배열에 연결 실패"
 
 #, python-format
 msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
-msgstr "sheep 디먼에 연결하지 못했습니다. 주소: %(addr)s, 포트: %(port)s"
+msgstr "Sheep 데몬에 연결하지 못했습니다. 주소: %(addr)s, 포트: %(port)s"
 
 #, python-format
 msgid "Failed to copy image to volume: %(reason)s"
@@ -3291,7 +3292,7 @@ msgstr "LUN ID를 지정하지 않아서 스냅샷을 작성하지 못함"
 
 #, python-format
 msgid "Failed to create snapshot for cg: %(cgName)s."
-msgstr "cg의 스냅샷 작성 실패: %(cgName)s. "
+msgstr "CG 스냅샷 작성 실패: %(cgName)s. "
 
 #, python-format
 msgid "Failed to create snapshot for volume %s."
@@ -3388,7 +3389,7 @@ msgstr "스냅샷 %s 삭제 실패"
 
 #, python-format
 msgid "Failed to delete snapshot for cg: %(cgId)s."
-msgstr "cg의 스냅샷 삭제 실패: %(cgId)s. "
+msgstr "CG 스냅샷 삭제 실패: %(cgId)s. "
 
 #, python-format
 msgid "Failed to delete snapshot for snapshot_id: %s because it has pair."
@@ -4496,7 +4497,7 @@ msgstr "호스트를 찾을 수 없음"
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr ""
-"호스트를 찾을 수 없습니다. %(host)s에서 %(service)s을(를) 제거하지 못했습니"
+"호스트를 찾을 수 없습니다. %(host)s 에서 %(service)s 을(를) 제거하지 못했습니"
 "다. "
 
 #, python-format
@@ -4588,7 +4589,7 @@ msgid ""
 "by a connection from a client that has crashed and, if so, may be resolved "
 "by retrying the delete after 30 seconds has elapsed."
 msgstr ""
-"rbd 볼륨 삭제 중 ImageBusy 오류가 발생했습니다. 이는 충돌한  클라이언트로부터"
+"RDB 볼륨 삭제 중 ImageBusy 오류가 발생했습니다. 이는 충돌한  클라이언트로부터"
 "의 연결로 인해 발생했을 수 있습니다. 이러한 경우 30초 후 삭제를 재시도하여 문"
 "제를 해결할 수도 있습니다."
 
@@ -4678,8 +4679,8 @@ msgid ""
 "Invalid ConsistencyGroup: Consistency group status must be available, but "
 "current status is: %s."
 msgstr ""
-"올바르지 않은 일관성 그룹: 일관성 그룹 상태가 사용 가능이어야 하지만현재 상태"
-"가 %s입니다. "
+"올바르지 않은 일관성 그룹: 일관성 그룹 상태가 사용 가능이어야 하지만 현재 상"
+"태가 %s입니다. "
 
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "올바르지 않은 일관성 그룹: 일관성 그룹을 작성할 호스트가 없음"
@@ -4969,7 +4970,7 @@ msgstr "강제 실행에 대한 올바르지 않은 값 '%s' 입니다. "
 
 #, python-format
 msgid "Invalid value '%s' for force. "
-msgstr "강제 실행에 대한 올바르지 않은 값 '%s'입니다. "
+msgstr "강제 실행에 대한 올바르지 않은 값 '%s' 입니다. "
 
 #, python-format
 msgid "Invalid value '%s' for is_public. Accepted values: True or False."
@@ -5439,7 +5440,7 @@ msgstr "볼륨 %s의 다중 사본이 발견되었습니다. "
 #, python-format
 msgid "Multiple matches found for '%s', use an ID to be more specific."
 msgstr ""
-"'%s'에 대한 일치를 여러 개 찾았습니다. 더 구체적인 검색을 위해 ID를 사용하십"
+"'%s' 에 대한 일치를 여러 개 찾았습니다. 더 구체적인 검색을 위해 ID를 사용하십"
 "시오."
 
 msgid "Multiple profiles found."
@@ -5879,7 +5880,7 @@ msgid "Not able to find a suitable datastore for the volume: %s."
 msgstr "볼륨: %s에 적합한 데이터베이스를 찾을 수 없습니다."
 
 msgid "Not an rbd snapshot"
-msgstr "rbd 스냅샷이 아님"
+msgstr "RDB 스냅샷이 아님"
 
 #, python-format
 msgid "Not authorized for image %(image_id)s."
@@ -5896,32 +5897,32 @@ msgid "Not enough storage space in the ZFS share to perform this operation."
 msgstr "ZFS 공유에서 이 조작을 수행하는 데 필요한 스토리지 공간이 부족합니다."
 
 msgid "Not stored in rbd"
-msgstr "rbd에 저장되지 않음"
+msgstr "RDB에 저장되지 않음"
 
 msgid "Nova returned \"error\" status while creating snapshot."
 msgstr "스냅샷을 작성하는 동안 Nova에서 \"오류\" 상태를 리턴함. "
 
 msgid "Null response received from CloudByte's list filesystem."
-msgstr "CloudByte의 목록 파일 시스템에서 널 응답을 수신했습니다."
+msgstr "CloudByte의 목록 파일 시스템에서 null 응답을 수신했습니다."
 
 msgid "Null response received from CloudByte's list iscsi auth groups."
 msgstr "CloudByte의 목록 iscsi 인증 그룹에서 널 응답이 수신되었습니다. "
 
 msgid "Null response received from CloudByte's list iscsi initiators."
-msgstr "CloudByte의 목록 iscsi 개시자로부터 널 응답을 수신했습니다."
+msgstr "CloudByte의 목록 iscsi 개시자로부터 null 응답을 수신했습니다."
 
 msgid "Null response received from CloudByte's list volume iscsi service."
-msgstr "CloudByte의 목록 볼륨 iscsi 서비스에서 널 응답을 수신했습니다."
+msgstr "CloudByte의 목록 볼륨 iscsi 서비스에서 null 응답을 수신했습니다."
 
 #, python-format
 msgid "Null response received while creating volume [%s] at CloudByte storage."
 msgstr ""
-"CloudByte 스토리지에서 볼륨 [%s]을(를) 작성하는 중 널 응답을 수신했습니다."
+"CloudByte 스토리지에서 볼륨 [%s]을(를) 작성하는 중 null 응답을 수신했습니다."
 
 #, python-format
 msgid "Null response received while deleting volume [%s] at CloudByte storage."
 msgstr ""
-"CloudByte 스토리지에서 볼륨[%s]을 삭제하는 중에 널 응답이 수신되었습니다. "
+"CloudByte 스토리지에서 볼륨[%s]을 삭제하는 중에 null 응답이 수신되었습니다. "
 
 #, python-format
 msgid ""
@@ -5929,13 +5930,13 @@ msgid ""
 "[%(job)s] at CloudByte storage."
 msgstr ""
 "CloudByte 스토리지에서 [%(operation)s] 기반 작업 [%(job)s]에 대해 조회하는 중"
-"에 널 응답이 수신되었습니다. "
+"에 null 응답이 수신되었습니다. "
 
 msgid "Number of retries if connection to ceph cluster failed."
 msgstr "ceph 클러스터에 대한 연결에 실패한 경우 재시도 횟수입니다. "
 
 msgid "Object Count"
-msgstr "오브젝트 카운트"
+msgstr "오브젝트 개수"
 
 msgid "Object Version"
 msgstr "오브젝트 버전"
@@ -6492,8 +6493,8 @@ msgid ""
 "Restore backup aborted, expected volume status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"백업 복원 중단, 예상 볼륨 상태는 %(expected_status)s이지만 %(actual_status)s"
-"을(를) 가져옴"
+"백업 복원 중단, 예상 볼륨 상태는 %(expected_status)s 이지만 "
+"%(actual_status)s 을(를) 얻었습니다."
 
 #, python-format
 msgid ""
@@ -6501,17 +6502,17 @@ msgid ""
 "[%(configured_service)s] is not the backup service that was used to create "
 "this backup [%(backup_service)s]."
 msgstr ""
-"백업 복원이 중단되었습니다. 현재 구성된 백업 서비스 [%(configured_service)s]"
-"은(는) 이 백업 [%(backup_service)s]을(를) 작성하기 위해 사용된 백업 서비스가 "
-"아닙니다."
+"백업 복원이 중단되었습니다. 현재 구성된 백업 서비스 [%(configured_service)s] "
+"은(는) 이 백업 [%(backup_service)s] 을(를) 작성하기 위해 사용된 백업 서비스"
+"가 아닙니다."
 
 #, python-format
 msgid ""
 "Restore backup aborted: expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"백업 복원 중단: 예상 백업 상태는 %(expected_status)s이지만 %(actual_status)s"
-"을(를) 가져옴"
+"백업 복원 중단: 예상 백업 상태는 %(expected_status)s 이지만 "
+"%(actual_status)s 을(를) 얻었습니다."
 
 #, python-format
 msgid ""
@@ -6645,7 +6646,7 @@ msgstr "SerialNumber는 파일 %(fileName)s에 있어야 합니다. "
 
 #, python-format
 msgid "Service %(service)s on host %(host)s removed."
-msgstr "호스트 %(host)s의 서비스 %(service)s이(가) 제거되었습니다. "
+msgstr "호스트 %(host)s 의 서비스 %(service)s 이(가) 제거되었습니다. "
 
 #, python-format
 msgid "Service %(service_id)s could not be found on host %(host)s."
@@ -6807,7 +6808,7 @@ msgstr "스냅샷 상태가 복제 \"사용 가능\"이어야 합니다. "
 #, python-format
 msgid ""
 "Snapshot to be backed up must be available, but the current status is \"%s\"."
-msgstr "백업할 스냅샷이 사용 가능해야 하지만 현재 상태가 \"%s\"입니다. "
+msgstr "백업할 스냅샷이 사용 가능해야 하지만 현재 상태가 \"%s\" 입니다. "
 
 #, python-format
 msgid "Snapshot with id of %s could not be found."
@@ -7195,7 +7196,7 @@ msgid "The parameter of the storage backend. (config_group: %(config_group)s)"
 msgstr "스토리지 백엔드의 매개변수입니다.(config_group: %(config_group)s)"
 
 msgid "The parent backup must be available for incremental backup."
-msgstr "상위 백업은 증분 백업을 수행할 수 있어야 합니다. "
+msgstr "부모 백업은 증분 백업을 수행할 수 있어야 합니다. "
 
 #, python-format
 msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
@@ -7260,11 +7261,11 @@ msgid ""
 "The source volume type '%(src)s' is different than the destination volume "
 "type '%(dest)s'."
 msgstr ""
-"소스 볼륨 유형 '%(src)s'이(가) 대상 볼륨 유형인 '%(dest)s'과(와) 다릅니다."
+"소스 볼륨 유형 '%(src)s' 이(가) 대상 볼륨 유형인 '%(dest)s' 과(와) 다릅니다."
 
 #, python-format
 msgid "The source volume type '%s' is not available."
-msgstr "소스 볼륨 유형 '%s'은(는) 사용할 수 없습니다."
+msgstr "소스 볼륨 유형 '%s' 은(는) 사용할 수 없습니다."
 
 #, python-format
 msgid "The specified %(desc)s is busy."
@@ -7869,7 +7870,7 @@ msgstr "작업에서 스토리지 볼륨을 가져올 수 없습니다."
 #, python-format
 msgid "Unable to get target endpoints for hardwareId %(hardwareIdInstance)s."
 msgstr ""
-"하드웨어 ID %(hardwareIdInstance)s의 대상 엔드포인트를 가져올 수 없습니다."
+"하드웨어 ID %(hardwareIdInstance)s의 대상 endpoint를 가져올 수 없습니다."
 
 msgid "Unable to get the name of the masking view."
 msgstr "마스킹 보기의 이름을 가져올 수 없습니다."
@@ -8150,7 +8151,7 @@ msgid "Unknown service"
 msgstr "알 수 없는 서비스"
 
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
-msgstr "알 수 없는 정렬 방향입니다. 'desc' 또는 'asc'여야 함"
+msgstr "알 수 없는 정렬 방향입니다. 'desc' 또는 'asc'여야 합니다"
 
 msgid "Unknown sort direction, must be 'desc' or 'asc'."
 msgstr "알 수 없는 정렬 방향입니다. 'desc' 또는 'asc'여야 합니다. "
@@ -8203,7 +8204,7 @@ msgstr ""
 
 #, python-format
 msgid "Unsupported backup metadata version (%s)"
-msgstr "지원되지 않는 백업 메타데이터 버전(%s)"
+msgstr "지원되지 않는 백업 메타데이터 버전 (%s)"
 
 msgid "Unsupported backup metadata version requested"
 msgstr "지원하지 않는 백업 메타데이터 버전이 요청됨"
@@ -8374,7 +8375,7 @@ msgstr "볼륨 %(vol)s을(를) 풀 %(pool)s에서 작성할 수 없습니다. "
 
 #, python-format
 msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
-msgstr "%(vol1)s 볼륨이 snapshot.volume_id %(vol2)s과(와) 일치하지 않습니다."
+msgstr "%(vol1)s 볼륨이 snapshot.volume_id %(vol2)s 과(와) 일치하지 않습니다."
 
 #, python-format
 msgid ""
@@ -8794,7 +8795,8 @@ msgid ""
 "Volume to be backed up must be available or in-use, but the current status "
 "is \"%s\"."
 msgstr ""
-"백업할 볼륨은 사용 가능하거나 사용 중이어야 하지만 현재 상태가 \"%s\"입니다. "
+"백업할 볼륨은 사용 가능하거나 사용 중이어야 하지만 현재 상태가 \"%s\" 입니"
+"다. "
 
 msgid "Volume to be restored to must be available"
 msgstr "복원할 볼륨이 사용 가능해야 함"
@@ -8896,7 +8898,7 @@ msgstr "동기화 대기 실패. 실행 상태: %s."
 msgid ""
 "Waiting for all nodes to join cluster. Ensure all sheep daemons are running."
 msgstr ""
-"모든 노드가 클러스터를 결합할 때까지 기다리는 중입니다. 모든 sheep 디먼이 실"
+"모든 노드가 클러스터를 결합할 때까지 기다리는 중입니다. 모든 sheep 데몬이 실"
 "행 중인지 확인하십시오. "
 
 msgid "We should not do switch over on primary array."
@@ -9302,7 +9304,7 @@ msgstr "add_vdisk_copy가 예상 풀에서 vdisk 사본 없이 시작되었습�
 
 #, python-format
 msgid "all_tenants must be a boolean, got '%s'."
-msgstr "all_tenants는 부울이어야 하지만 '%s'이(가) 수신되었습니다. "
+msgstr "all_tenants는 boolean이어야 하지만 '%s' 이(가) 수신되었습니다. "
 
 msgid "already created"
 msgstr "이미 작성됨"
@@ -9912,7 +9914,7 @@ msgstr "mount.glusterfs가 설치되지 않음"
 
 #, python-format
 msgid "multiple resources with name %s found by drbdmanage"
-msgstr "drbdmanage에서 이름이 %s인 다중 자원을 발견함"
+msgstr "DRBDmanage에서 이름이 %s인 다중 자원을 발견함"
 
 #, python-format
 msgid "multiple resources with snapshot ID %s found"
@@ -9931,7 +9933,7 @@ msgstr "REPLY가 아니라 %r"
 
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
-msgstr "drbdmanage에서 ID가 %s인 스냅샷을 찾을 수 없음"
+msgstr "DRBDmanage에서 ID가 %s인 스냅샷을 찾을 수 없음"
 
 #, python-format
 msgid "not exactly one snapshot with id %s"
@@ -10041,7 +10043,7 @@ msgid ""
 "in metadata."
 msgstr ""
 "restore_backup이 중단되었습니다. 실제 오브젝트 목록이 메타데이터에 저장된 오"
-"브젝트 목록과일치하지 않습니다. "
+"브젝트 목록과 일치하지 않습니다. "
 
 msgid "root element selecting a list"
 msgstr "목록을 선택하는 루트 요소"
@@ -10078,7 +10080,7 @@ msgstr "스냅샷이 없음"
 
 #, python-format
 msgid "snapshot id:%s not found"
-msgstr "스냅샷 id:%s을(를) 찾을 수 없음"
+msgstr "스냅샷 id:%s 을(를) 찾을 수 없음"
 
 #, python-format
 msgid "snapshot-%s"
@@ -10092,11 +10094,11 @@ msgstr "스냅샷이 변경됨"
 
 #, python-format
 msgid "source vol id:%s not found"
-msgstr "소스 볼륨 id:%s을(를) 찾을 수 없음"
+msgstr "소스 볼륨 id:%s 을(를) 찾을 수 없음"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
-msgstr "소스 볼륨 id:%s을(를) 복제할 수 없음"
+msgstr "소스 볼륨 id:%s 을(를) 복제할 수 없음"
 
 msgid "source-name cannot be empty."
 msgstr "source-name은 비어 있지 않아야 합니다."
@@ -10186,7 +10188,7 @@ msgstr "vmemclient python 라이브러리를 찾을 수 없음"
 
 #, python-format
 msgid "volume %s not found in drbdmanage"
-msgstr "drbdmanage에서 볼륨 %s을(를) 찾을 수 없음"
+msgstr "DRBDmanage에서 볼륨 %s을(를) 찾을 수 없음"
 
 msgid "volume assigned"
 msgstr "볼륨 지정됨"
@@ -10195,7 +10197,7 @@ msgid "volume changed"
 msgstr "볼륨 변경됨"
 
 msgid "volume does not exist"
-msgstr "볼륨이 없음"
+msgstr "볼륨이 존재하지 않습니다"
 
 msgid "volume is already attached"
 msgstr "볼륨이 이미 접속됨"
