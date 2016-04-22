@@ -21,22 +21,22 @@ trying to work on Cinder.  The convention is actually quite simple, although
 it may be difficult to decipher from the code.
 
 
-Attach/Detach Operations are mulit-part commands
+Attach/Detach Operations are multi-part commands
 ================================================
 
 There are three things that happen in the workflow for an attach or detach call.
 
 1. Update the status of the volume in the DB (ie attaching/detaching)
 - For Attach, this is the cinder.volume.api.reserve method
-- For Detach, the analagous call is cinder.volume.api.begin_detaching
+- For Detach, the analogous call is cinder.volume.api.begin_detaching
 
 2. Handle the connection operations that need to be done on the Volume
 - For Attach, this is the cinder.volume.api.initialize_connection method
-- For Detach, the analagous calls is cinder.volume.api.terminate_connection
+- For Detach, the analogous calls is cinder.volume.api.terminate_connection
 
 3. Finalize the status of the volume and release the resource
 - For attach, this is the cinder.volume.api.attach method
-- For detach, the analagous call is cinder.volume.api.detach
+- For detach, the analogous call is cinder.volume.api.detach
 
 Attach workflow
 ===============
@@ -99,7 +99,7 @@ form the response data in the parent request.
 We call this infor the model_update and it's used to update vital target
 information associated with the volume in the Cinder database.
 
-driver.intialize_connection
+driver.initialize_connection
 ***************************
 
 Now that we've actually built a target and persisted the important
@@ -128,7 +128,7 @@ attach(self, context, volume, instance_uuid, host_name, mount_point, mode)
 This is the last call that *should* be pretty simple.  The intent is that this
 is simply used to finalize the attach process.  In other words, we simply
 update the status on the Volume in the database, and provide a mechanism to
-notify the driver that the attachment has completed succesfully.
+notify the driver that the attachment has completed successfully.
 
 There's some additional information that has been added to this finalize call
 over time like instance_uuid, host_name etc.  Some of these are only provided
@@ -142,13 +142,13 @@ Detach workflow
 begin_detaching(self, context, volume)
 --------------------------------------
 
-Analagous to the Attach workflows ``reserve_volume`` method.
+Analogous to the Attach workflows ``reserve_volume`` method.
 Performs a simple conditional update of Volume status to ``detaching``.
 
 
 terminate_connection(self, context, volume, connector, force=False)
 -------------------------------------------------------------------
-Analagous to the Attach workflows ``initialize_connection`` method.
+Analogous to the Attach workflows ``initialize_connection`` method.
 
 Used to send calls down to drivers/target-drivers to do any sort of cleanup
 they might require.
