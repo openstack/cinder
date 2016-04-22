@@ -2218,53 +2218,6 @@ class HPE3PARBaseDriver(object):
                                'provider_location': provider_location}
             self.assertEqual(expected_update, actual_update)
 
-    def test_attach_volume(self):
-        # setup_mock_client drive with default configuration
-        # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            self.driver.attach_volume(context.get_admin_context(),
-                                      self.volume,
-                                      'abcdef',
-                                      'newhost',
-                                      '/dev/vdb')
-
-            expected = [
-                mock.call.setVolumeMetaData(
-                    self.VOLUME_3PAR_NAME,
-                    'HPQ-CS-instance_uuid',
-                    'abcdef')]
-
-            mock_client.assert_has_calls(expected)
-
-            # test the exception
-            mock_client.setVolumeMetaData.side_effect = Exception('Custom ex')
-            self.assertRaises(exception.CinderException,
-                              self.driver.attach_volume,
-                              context.get_admin_context(),
-                              self.volume,
-                              'abcdef',
-                              'newhost',
-                              '/dev/vdb')
-
-    def test_detach_volume(self):
-        # setup_mock_client drive with default configuration
-        # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            self.driver.detach_volume(context.get_admin_context(), self.volume,
-                                      None)
-            expected = [
-                mock.call.removeVolumeMetaData(
-                    self.VOLUME_3PAR_NAME,
-                    'HPQ-CS-instance_uuid')]
-
-            mock_client.assert_has_calls(expected)
-
     def test_create_snapshot(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
@@ -2613,53 +2566,6 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
-
-    def test_update_volume_key_value_pair(self):
-        # setup_mock_client drive with default configuration
-        # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
-
-        key = 'a'
-        value = 'b'
-
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            common = self.driver._login()
-            common.update_volume_key_value_pair(
-                self.volume,
-                key,
-                value)
-
-            expected = [
-                mock.call.setVolumeMetaData(self.VOLUME_3PAR_NAME, key, value)]
-
-            mock_client.assert_has_calls(expected)
-
-            # check exception
-            mock_client.setVolumeMetaData.side_effect = Exception('fake')
-            self.assertRaises(exception.VolumeBackendAPIException,
-                              common.update_volume_key_value_pair,
-                              self.volume,
-                              None,
-                              'b')
-
-    def test_clear_volume_key_value_pair(self):
-
-        # setup_mock_client drive with default configuration
-        # and return the mock HTTP 3PAR client
-        mock_client = self.setup_driver()
-        with mock.patch.object(hpecommon.HPE3PARCommon,
-                               '_create_client') as mock_create_client:
-            mock_create_client.return_value = mock_client
-            key = 'a'
-            common = self.driver._login()
-            common.clear_volume_key_value_pair(self.volume, key)
-
-            expected = [
-                mock.call.removeVolumeMetaData(self.VOLUME_3PAR_NAME, key)]
-
-            mock_client.assert_has_calls(expected)
 
     def test_extend_volume(self):
         # setup_mock_client drive with default configuration

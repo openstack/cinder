@@ -100,10 +100,11 @@ class HPE3PARFCDriver(driver.TransferVD,
         3.0.4 - Adding manage/unmanage snapshot support
         3.0.5 - Optimize array ID retrieval
         3.0.6 - Update replication to version 2.1
+        3.0.7 - Remove metadata that tracks the instance ID. bug #1572665
 
     """
 
-    VERSION = "3.0.6"
+    VERSION = "3.0.7"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
@@ -553,21 +554,6 @@ class HPE3PARFCDriver(driver.TransferVD,
         common = self._login()
         try:
             common.unmanage_snapshot(snapshot)
-        finally:
-            self._logout(common)
-
-    def attach_volume(self, context, volume, instance_uuid, host_name,
-                      mountpoint):
-        common = self._login()
-        try:
-            common.attach_volume(volume, instance_uuid)
-        finally:
-            self._logout(common)
-
-    def detach_volume(self, context, volume, attachment=None):
-        common = self._login()
-        try:
-            common.detach_volume(volume, attachment)
         finally:
             self._logout(common)
 
