@@ -343,6 +343,7 @@ class AvailabilityZoneTestCase(BaseVolumeTestCase):
         self.assertEqual(expected, azs)
 
 
+@ddt.ddt
 class VolumeTestCase(BaseVolumeTestCase):
 
     def setUp(self):
@@ -4178,27 +4179,17 @@ class VolumeTestCase(BaseVolumeTestCase):
                                fake_new_volume.id)
         self.assertIsNone(volume.migration_status)
 
-    def test_check_volume_filters_true(self):
-        """Test bootable as filter for true"""
+    @ddt.data(False, True)
+    def test_check_volume_filters(self, filter_value):
+        """Test bootable as filter for True or False"""
         volume_api = cinder.volume.api.API()
-        filters = {'bootable': 'TRUE'}
+        filters = {'bootable': filter_value}
 
         # To convert filter value to True or False
         volume_api.check_volume_filters(filters)
 
-        # Confirming converted filter value against True
-        self.assertTrue(filters['bootable'])
-
-    def test_check_volume_filters_false(self):
-        """Test bootable as filter for false"""
-        volume_api = cinder.volume.api.API()
-        filters = {'bootable': 'false'}
-
-        # To convert filter value to True or False
-        volume_api.check_volume_filters(filters)
-
-        # Confirming converted filter value against False
-        self.assertEqual(False, filters['bootable'])
+        # Confirming converted filter value against True or False
+        self.assertEqual(filter_value, filters['bootable'])
 
     def test_check_volume_filters_invalid(self):
         """Test bootable as filter"""
@@ -4210,6 +4201,43 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # Confirming converted filter value against invalid value
         self.assertTrue(filters['bootable'])
+
+    @ddt.data('False', 'false', 'f', '0')
+    def test_check_volume_filters_strict_false(self, filter_value):
+        """Test bootable as filter for False, false, f and 0 values"""
+        volume_api = cinder.volume.api.API()
+        filters = {'bootable': filter_value}
+
+        strict = True
+        # To convert filter value to True or False
+        volume_api.check_volume_filters(filters, strict)
+
+        # Confirming converted filter value against False
+        self.assertFalse(filters['bootable'])
+
+    @ddt.data('True', 'true', 't', '1')
+    def test_check_volume_filters_strict_true(self, filter_value):
+        """Test bootable as filter for True, true, t, 1 values"""
+        volume_api = cinder.volume.api.API()
+        filters = {'bootable': filter_value}
+
+        strict = True
+        # To convert filter value to True or False
+        volume_api.check_volume_filters(filters, strict)
+
+        # Confirming converted filter value against True
+        self.assertTrue(filters['bootable'])
+
+    def test_check_volume_filters_strict_invalid(self):
+        """Test bootable as filter for invalid value."""
+        volume_api = cinder.volume.api.API()
+        filters = {'bootable': 'invalid'}
+
+        strict = True
+        # Confirming exception for invalid value in filter
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.check_volume_filters,
+                          filters, strict)
 
     def test_update_volume_readonly_flag(self):
         """Test volume readonly flag can be updated at API level."""

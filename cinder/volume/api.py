@@ -1674,24 +1674,19 @@ class API(base.Base):
         if not self.volume_rpcapi.thaw_host(ctxt, host):
             return "Backend reported error during thaw_host operation."
 
-    def check_volume_filters(self, filters):
-        """Sets the user filter value to accepted format."""
+    def check_volume_filters(self, filters, strict=False):
+        """Sets the user filter value to accepted format"""
         booleans = self.db.get_booleans_for_table('volume')
 
         # To translate any true/false equivalent to True/False
         # which is only acceptable format in database queries.
-        accepted_true = ['True', 'true', 'TRUE']
-        accepted_false = ['False', 'false', 'FALSE']
-        for k, v in filters.items():
+
+        for key, val in filters.items():
             try:
-                if k in booleans:
-                    if v in accepted_false:
-                        filters[k] = False
-                    elif v in accepted_true:
-                        filters[k] = True
-                    else:
-                        filters[k] = bool(v)
-                elif k == 'display_name':
+                if key in booleans:
+                    filters[key] = self._check_boolean_filter_value(
+                        key, val, strict)
+                elif key == 'display_name':
                     # Use the raw value of display name as is for the filter
                     # without passing it through ast.literal_eval(). If the
                     # display name is a properly quoted string (e.g. '"foo"')
@@ -1699,9 +1694,46 @@ class API(base.Base):
                     # the filter becomes different from the user input.
                     continue
                 else:
-                    filters[k] = ast.literal_eval(v)
+                    filters[key] = ast.literal_eval(val)
             except (ValueError, SyntaxError):
-                LOG.debug('Could not evaluate value %s, assuming string', v)
+                LOG.debug('Could not evaluate value %s, assuming string', val)
+
+    def _check_boolean_filter_value(self, key, val, strict=False):
+        """Boolean filter values in Volume GET.
+
+        Before V3.2, all values other than 'False', 'false', 'FALSE' were
+        trated as True for specific boolean filter parameters in Volume
+        GET request.
+
+        But V3.2 onwards, only true/True/0/1/False/false parameters are
+        supported.
+        All other input values to specific boolean filter parameter will
+        lead to raising exception.
+
+        This changes API behavior. So, micro version introduced for V3.2
+        onwards.
+        """
+        if strict:
+            # for updated behavior, from V3.2 onwards.
+            # To translate any true/false/t/f/0/1 to True/False
+            # which is only acceptable format in database queries.
+            try:
+                return strutils.bool_from_string(val, strict=True)
+            except ValueError:
+                msg = _('\'%(key)s = %(value)s\'') % {'key': key,
+                                                      'value': val}
+                raise exception.InvalidInput(reason=msg)
+        else:
+            # For existing behavior(before version 3.2)
+            accepted_true = ['True', 'true', 'TRUE']
+            accepted_false = ['False', 'false', 'FALSE']
+
+            if val in accepted_false:
+                return False
+            elif val in accepted_true:
+                return True
+            else:
+                return bool(val)
 
 
 class HostAPI(base.Base):
