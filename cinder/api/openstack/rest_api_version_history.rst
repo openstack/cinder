@@ -51,3 +51,7 @@ user documentation.
   bootable filter values.
   But for any other values passed for bootable filter, it will return
   "Invalid input received: bootable={filter value}' error.
+
+3.3
+---
+  Added /messages API.

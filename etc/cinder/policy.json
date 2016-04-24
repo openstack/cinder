@@ -102,5 +102,8 @@
     "consistencygroup:get_cgsnapshot": "group:nobody",
     "consistencygroup:get_all_cgsnapshots": "group:nobody",
 
-    "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api"
+    "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
+    "message:delete": "rule:admin_or_owner",
+    "message:get": "rule:admin_or_owner",
+    "message:get_all": "rule:admin_or_owner"
 }

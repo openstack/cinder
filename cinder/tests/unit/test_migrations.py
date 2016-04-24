@@ -812,6 +812,33 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         fkey, = iscsi_targets.c.volume_id.foreign_keys
         self.assertIsNotNone(fkey)
 
+    def _check_074(self, engine, data):
+        """Test adding message table."""
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "messages"))
+        messages = db_utils.get_table(engine, 'messages')
+
+        self.assertIsInstance(messages.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(messages.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(messages.c.deleted.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(messages.c.message_level.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(messages.c.project_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(messages.c.id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(messages.c.request_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(messages.c.resource_uuid.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(messages.c.event_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(messages.c.resource_type.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 

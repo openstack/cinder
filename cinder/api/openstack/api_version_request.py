@@ -49,6 +49,7 @@ REST_API_VERSION_HISTORY = """
     * 3.1 - Adds visibility and protected to _volume_upload_image parameters.
     * 3.2 - Bootable filters in volume GET call no longer treats all values
             passed to it as true.
+    * 3.3 - Add user messages APIs.
 
 """
 
@@ -57,7 +58,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.2"
+_MAX_API_VERSION = "3.3"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

@@ -286,6 +286,10 @@ class VolumeNotFound(NotFound):
     message = _("Volume %(volume_id)s could not be found.")
 
 
+class MessageNotFound(NotFound):
+    message = _("Message %(message_id)s could not be found.")
+
+
 class VolumeAttachmentNotFound(NotFound):
     message = _("Volume attachment could not be found with "
                 "filter: %(filter)s .")
@@ -530,6 +534,10 @@ class SnapshotLimitExceeded(QuotaError):
 
 class BackupLimitExceeded(QuotaError):
     message = _("Maximum number of backups allowed (%(allowed)d) exceeded")
+
+
+class ImageLimitExceeded(QuotaError):
+    message = _("Image quota exceeded")
 
 
 class DuplicateSfVolumeNames(Duplicate):

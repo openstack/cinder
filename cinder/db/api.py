@@ -1121,6 +1121,28 @@ def image_volume_cache_get_all_for_host(context, host):
 ###################
 
 
+def message_get(context, message_id):
+    """Return a message with the specified ID."""
+    return IMPL.message_get(context, message_id)
+
+
+def message_get_all(context):
+    return IMPL.message_get_all(context)
+
+
+def message_create(context, values):
+    """Creates a new message with the specified values."""
+    return IMPL.message_create(context, values)
+
+
+def message_destroy(context, message_id):
+    """Deletes message with the specified ID."""
+    return IMPL.message_destroy(context, message_id)
+
+
+###################
+
+
 def get_model_for_versioned_object(versioned_object):
     return IMPL.get_model_for_versioned_object(versioned_object)
 

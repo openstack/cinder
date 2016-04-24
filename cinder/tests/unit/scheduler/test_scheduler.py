@@ -23,6 +23,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder.message import defined_messages
 from cinder.objects import fields
 from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
@@ -116,9 +117,11 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_update_cap.assert_called_once_with(service, host, capabilities)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
+    @mock.patch('cinder.message.api.API.create')
     @mock.patch('cinder.db.volume_update')
     def test_create_volume_exception_puts_volume_in_error_state(
-            self, _mock_volume_update, _mock_sched_create):
+            self, _mock_volume_update, _mock_message_create,
+            _mock_sched_create):
         # Test NoValidHost exception behavior for create_volume.
         # Puts the volume in 'error' state and eats the exception.
         _mock_sched_create.side_effect = exception.NoValidHost(reason="")
@@ -135,6 +138,11 @@ class SchedulerManagerTestCase(test.TestCase):
                                                     {'status': 'error'})
         _mock_sched_create.assert_called_once_with(self.context, request_spec,
                                                    {})
+
+        _mock_message_create.assert_called_once_with(
+            self.context, defined_messages.UNABLE_TO_ALLOCATE,
+            self.context.project_id, resource_type='VOLUME',
+            resource_uuid=volume.id)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('eventlet.sleep')

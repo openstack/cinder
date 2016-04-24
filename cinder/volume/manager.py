@@ -61,6 +61,9 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import cache as image_cache
 from cinder.image import glance
 from cinder import manager
+from cinder.message import api as message_api
+from cinder.message import defined_messages
+from cinder.message import resource_types
 from cinder import objects
 from cinder.objects import fields
 from cinder import quota
@@ -282,6 +285,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             host=self.host,
             is_vol_db_empty=vol_db_empty,
             active_backend_id=curr_active_backend_id)
+        self.message_api = message_api.API()
 
         if CONF.profiler.enabled and profiler is not None:
             self.driver = profiler.trace_cls("driver")(self.driver)
@@ -1000,6 +1004,10 @@ class VolumeManager(manager.SchedulerDependentManager):
             if volume_metadata.get('readonly') == 'True' and mode != 'ro':
                 self.db.volume_update(context, volume_id,
                                       {'status': 'error_attaching'})
+                self.message_api.create(
+                    context, defined_messages.ATTACH_READONLY_VOLUME,
+                    context.project_id, resource_type=resource_types.VOLUME,
+                    resource_uuid=volume_id)
                 raise exception.InvalidVolumeAttachMode(mode=mode,
                                                         volume_id=volume_id)
 
@@ -1317,6 +1325,12 @@ class VolumeManager(manager.SchedulerDependentManager):
 
             with excutils.save_and_reraise_exception():
                 payload['message'] = six.text_type(error)
+                if isinstance(error, exception.ImageLimitExceeded):
+                    self.message_api.create(
+                        context, defined_messages.IMAGE_FROM_VOLUME_OVER_QUOTA,
+                        context.project_id,
+                        resource_type=resource_types.VOLUME,
+                        resource_uuid=volume_id)
         finally:
             self.db.volume_update_status_based_on_attachment(context,
                                                              volume_id)

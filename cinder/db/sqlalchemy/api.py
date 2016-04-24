@@ -4271,6 +4271,76 @@ def purge_deleted_rows(context, age_in_days):
 ###############################
 
 
+def _translate_messages(messages):
+    return [_translate_message(message) for message in messages]
+
+
+def _translate_message(message):
+    """Translate the Message model to a dict."""
+    return {
+        'id': message['id'],
+        'project_id': message['project_id'],
+        'request_id': message['request_id'],
+        'resource_type': message['resource_type'],
+        'resource_uuid': message.get('resource_uuid'),
+        'event_id': message['event_id'],
+        'message_level': message['message_level'],
+        'created_at': message['created_at'],
+        'expires_at': message.get('expires_at'),
+    }
+
+
+@require_context
+def message_get(context, message_id):
+    query = model_query(context,
+                        models.Message,
+                        read_deleted="no",
+                        project_only="yes")
+    result = query.filter_by(id=message_id).first()
+    if not result:
+        raise exception.MessageNotFound(message_id=message_id)
+    return _translate_message(result)
+
+
+@require_context
+def message_get_all(context):
+    """Fetch all messages for the contexts project."""
+    messages = models.Message
+    query = (model_query(context,
+                         messages,
+                         read_deleted="no",
+                         project_only="yes"))
+    results = query.all()
+    return _translate_messages(results)
+
+
+@require_context
+def message_create(context, values):
+    message_ref = models.Message()
+    if not values.get('id'):
+        values['id'] = str(uuid.uuid4())
+    message_ref.update(values)
+
+    session = get_session()
+    with session.begin():
+        session.add(message_ref)
+
+
+@require_admin_context
+def message_destroy(context, message):
+    session = get_session()
+    now = timeutils.utcnow()
+    with session.begin():
+        (model_query(context, models.Message, session=session).
+            filter_by(id=message.get('id')).
+            update({'deleted': True,
+                    'deleted_at': now,
+                    'updated_at': literal_column('updated_at')}))
+
+
+###############################
+
+
 @require_context
 def driver_initiator_data_update(context, initiator, namespace, updates):
     session = get_session()

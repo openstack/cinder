@@ -18,6 +18,9 @@ from taskflow.patterns import linear_flow
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _LE
+from cinder.message import api as message_api
+from cinder.message import defined_messages
+from cinder.message import resource_types
 from cinder import rpc
 from cinder import utils
 from cinder.volume.flows import common
@@ -90,6 +93,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                                                        **kwargs)
         self.db_api = db_api
         self.driver_api = driver_api
+        self.message_api = message_api.API()
 
     def _handle_failure(self, context, request_spec, cause):
         try:
@@ -127,6 +131,13 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
             # reraise (since what's the point?)
             with excutils.save_and_reraise_exception(
                     reraise=not isinstance(e, exception.NoValidHost)):
+                if isinstance(e, exception.NoValidHost):
+                    self.message_api.create(
+                        context,
+                        defined_messages.UNABLE_TO_ALLOCATE,
+                        context.project_id,
+                        resource_type=resource_types.VOLUME,
+                        resource_uuid=request_spec['volume_id'])
                 try:
                     self._handle_failure(context, request_spec, e)
                 finally:

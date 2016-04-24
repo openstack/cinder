@@ -219,6 +219,8 @@ class GlanceClientWrapper(object):
                                           'method': method,
                                           'extra': extra})
                 time.sleep(1)
+            except glanceclient.exc.HTTPOverLimit as e:
+                raise exception.ImageLimitExceeded(e)
 
 
 class GlanceImageService(object):

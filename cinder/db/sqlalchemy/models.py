@@ -599,6 +599,24 @@ class DriverInitiatorData(BASE, models.TimestampMixin, models.ModelBase):
     value = Column(String(255))
 
 
+class Message(BASE, CinderBase):
+    """Represents a message"""
+    __tablename__ = 'messages'
+    id = Column(String(36), primary_key=True, nullable=False)
+    project_id = Column(String(36), nullable=False)
+    # Info/Error/Warning.
+    message_level = Column(String(255), nullable=False)
+    request_id = Column(String(255), nullable=True)
+    resource_type = Column(String(255))
+    # The uuid of the related resource.
+    resource_uuid = Column(String(36), nullable=True)
+    # Operation specific event ID.
+    event_id = Column(String(255), nullable=False)
+    created_at = Column(DateTime, default=lambda: timeutils.utcnow())
+    # After this time the message may no longer exist
+    expires_at = Column(DateTime, nullable=True)
+
+
 class ImageVolumeCacheEntry(BASE, models.ModelBase):
     """Represents an image volume cache entry"""
     __tablename__ = 'image_volume_cache_entries'

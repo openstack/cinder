@@ -824,6 +824,20 @@ class TestGlanceClientVersion(test.TestCase):
 
         self.assertEqual('2', _mockglanceclient.call_args[0][0])
 
+    @mock.patch('cinder.image.glance.glanceclient.Client')
+    @mock.patch('cinder.image.glance.get_api_servers',
+                return_value=itertools.cycle([(False, 'localhost:9292')]))
+    def test_call_glance_over_quota(self, api_servers, _mockglanceclient):
+        """Test glance version set by arg to GlanceClientWrapper"""
+        glance_wrapper = glance.GlanceClientWrapper()
+        fake_client = mock.Mock()
+        fake_client.images.method = mock.Mock(
+            side_effect=glanceclient.exc.HTTPOverLimit)
+        self.mock_object(glance_wrapper, 'client', fake_client)
+        self.assertRaises(exception.ImageLimitExceeded,
+                          glance_wrapper.call, 'fake_context', 'method',
+                          version=2)
+
 
 def _create_failing_glance_client(info):
     class MyGlanceStubClient(glance_stubs.StubGlanceClient):

@@ -44,6 +44,7 @@ from cinder.image import image_utils as cinder_image_imageutils
 import cinder.keymgr
 from cinder.keymgr import conf_key_mgr as cinder_keymgr_confkeymgr
 from cinder.keymgr import key_mgr as cinder_keymgr_keymgr
+from cinder.message import api as cinder_message_api
 from cinder import quota as cinder_quota
 from cinder.scheduler import driver as cinder_scheduler_driver
 from cinder.scheduler import host_manager as cinder_scheduler_hostmanager
@@ -311,6 +312,7 @@ def list_opts():
                 cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,
                 cinder_volume_drivers_disco_disco.disco_opts,
                 cinder_volume_drivers_hgst.hgst_opts,
+                cinder_message_api.messages_opts,
                 cinder_image_imageutils.image_helper_opts,
                 cinder_compute_nova.nova_opts,
                 cinder_volume_drivers_ibm_flashsystemfc.flashsystem_fc_opts,

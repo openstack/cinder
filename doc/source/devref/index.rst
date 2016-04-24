@@ -34,6 +34,7 @@ Programming HowTos and Tutorials
     drivers
     gmr
     replication
+    user_messages
     migration
     api.apache
     rolling.upgrades
