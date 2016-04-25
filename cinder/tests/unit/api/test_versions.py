@@ -17,6 +17,7 @@ import ddt
 import mock
 from oslo_serialization import jsonutils
 from oslo_utils import encodeutils
+import webob
 
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
@@ -137,6 +138,21 @@ class VersionsControllerTestCase(test.TestCase):
             response = req.get_response(app)
 
             self.assertEqual(400, response.status_int)
+
+    @ddt.data('1.0', '2.0', '3.0')
+    def test_versions_response_fault(self, version):
+        req = self.build_request(header_version=version)
+        req.api_version_request = (
+            api_version_request.APIVersionRequest(version))
+
+        app = wsgi.Fault(webob.exc.HTTPBadRequest(explanation='what?'))
+        response = req.get_response(app)
+
+        self.assertEqual(400, response.status_int)
+        if version == '3.0':
+            self.check_response(response, '3.0')
+        else:
+            self.assertNotIn(VERSION_HEADER_NAME, response.headers)
 
     def test_versions_version_not_found(self):
         api_version_request_4_0 = api_version_request.APIVersionRequest('4.0')
