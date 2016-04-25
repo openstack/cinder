@@ -66,7 +66,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
             protocol, auto = self.restapi_protocol, False
 
         self.restapi = jsonrpc.NexentaEdgeJSONProxy(
-            protocol, self.restapi_host, self.restapi_port, '/',
+            protocol, self.restapi_host, self.restapi_port, '',
             self.restapi_user, self.restapi_password, auto=auto)
 
     def check_for_setup_error(self):
@@ -293,13 +293,9 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
         raise exception.VolumeBackendAPIException(
             'No %s hostname in NEdge cluster' % connector['host'])
 
-    def initialize_connection(self, volume, connector):
+    def initialize_connection(self, volume, connector, initiator_data=None):
         LOG.debug('Initialize connection')
-        LOG.debug('HOST: %s, again: %s', connector['host'], volutils.extract_host(volume['host'], 'host'))
-        if connector['host'] != volutils.extract_host(volume['host'], 'host'):
-            return self.target_driver.initialize_connection(volume, connector)
-        else:
-            return {
-                'driver_volume_type': 'local',
-                'data': {'device_path': self.local_path(volume)},
-            }
+        return {
+            'driver_volume_type': 'local',
+            'data': {'device_path': self.local_path(volume)},
+        }
