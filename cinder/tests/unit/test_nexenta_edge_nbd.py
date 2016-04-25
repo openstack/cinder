@@ -1,4 +1,3 @@
-#
 # Copyright 2016 Nexenta Systems, Inc.
 # All Rights Reserved.
 #
@@ -15,18 +14,19 @@
 #    under the License.
 
 import base64
-import mock
-import os
 import socket
+
+import mock
+from mock import patch
+from oslo_serialization import jsonutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.nexenta.nexentaedge.nbd import NexentaEdgeNBDDriver
-from oslo_serialization import jsonutils
-from oslo_utils import units
-from mock import patch
+
 
 class FakeResponse(object):
 
@@ -312,7 +312,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
             headers=self.request_params.headers)
 
     @patch('requests.delete')
-    def test_create_snapshot(self, delete):
+    def test_delete_snapshot(self, delete):
         delete.returning_value = FakeResponse()
         snapshot = {
             'name': 'dsfsdsdgfdf',
@@ -365,14 +365,14 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
             'size': 1,
             'name': 'qwerty'
         }
+        container = self.cfg.nexenta_lun_container
         remote_url = ''
         self.drv._get_remote_url = lambda host_: remote_url
         self.drv.create_cloned_volume(volume, src_vref)
         post.assert_called_with(
             self.request_params.url('nbd' + remote_url),
             data=self.request_params.build_post_args({
-                 'objectPath': '/'.join((self.cfg.nexenta_lun_container,
-                                        volume['name'])),
+                'objectPath': '/'.join((container, volume['name'])),
                 'volSizeMB': src_vref['size'] * units.Ki,
                 'blockSize': self.cfg.nexenta_blocksize,
                 'chunkSize': self.cfg.nexenta_chunksize
@@ -399,7 +399,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
             'restapi_url': self.request_params.url()
         }
 
-        self.assertEquals(expected, self.drv.get_volume_stats())
+        self.assertEqual(expected, self.drv.get_volume_stats())
 
     @patch('cinder.image.image_utils.fetch_to_raw')
     def test_copy_image_to_volume(self, fetch_to_raw):
