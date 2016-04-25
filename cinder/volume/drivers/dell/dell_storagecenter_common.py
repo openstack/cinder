@@ -12,9 +12,11 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
+import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
@@ -65,6 +67,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         self.active_backend_id = kwargs.get('active_backend_id', None)
         self.failed_over = (self.active_backend_id is not None)
         self.storage_protocol = 'iSCSI'
+        self.failback_timeout = 30
 
     def _bytes_to_gb(self, spacestring):
         """Space is returned in a string like ...
@@ -936,6 +939,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                      host['host'] is its name, and host['capabilities'] is a
                      dictionary of its reported capabilities (Not Used).
         """
+        LOG.info(_LI('retype: volume_name: %(name)s new_type: %(newtype)s '
+                     'diff: %(diff)s host: %(host)s'),
+                 {'name': volume.get('id'), 'newtype': new_type,
+                  'diff': diff, 'host': host})
         model_update = None
         # Any spec changes?
         if diff['extra_specs']:
@@ -980,11 +987,11 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                               'replication_enabled'))
                     # if there is a change and it didn't work fast fail.
                     if current != requested:
-                        if requested:
+                        if requested == '<is> True':
                             model_update = self._create_replications(api,
                                                                      volume,
                                                                      scvolume)
-                        else:
+                        elif current == '<is> True':
                             self._delete_replications(api, volume)
                             model_update = {'replication_status': 'disabled',
                                             'replication_driver_data': ''}
@@ -1044,9 +1051,264 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         return destssn
 
     def _update_backend(self, active_backend_id):
-        # Update our backend id. On the next open_connection it will use this.
-        self.active_backend_id = str(active_backend_id)
+        # Mark for failover or undo failover.
+        LOG.debug('active_backend_id: %s', active_backend_id)
+        if active_backend_id:
+            self.active_backend_id = six.text_type(active_backend_id)
+            self.failed_over = True
+        else:
+            self.active_backend_id = None
+            self.failed_over = False
+
         self._client.active_backend_id = self.active_backend_id
+
+    def _get_qos(self, targetssn):
+        # Find our QOS.
+        qosnode = None
+        for backend in self.backends:
+            if int(backend['target_device_id']) == targetssn:
+                qosnode = backend.get('qosnode', 'cinderqos')
+        return qosnode
+
+    def _parse_extraspecs(self, volume):
+        # Digest our extra specs.
+        extraspecs = {}
+        specs = self._get_volume_extra_specs(volume)
+        if specs.get('replication_type') == '<in> sync':
+            extraspecs['replicationtype'] = 'Synchronous'
+        else:
+            extraspecs['replicationtype'] = 'Asynchronous'
+        if specs.get('replication:activereplay') == '<is> True':
+            extraspecs['activereplay'] = True
+        else:
+            extraspecs['activereplay'] = False
+        extraspecs['storage_profile'] = specs.get('storagetype:storageprofile')
+        extraspecs['replay_profile_string'] = (
+            specs.get('storagetype:replayprofiles'))
+        return extraspecs
+
+    def _wait_for_replication(self, api, items):
+        # Wait for our replications to resync with their original volumes.
+        # We wait for completion, errors or timeout.
+        deadcount = 5
+        lastremain = 0.0
+        # The big wait loop.
+        while True:
+            # We run until all volumes are synced or in error.
+            done = True
+            currentremain = 0.0
+            # Run the list.
+            for item in items:
+                # If we have one cooking.
+                if item['status'] == 'inprogress':
+                    # Is it done?
+                    synced, remain = api.replication_progress(item['screpl'])
+                    currentremain += remain
+                    if synced:
+                        # It is! Get our volumes.
+                        cvol = api.get_volume(item['cvol'])
+                        nvol = api.get_volume(item['nvol'])
+
+                        # Flip replication.
+                        if (cvol and nvol and api.flip_replication(
+                                cvol, nvol, item['volume']['id'],
+                                item['specs']['replicationtype'],
+                                item['qosnode'],
+                                item['specs']['activereplay'])):
+                            # rename the original. Doesn't matter if it
+                            # succeeded as we should have the provider_id
+                            # of the new volume.
+                            ovol = api.get_volume(item['ovol'])
+                            if not ovol or not api.rename_volume(
+                                    ovol, 'org:' + ovol['name']):
+                                # Not a reason to fail but will possibly
+                                # cause confusion so warn.
+                                LOG.warning(_LW('Unable to locate and rename '
+                                                'original volume: %s'),
+                                            item['ovol'])
+                            item['status'] = 'synced'
+                        else:
+                            item['status'] = 'error'
+                    elif synced is None:
+                        # Couldn't get info on this one. Call it baked.
+                        item['status'] = 'error'
+                    else:
+                        # Miles to go before we're done.
+                        done = False
+            # done? then leave.
+            if done:
+                break
+
+            # Confirm we are or are not still making progress.
+            if lastremain == currentremain:
+                # One chance down. Warn user.
+                deadcount -= 1
+                LOG.warning(_LW('Waiting for replications to complete. '
+                                'No progress for 30 seconds. deadcount = %d'),
+                            deadcount)
+            else:
+                # Reset
+                lastremain = currentremain
+                deadcount = 5
+
+            # If we've used up our 5 chances we error and log..
+            if deadcount == 0:
+                LOG.error(_LE('Replication progress has stopped.'))
+                for item in items:
+                    if item['status'] == 'inprogress':
+                        LOG.error(_LE('Failback failed for volume: %s. '
+                                      'Timeout waiting for replication to '
+                                      'sync with original volume.'),
+                                  item['volume']['id'])
+                        item['status'] = 'error'
+                break
+            # This is part of an async call so we should be good sleeping here.
+            # Have to balance hammering the backend for no good reason with
+            # the max timeout for the unit tests. Yeah, silly.
+            eventlet.sleep(self.failback_timeout)
+
+    def _reattach_remaining_replications(self, api, items):
+        # Wiffle through our backends and reattach any remaining replication
+        # targets.
+        for item in items:
+            if item['status'] == 'synced':
+                svol = api.get_volume(item['nvol'])
+                # assume it went well. Will error out if not.
+                item['status'] = 'reattached'
+                # wiffle through our backends and kick off replications.
+                for backend in self.backends:
+                    rssn = int(backend['target_device_id'])
+                    if rssn != api.ssn:
+                        rvol = api.find_repl_volume(item['volume']['id'],
+                                                    rssn, None)
+                        # if there is an old replication whack it.
+                        api.delete_replication(svol, rssn, False)
+                        if api.start_replication(
+                                svol, rvol,
+                                item['specs']['replicationtype'],
+                                self._get_qos(rssn),
+                                item['specs']['activereplay']):
+                            # Save our replication_driver_data.
+                            item['rdd'] += ','
+                            item['rdd'] += backend['target_device_id']
+                        else:
+                            # No joy. Bail
+                            item['status'] = 'error'
+
+    def _fixup_types(self, api, items):
+        # Update our replay profiles.
+        for item in items:
+            if item['status'] == 'reattached':
+                # Re-apply any appropriate replay profiles.
+                item['status'] = 'available'
+                rps = item['specs']['replay_profile_string']
+                if rps:
+                    svol = api.get_volume(item['nvol'])
+                    if not api.update_replay_profiles(svol, rps):
+                        item['status'] = 'error'
+
+    def _volume_updates(self, items):
+        # Update our volume updates.
+        volume_updates = []
+        for item in items:
+            # Set our status for our replicated volumes
+            model_update = {'provider_id': item['nvol'],
+                            'replication_driver_data': item['rdd']}
+            # These are simple. If the volume reaches available then,
+            # since we were replicating it, replication status must
+            # be good. Else error/error.
+            if item['status'] == 'available':
+                model_update['status'] = 'available'
+                model_update['replication_status'] = 'enabled'
+            else:
+                model_update['status'] = 'error'
+                model_update['replication_status'] = 'error'
+            volume_updates.append({'volume_id': item['volume']['id'],
+                                   'updates': model_update})
+        return volume_updates
+
+    def failback_volumes(self, volumes):
+        """This is a generic volume failback.
+
+        :param volumes: List of volumes that need to be failed back.
+        :return: volume_updates for the list of volumes.
+        """
+        LOG.info(_LI('failback_volumes'))
+        with self._client.open_connection() as api:
+            # Get our qosnode. This is a good way to make sure the backend
+            # is still setup so that we can do this.
+            qosnode = self._get_qos(api.ssn)
+            if not qosnode:
+                raise exception.VolumeBackendAPIException(
+                    message=_('Unable to failback. Backend is misconfigured.'))
+
+            volume_updates = []
+            replitems = []
+            screplid = None
+            status = ''
+            # Trundle through the volumes. Update non replicated to alive again
+            # and reverse the replications for the remaining volumes.
+            for volume in volumes:
+                LOG.info(_LI('failback_volumes: starting volume: %s'), volume)
+                model_update = {}
+                if volume.get('replication_driver_data'):
+                    LOG.info(_LI('failback_volumes: replicated volume'))
+                    # Get our current volume.
+                    cvol = api.find_volume(volume['id'], volume['provider_id'])
+                    # Original volume on the primary.
+                    ovol = api.find_repl_volume(volume['id'], api.primaryssn,
+                                                None, True, False)
+                    # Delete our current mappings.
+                    api.remove_mappings(cvol)
+                    # If there is a replication to delete do so.
+                    api.delete_replication(ovol, api.ssn, False)
+                    # Replicate to a common replay.
+                    screpl = api.replicate_to_common(cvol, ovol, 'tempqos')
+                    # We made it this far. Update our status.
+                    if screpl:
+                        screplid = screpl['instanceId']
+                        nvolid = screpl['destinationVolume']['instanceId']
+                        status = 'inprogress'
+                    else:
+                        LOG.error(_LE('Unable to restore %s'), volume['id'])
+                        screplid = None
+                        nvolid = None
+                        status = 'error'
+
+                    # Save some information for the next step.
+                    # nvol is the new volume created by replicate_to_common.
+                    # We also grab our extra specs here.
+                    replitems.append(
+                        {'volume': volume,
+                         'specs': self._parse_extraspecs(volume),
+                         'qosnode': qosnode,
+                         'screpl': screplid,
+                         'cvol': cvol['instanceId'],
+                         'ovol': ovol['instanceId'],
+                         'nvol': nvolid,
+                         'rdd': six.text_type(api.ssn),
+                         'status': status})
+                else:
+                    # Not replicated. Just set it to available.
+                    model_update = {'status': 'available'}
+                    # Either we are failed over or our status is now error.
+                    volume_updates.append({'volume_id': volume['id'],
+                                           'updates': model_update})
+
+            if replitems:
+                # Wait for replication to complete.
+                # This will also flip replication.
+                self._wait_for_replication(api, replitems)
+                # Replications are done. Attach to any additional replication
+                # backends.
+                self._reattach_remaining_replications(api, replitems)
+                self._fixup_types(api, replitems)
+                volume_updates += self._volume_updates(replitems)
+
+            # Set us back to a happy state.
+            # The only way this doesn't happen is if the primary is down.
+            self._update_backend(None)
+            return volume_updates
 
     def failover_host(self, context, volumes, secondary_id=None):
         """Failover to secondary.
@@ -1066,10 +1328,16 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                       'replication_extended_status': 'whatever',...}},]
         """
 
-        # We do not allow failback. Dragons be there.
+        LOG.debug('failover-host')
+        LOG.debug(self.failed_over)
+        LOG.debug(self.active_backend_id)
+        LOG.debug(self.replication_enabled)
         if self.failed_over:
-            raise exception.VolumeBackendAPIException(message=_(
-                'Backend has already been failed over. Unable to fail back.'))
+            if secondary_id == 'default':
+                LOG.debug('failing back')
+                return 'default', self.failback_volumes(volumes)
+            raise exception.VolumeBackendAPIException(
+                message='Already failed over.')
 
         LOG.info(_LI('Failing backend to %s'), secondary_id)
         # basic check
@@ -1111,6 +1379,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
                     # this is it.
                     self._update_backend(destssn)
+                    LOG.debug('after update backend')
+                    LOG.debug(self.failed_over)
+                    LOG.debug(self.active_backend_id)
+                    LOG.debug(self.replication_enabled)
                     return destssn, volume_updates
                 else:
                     raise exception.InvalidInput(message=(
