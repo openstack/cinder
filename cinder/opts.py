@@ -149,6 +149,7 @@ from cinder.volume.drivers import nimble as cinder_volume_drivers_nimble
 from cinder.volume.drivers.prophetstor import options as \
     cinder_volume_drivers_prophetstor_options
 from cinder.volume.drivers import pure as cinder_volume_drivers_pure
+from cinder.volume.drivers import qnap as cinder_volume_drivers_qnap
 from cinder.volume.drivers import quobyte as cinder_volume_drivers_quobyte
 from cinder.volume.drivers import rbd as cinder_volume_drivers_rbd
 from cinder.volume.drivers import remotefs as cinder_volume_drivers_remotefs
@@ -333,6 +334,7 @@ def list_opts():
                 cinder_volume_drivers_nimble.nimble_opts,
                 cinder_volume_drivers_prophetstor_options.DPL_OPTS,
                 cinder_volume_drivers_pure.PURE_OPTS,
+                cinder_volume_drivers_qnap.qnap_opts,
                 cinder_volume_drivers_quobyte.volume_opts,
                 cinder_volume_drivers_rbd.RBD_OPTS,
                 cinder_volume_drivers_remotefs.nas_opts,
