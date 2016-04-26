@@ -16,7 +16,8 @@
 Handles all requests to Nova.
 """
 
-
+import keystoneauth1.loading
+import keystoneauth1.session
 from novaclient import client as nova_client
 from novaclient import exceptions as nova_exceptions
 from novaclient import service_catalog
@@ -134,11 +135,17 @@ def novaclient(context, admin_endpoint=False, privileged_user=False,
 
         LOG.debug('Nova client connection created using URL: %s', url)
 
+    # Now that we have the correct auth_url, username, password and
+    # project_name, let's build a Keystone session.
+    loader = keystoneauth1.loading.get_plugin_loader('password')
+    auth = loader.load_from_options(auth_url=url,
+                                    username=context.user_id,
+                                    password=context.auth_token,
+                                    project_name=context.project_name)
+    keystone_session = keystoneauth1.session.Session(auth=auth)
+
     c = nova_client.Client(NOVA_API_VERSION,
-                           context.user_id,
-                           context.auth_token,
-                           context.project_name,
-                           auth_url=url,
+                           session=keystone_session,
                            insecure=CONF.nova_api_insecure,
                            timeout=timeout,
                            region_name=CONF.os_region_name,

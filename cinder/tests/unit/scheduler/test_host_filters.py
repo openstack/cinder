@@ -996,13 +996,11 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'context': self.context, 'size': 100}
         self.assertTrue(filt_cls.host_passes(host, filter_properties))
 
-    @mock.patch('novaclient.client.discover_extensions')
-    @mock.patch('requests.request')
-    def test_nova_timeout(self, _mock_request, fake_extensions):
+    @mock.patch('cinder.compute.nova.novaclient')
+    def test_nova_timeout(self, mock_novaclient):
         # Simulate a HTTP timeout
-        _mock_request.side_effect = request_exceptions.Timeout
-        fake_extensions.return_value = (
-            fakes.FakeNovaClient().list_extensions.show_all())
+        mock_show_all = mock_novaclient.return_value.list_extensions.show_all
+        mock_show_all.side_effect = request_exceptions.Timeout
 
         filt_cls = self.class_map['InstanceLocalityFilter']()
         host = fakes.FakeHostState('host1', {})
