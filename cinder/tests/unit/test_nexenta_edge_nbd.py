@@ -30,7 +30,7 @@ from cinder.volume.drivers.nexenta.nexentaedge.nbd import NexentaEdgeNBDDriver
 
 class FakeResponse(object):
 
-    def __init__(self, response={}):
+    def __init__(self, response):
         self.response = response
         super(FakeResponse, self).__init__()
 
@@ -107,7 +107,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.get')
     def test_check_do_setup__empty_response(self, get):
-        get.return_value = FakeResponse()
+        get.return_value = FakeResponse({})
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.drv.check_for_setup_error)
 
@@ -219,7 +219,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
     @patch('cinder.utils.execute')
     @patch('requests.post')
     def test_create_volume(self, post, execute):
-        post.returning_value = FakeResponse()
+        post.returning_value = FakeResponse({})
         volume = {
             'host': 'host@backend#pool info',
             'size': 1,
@@ -242,7 +242,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.delete')
     def test_delete_volume(self, delete):
-        delete.returning_value = FakeResponse()
+        delete.returning_value = FakeResponse({})
         volume = {
             'host': 'host@backend#pool info',
             'size': 1,
@@ -263,7 +263,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.delete')
     def test_delete_volume__not_found(self, delete):
-        delete.returning_value = FakeResponse()
+        delete.returning_value = FakeResponse({})
         volume = {
             'host': 'host@backend#pool info',
             'size': 1,
@@ -277,7 +277,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.put')
     def test_extend_volume(self, put):
-        put.returning_value = FakeResponse()
+        put.returning_value = FakeResponse({})
         volume = {
             'host': 'host@backend#pool info',
             'size': 1,
@@ -297,7 +297,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.post')
     def test_create_snapshot(self, post):
-        post.returning_value = FakeResponse()
+        post.returning_value = FakeResponse({})
         snapshot = {
             'name': 'dsfsdsdgfdf',
             'volume_name': 'volume'
@@ -313,7 +313,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.delete')
     def test_delete_snapshot(self, delete):
-        delete.returning_value = FakeResponse()
+        delete.returning_value = FakeResponse({})
         snapshot = {
             'name': 'dsfsdsdgfdf',
             'volume_name': 'volume'
@@ -329,7 +329,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.put')
     def test_create_volume_from_snapshot(self, put):
-        put.returning_value = FakeResponse()
+        put.returning_value = FakeResponse({})
         snapshot = {
             'name': 'dsfsdsdgfdf',
             'volume_name': 'volume'
@@ -355,7 +355,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
 
     @patch('requests.post')
     def test_ccreate_cloned_volume(self, post):
-        post.returning_value = FakeResponse()
+        post.returning_value = FakeResponse({})
         volume = {
             'host': 'host@backend#pool info',
             'size': 1,
