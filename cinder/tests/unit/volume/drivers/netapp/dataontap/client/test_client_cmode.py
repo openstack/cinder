@@ -1725,6 +1725,114 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual('unknown', result)
 
+    def test_get_aggregate_capacities(self):
+
+        aggr1_capacities = {
+            'percent-used': 50,
+            'size-available': 100.0,
+            'size-total': 200.0,
+        }
+        aggr2_capacities = {
+            'percent-used': 75,
+            'size-available': 125.0,
+            'size-total': 500.0,
+        }
+        mock_get_aggregate_capacity = self.mock_object(
+            self.client, 'get_aggregate_capacity',
+            mock.Mock(side_effect=[aggr1_capacities, aggr2_capacities]))
+
+        result = self.client.get_aggregate_capacities(['aggr1', 'aggr2'])
+
+        expected = {
+            'aggr1': aggr1_capacities,
+            'aggr2': aggr2_capacities,
+        }
+        self.assertEqual(expected, result)
+        mock_get_aggregate_capacity.assert_has_calls([
+            mock.call('aggr1'),
+            mock.call('aggr2'),
+        ])
+
+    def test_get_aggregate_capacities_not_found(self):
+
+        mock_get_aggregate_capacity = self.mock_object(
+            self.client, 'get_aggregate_capacity',
+            mock.Mock(side_effect=[{}, {}]))
+
+        result = self.client.get_aggregate_capacities(['aggr1', 'aggr2'])
+
+        expected = {
+            'aggr1': {},
+            'aggr2': {},
+        }
+        self.assertEqual(expected, result)
+        mock_get_aggregate_capacity.assert_has_calls([
+            mock.call('aggr1'),
+            mock.call('aggr2'),
+        ])
+
+    def test_get_aggregate_capacities_not_list(self):
+
+        result = self.client.get_aggregate_capacities('aggr1')
+
+        self.assertEqual({}, result)
+
+    def test_get_aggregate_capacity(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.AGGR_GET_ITER_CAPACITY_RESPONSE).get_child_by_name(
+            'attributes-list').get_children()
+        self.mock_object(self.client,
+                         '_get_aggregates',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        desired_attributes = {
+            'aggr-attributes': {
+                'aggr-space-attributes': {
+                    'percent-used-capacity': None,
+                    'size-available': None,
+                    'size-total': None,
+                },
+            },
+        }
+        self.client._get_aggregates.assert_has_calls([
+            mock.call(
+                aggregate_names=[fake_client.VOLUME_AGGREGATE_NAME],
+                desired_attributes=desired_attributes)])
+
+        expected = {
+            'percent-used': float(fake_client.AGGR_USED_PERCENT),
+            'size-available': float(fake_client.AGGR_SIZE_AVAILABLE),
+            'size-total': float(fake_client.AGGR_SIZE_TOTAL),
+        }
+        self.assertEqual(expected, result)
+
+    def test_get_aggregate_capacity_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
+    def test_get_aggregate_capacity_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        result = self.client.get_aggregate_capacity(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertEqual({}, result)
+
     def test_get_performance_instance_uuids(self):
 
         self.mock_send_request.return_value = netapp_api.NaElement(

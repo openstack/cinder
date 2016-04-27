@@ -93,6 +93,15 @@ class CapabilitiesLibrary(object):
 
         return copy.deepcopy(self.ssc.get(flexvol_name, {}))
 
+    def get_ssc_aggregates(self):
+        """Get a list of aggregates for all SSC flexvols."""
+
+        aggregates = set()
+        for __, flexvol_info in self.ssc.items():
+            if 'aggregate' in flexvol_info:
+                aggregates.add(flexvol_info['aggregate'])
+        return list(aggregates)
+
     def update_ssc(self, flexvol_map):
         """Periodically runs to update Storage Service Catalog data.
 

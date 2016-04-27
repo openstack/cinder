@@ -83,6 +83,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
     def test_get_pool_stats(self):
 
+        self.driver.zapi_client = mock.Mock()
         ssc = {
             'vola': {
                 'pool_name': '10.10.10.10:/vola',
@@ -100,6 +101,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_ssc = self.mock_object(self.driver.ssc_library,
                                         'get_ssc',
                                         mock.Mock(return_value=ssc))
+        mock_get_aggrs = self.mock_object(self.driver.ssc_library,
+                                          'get_ssc_aggregates',
+                                          mock.Mock(return_value=['aggr1']))
 
         total_capacity_gb = na_utils.round_down(
             fake.TOTAL_BYTES // units.Gi, '0.01')
@@ -117,6 +121,17 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                          '_get_share_capacity_info',
                          mock.Mock(return_value=capacity))
 
+        aggr_capacities = {
+            'aggr1': {
+                'percent-used': 45,
+                'size-available': 59055800320.0,
+                'size-total': 107374182400.0,
+            },
+        }
+        mock_get_aggr_capacities = self.mock_object(
+            self.driver.zapi_client, 'get_aggregate_capacities',
+            mock.Mock(return_value=aggr_capacities))
+
         self.driver.perf_library.get_node_utilization_for_pool = (
             mock.Mock(return_value=30.0))
 
@@ -131,6 +146,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
             'provisioned_capacity_gb': provisioned_capacity_gb,
+            'aggregate_used_percent': 45,
             'utilization': 30.0,
             'filter_function': 'filter',
             'goodness_function': 'goodness',
@@ -147,6 +163,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
         mock_get_ssc.assert_called_once_with()
+        mock_get_aggrs.assert_called_once_with()
+        mock_get_aggr_capacities.assert_called_once_with(['aggr1'])
 
     @ddt.data({}, None)
     def test_get_pool_stats_no_ssc_vols(self, ssc):

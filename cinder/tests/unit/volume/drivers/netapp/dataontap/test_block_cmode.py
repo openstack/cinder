@@ -310,6 +310,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_get_ssc = self.mock_object(self.library.ssc_library,
                                         'get_ssc',
                                         mock.Mock(return_value=ssc))
+        mock_get_aggrs = self.mock_object(self.library.ssc_library,
+                                          'get_ssc_aggregates',
+                                          mock.Mock(return_value=['aggr1']))
 
         self.library.reserved_percentage = 5
         self.library.max_over_subscription_ratio = 10
@@ -323,6 +326,17 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             self.zapi_client, 'get_flexvol_capacity',
             mock.Mock(return_value=mock_capacities))
 
+        aggr_capacities = {
+            'aggr1': {
+                'percent-used': 45,
+                'size-available': 59055800320.0,
+                'size-total': 107374182400.0,
+            },
+        }
+        mock_get_aggr_capacities = self.mock_object(
+            self.zapi_client, 'get_aggregate_capacities',
+            mock.Mock(return_value=aggr_capacities))
+
         result = self.library._get_pool_stats(filter_function='filter',
                                               goodness_function='goodness')
 
@@ -335,6 +349,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'total_capacity_gb': 10.0,
             'free_capacity_gb': 2.0,
             'provisioned_capacity_gb': 8.0,
+            'aggregate_used_percent': 45,
             'utilization': 30.0,
             'filter_function': 'filter',
             'goodness_function': 'goodness',
@@ -351,6 +366,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
         mock_get_ssc.assert_called_once_with()
+        mock_get_aggrs.assert_called_once_with()
+        mock_get_aggr_capacities.assert_called_once_with(['aggr1'])
 
     @ddt.data({}, None)
     def test_get_pool_stats_no_ssc_vols(self, ssc):
