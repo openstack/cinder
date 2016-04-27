@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev143\n"
+"Project-Id-Version: cinder 8.0.1.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-20 17:19+0000\n"
+"POT-Creation-Date: 2016-04-23 16:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2779,10 +2779,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "%s için LUN bilgisi alınması başarısız."
 
 #, python-format
-msgid "Failure in update_volume_key_value_pair:%s"
-msgstr "update_volume_key_value_pair başarısız: %s"
-
-#, python-format
 msgid "Failure moving new cloned LUN to %s."
 msgstr "Yeni çoğaltılmış LUN'un %s e taşınması başarısız."
 
@@ -4930,10 +4926,6 @@ msgstr "%(poolNameInStr)s havuzu için depolama sistemi bulunamadı."
 msgid "StorageSystem %(array)s is not found."
 msgstr "Depolama Sistemi %(array)s bulunamadı."
 
-#, python-format
-msgid "String with params: %s"
-msgstr "Parametreler ile karakter dizisi: %s"
-
 msgid "Synchronizing secondary volume to primary failed."
 msgstr ""
 "İkincil mantıksal sürücünün birincil mantıksal sürücüye eşleştirilmesi "
@@ -4957,13 +4949,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Hedef mantıksal sürücü türü hala kullanımda."
-
-#, python-format
-msgid ""
-"Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
-msgstr ""
-"Şablon ağacı uyumsuz; %(mastertag)s ana kaydına %(slavetag)s bağımlı birimi "
-"ekleniyor"
 
 #, python-format
 msgid "Tenant ID: %s does not exist."
@@ -5587,9 +5572,6 @@ msgstr "Mantıksal sürücü eşleştirilemedi"
 
 msgid "Unable to map volume."
 msgstr "Mantıksal sürücü eşleştirilemedi."
-
-msgid "Unable to parse XML request. Please provide XML in correct format."
-msgstr "XML isteği ayrıştırılamadı. Lütfen doğru biçimde XML sağlayın."
 
 msgid "Unable to parse attributes."
 msgstr "Öznitelikler ayrıştırılamadı."
@@ -6496,9 +6478,6 @@ msgstr "istekte hem isim hem indis işlenemez"
 msgid "cannot understand JSON"
 msgstr "JSON dosyası anlaşılamadı"
 
-msgid "cannot understand XML"
-msgstr "XML anlaşılamaz"
-
 msgid ""
 "check_for_setup_error: Password or SSH private key is required for "
 "authentication: set either san_password or san_private_key option."
@@ -6608,9 +6587,6 @@ msgstr "Uzak düğümden anlık görüntüyü çıkart."
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: Yapılandırılmış düğüm yok."
-
-msgid "element is not a child"
-msgstr "eleman çocuk değil"
 
 msgid "eqlx_cli_max_retries must be greater than or equal to 0"
 msgstr "eqlx_cli_max_retries 0'a eşit ya da daha büyük olmalıdır"
@@ -6910,9 +6886,6 @@ msgstr ""
 "restore_backup durduruldu, gerçek nesne listesi metadata'da depolanan nesne "
 "listesi ile eşleşmiyor."
 
-msgid "root element selecting a list"
-msgstr "listeden kök elemanı seçiliyor"
-
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
@@ -6958,9 +6931,6 @@ msgstr "kaynak mantıksal sürücü kimliği:%s çoğaltılmamıştır"
 
 msgid "status must be available"
 msgstr "durum kullanılabilir olmalıdır"
-
-msgid "subclasses must implement construct()!"
-msgstr "alt sınıflar yapıcı() oluşturmak zorunda!"
 
 msgid "sudo failed, continuing as if nothing happened"
 msgstr "sudo başarısız oldu, hiçbir şey olmamış gibi devam ediliyor"

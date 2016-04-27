@@ -15,9 +15,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev143\n"
+"Project-Id-Version: cinder 8.0.1.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-20 17:19+0000\n"
+"POT-Creation-Date: 2016-04-23 16:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3740,10 +3740,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "针对 %s 获取 LUN 信息时发生故障。"
 
 #, python-format
-msgid "Failure in update_volume_key_value_pair:%s"
-msgstr "update_volume_key_value_pair 中发生故障：%s"
-
-#, python-format
 msgid "Failure moving new cloned LUN to %s."
 msgstr "将新克隆的 LUN 移至 %s 时发生故障。"
 
@@ -6547,10 +6543,6 @@ msgid "StorageSystem %(array)s is not found."
 msgstr "找不到存储系统 %(array)s。"
 
 #, python-format
-msgid "String with params: %s"
-msgstr "带有参数的字符串：%s"
-
-#, python-format
 msgid ""
 "Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
 "project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
@@ -6589,11 +6581,6 @@ msgstr "在帐户 [%(account)s] 的 CloudByte 存储器中找不到 TSM [%(tsm)s
 
 msgid "Target volume type is still in use."
 msgstr "目标卷类型仍在使用中。"
-
-#, python-format
-msgid ""
-"Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
-msgstr "模板数不匹配；把slave %(slavetag)s 添加到master %(mastertag)s"
 
 #, python-format
 msgid "Tenant ID: %s does not exist."
@@ -7456,9 +7443,6 @@ msgstr "无法映射卷"
 
 msgid "Unable to map volume."
 msgstr "无法映射卷。"
-
-msgid "Unable to parse XML request. Please provide XML in correct format."
-msgstr "无法解析 XML 请求，请提供正确格式的 XML。"
 
 msgid "Unable to parse attributes."
 msgstr "无法解析属性。"
@@ -8353,9 +8337,6 @@ msgstr "资源调用语法不正确"
 msgid "X-IO Volume Driver exception!"
 msgstr "发生 X-IO 卷驱动程序异常！"
 
-msgid "XML support has been deprecated and will be removed in the N release."
-msgstr "已不推荐使用 XML 支持，将在 N 发行版中移除此项。"
-
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "未正确配置 XtremIO，找不到任何 iSCSI 门户网站"
 
@@ -8844,9 +8825,6 @@ msgstr "无法同时处理请求中的名称和索引"
 msgid "cannot understand JSON"
 msgstr "无法理解JSON"
 
-msgid "cannot understand XML"
-msgstr "无法理解XML"
-
 #, python-format
 msgid "cg-%s"
 msgstr "cg-%s"
@@ -9082,9 +9060,6 @@ msgstr "从远程节点拆离快照"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup：不存在任何已配置的节点。"
-
-msgid "element is not a child"
-msgstr "元素不是子节点"
 
 msgid "eqlx_cli_max_retries must be greater than or equal to 0"
 msgstr "eqlx_cli_max_retries 必须大于或等于 0"
@@ -9450,9 +9425,6 @@ msgid ""
 msgstr ""
 "restore_backup 已异常中止，实际的对象列表与存储在元数据中的对象列表不匹配。"
 
-msgid "root element selecting a list"
-msgstr "根元素选择列表"
-
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr "rtslib_fb 缺少成员 %s：您可能需要较新的 python-rtslib-fb。"
@@ -9519,9 +9491,6 @@ msgstr "状态必须可用"
 
 msgid "stop_hypermetro error."
 msgstr "stop_hypermetro 错误。"
-
-msgid "subclasses must implement construct()!"
-msgstr "subclasses必须执行construct()!"
 
 msgid "sudo failed, continuing as if nothing happened"
 msgstr "sudo 发生故障，在继续运行，如同没有发生任何情况一样"

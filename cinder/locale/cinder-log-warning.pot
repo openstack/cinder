@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Project-Id-Version: cinder 8.0.1.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-18 07:12+0000\n"
+"POT-Creation-Date: 2016-04-27 07:16+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -53,7 +53,7 @@ msgid ""
 "enabled=false"
 msgstr ""
 
-#: cinder/service.py:200
+#: cinder/service.py:205
 #, python-format
 msgid ""
 "Report interval must be less than service down time. Current config "
@@ -62,7 +62,7 @@ msgid ""
 "%(new_down_time)s"
 msgstr ""
 
-#: cinder/utils.py:960
+#: cinder/utils.py:955
 #, python-format
 msgid "Invalid trace flag: %s"
 msgstr ""
@@ -73,17 +73,17 @@ msgid ""
 "set enable_v1_api=false and enable_v3_api=true in your cinder.conf file."
 msgstr ""
 
-#: cinder/api/extensions.py:276
+#: cinder/api/extensions.py:216
 #, python-format
 msgid "Failed to load extension %(ext_factory)s: %(exc)s"
 msgstr ""
 
-#: cinder/api/extensions.py:345
+#: cinder/api/extensions.py:285
 #, python-format
 msgid "Failed to load extension %(classpath)s: %(exc)s"
 msgstr ""
 
-#: cinder/api/extensions.py:370
+#: cinder/api/extensions.py:310
 #, python-format
 msgid "Failed to load extension %(ext_name)s: %(exc)s"
 msgstr ""
@@ -119,14 +119,14 @@ msgid ""
 "encrypted volume. Encrypted backup restore has failed."
 msgstr ""
 
-#: cinder/backup/manager.py:693
+#: cinder/backup/manager.py:695
 #, python-format
 msgid ""
 "Backup service %(service)s does not support verify. Backup id %(id)s is "
 "not verified. Skipping verify."
 msgstr ""
 
-#: cinder/backup/manager.py:830
+#: cinder/backup/manager.py:832
 #, python-format
 msgid ""
 "Failed to terminate the connection of volume %(volume_id)s, but it is "
@@ -487,7 +487,7 @@ msgid "Failed to refresh mounts, reason=%s"
 msgstr ""
 
 #: cinder/volume/drivers/glusterfs.py:241 cinder/volume/drivers/quobyte.py:225
-#: cinder/volume/drivers/remotefs.py:282
+#: cinder/volume/drivers/remotefs.py:283
 #, python-format
 msgid "Volume %s does not have provider_location specified, skipping"
 msgstr ""
@@ -521,7 +521,7 @@ msgstr ""
 msgid "snapshot: %s not found, skipping delete operations"
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:353 cinder/volume/drivers/remotefs.py:569
+#: cinder/volume/drivers/nfs.py:353 cinder/volume/drivers/remotefs.py:570
 #, python-format
 msgid ""
 "The NAS file permissions mode will be 666 (allowing other/world read & "
@@ -529,7 +529,7 @@ msgid ""
 " %s for information on a secure NFS configuration."
 msgstr ""
 
-#: cinder/volume/drivers/nfs.py:374 cinder/volume/drivers/remotefs.py:562
+#: cinder/volume/drivers/nfs.py:374 cinder/volume/drivers/remotefs.py:563
 #, python-format
 msgid ""
 "The NAS file operations will be run as root: allowing root level access "
@@ -641,12 +641,12 @@ msgstr ""
 msgid "volume_tmp_dir is now deprecated, please use image_conversion_dir."
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:367
+#: cinder/volume/drivers/remotefs.py:368
 #, python-format
 msgid "%(path)s is being set with open permissions: %(perm)s"
 msgstr ""
 
-#: cinder/volume/drivers/remotefs.py:979
+#: cinder/volume/drivers/remotefs.py:989
 #, python-format
 msgid "No backing file found for %s, allowing snapshot to be deleted."
 msgstr ""
@@ -666,17 +666,17 @@ msgstr ""
 msgid "Volume \"%s\" not found."
 msgstr ""
 
-#: cinder/volume/drivers/smbfs.py:305
+#: cinder/volume/drivers/smbfs.py:307
 #, python-format
 msgid "Volume %s does not have provider_location specified, skipping."
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:620
+#: cinder/volume/drivers/solidfire.py:666
 #, python-format
 msgid "More than one valid preset was detected, using %s"
 msgstr ""
 
-#: cinder/volume/drivers/solidfire.py:1059
+#: cinder/volume/drivers/solidfire.py:1104
 msgid "Requested image is not accessible by current Tenant."
 msgstr ""
 
@@ -1497,53 +1497,48 @@ msgstr ""
 msgid "terminate_conn: provider location empty."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:444
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:445
 #, python-format
 msgid ""
 "srstatld requires WSAPI version '%(srstatld_version)s' version "
 "'%(version)s' is installed."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:569
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:570
 #, python-format
 msgid "Virtual Volume Set '%s' doesn't exist on array."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:681
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2527
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:682
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2462
 #, python-format
 msgid "Delete Snapshot id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:782
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:783
 #: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1148
 #, python-format
 msgid "Failed to manage virtual volume %(disp)s due to error during retype."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1419
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1420
 #, python-format
 msgid "3PAR vlun for volume %(name)s not found on host %(host)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:1710
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:1711
 msgid ""
 "'hpe3par:cpg' is not supported as an extra spec in a volume type.  CPG's "
 "are chosen by the cinder scheduler, as a pool, from the cinder.conf entry"
 " 'hpe3par_cpg', which can be a list of CPGs."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2139
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:2140
 #, python-format
 msgid "Delete volume id not found. Removing from cinder: %(id)s Ex: %(msg)s"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:2321
-#, python-format
-msgid "Issue occurred in clear_volume_key_value_pair: %s"
-msgstr ""
-
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:3092
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:3027
 #: cinder/volume/drivers/hpe/hpe_lefthand_iscsi.py:1538
 #, python-format
 msgid ""
@@ -1552,7 +1547,7 @@ msgid ""
 "as a valid replication target."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_common.py:3102
+#: cinder/volume/drivers/hpe/hpe_3par_common.py:3037
 #, python-format
 msgid ""
 "'%s' is not a valid replication array. In order to be valid, backend_id, "
@@ -1561,56 +1556,56 @@ msgid ""
 "target is managed, managed_backend_name must be set as well."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_fc.py:128
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:140
+#: cinder/volume/drivers/hpe/hpe_3par_fc.py:129
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:141
 msgid ""
 "The primary array is not reachable at this time. Since replication is "
 "enabled, listing replication targets and failing over a volume can still "
 "be performed."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:209
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:210
 #, python-format
 msgid "Invalid IP address format '%s'"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:241
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:242
 #, python-format
 msgid ""
 "Found invalid iSCSI IP address(s) in configuration option(s) "
 "hpe3par_iscsi_ips or iscsi_ip_address '%s.'"
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:392
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:393
 #, python-format
 msgid ""
 "iSCSI IP: '%s' was not found in hpe3par_iscsi_ips list defined in "
 "cinder.conf."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:430
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:431
 msgid "Least busy iSCSI port not found, using first iSCSI port in list."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:583
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:584
 msgid ""
 "Host exists without CHAP credentials set and has iSCSI attachments but "
 "CHAP is enabled. Updating host with new CHAP credentials."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:615
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:616
 msgid "Host has no CHAP key, but CHAP is enabled."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:619
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:620
 msgid "No host or VLUNs exist. Generating new CHAP key."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:648
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:649
 msgid "Non-iSCSI VLUN detected."
 msgstr ""
 
-#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:652
+#: cinder/volume/drivers/hpe/hpe_3par_iscsi.py:653
 msgid "No VLUN contained CHAP credentials. Generating new CHAP key."
 msgstr ""
 
@@ -1824,37 +1819,30 @@ msgid ""
 "found."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2027
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2029
 msgid ""
 "Unable to use san_ip to create SSHPool. Now attempting to use "
 "storwize_san_secondary_ip to create SSHPool."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2034
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2035
 msgid ""
 "Unable to create SSHPool using san_ip and not able to use "
 "storwize_san_secondary_ip since it is not configured."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2050
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2049
 #, python-format
 msgid ""
-"Unable to execute SSH command with storwize_san_secondary_ip. Attempting "
-"to switch IP back to san_ip %s."
+"Unable to execute SSH command with %(inactive)s. Attempting to execute "
+"SSH command with %(active)s."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2060
-#, python-format
-msgid "Unable to execute SSH command. Attempting to switch IP to %s."
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2058
+msgid "Not able to use storwize_san_secondary_ip since it is not configured."
 msgstr ""
 
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2068
-msgid ""
-"Unable to execute SSH command. Not able to use storwize_san_secondary_ip "
-"since it is not configured."
-msgstr ""
-
-#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2443
+#: cinder/volume/drivers/ibm/storwize_svc/storwize_svc_common.py:2446
 #, python-format
 msgid "Volume %s does not exist."
 msgstr ""

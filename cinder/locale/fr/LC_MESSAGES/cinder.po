@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev143\n"
+"Project-Id-Version: cinder 8.0.1.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-20 17:19+0000\n"
+"POT-Creation-Date: 2016-04-23 16:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4302,10 +4302,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "Echec d'obtention des infos LUN pour %s."
 
 #, python-format
-msgid "Failure in update_volume_key_value_pair:%s"
-msgstr "Incident dans update_volume_key_value_pair : %s"
-
-#, python-format
 msgid "Failure moving new cloned LUN to %s."
 msgstr "Echec du déplacement du nouveau numéro d'unité logique cloné vers %s."
 
@@ -7449,10 +7445,6 @@ msgid "StorageSystem %(array)s is not found."
 msgstr "StorageSystem %(array)s introuvable."
 
 #, python-format
-msgid "String with params: %s"
-msgstr "Chaîne avec paramètres : %s"
-
-#, python-format
 msgid ""
 "Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
 "project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
@@ -7498,13 +7490,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Le type de volume cible est toujours utilisé."
-
-#, python-format
-msgid ""
-"Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
-msgstr ""
-"Discordance d'arborescence de modèles ; ajout de l'esclave %(slavetag)s au "
-"maître %(mastertag)s"
 
 #, python-format
 msgid "Tenant ID: %s does not exist."
@@ -8524,11 +8509,6 @@ msgstr "Impossible de mapper le volume"
 msgid "Unable to map volume."
 msgstr "Impossible de mapper le volume."
 
-msgid "Unable to parse XML request. Please provide XML in correct format."
-msgstr ""
-"Impossible d'effectuer une analyse syntaxique de la demande XML. Fournissez "
-"le code XML dans un format correct."
-
 msgid "Unable to parse attributes."
 msgstr "Impossible d'analyser les attributs."
 
@@ -9540,10 +9520,6 @@ msgstr "Syntaxe d'appel de ressource incorrecte"
 msgid "X-IO Volume Driver exception!"
 msgstr "Exception de pilote du volume X-IO"
 
-msgid "XML support has been deprecated and will be removed in the N release."
-msgstr ""
-"La prise en charge XML est obsolète et sera supprimée dans l'édition N."
-
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr ""
 "XtremIO n'a pas été configuré correctement, aucun portail iscsi n'a été "
@@ -10065,9 +10041,6 @@ msgstr "impossible de gérer à la fois le nom et l'index dans la demande"
 msgid "cannot understand JSON"
 msgstr "impossible de comprendre JSON"
 
-msgid "cannot understand XML"
-msgstr "impossible de comprendre XML"
-
 #, python-format
 msgid "cg-%s"
 msgstr "groupe de cohérence %s"
@@ -10330,9 +10303,6 @@ msgstr "détachez l'instantané du noeud distant"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup : Aucun noeud configuré."
-
-msgid "element is not a child"
-msgstr "l'élément n'est pas un enfant"
 
 msgid "eqlx_cli_max_retries must be greater than or equal to 0"
 msgstr "eqlx_cli_max_retries doit être supérieur ou égal à 0"
@@ -10725,9 +10695,6 @@ msgstr ""
 "restore_backup annulé, la liste d'objets actuelle ne correspond pas à la "
 "liste d'objets stockée dans les métadonnées."
 
-msgid "root element selecting a list"
-msgstr "élément racine sélectionnant une liste"
-
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
@@ -10798,9 +10765,6 @@ msgstr "l'état doit être disponible"
 
 msgid "stop_hypermetro error."
 msgstr "Erreur stop_hypermetro."
-
-msgid "subclasses must implement construct()!"
-msgstr "les sous-classes doivent implémenter construct()!"
 
 msgid "sudo failed, continuing as if nothing happened"
 msgstr "sudo a échoué, continue comme si de rien n'était"

@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev143\n"
+"Project-Id-Version: cinder 8.0.1.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-20 17:19+0000\n"
+"POT-Creation-Date: 2016-04-23 16:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4164,10 +4164,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "%s の LUN 情報の取得中に障害が発生しました。"
 
 #, python-format
-msgid "Failure in update_volume_key_value_pair:%s"
-msgstr "update_volume_key_value_pair で障害が発生しました: %s"
-
-#, python-format
 msgid "Failure moving new cloned LUN to %s."
 msgstr "複製された新規 LUN を %s へ移動中に障害が発生しました。"
 
@@ -7234,10 +7230,6 @@ msgid "StorageSystem %(array)s is not found."
 msgstr "ストレージシステム %(array)s が見つかりません。"
 
 #, python-format
-msgid "String with params: %s"
-msgstr "パラメーターが指定された文字列: %s"
-
-#, python-format
 msgid ""
 "Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
 "project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
@@ -7279,13 +7271,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "ターゲットボリュームタイプはまだ使用中です。"
-
-#, python-format
-msgid ""
-"Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
-msgstr ""
-"テンプレートツリーの不一致。スレーブ %(slavetag)s をマスター %(mastertag)s に"
-"追加しています"
 
 #, python-format
 msgid "Tenant ID: %s does not exist."
@@ -8266,9 +8251,6 @@ msgstr "ボリュームをマッピングできません"
 
 msgid "Unable to map volume."
 msgstr "ボリュームのマッピングができません。"
-
-msgid "Unable to parse XML request. Please provide XML in correct format."
-msgstr "XML 要求を解析できません。正しい形式の XML を提供してください。"
 
 msgid "Unable to parse attributes."
 msgstr "属性を解析できません。"
@@ -9260,9 +9242,6 @@ msgstr "正しくないリソース呼び出し構文"
 msgid "X-IO Volume Driver exception!"
 msgstr "X-IO ボリュームドライバー例外が発生しました。"
 
-msgid "XML support has been deprecated and will be removed in the N release."
-msgstr "XML サポートは提供を終了し、N リリースでは削除されます。"
-
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "XtremIO は正しく設定されていません。iscsi ポータルが見つかりません"
 
@@ -9779,9 +9758,6 @@ msgstr "req にある名前とインデックスはどちらも処理できま�
 msgid "cannot understand JSON"
 msgstr "JSON を解釈できません"
 
-msgid "cannot understand XML"
-msgstr "XML を解釈できません"
-
 #, python-format
 msgid "cg-%s"
 msgstr "cg: %s"
@@ -10033,9 +10009,6 @@ msgstr "リモートノードからスナップショットを切断します"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: 構成されたノードがありません。"
-
-msgid "element is not a child"
-msgstr "要素は子ではありません"
 
 msgid "eqlx_cli_max_retries must be greater than or equal to 0"
 msgstr "eqlx_cli_max_retries は 0 以上でなければなりません"
@@ -10432,9 +10405,6 @@ msgstr ""
 "restore_backup が打ち切られました。実際のオブジェクトリストが、メタデータ内に"
 "保管されているオブジェクトリストと一致しません。"
 
-msgid "root element selecting a list"
-msgstr "ルート要素のリスト選択"
-
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
@@ -10505,9 +10475,6 @@ msgstr "状況は「使用可能」でなければなりません"
 
 msgid "stop_hypermetro error."
 msgstr "stop_hypermetro エラー。"
-
-msgid "subclasses must implement construct()!"
-msgstr "サブクラスは construct() を実装する必要があります。"
 
 msgid "sudo failed, continuing as if nothing happened"
 msgstr "sudo が失敗しました。何も起こらなかったものとして続行します"

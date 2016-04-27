@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev143\n"
+"Project-Id-Version: cinder 8.0.1.dev161\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-20 17:19+0000\n"
+"POT-Creation-Date: 2016-04-23 16:54+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3978,10 +3978,6 @@ msgid "Failure getting LUN info for %s."
 msgstr "%s에 대한 LUN 정보를 가져오지 못했습니다."
 
 #, python-format
-msgid "Failure in update_volume_key_value_pair:%s"
-msgstr "update_volume_key_value_pair의 실패: %s"
-
-#, python-format
 msgid "Failure moving new cloned LUN to %s."
 msgstr "복제된 새 LUN을 %s(으)로 이동하지 못했습니다."
 
@@ -6934,10 +6930,6 @@ msgid "StorageSystem %(array)s is not found."
 msgstr "스토리지 시스템 %(array)s을(를) 찾을 수 없습니다."
 
 #, python-format
-msgid "String with params: %s"
-msgstr "문자열에 %s 매개변수가 있음"
-
-#, python-format
 msgid ""
 "Sum of child usage '%(sum)s' is greater than free quota of '%(free)s' for "
 "project '%(proj)s' for resource '%(res)s'. Please lower the limit or usage "
@@ -6978,12 +6970,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "대상 볼륨 유형이 아직 사용 중입니다."
-
-#, python-format
-msgid ""
-"Template tree mismatch; adding slave %(slavetag)s to master %(mastertag)s"
-msgstr ""
-"템플리트 트리 불일치. 슬레이브 %(slavetag)s을(를) 마스터 %(mastertag)s에 추가"
 
 #, python-format
 msgid "Tenant ID: %s does not exist."
@@ -7916,9 +7902,6 @@ msgstr "볼륨을 맵핑할 수 없음"
 
 msgid "Unable to map volume."
 msgstr "볼륨을 맵핑할 수 없습니다. "
-
-msgid "Unable to parse XML request. Please provide XML in correct format."
-msgstr "XML 요청을 구문 분석할 수 없습니다. 올바른 형식의 XML을 제공하십시오."
 
 msgid "Unable to parse attributes."
 msgstr "속성을 구문 분석할 수 없습니다. "
@@ -8877,9 +8860,6 @@ msgstr "잘못된 자원 호출 구문"
 msgid "X-IO Volume Driver exception!"
 msgstr "X-IO 볼륨 드라이버 예외 발생!"
 
-msgid "XML support has been deprecated and will be removed in the N release."
-msgstr "XML 지원은 더 이상 사용되지 않으므로 N 릴리스에서 제거됩니다."
-
 msgid "XtremIO not configured correctly, no iscsi portals found"
 msgstr "XtremIO가 올바르게 구성되지 않음, iscsi 포털을 찾을 수 없음"
 
@@ -9382,9 +9362,6 @@ msgstr "요청의 이름 및 색인을 둘 다 처리할 수 없음"
 msgid "cannot understand JSON"
 msgstr "JSON을 이해할 수 없음"
 
-msgid "cannot understand XML"
-msgstr "XML을 이해할 수 없음"
-
 #, python-format
 msgid "cg-%s"
 msgstr "cg-%s"
@@ -9627,9 +9604,6 @@ msgstr "원격 노드에서 스냅샷 분리"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: 구성된 노드가 없습니다."
-
-msgid "element is not a child"
-msgstr "요소가 하위가 아님"
 
 msgid "eqlx_cli_max_retries must be greater than or equal to 0"
 msgstr "eqlx_cli_max_retries는 0 이상이어야 함"
@@ -10012,9 +9986,6 @@ msgstr ""
 "restore_backup이 중단되었습니다. 실제 오브젝트 목록이 메타데이터에 저장된 오"
 "브젝트 목록과일치하지 않습니다. "
 
-msgid "root element selecting a list"
-msgstr "목록을 선택하는 루트 요소"
-
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
 msgstr ""
@@ -10082,9 +10053,6 @@ msgstr "상태가 사용 가능해야 함"
 
 msgid "stop_hypermetro error."
 msgstr "stop_hypermetro 오류."
-
-msgid "subclasses must implement construct()!"
-msgstr "서브클래스가 construct()를 구현해야 합니다!"
 
 msgid "sudo failed, continuing as if nothing happened"
 msgstr "sudo에 실패, 무시하고 계속합니다. "
