@@ -1906,9 +1906,9 @@ class StorageCenterApi(object):
         """
         payload = {}
         payload['Name'] = name
-        r = self.client.post('StorageCenter/ScVolume/%s/Modify'
-                             % self._get_id(scvolume),
-                             payload)
+        r = self.client.put('StorageCenter/ScVolume/%s'
+                            % self._get_id(scvolume),
+                            payload)
         if self._check_result(r):
             return True
 
