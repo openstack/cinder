@@ -349,7 +349,6 @@ class SolidFireDriver(san.SanISCSIDriver):
                 (sv for sv in sf_vols if sv['name'] == seek_name), None)
             if sfvol:
                 if v.get('provider_id', 'nil') != sfvol['volumeID']:
-                    v['provider_id'] == sfvol['volumeID']
                     updates.append(
                         {'id': v['id'],
                          'provider_id': self._create_provider_id_string(
