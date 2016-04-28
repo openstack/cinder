@@ -24,6 +24,7 @@ from sqlalchemy import sql
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import models
+from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
@@ -663,6 +664,30 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
         arg = update.call_args[0][0]
         self.assertTrue(isinstance(arg, dict))
         self.assertEqual(set(values.keys()), set(arg.keys()))
+
+    def test_conditional_update_multitable_fail(self):
+        volume = self._create_volume()
+        self.assertRaises(exception.ProgrammingError,
+                          volume.conditional_update,
+                          {'status': 'deleting',
+                           objects.Snapshot.model.status: 'available'},
+                          {'status': 'available'})
+
+    def test_conditional_update_multitable_fail_fields_different_models(self):
+        volume = self._create_volume()
+        self.assertRaises(exception.ProgrammingError,
+                          volume.conditional_update,
+                          {objects.Backup.model.status: 'available',
+                           objects.Snapshot.model.status: 'available'})
+
+    def test_conditional_update_not_multitable(self):
+        volume = self._create_volume()
+        with mock.patch('cinder.db.sqlalchemy.api._create_facade_lazily') as m:
+            res = volume.conditional_update(
+                {objects.Volume.model.status: 'deleting',
+                 objects.Volume.model.size: 12}, reflect_changes=False)
+            self.assertTrue(res)
+            self.assertTrue(m.called)
 
 
 class TestCinderDictObject(test_objects.BaseObjectsTestCase):

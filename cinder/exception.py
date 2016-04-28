@@ -149,6 +149,10 @@ class GlanceConnectionFailed(CinderException):
     message = _("Connection to glance failed: %(reason)s")
 
 
+class ProgrammingError(CinderException):
+    message = _('Programming error in Cinder: %(reason)s')
+
+
 class NotAuthorized(CinderException):
     message = _("Not authorized.")
     code = 403
