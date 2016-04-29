@@ -409,6 +409,20 @@ def upload_volume(context, image_service, image_meta, volume_path,
             image_service.update(context, image_id, {}, image_file)
 
 
+def check_virtual_size(virtual_size, volume_size, image_id):
+    virtual_size = int(math.ceil(float(virtual_size) / units.Gi))
+
+    if virtual_size > volume_size:
+        params = {'image_size': virtual_size,
+                  'volume_size': volume_size}
+        reason = _("Image virtual size is %(image_size)dGB"
+                   " and doesn't fit in a volume of size"
+                   " %(volume_size)dGB.") % params
+        raise exception.ImageUnacceptable(image_id=image_id,
+                                          reason=reason)
+    return virtual_size
+
+
 def is_xenserver_image(context, image_service, image_id):
     image_meta = image_service.show(context, image_id)
     return is_xenserver_format(image_meta)

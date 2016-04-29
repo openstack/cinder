@@ -32,6 +32,7 @@ import os_brick
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_serialization import jsonutils
+from oslo_utils import imageutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
 from oslo_utils import units
@@ -3342,13 +3343,18 @@ class VolumeTestCase(BaseVolumeTestCase):
         snapshot_ref.destroy()
         db.volume_destroy(self.context, volume['id'])
 
-    def test_create_snapshot_from_bootable_volume(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_snapshot_from_bootable_volume(self, mock_qemu_info):
         """Test create snapshot from bootable volume."""
         # create bootable volume from image
         volume = self._create_volume_from_image()
         volume_id = volume['id']
         self.assertEqual('available', volume['status'])
         self.assertTrue(volume['bootable'])
+
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
 
         # get volume's volume_glance_metadata
         ctxt = context.get_admin_context()
@@ -3378,7 +3384,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         snap.destroy()
         db.volume_destroy(ctxt, volume_id)
 
-    def test_create_snapshot_from_bootable_volume_fail(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_snapshot_from_bootable_volume_fail(self, mock_qemu_info):
         """Test create snapshot from bootable volume.
 
         But it fails to volume_glance_metadata_copy_to_snapshot.
@@ -3389,6 +3396,10 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume_id = volume['id']
         self.assertEqual('available', volume['status'])
         self.assertTrue(volume['bootable'])
+
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
 
         # get volume's volume_glance_metadata
         ctxt = context.get_admin_context()
@@ -3543,23 +3554,35 @@ class VolumeTestCase(BaseVolumeTestCase):
                                              gigabytes=vol.size)
         mock_rollback.assert_called_once_with(self.context, ["RESERVATION"])
 
-    def test_create_volume_from_image_cloned_status_available(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_volume_from_image_cloned_status_available(
+            self, mock_qemu_info):
         """Test create volume from image via cloning.
 
         Verify that after cloning image to volume, it is in available
         state and is bootable.
         """
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
         volume = self._create_volume_from_image()
         self.assertEqual('available', volume['status'])
         self.assertTrue(volume['bootable'])
         self.volume.delete_volume(self.context, volume.id, volume=volume)
 
-    def test_create_volume_from_image_not_cloned_status_available(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_volume_from_image_not_cloned_status_available(
+            self, mock_qemu_info):
         """Test create volume from image via full copy.
 
         Verify that after copying image to volume, it is in available
         state and is bootable.
         """
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
         volume = self._create_volume_from_image(fakeout_clone_image=True)
         self.assertEqual('available', volume['status'])
         self.assertTrue(volume['bootable'])
@@ -3599,12 +3622,18 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume.destroy()
         os.unlink(dst_path)
 
-    def test_create_volume_from_image_copy_exception_rescheduling(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_volume_from_image_copy_exception_rescheduling(
+            self, mock_qemu_info):
         """Test create volume with ImageCopyFailure
 
         This exception should not trigger rescheduling and allocated_capacity
         should be incremented so we're having assert for that here.
         """
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
         def fake_copy_image_to_volume(context, volume, image_service,
                                       image_id):
             raise exception.ImageCopyFailure()
@@ -3622,14 +3651,18 @@ class VolumeTestCase(BaseVolumeTestCase):
     @mock.patch('cinder.utils.brick_get_connector')
     @mock.patch('cinder.volume.driver.BaseVD.secure_file_operations_enabled')
     @mock.patch('cinder.volume.driver.BaseVD._detach_volume')
-    def test_create_volume_from_image_unavailable(self, mock_detach,
-                                                  mock_secure, *args):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_volume_from_image_unavailable(
+            self, mock_qemu_info, mock_detach, mock_secure, *args):
         """Test create volume with ImageCopyFailure
 
         We'll raise an exception inside _connect_device after volume has
         already been attached to confirm that it detaches the volume.
         """
         mock_secure.side_effect = NameError
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
 
         # We want to test BaseVD copy_image_to_volume and since FakeISCSIDriver
         # inherits from LVM it overwrites it, so we'll mock it to use the
@@ -3644,12 +3677,17 @@ class VolumeTestCase(BaseVolumeTestCase):
         # We must have called detach method.
         self.assertEqual(1, mock_detach.call_count)
 
-    def test_create_volume_from_image_clone_image_volume(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_volume_from_image_clone_image_volume(self, mock_qemu_info):
         """Test create volume from image via image volume.
 
         Verify that after cloning image to volume, it is in available
         state and is bootable.
         """
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
         volume = self._create_volume_from_image(clone_image_volume=True)
         self.assertEqual('available', volume['status'])
         self.assertTrue(volume['bootable'])
@@ -4108,13 +4146,19 @@ class VolumeTestCase(BaseVolumeTestCase):
                           source_volume=volume_src,
                           availability_zone='nova')
 
-    def test_create_volume_from_sourcevol_with_glance_metadata(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_volume_from_sourcevol_with_glance_metadata(
+            self, mock_qemu_info):
         """Test glance metadata can be correctly copied to new volume."""
         def fake_create_cloned_volume(volume, src_vref):
             pass
 
         self.stubs.Set(self.volume.driver, 'create_cloned_volume',
                        fake_create_cloned_volume)
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
         volume_src = self._create_volume_from_image()
         self.volume.create_volume(self.context, volume_src.id,
                                   volume=volume_src)
@@ -4755,7 +4799,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
             self.assertEqual('error', volume.migration_status)
             self.assertEqual('available', volume.status)
 
-    def test_migrate_volume_with_glance_metadata(self):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_migrate_volume_with_glance_metadata(self, mock_qemu_info):
         volume = self._create_volume_from_image(clone_image_volume=True)
         glance_metadata = volume.glance_metadata
 
@@ -4764,6 +4809,10 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
         serializer = objects.base.CinderObjectSerializer()
         serialized_volume = serializer.serialize_entity(self.context, volume)
         volume = serializer.deserialize_entity(self.context, serialized_volume)
+
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
 
         host_obj = {'host': 'newhost', 'capabilities': {}}
         with mock.patch.object(self.volume.driver,
