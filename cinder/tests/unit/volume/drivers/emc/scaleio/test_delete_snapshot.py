@@ -16,6 +16,7 @@ from six.moves import urllib
 
 from cinder import context
 from cinder import exception
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit.fake_snapshot import fake_snapshot_obj
 from cinder.tests.unit.volume.drivers.emc import scaleio
 from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
@@ -33,7 +34,7 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
         self.snapshot = fake_snapshot_obj(
-            ctx, **{'provider_id': 'snap_1'})
+            ctx, **{'provider_id': fake.SNAPSHOT_ID})
         self.snapshot_name_2x_enc = urllib.parse.quote(
             urllib.parse.quote(
                 self.driver._id_to_base64(self.snapshot.id)

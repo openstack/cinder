@@ -16,6 +16,7 @@ from six.moves import urllib
 
 from cinder import context
 from cinder import exception
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.emc import scaleio
 from cinder.tests.unit.volume.drivers.emc.scaleio import mocks
@@ -32,7 +33,7 @@ class TestDeleteVolume(scaleio.TestScaleIODriver):
         ctx = context.RequestContext('fake', 'fake', auth_token=True)
 
         self.volume = fake_volume.fake_volume_obj(
-            ctx, **{'provider_id': 'pid_1'})
+            ctx, **{'provider_id': fake.PROVIDER_ID})
 
         self.volume_name_2x_enc = urllib.parse.quote(
             urllib.parse.quote(self.driver._id_to_base64(self.volume.id))
