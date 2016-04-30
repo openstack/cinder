@@ -39,7 +39,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
-from cinder.tests.unit import fake_constants
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import version
 
@@ -510,7 +510,7 @@ class TestCinderManageCmd(test.TestCase):
     @mock.patch('cinder.rpc.init')
     def test_volume_commands_delete_no_host(self, rpc_init, get_admin_context,
                                             volume_get, volume_destroy):
-        ctxt = context.RequestContext('fake-user', 'fake-project',
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                       is_admin=True)
         get_admin_context.return_value = ctxt
         volume = fake_volume.fake_db_volume()
@@ -538,7 +538,7 @@ class TestCinderManageCmd(test.TestCase):
     def test_volume_commands_delete_volume_in_use(self, rpc_init,
                                                   get_admin_context,
                                                   volume_get, volume_destroy):
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         db_volume = {'status': 'in-use', 'host': 'fake-host'}
         volume = fake_volume.fake_db_volume(**db_volume)
@@ -621,18 +621,18 @@ class TestCinderManageCmd(test.TestCase):
     @mock.patch('cinder.db.backup_get_all')
     @mock.patch('cinder.context.get_admin_context')
     def test_backup_commands_list(self, get_admin_context, backup_get_all):
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
-        backup = {'id': 1,
-                  'user_id': 'fake-user-id',
-                  'project_id': 'fake-project-id',
+        backup = {'id': fake.BACKUP_ID,
+                  'user_id': fake.USER_ID,
+                  'project_id': fake.PROJECT_ID,
                   'host': 'fake-host',
                   'display_name': 'fake-display-name',
                   'container': 'fake-container',
                   'status': fields.BackupStatus.AVAILABLE,
                   'size': 123,
                   'object_count': 1,
-                  'volume_id': 'fake-volume-id',
+                  'volume_id': fake.VOLUME_ID,
                   }
         backup_get_all.return_value = [backup]
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
@@ -674,18 +674,18 @@ class TestCinderManageCmd(test.TestCase):
     def test_update_backup_host(self, get_admin_context,
                                 backup_get_by_host,
                                 backup_update):
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
-        backup = {'id': fake_constants.backup_id,
-                  'user_id': 'fake-user-id',
-                  'project_id': 'fake-project-id',
+        backup = {'id': fake.BACKUP_ID,
+                  'user_id': fake.USER_ID,
+                  'project_id': fake.PROJECT_ID,
                   'host': 'fake-host',
                   'display_name': 'fake-display-name',
                   'container': 'fake-container',
                   'status': fields.BackupStatus.AVAILABLE,
                   'size': 123,
                   'object_count': 1,
-                  'volume_id': 'fake-volume-id',
+                  'volume_id': fake.VOLUME_ID,
                   }
         backup_get_by_host.return_value = [backup]
         backup_cmds = cinder_manage.BackupCommands()
@@ -693,7 +693,7 @@ class TestCinderManageCmd(test.TestCase):
 
         get_admin_context.assert_called_once_with()
         backup_get_by_host.assert_called_once_with(ctxt, 'fake_host')
-        backup_update.assert_called_once_with(ctxt, fake_constants.backup_id,
+        backup_update.assert_called_once_with(ctxt, fake.BACKUP_ID,
                                               {'host': 'fake_host2'})
 
     @mock.patch('cinder.utils.service_is_up')
@@ -701,7 +701,7 @@ class TestCinderManageCmd(test.TestCase):
     @mock.patch('cinder.context.get_admin_context')
     def _test_service_commands_list(self, service, get_admin_context,
                                     service_get_all, service_is_up):
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         service_get_all.return_value = [service]
         service_is_up.return_value = True
@@ -1507,12 +1507,12 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('end_time', '2014-02-02 02:00:00')
         begin = datetime.datetime(2014, 1, 1, 1, 0)
         end = datetime.datetime(2014, 2, 2, 2, 0)
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
         volume1_created = datetime.datetime(2014, 1, 1, 2, 0)
         volume1_deleted = datetime.datetime(2014, 1, 1, 3, 0)
-        volume1 = mock.MagicMock(id='1', project_id='fake-project',
+        volume1 = mock.MagicMock(id=fake.VOLUME_ID, project_id=fake.PROJECT_ID,
                                  created_at=volume1_created,
                                  deleted_at=volume1_deleted)
         volume_get_active_by_window.return_value = [volume1]
@@ -1570,12 +1570,12 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('end_time', '2014-02-02 02:00:00')
         begin = datetime.datetime(2014, 1, 1, 1, 0)
         end = datetime.datetime(2014, 2, 2, 2, 0)
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
         volume1_created = datetime.datetime(2014, 1, 1, 2, 0)
         volume1_deleted = datetime.datetime(2014, 1, 1, 3, 0)
-        volume1 = mock.MagicMock(id='1', project_id='fake-project',
+        volume1 = mock.MagicMock(id=fake.VOLUME_ID, project_id=fake.PROJECT_ID,
                                  created_at=volume1_created,
                                  deleted_at=volume1_deleted)
         volume_get_active_by_window.return_value = [volume1]
@@ -1645,12 +1645,13 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('end_time', '2014-02-02 02:00:00')
         begin = datetime.datetime(2014, 1, 1, 1, 0)
         end = datetime.datetime(2014, 2, 2, 2, 0)
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
         snapshot1_created = datetime.datetime(2014, 1, 1, 2, 0)
         snapshot1_deleted = datetime.datetime(2014, 1, 1, 3, 0)
-        snapshot1 = mock.MagicMock(id='1', project_id='fake-project',
+        snapshot1 = mock.MagicMock(id=fake.VOLUME_ID,
+                                   project_id=fake.PROJECT_ID,
                                    created_at=snapshot1_created,
                                    deleted_at=snapshot1_deleted)
         volume_get_active_by_window.return_value = []
@@ -1713,13 +1714,13 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
         CONF.set_override('end_time', '2014-02-02 02:00:00')
         begin = datetime.datetime(2014, 1, 1, 1, 0)
         end = datetime.datetime(2014, 2, 2, 2, 0)
-        ctxt = context.RequestContext('fake-user', 'fake-project')
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         get_admin_context.return_value = ctxt
         last_completed_audit_period.return_value = (begin, end)
 
         volume1_created = datetime.datetime(2014, 1, 1, 2, 0)
         volume1_deleted = datetime.datetime(2014, 1, 1, 3, 0)
-        volume1 = mock.MagicMock(id='1', project_id='fake-project',
+        volume1 = mock.MagicMock(id=fake.VOLUME_ID, project_id=fake.PROJECT_ID,
                                  created_at=volume1_created,
                                  deleted_at=volume1_deleted)
         volume_get_active_by_window.return_value = [volume1]
@@ -1738,7 +1739,8 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
 
         snapshot1_created = datetime.datetime(2014, 1, 1, 2, 0)
         snapshot1_deleted = datetime.datetime(2014, 1, 1, 3, 0)
-        snapshot1 = mock.MagicMock(id='1', project_id='fake-project',
+        snapshot1 = mock.MagicMock(id=fake.VOLUME_ID,
+                                   project_id=fake.PROJECT_ID,
                                    created_at=snapshot1_created,
                                    deleted_at=snapshot1_deleted)
         snapshot_get_active_by_window.return_value = [snapshot1]
