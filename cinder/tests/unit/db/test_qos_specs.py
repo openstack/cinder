@@ -23,6 +23,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import volume_types
 
 
@@ -35,8 +36,8 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
 
     def setUp(self):
         super(QualityOfServiceSpecsTableTestCase, self).setUp()
-        self.ctxt = context.RequestContext(user_id='user_id',
-                                           project_id='project_id',
+        self.ctxt = context.RequestContext(user_id=fake.USER_ID,
+                                           project_id=fake.PROJECT_ID,
                                            is_admin=True)
 
     def _create_qos_specs(self, name, values=None):
@@ -69,7 +70,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
                      key1='foo', key2='bar')
         specs_id = self._create_qos_specs('Name1', value)
 
-        fake_id = 'fake-UUID'
+        fake_id = fake.WILL_NOT_BE_FOUND_ID
         self.assertRaises(exception.QoSSpecsNotFound,
                           db.qos_specs_get, self.ctxt, fake_id)
 
@@ -148,7 +149,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
     def test_associate_type_with_qos(self):
         self.assertRaises(exception.VolumeTypeNotFound,
                           db.volume_type_qos_associate,
-                          self.ctxt, 'Fake-VOLID', 'Fake-QOSID')
+                          self.ctxt, fake.VOLUME_ID, fake.QOS_SPEC_ID)
         type_id = volume_types.create(self.ctxt, 'TypeName')['id']
         specs_id = self._create_qos_specs('FakeQos')
         db.volume_type_qos_associate(self.ctxt, type_id, specs_id)
@@ -160,7 +161,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
     def test_qos_associations_get(self):
         self.assertRaises(exception.QoSSpecsNotFound,
                           db.qos_specs_associations_get,
-                          self.ctxt, 'Fake-UUID')
+                          self.ctxt, fake.WILL_NOT_BE_FOUND_ID)
 
         type_id = volume_types.create(self.ctxt, 'TypeName')['id']
         specs_id = self._create_qos_specs('FakeQos')
@@ -216,7 +217,7 @@ class QualityOfServiceSpecsTableTestCase(test.TestCase):
         value = dict(key2='new_value2', key3='value3')
 
         self.assertRaises(exception.QoSSpecsNotFound, db.qos_specs_update,
-                          self.ctxt, 'Fake-UUID', value)
+                          self.ctxt, fake.WILL_NOT_BE_FOUND_ID, value)
         db.qos_specs_update(self.ctxt, specs_id, value)
         specs = db.qos_specs_get(self.ctxt, specs_id)
         self.assertEqual('new_value2', specs['specs']['key2'])
