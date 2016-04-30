@@ -682,7 +682,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         LOG.debug("Copying image: %(image_id)s to %(path)s.",
                   {'image_id': image_id,
                    'path': upload_file_path})
-        # TODO(vbala): add config option to override non-default port
 
         # ca_file is used for verifying vCenter certificate if it is set.
         # If ca_file is unset and insecure is False, the default CA truststore
