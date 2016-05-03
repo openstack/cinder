@@ -38,8 +38,8 @@ def stub_volume_type(id):
 
 def return_volume_types_get_all_types(context, search_opts=None):
     d = {}
-    for vtype in [fake.volume_type_id, fake.volume_type2_id,
-                  fake.volume_type3_id]:
+    for vtype in [fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID,
+                  fake.VOLUME_TYPE3_ID]:
         vtype_name = 'vol_type_%s' % vtype
         d[vtype_name] = stub_volume_type(vtype)
     return d
@@ -50,7 +50,7 @@ def return_empty_volume_types_get_all_types(context, search_opts=None):
 
 
 def return_volume_types_get_volume_type(context, id):
-    if id == fake.will_not_be_found_id:
+    if id == fake.WILL_NOT_BE_FOUND_ID:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
     return stub_volume_type(id)
 
@@ -64,14 +64,14 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_all_types',
                        return_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
 
         self.assertEqual(3, len(res_dict['volume_types']))
 
-        expected_names = ['vol_type_%s' % fake.volume_type_id,
-                          'vol_type_%s' % fake.volume_type2_id,
-                          'vol_type_%s' % fake.volume_type3_id]
+        expected_names = ['vol_type_%s' % fake.VOLUME_TYPE_ID,
+                          'vol_type_%s' % fake.VOLUME_TYPE2_ID,
+                          'vol_type_%s' % fake.VOLUME_TYPE3_ID]
 
         actual_names = map(lambda e: e['name'], res_dict['volume_types'])
         self.assertEqual(set(expected_names), set(actual_names))
@@ -82,7 +82,7 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_all_types',
                        return_empty_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v1/%s/types' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
 
         self.assertEqual(0, len(res_dict['volume_types']))
@@ -91,8 +91,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_volume_type',
                        return_volume_types_get_volume_type)
 
-        type_id = fake.volume_type_id
-        req = fakes.HTTPRequest.blank('/v1/%s/types/' % fake.project_id
+        type_id = fake.VOLUME_TYPE_ID
+        req = fakes.HTTPRequest.blank('/v1/%s/types/' % fake.PROJECT_ID
                                       + type_id)
         res_dict = self.controller.show(req, type_id)
 
@@ -106,10 +106,10 @@ class VolumeTypesApiTest(test.TestCase):
                        return_volume_types_get_volume_type)
 
         req = fakes.HTTPRequest.blank('/v1/%s/types/%s' %
-                                      (fake.project_id,
-                                       fake.will_not_be_found_id))
+                                      (fake.PROJECT_ID,
+                                       fake.WILL_NOT_BE_FOUND_ID))
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
-                          req, fake.will_not_be_found_id)
+                          req, fake.WILL_NOT_BE_FOUND_ID)
 
     def test_view_builder_show(self):
         view_builder = views_types.ViewBuilder()
@@ -122,7 +122,7 @@ class VolumeTypesApiTest(test.TestCase):
                                extra_specs={},
                                deleted_at=None,
                                description=None,
-                               id=fake.volume_type_id)
+                               id=fake.VOLUME_TYPE_ID)
 
         request = fakes.HTTPRequest.blank("/v1")
         output = view_builder.show(request, raw_volume_type)
@@ -132,7 +132,7 @@ class VolumeTypesApiTest(test.TestCase):
                                     extra_specs={},
                                     description=None,
                                     is_public=None,
-                                    id=fake.volume_type_id)
+                                    id=fake.VOLUME_TYPE_ID)
         self.assertDictMatch(expected_volume_type, output['volume_type'])
 
     def test_view_builder_list(self):

@@ -102,8 +102,8 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
             fields = {'id': fields.UUIDField(),
                       'name': fields.StringField()}
 
-        test_obj = MyTestObject(id=fake.object_id, name='foo')
-        refresh_obj = MyTestObject(id=fake.object_id, name='bar')
+        test_obj = MyTestObject(id=fake.OBJECT_ID, name='foo')
+        refresh_obj = MyTestObject(id=fake.OBJECT_ID, name='bar')
         with mock.patch(
                 'cinder.objects.base.CinderObject.get_by_id') as get_by_id:
             get_by_id.return_value = refresh_obj
@@ -118,7 +118,7 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
                                objects.base.CinderComparableObject):
             fields = {'uuid': fields.UUIDField()}
 
-        test_obj = MyTestObjectNoId(uuid=fake.object_id, name='foo')
+        test_obj = MyTestObjectNoId(uuid=fake.OBJECT_ID, name='foo')
         self.assertRaises(NotImplementedError, test_obj.refresh)
 
 

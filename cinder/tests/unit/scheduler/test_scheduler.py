@@ -301,7 +301,7 @@ class SchedulerManagerTestCase(test.TestCase):
 
             ex = exception.CinderException('test')
             mock_cg.side_effect = ex
-            group_id = fake.consistency_group_id
+            group_id = fake.CONSISTENCY_GROUP_ID
             self.assertRaises(exception.CinderException,
                               self.manager.create_consistencygroup,
                               self.context,
@@ -337,7 +337,7 @@ class SchedulerTestCase(test.TestCase):
     def setUp(self):
         super(SchedulerTestCase, self).setUp()
         self.driver = self.driver_cls()
-        self.context = context.RequestContext(fake.user_id, fake.project_id)
+        self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self.topic = 'fake_topic'
 
     @mock.patch('cinder.scheduler.driver.Scheduler.'
@@ -380,7 +380,7 @@ class SchedulerDriverModuleTestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerDriverModuleTestCase, self).setUp()
-        self.context = context.RequestContext(fake.user_id, fake.project_id)
+        self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
 
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.objects.volume.Volume.get_by_id')

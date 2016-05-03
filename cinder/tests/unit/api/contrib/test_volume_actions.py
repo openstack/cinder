@@ -467,7 +467,7 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
             d1 = {'id': fake.VOLUME_TYPE_ID,
                   'qos_specs_id': fake.QOS_SPEC_ID,
                   'extra_specs': {}}
-            d2 = {'id': fake.volume_type2_id,
+            d2 = {'id': fake.VOLUME_TYPE2_ID,
                   'qos_specs_id': fake.QOS_SPEC2_ID,
                   'extra_specs': {}}
             return d1 if d1['id'] == args[1] else d2
@@ -495,7 +495,7 @@ class VolumeRetypeActionsTest(VolumeActionsTest):
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
 
     def _retype_volume_exec(self, expected_status,
-                            new_type=fake.volume_type2_id):
+                            new_type=fake.VOLUME_TYPE2_ID):
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'

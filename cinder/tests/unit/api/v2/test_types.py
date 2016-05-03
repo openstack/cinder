@@ -70,7 +70,7 @@ def return_empty_volume_types_get_all_types(context, filters=None, marker=None,
 
 
 def return_volume_types_get_volume_type(context, id):
-    if id == fake.will_not_be_found_id:
+    if id == fake.WILL_NOT_BE_FOUND_ID:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
     return stub_volume_type(id)
 
@@ -93,8 +93,8 @@ class VolumeTypesApiTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesApiTest, self).setUp()
         self.controller = types.VolumeTypesController()
-        self.ctxt = context.RequestContext(user_id=fake.user_id,
-                                           project_id=fake.project_id,
+        self.ctxt = context.RequestContext(user_id=fake.USER_ID,
+                                           project_id=fake.PROJECT_ID,
                                            is_admin=True)
         self.type_id1 = self._create_volume_type('volume_type1',
                                                  {'key1': 'value1'})
@@ -102,13 +102,13 @@ class VolumeTypesApiTest(test.TestCase):
                                                  {'key2': 'value2'})
         self.type_id3 = self._create_volume_type('volume_type3',
                                                  {'key3': 'value3'}, False,
-                                                 [fake.project_id])
+                                                 [fake.PROJECT_ID])
 
     def test_volume_types_index(self):
         self.stubs.Set(volume_types, 'get_all_types',
                        return_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.project_id,
+        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID,
                                       use_admin_context=True)
         res_dict = self.controller.index(req)
 
@@ -124,13 +124,13 @@ class VolumeTypesApiTest(test.TestCase):
         self.stubs.Set(volume_types, 'get_all_types',
                        return_empty_volume_types_get_all_types)
 
-        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
 
         self.assertEqual(0, len(res_dict['volume_types']))
 
     def test_volume_types_index_with_limit(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/types?limit=1' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v2/%s/types?limit=1' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
@@ -139,26 +139,26 @@ class VolumeTypesApiTest(test.TestCase):
 
         expect_next_link = ('http://localhost/v2/%s/types?limit=1'
                             '&marker=%s' %
-                            (fake.project_id, res['volume_types'][0]['id']))
+                            (fake.PROJECT_ID, res['volume_types'][0]['id']))
         self.assertEqual(expect_next_link, res['volume_type_links'][0]['href'])
 
     def test_volume_types_index_with_offset(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?offset=1' % fake.project_id)
+            '/v2/%s/types?offset=1' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
         self.assertEqual(2, len(res['volume_types']))
 
     def test_volume_types_index_with_offset_out_of_range(self):
-        url = '/v2/%s/types?offset=424366766556787' % fake.project_id
+        url = '/v2/%s/types?offset=424366766556787' % fake.PROJECT_ID
         req = fakes.HTTPRequest.blank(url)
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.index, req)
 
     def test_volume_types_index_with_limit_and_offset(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?limit=2&offset=1' % fake.project_id)
+            '/v2/%s/types?limit=2&offset=1' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
@@ -169,7 +169,7 @@ class VolumeTypesApiTest(test.TestCase):
     def test_volume_types_index_with_limit_and_marker(self):
         req = fakes.HTTPRequest.blank('/v2/%s/types?limit=1'
                                       '&marker=%s' %
-                                      (fake.project_id,
+                                      (fake.PROJECT_ID,
                                        self.type_id2))
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
@@ -179,7 +179,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_valid_filter(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?is_public=True' % fake.project_id)
+            '/v2/%s/types?is_public=True' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
@@ -190,14 +190,14 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_invalid_filter(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?id=%s' % (fake.project_id, self.type_id1))
+            '/v2/%s/types?id=%s' % (fake.PROJECT_ID, self.type_id1))
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
 
         self.assertEqual(3, len(res['volume_types']))
 
     def test_volume_types_index_with_sort_keys(self):
-        req = fakes.HTTPRequest.blank('/v2/%s/types?sort=id' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v2/%s/types?sort=id' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
         expect_result = [self.type_id1, self.type_id2, self.type_id3]
@@ -210,7 +210,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_sort_and_limit(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?sort=id&limit=2' % fake.project_id)
+            '/v2/%s/types?sort=id&limit=2' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
         expect_result = [self.type_id1, self.type_id2, self.type_id3]
@@ -222,7 +222,7 @@ class VolumeTypesApiTest(test.TestCase):
 
     def test_volume_types_index_with_sort_keys_and_sort_dirs(self):
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/types?sort=id:asc' % fake.project_id)
+            '/v2/%s/types?sort=id:asc' % fake.PROJECT_ID)
         req.environ['cinder.context'] = self.ctxt
         res = self.controller.index(req)
         expect_result = [self.type_id1, self.type_id2, self.type_id3]
@@ -238,7 +238,7 @@ class VolumeTypesApiTest(test.TestCase):
                        return_volume_types_get_volume_type)
 
         type_id = str(uuid.uuid4())
-        req = fakes.HTTPRequest.blank('/v2/%s/types/' % fake.project_id
+        req = fakes.HTTPRequest.blank('/v2/%s/types/' % fake.PROJECT_ID
                                       + type_id)
         res_dict = self.controller.show(req, type_id)
 
@@ -252,15 +252,15 @@ class VolumeTypesApiTest(test.TestCase):
                        return_volume_types_get_volume_type)
 
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' %
-                                      (fake.project_id,
-                                       fake.will_not_be_found_id))
+                                      (fake.PROJECT_ID,
+                                       fake.WILL_NOT_BE_FOUND_ID))
         self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
-                          req, fake.will_not_be_found_id)
+                          req, fake.WILL_NOT_BE_FOUND_ID)
 
     def test_get_default(self):
         self.stubs.Set(volume_types, 'get_default_volume_type',
                        return_volume_types_get_default)
-        req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.PROJECT_ID)
         req.method = 'GET'
         res_dict = self.controller.show(req, 'default')
         self.assertEqual(1, len(res_dict))
@@ -271,7 +271,7 @@ class VolumeTypesApiTest(test.TestCase):
     def test_get_default_not_found(self):
         self.stubs.Set(volume_types, 'get_default_volume_type',
                        return_volume_types_get_default_not_found)
-        req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.project_id)
+        req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.PROJECT_ID)
         req.method = 'GET'
 
         self.assertRaises(webob.exc.HTTPNotFound,

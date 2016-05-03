@@ -4234,8 +4234,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
                 new=testutils.ZeroIntervalLoopingCall)
     def test_storwize_consistency_group_snapshot(self):
         cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = fake.user_id
-        self.ctxt.project_id = fake.project_id
+        self.ctxt.user_id = fake.USER_ID
+        self.ctxt.project_id = fake.PROJECT_ID
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
 
         model_update = self.driver.create_consistencygroup(self.ctxt, cg)
@@ -4273,8 +4273,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_consistency_group_from_src_invalid(self):
         # Invalid input case for create cg from src
         cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = fake.user_id
-        self.ctxt.project_id = fake.project_id
+        self.ctxt.user_id = fake.USER_ID
+        self.ctxt.project_id = fake.PROJECT_ID
         # create cg in db
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])
 
@@ -4353,8 +4353,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
     def test_storwize_consistency_group_from_src(self):
         # Valid case for create cg from src
         cg_type = self._create_consistency_group_volume_type()
-        self.ctxt.user_id = fake.user_id
-        self.ctxt.project_id = fake.project_id
+        self.ctxt.user_id = fake.USER_ID
+        self.ctxt.project_id = fake.PROJECT_ID
         pool = _get_test_pool()
         # Create cg in db
         cg = self._create_consistencygroup_in_db(volume_type_id=cg_type['id'])

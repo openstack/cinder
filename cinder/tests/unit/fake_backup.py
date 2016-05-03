@@ -21,10 +21,10 @@ from cinder.tests.unit import fake_constants as fake
 
 def fake_db_backup(**updates):
     db_backup = {
-        'id': fake.backup_id,
-        'user_id': fake.user_id,
-        'project_id': fake.project_id,
-        'volume_id': fake.volume_id,
+        'id': fake.BACKUP_ID,
+        'user_id': fake.USER_ID,
+        'project_id': fake.PROJECT_ID,
+        'volume_id': fake.VOLUME_ID,
         'status': c_fields.BackupStatus.CREATING,
         'host': 'fake_host',
         'display_name': 'fake_name',

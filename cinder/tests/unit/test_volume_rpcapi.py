@@ -709,8 +709,8 @@ class VolumeRpcAPITestCase(test.TestCase):
     def test_manage_existing_snapshot(self, mock_can_send_version):
         volume_update = {'host': 'fake_host'}
         snpshot = {
-            'id': fake.snapshot_id,
-            'volume_id': fake.volume_id,
+            'id': fake.SNAPSHOT_ID,
+            'volume_id': fake.VOLUME_ID,
             'status': "creating",
             'progress': '0%',
             'volume_size': 0,

@@ -22,27 +22,27 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import objects as test_objects
 
 fake_consistencygroup = {
-    'id': fake.consistency_group_id,
-    'user_id': fake.user_id,
-    'project_id': fake.project_id,
+    'id': fake.CONSISTENCY_GROUP_ID,
+    'user_id': fake.USER_ID,
+    'project_id': fake.PROJECT_ID,
     'host': 'fake_host',
     'availability_zone': 'fake_az',
     'name': 'fake_name',
     'description': 'fake_description',
-    'volume_type_id': fake.volume_type_id,
+    'volume_type_id': fake.VOLUME_TYPE_ID,
     'status': fields.ConsistencyGroupStatus.CREATING,
-    'cgsnapshot_id': fake.cgsnapshot_id,
+    'cgsnapshot_id': fake.CGSNAPSHOT_ID,
     'source_cgid': None,
 }
 
 fake_cgsnapshot = {
-    'id': fake.cgsnapshot_id,
-    'user_id': fake.user_id,
-    'project_id': fake.project_id,
+    'id': fake.CGSNAPSHOT_ID,
+    'user_id': fake.USER_ID,
+    'project_id': fake.PROJECT_ID,
     'name': 'fake_name',
     'description': 'fake_description',
     'status': 'creating',
-    'consistencygroup_id': fake.consistency_group_id,
+    'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
 }
 
 
@@ -52,10 +52,10 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
                 return_value=fake_consistencygroup)
     def test_get_by_id(self, consistencygroup_get):
         consistencygroup = objects.ConsistencyGroup.get_by_id(
-            self.context, fake.consistency_group_id)
+            self.context, fake.CONSISTENCY_GROUP_ID)
         self._compare(self, fake_consistencygroup, consistencygroup)
         consistencygroup_get.assert_called_once_with(
-            self.context, fake.consistency_group_id)
+            self.context, fake.CONSISTENCY_GROUP_ID)
 
     @mock.patch('cinder.db.sqlalchemy.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
@@ -76,7 +76,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
 
     def test_create_with_id_except_exception(self, ):
         consistencygroup = objects.ConsistencyGroup(
-            context=self.context, **{'id': fake.consistency_group_id})
+            context=self.context, **{'id': fake.CONSISTENCY_GROUP_ID})
         self.assertRaises(exception.ObjectActionError, consistencygroup.create)
 
     @mock.patch('cinder.db.consistencygroup_update')
@@ -94,8 +94,8 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         consistencygroup = objects.ConsistencyGroup._from_db_object(
             self.context, objects.ConsistencyGroup(), fake_consistencygroup)
         cgsnapshots_objs = [objects.CGSnapshot(context=self.context, id=i)
-                            for i in [fake.cgsnapshot_id, fake.cgsnapshot2_id,
-                                      fake.cgsnapshot3_id]]
+                            for i in [fake.CGSNAPSHOT_ID, fake.CGSNAPSHOT2_ID,
+                                      fake.CGSNAPSHOT3_ID]]
         cgsnapshots = objects.CGSnapshotList(objects=cgsnapshots_objs)
         consistencygroup.name = 'foobar'
         consistencygroup.cgsnapshots = cgsnapshots
@@ -108,8 +108,8 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         consistencygroup = objects.ConsistencyGroup._from_db_object(
             self.context, objects.ConsistencyGroup(), fake_consistencygroup)
         volumes_objs = [objects.Volume(context=self.context, id=i)
-                        for i in [fake.volume_id, fake.volume2_id,
-                                  fake.volume3_id]]
+                        for i in [fake.VOLUME_ID, fake.VOLUME2_ID,
+                                  fake.VOLUME3_ID]]
         volumes = objects.VolumeList(objects=volumes_objs)
         consistencygroup.name = 'foobar'
         consistencygroup.volumes = volumes
@@ -126,8 +126,8 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
             self.context, objects.ConsistencyGroup(), fake_consistencygroup)
         # Test cgsnapshots lazy-loaded field
         cgsnapshots_objs = [objects.CGSnapshot(context=self.context, id=i)
-                            for i in [fake.cgsnapshot_id, fake.cgsnapshot2_id,
-                                      fake.cgsnapshot3_id]]
+                            for i in [fake.CGSNAPSHOT_ID, fake.CGSNAPSHOT2_ID,
+                                      fake.CGSNAPSHOT3_ID]]
         cgsnapshots = objects.CGSnapshotList(context=self.context,
                                              objects=cgsnapshots_objs)
         mock_cgsnap_get_all_by_group.return_value = cgsnapshots
@@ -137,8 +137,8 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
 
         # Test volumes lazy-loaded field
         volume_objs = [objects.Volume(context=self.context, id=i)
-                       for i in [fake.volume_id, fake.volume2_id,
-                                 fake.volume3_id]]
+                       for i in [fake.VOLUME_ID, fake.VOLUME2_ID,
+                                 fake.VOLUME3_ID]]
         volumes = objects.VolumeList(context=self.context, objects=volume_objs)
         mock_vol_get_all_by_group.return_value = volumes
         self.assertEqual(volumes, consistencygroup.volumes)
@@ -148,7 +148,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.consistencygroup_destroy')
     def test_destroy(self, consistencygroup_destroy):
         consistencygroup = objects.ConsistencyGroup(
-            context=self.context, id=fake.consistency_group_id)
+            context=self.context, id=fake.CONSISTENCY_GROUP_ID)
         consistencygroup.destroy()
         self.assertTrue(consistencygroup_destroy.called)
         admin_context = consistencygroup_destroy.call_args[0][0]
@@ -164,7 +164,7 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         # an updated description
         consistencygroup_get.side_effect = [db_cg1, db_cg2]
         cg = objects.ConsistencyGroup.get_by_id(self.context,
-                                                fake.consistency_group_id)
+                                                fake.CONSISTENCY_GROUP_ID)
         self._compare(self, db_cg1, cg)
 
         # description was updated, so a ConsistencyGroup refresh should have a
@@ -178,11 +178,11 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         consistencygroup_get.assert_has_calls([
             mock.call(
                 self.context,
-                fake.consistency_group_id),
+                fake.CONSISTENCY_GROUP_ID),
             call_bool,
             mock.call(
                 self.context,
-                fake.consistency_group_id)])
+                fake.CONSISTENCY_GROUP_ID)])
 
 
 class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):

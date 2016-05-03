@@ -1734,7 +1734,7 @@ class BackupsAPITestCase(test.TestCase):
         project_id = fake.PROJECT_ID
         backup_service = 'fake'
         ctx = context.RequestContext(fake.USER_ID, project_id, is_admin=True)
-        backup = objects.Backup(ctx, id=fake.backup_id, user_id=fake.USER_ID,
+        backup = objects.Backup(ctx, id=fake.BACKUP_ID, user_id=fake.USER_ID,
                                 project_id=project_id,
                                 status=fields.BackupStatus.AVAILABLE)
         backup_url = backup.encode_record()
@@ -1755,10 +1755,10 @@ class BackupsAPITestCase(test.TestCase):
         # verify that request is successful
         self.assertEqual(201, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        self.assertEqual(fake.backup_id, res_dict['backup']['id'])
+        self.assertEqual(fake.BACKUP_ID, res_dict['backup']['id'])
 
         # Verify that entry in DB is as expected
-        db_backup = objects.Backup.get_by_id(ctx, fake.backup_id)
+        db_backup = objects.Backup.get_by_id(ctx, fake.BACKUP_ID)
         self.assertEqual(ctx.project_id, db_backup.project_id)
         self.assertEqual(ctx.user_id, db_backup.user_id)
         self.assertEqual(backup_api.IMPORT_VOLUME_ID, db_backup.volume_id)
@@ -1774,8 +1774,8 @@ class BackupsAPITestCase(test.TestCase):
         utils.replace_obj_loader(self, objects.Backup)
 
         # Original backup belonged to a different user_id and project_id
-        backup = objects.Backup(ctx, id=fake.backup_id, user_id=fake.USER2_ID,
-                                project_id=fake.project2_id,
+        backup = objects.Backup(ctx, id=fake.BACKUP_ID, user_id=fake.USER2_ID,
+                                project_id=fake.PROJECT2_ID,
                                 status=fields.BackupStatus.AVAILABLE)
         backup_url = backup.encode_record()
 
@@ -1800,10 +1800,10 @@ class BackupsAPITestCase(test.TestCase):
         # verify that request is successful
         self.assertEqual(201, res.status_int)
         self.assertIn('id', res_dict['backup'])
-        self.assertEqual(fake.backup_id, res_dict['backup']['id'])
+        self.assertEqual(fake.BACKUP_ID, res_dict['backup']['id'])
 
         # Verify that entry in DB is as expected, with new project and user_id
-        db_backup = objects.Backup.get_by_id(ctx, fake.backup_id)
+        db_backup = objects.Backup.get_by_id(ctx, fake.BACKUP_ID)
         self.assertEqual(ctx.project_id, db_backup.project_id)
         self.assertEqual(ctx.user_id, db_backup.user_id)
         self.assertEqual(backup_api.IMPORT_VOLUME_ID, db_backup.volume_id)

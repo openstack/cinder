@@ -71,7 +71,7 @@ class BackupSwiftTestCase(test.TestCase):
     def _create_backup_db_entry(self,
                                 volume_id=_DEFAULT_VOLUME_ID,
                                 container='test-container',
-                                backup_id=fake.backup_id, parent_id=None,
+                                backup_id=fake.BACKUP_ID, parent_id=None,
                                 service_metadata=None):
 
         try:
@@ -84,8 +84,8 @@ class BackupSwiftTestCase(test.TestCase):
                   'container': container,
                   'volume_id': volume_id,
                   'parent_id': parent_id,
-                  'user_id': fake.user_id,
-                  'project_id': fake.project_id,
+                  'user_id': fake.USER_ID,
+                  'project_id': fake.PROJECT_ID,
                   'service_metadata': service_metadata,
                   }
         return db.backup_create(self.ctxt, backup)['id']
@@ -159,7 +159,7 @@ class BackupSwiftTestCase(test.TestCase):
                                       u'endpoints': [{
                                           u'publicURL':
                                               u'http://example.com'}]}]
-        self.ctxt.project_id = fake.project_id
+        self.ctxt.project_id = fake.PROJECT_ID
         self.override_config("backup_swift_url",
                              "http://public.example.com/")
         backup = swift_dr.SwiftBackupDriver(self.ctxt)
@@ -178,7 +178,7 @@ class BackupSwiftTestCase(test.TestCase):
                                       u'endpoints': [{
                                           u'adminURL':
                                               u'http://example.com'}]}]
-        self.ctxt.project_id = fake.project_id
+        self.ctxt.project_id = fake.PROJECT_ID
         self.override_config("backup_swift_auth_url",
                              "http://public.example.com/")
         backup = swift_dr.SwiftBackupDriver(self.ctxt)
@@ -233,7 +233,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.flags(backup_compression_algorithm='none')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
     def test_backup_bz2(self):
@@ -242,7 +242,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.flags(backup_compression_algorithm='bz2')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
     def test_backup_zlib(self):
@@ -251,7 +251,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.flags(backup_compression_algorithm='zlib')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
     @mock.patch.object(db, 'backup_update', wraps=db.backup_update)
@@ -261,9 +261,9 @@ class BackupSwiftTestCase(test.TestCase):
                                      container=None)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual('volumebackups', backup['container'])
         self.assertEqual(3, backup_update_mock.call_count)
 
@@ -274,10 +274,10 @@ class BackupSwiftTestCase(test.TestCase):
                                      container='existing_name')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual('existing_name', backup['container'])
         # Make sure we are not making a DB update when we are using the same
         # value that's already in the DB.
@@ -290,11 +290,11 @@ class BackupSwiftTestCase(test.TestCase):
                                      container=None)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         with mock.patch.object(service, 'update_container_name',
                                return_value='driver_name'):
             service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual('driver_name', backup['container'])
         self.assertEqual(3, backup_update_mock.call_count)
 
@@ -313,7 +313,7 @@ class BackupSwiftTestCase(test.TestCase):
         CONF.set_override("backup_swift_enable_progress_timer", False)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
         self.assertTrue(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
@@ -325,7 +325,7 @@ class BackupSwiftTestCase(test.TestCase):
         CONF.set_override("backup_object_number_per_notification", 10)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
         self.assertFalse(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
@@ -338,7 +338,7 @@ class BackupSwiftTestCase(test.TestCase):
         CONF.set_override("backup_swift_enable_progress_timer", True)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
         self.assertTrue(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
@@ -350,9 +350,9 @@ class BackupSwiftTestCase(test.TestCase):
                                      container=container_name)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(container_name, backup['container'])
 
     def test_backup_shafile(self):
@@ -378,9 +378,9 @@ class BackupSwiftTestCase(test.TestCase):
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(container_name, backup['container'])
 
         # Verify sha contents
@@ -407,28 +407,28 @@ class BackupSwiftTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         self.stubs.Set(swift, 'Connection',
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(container_name, backup['container'])
 
         # Create incremental backup with no change to contents
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id= fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id= fake.BACKUP_ID)
         self.stubs.Set(swift, 'Connection',
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         self.assertEqual(container_name, deltabackup['container'])
 
         # Compare shas from both files
@@ -460,14 +460,14 @@ class BackupSwiftTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         self.stubs.Set(swift, 'Connection',
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(container_name, backup['container'])
 
         # Create incremental backup with no change to contents
@@ -478,15 +478,15 @@ class BackupSwiftTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id=fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id=fake.BACKUP_ID)
         self.stubs.Set(swift, 'Connection',
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         self.assertEqual(container_name, deltabackup['container'])
 
         content1 = service._read_sha256file(backup)
@@ -518,14 +518,14 @@ class BackupSwiftTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         self.stubs.Set(swift, 'Connection',
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(container_name, backup['container'])
 
         # Create incremental backup with no change to contents
@@ -536,15 +536,15 @@ class BackupSwiftTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id=fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id=fake.BACKUP_ID)
         self.stubs.Set(swift, 'Connection',
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         self.assertEqual(container_name, deltabackup['container'])
 
         # Verify that two shas are changed at index 16 and 20
@@ -560,7 +560,7 @@ class BackupSwiftTestCase(test.TestCase):
                                      container=container_name)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertRaises(exception.SwiftConnectionFailed,
                           service.backup,
                           backup, self.volume_file)
@@ -578,7 +578,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.flags(backup_compression_algorithm='none')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         def fake_backup_metadata(self, backup, object_meta):
             raise exception.BackupDriverException(message=_('fake'))
@@ -605,7 +605,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.flags(backup_compression_algorithm='none')
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         def fake_backup_metadata(self, backup, object_meta):
             raise exception.BackupDriverException(message=_('fake'))
@@ -631,7 +631,7 @@ class BackupSwiftTestCase(test.TestCase):
         service = swift_dr.SwiftBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             service.restore(backup, volume_id, volume_file)
 
     def test_restore_delta(self):
@@ -656,12 +656,12 @@ class BackupSwiftTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         self.stubs.Set(swift, 'Connection',
                        fake_swift_client2.FakeSwiftClient2.Connection)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
         # Create incremental backup with no change to contents
@@ -672,15 +672,15 @@ class BackupSwiftTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id=fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id=fake.BACKUP_ID)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file, True)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
 
         with tempfile.NamedTemporaryFile() as restored_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
             service.restore(backup, volume_id,
                             restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
@@ -694,7 +694,7 @@ class BackupSwiftTestCase(test.TestCase):
         service = swift_dr.SwiftBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             self.assertRaises(exception.SwiftConnectionFailed,
                               service.restore,
                               backup, volume_id, volume_file)
@@ -707,7 +707,7 @@ class BackupSwiftTestCase(test.TestCase):
         service = swift_dr.SwiftBackupDriver(self.ctxt)
 
         with tempfile.NamedTemporaryFile() as volume_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             self.assertRaises(exception.InvalidBackup,
                               service.restore,
                               backup, volume_id, volume_file)
@@ -718,7 +718,7 @@ class BackupSwiftTestCase(test.TestCase):
         self._create_backup_db_entry(volume_id=volume_id,
                                      service_metadata=object_prefix)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.delete(backup)
 
     def test_delete_wraps_socket_error(self):
@@ -729,7 +729,7 @@ class BackupSwiftTestCase(test.TestCase):
                                      container=container_name,
                                      service_metadata=object_prefix)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertRaises(exception.SwiftConnectionFailed,
                           service.delete,
                           backup)
@@ -746,7 +746,7 @@ class BackupSwiftTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id)
         service = swift_dr.SwiftBackupDriver(self.ctxt)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.delete(backup)
 
     def test_get_compressor(self):

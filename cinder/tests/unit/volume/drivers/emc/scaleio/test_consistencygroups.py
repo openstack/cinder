@@ -47,19 +47,19 @@ class TestConsistencyGroups(scaleio.TestScaleIODriver):
             **{'id': fake.VOLUME2_ID, 'provider_id': fake.PROVIDER2_ID})
         fake_volume3 = fake_volume.fake_volume_obj(
             self.ctx,
-            **{'id': fake.volume3_id, 'provider_id': fake.PROVIDER3_ID})
+            **{'id': fake.VOLUME3_ID, 'provider_id': fake.PROVIDER3_ID})
         fake_volume4 = fake_volume.fake_volume_obj(
             self.ctx,
-            **{'id': fake.volume4_id, 'provider_id': fake.PROVIDER4_ID})
+            **{'id': fake.VOLUME4_ID, 'provider_id': fake.PROVIDER4_ID})
         self.volumes = [fake_volume1, fake_volume2]
         self.volumes2 = [fake_volume3, fake_volume4]
         fake_snapshot1 = fake_snapshot.fake_snapshot_obj(
             self.ctx,
-            **{'id': fake.snapshot_id, 'volume_id': fake.VOLUME_ID,
+            **{'id': fake.SNAPSHOT_ID, 'volume_id': fake.VOLUME_ID,
                'volume': fake_volume1})
         fake_snapshot2 = fake_snapshot.fake_snapshot_obj(
             self.ctx,
-            **{'id': fake.snapshot2_id, 'volume_id': fake.VOLUME2_ID, 'volume':
+            **{'id': fake.SNAPSHOT2_ID, 'volume_id': fake.VOLUME2_ID, 'volume':
                 fake_volume2})
         self.snapshots = [fake_snapshot1, fake_snapshot2]
         self.snapshot_reply = json.dumps({

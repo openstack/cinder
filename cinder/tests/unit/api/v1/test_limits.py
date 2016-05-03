@@ -79,7 +79,7 @@ class LimitsControllerTest(BaseLimitTestSuite):
             "action": "index",
             "controller": "",
         })
-        context = cinder.context.RequestContext(fake.user_id, fake.project_id)
+        context = cinder.context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         request.environ["cinder.context"] = context
         return request
 

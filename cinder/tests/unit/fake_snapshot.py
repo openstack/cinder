@@ -20,8 +20,8 @@ from cinder.tests.unit import fake_constants as fake
 
 def fake_db_snapshot(**updates):
     db_snapshot = {
-        'id': fake.snapshot_id,
-        'volume_id': fake.volume_id,
+        'id': fake.SNAPSHOT_ID,
+        'volume_id': fake.VOLUME_ID,
         'status': "creating",
         'progress': '0%',
         'volume_size': 1,

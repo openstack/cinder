@@ -206,7 +206,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                    mock_close_connection,
                                    mock_open_connection,
                                    mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         res = self.driver.initialize_connection(volume, connector)
         expected = {'data':
@@ -222,7 +222,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, res, 'Unexpected return data')
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_called_once_with(fake.volume_id, None)
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None)
         mock_get_volume.assert_called_once_with(self.VOLUME[u'instanceId'])
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -249,7 +249,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                            mock_close_connection,
                                            mock_open_connection,
                                            mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
@@ -280,7 +280,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                              mock_close_connection,
                                              mock_open_connection,
                                              mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
@@ -307,7 +307,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                                  mock_close_connection,
                                                  mock_open_connection,
                                                  mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
@@ -335,7 +335,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                                 mock_open_connection,
                                                 mock_init):
         # Test case where map_volume returns None (no mappings)
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
@@ -372,7 +372,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                   mock_close_connection,
                                   mock_open_connection,
                                   mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
@@ -410,7 +410,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                             mock_close_connection,
                                             mock_open_connection,
                                             mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
@@ -447,7 +447,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                             mock_close_connection,
                                             mock_open_connection,
                                             mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
@@ -480,7 +480,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                           mock_close_connection,
                                           mock_open_connection,
                                           mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         # self.assertRaises(exception.VolumeBackendAPIException,
         #                  self.driver.terminate_connection,
@@ -521,7 +521,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                           mock_close_connection,
                                           mock_open_connection,
                                           mock_init):
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.terminate_connection,
@@ -559,7 +559,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                                  mock_open_connection,
                                                  mock_init):
         # Test case where get_volume_count is zero
-        volume = {'id': fake.volume_id}
+        volume = {'id': fake.VOLUME_ID}
         connector = self.connector
         res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)

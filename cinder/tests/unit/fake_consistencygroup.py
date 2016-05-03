@@ -20,9 +20,9 @@ from cinder.tests.unit import fake_constants as fake
 
 def fake_db_consistencygroup(**updates):
     db_values = {
-        'id': fake.consistency_group_id,
-        'user_id': fake.user_id,
-        'project_id': fake.project_id,
+        'id': fake.CONSISTENCY_GROUP_ID,
+        'user_id': fake.USER_ID,
+        'project_id': fake.PROJECT_ID,
         'host': 'FakeHost',
         'volumes': [],
     }

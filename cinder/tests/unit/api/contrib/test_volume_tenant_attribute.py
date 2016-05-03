@@ -32,7 +32,7 @@ PROJECT_ID = '88fd1da4-f464-4a87-9ce5-26f2f40743b9'
 def fake_volume_get(*args, **kwargs):
     ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
     vol = {
-        'id': fake.volume_id,
+        'id': fake.VOLUME_ID,
         'project_id': PROJECT_ID,
     }
     return fake_volume.fake_volume_obj(ctx, **vol)

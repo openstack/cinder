@@ -28,7 +28,7 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         db_attachment = fake_volume.fake_db_volume_attachment()
         volume_attachment_get.return_value = db_attachment
         attachment = objects.VolumeAttachment.get_by_id(self.context,
-                                                        fake.attachment_id)
+                                                        fake.ATTACHMENT_ID)
         self._compare(self, db_attachment, attachment)
 
     @mock.patch('cinder.db.volume_attachment_update')
@@ -49,7 +49,7 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         # with an updated mountpoint
         attachment_get.side_effect = [db_attachment1, db_attachment2]
         attachment = objects.VolumeAttachment.get_by_id(self.context,
-                                                        fake.attachment_id)
+                                                        fake.ATTACHMENT_ID)
         self._compare(self, db_attachment1, attachment)
 
         # mountpoint was updated, so a volume attachment refresh should have a
@@ -61,10 +61,10 @@ class TestVolumeAttachment(test_objects.BaseObjectsTestCase):
         else:
             call_bool = mock.call.__nonzero__()
         attachment_get.assert_has_calls([mock.call(self.context,
-                                                   fake.attachment_id),
+                                                   fake.ATTACHMENT_ID),
                                          call_bool,
                                          mock.call(self.context,
-                                                   fake.attachment_id)])
+                                                   fake.ATTACHMENT_ID)])
 
 
 class TestVolumeAttachmentList(test_objects.BaseObjectsTestCase):

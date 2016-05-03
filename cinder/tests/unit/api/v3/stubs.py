@@ -14,10 +14,10 @@ import datetime
 import iso8601
 
 from cinder.message import defined_messages
-from cinder.tests.unit import fake_constants
+from cinder.tests.unit import fake_constants as fake
 
 
-FAKE_UUID = fake_constants.object_id
+FAKE_UUID = fake.OBJECT_ID
 
 
 def stub_message(id, **kwargs):

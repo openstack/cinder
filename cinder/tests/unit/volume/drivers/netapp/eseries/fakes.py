@@ -28,15 +28,15 @@ import cinder.volume.drivers.netapp.options as na_opts
 import cinder.volume.drivers.netapp.utils as na_utils
 
 FAKE_CINDER_VOLUME = {
-    'id': fake.volume_id,
+    'id': fake.VOLUME_ID,
     'size': 1,
     'volume_name': 'lun1',
     'host': 'hostname@backend#DDP',
     'os_type': 'linux',
     'provider_location': 'lun1',
-    'name_id': fake.volume2_id,
+    'name_id': fake.VOLUME2_ID,
     'provider_auth': 'provider a b',
-    'project_id': fake.project_id,
+    'project_id': fake.PROJECT_ID,
     'display_name': None,
     'display_description': 'lun1',
     'volume_type_id': None,
@@ -45,17 +45,17 @@ FAKE_CINDER_VOLUME = {
 }
 
 FAKE_CINDER_SNAPSHOT = {
-    'id': fake.snapshot_id,
+    'id': fake.SNAPSHOT_ID,
     'volume': FAKE_CINDER_VOLUME,
     'provider_id': '3400000060080E500023BB3400631F335294A5A8',
 }
 
 FAKE_CINDER_CG = {
-    'id': fake.consistency_group_id,
+    'id': fake.CONSISTENCY_GROUP_ID,
 }
 
 FAKE_CINDER_CG_SNAPSHOT = {
-    'id': fake.cgsnapshot_id,
+    'id': fake.CGSNAPSHOT_ID,
     'consistencygroup_id': FAKE_CINDER_CG['id'],
 }
 
@@ -693,7 +693,7 @@ SNAPSHOT_GROUP = {
 }
 
 SNAPSHOT_IMAGE = {
-    'id': fake.snapshot_id,
+    'id': fake.SNAPSHOT_ID,
     'baseVol': '0200000060080E500023C734000009825294A534',
     'status': 'optimal',
     'pitCapacity': '2147483648',

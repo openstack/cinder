@@ -506,7 +506,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
                           url='/v2/%s/types/%s/encryption/' +
-                              fake.encryption_key_id)
+                              fake.ENCRYPTION_KEY_ID)
 
         res_dict = jsonutils.loads(res.body)
         self.assertEqual(512, res_dict['encryption']['key_size'])
@@ -534,7 +534,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
                           url='/v2/%s/types/%s/encryption/' +
-                              fake.encryption_key_id)
+                              fake.ENCRYPTION_KEY_ID)
         res_dict = jsonutils.loads(res.body)
 
         expected = {
@@ -603,7 +603,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
                           req_body=jsonutils.dump_as_bytes(update_body),
                           req_headers='application/json',
                           url='/v2/%s/types/%s/encryption/' +
-                              fake.encryption_key_id)
+                              fake.ENCRYPTION_KEY_ID)
         self.assertEqual(400, res.status_code)
         res_dict = jsonutils.loads(res.body)
         expected = {

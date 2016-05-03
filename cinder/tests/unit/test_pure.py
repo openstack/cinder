@@ -285,30 +285,30 @@ REPLICATED_PGSNAPS = [
         "data_transferred": 318
     }]
 REPLICATED_VOLUME_OBJS = [
-    fake_volume.fake_volume_obj(None, id=fake.volume_id),
-    fake_volume.fake_volume_obj(None, id=fake.volume2_id),
-    fake_volume.fake_volume_obj(None, id=fake.volume3_id),
+    fake_volume.fake_volume_obj(None, id=fake.VOLUME_ID),
+    fake_volume.fake_volume_obj(None, id=fake.VOLUME2_ID),
+    fake_volume.fake_volume_obj(None, id=fake.VOLUME3_ID),
 ]
 REPLICATED_VOLUME_SNAPS = [
     {
-        "source": "array1:volume-%s-cinder" % fake.volume_id,
+        "source": "array1:volume-%s-cinder" % fake.VOLUME_ID,
         "serial": "BBA481C01639104E0001D5F7",
         "created": "2014-12-04T22:59:38Z",
-        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.volume_id,
+        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.VOLUME_ID,
         "size": 1048576
     },
     {
-        "source": "array1:volume-%s-cinder" % fake.volume2_id,
+        "source": "array1:volume-%s-cinder" % fake.VOLUME2_ID,
         "serial": "BBA481C01639104E0001D5F8",
         "created": "2014-12-04T22:59:38Z",
-        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.volume2_id,
+        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.VOLUME2_ID,
         "size": 1048576
     },
     {
-        "source": "array1:volume-%s-cinder" % fake.volume3_id,
+        "source": "array1:volume-%s-cinder" % fake.VOLUME3_ID,
         "serial": "BBA481C01639104E0001D5F9",
         "created": "2014-12-04T22:59:38Z",
-        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.volume3_id,
+        "name": "array1:cinder-repl-pg.2.volume-%s-cinder" % fake.VOLUME3_ID,
         "size": 1048576
     }
 ]

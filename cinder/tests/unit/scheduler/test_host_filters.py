@@ -36,7 +36,7 @@ class HostFiltersTestCase(test.TestCase):
 
     def setUp(self):
         super(HostFiltersTestCase, self).setUp()
-        self.context = context.RequestContext(fake.user_id, fake.project_id)
+        self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         # This has a side effect of testing 'get_filter_classes'
         # when specifying a method (in this case, our standard filters)
         filter_handler = filters.HostFilterHandler('cinder.scheduler.filters')

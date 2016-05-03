@@ -47,10 +47,10 @@ FAKE_EXPORT_PATH = 'fake/export/path'
 FAKE_BACKUP_SHARE = '%s:/%s' % (FAKE_HOST, FAKE_EXPORT_PATH)
 FAKE_BACKUP_PATH = os.path.join(FAKE_BACKUP_MOUNT_POINT_BASE,
                                 FAKE_EXPORT_PATH)
-FAKE_BACKUP_ID = fake.backup_id
-FAKE_BACKUP_ID_PART1 = fake.backup_id[:2]
-FAKE_BACKUP_ID_PART2 = fake.backup_id[2:4]
-FAKE_BACKUP_ID_REST = fake.backup_id[4:]
+FAKE_BACKUP_ID = fake.BACKUP_ID
+FAKE_BACKUP_ID_PART1 = fake.BACKUP_ID[:2]
+FAKE_BACKUP_ID_PART2 = fake.BACKUP_ID[2:4]
+FAKE_BACKUP_ID_REST = fake.BACKUP_ID[4:]
 UPDATED_CONTAINER_NAME = os.path.join(FAKE_BACKUP_ID_PART1,
                                       FAKE_BACKUP_ID_PART2,
                                       FAKE_BACKUP_ID)
@@ -108,7 +108,7 @@ def fake_md5(arg):
 class BackupNFSSwiftBasedTestCase(test.TestCase):
     """Test Cases for based on Swift tempest backup tests."""
 
-    _DEFAULT_VOLUME_ID = fake.volume_id
+    _DEFAULT_VOLUME_ID = fake.VOLUME_ID
 
     def _create_volume_db_entry(self, volume_id=_DEFAULT_VOLUME_ID):
         vol = {'id': volume_id,
@@ -119,7 +119,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
     def _create_backup_db_entry(self,
                                 volume_id=_DEFAULT_VOLUME_ID,
                                 container='test-container',
-                                backup_id=fake.backup_id,
+                                backup_id=fake.BACKUP_ID,
                                 parent_id=None):
 
         try:
@@ -132,8 +132,8 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                   'container': container,
                   'volume_id': volume_id,
                   'parent_id': parent_id,
-                  'user_id': fake.user_id,
-                  'project_id': fake.project_id,
+                  'user_id': fake.USER_ID,
+                  'project_id': fake.PROJECT_ID,
                   }
         return db.backup_create(self.ctxt, backup)['id']
 
@@ -160,34 +160,34 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             self.volume_file.write(os.urandom(1024))
 
     def test_backup_uncompressed(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='none')
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
     def test_backup_bz2(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='bz2')
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
     def test_backup_zlib(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='zlib')
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
     def test_backup_default_container(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=None,
                                      backup_id=FAKE_BACKUP_ID)
@@ -204,7 +204,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                 '_send_progress_notification')
     def test_backup_default_container_notify(self, _send_progress,
                                              _send_progress_end):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=None)
         # If the backup_object_number_per_notification is set to 1,
@@ -213,7 +213,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         CONF.set_override("backup_enable_progress_timer", False)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
         self.assertTrue(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
@@ -225,7 +225,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         CONF.set_override("backup_object_number_per_notification", 10)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
         self.assertFalse(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
@@ -238,25 +238,25 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         CONF.set_override("backup_enable_progress_timer", True)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
         self.assertTrue(_send_progress.called)
         self.assertTrue(_send_progress_end.called)
 
     def test_backup_custom_container(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
         container_name = 'fake99'
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(backup['container'], container_name)
 
     def test_backup_shafile(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
@@ -276,9 +276,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                                      container=container_name)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(backup['container'], container_name)
 
         # Verify sha contents
@@ -287,7 +287,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                          len(content1['sha256s']))
 
     def test_backup_cmp_shafiles(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
@@ -305,24 +305,24 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(backup['container'], container_name)
 
         # Create incremental backup with no change to contents
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id=fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id=fake.BACKUP_ID)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         self.assertEqual(deltabackup['container'], container_name)
 
         # Compare shas from both files
@@ -333,7 +333,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.assertEqual(set(content1['sha256s']), set(content2['sha256s']))
 
     def test_backup_delta_two_objects_change(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
@@ -354,12 +354,12 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(backup['container'], container_name)
 
         # Create incremental backup with no change to contents
@@ -370,13 +370,13 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id=fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id=fake.BACKUP_ID)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         self.assertEqual(deltabackup['container'], container_name)
 
         content1 = service._read_sha256file(backup)
@@ -387,7 +387,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.assertNotEqual(content1['sha256s'][20], content2['sha256s'][20])
 
     def test_backup_delta_two_blocks_in_object_change(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
@@ -408,12 +408,12 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         self.assertEqual(backup['container'], container_name)
 
         # Create incremental backup with no change to contents
@@ -424,13 +424,13 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id=fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id=fake.BACKUP_ID)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         self.assertEqual(deltabackup['container'], container_name)
 
         # Verify that two shas are changed at index 16 and 20
@@ -446,13 +446,13 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self._backup_metadata(), we want to check the process of an
         exception handler.
         """
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='none')
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         def fake_backup_metadata(self, backup, object_meta):
             raise exception.BackupDriverException(message=_('fake'))
@@ -473,13 +473,13 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self._backup_metadata(), we want to check the process when the
         second exception occurs in self.delete().
         """
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='none')
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         def fake_backup_metadata(self, backup, object_meta):
             raise exception.BackupDriverException(message=_('fake'))
@@ -500,25 +500,25 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                           backup, self.volume_file)
 
     def test_restore_uncompressed(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='none')
         self.flags(backup_sha_block_size_bytes=32)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
 
         service.backup(backup, self.volume_file)
 
         with tempfile.NamedTemporaryFile() as restored_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             service.restore(backup, volume_id, restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
     def test_restore_bz2(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='bz2')
@@ -526,17 +526,17 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.flags(backup_sha_block_size_bytes=1024)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
         with tempfile.NamedTemporaryFile() as restored_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             service.restore(backup, volume_id, restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
     def test_restore_zlib(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         self._create_backup_db_entry(volume_id=volume_id)
         self.flags(backup_compression_algorithm='zlib')
@@ -544,17 +544,17 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         self.flags(backup_sha_block_size_bytes = 1024)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
         with tempfile.NamedTemporaryFile() as restored_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
             service.restore(backup, volume_id, restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
     def test_restore_delta(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
 
         def _fake_generate_object_name_prefix(self, backup):
             az = 'az_fake'
@@ -575,10 +575,10 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
                                                '', 1)
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup_id)
+                                     backup_id=fake.BACKUP_ID)
         service = nfs.NFSBackupDriver(self.ctxt)
         self.volume_file.seek(0)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.backup(backup, self.volume_file)
 
         # Create incremental backup with no change to contents
@@ -589,25 +589,25 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
 
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name,
-                                     backup_id=fake.backup2_id,
-                                     parent_id=fake.backup_id)
+                                     backup_id=fake.BACKUP2_ID,
+                                     parent_id=fake.BACKUP_ID)
         self.volume_file.seek(0)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
         service.backup(deltabackup, self.volume_file, True)
-        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+        deltabackup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
 
         with tempfile.NamedTemporaryFile() as restored_file:
-            backup = objects.Backup.get_by_id(self.ctxt, fake.backup2_id)
+            backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP2_ID)
             service.restore(backup, volume_id,
                             restored_file)
             self.assertTrue(filecmp.cmp(self.volume_file.name,
                             restored_file.name))
 
     def test_delete(self):
-        volume_id = fake.volume_id
+        volume_id = fake.VOLUME_ID
         self._create_backup_db_entry(volume_id=volume_id)
         service = nfs.NFSBackupDriver(self.ctxt)
-        backup = objects.Backup.get_by_id(self.ctxt, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.ctxt, fake.BACKUP_ID)
         service.delete(backup)
 
     def test_get_compressor(self):

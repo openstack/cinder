@@ -134,8 +134,8 @@ class GoogleBackupDriverTestCase(test.TestCase):
                   'container': container,
                   'volume_id': volume_id,
                   'parent_id': parent_id,
-                  'user_id': fake.user_id,
-                  'project_id': fake.project_id,
+                  'user_id': fake.USER_ID,
+                  'project_id': fake.PROJECT_ID,
                   'service_metadata': service_metadata,
                   }
         backup = objects.Backup(context=self.ctxt, **kwargs)

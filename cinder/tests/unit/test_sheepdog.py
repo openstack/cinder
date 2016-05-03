@@ -116,10 +116,10 @@ class SheepdogDriverTestDataGenerator(object):
 
     TEST_VOL_DATA = {
         'size': 1,
-        'id': fake.volume_id,
+        'id': fake.VOLUME_ID,
         'provider_auth': None,
         'host': 'host@backendsec#unit_test_pool',
-        'project_id': fake.project_id,
+        'project_id': fake.PROJECT_ID,
         'provider_location': 'location',
         'display_name': 'vol1',
         'display_description': 'unit test volume',
@@ -129,10 +129,10 @@ class SheepdogDriverTestDataGenerator(object):
 
     TEST_CLONED_VOL_DATA = {
         'size': 2,
-        'id': fake.volume2_id,
+        'id': fake.VOLUME2_ID,
         'provider_auth': None,
         'host': 'host@backendsec#unit_test_pool',
-        'project_id': fake.project_id,
+        'project_id': fake.PROJECT_ID,
         'provider_location': 'location',
         'display_name': 'vol3',
         'display_description': 'unit test cloned volume',
@@ -141,11 +141,11 @@ class SheepdogDriverTestDataGenerator(object):
     }
 
     TEST_SNAPSHOT_DATA = {
-        'id': fake.snapshot_id,
+        'id': fake.SNAPSHOT_ID,
     }
 
     TEST_BACKUP_VOL_DATA = {
-        'volume_id': fake.volume_id,
+        'volume_id': fake.VOLUME_ID,
     }
 
     COLLIE_NODE_INFO = """

@@ -48,7 +48,7 @@ def fake_db_volume_get(*args, **kwargs):
 
 
 def fake_volume_api_get(*args, **kwargs):
-    ctx = context.RequestContext(fake.user_id, fake.PROJECT_ID, True)
+    ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
     db_volume = fake_db_volume_get()
     return fake_volume.fake_volume_obj(ctx, **db_volume)
 
@@ -76,7 +76,7 @@ class VolumeHostAttributeTest(test.TestCase):
         self.UUID = uuid.uuid4()
 
     def test_get_volume_allowed(self):
-        ctx = context.RequestContext(fake.user_id, fake.PROJECT_ID, True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req = webob.Request.blank('/v2/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
@@ -86,7 +86,7 @@ class VolumeHostAttributeTest(test.TestCase):
         self.assertEqual('host001', vol['os-vol-host-attr:host'])
 
     def test_get_volume_unallowed(self):
-        ctx = context.RequestContext(fake.user_id, fake.PROJECT_ID, False)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
         req = webob.Request.blank('/v2/%s/volumes/%s' % (
             fake.PROJECT_ID, self.UUID))
         req.method = 'GET'
@@ -96,7 +96,7 @@ class VolumeHostAttributeTest(test.TestCase):
         self.assertNotIn('os-vol-host-attr:host', vol)
 
     def test_list_detail_volumes_allowed(self):
-        ctx = context.RequestContext(fake.user_id, fake.PROJECT_ID, True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
@@ -105,7 +105,7 @@ class VolumeHostAttributeTest(test.TestCase):
         self.assertEqual('host001', vol[0]['os-vol-host-attr:host'])
 
     def test_list_detail_volumes_unallowed(self):
-        ctx = context.RequestContext(fake.user_id, fake.PROJECT_ID, False)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, False)
         req = webob.Request.blank('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx
@@ -114,7 +114,7 @@ class VolumeHostAttributeTest(test.TestCase):
         self.assertNotIn('os-vol-host-attr:host', vol[0])
 
     def test_list_simple_volumes_no_host(self):
-        ctx = context.RequestContext(fake.user_id, fake.PROJECT_ID, True)
+        ctx = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
         req = webob.Request.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'GET'
         req.environ['cinder.context'] = ctx

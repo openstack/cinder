@@ -33,8 +33,8 @@ class VolumeTransferTestCase(test.TestCase):
     """Test cases for volume transfer code."""
     def setUp(self):
         super(VolumeTransferTestCase, self).setUp()
-        self.ctxt = context.RequestContext(user_id=fake.user_id,
-                                           project_id=fake.project_id)
+        self.ctxt = context.RequestContext(user_id=fake.USER_ID,
+                                           project_id=fake.PROJECT_ID)
         self.updated_at = datetime.datetime(1, 1, 1, 1, 1, 1)
 
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
@@ -142,18 +142,18 @@ class VolumeTransferTestCase(test.TestCase):
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
         volume = utils.create_volume(self.ctxt,
-                                     volume_type_id=fake.volume_type_id,
+                                     volume_type_id=fake.VOLUME_TYPE_ID,
                                      updated_at=self.updated_at)
         transfer = tx_api.create(self.ctxt, volume.id, 'Description')
 
-        self.ctxt.user_id = fake.user2_id
-        self.ctxt.project_id = fake.project2_id
+        self.ctxt.user_id = fake.USER2_ID
+        self.ctxt.project_id = fake.PROJECT2_ID
         response = tx_api.accept(self.ctxt,
                                  transfer['id'],
                                  transfer['auth_key'])
         volume = objects.Volume.get_by_id(self.ctxt, volume.id)
-        self.assertEqual(fake.project2_id, volume.project_id)
-        self.assertEqual(fake.user2_id, volume.user_id)
+        self.assertEqual(fake.PROJECT2_ID, volume.project_id)
+        self.assertEqual(fake.USER2_ID, volume.user_id)
 
         self.assertEqual(response['volume_id'], volume.id,
                          'Unexpected volume id in response.')
@@ -171,13 +171,13 @@ class VolumeTransferTestCase(test.TestCase):
         # QUOTAS.add_volume_type_opts
         reserve_opt = {'volumes': 1, 'gigabytes': 1}
         release_opt = {'volumes': -1, 'gigabytes': -1}
-        calls = [mock.call(self.ctxt, reserve_opt, fake.volume_type_id),
-                 mock.call(self.ctxt, release_opt, fake.volume_type_id)]
+        calls = [mock.call(self.ctxt, reserve_opt, fake.VOLUME_TYPE_ID),
+                 mock.call(self.ctxt, release_opt, fake.VOLUME_TYPE_ID)]
         mock_quota_voltype.assert_has_calls(calls)
 
         # QUOTAS.reserve
         calls = [mock.call(mock.ANY, **reserve_opt),
-                 mock.call(mock.ANY, project_id=fake.project_id,
+                 mock.call(mock.ANY, project_id=fake.PROJECT_ID,
                            **release_opt)]
         mock_quota_reserve.assert_has_calls(calls)
 
@@ -190,7 +190,7 @@ class VolumeTransferTestCase(test.TestCase):
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
         volume = utils.create_volume(self.ctxt,
-                                     volume_type_id=fake.volume_type_id,
+                                     volume_type_id=fake.VOLUME_TYPE_ID,
                                      updated_at=self.updated_at)
         transfer = tx_api.create(self.ctxt, volume.id, 'Description')
         fake_overs = ['volumes_lvmdriver-3']
@@ -204,8 +204,8 @@ class VolumeTransferTestCase(test.TestCase):
             quotas=fake_quotas,
             usages=fake_usages)
 
-        self.ctxt.user_id = fake.user2_id
-        self.ctxt.project_id = fake.project2_id
+        self.ctxt.user_id = fake.USER2_ID
+        self.ctxt.project_id = fake.PROJECT2_ID
         self.assertRaises(exception.VolumeLimitExceeded,
                           tx_api.accept,
                           self.ctxt,
@@ -222,8 +222,8 @@ class VolumeTransferTestCase(test.TestCase):
         ts = tx_api.get_all(self.ctxt)
         self.assertEqual(1, len(ts), 'Unexpected number of transfers.')
 
-        nctxt = context.RequestContext(user_id=fake.user2_id,
-                                       project_id=fake.project2_id)
+        nctxt = context.RequestContext(user_id=fake.USER2_ID,
+                                       project_id=fake.PROJECT2_ID)
         utils.create_volume(nctxt, updated_at=self.updated_at)
         self.assertRaises(exception.TransferNotFound,
                           tx_api.get,

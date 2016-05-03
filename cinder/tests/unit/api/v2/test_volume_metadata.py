@@ -143,7 +143,7 @@ class volumeMetaDataTest(test.TestCase):
         self.controller = volume_metadata.Controller()
         self.req_id = str(uuid.uuid4())
         self.url = '/v2/%s/volumes/%s/metadata' % (
-            fake.project_id, self.req_id)
+            fake.PROJECT_ID, self.req_id)
 
         vol = {"size": 100,
                "display_name": "Volume Test Name",
@@ -584,7 +584,7 @@ class volumeMetaDataTest(test.TestCase):
         self.stubs.Set(db, 'volume_get',
                        return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(
-            '/v2/%s/volumes/asdf/metadata/key1' % fake.project_id)
+            '/v2/%s/volumes/asdf/metadata/key1' % fake.PROJECT_ID)
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
         req.body = jsonutils.dump_as_bytes(body)

@@ -31,7 +31,7 @@ from cinder.tests.unit import fake_constants as fake
 class BackupRpcAPITestCase(test.TestCase):
     def setUp(self):
         super(BackupRpcAPITestCase, self).setUp()
-        self.context = context.RequestContext(fake.user_id, fake.project_id)
+        self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self.fake_backup_obj = fake_backup.fake_backup_obj(self.context)
 
     def _test_backup_api(self, method, rpc_method, server=None, fanout=False,
@@ -111,7 +111,7 @@ class BackupRpcAPITestCase(test.TestCase):
                               server='fake_volume_host',
                               volume_host='fake_volume_host',
                               backup=self.fake_backup_obj,
-                              volume_id=fake.volume_id,
+                              volume_id=fake.VOLUME_ID,
                               version='1.1')
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)

@@ -37,7 +37,7 @@ class VolumeApiTest(test.TestCase):
 
         self.flags(host='fake',
                    notification_driver=[fake_notifier.__name__])
-        self.ctxt = context.RequestContext(fake.user_id, fake.project_id, True)
+        self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
     def test_check_volume_filters_called(self):
         with mock.patch.object(vol_get,

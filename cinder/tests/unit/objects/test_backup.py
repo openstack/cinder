@@ -26,14 +26,14 @@ from cinder.tests.unit import utils
 
 
 fake_backup = {
-    'id': fake.backup_id,
-    'volume_id': fake.volume_id,
+    'id': fake.BACKUP_ID,
+    'volume_id': fake.VOLUME_ID,
     'status': fields.BackupStatus.CREATING,
     'size': 1,
     'display_name': 'fake_name',
     'display_description': 'fake_description',
-    'user_id': fake.user_id,
-    'project_id': fake.project_id,
+    'user_id': fake.USER_ID,
+    'project_id': fake.PROJECT_ID,
     'temp_volume_id': None,
     'temp_snapshot_id': None,
     'snapshot_id': None,
@@ -46,10 +46,10 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.get_by_id', return_value=fake_backup)
     def test_get_by_id(self, backup_get):
-        backup = objects.Backup.get_by_id(self.context, fake.user_id)
+        backup = objects.Backup.get_by_id(self.context, fake.USER_ID)
         self._compare(self, fake_backup, backup)
         backup_get.assert_called_once_with(self.context, models.Backup,
-                                           fake.user_id)
+                                           fake.USER_ID)
 
     @mock.patch('cinder.db.sqlalchemy.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
@@ -79,7 +79,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.backup_destroy')
     def test_destroy(self, backup_destroy):
-        backup = objects.Backup(context=self.context, id=fake.backup_id)
+        backup = objects.Backup(context=self.context, id=fake.BACKUP_ID)
         backup.destroy()
         self.assertTrue(backup_destroy.called)
         admin_context = backup_destroy.call_args[0][0]
@@ -104,7 +104,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
     def test_import_record(self):
         utils.replace_obj_loader(self, objects.Backup)
-        backup = objects.Backup(context=self.context, id=fake.backup_id,
+        backup = objects.Backup(context=self.context, id=fake.BACKUP_ID,
                                 parent_id=None,
                                 num_dependent_backups=0)
         export_string = backup.encode_record()
@@ -115,7 +115,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
     def test_import_record_additional_info(self):
         utils.replace_obj_loader(self, objects.Backup)
-        backup = objects.Backup(context=self.context, id=fake.backup_id,
+        backup = objects.Backup(context=self.context, id=fake.BACKUP_ID,
                                 parent_id=None,
                                 num_dependent_backups=0)
         extra_info = {'driver': {'key1': 'value1', 'key2': 'value2'}}
@@ -139,7 +139,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
 
     def test_import_record_additional_info_cant_overwrite(self):
         utils.replace_obj_loader(self, objects.Backup)
-        backup = objects.Backup(context=self.context, id=fake.backup_id,
+        backup = objects.Backup(context=self.context, id=fake.BACKUP_ID,
                                 parent_id=None,
                                 num_dependent_backups=0)
         export_string = backup.encode_record(id='fake_id')
@@ -169,7 +169,7 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         # On the second backup_get, return the backup with an updated
         # display_name
         backup_get.side_effect = [db_backup1, db_backup2]
-        backup = objects.Backup.get_by_id(self.context, fake.backup_id)
+        backup = objects.Backup.get_by_id(self.context, fake.BACKUP_ID)
         self._compare(self, db_backup1, backup)
 
         # display_name was updated, so a backup refresh should have a new value
@@ -180,9 +180,9 @@ class TestBackup(test_objects.BaseObjectsTestCase):
             call_bool = mock.call.__bool__()
         else:
             call_bool = mock.call.__nonzero__()
-        backup_get.assert_has_calls([mock.call(self.context, fake.backup_id),
+        backup_get.assert_has_calls([mock.call(self.context, fake.BACKUP_ID),
                                      call_bool,
-                                     mock.call(self.context, fake.backup_id)])
+                                     mock.call(self.context, fake.BACKUP_ID)])
 
 
 class TestBackupList(test_objects.BaseObjectsTestCase):
