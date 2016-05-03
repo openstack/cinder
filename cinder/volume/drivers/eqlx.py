@@ -489,6 +489,15 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                                     snapshot['volume_name'], 'snapshot',
                                     'select', snapshot['name'],
                                     'clone', volume['name'])
+            # Extend Volume if needed
+            if out and volume['size'] > snapshot['volume_size']:
+                out = self.extend_volume(out, volume['size'])
+                LOG.debug('Volume from snapshot %(name)s resized from '
+                          '%(current_size)sGB to %(new_size)sGB.',
+                          {'name': volume['name'],
+                           'current_size': snapshot['volume_size'],
+                           'new_size': volume['size']})
+
             self.add_multihost_access(volume)
             return self._get_volume_data(out)
         except Exception:
