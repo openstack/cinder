@@ -1958,6 +1958,8 @@ class VirtualDiskAdapterTypeTest(test.TestCase):
         self.assertTrue(volumeops.VirtualDiskAdapterType.is_valid("busLogic"))
         self.assertTrue(volumeops.VirtualDiskAdapterType.is_valid(
                         "lsiLogicsas"))
+        self.assertTrue(
+            volumeops.VirtualDiskAdapterType.is_valid("paraVirtual"))
         self.assertTrue(volumeops.VirtualDiskAdapterType.is_valid("ide"))
         self.assertFalse(volumeops.VirtualDiskAdapterType.is_valid("pvscsi"))
 
@@ -1965,6 +1967,7 @@ class VirtualDiskAdapterTypeTest(test.TestCase):
         volumeops.VirtualDiskAdapterType.validate("lsiLogic")
         volumeops.VirtualDiskAdapterType.validate("busLogic")
         volumeops.VirtualDiskAdapterType.validate("lsiLogicsas")
+        volumeops.VirtualDiskAdapterType.validate("paraVirtual")
         volumeops.VirtualDiskAdapterType.validate("ide")
         self.assertRaises(vmdk_exceptions.InvalidAdapterTypeException,
                           volumeops.VirtualDiskAdapterType.validate,
@@ -1980,6 +1983,9 @@ class VirtualDiskAdapterTypeTest(test.TestCase):
         self.assertEqual("lsiLogic",
                          volumeops.VirtualDiskAdapterType.get_adapter_type(
                              "lsiLogicsas"))
+        self.assertEqual("lsiLogic",
+                         volumeops.VirtualDiskAdapterType.get_adapter_type(
+                             "paraVirtual"))
         self.assertEqual("ide",
                          volumeops.VirtualDiskAdapterType.get_adapter_type(
                              "ide"))
@@ -2001,6 +2007,9 @@ class ControllerTypeTest(test.TestCase):
         self.assertEqual(volumeops.ControllerType.LSI_LOGIC_SAS,
                          volumeops.ControllerType.get_controller_type(
                              'lsiLogicsas'))
+        self.assertEqual(volumeops.ControllerType.PARA_VIRTUAL,
+                         volumeops.ControllerType.get_controller_type(
+                             'paraVirtual'))
         self.assertEqual(volumeops.ControllerType.IDE,
                          volumeops.ControllerType.get_controller_type(
                              'ide'))
@@ -2015,5 +2024,7 @@ class ControllerTypeTest(test.TestCase):
             volumeops.ControllerType.BUS_LOGIC))
         self.assertTrue(volumeops.ControllerType.is_scsi_controller(
             volumeops.ControllerType.LSI_LOGIC_SAS))
+        self.assertTrue(volumeops.ControllerType.is_scsi_controller(
+            volumeops.ControllerType.PARA_VIRTUAL))
         self.assertFalse(volumeops.ControllerType.is_scsi_controller(
             volumeops.ControllerType.IDE))
