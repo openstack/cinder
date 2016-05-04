@@ -3336,8 +3336,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         if secondary_backend_id == "default":
             service.replication_status = fields.ReplicationStatus.ENABLED
             service.active_backend_id = ""
-            service.disabled = False
-            service.disabled_reason = ""
+            if service.frozen:
+                service.disabled = True
+                service.disabled_reason = "frozen"
+            else:
+                service.disabled = False
+                service.disabled_reason = ""
             service.save()
 
         else:
