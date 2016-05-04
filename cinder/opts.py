@@ -78,10 +78,10 @@ from cinder.volume.drivers import drbdmanagedrv as \
     cinder_volume_drivers_drbdmanagedrv
 from cinder.volume.drivers.emc import emc_vmax_common as \
     cinder_volume_drivers_emc_emcvmaxcommon
-from cinder.volume.drivers.emc import emc_vnx_cli as \
-    cinder_volume_drivers_emc_emcvnxcli
 from cinder.volume.drivers.emc import scaleio as \
     cinder_volume_drivers_emc_scaleio
+from cinder.volume.drivers.emc.vnx import common as \
+    cinder_volume_drivers_emc_vnx_common
 from cinder.volume.drivers.emc import xtremio as \
     cinder_volume_drivers_emc_xtremio
 from cinder.volume.drivers import eqlx as cinder_volume_drivers_eqlx
@@ -253,7 +253,6 @@ def list_opts():
                 cinder_context.context_opts,
                 cinder_scheduler_driver.scheduler_driver_opts,
                 cinder_volume_drivers_scality.volume_opts,
-                cinder_volume_drivers_emc_emcvnxcli.loc_opts,
                 cinder_volume_drivers_vmware_vmdk.vmdk_opts,
                 cinder_volume_drivers_lenovo_lenovocommon.common_opts,
                 cinder_volume_drivers_lenovo_lenovocommon.iscsi_opts,
@@ -275,6 +274,7 @@ def list_opts():
                 cinder_api_views_versions.versions_opts,
                 cinder_volume_drivers_nimble.nimble_opts,
                 cinder_volume_drivers_windows_windows.windows_opts,
+                cinder_volume_drivers_emc_vnx_common.EMC_VNX_OPTS,
                 cinder_volume_drivers_san_hp_hpmsacommon.common_opts,
                 cinder_volume_drivers_san_hp_hpmsacommon.iscsi_opts,
                 cinder_image_glance.glance_opts,

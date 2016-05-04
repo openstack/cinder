@@ -1,0 +1,2017 @@
+###########################################################
+# Example:
+# vnx:
+#   _properties: # properties
+#     serial: serial_1
+#     name: lun_1
+#     state:
+#       _side_effect: [Ready, Offline] # side effect for property
+#
+#   _methods: # methods
+#     get_pool: *pool_1 # return value of method
+#     get_lun:
+#       _raise:
+#         GetLunError: Unkown Error # method raise exception
+#     get_cg:
+#       _side_effect: [cg_1, cg_2] # side effect for method
+#
+###########################################################
+
+###########################################################
+# Common
+###########################################################
+lun_base: &lun_base
+  _properties: &lun_base_prop
+    name: lun_name
+    lun_id: lun_id
+    wwn: 'fake_wwn'
+    poll: False
+    operation: None
+    state: Ready
+    existed: true
+
+cg_base:
+  _properties: &cg_base_prop
+    fake_prop: fake_prop_value
+
+cg_snap_base:
+  _properties: &cg_snap_base_prop
+    id: 'cg_snap_id'
+
+pool_base: &pool_base
+  _properties: &pool_base_prop
+    name: pool_name
+    pool_id: 0
+    state: Ready
+    user_capacity_gbs: 1311
+    total_subscribed_capacity_gbs: 131
+    available_capacity_gbs: 132
+    percent_full_threshold: 70
+    fast_cache: True
+
+pool_feature_base:
+  _properties: &pool_feature_base_prop
+    max_pool_luns: 3000
+    total_pool_luns: 151
+
+vnx_base: &vnx_base
+  _properties: &vnx_base_prop
+    serial: fake_serial
+
+snapshot_base: &snapshot_base
+  _properties: &snapshot_base_prop
+    status:
+    existed: true
+    name: snapshot_name
+    state:
+
+sg: &sg_base
+  _properties: &sg_base_prop
+    existed: true
+    name: sg_name
+
+spa: &spa
+  _enum:
+    VNXSPEnum: SP A
+
+spb: &spb
+  _enum:
+    VNXSPEnum: SP B
+
+iscsi_port_base: &iscsi_port_base
+  _type: 'VNXPort'
+  _properties: &iscsi_port_base_prop
+    sp: *spa
+    port_id: 0
+    vport_id: 0
+
+all_iscsi_ports: &all_iscsi_ports
+  - &iscsi_port_a-0-0
+    <<: *iscsi_port_base
+    _properties:
+      <<: *iscsi_port_base_prop
+      port_id: 0
+      vport_id: 0
+  - &iscsi_port_a-0-1
+    <<: *iscsi_port_base
+    _properties:
+      <<: *iscsi_port_base_prop
+      port_id: 0
+      vport_id: 1
+  - &iscsi_port_a-1-0
+    <<: *iscsi_port_base
+    _properties:
+      <<: *iscsi_port_base_prop
+      port_id: 1
+      vport_id: 0
+  - &iscsi_port_b-0-1
+    <<: *iscsi_port_base
+    _properties:
+      <<: *iscsi_port_base_prop
+      sp: *spb
+      port_id: 0
+      vport_id: 1
+
+fc_port_base: &fc_port_base
+  _type: 'VNXPort'
+  _properties: &fc_port_base_prop
+    sp: *spa
+    port_id: 1
+    vport_id: None
+    wwn: 'wwn'
+    link_status: 'Up'
+    port_status: 'Online'
+
+all_fc_ports: &all_fc_ports
+  - &fc_port_a-1
+    <<: *fc_port_base
+    _properties:
+      <<: *fc_port_base_prop
+      port_id: 1
+      wwn: '50:06:01:60:B6:E0:1C:F4:50:06:01:66:36:E0:1C:A1'
+  - &fc_port_a-2
+    <<: *fc_port_base
+    _properties:
+      <<: *fc_port_base_prop
+      port_id: 2
+      wwn: '50:06:01:60:B6:E0:1C:F4:50:06:01:66:36:E0:1C:A2'
+      port_status: 'Offline'
+  - &fc_port_b-2
+    <<: *fc_port_base
+    _properties:
+      <<: *fc_port_base_prop
+      sp: *spb
+      port_id: 2
+      wwn: '50:06:01:60:B6:E0:1C:F4:50:06:01:66:36:E0:1C:B2'
+
+mirror_base: &mirror_base
+  _properties: &mirror_base_prop
+    image_state:
+      _type: VNXMirrorImageState
+      value: 'SYNCHRONIZED'
+
+###########################################################
+# TestClient
+###########################################################
+test_create_lun: &test_create_lun
+  lun: &lun_test_create_lun
+    _properties:
+      <<: *lun_base_prop
+      name: lun1
+    _methods:
+      update:
+      with_no_poll: _context
+
+  pool: &pool_test_create_lun
+    _properties:
+      <<: *pool_base_prop
+      name: pool1
+    _methods:
+      create_lun: *lun_test_create_lun
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: *pool_test_create_lun
+
+test_create_lun_error: &test_create_lun_error
+  pool: &pool_test_create_lun_error
+    _properties:
+      <<: *pool_base_prop
+    _methods:
+      create_lun:
+        _raise:
+          VNXCreateLunError: Unkown Error
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: *pool_test_create_lun_error
+
+test_is_lun_io_ready_false:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+      state: Initializing
+    _methods:
+      update:
+      with_no_poll: _context
+
+test_is_lun_io_ready_true:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+      state: Ready
+      operation: None
+    _methods:
+      update:
+      with_no_poll: _context
+
+test_is_lun_io_ready_exception:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+      state: Deleting
+    _methods:
+      update:
+      with_no_poll: _context
+
+test_create_lun_in_cg:
+  cg: &cg_test_create_lun_in_cg
+    _properties:
+      <<: *cg_base_prop
+    _methods:
+      add_member:
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_create_lun
+      get_pool: *pool_test_create_lun
+      get_cg: *cg_test_create_lun_in_cg
+
+test_create_lun_compression:
+  lun: &lun_test_create_lun_compression
+    _properties:
+      <<: *lun_base_prop
+      name: lun2
+    _methods:
+      update:
+      with_no_poll: _context
+
+  pool: &pool_test_create_lun_compression
+    _properties:
+      <<: *pool_base_prop
+    _methods:
+      create_lun: *lun_test_create_lun_compression
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: *pool_test_create_lun_compression
+
+test_create_lun_already_existed:
+  lun: &lun_test_create_lun_already_existed
+    _properties:
+      <<: *lun_base_prop
+      name: lun3
+    _methods:
+      update:
+      with_no_poll: _context
+
+  pool: &pool_test_create_lun_already_existed
+    _properties:
+      <<: *pool_base_prop
+    _methods:
+      create_lun:
+        _raise:
+          VNXLunNameInUseError: Lun already exists(0x712d8d04)
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_create_lun_already_existed
+      get_pool: *pool_test_create_lun_already_existed
+
+test_migrate_lun:
+  lun: &lun_migrate
+    _properties:
+      <<: *lun_base_prop
+    _methods:
+      migrate:
+
+  vnx:
+    _methods:
+      get_lun: *lun_migrate
+
+test_migrate_lun_with_retry:
+  lun: &lun_migrate_retry
+    _properties:
+      <<: *lun_base_prop
+    _methods:
+      migrate:
+        _raise:
+          VNXTargetNotReadyError: 'The destination LUN is not available for migration'
+
+  vnx:
+    _methods:
+      get_lun: *lun_migrate_retry
+
+test_session_finished_faulted:
+  session: &session_faulted
+    _properties:
+      existed: true
+      current_state: 'FAULTED'
+  vnx:
+    _methods:
+      get_lun: *lun_base
+      get_migration_session: *session_faulted
+
+test_session_finished_migrating:
+  session: &session_migrating
+    _properties:
+      existed: true
+      current_state: 'MIGRATING'
+  vnx:
+    _methods:
+      get_lun: *lun_base
+      get_migration_session: *session_migrating
+
+test_session_finished_not_existed:
+  session: &session_not_existed
+    _properties:
+      existed: false
+  vnx:
+    _methods:
+      get_lun: *lun_base
+      get_migration_session: *session_not_existed
+
+test_migrate_lun_error:
+  lun1: &lun_migrate_error
+    <<: *lun_base_prop
+    _methods:
+      migrate:
+        _raise:
+          VNXMigrationError: 'Unknown Error'
+  vnx:
+    _methods:
+      get_lun: *lun_migrate_error
+
+test_verify_migration:
+  lun1: &src_lun
+    _propertis:
+      <<: *lun_base_prop
+  lun2: &dst_lun
+    _properties:
+      poll: false
+      wwn: 'fake_wwn'
+  session: &session_verify
+    _properties:
+      existed: false
+  vnx:
+    _methods:
+      get_lun:
+        _side_effect: [*src_lun, *dst_lun]
+      get_migration_session: *session_verify
+
+test_verify_migration_false:
+  vnx:
+    _methods:
+      get_lun:
+        _side_effect: [*src_lun, *dst_lun]
+      get_migration_session: *session_verify
+
+test_cleanup_migration:
+  session: &session_cancel
+    _properties:
+      existed: true
+  lun: &lun_cancel_migrate
+    _methods:
+      cancel_migrate:
+  vnx:
+    _methods:
+      get_migration_session: *session_cancel
+      get_lun: *lun_cancel_migrate
+
+test_get_lun_by_name:
+  lun: &lun_test_get_lun_by_name
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 888
+      name: lun_name_test_get_lun_by_name
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_get_lun_by_name
+
+test_delete_lun: &test_delete_lun
+  lun: &lun_test_delete_lun
+    _properties:
+      <<: *lun_base_prop
+      name: lun_test_delete_lun
+      is_snap_mount_point: False
+    _methods:
+      delete:
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_delete_lun
+
+test_delete_smp: &test_delete_smp
+  snapshot: &snapshot_test_delete_smp
+    _properties:
+      name: snapshot_test_delete_smp
+    _methods:
+      delete:
+
+  lun: &lun_test_delete_smp
+    _properties:
+      <<: *lun_base_prop
+      name: lun_test_delete_smp
+      attached_snapshot: *snapshot_test_delete_smp
+      is_snap_mount_point: True
+    _methods:
+      delete:
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_delete_smp
+
+test_delete_lun_not_exist:
+  lun: &lun_test_delete_lun_not_exist
+    _properties:
+      <<: *lun_base_prop
+      name: lun_test_delete_lun_not_exist
+      is_snap_mount_point: False
+    _methods:
+      delete:
+        _raise:
+          VNXLunNotFoundError:
+            Lun to delete doesn't exist.
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_delete_lun_not_exist
+
+test_delete_lun_exception:
+  lun: &lun_test_delete_lun_exception
+    _properties:
+      <<: *lun_base_prop
+      name: lun_test_delete_lun_exception
+      is_snap_mount_point: False
+    _methods:
+      delete:
+        _raise:
+          VNXDeleteLunError:
+            General lun delete error.
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_delete_lun_exception
+
+test_create_cg: &test_create_cg
+  cg: &cg_for_create
+    _properties:
+      existed: True
+    _methods:
+      update:
+      with_no_poll: _context
+
+  vnx:
+    _methods:
+      create_cg: *cg_for_create
+
+test_create_cg_already_existed:
+  vnx:
+    _methods:
+      create_cg:
+        _raise:
+          VNXConsistencyGroupNameInUseError: Already in use
+      get_cg: *cg_for_create
+
+test_delete_cg:
+  cg: &cg_for_deletion
+    _methods:
+      delete:
+  vnx:
+    _methods:
+      get_cg: *cg_for_deletion
+
+test_delete_cg_not_existed:
+  cg: &cg_delete_no_existed
+    _methods:
+      delete:
+        _raise:
+          VNXConsistencyGroupNotFoundError: CG not found
+  vnx:
+    _methods:
+      get_cg: *cg_delete_no_existed
+
+test_expand_lun: &test_expand_lun
+  lun: &lun_test_expand_lun
+    _properties:
+      <<: *lun_base_prop
+      name: lun_test_expand_lun
+      total_capacity_gb: 10
+    _methods:
+      expand:
+      update:
+      with_no_poll: _context
+  vnx:
+    _properties: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_expand_lun
+
+test_expand_lun_not_poll: *test_expand_lun
+
+test_expand_lun_already_expanded:
+  lun: &lun_test_expand_lun_already_expanded
+    _properties:
+      <<: *lun_base_prop
+      total_capacity_gb: 10
+    _methods:
+      update:
+      with_no_poll: _context
+      expand:
+        _raise:
+          VNXLunExpandSizeError:
+            LUN already expanded.
+  vnx:
+    _properties: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_expand_lun_already_expanded
+
+test_expand_lun_not_ops_ready:
+  lun: &lun_test_expand_lun_not_ops_ready
+    _properties:
+      <<: *lun_base_prop
+      total_capacity_gb: 10
+      operation: 'None'
+    _methods:
+      update:
+      with_no_poll: _context
+      expand:
+        _raise:
+          VNXLunPreparingError:
+            LUN operation not ready.
+  vnx:
+    _properties: *vnx_base_prop
+    _methods:
+      get_lun: *lun_test_expand_lun_not_ops_ready
+
+test_create_snapshot: &test_create_snapshot
+  lun: &lun_test_create_snapshot
+    <<: *lun_base
+    _methods:
+      create_snap:
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_lun: *lun_test_create_snapshot
+
+test_create_snapshot_snap_name_exist_error:
+  lun: &lun_test_create_snapshot_snap_name_exist_error
+    <<: *lun_base
+    _methods:
+      create_snap:
+        _raise:
+          VNXSnapNameInUseError: Snapshot name is in use.
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_lun: *lun_test_create_snapshot_snap_name_exist_error
+
+test_delete_snapshot: &test_delete_snapshot
+  snapshot: &snapshot_test_delete_snapshot
+    <<: *snapshot_base
+    _methods:
+      delete:
+
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_snap: *snapshot_test_delete_snapshot
+
+test_delete_snapshot_delete_attached_error:
+  snapshot: &snapshot_test_delete_snapshot_delete_attached_error
+    <<: *snapshot_base
+    _methods:
+      delete:
+        _raise:
+          VNXDeleteAttachedSnapError:
+            Snapshot is attached to a LUN.
+
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_snap: *snapshot_test_delete_snapshot_delete_attached_error
+
+test_copy_snapshot:
+  snap: &snap_copy
+    _methods:
+      copy:
+  vnx:
+    _methods:
+      get_snap: *snap_copy
+
+test_create_mount_point:
+  lun: &lun_mount_point
+    _methods:
+      create_mount_point:
+  vnx:
+    _methods:
+      get_lun: *lun_mount_point
+
+test_attach_mount_point:
+  lun: &lun_attach_snap
+    _methods:
+      attach_snap:
+  vnx:
+    _methods:
+      get_lun: *lun_attach_snap
+
+test_detach_mount_point:
+  lun: &lun_detach
+    _methods:
+      detach_snap:
+  vnx:
+    _methods:
+      get_lun: *lun_detach
+
+test_modify_snapshot:
+  snap: &snap_modify
+    _methods:
+      modify:
+
+  vnx:
+    _methods:
+      get_snap: *snap_modify
+
+test_create_cg_snapshot: &test_create_cg_snapshot
+  cg_snap: &cg_snap_exist
+    _properties:
+      existed: True
+    _methods:
+      update:
+      with_no_poll: _context
+  cg: &cg_test_create_cg_snapshot
+    _methods:
+      create_snap: *cg_snap_exist
+  vnx:
+    _methods:
+      get_cg: *cg_test_create_cg_snapshot
+
+test_create_cg_snapshot_already_existed:
+  cg: &cg_create_cg_snapshot_in_use_error
+    _methods:
+      with_no_poll: _context
+      create_snap:
+        _raise:
+          VNXSnapNameInUseError: 'Already in use'
+  vnx:
+    _methods:
+      get_cg: *cg_create_cg_snapshot_in_use_error
+      get_snap: *cg_snap_exist
+
+test_delete_cg_snapshot: *test_delete_snapshot
+
+test_create_sg:
+  sg: &sg_test_create_sg
+    <<: *sg_base
+  vnx:
+    <<: *vnx_base
+    _methods:
+      create_sg: *sg_test_create_sg
+
+test_create_sg_name_in_use:
+  vnx:
+    <<: *vnx_base
+    _methods:
+      create_sg:
+        _raise:
+          VNXStorageGroupNameInUseError: Storage group name is in use.
+      get_sg:
+
+test_get_storage_group:
+  sg: &sg_test_get_storage_group
+    <<: *sg_base
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_sg: *sg_test_get_storage_group
+
+test_register_initiator:
+  sg: &sg_test_register_initiator
+    <<: *sg_base
+    _methods:
+      connect_hba:
+      update:
+      with_poll: _context
+  vnx: *vnx_base
+
+test_register_initiator_exception:
+  sg: &sg_test_register_initiator_exception
+    <<: *sg_base
+    _methods:
+      connect_hba:
+        _raise:
+          VNXStorageGroupError: set_path error.
+      update:
+      with_poll: _context
+  vnx: *vnx_base
+
+test_ping_node:
+  iscsi_port: &iscsi_port_test_ping_node
+    <<: *iscsi_port_base
+    _methods:
+      ping_node:
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_iscsi_port: *iscsi_port_test_ping_node
+
+test_ping_node_fail:
+  iscsi_port: &iscsi_port_test_ping_node_fail
+    <<: *iscsi_port_base
+    _methods:
+      ping_node:
+        _raise:
+          VNXPingNodeError: Failed to ping node.
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_iscsi_port: *iscsi_port_test_ping_node_fail
+
+test_add_lun_to_sg:
+  sg: &sg_test_add_lun_to_sg
+    <<: *sg_base
+    _methods:
+      attach_alu: 1
+  vnx: *vnx_base
+
+test_add_lun_to_sg_alu_already_attached:
+  sg: &sg_test_add_lun_to_sg_alu_already_attached
+    <<: *sg_base
+    _methods:
+      attach_alu:
+        _raise:
+          VNXAluAlreadyAttachedError: ALU is already attached.
+      get_hlu: 1
+  vnx: *vnx_base
+
+test_add_lun_to_sg_alu_in_use:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 1
+  sg: &sg_test_add_lun_to_sg_alu_in_use
+    <<: *sg_base
+    _methods:
+      attach_alu:
+        _raise:
+          VNXNoHluAvailableError: No HLU available.
+      get_hlu: 1
+  vnx: *vnx_base
+
+test_update_consistencygroup_no_lun_in_cg:
+  cg:
+    _properties:
+      <<: *cg_base_prop
+      lun_list: []
+    _methods:
+      replace_member:
+
+  lun_1:
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 1
+
+  lun_2:
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 2
+
+  vnx: *vnx_base
+
+test_update_consistencygroup_lun_in_cg:
+  lun_1: &lun_1_test_update_consistencygroup_lun_in_cg
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 1
+
+  lun_2:
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 2
+
+  cg:
+    _properties:
+      <<: *cg_base_prop
+      lun_list:
+        - *lun_1_test_update_consistencygroup_lun_in_cg
+    _methods:
+      replace_member:
+
+  vnx: *vnx_base
+
+test_update_consistencygroup_remove_all:
+  lun_1: &lun_1_test_update_consistencygroup_remove_all
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 1
+
+  cg:
+    _properties:
+      <<: *cg_base_prop
+      lun_list:
+        - *lun_1_test_update_consistencygroup_remove_all
+    _methods:
+      delete_member:
+
+  vnx: *vnx_base
+
+test_create_export_snapshot:
+
+test_remove_export_snapshot:
+
+test_initialize_connection_snapshot:
+  lun: &lun_test_initialize_connection_snapshot
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 100
+
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_lun: *lun_test_initialize_connection_snapshot
+
+test_terminate_connection_snapshot:
+  lun: &lun_test_terminate_connection_snapshot
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 100
+
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_lun: *lun_test_terminate_connection_snapshot
+
+test_get_available_ip:
+  vnx:
+    _properties:
+      alive_sp_ip: '192.168.1.5'
+
+test_create_mirror:
+  vnx:
+    _methods:
+      get_lun: *lun_base
+      create_mirror_view: *mirror_base
+
+test_create_mirror_already_created:
+  vnx:
+    _methods:
+      get_lun: *lun_base
+      create_mirror_view:
+        _raise:
+          VNXMirrorNameInUseError: 'name in use'
+      get_mirror_view: *mirror_base
+
+test_delete_mirror:
+  mirror: &mirror_test_delete_mirror
+    _methods:
+      delete:
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_test_delete_mirror
+
+
+test_delete_mirror_already_deleted:
+  mirror: &mirror_delete_error
+    _methods:
+      delete:
+        _raise:
+          VNXMirrorNotFoundError: 'not found'
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_delete_error
+
+test_add_image:
+  mirror: &mirror_test_add_image
+    _methods:
+      add_image:
+      update:
+      with_no_poll: _context
+      with_poll: _context
+    _properties:
+      secondary_image:
+        _properties:
+          state:
+            _enum:
+              VNXMirrorImageState: 'Synchronized'
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_test_add_image
+
+test_remove_image:
+  mirror: &mirror_remove_image
+    _methods:
+      remove_image:
+
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_remove_image
+
+test_fracture_image:
+  mirror: &mirror_fracture_image
+    _methods:
+      fracture_image:
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_fracture_image
+
+test_sync_image:
+  mirror: &mirror_sync_image
+    _properties:
+      <<: *mirror_base_prop
+      secondary_image:
+        _properties:
+          state:
+            _enum:
+              VNXMirrorImageState: 'SYNCHRONIZED'
+    _methods:
+      sync_image:
+      with_no_poll: _context
+      update:
+
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_sync_image
+
+test_promote_image:
+  mirror: &mirror_promote_image
+    _methods:
+      promote_image:
+
+  vnx:
+    _methods:
+      get_mirror_view: *mirror_promote_image
+
+test_get_lun_id:
+
+test_get_lun_id_without_provider_location:
+  lun: &test_get_lun_id_without_provider_location
+    <<: *lun_base
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 1
+
+  vnx:
+    _methods:
+      get_lun: *test_get_lun_id_without_provider_location
+
+###########################################################
+# TestCommonAdapter
+###########################################################
+test_create_volume: *test_create_lun
+
+test_create_volume_error: *test_create_lun_error
+
+test_create_thick_volume: *test_create_lun
+
+test_migrate_volume:
+  lun: &src_lun_1
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 4
+      wwn: 'src_wwn'
+      poll: false
+    _methods:
+      migrate:
+      update:
+      with_no_poll: _context
+
+
+  lun2: &lun_migrate_1
+    _properties:
+      lun_id: 5
+      wwn: 'dst_wwn'
+    _methods:
+      cancel_migrate:
+
+  lun3: &lun_not_existed
+    _properties:
+      wwn:
+
+  session: &session
+    _properties:
+      existed: false
+  pool: &migrate_pool
+    _methods:
+      create_lun: *src_lun_1
+  vnx:
+    _methods:
+      get_lun:
+        _side_effect: [*lun_migrate_1, *src_lun_1, *src_lun_1, *lun_not_existed]
+      get_migration_session: *session
+      get_pool: *migrate_pool
+
+test_migrate_volume_host_assisted:
+  vnx:
+    _methods:
+
+test_create_cloned_volume:
+  snap: &snap_for_clone
+    _methods:
+      delete:
+  smp: &smp_migrate
+    _properties:
+      <<: *lun_base_prop
+      lun_id: 4
+      wwn: 'src_wwn'
+      poll: false
+    _methods:
+      migrate:
+      update:
+      with_no_poll: _context
+  lun2: &lun_migrate_2
+    _properties:
+      lun_id: 5
+      wwn: 'dst_wwn'
+    _methods:
+      cancel_migrate:
+      create_snap:
+      create_mount_point:
+      attach_snap:
+  lun3: &lun_not_existed_2
+    _properties:
+      wwn:
+  session: &session_2
+    _properties:
+      existed: false
+  pool: &migrate_pool_2
+    _methods:
+      create_lun: *smp_migrate
+  vnx:
+    _properties:
+      serial: fake_serial
+    _methods:
+      get_lun:
+        _side_effect: [*lun_migrate_2,
+        *lun_migrate_2, *smp_migrate, *lun_migrate_2,
+        *lun_not_existed_2, *smp_migrate, *smp_migrate,
+        *lun_not_existed_2]
+      get_migration_session: *session_2
+      get_pool: *migrate_pool_2
+      get_snap: *snap_for_clone
+
+test_create_cloned_volume_snapcopy:
+  lun: &lun_for_snapcopy
+    _methods:
+      create_mount_point:
+      create_snap:
+  smp: &smp_for_snapcopy
+    _properties:
+      lun_id: 11
+    _methods:
+      attach_snap:
+  vnx:
+    _properties:
+      serial: fake_serial
+    _methods:
+      get_lun:
+        _side_effect: [*lun_for_snapcopy, *lun_for_snapcopy,
+        *smp_for_snapcopy, *smp_for_snapcopy]
+      get_pool: *pool_base
+
+test_create_volume_from_snapshot:
+  lun: &lun_from_snapshot
+    _properties:
+      lun_id: 16
+    _methods:
+      create_mount_point:
+  smp: &smp_from_lun
+    _methods:
+      attach_snap:
+  vnx:
+    _properties:
+      serial: fake_serial
+    _methods:
+      get_lun:
+        _side_effect: [*lun_from_snapshot, *lun_from_snapshot, *smp_from_lun,
+        *dst_lun, *src_lun_1, *src_lun_1, *lun_not_existed]
+      get_pool: *pool_test_create_lun
+      get_migration_session: *session
+
+test_create_volume_from_snapshot_snapcopy:
+  snap: &snap_for_snapcopy
+    _methods:
+      copy:
+      modify:
+  vnx:
+    _properties:
+      serial: fake_serial
+    _methods:
+      get_snap:
+        _side_effect: [*snap_for_snapcopy, *snap_for_snapcopy]
+      get_lun:
+        _side_effect: [*lun_from_snapshot, *lun_from_snapshot, *smp_from_lun]
+
+test_parse_pools: &test_parse_pools
+  pool1: &pool_test_parse_pools_1
+    _properties:
+      <<: *pool_base_prop
+      name: 'pool5'
+  pool2: &pool_test_parse_pools_2
+    _properties:
+      <<: *pool_base_prop
+      name: 'pool6'
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: [*pool_test_parse_pools_1, *pool_test_parse_pools_2]
+
+test_parse_pools_one_invalid_pool: *test_parse_pools
+
+test_parse_pools_all_invalid_pools: *test_parse_pools
+
+test_get_enabler_stats: &test_get_enabler_stats
+  vnx: &vnx_test_get_enabler_stats
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      is_compression_enabled: True
+      is_dedup_enabled: True
+      is_fast_cache_enabled: True
+      is_thin_enabled: True
+      is_snap_enabled: True
+      is_auto_tiering_enabled: True
+
+test_get_pool_stats:
+  pool_feature: &pool_feature_test_get_pool_stats
+    _properties:
+      <<: *pool_feature_base_prop
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: [*pool_test_parse_pools_1, *pool_test_parse_pools_2]
+      get_pool_feature: *pool_feature_test_get_pool_stats
+      is_auto_tiering_enabled: True
+
+test_get_pool_stats_max_luns_reached:
+  pool_feature: &pool_feature_test_get_pool_stats_max_luns_reached
+    _properties:
+      <<: *pool_feature_base_prop
+      total_pool_luns: 3001
+
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: [*pool_test_parse_pools_1, *pool_test_parse_pools_2]
+      get_pool_feature: *pool_feature_test_get_pool_stats_max_luns_reached
+      is_auto_tiering_enabled: True
+
+test_get_pool_stats_with_reserved:
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: [*pool_test_parse_pools_1, *pool_test_parse_pools_2]
+      get_pool_feature: *pool_feature_test_get_pool_stats
+      is_auto_tiering_enabled: True
+
+test_get_pool_stats_offline:
+  pool1: &pool_test_get_pool_stats_offline_1
+    _properties:
+      <<: *pool_base_prop
+      name: 'pool7'
+      state: 'Offline'
+  pool2: &pool_test_get_pool_stats_offline_2
+    _properties:
+      <<: *pool_base_prop
+      name: 'pool8'
+      state: 'Offline'
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_pool: [*pool_test_get_pool_stats_offline_1, *pool_test_get_pool_stats_offline_2]
+      get_pool_feature: *pool_feature_test_get_pool_stats
+      is_compression_enabled: False
+      is_dedup_enabled: True
+      is_fast_cache_enabled: False
+      is_thin_enabled: True
+      is_snap_enabled: False
+      is_auto_tiering_enabled: True
+
+test_update_volume_stats: *test_get_enabler_stats
+
+test_append_volume_stats:
+  vnx:
+    _properties:
+      serial: fake_serial
+
+test_delete_volume_not_force: *test_delete_lun
+test_delete_volume_force: *test_delete_lun
+
+test_enable_compression:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+    _methods:
+      enable_compression:
+
+test_enable_compression_on_compressed_lun:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+    _methods:
+      enable_compression:
+        _raise:
+            VNXCompressionAlreadyEnabledError:
+
+test_lun_has_snapshot_false:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+    _methods:
+      get_snap: []
+
+test_lun_has_snapshot_true:
+  lun:
+    _properties:
+      <<: *lun_base_prop
+    _methods:
+      get_snap: ['fake_snap']
+
+test_get_vnx_enabler_status:
+  vnx:
+    _methods:
+      is_dedup_enabled: True
+      is_compression_enabled: False
+      is_thin_enabled: True
+      is_fast_cache_enabled: True
+      is_auto_tiering_enabled: False
+      is_snap_enabled: True
+
+test_retype_type_invalid:
+  vnx:
+    _methods:
+      is_dedup_enabled: True
+      is_compression_enabled: True
+      is_thin_enabled: True
+      is_fast_cache_enabled: True
+      is_auto_tiering_enabled: True
+      is_snap_enabled: True
+
+test_retype_need_migration:
+  lun: &lun_retype_need_migration
+    _properties:
+      <<: *lun_base_prop
+    _methods:
+      get_snap: []
+      with_no_poll: _context
+      update:
+  vnx:
+    _methods:
+      get_lun:
+        _side_effect: [*lun_retype_need_migration]
+
+test_retype_turn_on_compression_change_tier:
+  lun: &lun_retype_turn_on_compression_change_tier
+    _properties:
+      <<: *lun_base_prop
+      provision:
+        _enum:
+          VNXProvisionEnum: 'thin'
+      tier:
+        _enum:
+          VNXTieringEnum: 'auto'
+    _methods:
+      enable_compression:
+      get_snap: []
+      with_no_poll: _context
+      update:
+  vnx:
+    _methods:
+      get_lun: *lun_retype_turn_on_compression_change_tier
+
+test_retype_lun_has_snap:
+  lun: &lun_retype_lun_has_snap
+    _properties:
+      <<: *lun_base_prop
+      provision:
+        _enum:
+          VNXProvisionEnum: 'thick'
+      tier:
+        _enum:
+          VNXTieringEnum: 'auto'
+    _methods:
+      get_snap: ['fake_snap']
+      with_no_poll: _context
+      update:
+  vnx:
+    _methods:
+      get_lun: *lun_retype_lun_has_snap
+
+test_retype_change_tier:
+  lun: &lun_retype_change_tier
+    _properties:
+      <<: *lun_base_prop
+      provision:
+        _enum:
+          VNXProvisionEnum: 'thick'
+      tier:
+        _enum:
+          VNXTieringEnum: 'nomovement'
+    _methods:
+      with_no_poll: _context
+      update:
+  vnx:
+    _methods:
+      get_lun: *lun_retype_change_tier
+
+test_create_consistencygroup: *test_create_cg
+
+test_delete_consistencygroup:
+  vnx:
+    _methods:
+      get_cg: *cg_for_deletion
+
+test_delete_consistencygroup_with_volume:
+  vnx:
+    _methods:
+      get_cg: *cg_for_deletion
+      get_lun: *lun_test_delete_lun
+
+test_delete_consistencygroup_error:
+  cg: &cg_delete_error
+    _methods:
+      delete:
+        _raise:
+          VNXConsistencyGroupError: Unable to delete cg
+  vnx:
+    _methods:
+      get_cg: *cg_delete_error
+
+test_delete_consistencygroup_volume_error:
+  vnx:
+    _methods:
+      get_cg: *cg_for_deletion
+      get_lun: *lun_test_delete_lun_exception
+
+test_extend_volume: *test_expand_lun
+
+test_create_snapshot_adapter: *test_create_snapshot
+
+test_delete_snapshot_adapter: *test_delete_snapshot
+
+test_create_cgsnapshot: *test_create_cg_snapshot
+
+test_delete_cgsnapshot:
+  cg_snap: &cg_snap_delete
+    _methods:
+      delete:
+  vnx:
+    _methods:
+      get_snap: *cg_snap_delete
+
+test_create_cg_from_cgsnapshot:
+  snap: &copied_cg_snap
+    _methods:
+      copy:
+      modify:
+  smp: &smp_from_src_lun
+    _properties:
+      lun_id: 12
+    _methods:
+      attach_snap:
+
+  lun: &src_lun_in_cg
+    _methods:
+      create_mount_point: *smp_from_src_lun
+  vnx:
+    _properties:
+    _methods:
+      get_snap:
+        _side_effect: [*copied_cg_snap, *copied_cg_snap,
+        *snapshot_test_delete_snapshot]
+      get_lun:
+        _side_effect: [*src_lun_in_cg, *smp_from_src_lun,
+        *smp_from_src_lun, *lun_migrate, *src_lun, *dst_lun]
+      get_pool: *pool_test_create_lun
+      get_migration_session: *session_verify
+      create_cg: *cg_for_create
+
+test_create_cloned_cg:
+  vnx:
+    _properties:
+    _methods:
+      get_cg: *cg_test_create_cg_snapshot
+      get_snap: *snapshot_test_delete_snapshot
+      get_lun:
+        _side_effect: [*src_lun_in_cg, *smp_from_src_lun,
+        *smp_from_src_lun, *lun_migrate, *src_lun, *dst_lun]
+      get_pool: *pool_test_create_lun
+      get_migration_session: *session_verify
+      create_cg: *cg_for_create
+
+test_validate_ports_iscsi: &test_validate_ports_iscsi
+  iscsi_port_a-0-0: *iscsi_port_a-0-0
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_iscsi_port: *all_iscsi_ports
+
+test_validate_ports_iscsi_invalid: *test_validate_ports_iscsi
+
+test_validate_ports_iscsi_not_exist: *test_validate_ports_iscsi
+
+test_validate_ports_fc: &test_validate_ports_fc
+  fc_port_a-1: *fc_port_a-1
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_fc_port: *all_fc_ports
+
+test_validate_ports_fc_invalid: *test_validate_ports_fc
+
+test_validate_ports_fc_not_exist: *test_validate_ports_fc
+
+test_manage_existing_lun_no_exist:
+  lun: &lun_manage_lun_not_exist
+    _properties:
+      existed: False
+  vnx:
+    _methods:
+      get_lun: *lun_manage_lun_not_exist
+
+test_manage_existing_invalid_ref:
+  lun: *lun_manage_lun_not_exist
+
+test_manage_existing_invalid_pool:
+  lun: &lun_manage_in_other_pool
+    _properties:
+      existed: True
+      pool_name: 'unmanaged_pool'
+  vnx:
+    _methods:
+      get_lun: *lun_manage_in_other_pool
+
+test_manage_existing_get_size:
+  lun: &lun_manage_get_size
+    _properties:
+      existed: True
+      pool_name: 'unit_test_pool'
+      total_capacity_gb: 5
+  vnx:
+    _methods:
+      get_lun: *lun_manage_get_size
+
+test_manage_existing_type_mismatch:
+  lun: &lun_manage_type_mismatch
+    _properties:
+      existed: True
+      pool_name: 'unit_test_pool'
+      provision:
+        _enum:
+          VNXProvisionEnum: 'thick'
+      tier:
+        _enum:
+          VNXTieringEnum: 'highestavailable'
+      total_capacity_gb: 5
+  vnx:
+    _methods:
+      get_lun: *lun_manage_type_mismatch
+
+test_manage_existing:
+  lun: &lun_manage_existing
+    _properties:  &lun_manage_existing_props
+      lun_id: 1
+      existed: True
+      pool_name: 'unit_test_pool'
+      provision:
+        _enum:
+          VNXProvisionEnum: 'deduplicated'
+      tier:
+        _enum:
+          VNXTieringEnum: 'auto'
+      total_capacity_gb: 5
+      primary_lun: 'N/A'
+      is_snap_mount_point: False
+    _methods:
+      rename:
+
+test_manage_existing_smp:
+  lun: &manage_existing_smp
+    _properties:
+      lun_id: 2
+      existed: True
+      pool_name: 'unit_test_pool'
+      primary_lun: 'src_lun'
+      is_snap_mount_point: True
+    _methods:
+      rename:
+  vnx:
+    _methods:
+      get_lun: *manage_existing_smp
+
+test_assure_storage_group:
+  sg: &sg_test_assure_storage_group
+    _properties:
+      <<: *sg_base_prop
+      existed: True
+    _methods:
+      update:
+      with_poll: _context
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_sg: *sg_test_assure_storage_group
+
+test_assure_storage_group_create_new:
+  sg: &sg_test_assure_storage_group_create_new
+    _properties:
+      <<: *sg_base_prop
+      existed: False
+    _methods:
+      update:
+      with_poll: _context
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_sg: *sg_test_assure_storage_group_create_new
+      create_sg: *sg_test_assure_storage_group_create_new
+
+test_assure_host_access:
+  sg: &sg_test_assure_host_access
+    <<: *sg_base
+    _methods:
+      update:
+      with_poll: _context
+  lun: &lun_test_assure_host_access
+    <<: *lun_base
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_lun: *lun_test_assure_host_access
+
+test_assure_host_access_without_auto_register_new_sg: &test_assure_host_access_without_auto_register_new_sg
+  sg: &sg_test_assure_host_access_without_auto_register_new_sg
+    <<: *sg_base
+    _methods:
+      update:
+      connect_host:
+      with_poll: _context
+  lun: &lun_test_assure_host_access_without_auto_register_new_sg
+    <<: *lun_base
+  vnx:
+    <<: *vnx_base
+    _methods:
+      get_lun: *lun_test_assure_host_access_without_auto_register_new_sg
+
+test_assure_host_access_without_auto_register: *test_assure_host_access_without_auto_register_new_sg
+
+test_auto_register_initiator: &test_auto_register_initiator
+  allowed_ports: *all_iscsi_ports
+  reg_ports: [*iscsi_port_a-0-0]
+  sg: &sg_auto_register_initiator
+    _properties:
+      <<: *sg_base_prop
+      initiator_uid_list: ['iqn-reg-1', 'iqn-reg-2']
+    _methods:
+      get_ports: [*iscsi_port_a-0-0]
+  vnx:
+    <<: *vnx_base
+
+test_auto_register_initiator_no_white_list: *test_auto_register_initiator
+
+test_build_provider_location:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+
+test_remove_host_access:
+  sg: &sg_remove_host_access
+    _properties:
+      existed: True
+    _methods:
+      detach_alu:
+  vnx:
+    _methods:
+      get_sg: *sg_remove_host_access
+      get_lun: *lun_base
+
+test_set_extra_spec_defaults:
+  vnx:
+    <<: *vnx_base_prop
+    _methods:
+       is_auto_tiering_enabled: True
+
+test_remove_host_access_sg_absent:
+  sg: &sg_remove_host_access_sg_absent
+    _properties:
+      existed: False
+  vnx:
+    _methods:
+      get_sg: *sg_remove_host_access_sg_absent
+      get_lun: *lun_base
+
+test_setup_lun_replication:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+  lun:
+    _properties:
+      lun_id: 222
+      wwn: fake_wwn
+
+test_cleanup_replication:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+    _methods:
+      is_mirror_view_sync_enabled: True
+
+test_build_mirror_view:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+    _methods:
+      is_mirror_view_sync_enabled: True
+
+test_build_mirror_view_no_device:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+
+test_build_mirror_view_2_device:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+    _methods:
+      is_mirror_view_sync_enabled: True
+
+test_build_mirror_view_no_enabler:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+    _methods:
+      is_mirror_view_sync_enabled: False
+
+test_build_mirror_view_failover_false:
+  vnx:
+    _properties:
+      serial: 'vnx-serial'
+    _methods:
+      is_mirror_view_sync_enabled: True
+
+test_failover_host:
+  lun1:
+    _properties:
+      lun_id: 11
+
+test_failover_host_invalid_backend_id:
+
+test_failover_host_failback:
+  lun1:
+    _properties:
+      lun_id: 22
+
+test_get_pool_name:
+  lun: &lun_test_get_pool_name
+    _properties:
+      <<: *lun_base_prop
+      pool_name: pool_1
+    _methods:
+      with_no_poll: _context
+      update:
+
+  vnx:
+    _methods:
+      get_lun: *lun_test_get_pool_name
+
+test_normalize_config_naviseccli_path:
+
+test_normalize_config_naviseccli_path_none:
+
+test_normalize_config_pool_names:
+
+test_normalize_config_pool_names_none:
+
+test_normalize_config_pool_names_empty_list:
+
+test_normalize_config_io_port_list:
+
+test_normalize_config_io_port_list_none:
+
+test_normalize_config_io_port_list_empty_list:
+
+
+###########################################################
+# TestISCSIAdapter
+###########################################################
+test_parse_ports_iscsi: &test_parse_ports_iscsi
+  connection_port: &port_test_parse_ports_iscsi
+
+    _properties:
+      existed: False
+  vnx:
+    _methods:
+      get_sg: *sg_remove_host_access_sg_absent
+      get_lun: *lun_base
+
+test_remove_host_access_volume_not_in_sg:
+  sg: &remove_host_access_volume_not_in_sg
+    _properties: *sg_base_prop
+    _methods:
+      detach_alu:
+        _raises: VNXDetachAluNotFoundError
+  vnx:
+    _methods:
+      get_sg: *remove_host_access_volume_not_in_sg
+      get_lun: *lun_base
+
+test_terminate_connection_cleanup_remove_sg:
+  sg:
+    _properties: *sg_base_prop
+    _methods:
+      remove:
+      disconnect_host:
+      get_alu_hlu_map: {}
+
+test_terminate_connection_cleanup_sg_absent:
+  sg:
+    _properties:
+      existed: False
+
+test_terminate_connection_cleanup_deregister:
+  sg:
+    _properties: *sg_base_prop
+    _methods:
+      remove:
+      disconnect_host:
+      get_alu_hlu_map: {}
+  vnx:
+    _methods:
+      remove_hba:
+
+test_terminate_connection_cleanup_sg_is_not_empty:
+  sg:
+    _properties: *sg_base_prop
+    _methods:
+      get_alu_hlu_map: {'1': '1'}
+
+test_update_consistencygroup:
+
+test_update_migrated_volume:
+
+test_update_migrated_volume_smp:
+
+test_normalize_config_iscsi_initiators:
+
+test_normalize_config_iscsi_initiators_none:
+
+test_normalize_config_iscsi_initiators_empty_str:
+
+test_normalize_config_iscsi_initiators_not_dict:
+
+
+###########################################################
+# TestISCSIAdapter
+###########################################################
+test_update_volume_stats_iscsi:
+  vnx:
+    _properties:
+      <<: *vnx_base_prop
+    _methods:
+      get_iscsi_port: *all_iscsi_ports
+
+test_build_terminate_connection_return_data_iscsi:
+
+
+###########################################################
+# TestFCAdapter
+###########################################################
+test_build_terminate_connection_return_data_without_autozone:
+
+test_build_terminate_connection_return_data_sg_absent:
+ sg:
+   _properties:
+     <<: *sg_base_prop
+     existed: False
+
+test_build_terminate_connection_return_data_auto_zone:
+  sg:
+    _properties:
+      <<: *sg_base_prop
+      name: 'fake_host'
+      fc_ports:
+        - *fc_port_a-1
+    _methods:
+      get_alu_hlu_map: {}
+  vnx:
+    _methods:
+      get_fc_port: *all_fc_ports
+
+test_mock_vnx_objects_foo: *test_create_lun
+
+test_get_tgt_list_and_initiator_tgt_map_allow_port_only:
+  sg:
+    _properties:
+      <<: *sg_base_prop
+      fc_ports:
+        - *fc_port_a-1
+        - <<: *fc_port_base
+          _properties:
+            <<: *fc_port_base_prop
+            sp: *spb
+            port_id: 1
+            wwn: '50:06:01:60:B6:E0:1C:F4:50:06:01:66:36:E0:1C:B1'
+        - *fc_port_b-2
+  adapter:
+    _properties:
+      allowed_ports:
+        - <<: *fc_port_base
+          _properties:
+            <<: *fc_port_base_prop
+            sp: *spb
+            port_id: 1
+            wwn: '50:06:01:60:B6:E0:1C:F4:50:06:01:66:36:E0:1C:B1'
+        - *fc_port_b-2
+
+  vnx:
+    _methods:
+      get_fc_port: *all_fc_ports
+
+
+##########################################################
+# TestTaskflow
+##########################################################
+test_copy_snapshot_task:
+  vnx:
+    _methods:
+      get_snap: *snap_copy
+
+test_copy_snapshot_task_revert:
+  snap: &snap_copy_error
+    _methods:
+      copy:
+        _raise:
+          VNXSnapError: Unable to copy snap
+      delete:
+  vnx:
+    _methods:
+      get_snap: *snap_copy_error
+
+test_create_smp_task:
+  smp: &smp
+    _properties:
+      lun_id: 15
+  lun: &lun_create_smp
+    _methods:
+      create_mount_point: *smp
+  vnx:
+    _methods:
+      get_lun:
+        _side_effect: [*lun_create_smp, *smp]
+
+test_create_smp_task_revert:
+  lun: &lun_create_smp_error
+    _methods:
+      create_mount_point:
+        _raise:
+          VNXCreateLunError: 'Unable to create mount point'
+      delete:
+    _properties:
+      is_snap_mount_point: False
+  vnx:
+    _methods:
+      get_lun: *lun_create_smp_error
+
+test_attach_snap_task:
+  vnx:
+    _methods:
+      get_lun: *lun_attach_snap
+
+test_attach_snap_task_revert:
+  lun: &lun_attach_snap_error
+    _methods:
+      attach_snap:
+        _raise:
+          VNXAttachSnapError: 'Unable to attach snapshot'
+      detach_snap:
+  vnx:
+    _methods:
+      get_lun: *lun_attach_snap_error
+
+test_create_snapshot_task:
+  lun: &lun_snap
+    _methods:
+      create_snap:
+  vnx:
+    _methods:
+      get_lun: *lun_snap
+
+test_create_snapshot_task_revert:
+  snap: &snap_delete
+    _methods:
+      delete:
+  lun: &lun_snap_error
+    _methods:
+      create_snap:
+        _raise:
+          VNXCreateSnapError: 'Unable to create snap'
+  vnx:
+    _methods:
+      get_lun: *lun_snap_error
+      get_snap: *snap_delete
+
+test_allow_read_write_task:
+  vnx:
+    _methods:
+      get_snap: *snap_modify
+
+test_allow_read_write_task_revert:
+  snap: &snap_modify_error
+    _methods:
+      modify:
+        _raise:
+          VNXSnapError: Unable to modify snap
+  vnx:
+    _methods:
+      get_snap: *snap_modify_error
+
+test_wait_migrations_task:
+  vnx:
+
+test_create_consistency_group_task:
+  vnx:
+
+test_create_consistency_group_task_revert:
+  vnx:
+
+test_create_cg_snapshot_task: *test_create_cg_snapshot
+
+
+test_create_cg_snapshot_task_revert:
+  cg: &create_cg_snapshot_error
+    _methods:
+      create_snap:
+        _raise:
+          VNXCreateSnapError: 'Create failed'
+  snap: &snap_create_cg_revert
+    _methods:
+      delete:
+  vnx:
+    _methods:
+      get_cg: *create_cg_snapshot_error
+      get_snap: *snap_create_cg_revert
+
+###########################################################
+# TestExtraSpecs
+###########################################################
+test_generate_extra_specs_from_lun:
+  lun:
+    _properties:
+      provision:
+        _enum:
+          VNXProvisionEnum: 'compressed'
+      tier:
+        _enum:
+          VNXTieringEnum: 'highestavailable'
+
+  deduped_lun:
+    _properties:
+      provision:
+        _enum:
+          VNXProvisionEnum: 'deduplicated'
+      tier:
+        _enum:
+          VNXTieringEnum: 'auto'
+
+test_extra_specs_match_with_lun:
+  lun:
+    _properties:
+      provision:
+        _enum:
+          VNXProvisionEnum: 'thin'
+      tier:
+        _enum:
+          VNXTieringEnum: 'nomovement'
+
+  deduped_lun:
+    _properties:
+      provision:
+        _enum:
+          VNXProvisionEnum: 'deduplicated'
+      tier:
+        _enum:
+          VNXTieringEnum: 'nomovement'
+
+test_extra_specs_not_match_with_lun:
+  lun:
+    _properties:
+      provision:
+        _enum:
+          VNXProvisionEnum: 'thick'
+      tier:
+        _enum:
+          VNXTieringEnum: 'lowestavailable'

@@ -252,6 +252,12 @@ volume_opts = [
                      'discard (aka. trim/unmap). This will not actually '
                      'change the behavior of the backend or the client '
                      'directly, it will only notify that it can be used.'),
+    cfg.StrOpt('storage_protocol',
+               ignore_case=True,
+               default='iscsi',
+               choices=['iscsi', 'fc'],
+               help='Protocol for transferring data between host and '
+                    'storage back-end.'),
 ]
 
 # for backward compatibility
