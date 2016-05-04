@@ -534,7 +534,6 @@ def brick_get_connector_properties(multipath=False, enforce_multipath=False):
 
 
 def brick_get_connector(protocol, driver=None,
-                        execute=processutils.execute,
                         use_multipath=False,
                         device_scan_attempts=3,
                         *args, **kwargs):
@@ -547,7 +546,6 @@ def brick_get_connector(protocol, driver=None,
     root_helper = get_root_helper()
     return connector.InitiatorConnector.factory(protocol, root_helper,
                                                 driver=driver,
-                                                execute=execute,
                                                 use_multipath=use_multipath,
                                                 device_scan_attempts=
                                                 device_scan_attempts,

@@ -806,8 +806,7 @@ class BrickUtils(test.TestCase):
         self.assertEqual(mock_factory.return_value, output)
         mock_factory.assert_called_once_with(
             'protocol', mock_helper.return_value, driver=None,
-            execute=putils.execute, use_multipath=False,
-            device_scan_attempts=3)
+            use_multipath=False, device_scan_attempts=3)
 
 
 class StringLengthTestCase(test.TestCase):
