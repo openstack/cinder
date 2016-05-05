@@ -123,9 +123,6 @@ class CinderObject(base.VersionedObject):
     # version compatibility.
     VERSION_COMPATIBILITY = {'7.0.0': '1.0'}
 
-    Not = db.Not
-    Case = db.Case
-
     def cinder_obj_get_changes(self):
         """Returns a dict of changed fields with tz unaware datetimes.
 
@@ -147,6 +144,94 @@ class CinderObject(base.VersionedObject):
 
         # Return modified dict
         return changes
+
+    def __contains__(self, name):
+        # We're using obj_extra_fields to provide aliases for some fields while
+        # in transition period. This override is to make these aliases pass
+        # "'foo' in obj" tests.
+        return name in self.obj_extra_fields or super(CinderObject,
+                                                      self).__contains__(name)
+
+
+class CinderObjectDictCompat(base.VersionedObjectDictCompat):
+    """Mix-in to provide dictionary key access compat.
+
+    If an object needs to support attribute access using
+    dictionary items instead of object attributes, inherit
+    from this class. This should only be used as a temporary
+    measure until all callers are converted to use modern
+    attribute access.
+
+    NOTE(berrange) This class will eventually be deleted.
+    """
+
+    def get(self, key, value=base._NotSpecifiedSentinel):
+        """For backwards-compatibility with dict-based objects.
+
+        NOTE(danms): May be removed in the future.
+        """
+        if key not in self.obj_fields:
+            # NOTE(jdg): There are a number of places where we rely on the
+            # old dictionary version and do a get(xxx, None).
+            # The following preserves that compatibility but in
+            # the future we'll remove this shim altogether so don't
+            # rely on it.
+            LOG.debug('Cinder object %(object_name)s has no '
+                      'attribute named: %(attribute_name)s',
+                      {'object_name': self.__class__.__name__,
+                       'attribute_name': key})
+            return None
+        if (value != base._NotSpecifiedSentinel and
+                key not in self.obj_extra_fields and
+                not self.obj_attr_is_set(key)):
+            return value
+        else:
+            try:
+                return getattr(self, key)
+            except (exception.ObjectActionError, NotImplementedError):
+                # Exception when haven't set a value for non-lazy
+                # loadable attribute, but to mimic typical dict 'get'
+                # behavior we should still return None
+                return None
+
+
+class CinderPersistentObject(object):
+    """Mixin class for Persistent objects.
+
+    This adds the fields that we use in common for all persistent objects.
+    """
+    Not = db.Not
+    Case = db.Case
+
+    fields = {
+        'created_at': fields.DateTimeField(nullable=True),
+        'updated_at': fields.DateTimeField(nullable=True),
+        'deleted_at': fields.DateTimeField(nullable=True),
+        'deleted': fields.BooleanField(default=False,
+                                       nullable=True),
+    }
+
+    @contextlib.contextmanager
+    def obj_as_admin(self):
+        """Context manager to make an object call as an admin.
+
+        This temporarily modifies the context embedded in an object to
+        be elevated() and restores it after the call completes. Example
+        usage:
+
+           with obj.obj_as_admin():
+               obj.save()
+        """
+        if self._context is None:
+            raise exception.OrphanedObjectError(method='obj_as_admin',
+                                                objtype=self.obj_name())
+
+        original_context = self._context
+        self._context = self._context.elevated()
+        try:
+            yield
+        finally:
+            self._context = original_context
 
     @classmethod
     def _get_expected_attrs(cls, context):
@@ -304,91 +389,6 @@ class CinderObject(base.VersionedObject):
                 if self[field] != current[field]:
                     self[field] = current[field]
         self.obj_reset_changes()
-
-    def __contains__(self, name):
-        # We're using obj_extra_fields to provide aliases for some fields while
-        # in transition period. This override is to make these aliases pass
-        # "'foo' in obj" tests.
-        return name in self.obj_extra_fields or super(CinderObject,
-                                                      self).__contains__(name)
-
-
-class CinderObjectDictCompat(base.VersionedObjectDictCompat):
-    """Mix-in to provide dictionary key access compat.
-
-    If an object needs to support attribute access using
-    dictionary items instead of object attributes, inherit
-    from this class. This should only be used as a temporary
-    measure until all callers are converted to use modern
-    attribute access.
-
-    NOTE(berrange) This class will eventually be deleted.
-    """
-
-    def get(self, key, value=base._NotSpecifiedSentinel):
-        """For backwards-compatibility with dict-based objects.
-
-        NOTE(danms): May be removed in the future.
-        """
-        if key not in self.obj_fields:
-            # NOTE(jdg): There are a number of places where we rely on the
-            # old dictionary version and do a get(xxx, None).
-            # The following preserves that compatibility but in
-            # the future we'll remove this shim altogether so don't
-            # rely on it.
-            LOG.debug('Cinder object %(object_name)s has no '
-                      'attribute named: %(attribute_name)s',
-                      {'object_name': self.__class__.__name__,
-                       'attribute_name': key})
-            return None
-        if (value != base._NotSpecifiedSentinel and
-                key not in self.obj_extra_fields and
-                not self.obj_attr_is_set(key)):
-            return value
-        else:
-            try:
-                return getattr(self, key)
-            except (exception.ObjectActionError, NotImplementedError):
-                # Exception when haven't set a value for non-lazy
-                # loadable attribute, but to mimic typical dict 'get'
-                # behavior we should still return None
-                return None
-
-
-class CinderPersistentObject(object):
-    """Mixin class for Persistent objects.
-
-    This adds the fields that we use in common for all persistent objects.
-    """
-    fields = {
-        'created_at': fields.DateTimeField(nullable=True),
-        'updated_at': fields.DateTimeField(nullable=True),
-        'deleted_at': fields.DateTimeField(nullable=True),
-        'deleted': fields.BooleanField(default=False,
-                                       nullable=True),
-    }
-
-    @contextlib.contextmanager
-    def obj_as_admin(self):
-        """Context manager to make an object call as an admin.
-
-        This temporarily modifies the context embedded in an object to
-        be elevated() and restores it after the call completes. Example
-        usage:
-
-           with obj.obj_as_admin():
-               obj.save()
-        """
-        if self._context is None:
-            raise exception.OrphanedObjectError(method='obj_as_admin',
-                                                objtype=self.obj_name())
-
-        original_context = self._context
-        self._context = self._context.elevated()
-        try:
-            yield
-        finally:
-            self._context = original_context
 
 
 class CinderComparableObject(base.ComparableVersionedObject):

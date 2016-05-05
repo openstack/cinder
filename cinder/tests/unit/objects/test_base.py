@@ -77,28 +77,29 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
         self.assertDictEqual({'scheduled_at': now},
                              self.obj.cinder_obj_get_changes())
 
-    def test_refresh(self):
+    @mock.patch('cinder.objects.base.CinderPersistentObject.get_by_id')
+    def test_refresh(self, get_by_id):
         @objects.base.CinderObjectRegistry.register_if(False)
         class MyTestObject(objects.base.CinderObject,
                            objects.base.CinderObjectDictCompat,
-                           objects.base.CinderComparableObject):
+                           objects.base.CinderComparableObject,
+                           objects.base.CinderPersistentObject):
             fields = {'id': fields.UUIDField(),
                       'name': fields.StringField()}
 
         test_obj = MyTestObject(id=fake.OBJECT_ID, name='foo')
         refresh_obj = MyTestObject(id=fake.OBJECT_ID, name='bar')
-        with mock.patch(
-                'cinder.objects.base.CinderObject.get_by_id') as get_by_id:
-            get_by_id.return_value = refresh_obj
+        get_by_id.return_value = refresh_obj
 
-            test_obj.refresh()
-            self._compare(self, refresh_obj, test_obj)
+        test_obj.refresh()
+        self._compare(self, refresh_obj, test_obj)
 
     def test_refresh_no_id_field(self):
         @objects.base.CinderObjectRegistry.register_if(False)
         class MyTestObjectNoId(objects.base.CinderObject,
                                objects.base.CinderObjectDictCompat,
-                               objects.base.CinderComparableObject):
+                               objects.base.CinderComparableObject,
+                               objects.base.CinderPersistentObject):
             fields = {'uuid': fields.UUIDField()}
 
         test_obj = MyTestObjectNoId(uuid=fake.OBJECT_ID, name='foo')
