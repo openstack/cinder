@@ -1021,6 +1021,7 @@ class FlashSystemDriverTestCase(test.TestCase):
     def test_flashsystem_get_volume_stats(self):
         # case 1: good path
         self._set_flag('reserved_percentage', 25)
+        self._set_flag('flashsystem_multihostmap_enabled', False)
         pool = 'mdiskgrp0'
         backend_name = 'flashsystem_1.2.3.4' + '_' + pool
 
@@ -1030,6 +1031,7 @@ class FlashSystemDriverTestCase(test.TestCase):
         self.assertEqual('IBM', stats['vendor_name'])
         self.assertEqual('FC', stats['storage_protocol'])
         self.assertEqual(backend_name, stats['volume_backend_name'])
+        self.assertEqual(False, stats['multiattach'])
 
         self._reset_flags()
 
