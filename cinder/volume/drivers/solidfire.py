@@ -1650,14 +1650,12 @@ class SolidFireDriver(san.SanISCSIDriver):
             results['thinProvisioningPercent'])
         self.cluster_stats = data
 
-    def initialize_connection(self, volume, connector, initiator_data=None):
+    def initialize_connection(self, volume, connector):
         """Initialize the connection and return connection info.
 
            Optionally checks and utilizes volume access groups.
         """
-        properties = self._sf_initialize_connection(volume,
-                                                    connector,
-                                                    initiator_data)
+        properties = self._sf_initialize_connection(volume, connector)
         properties['data']['discard'] = True
         return properties
 
@@ -1979,8 +1977,7 @@ class SolidFireISCSI(iscsi_driver.SanISCSITarget):
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
-    def _sf_initialize_connection(self, volume, connector,
-                                  initiator_data=None):
+    def _sf_initialize_connection(self, volume, connector):
         """Initialize the connection and return connection info.
 
            Optionally checks and utilizes volume access groups.
