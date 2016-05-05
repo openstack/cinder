@@ -34,7 +34,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.0.0'
+VERSION = '1.1.0'
 LOG = logging.getLogger(__name__)
 
 
@@ -42,6 +42,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     """Executes volume driver commands on Nexenta Appliance.
 
     Version history:
+        1.1.0 - nas_ip option is renamed to nas_host.
         1.0.0 - Initial driver version.
     """
 
@@ -68,7 +69,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self.sparsed_volumes = self.configuration.nexenta_sparsed_volumes
         self.nef = None
         self.nef_protocol = self.configuration.nexenta_rest_protocol
-        self.nef_host = self.configuration.nas_ip
+        self.nef_host = self.configuration.nas_host
         self.share = self.configuration.nas_share_path
         self.nef_port = self.configuration.nexenta_rest_port
         self.nef_user = self.configuration.nexenta_user
