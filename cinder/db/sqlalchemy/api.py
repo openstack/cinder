@@ -22,6 +22,7 @@
 import collections
 import datetime as dt
 import functools
+import itertools
 import re
 import sys
 import threading
@@ -4566,7 +4567,7 @@ def is_orm_value(obj):
 @_retry_on_deadlock
 @require_context
 def conditional_update(context, model, values, expected_values, filters=(),
-                       include_deleted='no', project_only=False):
+                       include_deleted='no', project_only=False, order=None):
     """Compare-and-swap conditional update SQLAlchemy implementation."""
     # Provided filters will become part of the where clause
     where_conds = list(filters)
@@ -4577,16 +4578,60 @@ def conditional_update(context, model, values, expected_values, filters=(),
             condition = db.Condition(condition, field)
         where_conds.append(condition.get_filter(model, field))
 
-    # Transform case values
-    values = {field: case(value.whens, value.value, value.else_)
-              if isinstance(value, db.Case)
-              else value
-              for field, value in values.items()}
-
+    # Create the query with the where clause
     query = model_query(context, model, read_deleted=include_deleted,
-                        project_only=project_only)
+                        project_only=project_only).filter(*where_conds)
+
+    # NOTE(geguileo): Some DBs' update method are order dependent, and they
+    # behave differently depending on the order of the values, example on a
+    # volume with 'available' status:
+    #    UPDATE volumes SET previous_status=status, status='reyping'
+    #        WHERE id='44f284f9-877d-4fce-9eb4-67a052410054';
+    # Will result in a volume with 'retyping' status and 'available'
+    # previous_status both on SQLite and MariaDB, but
+    #    UPDATE volumes SET status='retyping', previous_status=status
+    #        WHERE id='44f284f9-877d-4fce-9eb4-67a052410054';
+    # Will yield the same result in SQLite but will result in a volume with
+    # status and previous_status set to 'retyping' in MariaDB, which is not
+    # what we want, so order must be taken into consideration.
+    # Order for the update will be:
+    #  1- Order specified in argument order
+    #  2- Values that refer to other ORM field (simple and using operations,
+    #     like size + 10)
+    #  3- Values that use Case clause (since they may be using fields as well)
+    #  4- All other values
+    order = list(order) if order else tuple()
+    orm_field_list = []
+    case_list = []
+    unordered_list = []
+    for key, value in values.items():
+        if isinstance(value, db.Case):
+            value = case(value.whens, value.value, value.else_)
+
+        if key in order:
+            order[order.index(key)] = (key, value)
+            continue
+        # NOTE(geguileo): Check Case first since it's a type of orm value
+        if isinstance(value, sql.elements.Case):
+            value_list = case_list
+        elif is_orm_value(value):
+            value_list = orm_field_list
+        else:
+            value_list = unordered_list
+        value_list.append((key, value))
+
+    update_args = {'synchronize_session': False}
+
+    # If we don't have to enforce any kind of order just pass along the values
+    # dictionary since it will be a little more efficient.
+    if order or orm_field_list or case_list:
+        # If we are doing an update with ordered parameters, we need to add
+        # remaining values to the list
+        values = itertools.chain(order, orm_field_list, case_list,
+                                 unordered_list)
+        # And we have to tell SQLAlchemy that we want to preserve the order
+        update_args['update_args'] = {'preserve_parameter_order': True}
 
     # Return True if we were able to change any DB entry, False otherwise
-    result = query.filter(*where_conds).update(values,
-                                               synchronize_session=False)
+    result = query.update(values, **update_args)
     return 0 != result
