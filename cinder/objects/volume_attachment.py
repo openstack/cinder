@@ -52,7 +52,6 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         attachment.obj_reset_changes()
         return attachment
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -68,7 +67,7 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('VolumeAttachment'),
     }
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_volume_id(cls, context, volume_id):
         attachments = db.volume_attachment_get_all_by_volume_id(context,
                                                                 volume_id)
@@ -77,7 +76,7 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
                                   objects.VolumeAttachment,
                                   attachments)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_host(cls, context, volume_id, host):
         attachments = db.volume_attachment_get_all_by_host(context,
                                                            volume_id,
@@ -85,7 +84,7 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeAttachment, attachments)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_instance_uuid(cls, context, volume_id, instance_uuid):
         attachments = db.volume_attachment_get_all_by_instance_uuid(
             context, volume_id, instance_uuid)

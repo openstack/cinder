@@ -139,7 +139,6 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         snapshot.obj_reset_changes()
         return snapshot
 
-    @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -156,7 +155,6 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         db_snapshot = db.snapshot_create(self._context, updates)
         self._from_db_object(self._context, self, db_snapshot)
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -179,7 +177,6 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
 
         self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         db.snapshot_destroy(self._context, self.id)
 
@@ -212,7 +209,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if not md_was_changed:
             self.obj_reset_changes(['metadata'])
 
-    @base.remotable_classmethod
+    @classmethod
     def snapshot_data_get_for_project(cls, context, project_id,
                                       volume_type_id=None):
         return db.snapshot_data_get_for_project(context, project_id,
@@ -227,7 +224,7 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('Snapshot'),
     }
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all(cls, context, search_opts, marker=None, limit=None,
                 sort_keys=None, sort_dirs=None, offset=None):
         snapshots = db.snapshot_get_all(context, search_opts, marker, limit,
@@ -236,14 +233,14 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_by_host(cls, context, host, filters=None):
         snapshots = db.snapshot_get_by_host(context, host, filters)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_project(cls, context, project_id, search_opts, marker=None,
                            limit=None, sort_keys=None, sort_dirs=None,
                            offset=None):
@@ -254,21 +251,21 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_for_volume(cls, context, volume_id):
         snapshots = db.snapshot_get_all_for_volume(context, volume_id)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_active_by_window(cls, context, begin, end):
         snapshots = db.snapshot_get_active_by_window(context, begin, end)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_for_cgsnapshot(cls, context, cgsnapshot_id):
         snapshots = db.snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id)
         expected_attrs = Snapshot._get_expected_attrs(context)

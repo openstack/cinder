@@ -29,8 +29,6 @@ from cinder import objects
 
 
 LOG = logging.getLogger('object')
-remotable = base.remotable
-remotable_classmethod = base.remotable_classmethod
 obj_make_list = base.obj_make_list
 
 
@@ -154,7 +152,7 @@ class CinderObject(base.VersionedObject):
     def _get_expected_attrs(cls, context):
         return None
 
-    @base.remotable_classmethod
+    @classmethod
     def get_by_id(cls, context, id, *args, **kwargs):
         # To get by id we need to have a model and for the model to
         # have an id field

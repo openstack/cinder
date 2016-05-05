@@ -76,7 +76,6 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         consistencygroup.obj_reset_changes()
         return consistencygroup
 
-    @base.remotable
     def create(self, cg_snap_id=None, cg_id=None):
         """Create a consistency group.
 
@@ -122,7 +121,6 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
 
         self.obj_reset_changes(fields=[attrname])
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -136,7 +134,6 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             db.consistencygroup_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         with self.obj_as_admin():
             db.consistencygroup_destroy(self._context, self.id)
@@ -152,7 +149,7 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('ConsistencyGroup')
     }
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all(cls, context, filters=None, marker=None, limit=None,
                 offset=None, sort_keys=None, sort_dirs=None):
         consistencygroups = db.consistencygroup_get_all(
@@ -162,7 +159,7 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
                                   objects.ConsistencyGroup,
                                   consistencygroups)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_project(cls, context, project_id, filters=None, marker=None,
                            limit=None, offset=None, sort_keys=None,
                            sort_dirs=None):

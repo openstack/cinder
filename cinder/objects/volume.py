@@ -282,7 +282,6 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         volume.obj_reset_changes()
         return volume
 
-    @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -299,7 +298,6 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         db_volume = db.volume_create(self._context, updates)
         self._from_db_object(self._context, self, db_volume)
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -327,7 +325,6 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
             db.volume_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         with self.obj_as_admin():
             db.volume_destroy(self._context, self.id)
@@ -449,7 +446,7 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
 
         return expected_attrs
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all(cls, context, marker, limit, sort_keys=None, sort_dirs=None,
                 filters=None, offset=None):
         volumes = db.volume_get_all(context, marker, limit,
@@ -459,21 +456,21 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_host(cls, context, host, filters=None):
         volumes = db.volume_get_all_by_host(context, host, filters)
         expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_group(cls, context, group_id, filters=None):
         volumes = db.volume_get_all_by_group(context, group_id, filters)
         expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_project(cls, context, project_id, marker, limit,
                            sort_keys=None, sort_dirs=None, filters=None,
                            offset=None):

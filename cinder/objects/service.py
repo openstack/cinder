@@ -68,17 +68,16 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         service.obj_reset_changes()
         return service
 
-    @base.remotable_classmethod
+    @classmethod
     def get_by_host_and_topic(cls, context, host, topic):
         db_service = db.service_get_by_host_and_topic(context, host, topic)
         return cls._from_db_object(context, cls(context), db_service)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_by_args(cls, context, host, binary_key):
         db_service = db.service_get_by_args(context, host, binary_key)
         return cls._from_db_object(context, cls(context), db_service)
 
-    @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -87,14 +86,12 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         db_service = db.service_create(self._context, updates)
         self._from_db_object(self._context, self, db_service)
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
             db.service_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         with self.obj_as_admin():
             db.service_destroy(self._context, self.id)
@@ -120,11 +117,11 @@ class Service(base.CinderPersistentObject, base.CinderObject,
 
         return min_ver_str
 
-    @base.remotable_classmethod
+    @classmethod
     def get_minimum_rpc_version(cls, context, binary):
         return cls._get_minimum_version('rpc_current_version', context, binary)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_minimum_obj_version(cls, context, binary):
         return cls._get_minimum_version('object_current_version', context,
                                         binary)
@@ -140,20 +137,20 @@ class ServiceList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('Service'),
     }
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all(cls, context, filters=None):
         services = db.service_get_all(context, filters)
         return base.obj_make_list(context, cls(context), objects.Service,
                                   services)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_topic(cls, context, topic, disabled=None):
         services = db.service_get_all_by_topic(context, topic,
                                                disabled=disabled)
         return base.obj_make_list(context, cls(context), objects.Service,
                                   services)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_binary(cls, context, binary, disabled=None):
         services = db.service_get_all_by_binary(context, binary,
                                                 disabled=disabled)

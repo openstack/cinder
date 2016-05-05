@@ -72,7 +72,6 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
         type.obj_reset_changes()
         return type
 
-    @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -83,7 +82,6 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
                                              self.description)
         self._from_db_object(self._context, self, db_volume_type)
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -91,7 +89,6 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
                                 self.description)
             self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         with self.obj_as_admin():
             volume_types.destroy(self._context, self.id)
@@ -107,7 +104,7 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('VolumeType'),
     }
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all(cls, context, inactive=0, filters=None, marker=None,
                 limit=None, sort_keys=None, sort_dirs=None, offset=None):
         types = volume_types.get_all_types(context, inactive, filters,

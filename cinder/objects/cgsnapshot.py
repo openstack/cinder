@@ -68,7 +68,6 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
         cgsnapshot.obj_reset_changes()
         return cgsnapshot
 
-    @base.remotable
     def create(self):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
@@ -101,7 +100,6 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
 
         self.obj_reset_changes(fields=[attrname])
 
-    @base.remotable
     def save(self):
         updates = self.cinder_obj_get_changes()
         if updates:
@@ -114,7 +112,6 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
             db.cgsnapshot_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
-    @base.remotable
     def destroy(self):
         with self.obj_as_admin():
             db.cgsnapshot_destroy(self._context, self.id)
@@ -128,20 +125,20 @@ class CGSnapshotList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('CGSnapshot')
     }
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all(cls, context, filters=None):
         cgsnapshots = db.cgsnapshot_get_all(context, filters)
         return base.obj_make_list(context, cls(context), objects.CGSnapshot,
                                   cgsnapshots)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_project(cls, context, project_id, filters=None):
         cgsnapshots = db.cgsnapshot_get_all_by_project(context, project_id,
                                                        filters)
         return base.obj_make_list(context, cls(context), objects.CGSnapshot,
                                   cgsnapshots)
 
-    @base.remotable_classmethod
+    @classmethod
     def get_all_by_group(cls, context, group_id, filters=None):
         cgsnapshots = db.cgsnapshot_get_all_by_group(context, group_id,
                                                      filters)
