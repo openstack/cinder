@@ -28,6 +28,7 @@ from oslo_config import cfg
 from cinder import service
 from cinder import test  # For the flags
 from cinder.tests.functional.api import client
+from cinder.tests.unit import fake_constants as fake
 
 
 CONF = cfg.CONF
@@ -76,7 +77,8 @@ class _FunctionalTestBase(test.TestCase):
         self._start_api_service()
         self.addCleanup(self.osapi.stop)
 
-        self.api = client.TestOpenStackClient('fake', 'fake', self.auth_url)
+        self.api = client.TestOpenStackClient(fake.USER_ID,
+                                              fake.PROJECT_ID, self.auth_url)
 
     def _start_api_service(self):
         default_conf = os.path.abspath(os.path.join(
