@@ -28,6 +28,7 @@ Programming HowTos and Tutorials
 
     development.environment
     api_microversion_dev
+    api_conditional_updates
     api_microversion_history
     unit_tests
     addmethod.openstackapi
