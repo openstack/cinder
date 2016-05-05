@@ -1618,7 +1618,8 @@ class API(base.Base):
                       host,
                       secondary_id=None):
 
-        ctxt = context.get_admin_context()
+        check_policy(ctxt, 'failover_host')
+        ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
         svc_host = volume_utils.extract_host(host, 'backend')
 
         service = objects.Service.get_by_args(
@@ -1639,7 +1640,8 @@ class API(base.Base):
 
     def freeze_host(self, ctxt, host):
 
-        ctxt = context.get_admin_context()
+        check_policy(ctxt, 'freeze_host')
+        ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
         svc_host = volume_utils.extract_host(host, 'backend')
 
         service = objects.Service.get_by_args(
@@ -1659,7 +1661,8 @@ class API(base.Base):
 
     def thaw_host(self, ctxt, host):
 
-        ctxt = context.get_admin_context()
+        check_policy(ctxt, 'thaw_host')
+        ctxt = ctxt if ctxt.is_admin else ctxt.elevated()
         svc_host = volume_utils.extract_host(host, 'backend')
 
         service = objects.Service.get_by_args(
