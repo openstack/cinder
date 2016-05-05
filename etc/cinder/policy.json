@@ -53,6 +53,7 @@
     "volume_extension:volume_admin_actions:migrate_volume_completion": "rule:admin_api",
 
     "volume_extension:volume_actions:upload_public": "rule:admin_api",
+    "volume_extension:volume_actions:upload_image": "rule:admin_or_owner",
 
     "volume_extension:volume_host_attribute": "rule:admin_api",
     "volume_extension:volume_tenant_attribute": "rule:admin_or_owner",
