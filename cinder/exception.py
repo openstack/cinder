@@ -239,6 +239,10 @@ class DeviceUnavailable(Invalid):
     message = _("The device in the path %(path)s is unavailable: %(reason)s")
 
 
+class SnapshotUnavailable(VolumeBackendAPIException):
+    message = _("The snapshot is unavailable: %(data)s")
+
+
 class InvalidUUID(Invalid):
     message = _("Expected a uuid but received %(uuid)s.")
 
