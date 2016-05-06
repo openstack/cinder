@@ -44,8 +44,8 @@ class Backup(base.CinderPersistentObject, base.CinderObject,
     fields = {
         'id': fields.UUIDField(),
 
-        'user_id': fields.UUIDField(),
-        'project_id': fields.UUIDField(),
+        'user_id': fields.StringField(),
+        'project_id': fields.StringField(),
 
         'volume_id': fields.UUIDField(),
         'host': fields.StringField(nullable=True),

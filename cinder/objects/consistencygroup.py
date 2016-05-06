@@ -33,8 +33,8 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
 
     fields = {
         'id': fields.UUIDField(),
-        'user_id': fields.UUIDField(),
-        'project_id': fields.UUIDField(),
+        'user_id': fields.StringField(),
+        'project_id': fields.StringField(),
         'host': fields.StringField(nullable=True),
         'availability_zone': fields.StringField(nullable=True),
         'name': fields.StringField(nullable=True),

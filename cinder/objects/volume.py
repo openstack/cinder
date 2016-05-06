@@ -66,8 +66,8 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'id': fields.UUIDField(),
         '_name_id': fields.UUIDField(nullable=True),
         'ec2_id': fields.UUIDField(nullable=True),
-        'user_id': fields.UUIDField(nullable=True),
-        'project_id': fields.UUIDField(nullable=True),
+        'user_id': fields.StringField(nullable=True),
+        'project_id': fields.StringField(nullable=True),
 
         'snapshot_id': fields.UUIDField(nullable=True),
 
