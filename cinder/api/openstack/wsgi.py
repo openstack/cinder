@@ -595,7 +595,7 @@ class ResourceExceptionHandler(object):
             raise Fault(webob.exc.HTTPForbidden(explanation=msg))
         elif isinstance(ex_value, exception.VersionNotFoundForAPIMethod):
             raise
-        elif isinstance(ex_value, exception.Invalid):
+        elif isinstance(ex_value, (exception.Invalid, exception.NotFound)):
             raise Fault(exception.ConvertedException(
                 code=ex_value.code, explanation=six.text_type(ex_value)))
         elif isinstance(ex_value, TypeError):

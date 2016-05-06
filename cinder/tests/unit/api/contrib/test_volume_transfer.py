@@ -430,7 +430,7 @@ class VolumeTransferAPITestCase(test.TestCase):
 
         self.assertEqual(404, res.status_int)
         self.assertEqual(404, res_dict['itemNotFound']['code'])
-        self.assertEqual('TransferNotFound: Transfer %s could not be found.' %
+        self.assertEqual('Transfer %s could not be found.' %
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 

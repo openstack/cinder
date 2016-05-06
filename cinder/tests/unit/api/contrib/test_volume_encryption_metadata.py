@@ -112,8 +112,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
         expected = {'itemNotFound': {'code': 404,
-                                     'message': 'VolumeNotFound: Volume '
-                                                '%s could not be found.'
+                                     'message': 'Volume %s could not be found.'
                                                 % bad_volume_id}}
         self.assertEqual(expected, res_dict)
 
@@ -168,8 +167,7 @@ class VolumeEncryptionMetadataTest(test.TestCase):
 
         res_dict = jsonutils.loads(res.body)
         expected = {'itemNotFound': {'code': 404,
-                                     'message': 'VolumeNotFound: Volume '
-                                                '%s could not be found.'
+                                     'message': 'Volume %s could not be found.'
                                                 % bad_volume_id}}
         self.assertEqual(expected, res_dict)
 
