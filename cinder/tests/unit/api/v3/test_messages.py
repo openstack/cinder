@@ -12,7 +12,6 @@
 
 import mock
 from oslo_config import cfg
-import webob
 
 from cinder.api import extensions
 from cinder.api.v3 import messages
@@ -84,7 +83,7 @@ class MessageApiTest(test.TestCase):
             version=messages.MESSAGES_BASE_MICRO_VERSION)
         req.environ['cinder.context'] = self.ctxt
 
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
+        self.assertRaises(exception.MessageNotFound, self.controller.show,
                           req, fakes.FAKE_UUID)
 
     def test_show_pre_microversion(self):
@@ -120,7 +119,7 @@ class MessageApiTest(test.TestCase):
             '/v3/messages/%s' % fakes.FAKE_UUID,
             version=messages.MESSAGES_BASE_MICRO_VERSION)
 
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
+        self.assertRaises(exception.MessageNotFound, self.controller.delete,
                           req, fakes.FAKE_UUID)
 
     def test_index(self):

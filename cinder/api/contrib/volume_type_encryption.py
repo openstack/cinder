@@ -45,10 +45,8 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         return encryption_specs
 
     def _check_type(self, context, type_id):
-        try:
-            volume_types.get_volume_type(context, type_id)
-        except exception.VolumeTypeNotFound as ex:
-            raise webob.exc.HTTPNotFound(explanation=ex.msg)
+        # Not found exception will be handled at the wsgi level
+        volume_types.get_volume_type(context, type_id)
 
     def _check_encryption_input(self, encryption, create=True):
         if encryption.get('key_size') is not None:
@@ -153,7 +151,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
         encryption_specs = self._get_volume_type_encryption(context, type_id)
 
         if id not in encryption_specs:
-            raise webob.exc.HTTPNotFound()
+            raise exception.VolumeTypeEncryptionNotFound(type_id=type_id)
 
         return {id: encryption_specs[id]}
 
@@ -166,10 +164,8 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             expl = _('Cannot delete encryption specs. Volume type in use.')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         else:
-            try:
+            # Not found exception will be handled at the wsgi level
                 db.volume_type_encryption_delete(context, type_id)
-            except exception.VolumeTypeEncryptionNotFound as ex:
-                raise webob.exc.HTTPNotFound(explanation=ex.msg)
 
         return webob.Response(status_int=202)
 

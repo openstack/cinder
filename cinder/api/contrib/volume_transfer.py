@@ -41,10 +41,8 @@ class VolumeTransferController(wsgi.Controller):
         """Return data about active transfers."""
         context = req.environ['cinder.context']
 
-        try:
-            transfer = self.transfer_api.get(context, transfer_id=id)
-        except exception.TransferNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        transfer = self.transfer_api.get(context, transfer_id=id)
 
         return self._view_builder.detail(req, transfer)
 
@@ -102,10 +100,9 @@ class VolumeTransferController(wsgi.Controller):
 
         try:
             new_transfer = self.transfer_api.create(context, volume_id, name)
+        # Not found exception will be handled at the wsgi level
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.VolumeNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
 
         transfer = self._view_builder.create(req,
                                              dict(new_transfer))
@@ -150,10 +147,8 @@ class VolumeTransferController(wsgi.Controller):
 
         LOG.info(_LI("Delete transfer with id: %s"), id, context=context)
 
-        try:
-            self.transfer_api.delete(context, transfer_id=id)
-        except exception.TransferNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        self.transfer_api.delete(context, transfer_id=id)
         return webob.Response(status_int=202)
 
 

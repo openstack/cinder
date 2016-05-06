@@ -45,12 +45,10 @@ class CgsnapshotsController(wsgi.Controller):
         LOG.debug('show called for member %s', id)
         context = req.environ['cinder.context']
 
-        try:
-            cgsnapshot = self.cgsnapshot_api.get_cgsnapshot(
-                context,
-                cgsnapshot_id=id)
-        except exception.CgSnapshotNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        cgsnapshot = self.cgsnapshot_api.get_cgsnapshot(
+            context,
+            cgsnapshot_id=id)
 
         return self._view_builder.detail(req, cgsnapshot)
 
@@ -66,8 +64,9 @@ class CgsnapshotsController(wsgi.Controller):
                 context,
                 cgsnapshot_id=id)
             self.cgsnapshot_api.delete_cgsnapshot(context, cgsnapshot)
-        except exception.CgSnapshotNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.CgSnapshotNotFound:
+            # Not found exception will be handled at the wsgi level
+            raise
         except exception.InvalidCgSnapshot as e:
             raise exc.HTTPBadRequest(explanation=six.text_type(e))
         except Exception:
@@ -112,10 +111,8 @@ class CgsnapshotsController(wsgi.Controller):
             msg = _("'consistencygroup_id' must be specified")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        try:
-            group = self.cgsnapshot_api.get(context, group_id)
-        except exception.ConsistencyGroupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        group = self.cgsnapshot_api.get(context, group_id)
 
         name = cgsnapshot.get('name', None)
         description = cgsnapshot.get('description', None)
@@ -127,10 +124,9 @@ class CgsnapshotsController(wsgi.Controller):
         try:
             new_cgsnapshot = self.cgsnapshot_api.create_cgsnapshot(
                 context, group, name, description)
+        # Not found exception will be handled at the wsgi level
         except exception.InvalidCgSnapshot as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.CgSnapshotNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
 
         retval = self._view_builder.summary(req, new_cgsnapshot)
 

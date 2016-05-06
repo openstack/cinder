@@ -878,7 +878,7 @@ class VolumeImageActionsTest(test.TestCase):
         body = {"os-volume_upload_image": vol}
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' %
                                       (fake.PROJECT_ID, id))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller._volume_upload_image,
                           req,
                           id,

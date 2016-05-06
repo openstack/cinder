@@ -15,12 +15,10 @@
 
 from oslo_config import cfg
 import webob
-from webob import exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import messages as messages_view
-from cinder import exception
 from cinder.message import api as message_api
 from cinder.message import defined_messages
 import cinder.policy
@@ -56,10 +54,8 @@ class MessagesController(wsgi.Controller):
         """Return the given message."""
         context = req.environ['cinder.context']
 
-        try:
-            message = self.message_api.get(context, id)
-        except exception.MessageNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        message = self.message_api.get(context, id)
 
         check_policy(context, 'get', message)
 
@@ -74,12 +70,10 @@ class MessagesController(wsgi.Controller):
         """Delete a message."""
         context = req.environ['cinder.context']
 
-        try:
-            message = self.message_api.get(context, id)
-            check_policy(context, 'delete', message)
-            self.message_api.delete(context, message)
-        except exception.MessageNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        message = self.message_api.get(context, id)
+        check_policy(context, 'delete', message)
+        self.message_api.delete(context, message)
 
         return webob.Response(status_int=204)
 

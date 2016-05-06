@@ -230,8 +230,8 @@ class SnapshotApiTest(test.TestCase):
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v2/snapshots/not-the-uuid')
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.update, req,
-                          'not-the-uuid', body)
+        self.assertRaises(exception.SnapshotNotFound, self.controller.update,
+                          req, 'not-the-uuid', body)
 
     @mock.patch.object(volume.api.API, "delete_snapshot",
                        side_effect=stubs.stub_snapshot_update)
@@ -264,7 +264,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API, "delete_snapshot", stub_snapshot_delete)
         snapshot_id = INVALID_UUID
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
+        self.assertRaises(exception.SnapshotNotFound, self.controller.delete,
                           req, snapshot_id)
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
@@ -296,7 +296,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
         req = fakes.HTTPRequest.blank('/v2/snapshots/%s' % snapshot_id)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.show, req, snapshot_id)
 
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())

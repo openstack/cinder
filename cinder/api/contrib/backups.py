@@ -47,11 +47,9 @@ class BackupsController(wsgi.Controller):
         LOG.debug('show called for member %s', id)
         context = req.environ['cinder.context']
 
-        try:
-            backup = self.backup_api.get(context, backup_id=id)
-            req.cache_db_backup(backup)
-        except exception.BackupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        backup = self.backup_api.get(context, backup_id=id)
+        req.cache_db_backup(backup)
 
         return self._view_builder.detail(req, backup)
 
@@ -65,8 +63,7 @@ class BackupsController(wsgi.Controller):
         try:
             backup = self.backup_api.get(context, id)
             self.backup_api.delete(context, backup)
-        except exception.BackupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
         except exception.InvalidBackup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
@@ -157,9 +154,7 @@ class BackupsController(wsgi.Controller):
         except (exception.InvalidVolume,
                 exception.InvalidSnapshot) as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except (exception.VolumeNotFound,
-                exception.SnapshotNotFound) as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Other not found exceptions will be handled at the wsgi level
         except exception.ServiceNotFound as error:
             raise exc.HTTPInternalServerError(explanation=error.msg)
 
@@ -187,16 +182,13 @@ class BackupsController(wsgi.Controller):
                                                   backup_id=id,
                                                   volume_id=volume_id,
                                                   name=name)
+        # Not found exception will be handled at the wsgi level
         except exception.InvalidInput as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
         except exception.InvalidVolume as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
         except exception.InvalidBackup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
-        except exception.BackupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
-        except exception.VolumeNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.VolumeSizeExceedsAvailableQuota as error:
             raise exc.HTTPRequestEntityTooLarge(
                 explanation=error.msg, headers={'Retry-After': '0'})
@@ -216,8 +208,7 @@ class BackupsController(wsgi.Controller):
 
         try:
             backup_info = self.backup_api.export_record(context, id)
-        except exception.BackupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
         except exception.InvalidBackup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
 
@@ -247,10 +238,9 @@ class BackupsController(wsgi.Controller):
             new_backup = self.backup_api.import_record(context,
                                                        backup_service,
                                                        backup_url)
-        except exception.BackupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
         except exception.InvalidBackup as error:
             raise exc.HTTPBadRequest(explanation=error.msg)
+        # Other Not found exceptions will be handled at the wsgi level
         except exception.ServiceNotFound as error:
             raise exc.HTTPInternalServerError(explanation=error.msg)
 

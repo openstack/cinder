@@ -180,7 +180,7 @@ class volumeMetaDataTest(test.TestCase):
 
     def test_index_nonexistent_volume(self):
         req = fakes.HTTPRequest.blank(self.url)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.index,
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
@@ -200,7 +200,7 @@ class volumeMetaDataTest(test.TestCase):
 
     def test_show_nonexistent_volume(self):
         req = fakes.HTTPRequest.blank(self.url + '/key2')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.show, req,
                           fake.WILL_NOT_BE_FOUND_ID, 'key2')
 
@@ -208,7 +208,7 @@ class volumeMetaDataTest(test.TestCase):
         self.stubs.Set(cinder.db, 'volume_metadata_get',
                        return_empty_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key6')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeMetadataNotFound,
                           self.controller.show, req, fake.VOLUME_ID, 'key6')
 
     @mock.patch.object(cinder.db, 'volume_metadata_delete')
@@ -237,7 +237,7 @@ class volumeMetaDataTest(test.TestCase):
         req.method = 'DELETE'
         req.environ['cinder.context'] = fake_context
 
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
+        self.assertRaises(exc.VolumeNotFound, self.controller.delete,
                           req, fake.WILL_NOT_BE_FOUND_ID, 'key1')
 
     def test_delete_meta_not_found(self):
@@ -245,7 +245,7 @@ class volumeMetaDataTest(test.TestCase):
                        return_empty_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         req.method = 'DELETE'
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeMetadataNotFound,
                           self.controller.delete, req, fake.VOLUME_ID, 'key6')
 
     @mock.patch.object(cinder.db, 'volume_metadata_update')
@@ -349,7 +349,7 @@ class volumeMetaDataTest(test.TestCase):
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dump_as_bytes(body)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.create, req,
                           fake.WILL_NOT_BE_FOUND_ID, body)
 
@@ -496,7 +496,7 @@ class volumeMetaDataTest(test.TestCase):
         body = {'metadata': {'key10': 'value10'}}
         req.body = jsonutils.dump_as_bytes(body)
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.update_all, req,
                           fake.WILL_NOT_BE_FOUND_ID, body)
 
@@ -530,7 +530,7 @@ class volumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.update, req,
                           fake.WILL_NOT_BE_FOUND_ID, 'key1',
                           body)

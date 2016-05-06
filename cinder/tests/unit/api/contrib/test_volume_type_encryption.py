@@ -147,7 +147,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
         expected = {
             'itemNotFound': {
                 'code': 404,
-                'message': ('The resource could not be found.')
+                'message': ('Volume type encryption for type %s does not '
+                            'exist.' % volume_type['id'])
             }
         }
         self.assertEqual(expected, res_dict)

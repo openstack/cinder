@@ -173,7 +173,7 @@ class volumeMetaDataTest(test.TestCase):
         self.stubs.Set(db, 'volume_metadata_get',
                        return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(self.url)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller.index, req, self.url)
 
     def test_index_no_data(self):
@@ -194,14 +194,14 @@ class volumeMetaDataTest(test.TestCase):
         self.stubs.Set(db, 'volume_metadata_get',
                        return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key2')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller.show, req, self.req_id, 'key2')
 
     def test_show_meta_not_found(self):
         self.stubs.Set(db, 'volume_metadata_get',
                        return_empty_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key6')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeMetadataNotFound,
                           self.controller.show, req, self.req_id, 'key6')
 
     @mock.patch.object(db, 'volume_metadata_delete')
@@ -255,7 +255,7 @@ class volumeMetaDataTest(test.TestCase):
         with mock.patch.object(self.controller.volume_api,
                                'get') as get_volume:
             get_volume.return_value = fake_volume
-            self.assertRaises(webob.exc.HTTPNotFound,
+            self.assertRaises(exception.VolumeNotFound,
                               self.controller.delete, req,
                               self.req_id, 'key1')
             get_volume.assert_called_once_with(fake_context, self.req_id)
@@ -265,7 +265,7 @@ class volumeMetaDataTest(test.TestCase):
                        return_empty_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         req.method = 'DELETE'
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeMetadataNotFound,
                           self.controller.delete, req, self.req_id, 'key6')
 
     @mock.patch.object(db, 'volume_metadata_update')
@@ -393,7 +393,7 @@ class volumeMetaDataTest(test.TestCase):
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dump_as_bytes(body)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller.create, req, self.req_id, body)
 
     @mock.patch.object(db, 'volume_metadata_update')
@@ -538,7 +538,7 @@ class volumeMetaDataTest(test.TestCase):
         body = {'metadata': {'key10': 'value10'}}
         req.body = jsonutils.dump_as_bytes(body)
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller.update_all, req, '100', body)
 
     @mock.patch.object(db, 'volume_metadata_update')
@@ -592,7 +592,7 @@ class volumeMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller.update, req, self.req_id, 'key1',
                           body)
 

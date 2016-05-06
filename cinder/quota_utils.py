@@ -12,8 +12,6 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
-import webob
-
 from oslo_config import cfg
 from oslo_log import log as logging
 
@@ -101,30 +99,26 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
     If the domain is being used as the top most parent, it is filtered out from
     the parent tree and parent_id.
     """
-    try:
-        keystone = _keystone_client(context)
-        generic_project = GenericProjectInfo(project_id, keystone.version)
-        if keystone.version == 'v3':
-            project = keystone.projects.get(project_id,
-                                            subtree_as_ids=subtree_as_ids,
-                                            parents_as_ids=parents_as_ids)
+    keystone = _keystone_client(context)
+    generic_project = GenericProjectInfo(project_id, keystone.version)
+    if keystone.version == 'v3':
+        project = keystone.projects.get(project_id,
+                                        subtree_as_ids=subtree_as_ids,
+                                        parents_as_ids=parents_as_ids)
 
-            generic_project.parent_id = None
-            if project.parent_id != project.domain_id:
-                generic_project.parent_id = project.parent_id
+        generic_project.parent_id = None
+        if project.parent_id != project.domain_id:
+            generic_project.parent_id = project.parent_id
 
-            generic_project.subtree = (
-                project.subtree if subtree_as_ids else None)
+        generic_project.subtree = (
+            project.subtree if subtree_as_ids else None)
 
-            generic_project.parents = None
-            if parents_as_ids:
-                generic_project.parents = _filter_domain_id_from_parents(
-                    project.domain_id, project.parents)
+        generic_project.parents = None
+        if parents_as_ids:
+            generic_project.parents = _filter_domain_id_from_parents(
+                project.domain_id, project.parents)
 
-            generic_project.is_admin_project = is_admin_project
-    except exceptions.NotFound:
-        msg = (_("Tenant ID: %s does not exist.") % project_id)
-        raise webob.exc.HTTPNotFound(explanation=msg)
+        generic_project.is_admin_project = is_admin_project
 
     return generic_project
 

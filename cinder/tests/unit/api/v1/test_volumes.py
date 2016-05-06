@@ -98,8 +98,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v1/volumes')
         # Raise 404 when type name isn't valid
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
-                          req, body)
+        self.assertRaises(exc.VolumeTypeNotFoundByName,
+                          self.controller.create, req, body)
         # Use correct volume type name
         vol.update(dict(volume_type=CONF.default_volume_type))
         body.update(dict(volume=vol))
@@ -385,7 +385,7 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank(
             '/v1/volumes/%s' % fake.WILL_NOT_BE_FOUND_ID)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.update,
                           req, fake.WILL_NOT_BE_FOUND_ID, body)
 
@@ -650,7 +650,7 @@ class VolumeApiTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank(
             '/v1/volumes/%s' % fake.WILL_NOT_BE_FOUND_ID)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.show,
                           req,
                           fake.WILL_NOT_BE_FOUND_ID)
@@ -768,7 +768,7 @@ class VolumeApiTest(test.TestCase):
     def test_volume_delete_no_volume(self):
         req = fakes.HTTPRequest.blank(
             '/v1/volumes/%s' % fake.WILL_NOT_BE_FOUND_ID)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.VolumeNotFound,
                           self.controller.delete,
                           req,
                           fake.WILL_NOT_BE_FOUND_ID)

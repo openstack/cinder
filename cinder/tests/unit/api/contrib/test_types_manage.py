@@ -168,8 +168,8 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' % (
             fake.PROJECT_ID, NOT_FOUND_VOLUME_TYPE))
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller._delete,
-                          req, NOT_FOUND_VOLUME_TYPE)
+        self.assertRaises(exception.VolumeTypeNotFound,
+                          self.controller._delete, req, NOT_FOUND_VOLUME_TYPE)
         self.assertEqual(1, len(self.notifier.notifications))
 
     def test_volume_types_with_volumes_destroy(self):
@@ -429,7 +429,7 @@ class VolumeTypesManageApiTest(test.TestCase):
         req.method = 'PUT'
 
         self.assertEqual(0, len(self.notifier.notifications))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeTypeNotFound,
                           self.controller._update, req,
                           NOT_FOUND_VOLUME_TYPE, body)
         self.assertEqual(1, len(self.notifier.notifications))

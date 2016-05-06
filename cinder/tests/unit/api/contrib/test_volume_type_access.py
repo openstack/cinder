@@ -132,7 +132,7 @@ class VolumeTypeAccessTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/types/os-volume-type-access' %
                                       fake.PROJECT_ID,
                                       use_admin_context=True)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeTypeAccessNotFound,
                           self.type_access_controller.index,
                           req, fake.VOLUME_TYPE2_ID)
 
@@ -330,7 +330,7 @@ class VolumeTypeAccessTest(test.TestCase):
         body = {'removeProjectAccess': {'project': PROJ2_UUID}}
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID), use_admin_context=True)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeTypeAccessNotFound,
                           self.type_action_controller._removeProjectAccess,
                           req, fake.VOLUME_TYPE4_ID, body)
 

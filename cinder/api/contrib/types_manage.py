@@ -95,7 +95,8 @@ class VolumeTypesManageController(wsgi.Controller):
         except exception.VolumeTypeNotFoundByName as err:
             self._notify_volume_type_error(
                 context, 'volume_type.create', err, name=name)
-            raise webob.exc.HTTPNotFound(explanation=err.msg)
+            # Not found exception will be handled at the wsgi level
+            raise
 
         return self._view_builder.show(req, vol_type)
 
@@ -148,7 +149,8 @@ class VolumeTypesManageController(wsgi.Controller):
         except exception.VolumeTypeNotFound as err:
             self._notify_volume_type_error(
                 context, 'volume_type.update', err, id=id)
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+            # Not found exception will be handled at the wsgi level
+            raise
         except exception.VolumeTypeExists as err:
             self._notify_volume_type_error(
                 context, 'volume_type.update', err, volume_type=vol_type)
@@ -180,7 +182,8 @@ class VolumeTypesManageController(wsgi.Controller):
         except exception.VolumeTypeNotFound as err:
             self._notify_volume_type_error(
                 context, 'volume_type.delete', err, id=id)
-            raise webob.exc.HTTPNotFound(explanation=err.msg)
+            # Not found exception will be handled at the wsgi level
+            raise
 
         return webob.Response(status_int=202)
 

@@ -21,7 +21,6 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
 from cinder.api.views import manageable_volumes as list_manageable_view
-from cinder import exception
 from cinder.i18n import _
 from cinder import utils
 from cinder import volume as cinder_volume
@@ -120,16 +119,14 @@ class VolumeManageController(wsgi.Controller):
         kwargs = {}
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
-            try:
-                if not uuidutils.is_uuid_like(req_volume_type):
-                    kwargs['volume_type'] = \
-                        volume_types.get_volume_type_by_name(
-                            context, req_volume_type)
-                else:
-                    kwargs['volume_type'] = volume_types.get_volume_type(
+            # Not found exception will be handled at the wsgi level
+            if not uuidutils.is_uuid_like(req_volume_type):
+                kwargs['volume_type'] = \
+                    volume_types.get_volume_type_by_name(
                         context, req_volume_type)
-            except exception.VolumeTypeNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            else:
+                kwargs['volume_type'] = volume_types.get_volume_type(
+                    context, req_volume_type)
         else:
             kwargs['volume_type'] = {}
 
@@ -138,13 +135,11 @@ class VolumeManageController(wsgi.Controller):
         kwargs['metadata'] = volume.get('metadata', None)
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['bootable'] = utils.get_bool_param('bootable', volume)
-        try:
-            new_volume = self.volume_api.manage_existing(context,
-                                                         volume['host'],
-                                                         volume['ref'],
-                                                         **kwargs)
-        except exception.ServiceNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at wsgi level
+        new_volume = self.volume_api.manage_existing(context,
+                                                     volume['host'],
+                                                     volume['ref'],
+                                                     **kwargs)
 
         utils.add_visible_admin_metadata(new_volume)
 

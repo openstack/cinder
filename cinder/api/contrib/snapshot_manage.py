@@ -21,7 +21,6 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import manageable_snapshots as list_manageable_view
 from cinder.api.views import snapshots as snapshot_views
-from cinder import exception
 from cinder.i18n import _
 from cinder import volume as cinder_volume
 
@@ -107,11 +106,8 @@ class SnapshotManageController(wsgi.Controller):
 
         # Check whether volume exists
         volume_id = snapshot['volume_id']
-        try:
-            volume = self.volume_api.get(context, volume_id)
-        except exception.VolumeNotFound:
-            msg = _("Volume: %s could not be found.") % volume_id
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, volume_id)
 
         LOG.debug('Manage snapshot request body: %s', body)
 
@@ -121,15 +117,12 @@ class SnapshotManageController(wsgi.Controller):
         snapshot_parameters['description'] = snapshot.get('description', None)
         snapshot_parameters['name'] = snapshot.get('name')
 
-        try:
-            new_snapshot = self.volume_api.manage_existing_snapshot(
-                context,
-                snapshot['ref'],
-                volume,
-                **snapshot_parameters)
-        except exception.ServiceNotFound:
-            msg = _("Service %s not found.") % CONF.volume_topic
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        new_snapshot = self.volume_api.manage_existing_snapshot(
+            context,
+            snapshot['ref'],
+            volume,
+            **snapshot_parameters)
 
         return self._view_builder.detail(req, new_snapshot)
 

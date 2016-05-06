@@ -171,7 +171,7 @@ class SnapshotMetaDataTest(test.TestCase):
             exc.SnapshotNotFound(snapshot_id=fake.WILL_NOT_BE_FOUND_ID)
 
         req = fakes.HTTPRequest.blank(self.url)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotNotFound,
                           self.controller.index, req, self.url)
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -211,7 +211,7 @@ class SnapshotMetaDataTest(test.TestCase):
             exc.SnapshotNotFound(snapshot_id=fake.WILL_NOT_BE_FOUND_ID)
 
         req = fakes.HTTPRequest.blank(self.url + '/key2')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotNotFound,
                           self.controller.show, req, fake.SNAPSHOT_ID, 'key2')
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -225,7 +225,7 @@ class SnapshotMetaDataTest(test.TestCase):
         snapshot_get_by_id.return_value = snapshot_obj
 
         req = fakes.HTTPRequest.blank(self.url + '/key6')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotMetadataNotFound,
                           self.controller.show, req, fake.SNAPSHOT_ID, 'key6')
 
     @mock.patch('cinder.db.snapshot_metadata_delete')
@@ -249,7 +249,7 @@ class SnapshotMetaDataTest(test.TestCase):
     def test_delete_nonexistent_snapshot(self):
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'DELETE'
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotNotFound,
                           self.controller.delete, req,
                           fake.WILL_NOT_BE_FOUND_ID, 'key1')
 
@@ -265,7 +265,7 @@ class SnapshotMetaDataTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         req.method = 'DELETE'
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotMetadataNotFound,
                           self.controller.delete, req,
                           fake.SNAPSHOT_ID, 'key6')
 
@@ -375,7 +375,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dump_as_bytes(body)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotNotFound,
                           self.controller.create, req,
                           fake.WILL_NOT_BE_FOUND_ID, body)
 
@@ -504,7 +504,7 @@ class SnapshotMetaDataTest(test.TestCase):
         body = {'metadata': {'key10': 'value10'}}
         req.body = jsonutils.dump_as_bytes(body)
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotNotFound,
                           self.controller.update_all, req,
                           fake.WILL_NOT_BE_FOUND_ID, body)
 
@@ -538,7 +538,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exc.SnapshotNotFound,
                           self.controller.update, req,
                           fake.WILL_NOT_BE_FOUND_ID, 'key1',
                           body)

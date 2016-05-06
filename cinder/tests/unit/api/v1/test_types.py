@@ -16,7 +16,6 @@
 import uuid
 
 from oslo_utils import timeutils
-import webob
 
 from cinder.api.v1 import types
 from cinder.api.views import types as views_types
@@ -108,7 +107,7 @@ class VolumeTypesApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v1/%s/types/%s' %
                                       (fake.PROJECT_ID,
                                        fake.WILL_NOT_BE_FOUND_ID))
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
+        self.assertRaises(exception.VolumeTypeNotFound, self.controller.show,
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
     def test_view_builder_show(self):

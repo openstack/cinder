@@ -41,10 +41,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         return dict(extra_specs=specs_dict)
 
     def _check_type(self, context, type_id):
-        try:
-            volume_types.get_volume_type(context, type_id)
-        except exception.VolumeTypeNotFound as ex:
-            raise webob.exc.HTTPNotFound(explanation=ex.msg)
+        # Not found exception will be handled at the wsgi level
+        volume_types.get_volume_type(context, type_id)
 
     def index(self, req, type_id):
         """Returns the list of extra specs for a given volume type."""
@@ -108,9 +106,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         if id in specs['extra_specs']:
             return {id: specs['extra_specs'][id]}
         else:
-            msg = _("Volume Type %(type_id)s has no extra spec with key "
-                    "%(id)s.") % ({'type_id': type_id, 'id': id})
-            raise webob.exc.HTTPNotFound(explanation=msg)
+            raise exception.VolumeTypeExtraSpecsNotFound(
+                volume_type_id=type_id, extra_specs_key=id)
 
     def delete(self, req, type_id, id):
         """Deletes an existing extra spec."""
@@ -118,10 +115,8 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         authorize(context)
 
-        try:
-            db.volume_type_extra_specs_delete(context, type_id, id)
-        except exception.VolumeTypeExtraSpecsNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        db.volume_type_extra_specs_delete(context, type_id, id)
 
         notifier_info = dict(type_id=type_id, id=id)
         notifier = rpc.get_notifier('volumeTypeExtraSpecs')
