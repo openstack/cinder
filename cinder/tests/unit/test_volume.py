@@ -59,6 +59,7 @@ from cinder.tests.unit.brick import fake_lvm
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_driver
+from cinder.tests.unit import fake_service
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
@@ -5928,6 +5929,109 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
                                                             vol)
         mock_secure.assert_called_once_with()
         self.assertTrue(result)
+
+
+class ReplicationTestCase(BaseVolumeTestCase):
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'failover_host')
+    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch.object(cinder.db, 'service_get_by_args')
+    def test_failover_host(self, mock_db_args, mock_db_update,
+                           mock_failover):
+        """Test replication failover_host."""
+
+        mock_db_args.return_value = fake_service.fake_service_obj(
+            self.context,
+            binary='cinder-volume')
+        mock_db_update.return_value = {'replication_status': 'enabled'}
+        volume_api = cinder.volume.api.API()
+        volume_api.failover_host(self.context, host=CONF.host)
+        mock_failover.assert_called_once_with(self.context, CONF.host, None)
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'failover_host')
+    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch.object(cinder.db, 'service_get_by_args')
+    def test_failover_host_unexpected_status(self, mock_db_args,
+                                             mock_db_update,
+                                             mock_failover):
+        """Test replication failover_host unxepected status."""
+
+        mock_db_args.return_value = fake_service.fake_service_obj(
+            self.context,
+            binary='cinder-volume')
+        mock_db_update.return_value = None
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.failover_host,
+                          self.context,
+                          host=CONF.host)
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'freeze_host')
+    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch.object(cinder.db, 'service_get_by_args')
+    def test_freeze_host(self, mock_db_args, mock_db_update,
+                         mock_freeze):
+        """Test replication freeze_host."""
+
+        mock_db_args.return_value = fake_service.fake_service_obj(
+            self.context,
+            binary='cinder-volume')
+        mock_db_update.return_value = {'frozen': False}
+        volume_api = cinder.volume.api.API()
+        volume_api.freeze_host(self.context, host=CONF.host)
+        mock_freeze.assert_called_once_with(self.context, CONF.host)
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'freeze_host')
+    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch.object(cinder.db, 'service_get_by_args')
+    def test_freeze_host_unexpected_status(self, mock_db_args,
+                                           mock_db_update,
+                                           mock_freeze):
+        """Test replication freeze_host unexpected status."""
+
+        mock_db_args.return_value = fake_service.fake_service_obj(
+            self.context,
+            binary='cinder-volume')
+        mock_db_update.return_value = None
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.freeze_host,
+                          self.context,
+                          host=CONF.host)
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'thaw_host')
+    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch.object(cinder.db, 'service_get_by_args')
+    def test_thaw_host(self, mock_db_args, mock_db_update,
+                       mock_thaw):
+        """Test replication thaw_host."""
+
+        mock_db_args.return_value = fake_service.fake_service_obj(
+            self.context,
+            binary='cinder-volume')
+        mock_db_update.return_value = {'frozen': True}
+        mock_thaw.return_value = True
+        volume_api = cinder.volume.api.API()
+        volume_api.thaw_host(self.context, host=CONF.host)
+        mock_thaw.assert_called_once_with(self.context, CONF.host)
+
+    @mock.patch.object(volume_rpcapi.VolumeAPI, 'thaw_host')
+    @mock.patch.object(cinder.db, 'conditional_update')
+    @mock.patch.object(cinder.db, 'service_get_by_args')
+    def test_thaw_host_unexpected_status(self, mock_db_args,
+                                         mock_db_update,
+                                         mock_thaw):
+        """Test replication thaw_host unexpected status."""
+
+        mock_db_args.return_value = fake_service.fake_service_obj(
+            self.context,
+            binary='cinder-volume')
+        mock_db_update.return_value = None
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.InvalidInput,
+                          volume_api.thaw_host,
+                          self.context,
+                          host=CONF.host)
 
 
 class CopyVolumeToImageTestCase(BaseVolumeTestCase):

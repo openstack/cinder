@@ -326,26 +326,3 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
             snapshot_model_updates.append(snapshot_model_update)
 
         return model_update, snapshot_model_updates
-
-    # Replication functions here are not really doing replication.
-    # They are added so that we can do basic sanity check of replication
-    # APIs.
-    def replication_enable(self, context, volume):
-        return
-
-    def replication_disable(self, context, volume):
-        return
-
-    def replication_failover(self, context, volume, secondary):
-        return {'model_update': {'status': volume['status']},
-                'replication_driver_data': {'replication_driver_data': ''}}
-
-    def list_replication_targets(self, context, volume):
-        targets = []
-        remote_target = {'managed_backend_name': None,
-                         'type': 'unmanaged',
-                         'remote_device_id': 'fake_remote_device',
-                         'san_ip': '123.456.78.90'}
-        targets.append(remote_target)
-        return {'volume_id': volume['id'],
-                'targets': targets}
