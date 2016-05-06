@@ -19,6 +19,7 @@ This driver requires Purity version 4.0.0 or later.
 """
 
 import math
+import platform
 import re
 import uuid
 
@@ -102,13 +103,14 @@ EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
 
 CONNECT_LOCK_NAME = 'PureVolumeDriver_connect'
 
-
 UNMANAGED_SUFFIX = '-unmanaged'
 MANAGE_SNAP_REQUIRED_API_VERSIONS = ['1.4', '1.5']
 REPLICATION_REQUIRED_API_VERSIONS = ['1.3', '1.4', '1.5']
 
 REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL = 5  # 5 seconds
 REPL_SETTINGS_PROPAGATE_MAX_RETRIES = 36  # 36 * 5 = 180 seconds
+
+USER_AGENT_BASE = 'OpenStack Cinder'
 
 
 def pure_driver_debug_trace(f):
@@ -156,6 +158,12 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._is_replication_enabled = False
         self._active_backend_id = kwargs.get('active_backend_id', None)
         self._failed_over_primary_array = None
+        self._user_agent = '%(base)s %(class)s/%(version)s (%(platform)s)' % {
+            'base': USER_AGENT_BASE,
+            'class': self.__class__.__name__,
+            'version': self.VERSION,
+            'platform': platform.platform()
+        }
 
     def parse_replication_configs(self):
         self._replication_interval = (
@@ -959,26 +967,13 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _get_flasharray(self, san_ip, api_token, rest_version=None,
                         verify_https=None, ssl_cert_path=None):
-        # Older versions of the module (1.4.0) do not support setting ssl certs
-        # TODO(patrickeast): In future releases drop support for 1.4.0
-        if self._client_version_greater_than([1, 4, 0]):
-            array = purestorage.FlashArray(san_ip,
-                                           api_token=api_token,
-                                           rest_version=rest_version,
-                                           verify_https=verify_https,
-                                           ssl_cert=ssl_cert_path)
-        else:
-            if verify_https or ssl_cert_path is not None:
-                msg = _('HTTPS certificate verification was requested '
-                        'but cannot be enabled with purestorage '
-                        'module version %(version)s. Upgrade to a '
-                        'newer version to enable this feature.') % {
-                    'version': purestorage.VERSION
-                }
-                raise exception.PureDriverException(reason=msg)
-            array = purestorage.FlashArray(san_ip,
-                                           api_token=api_token,
-                                           rest_version=rest_version)
+
+        array = purestorage.FlashArray(san_ip,
+                                       api_token=api_token,
+                                       rest_version=rest_version,
+                                       verify_https=verify_https,
+                                       ssl_cert=ssl_cert_path,
+                                       user_agent=self._user_agent)
         array_info = array.get()
         array.array_name = array_info["array_name"]
         array.array_id = array_info["id"]

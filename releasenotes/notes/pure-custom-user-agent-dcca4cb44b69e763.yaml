@@ -1,0 +1,4 @@
+---
+upgrade:
+  - Pure volume drivers will need 'purestorage' python module v1.6.0 or newer.
+    Support for 1.4.x has been removed.
