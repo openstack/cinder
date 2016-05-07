@@ -1057,6 +1057,7 @@ class API(base.Base):
                  resource=volume)
         return db_meta
 
+    @wrap_check_policy
     def get_snapshot_metadata(self, context, snapshot):
         """Get all metadata associated with a snapshot."""
         snapshot_obj = self.get_snapshot(context, snapshot.id)
@@ -1064,6 +1065,7 @@ class API(base.Base):
                  resource=snapshot)
         return snapshot_obj.metadata
 
+    @wrap_check_policy
     def delete_snapshot_metadata(self, context, snapshot, key):
         """Delete the given metadata item from a snapshot."""
         snapshot_obj = self.get_snapshot(context, snapshot.id)
@@ -1071,6 +1073,7 @@ class API(base.Base):
         LOG.info(_LI("Delete snapshot metadata completed successfully."),
                  resource=snapshot)
 
+    @wrap_check_policy
     def update_snapshot_metadata(self, context,
                                  snapshot, metadata,
                                  delete=False):
