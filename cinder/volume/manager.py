@@ -1353,50 +1353,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                         exc_info=True, resource={'type': 'image',
                                                  'id': image_id})
 
-    def _driver_data_namespace(self):
-        return self.driver.configuration.safe_get('driver_data_namespace') \
-            or self.driver.configuration.safe_get('volume_backend_name') \
-            or self.driver.__class__.__name__
-
-    def _get_driver_initiator_data(self, context, connector):
-        data = None
-        initiator = connector.get('initiator', False)
-        if initiator:
-            if not isinstance(initiator, six.string_types):
-                msg = _('Invalid initiator value received')
-                raise exception.InvalidInput(reason=msg)
-            namespace = self._driver_data_namespace()
-            try:
-                data = self.db.driver_initiator_data_get(
-                    context,
-                    initiator,
-                    namespace
-                )
-            except exception.CinderException:
-                LOG.exception(_LE("Failed to get driver initiator data for"
-                                  " initiator %(initiator)s and namespace"
-                                  " %(namespace)s"),
-                              {'initiator': initiator,
-                               'namespace': namespace})
-                raise
-        return data
-
-    def _save_driver_initiator_data(self, context, connector, model_update):
-        if connector.get('initiator', False) and model_update:
-            namespace = self._driver_data_namespace()
-            try:
-                self.db.driver_initiator_data_update(context,
-                                                     connector['initiator'],
-                                                     namespace,
-                                                     model_update)
-            except exception.CinderException:
-                LOG.exception(_LE("Failed to update initiator data for"
-                                  " initiator %(initiator)s and backend"
-                                  " %(backend)s"),
-                              {'initiator': connector['initiator'],
-                               'backend': namespace})
-                raise
-
     def initialize_connection(self, context, volume_id, connector):
         """Prepare volume for connection from host represented by connector.
 
@@ -1467,15 +1423,8 @@ class VolumeManager(manager.SchedulerDependentManager):
             LOG.exception(_LE("Model update failed."), resource=volume)
             raise exception.ExportFailure(reason=six.text_type(ex))
 
-        initiator_data = self._get_driver_initiator_data(context, connector)
         try:
-            if initiator_data:
-                conn_info = self.driver.initialize_connection(volume,
-                                                              connector,
-                                                              initiator_data)
-            else:
-                conn_info = self.driver.initialize_connection(volume,
-                                                              connector)
+            conn_info = self.driver.initialize_connection(volume, connector)
         except Exception as err:
             err_msg = (_("Driver initialize connection failed "
                          "(error: %(err)s).") % {'err': six.text_type(err)})
@@ -1484,12 +1433,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             self.driver.remove_export(context.elevated(), volume)
 
             raise exception.VolumeBackendAPIException(data=err_msg)
-
-        initiator_update = conn_info.get('initiator_update', None)
-        if initiator_update:
-            self._save_driver_initiator_data(context, connector,
-                                             initiator_update)
-            del conn_info['initiator_update']
 
         # Add qos_specs to connection info
         typeid = volume['volume_type_id']

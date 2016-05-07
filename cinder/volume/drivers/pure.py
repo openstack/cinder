@@ -408,7 +408,7 @@ class PureBaseVolumeDriver(san.SanDriver):
     def create_export(self, context, volume, connector):
         pass
 
-    def initialize_connection(self, volume, connector, initiator_data=None):
+    def initialize_connection(self, volume, connector):
         """Connect the volume to the specified initiator in Purity.
 
         This implementation is specific to the host type (iSCSI, FC, etc).
@@ -1493,9 +1493,9 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         return None
 
     @pure_driver_debug_trace
-    def initialize_connection(self, volume, connector, initiator_data=None):
+    def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
-        connection = self._connect(volume, connector, initiator_data)
+        connection = self._connect(volume, connector)
         target_ports = self._get_target_iscsi_ports()
         multipath = connector.get("multipath", False)
 
@@ -1557,8 +1557,8 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     def _generate_chap_secret():
         return volume_utils.generate_password()
 
-    @classmethod
-    def _get_chap_credentials(cls, host, data):
+    def _get_chap_credentials(self, host, initiator):
+        data = self.driver_utils.get_driver_initiator_data(initiator)
         initiator_updates = None
         username = host
         password = None
@@ -1568,22 +1568,25 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
                     password = d["value"]
                     break
         if not password:
-            password = cls._generate_chap_secret()
+            password = self._generate_chap_secret()
             initiator_updates = {
                 "set_values": {
                     CHAP_SECRET_KEY: password
                 }
             }
-        return username, password, initiator_updates
+        if initiator_updates:
+            self.driver_utils.save_driver_initiator_data(initiator,
+                                                         initiator_updates)
+        return username, password
 
     @utils.synchronized(CONNECT_LOCK_NAME, external=True)
-    def _connect(self, volume, connector, initiator_data):
+    def _connect(self, volume, connector):
         """Connect the host and volume; return dict describing connection."""
         iqn = connector["initiator"]
 
         if self.configuration.use_chap_auth:
-            (chap_username, chap_password, initiator_update) = \
-                self._get_chap_credentials(connector['host'], initiator_data)
+            (chap_username, chap_password) = \
+                self._get_chap_credentials(connector['host'], iqn)
 
         current_array = self._get_current_array()
         vol_name = self._get_vol_name(volume)
@@ -1631,9 +1634,6 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             connection["auth_username"] = chap_username
             connection["auth_password"] = chap_password
 
-            if initiator_update:
-                connection["initiator_update"] = initiator_update
-
         return connection
 
 
@@ -1663,7 +1663,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
     @fczm_utils.AddFCZone
     @pure_driver_debug_trace
-    def initialize_connection(self, volume, connector, initiator_data=None):
+    def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info."""
         current_array = self._get_current_array()
         connection = self._connect(volume, connector)

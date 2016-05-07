@@ -30,6 +30,7 @@ from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
 from cinder import objects
 from cinder import utils
+from cinder.volume import driver_utils
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import throttling
 
@@ -316,6 +317,9 @@ class BaseVD(object):
             self.configuration.append_config_values(iser_opts)
             utils.setup_tracing(self.configuration.safe_get('trace_flags'))
 
+        self.driver_utils = driver_utils.VolumeDriverUtils(
+            self._driver_data_namespace(), self.db)
+
         self._execute = execute
         self._stats = {}
         self._throttle = None
@@ -336,6 +340,14 @@ class BaseVD(object):
 
         # set True by manager after successful check_for_setup
         self._initialized = False
+
+    def _driver_data_namespace(self):
+        namespace = self.__class__.__name__
+        if self.configuration:
+            namespace = self.configuration.safe_get('driver_data_namespace')
+            if not namespace:
+                namespace = self.configuration.safe_get('volume_backend_name')
+        return namespace
 
     def _is_non_recoverable(self, err, non_recoverable_list):
         for item in non_recoverable_list:
@@ -1490,26 +1502,13 @@ class BaseVD(object):
         return
 
     @abc.abstractmethod
-    def initialize_connection(self, volume, connector, initiator_data=None):
+    def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
 
         :param volume: The volume to be attached
         :param connector: Dictionary containing information about what is being
                           connected to.
-        :param initiator_data (optional): A dictionary of
-                                          driver_initiator_data
-                                          objects with key-value pairs that
-                                          have been saved for this initiator
-                                          by a driver in previous
-                                          initialize_connection calls.
-        :returns conn_info: A dictionary of connection information. This can
-                            optionally include a "initiator_updates" field.
-
-        The "initiator_updates" field must be a dictionary containing a
-        "set_values" and/or "remove_values" field. The "set_values" field must
-        be a dictionary of key-value pairs to be set/updated in the db. The
-        "remove_values" field must be a list of keys, previously set with
-        "set_values", that will be deleted from the db.
+        :returns conn_info: A dictionary of connection information.
         """
         return
 
