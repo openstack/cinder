@@ -612,7 +612,6 @@ class Message(BASE, CinderBase):
     resource_uuid = Column(String(36), nullable=True)
     # Operation specific event ID.
     event_id = Column(String(255), nullable=False)
-    created_at = Column(DateTime, default=lambda: timeutils.utcnow())
     # After this time the message may no longer exist
     expires_at = Column(DateTime, nullable=True)
 
