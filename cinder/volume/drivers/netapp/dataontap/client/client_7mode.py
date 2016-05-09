@@ -14,8 +14,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-
-import copy
 import math
 import time
 
@@ -54,45 +52,6 @@ class Client(client_base.Client):
 
         ontapi_1_20 = ontapi_version >= (1, 20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_20)
-
-    def _invoke_vfiler_api(self, na_element, vfiler):
-        server = copy.copy(self.connection)
-        server.set_vfiler(vfiler)
-        result = server.invoke_successfully(na_element, True)
-        return result
-
-    def _invoke_7mode_iterator_getter(self, start_api_name, next_api_name,
-                                      end_api_name, record_container_tag_name,
-                                      maximum=100):
-        """Invoke a 7-mode iterator-style getter API."""
-        data = []
-
-        start_api = netapp_api.NaElement(start_api_name)
-        start_result = self.connection.invoke_successfully(start_api)
-        tag = start_result.get_child_content('tag')
-        if not tag:
-            return data
-
-        try:
-            while True:
-                next_api = netapp_api.NaElement(next_api_name)
-                next_api.add_new_child('tag', tag)
-                next_api.add_new_child('maximum', six.text_type(maximum))
-                next_result = self.connection.invoke_successfully(next_api)
-                records = next_result.get_child_content('records') or 0
-                if int(records) == 0:
-                    break
-
-                record_container = next_result.get_child_by_name(
-                    record_container_tag_name) or netapp_api.NaElement('none')
-
-                data.extend(record_container.get_children())
-        finally:
-            end_api = netapp_api.NaElement(end_api_name)
-            end_api.add_new_child('tag', tag)
-            self.connection.invoke_successfully(end_api)
-
-        return data
 
     def get_iscsi_target_details(self):
         """Gets the iSCSI target portal details."""

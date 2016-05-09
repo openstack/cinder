@@ -211,7 +211,7 @@ class CapabilitiesLibrary(object):
         Most extra-spec key-value tuples may be directly compared.  But the
         boolean values that take the form '<is> True' or '<is> False' must be
         modified to allow comparison with the values we keep in the SSC and
-        report the the scheduler.
+        report to the scheduler.
         """
 
         modified_extra_specs = copy.deepcopy(extra_specs)
