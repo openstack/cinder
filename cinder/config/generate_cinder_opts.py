@@ -16,8 +16,12 @@ import os
 import subprocess
 import textwrap
 
+BASEDIR = os.path.split(os.path.realpath(__file__))[0] + "/../../"
+
+
 if __name__ == "__main__":
-    opt_file = open("cinder/opts.py", 'a')
+    os.chdir(BASEDIR)
+    opt_file = open("cinder/opts.py", 'w')
     opt_dict = {}
     dir_trees_list = []
     REGISTER_OPTS_STR = "CONF.register_opts("
@@ -42,13 +46,12 @@ if __name__ == "__main__":
 
     opt_file.write("import itertools\n\n")
 
-    targetdir = os.environ['TARGETDIR']
-    basedir = os.environ['BASEDIRESC']
+    targetdir = 'cinder'
 
     common_string = ('find ' + targetdir + ' -type f -name "*.py" !  '
                      '-path "*/tests/*" -exec grep -l "%s" {} '
-                     '+  | sed -e "s/^' + basedir +
-                     '\///g" | sort -u')
+                     '+  | sed -e "s|^' + BASEDIR +
+                     '|/|g" | sort -u')
 
     cmd_opts = common_string % REGISTER_OPTS_STR
     output_opts = subprocess.check_output('{}'.format(cmd_opts), shell = True)
