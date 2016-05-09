@@ -55,3 +55,8 @@ user documentation.
 3.3
 ---
   Added /messages API.
+
+3.4
+---
+  Added the filter parameters ``glance_metadata`` to
+  list/detail volumes requests.

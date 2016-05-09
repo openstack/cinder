@@ -1180,6 +1180,44 @@ class DBAPIVolumeTestCase(BaseTest):
                                                       'deleted', 'deleted_at',
                                                       'updated_at'])
 
+    def _create_volume_with_image_metadata(self):
+        vol1 = db.volume_create(self.ctxt, {'display_name': 'test1'})
+        db.volume_glance_metadata_create(self.ctxt, vol1.id, 'image_name',
+                                         'imageTestOne')
+        db.volume_glance_metadata_create(self.ctxt, vol1.id, 'test_image_key',
+                                         'test_image_value')
+        vol2 = db.volume_create(self.ctxt, {'display_name': 'test2'})
+        db.volume_glance_metadata_create(self.ctxt, vol2.id, 'image_name',
+                                         'imageTestTwo')
+        db.volume_glance_metadata_create(self.ctxt, vol2.id, 'disk_format',
+                                         'qcow2')
+        return [vol1, vol2]
+
+    def test_volume_get_all_by_image_name_and_key(self):
+        vols = self._create_volume_with_image_metadata()
+        filters = {'glance_metadata': {'image_name': 'imageTestOne',
+                                       'test_image_key': 'test_image_value'}}
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['desc'], filters=filters)
+        self._assertEqualListsOfObjects([vols[0]], volumes)
+
+    def test_volume_get_all_by_image_name_and_disk_format(self):
+        vols = self._create_volume_with_image_metadata()
+        filters = {'glance_metadata': {'image_name': 'imageTestTwo',
+                                       'disk_format': 'qcow2'}}
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['desc'], filters=filters)
+        self._assertEqualListsOfObjects([vols[1]], volumes)
+
+    def test_volume_get_all_by_invalid_image_metadata(self):
+        # Test with invalid image metadata
+        self._create_volume_with_image_metadata()
+        filters = {'glance_metadata': {'invalid_key': 'invalid_value',
+                                       'test_image_key': 'test_image_value'}}
+        volumes = db.volume_get_all(self.ctxt, None, None, ['created_at'],
+                                    ['desc'], filters=filters)
+        self._assertEqualListsOfObjects([], volumes)
+
 
 class DBAPISnapshotTestCase(BaseTest):
 

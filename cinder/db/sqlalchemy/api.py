@@ -1694,10 +1694,10 @@ def _process_volume_filters(query, filters):
     # Apply exact match filters for everything else, ensure that the
     # filter value exists on the model
     for key in filters.keys():
-        # metadata is unique, must be a dict
-        if key == 'metadata':
+        # metadata/glance_metadata is unique, must be a dict
+        if key in ('metadata', 'glance_metadata'):
             if not isinstance(filters[key], dict):
-                LOG.debug("'metadata' filter value is not valid.")
+                LOG.debug("'%s' filter value is not valid.", key)
                 return None
             continue
         try:
@@ -1727,6 +1727,11 @@ def _process_volume_filters(query, filters):
             for k, v in value.items():
                 query = query.filter(or_(col_attr.any(key=k, value=v),
                                          col_ad_attr.any(key=k, value=v)))
+        elif key == 'glance_metadata':
+            # use models.Volume.volume_glance_metadata as column attribute key.
+            col_gl_attr = models.Volume.volume_glance_metadata
+            for k, v in value.items():
+                query = query.filter(col_gl_attr.any(key=k, value=v))
         elif isinstance(value, (list, tuple, set, frozenset)):
             # Looking for values in a list; apply to query directly
             column_attr = getattr(models.Volume, key)

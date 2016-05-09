@@ -97,6 +97,9 @@ class VolumeController(wsgi.Controller):
         sort_keys, sort_dirs = common.get_sort_params(params)
         filters = params
 
+        # NOTE(wanghao): Always removing glance_metadata since we support it
+        # only in API version >= 3.4.
+        filters.pop('glance_metadata', None)
         utils.remove_invalid_filter_options(context,
                                             filters,
                                             self._get_volume_filter_options())

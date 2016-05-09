@@ -50,6 +50,7 @@ REST_API_VERSION_HISTORY = """
     * 3.2 - Bootable filters in volume GET call no longer treats all values
             passed to it as true.
     * 3.3 - Add user messages APIs.
+    * 3.4 - Adds glance_metadata filter to list/detail volumes in _get_volumes.
 
 """
 
@@ -58,7 +59,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.3"
+_MAX_API_VERSION = "3.4"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
@@ -128,7 +129,7 @@ class APIVersionRequest(utils.ComparableMixin):
                             method.end_version,
                             method.experimental)
 
-    def matches(self, min_version, max_version, experimental=False):
+    def matches(self, min_version, max_version=None, experimental=False):
         """Compares this version to the specified min/max range.
 
         Returns whether the version object represents a version
