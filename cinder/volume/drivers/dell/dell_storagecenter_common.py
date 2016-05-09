@@ -838,7 +838,9 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             with self._client.open_connection() as api:
                 api.manage_existing(volume['id'], existing_ref)
                 # Replicate if we are supposed to.
-                scvolume = api.find_volume(volume['id'])
+                volume_name = volume.get('id')
+                provider_id = volume.get('provider_id')
+                scvolume = api.find_volume(volume_name, provider_id)
                 model_update = self._create_replications(api, volume, scvolume)
                 if model_update:
                     return model_update
@@ -879,7 +881,9 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :param volume: Cinder volume to unmanage
         """
         with self._client.open_connection() as api:
-            scvolume = api.find_volume(volume['id'])
+            volume_name = volume.get('id')
+            provider_id = volume.get('provider_id')
+            scvolume = api.find_volume(volume_name, provider_id)
             if scvolume:
                 api.unmanage(scvolume)
 
@@ -935,10 +939,11 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         # Any spec changes?
         if diff['extra_specs']:
             volume_name = volume.get('id')
+            provider_id = volume.get('provider_id')
             with self._client.open_connection() as api:
                 try:
                     # Get our volume
-                    scvolume = api.find_volume(volume_name)
+                    scvolume = api.find_volume(volume_name, provider_id)
                     if scvolume is None:
                         LOG.error(_LE('Retype unable to find volume %s.'),
                                   volume_name)
@@ -1115,7 +1120,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             _('replication_failover failed. '
               'Backend not configured for failover')))
 
-    def _get_unmanaged_replay(self, api, volume_name, existing_ref):
+    def _get_unmanaged_replay(self, api, volume_name, provider_id,
+                              existing_ref):
         replay_name = None
         if existing_ref:
             replay_name = existing_ref.get('source-name')
@@ -1125,7 +1131,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref, reason=msg)
         # Find our volume.
-        scvolume = api.find_volume(volume_name)
+        scvolume = api.find_volume(volume_name, provider_id)
         if not scvolume:
             # Didn't find it.
             msg = (_('_get_unmanaged_replay: Cannot find volume id %s')
@@ -1169,9 +1175,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         with self._client.open_connection() as api:
             # Find our unmanaged snapshot. This will raise on error.
             volume_name = snapshot.get('volume_id')
+            provider_id = snapshot.get('provider_id')
             snapshot_id = snapshot.get('id')
             screplay = self._get_unmanaged_replay(api, volume_name,
-                                                  existing_ref)
+                                                  provider_id, existing_ref)
             # Manage means update description and update expiration.
             if not api.manage_replay(screplay, snapshot_id):
                 # That didn't work. Error.
@@ -1198,9 +1205,10 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         When calculating the size, round up to the next GB.
         """
         volume_name = snapshot.get('volume_id')
+        provider_id = snapshot.get('provider_id')
         with self._client.open_connection() as api:
             screplay = self._get_unmanaged_replay(api, volume_name,
-                                                  existing_ref)
+                                                  provider_id, existing_ref)
             sz, rem = dell_storagecenter_api.StorageCenterApi.size_to_gb(
                 screplay['size'])
             if rem > 0:
