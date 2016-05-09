@@ -6,20 +6,17 @@
 # Alec Hans <alec.hans@alecsoft.net>, 2013
 # Ettore Atalan <atalanttore@googlemail.com>, 2014
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
-# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
-# Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
 # Frank Kloeker <eumel@arcor.de>, 2016. #zanata
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
-# Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev24\n"
+"Project-Id-Version: cinder 8.0.1.dev26\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-21 16:43+0000\n"
+"POT-Creation-Date: 2016-05-01 21:05+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-04-21 12:10+0000\n"
+"PO-Revision-Date: 2016-04-27 08:22+0000\n"
 "Last-Translator: Monika Wolf <vcomas3@de.ibm.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -154,7 +151,8 @@ msgstr ""
 #, python-format
 msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
 msgstr ""
-"%(service)s-Service ist nicht %(status)s auf Speicher-Appliance %(host)s"
+"%(service)s-Dienst befindet sich nicht %(status)s auf der Speicher-"
+"Appliance: %(host)s"
 
 #, python-format
 msgid "%(value_name)s must be <= %(max_value)d"
@@ -184,7 +182,7 @@ msgid ""
 "%s cannot be accessed. Verify that GPFS is active and file system is mounted."
 msgstr ""
 "Auf %s kann nicht zugegriffen werden. Überprüfen Sie, ob GPFS aktiv ist und "
-"das Dateisystem angehängt ist."
+"das Dateisystem eingehängt ist."
 
 #, python-format
 msgid "%s cannot be resized using clone operation as it contains no blocks."
@@ -421,7 +419,7 @@ msgid "Add initiator to array error."
 msgstr "Fehler beim Hinzufügen des Initiators zum Array."
 
 msgid "Add lun to cache error."
-msgstr "Fehler beim Hinzufügen der LUN zum Cache."
+msgstr "Fehler beim Hinzufügen der LUN zum Zwischenspeicher."
 
 msgid "Add lun to partition error."
 msgstr "Fehler beim Hinzufügen der LUN zur Partition."
@@ -839,14 +837,16 @@ msgstr ""
 "\""
 
 msgid "CONCERTO version is not supported"
-msgstr "CONCERTO-Version wird nicht unterstützt"
+msgstr "CONCERTO-Version wird nicht unterstützt."
 
 #, python-format
 msgid "CPG (%s) doesn't exist on array"
 msgstr "CPG (%s) ist im Array nicht vorhanden."
 
 msgid "Cache name is None, please set smartcache:cachename in key."
-msgstr "Cachename ist None. Legen Sie smartcache:cachename im Schlüssel fest."
+msgstr ""
+"Zwischenspeichername ist None. Legen Sie smartcache:cachename im Schlüssel "
+"fest."
 
 #, python-format
 msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
@@ -868,7 +868,8 @@ msgstr "FC-Port kann nicht zu Host hinzugefügt werden."
 
 #, python-format
 msgid "Can not find cache id by cache name %(name)s."
-msgstr "Cache-ID nach Cachename %(name)s wurde nicht gefunden."
+msgstr ""
+"Zwischenspeicher-ID nach Zwischenspeichername %(name)s wurde nicht gefunden."
 
 #, python-format
 msgid "Can not find partition id by name %(name)s."
@@ -904,7 +905,9 @@ msgstr ""
 
 #, python-format
 msgid "Can't find cache name on the array, cache name is: %(name)s."
-msgstr "Cachename wurde im Array nicht gefunden. Cachename: %(name)s."
+msgstr ""
+"Zwischenspeichername wurde im Array nicht gefunden. Zwischenspeichername: "
+"%(name)s."
 
 #, python-format
 msgid "Can't find lun info on the array. volume: %(id)s, lun name: %(name)s."
@@ -1174,16 +1177,15 @@ msgstr ""
 
 #, python-format
 msgid "Cannot delete LUN %s while snapshots exist."
-msgstr ""
-"LUN %s kann nicht gelöscht werden, wenn Momentaufnahmen vorhanden sind."
+msgstr "LUN %s kann nicht gelöscht werden, wenn Schattenkopien vorhanden sind."
 
 #, python-format
 msgid ""
 "Cannot delete cache volume: %(cachevol_name)s. It was updated at "
 "%(updated_at)s and currently has %(numclones)d volume instances."
 msgstr ""
-"Cachedatenträger %(cachevol_name)s kann nicht gelöscht werden. Er wurde am "
-"%(updated_at)s aktualisiert und enthält aktuell %(numclones)d "
+"Zwischenspeicherdatenträger %(cachevol_name)s kann nicht gelöscht werden. Er "
+"wurde am %(updated_at)s aktualisiert und enthält zurzeit %(numclones)d "
 "Datenträgerinstanzen."
 
 #, python-format
@@ -1245,8 +1247,7 @@ msgstr ""
 
 #, python-format
 msgid "Cannot find device number for volume %(volumeName)s."
-msgstr ""
-"Gerätenummer für Datenträger %(volumeName)s kann nicht gefunden werden."
+msgstr "Gerätenummer für Datenträger %(volumeName)s wurde nicht gefunden."
 
 msgid "Cannot find migration task."
 msgstr "Migrationsaufgabe wurde nicht gefunden."
@@ -1293,7 +1294,7 @@ msgid ""
 "%(maskingViewInstanceName)s. "
 msgstr ""
 "Speichergruppe %(sgGroupName)s kann nicht aus Maskenansicht "
-"%(maskingViewInstanceName)s. "
+"%(maskingViewInstanceName)s abgerufen werden. "
 
 #, python-format
 msgid ""
@@ -1319,7 +1320,7 @@ msgstr ""
 "Systemprotokoll auf Fehler."
 
 msgid "Cannot ping DRBDmanage backend"
-msgstr "DRBDmanage-Back-End kann nicht mit Ping überprüft werden"
+msgstr "DRBDmanage-Backend kann nicht mit Ping überprüft werden."
 
 #, python-format
 msgid "Cannot place volume %(id)s on %(host)s"
@@ -1626,7 +1627,7 @@ msgid "Container size smaller than required file size."
 msgstr "Container ist kleiner als die erforderliche Dateigröße."
 
 msgid "Content type not supported."
-msgstr "Inhaltstyp nicht unterstützt."
+msgstr "Inhaltstyp wird nicht unterstützt."
 
 #, python-format
 msgid "Controller Configuration Service not found on %(storageSystemName)s."
@@ -1841,7 +1842,9 @@ msgid "Create lungroup error."
 msgstr "Fehler beim Erstellen der LUN-Gruppe."
 
 msgid "Create manager volume flow failed."
-msgstr "Datenträgerfluss zum Erstellen eines Managers fehlgeschlagen."
+msgstr ""
+"Der Ablauf für die Erstellung eines Verwaltungsdatenträgers ist "
+"fehlgeschlagen."
 
 msgid "Create port group error."
 msgstr "Fehler beim Erstellen der Portgruppe."
@@ -1906,8 +1909,8 @@ msgid ""
 "Currently mapped host for volume %(vol)s is in unsupported host group with "
 "%(group)s."
 msgstr ""
-"Der aktuell zugeordnete Host für Datenträger %(vol)s befindet sich in einer "
-"nicht unterstützten Hostgruppe mit %(group)s."
+"Der zurzeit zugeordnete Host für den Datenträger %(vol)s befindet sich in "
+"einer nicht unterstützten Hostgruppe mit %(group)s."
 
 msgid "DEPRECATED: Deploy v1 of the Cinder API."
 msgstr "Veraltet: Version 1 der Cinder-API implementieren."
@@ -1997,7 +2000,7 @@ msgstr ""
 "'%(dedup_version)s'. Version '%(version)s' ist installiert."
 
 msgid "Dedup luns cannot be extended"
-msgstr "Dedup-LUNs können nicht erweitert werden"
+msgstr "Dedup-LUNs können nicht erweitert werden."
 
 msgid ""
 "Deduplication Enabler is not installed. Can not create deduplicated volume"
@@ -2201,8 +2204,8 @@ msgid ""
 "SSC extra specs. The proxy version must be at at least %(min_version)s."
 msgstr ""
 "E-series-Proxy-API-Version %(current_version)s unterstützt nicht den "
-"gesamten Satz an zusätzlichen SSC-Spezifikationen. Mindestens erforderliche "
-"Proxy-Version: %(min_version)s."
+"vollständigen Satz an zusätzlichen SSC-Spezifikationen. Mindestens "
+"erforderliche Proxy-Version: %(min_version)s."
 
 #, python-format
 msgid ""
@@ -2291,8 +2294,8 @@ msgid ""
 "Project: %(project)s  Clone project: %(clone_proj)s Return code: "
 "%(ret.status)d Message: %(ret.data)s."
 msgstr ""
-"Fehler beim Klonen von Momentaufnahme %(snapshot)s für Datenträger %(lun)s "
-"von Pool %(pool)s Projekt: %(project)s Klonprojekt: %(clone_proj)s "
+"Fehler beim Klonen von Schattenkopie %(snapshot)s für Datenträger %(lun)s "
+"von Pool %(pool)s Projekt: %(project)s Klonprojekt: %(clone_proj)s. "
 "Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
 
 #, python-format
@@ -2378,7 +2381,7 @@ msgid ""
 "Error Creating Share: %(name)s Return code: %(ret.status)d Message: "
 "%(ret.data)s."
 msgstr ""
-"Fehler beim Erstellen von freigegebenem Verzeichnis %(name)s Rückgabecode: "
+"Fehler beim Erstellen von freigegebenem Verzeichnis %(name)s. Rückgabecode: "
 "%(ret.status)d Nachricht: %(ret.data)s."
 
 #, python-format
@@ -2386,8 +2389,8 @@ msgid ""
 "Error Creating Snapshot: %(snapshot)s onVolume: %(lun)s to Pool: %(pool)s "
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
-"Fehler beim Erstellen von Momentaufnahme %(snapshot)s für Datenträger "
-"%(lun)s in Pool: %(pool)s Projekt: %(project)s Rückgabecode: %(ret.status)d "
+"Fehler beim Erstellen von Schattenkopie %(snapshot)s für Datenträger %(lun)s "
+"in Pool: %(pool)s Projekt: %(project)s. Rückgabecode: %(ret.status)d "
 "Nachricht: %(ret.data)s."
 
 #, python-format
@@ -2395,7 +2398,7 @@ msgid ""
 "Error Creating Snapshot: %(snapshot)s onshare: %(share)s to Pool: %(pool)s "
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
-"Fehler beim Erstellen von Momentaufnahme %(snapshot)s für freigegebenes "
+"Fehler beim Erstellen von Schattenkopie %(snapshot)s für freigegebenes "
 "Verzeichnis %(share)s in Pool %(pool)s Projekt: %(project)s  Rückgabecode: "
 "%(ret.status)d Nachricht: %(ret.data)s."
 
@@ -2476,7 +2479,7 @@ msgid ""
 "Error Deleting Snapshot: %(snapshot)s on Share: %(share)s to Pool: %(pool)s "
 "Project: %(project)s Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
-"Fehler beim Löschen von Momentaufnahme %(snapshot)s für freigegebenes "
+"Fehler beim Löschen von Schattenkopie %(snapshot)s für freigegebenes "
 "Verzeichnis %(share)s aus Pool %(pool)s Projekt: %(project)s  Rückgabecode: "
 "%(ret.status)d Nachricht: %(ret.data)s."
 
@@ -2485,8 +2488,8 @@ msgid ""
 "Error Deleting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
-"Fehler beim Löschen von Momentaufnahme %(snapshot)s für Datenträger %(lun)s "
-"aus Pool: %(pool)s Projekt: %(project)s  Rückgabecode: %(ret.status)d "
+"Fehler beim Löschen von Schattenkopie %(snapshot)s für Datenträger %(lun)s "
+"aus Pool: %(pool)s Projekt: %(project)s.  Rückgabecode: %(ret.status)d "
 "Nachricht: %(ret.data)s."
 
 #, python-format
@@ -2550,7 +2553,7 @@ msgid ""
 "code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
 "Fehler beim Abrufen von freigegebenem Verzeichnis %(share)s für Pool "
-"%(pool)s Projekt: %(project)s Rückgabecode: %(ret.status)d Nachricht: "
+"%(pool)s Projekt: %(project)s. Rückgabecode: %(ret.status)d Nachricht: "
 "%(ret.data)s."
 
 #, python-format
@@ -2558,8 +2561,8 @@ msgid ""
 "Error Getting Snapshot: %(snapshot)s on Volume: %(lun)s to Pool: %(pool)s "
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
-"Fehler beim Abrufen von Momentaufnahme %(snapshot)s für Datenträger %(lun)s "
-"in Pool %(pool)s Projekt: %(project)s Rückgabecode: %(ret.status)d "
+"Fehler beim Abrufen von Schattenkopie %(snapshot)s für Datenträger %(lun)s "
+"in Pool %(pool)s Projekt: %(project)s. Rückgabecode: %(ret.status)d "
 "Nachricht: %(ret.data)s."
 
 #, python-format
@@ -2576,7 +2579,7 @@ msgid ""
 "code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
 "Fehler beim Abrufen von Datenträger %(lun)s für Pool: %(pool)s Projekt: "
-"%(project)s Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
+"%(project)s. Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
 
 #, python-format
 msgid ""
@@ -2605,7 +2608,7 @@ msgid ""
 "Project: %(project)s  Return code: %(ret.status)d Message: %(ret.data)s."
 msgstr ""
 "Fehler beim Festlegen der Eigenschaften %(props)s für Datenträger %(lun)s "
-"von Pool %(pool)s Projekt: %(project)s Rückgabecode: %(ret.status)d "
+"von Pool %(pool)s Projekt: %(project)s. Rückgabecode: %(ret.status)d "
 "Nachricht: %(ret.data)s."
 
 #, python-format
@@ -2644,7 +2647,7 @@ msgid ""
 "Error Verifying Service: %(service)s Return code: %(ret.status)d Message: "
 "%(ret.data)s."
 msgstr ""
-"Fehler beim Überprüfen von Service %(service)s Rückgabecode: %(ret.status)d "
+"Fehler beim Überprüfen des %(service)s-Diensts. Rückgabecode: %(ret.status)d "
 "Nachricht:  %(ret.data)s."
 
 #, python-format
@@ -2745,7 +2748,7 @@ msgid ""
 "Message: %(ret.data)s ."
 msgstr ""
 "Fehler beim Bearbeiten von freigegebenem Verzeichnis %(share)s für Pool "
-"%(pool)s Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
+"%(pool)s. Rückgabecode: %(ret.status)d Nachricht: %(ret.data)s."
 
 #, python-format
 msgid ""
@@ -2799,7 +2802,7 @@ msgid ""
 "Error getting appliance version details. Return code: %(ret.status)d "
 "Message: %(ret.data)s ."
 msgstr ""
-"Fehler beim Abrufen der Details der Einheitenversion. Rückgabecode: %(ret."
+"Fehler beim Abrufen der Details der Appliance-Version. Rückgabecode: %(ret."
 "status)d Nachricht: %(ret.data)s."
 
 #, python-format
@@ -2895,8 +2898,8 @@ msgid ""
 "Error modifying Service: %(service)s Return code: %(ret.status)d Message: "
 "%(ret.data)s."
 msgstr ""
-"Fehler beim Ändern von Service %(service)s Rückgabecode: %(ret.status)d "
-"Nachricht:  %(ret.data)s."
+"Fehler beim Ändern von %(service)s-Dienst. Rückgabecode: %(ret.status)d "
+"Nachricht: %(ret.data)s."
 
 #, python-format
 msgid ""
@@ -3164,7 +3167,7 @@ msgstr ""
 
 #, python-format
 msgid "Exception: %s"
-msgstr "Ausnahmesituation: %s"
+msgstr "Ausnahme: %s"
 
 #, python-format
 msgid "Expected a uuid but received %(uuid)s."
@@ -3194,7 +3197,7 @@ msgstr ""
 
 #, python-format
 msgid "Expected volume size was %d"
-msgstr "Erwartete Volumengröße war %d"
+msgstr "Erwartete Datenträgergröße war %d"
 
 #, python-format
 msgid ""
@@ -3282,7 +3285,7 @@ msgstr ""
 
 #, python-format
 msgid "Failed to Extend Volume %(volname)s"
-msgstr "Fehler beim Erweitern von Datenträger %(volname)s"
+msgstr "Fehler beim Erweitern von Datenträger %(volname)s."
 
 #, python-format
 msgid "Failed to Login to 3PAR (%(url)s) because %(err)s"
@@ -3363,7 +3366,7 @@ msgid "Failed to connect to Dell REST API"
 msgstr "Fehler beim Herstellen einer Verbindung zur Dell-REST-API. "
 
 msgid "Failed to connect to array"
-msgstr "Fehler beim Verbinden mit Array"
+msgstr "Fehler beim Verbinden mit Array."
 
 #, python-format
 msgid "Failed to connect to sheep daemon. addr: %(addr)s, port: %(port)s"
@@ -3415,22 +3418,22 @@ msgstr ""
 "Fehler beim Erstellen einer temporären Schattenkopie für Datenträger %s."
 
 msgid "Failed to create api volume flow."
-msgstr "Fehler beim Erstellen des API-Datenträgerflusses."
+msgstr "Der API-Ablauf für die Erstellung des Datenträgers ist fehlgeschlagen."
 
 #, python-format
 msgid "Failed to create cg snapshot %(id)s due to %(reason)s."
 msgstr ""
-"Fehler beim Erstellen der Momentaufnahme von Konsistenzgruppe (Cgsnapshot) "
+"Fehler beim Erstellen der Schattenkopie der Konsistenzgruppe (Cgsnapshot) "
 "%(id)s. Ursache: %(reason)s."
 
 #, python-format
 msgid "Failed to create consistency group %(id)s due to %(reason)s."
 msgstr ""
-"Fehler beim Erstellen von Konsistenzgruppe %(id)s. Ursache: %(reason)s."
+"Fehler beim Erstellen der Konsistenzgruppe %(id)s. Ursache: %(reason)s."
 
 #, python-format
 msgid "Failed to create consistency group %(id)s:%(ret)s."
-msgstr "Fehler beim Erstellen von Konsistenzgruppe %(id)s:%(ret)s."
+msgstr "Fehler beim Erstellen der Konsistenzgruppe %(id)s:%(ret)s."
 
 #, python-format
 msgid ""
@@ -3512,7 +3515,9 @@ msgid "Failed to create replica."
 msgstr "Fehler beim Erstellen des Replikats."
 
 msgid "Failed to create scheduler manager volume flow"
-msgstr "Fehler beim Erstellen des Datenträgerflusses für Scheduler-Manager"
+msgstr ""
+"Der Ablauf für die Erstellung des Scheduler-Verwaltungsdatenträgers ist "
+"fehlgeschlagen."
 
 #, python-format
 msgid "Failed to create snapshot %s"
@@ -3533,13 +3538,13 @@ msgstr "Fehler beim Erstellen einer Schattenkopie für Datenträger %s."
 #, python-format
 msgid "Failed to create snapshot policy on volume %(vol)s: %(res)s."
 msgstr ""
-"Fehler beim Erstellen der Momentaufnahmerichtlinie auf Datenträger %(vol)s: "
+"Fehler beim Erstellen der Schattenkopierichtlinie auf Datenträger %(vol)s: "
 "%(res)s."
 
 #, python-format
 msgid "Failed to create snapshot resource area on volume %(vol)s: %(res)s."
 msgstr ""
-"Fehler beim Erstellen des Momentaufnahmeressourcenbereichs auf Datenträger "
+"Fehler beim Erstellen des Schattenkopieressourcenbereichs auf Datenträger "
 "%(vol)s: %(res)s."
 
 msgid "Failed to create snapshot."
@@ -3584,12 +3589,12 @@ msgstr ""
 #, python-format
 msgid "Failed to delete cgsnapshot %(id)s due to %(reason)s."
 msgstr ""
-"Fehler beim Löschen der Momentaufnahme von Konsistenzgruppe (Cgsnapshot) "
+"Fehler beim Löschen der Schattenkopie der Konsistenzgruppe (Cgsnapshot) "
 "%(id)s. Ursache: %(reason)s."
 
 #, python-format
 msgid "Failed to delete consistency group %(id)s due to %(reason)s."
-msgstr "Fehler beim Löschen von Konsistenzgruppe %(id)s. Ursache: %(reason)s."
+msgstr "Fehler beim Löschen der Konsistenzgruppe %(id)s. Ursache: %(reason)s."
 
 #, python-format
 msgid "Failed to delete consistency group: %(cgName)s."
@@ -3610,7 +3615,7 @@ msgstr "Fehler beim Löschen des Geräts."
 msgid ""
 "Failed to delete fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr ""
-"Fehler beim Löschen von fileset für Konsistenzgruppe %(cgname)s. Fehler: "
+"Fehler beim Löschen der Dateigruppe für Konsistenzgruppe %(cgname)s. Fehler: "
 "%(excmsg)s."
 
 msgid "Failed to delete iqn."
@@ -3673,8 +3678,8 @@ msgstr ""
 msgid ""
 "Failed to ensure snapshot resource area, could not locate volume for id %s"
 msgstr ""
-"Fehler beim Sicherstellen des Momentaufnahmeressourcenbereichs. Datenträger "
-"für ID %s wurde nicht gefunden"
+"Fehler beim Sicherstellen des Schattenkopieressourcenbereichs. Datenträger "
+"für ID %s wurde nicht gefunden."
 
 msgid "Failed to establish SSC connection."
 msgstr "Fehler beim Herstellen der SSC-Verbindung."
@@ -3830,7 +3835,7 @@ msgid "Failed to get name server info."
 msgstr "Fehler beim Abrufen der Namensserverinformationen."
 
 msgid "Failed to get network info."
-msgstr "Fehler beim Abrufen der Informationen zum Netz."
+msgstr "Fehler beim Abrufen der Netzinformationen."
 
 #, python-format
 msgid "Failed to get new part id in new pool: %(pool_id)s."
@@ -3910,8 +3915,8 @@ msgstr "Datenträger-Backend konnte nicht identifiziert werden."
 #, python-format
 msgid "Failed to link fileset for the share %(cgname)s. Error: %(excmsg)s."
 msgstr ""
-"Fehler beim Verlinken von fileset für freigegebene %(cgname)s. Fehler: "
-"%(excmsg)s."
+"Fehler beim Verlinken der Dateigruppe für das freigegebene Verzeichnis "
+"%(cgname)s. Fehler: %(excmsg)s."
 
 #, python-format
 msgid "Failed to log on %s Array (invalid login?)."
@@ -3930,10 +3935,10 @@ msgid ""
 "reason: %s"
 msgstr ""
 "Fehler beim Stellen einer Anforderung an den Datera-Cluster-Endpunkt. "
-"Ursache dafür ist: %s"
+"Ursache: %s"
 
 msgid "Failed to manage api volume flow."
-msgstr "Fehler beim Verwalten des API-Datenträgerflusses."
+msgstr "Der API-Ablauf für die Verwaltung des Datenträgers ist fehlgeschlagen."
 
 #, python-format
 msgid ""
@@ -4032,7 +4037,7 @@ msgid ""
 "valid I/O group."
 msgstr ""
 "Verwalten eines vorhandenen Datenträgers fehlgeschlagen, da der zu "
-"verwaltende Datenträger nicht in einer gültigen E/A-Gruppe war."
+"verwaltende Datenträger nicht in einer gültigen E/A-Gruppe ist."
 
 msgid ""
 "Failed to manage existing volume due to the volume to be managed is thick, "
@@ -4137,12 +4142,12 @@ msgstr ""
 msgid "Failed to remove volume %(volumeName)s from default SG."
 msgstr ""
 "Fehler beim Entfernen des Datenträgers %(volumeName)s aus "
-"Standardservicegruppe."
+"Standarddienstgruppe."
 
 #, python-format
 msgid "Failed to remove volume %(volumeName)s from default SG: %(volumeName)s."
 msgstr ""
-"Datenträger %(volumeName)s konnte nicht aus Standardservicegruppe "
+"Datenträger %(volumeName)s konnte nicht aus der Standarddienstgruppe "
 "%(volumeName)s entfernt werden."
 
 #, python-format
@@ -4218,7 +4223,7 @@ msgstr "Fehler beim Aufheben der Bindung von Datenträger %(volume)s"
 msgid ""
 "Failed to unlink fileset for consistency group %(cgname)s. Error: %(excmsg)s."
 msgstr ""
-"Fehler beim Aufheben der Verlinkung von fileset für Konsistenzgruppe "
+"Fehler beim Aufheben der Verlinkung der Dateigruppe für Konsistenzgruppe "
 "%(cgname)s. Fehler: %(excmsg)s."
 
 #, python-format
@@ -4305,7 +4310,7 @@ msgid ""
 "%(ret)s."
 msgstr ""
 "Fexvisor konnte den Datenträger %(vol)s in der Gruppe %(group)s nicht "
-"verknüpfen. Grund: %(ret)s."
+"verknüpfen. Ursache: %(ret)s."
 
 #, python-format
 msgid ""
@@ -4313,12 +4318,12 @@ msgid ""
 "%(ret)s."
 msgstr ""
 "Fexvisor konnte den Datenträger %(vol)s in der Gruppe %(group)s nicht "
-"entfernen. Grund: %(ret)s."
+"entfernen. Ursache: %(ret)s."
 
 #, python-format
 msgid "Fexvisor failed to remove volume %(id)s due to %(reason)s."
 msgstr ""
-"Flexvisor konnte Datenträger %(id)s nicht entfernen. Grund: %(reason)s."
+"Flexvisor konnte den Datenträger %(id)s nicht entfernen. Ursache: %(reason)s."
 
 #, python-format
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
@@ -4390,8 +4395,8 @@ msgid ""
 "Flexvisor could not find volume %(id)s snapshot in the group %(vgid)s "
 "snapshot %(vgsid)s."
 msgstr ""
-"Flexvisor konnte Momentaufnahme von Datenträger %(id)s in Gruppe %(vgid)s "
-"Momentaufnahme %(vgsid)s nicht finden."
+"Flexvisor konnte die Schattenkopie des Datenträgers %(id)s in der Gruppe "
+"%(vgid)s Schattenkopie %(vgsid)s nicht finden."
 
 #, python-format
 msgid "Flexvisor create volume failed.:%(volumeid)s:%(status)s."
@@ -4404,7 +4409,7 @@ msgstr "Flexvisor konnte Datenträger %(id)s nicht löschen: %(status)s."
 #, python-format
 msgid "Flexvisor failed to add volume %(id)s to group %(cgid)s."
 msgstr ""
-"Flexvisor konnte Datenträger %(id)s nicht zu Gruppe %(cgid)s hinzufügen."
+"Flexvisor konnte den Datenträger %(id)s nicht der Gruppe %(cgid)s hinzufügen."
 
 #, python-format
 msgid ""
@@ -4467,7 +4472,7 @@ msgstr ""
 #, python-format
 msgid "Flexvisor failed to create volume from snapshot %(id)s:%(status)s."
 msgstr ""
-"Flexvisor konnte Datenträger nicht aus Momentaufnahme %(id)s erstellen: "
+"Flexvisor konnte Datenträger nicht aus Schattenkopie %(id)s erstellen: "
 "%(status)s."
 
 #, python-format
@@ -4514,13 +4519,14 @@ msgstr ""
 msgid ""
 "Flexvisor failed to get snapshot id of volume %(id)s from group %(vgid)s."
 msgstr ""
-"Flexvisor konnnte Momentaufnahmen-ID von Datenträger %(id)s nicht von Gruppe "
-"%(vgid)s abrufen."
+"Flexvisor konnnte die Schattenkopie-ID des Datenträgers %(id)s nicht aus der "
+"Gruppe %(vgid)s abrufen."
 
 #, python-format
 msgid "Flexvisor failed to remove volume %(id)s from group %(cgid)s."
 msgstr ""
-"Flexvisor konnte Datenträger %(id)s nicht aus Gruppe %(cgid)s entfernen."
+"Flexvisor konnte den Datenträger %(id)s nicht aus der Gruppe %(cgid)s "
+"entfernen."
 
 #, python-format
 msgid "Flexvisor failed to spawn volume from snapshot %(id)s:%(status)s."
@@ -4577,7 +4583,7 @@ msgid "GPFS is not running, state: %s."
 msgstr "GPFS ist nicht aktiv. Status: %s."
 
 msgid "Gateway VIP is not set"
-msgstr "Gateway-VIP wurde nicht festgelegt"
+msgstr "Gateway-VIP wurde nicht festgelegt."
 
 msgid "Get FC ports by port group error."
 msgstr "Fehler beim Abrufen der FC-Ports nach Portgruppe."
@@ -4616,7 +4622,7 @@ msgid "Get array info error."
 msgstr "Fehler beim Abrufen der Array-Info."
 
 msgid "Get cache by name error."
-msgstr "Fehler beim Abrufen des Cache nach Name."
+msgstr "Fehler beim Abrufen des Zwischenspeichers nach Name."
 
 msgid "Get connected free FC wwn error."
 msgstr "Fehler beim Abrufen der verbundenen freien FC-WWNs."
@@ -4647,7 +4653,7 @@ msgid "Get lun id by name error."
 msgstr "Fehler beim Abrufen der LUN-ID nach Namen."
 
 msgid "Get lun migration task error."
-msgstr "Fehler beim Abrufen der LUN-Migrationstask."
+msgstr "Fehler beim Abrufen der LUN-Migrationsaufgabe."
 
 msgid "Get lungroup id by lun id error."
 msgstr "Fehler beim Abrufen der LUN-Gruppen-ID nach LUN-ID."
@@ -4774,7 +4780,7 @@ msgstr ""
 
 #, python-format
 msgid "Have not created %(tier_levels)s tier(s)."
-msgstr "Schicht(en) %(tier_levels)s wurde(n) nicht erstellt."
+msgstr "Es wurden keine Schichten %(tier_levels)s erstellt."
 
 #, python-format
 msgid "Hint \"%s\" not supported."
@@ -4809,11 +4815,11 @@ msgstr "Der Host '%s' wurde nicht gefunden."
 
 #, python-format
 msgid "Host group with name %s not found"
-msgstr "Hostgruppe mit Name %s nicht gefunden"
+msgstr "Hostgruppe mit dem Namen %s nicht gefunden."
 
 #, python-format
 msgid "Host group with ref %s not found"
-msgstr "Hostgruppe mit ref %s nicht gefunden"
+msgstr "Hostgruppe mit ref %s nicht gefunden."
 
 msgid "Host is NOT Frozen."
 msgstr "Der Host ist nicht gesperrt."
@@ -5064,7 +5070,8 @@ msgstr ""
 
 #, python-format
 msgid "Invalid XtremIO version %(cur)s, version %(min)s or up is required"
-msgstr "Ungültige XtremIO-Version %(cur)s, Version ab %(min)s ist erforderlich"
+msgstr ""
+"Ungültige XtremIO-Version %(cur)s, Version ab %(min)s ist erforderlich."
 
 #, python-format
 msgid "Invalid allocated quotas defined for the following project quotas: %s"
@@ -5270,7 +5277,7 @@ msgstr ""
 "Die Angabe für 'secondary_backend_id' ist ungültig. Gültige Backend-ID: %s."
 
 msgid "Invalid service catalog json."
-msgstr "Ungültige Servicekatalog-JSON."
+msgstr "Ungültige Dienstkatalog-JSON."
 
 msgid "Invalid sheepdog cluster status."
 msgstr "Ungültiger Status des sheepdog-Clusters."
@@ -5719,7 +5726,7 @@ msgstr "Metadatenelement wurde nicht gefunden."
 
 #, python-format
 msgid "Metadata property key %s greater than 255 characters"
-msgstr "Metadaten-Eigenschaftsschlüssel %s ist größer als 255 Zeichen."
+msgstr "Metadateneigenschaftsschlüssel %s ist größer als 255 Zeichen."
 
 #, python-format
 msgid "Metadata property key %s value greater than 255 characters"
@@ -5931,7 +5938,7 @@ msgid ""
 "NAS config '%(name)s=%(value)s' invalid. Must be 'auto', 'true', or 'false'"
 msgstr ""
 "NAS-Konfiguration '%(name)s=%(value)s' ungültig. Muss 'auto', 'true' oder "
-"'false' sein"
+"'false' sein."
 
 #, python-format
 msgid "NFS config file at %(config)s doesn't exist"
@@ -5981,7 +5988,7 @@ msgid ""
 "%(oldsize)s, newsize: %(newsize)s."
 msgstr ""
 "Die neue Größe muss größer sein als die tatsächliche Größe aus dem "
-"Backendspeicher. realsize: %(oldsize)s, newsize: %(newsize)s."
+"Backendspeicher. Tatsächliche Größe: %(oldsize)s, neue Größe: %(newsize)s."
 
 msgid "New volume size must be specified as an integer."
 msgstr "Neue Datenträgergröße muss als Ganzzahl angegeben werden."
@@ -6159,18 +6166,18 @@ msgid ""
 "No response was received from CloudByte storage list iSCSI auth user API "
 "call."
 msgstr ""
-"Keine Antwort von API-Aufruf zum Auflisten der iSCSI-"
-"Authentifizierungsbenutzer von CloudByte-Speicher erhalten."
+"Es wurde keine Antwort von CloudBytes API-Aufruf zum Auflisten der iSCSI-"
+"Authentifizierungsbenutzer aus dem CloudByte-Speicher empfangen."
 
 msgid "No response was received from CloudByte storage list tsm API call."
 msgstr ""
-"Von API-Aufruf zum Auflisten von TSM (listTsm) keine Antwort vom CloudByte-"
-"Speicher erhalten."
+"Es wurde keine Antwort von CloudBytes API-Aufruf zum Auflisten von TSM "
+"(listTsm) empfangen."
 
 msgid "No response was received from CloudByte's list filesystem api call."
 msgstr ""
-"Von API-Aufruf zum Auflisten vom Dateisystem (listFileSystem) keine Antwort "
-"von CloudByte erhalten."
+"Es wurde keine Antwort von CloudBytes API-Aufruf zum Auflisten vom "
+"Dateisystem (listFileSystem) empfangen."
 
 msgid "No service VIP configured and no nexenta_client_address"
 msgstr ""
@@ -6276,7 +6283,7 @@ msgstr ""
 "Es kann kein geeigneter Datenspeicher für den Datenträger %s gefunden werden."
 
 msgid "Not an rbd snapshot"
-msgstr "Keine RBD-Momentaufnahme"
+msgstr "Keine RBD-Schattenkopie"
 
 #, python-format
 msgid "Not authorized for image %(image_id)s."
@@ -6307,8 +6314,8 @@ msgstr ""
 
 msgid "Null response received from CloudByte's list iscsi auth groups."
 msgstr ""
-"Antwort 'Null' zu iSCSI-Authentifizierungsgruppen auflisten von CloudByte "
-"erhalten."
+"CloudBytes Antwort zum Auflisten der iSCSI-Authentifizierungsgruppen ist "
+"'Null'."
 
 msgid "Null response received from CloudByte's list iscsi initiators."
 msgstr ""
@@ -6317,7 +6324,7 @@ msgstr ""
 
 msgid "Null response received from CloudByte's list volume iscsi service."
 msgstr ""
-"Zum Auflisten von Datenträger-iSCSI-Services (listVolumeiSCSIService) "
+"Zum Auflisten von Datenträger-iSCSI-Diensten (listVolumeiSCSIService) "
 "Antwort 'Null' von CloudByte erhalten."
 
 #, python-format
@@ -6423,7 +6430,9 @@ msgstr "Optionszuordnung (cls._map) ist nicht definiert. "
 
 #, python-format
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
-msgstr "Ursprungs-%(res)s %(prop)s muss einen der Werte '%(vals)s' besitzen"
+msgstr ""
+"Die Ursprungs-%(res)s %(prop)s muss einen der folgenden Werte haben: "
+"'%(vals)s'."
 
 msgid "Override HTTPS port to connect to Blockbridge API server."
 msgstr ""
@@ -6455,8 +6464,7 @@ msgstr "Erstellen Sie Pool %(pool_list)s bereits im Voraus!"
 
 #, python-format
 msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
-msgstr ""
-"Erstellen Sie Schicht %(tier_levels)s in Pool %(pool)s bereits im Voraus!"
+msgstr "Erstellen Sie die %(tier_levels)s im Pool %(pool)s bereits im Voraus!"
 
 msgid "Please re-run cinder-manage as root."
 msgstr "Führen Sie 'cinder-manage' erneut als Root aus."
@@ -6485,10 +6493,10 @@ msgid "Pool from volume['host'] failed with: %(ex)s."
 msgstr "Pool von Datenträger ['host'] fehlgeschlagen mit: %(ex)s."
 
 msgid "Pool is not available in the volume host field."
-msgstr "Pool ist im Datenträger-Hostfeld nicht verfügbar."
+msgstr "Pool ist im Hostfeld für Datenträger nicht verfügbar."
 
 msgid "Pool is not available in the volume host fields."
-msgstr "Pool ist in den Datenträger-Hostfeldern nicht verfügbar."
+msgstr "Pool ist in den Hostfeldern für Datenträger nicht verfügbar."
 
 #, python-format
 msgid "Pool with name %(pool)s wasn't found in domain %(domain)s."
@@ -6620,8 +6628,8 @@ msgid ""
 "Query by service parameter is deprecated. Please use binary parameter "
 "instead."
 msgstr ""
-"Die Abfrage nach Serviceparameter ist veraltet. Verwenden Sie stattdessen "
-"den binären Parameter."
+"Die Abfrage nach Dienstparameter ist veraltet. Verwenden Sie stattdessen den "
+"binären Parameter."
 
 msgid "Query resource pool error."
 msgstr "Fehler beim Abfragen des Ressourcenpools."
@@ -6694,7 +6702,7 @@ msgid "RPC server response is incomplete"
 msgstr "RPC-Serverantwort ist unvollständig."
 
 msgid "Raid did not have MCS Channel."
-msgstr "RAID besaß keinen MCS-Channel."
+msgstr "RAID hatte keinen MCS-Channel."
 
 #, python-format
 msgid ""
@@ -6707,7 +6715,7 @@ msgstr ""
 
 #, python-format
 msgid "Received error string: %s"
-msgstr "Empfangene Fehlerzeichenfolge: %s"
+msgstr "Empfangene Fehlerzeichenkette: %s"
 
 msgid "Reference must be for an unmanaged snapshot."
 msgstr "Referenz muss für eine nicht verwaltete Schattenkopie sein."
@@ -6797,7 +6805,7 @@ msgid "Remove lun from QoS error."
 msgstr "Fehler beim Entfernen der LUN aus QoS."
 
 msgid "Remove lun from cache error."
-msgstr "Fehler beim Entfernen der LUN aus dem Cache."
+msgstr "Fehler beim Entfernen der LUN aus dem Zwischenspeicher."
 
 msgid "Remove lun from partition error."
 msgstr "Fehler beim Entfernen der LUN aus der Partition."
@@ -6828,10 +6836,10 @@ msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "Replikationsdienst wurde in %(storageSystemName)s nicht gefunden."
 
 msgid "Replication is not enabled"
-msgstr "Replizierung ist nicht aktiviert."
+msgstr "Replikation ist nicht aktiviert."
 
 msgid "Replication is not enabled for volume"
-msgstr "Replizierung ist für Datenträger nicht aktiviert."
+msgstr "Replikation ist für Datenträger nicht aktiviert."
 
 msgid "Replication not allowed yet."
 msgstr "Replikation ist noch nicht zulässig."
@@ -6841,15 +6849,15 @@ msgid ""
 "Replication status for volume must be active or active-stopped, but current "
 "status is: %s"
 msgstr ""
-"Replizierungsstatus für Datenträger muss 'active' oder 'active-stopped' "
-"sein, aber der aktuelle Status ist: %s."
+"Replikationsstatus für Datenträger muss 'active' oder 'active-stopped' sein, "
+"aber der aktuelle Status ist: %s."
 
 #, python-format
 msgid ""
 "Replication status for volume must be inactive, active-stopped, or error, "
 "but current status is: %s"
 msgstr ""
-"Replizierungsstatus für Datenträger muss 'inactive', 'active-stopped' oder "
+"Replikationsstatus für Datenträger muss 'inactive', 'active-stopped' oder "
 "'error' sein, aber der aktuelle Status ist: %s"
 
 msgid "Request body and URI mismatch"
@@ -6921,7 +6929,7 @@ msgid "Resizing clone %s failed."
 msgstr "Ändern der Größe des Klons %s fehlgeschlagen."
 
 msgid "Resizing image file failed."
-msgstr "Fehler bei der Größenänderung der Imagedatei."
+msgstr "Fehler bei der Größenänderung der Abbilddatei."
 
 msgid "Resource could not be found."
 msgstr "Ressource wurde nicht gefunden."
@@ -7158,7 +7166,7 @@ msgid ""
 "Please check the nas_ip and nas_share_path settings."
 msgstr ""
 "Freigegebenes Verzeichnis %s wegen ungültigem Format ignoriert. Muss das "
-"Format Adresse:/Export aufweisen.Prüfen Sie die Einstellungen 'nas_ip' und "
+"Format Adresse:/Export haben. Prüfen Sie die Einstellungen 'nas_ip' und "
 "'nas_share_path'."
 
 #, python-format
@@ -7166,8 +7174,8 @@ msgid ""
 "Share at %(dir)s is not writable by the Cinder volume service. Snapshot "
 "operations will not be supported."
 msgstr ""
-"Freigegebenes Verzeichnis unter %(dir)s kann vom Cinder-Datenträgerservice "
-"nicht beschrieben werden. Momentaufnahmeoperationen werden nicht unterstützt."
+"Freigegebenes Verzeichnis unter %(dir)s kann vom Cinder-Datenträgerdienst "
+"nicht beschrieben werden. Schattenkopieoperationen werden nicht unterstützt."
 
 #, python-format
 msgid "Sheepdog I/O Error, command was: \"%s\"."
@@ -7319,7 +7327,7 @@ msgid "Source host details not found."
 msgstr "Quellenhostdetails nicht gefunden."
 
 msgid "Source volume device ID is required."
-msgstr "Einheiten-ID für Quellendatenträger ist erforderlich."
+msgstr "Geräte-ID für Quellendatenträger ist erforderlich."
 
 msgid "Source volume not mid-migration."
 msgstr "Quellendatenträger befindet sich nicht in einer Migration."
@@ -7341,7 +7349,7 @@ msgid ""
 "Specified host to map to volume %(vol)s is in unsupported host group with "
 "%(group)s."
 msgstr ""
-"Der angegebene Host, der zu Datenträger %(vol)s zugeordnet werden soll, "
+"Der angegebene Host, der dem Datenträger %(vol)s zugeordnet werden soll, "
 "befindet sich in einer nicht unterstützten Hostgruppe mit %(group)s."
 
 msgid "Specified logical volume does not exist."
@@ -7355,7 +7363,7 @@ msgid "Specify a password or private_key"
 msgstr "Geben Sie einen Wert für 'password' oder 'private_key' an."
 
 msgid "Specify san_password or san_private_key"
-msgstr "'san_password' oder 'san_private_key' angeben"
+msgstr "Geben Sie 'san_password' oder 'san_private_key' an."
 
 msgid ""
 "Specify volume type name, description, is_public or a combination thereof."
@@ -7393,8 +7401,8 @@ msgstr ""
 #, python-format
 msgid "Storage HardwareId mgmt Service not found on %(storageSystemName)s."
 msgstr ""
-"Der Dienst für Speicherhardware-ID-Verwaltung wurde in %(storageSystemName)s "
-"nicht gefunden. "
+"Der Dienst für die Verwaltung von Speicherhardware-IDs wurde in "
+"%(storageSystemName)s nicht gefunden. "
 
 #, python-format
 msgid "Storage Profile %s not found."
@@ -7581,8 +7589,8 @@ msgstr ""
 msgid ""
 "The command %(cmd)s failed. (ret: %(ret)s, stdout: %(out)s, stderr: %(err)s)"
 msgstr ""
-"Der Befehl %(cmd)s ist fehlgeschlagen. (ret: %(ret)s, stdout: %(out)s, "
-"stderr: %(err)s)"
+"Der Befehl %(cmd)s ist fehlgeschlagen. (Rückgabe: %(ret)s, Standardausgabe: "
+"%(out)s, Standardfehler: %(err)s)"
 
 msgid "The copy should be primary or secondary"
 msgstr "Die Kopie muss primär oder sekundär sein."
@@ -7597,7 +7605,7 @@ msgstr ""
 msgid "The decorated method must accept either a volume or a snapshot object"
 msgstr ""
 "Die dekorierte Methode muss entweder einen Datenträger oder ein "
-"Momentaufnahmeobjekt akzeptieren"
+"Schattenkopieobjekt akzeptieren."
 
 #, python-format
 msgid "The device in the path %(path)s is unavailable: %(reason)s"
@@ -7728,10 +7736,10 @@ msgid ""
 "extra_specs. If replication:mode is periodic, replication:sync_period must "
 "also be specified and be between 300 and 31622400 seconds."
 msgstr ""
-"Der Replikationsmodus wurde in den dnungsgemäß extra_specs für den "
-"Datenträgertyp nicht ordnungsgemäß konfiguriert. Wenn replication:mode "
-"periodisch ist, muss replication:sync_period ebenfalls angegeben werden, und "
-"zwar mit einem Wert zwischen 300 und 31622400 Sekunden."
+"Der Replikationsmodus wurde in den extra_specs für den Datenträgertyp nicht "
+"ordnungsgemäß konfiguriert. Wenn replication:mode periodisch ist, muss "
+"replication:sync_period ebenfalls angegeben werden, und zwar mit einem Wert "
+"zwischen 300 und 31622400 Sekunden."
 
 #, python-format
 msgid "The replication sync period must be at least %s seconds."
@@ -8081,7 +8089,7 @@ msgstr ""
 "Datenträger mit dem Status 'in-use'."
 
 msgid "This request was rate-limited."
-msgstr "Diese Anforderung war kursbegrenzt."
+msgstr "Übertragungsratenbegrenzung für diese Anforderung."
 
 #, python-format
 msgid ""
@@ -8262,7 +8270,7 @@ msgstr ""
 #, python-format
 msgid "Unable to delete snapshot policy on volume %s."
 msgstr ""
-"Momentaufnahmerichtlinie auf Datenträger %s konnte nicht gelöscht werden."
+"Schattenkopierichtlinie auf Datenträger %s konnte nicht gelöscht werden."
 
 #, python-format
 msgid ""
@@ -8542,8 +8550,8 @@ msgid ""
 "Unable to promote replica to primary for volume %s. No secondary copy "
 "available."
 msgstr ""
-"Replik kann nicht zur Primärreplik für Datenträger %s hochgestuft werden. "
-"Keine sekundäre Kopie verfügbar."
+"Replikat kann nicht zum Primärreplikat für Datenträger %s hochgestuft "
+"werden. Keine sekundäre Kopie verfügbar."
 
 msgid ""
 "Unable to re-use a host that is not managed by Cinder with "
@@ -8578,9 +8586,8 @@ msgid ""
 "Unable to retype:  A copy of volume %s exists. Retyping would exceed the "
 "limit of 2 copies."
 msgstr ""
-"Typänderung nicht möglich: Eine Kopie von Datenträger %s ist vorhanden. "
-"Durch eine Typänderung würde der Grenzwert von 2 Kopien überschritten "
-"werden. "
+"Typänderung nicht möglich: Eine Kopie von Datenträger %s ist vorhanden. Mit "
+"einer Typänderung wird der Grenzwert von 2 Kopien überschritten. "
 
 #, python-format
 msgid ""
@@ -8588,8 +8595,8 @@ msgid ""
 "new type is replication. Volume = %s"
 msgstr ""
 "Typänderung nicht möglich: Aktuelle Aktion erfordert eine Datenträgerkopie. "
-"Dies ist nicht zulässig, wenn der neue Typ eine Replizierung ist. "
-"Datenträger = %s"
+"Dies ist nicht zulässig, wenn der neue Typ 'replication' ist. Datenträger = "
+"%s"
 
 #, python-format
 msgid ""
@@ -8833,7 +8840,7 @@ msgid ""
 "parent or by the CLOUD admin."
 msgstr ""
 "Operationen zum Aktualisieren und zum Löschen einer Quote können nur von "
-"einen Administrator der direkt übergeordneten Ebene oder durch den CLOUD-"
+"einen Administrator der direkt übergeordneten Ebene oder vom CLOUD-"
 "Administrator ausgeführt werden."
 
 msgid ""
@@ -9009,8 +9016,8 @@ msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
-"Der Status des Datenträgers %(vol_id)s muss für die Aktualisierung des "
-"readonly-Flags 'available' sein, aber der aktuelle Status ist: "
+"Der Status des Datenträgers %(vol_id)s muss für die Aktualisierung der "
+"readonly-Markierung 'available' sein, aber der aktuelle Status ist: "
 "%(vol_status)s."
 
 #, python-format
@@ -9043,13 +9050,13 @@ msgstr ""
 msgid ""
 "Volume %(volume_id)s is currently mapped to unsupported host group %(group)s"
 msgstr ""
-"Datenträger %(volume_id)s ist aktuell zur nicht unterstützten Hostgruppe "
-"%(group)s zugeordnet"
+"Der Datenträger %(volume_id)s ist momentan der nicht unterstützten "
+"Hostgruppe %(group)s zugeordnet."
 
 #, python-format
 msgid "Volume %(volume_id)s is not currently mapped to host %(host)s"
 msgstr ""
-"Datenträger %(volume_id)s ist aktuell nicht zu Host %(host)s zugeordnet"
+"Der Datenträger %(volume_id)s ist zurzeit nicht dem Host %(host)s zugeordnet."
 
 #, python-format
 msgid "Volume %(volume_id)s is still attached, detach volume first."
@@ -9059,7 +9066,7 @@ msgstr ""
 
 #, python-format
 msgid "Volume %(volume_id)s replication error: %(reason)s"
-msgstr "Replizierungsfehler für Datenträger %(volume_id)s: %(reason)s"
+msgstr "Replikationsfehler für Datenträger %(volume_id)s: %(reason)s"
 
 #, python-format
 msgid "Volume %(volume_name)s is busy."
@@ -9153,11 +9160,11 @@ msgstr "Der Datenträger %s darf keine Schattenkopie enthalten."
 
 #, python-format
 msgid "Volume %s not found."
-msgstr "Volumen %s nicht gefunden."
+msgstr "Datenträger %s nicht gefunden."
 
 #, python-format
 msgid "Volume %s: Error trying to extend volume"
-msgstr "Datenträger %s: Fehler beim Versuch, den Datenträger zu erweitern"
+msgstr "Datenträger %s: Fehler beim Versuch, den Datenträger zu erweitern."
 
 #, python-format
 msgid "Volume (%s) already exists on array"
@@ -9223,7 +9230,7 @@ msgid "Volume backend config is invalid: %(reason)s"
 msgstr "Konfiguration des Datenträgerbackends ist ungültig: %(reason)s"
 
 msgid "Volume by this name already exists"
-msgstr "Ein Datenträger mit diesem Namen ist bereits vorhanden"
+msgstr "Ein Datenträger mit diesem Namen ist bereits vorhanden."
 
 msgid "Volume cannot be restored since it contains snapshots."
 msgstr ""
@@ -9237,7 +9244,7 @@ msgstr ""
 
 #, python-format
 msgid "Volume device file path %s does not exist."
-msgstr "Dateipfad für Datenträgereinheit %s ist nicht vorhanden."
+msgstr "Dateipfad für Datenträgergerät %s ist nicht vorhanden."
 
 #, python-format
 msgid "Volume device not found at %(device)s."
@@ -9323,7 +9330,7 @@ msgid "Volume must not be replicated."
 msgstr "Datenträger darf nicht repliziert werden. "
 
 msgid "Volume must not have snapshots."
-msgstr "Datenträger darf keine Momentaufnahmen enthalten."
+msgstr "Datenträger darf keine Schattenkopien enthalten."
 
 #, python-format
 msgid "Volume not found for instance %(instance_id)s."
@@ -9357,7 +9364,7 @@ msgstr "Datenträgerreferenz muss Element 'source-name' enthalten."
 
 #, python-format
 msgid "Volume replication for %(volume_id)s could not be found."
-msgstr "Die Datenträgerreplizierung für %(volume_id)s wurde nicht gefunden."
+msgstr "Die Datenträgerreplikation für %(volume_id)s wurde nicht gefunden."
 
 #, python-format
 msgid "Volume service %s failed to start."
@@ -9371,8 +9378,8 @@ msgid ""
 "Volume size %(volume_size)sGB cannot be smaller than the image minDisk size "
 "%(min_disk)sGB."
 msgstr ""
-"Datenträgergröße %(volume_size)s GB darf nicht kleiner als die Image-minDisk-"
-"Größe %(min_disk)s GB sein."
+"Datenträgergröße %(volume_size)s GB darf nicht kleiner als die "
+"Mindestplattengröße des Abbilds von %(min_disk)s GB sein."
 
 #, python-format
 msgid "Volume size '%(size)s' must be an integer and greater than 0"
@@ -9384,7 +9391,7 @@ msgid ""
 "%(source_size)sGB. They must be >= original volume size."
 msgstr ""
 "Datenträgergröße '%(size)s' GB darf nicht kleiner als die ursprüngliche "
-"Datenträgergröße %(source_size)s GB sein. Sie muss >= der ursprünglichen "
+"Datenträgergröße von %(source_size)s GB sein. Sie muss >= der ursprünglichen "
 "Datenträgergröße sein."
 
 #, python-format
@@ -9392,9 +9399,9 @@ msgid ""
 "Volume size '%(size)s'GB cannot be smaller than the snapshot size "
 "%(snap_size)sGB. They must be >= original snapshot size."
 msgstr ""
-"Datenträgergröße '%(size)s' GB darf nicht kleiner als die "
-"Momentaufnahmengröße %(snap_size)s GB sein. Sie muss >= der ursprünglichen "
-"Momentaufnahmengröße sein."
+"Datenträgergröße '%(size)s' GB darf nicht kleiner als die Schattenkopiegröße "
+"von %(snap_size)s GB sein. Sie muss >= der ursprünglichen Schattenkopiegröße "
+"sein."
 
 msgid "Volume size increased since the last backup. Do a full backup."
 msgstr ""
@@ -9573,7 +9580,7 @@ msgstr ""
 "XtremIO ist nicht ordnungsgemäß konfiguriert, keine iSCSI-Portale gefunden."
 
 msgid "XtremIO not initialized correctly, no clusters found"
-msgstr "XtremIO nicht richtig initialisiert, keine Cluster gefunden"
+msgstr "XtremIO nicht richtig initialisiert, keine Cluster gefunden."
 
 msgid "You must implement __call__"
 msgstr "Sie müssen '__call__' implementieren."
@@ -9820,13 +9827,14 @@ msgid ""
 " Headers: %(header)s\n"
 " Values: %(row)s."
 msgstr ""
-"_get_hdr_dic: Attributheader und -Werte stimmen nicht überein.\n"
+"_get_hdr_dic: Attributheader und Attributwerte stimmen nicht überein.\n"
 " Header: %(header)s\n"
 " Werte: %(row)s."
 
 msgid "_get_host_from_connector failed to return the host name for connector."
 msgstr ""
-"_get_host_from_connector hat Hostnamen für Connector nicht zurückgegeben."
+"_get_host_from_connector hat den Hostnamen für den Connector nicht "
+"zurückgegeben."
 
 #, python-format
 msgid ""
@@ -10063,7 +10071,7 @@ msgstr ""
 "%(path)s kann nicht abgerufen werden."
 
 msgid "being attached by different mode"
-msgstr "Wird von anderem Modus angehängt"
+msgstr "ist über anderen Modus angehängt"
 
 #, python-format
 msgid "call failed: %r"
@@ -10084,7 +10092,7 @@ msgstr "Aufruf fehlgeschlagen: PROG_UNAVAIL"
 
 #, python-format
 msgid "can't find lun-map, ig:%(ig)s vol:%(vol)s"
-msgstr "LUN-Zuordnung nicht gefunden, ig:%(ig)s vol:%(vol)s"
+msgstr "LUN-Zuordnung nicht gefunden, IG:%(ig)s Datenträger:%(vol)s"
 
 msgid "can't find the volume to extend"
 msgstr "Zu erweiternder Datenträger wurde nicht gefunden."
@@ -10095,10 +10103,10 @@ msgstr ""
 "verarbeitet werden."
 
 msgid "cannot understand JSON"
-msgstr "kann JSON nicht verstehen"
+msgstr "JSON kann nicht interpretiert werden."
 
 msgid "cannot understand XML"
-msgstr "Kann XML nicht verstehen"
+msgstr "XML kann nicht interpretiert werden."
 
 #, python-format
 msgid "cg-%s"
@@ -10249,7 +10257,7 @@ msgid ""
 "snapshot. The invalid status is %s."
 msgstr ""
 "create_snapshot: Datenträgerstatus muss \"available\" oder \"in-use\" für "
-"eine Momentaufnahme sein. Der ungültige Status lautet %s."
+"eine Schattenkopie sein. Der ungültige Status ist %s."
 
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot: Abrufen des Quellendatenträgers fehlgeschlagen."
@@ -10301,8 +10309,8 @@ msgid ""
 "create_volume_from_snapshot: Snapshot status must be \"available\" for "
 "creating volume. The invalid status is: %s."
 msgstr ""
-"create_volume_from_snapshot: Der Status der Momentaufnahme muss \"available"
-"\" zum Erstellen eines Datenträgers sein. Der ungültige Status lautet %s."
+"create_volume_from_snapshot: Der Status der Schattenkopie muss \"available\" "
+"zum Erstellen eines Datenträgers sein. Der ungültige Status ist %s."
 
 msgid "create_volume_from_snapshot: Source and destination size differ."
 msgstr ""
@@ -10313,7 +10321,7 @@ msgid ""
 "volume."
 msgstr ""
 "create_volume_from_snapshot: Datenträgergröße unterscheidet sich von der "
-"Größe  des auf der Momentaufnahme basierenden Datenträgers."
+"Größe  des auf der Schattenkopie basierenden Datenträgers."
 
 msgid "deduplicated and auto tiering can't be both enabled."
 msgstr ""
@@ -10426,10 +10434,10 @@ msgid ""
 "mapping. CMMVC6071E The VDisk-to-host mapping was not created because the "
 "VDisk is already mapped to a host."
 msgstr ""
-"flashsystem_multihostmap_enabled ist auf 'False' gesetzt, Multi-Host-"
-"Zuordnung wird nicht zugelassen. CMMVC6071E Die Zuordnung von virtueller "
-"Platte zu Host wurde nicht erstellt, da die virtuelle Platte bereits einem "
-"Host zugeordnet ist."
+"flashsystem_multihostmap_enabled ist auf 'False' gesetzt, Zuordnung von "
+"mehreren Hosts wird nicht zugelassen. CMMVC6071E Die Zuordnung der "
+"virtuellen Platte zum Host wurde nicht erstellt, da die virtuelle Platte "
+"bereits einem Host zugeordnet ist."
 
 msgid "flush() not supported in this version of librbd"
 msgstr "flush() wird in dieser Version von librbd nicht unterstützt."
@@ -10560,7 +10568,7 @@ msgstr "Ungültiger Benutzer '%s'"
 
 #, python-format
 msgid "iscsi portal, %s, not found"
-msgstr "iSCSI-Portal %s nicht gefunden"
+msgstr "iSCSI-Portal %s nicht gefunden."
 
 msgid ""
 "iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
@@ -10629,11 +10637,11 @@ msgstr "mount.glusterfs ist nicht installiert."
 
 #, python-format
 msgid "multiple resources with name %s found by drbdmanage"
-msgstr "mehrere Ressourcen mit dem Namen %s durch drbdmanage gefunden"
+msgstr "Es wurden mehrere Ressourcen mit dem Namen %s von drbdmanage gefunden."
 
 #, python-format
 msgid "multiple resources with snapshot ID %s found"
-msgstr "mehrere Ressourcen mit Momentaufnahme-ID %s gefunden"
+msgstr "mehrere Ressourcen mit Schattenkopie-ID %s gefunden"
 
 msgid "name cannot be None"
 msgstr "Name darf nicht 'None' sein."
@@ -10648,11 +10656,11 @@ msgstr "Keine Antwort, aber %r"
 
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
-msgstr "keine Momentaufnahme mit ID %s in drbdmanage gefunden"
+msgstr "keine Schattenkopie mit ID %s in drbdmanage gefunden"
 
 #, python-format
 msgid "not exactly one snapshot with id %s"
-msgstr "nicht genau eine Momentaufnahme mit ID %s"
+msgstr "nicht genau eine Schattenkopie mit ID %s"
 
 #, python-format
 msgid "not exactly one volume with id %s"
@@ -10762,7 +10770,7 @@ msgstr ""
 "den Metadaten gespeicherten Liste."
 
 msgid "root element selecting a list"
-msgstr "Stammelement wählt eine Liste aus"
+msgstr "Stammelement wählt eine Liste aus."
 
 #, python-format
 msgid "rtslib_fb is missing member %s: You may need a newer python-rtslib-fb."
@@ -10774,7 +10782,7 @@ msgid "san_ip is not set."
 msgstr "san_ip wurde nicht festgelegt."
 
 msgid "san_ip must be set"
-msgstr "'san_ip' muss festgelegt sein"
+msgstr "'san_ip' muss festgelegt sein."
 
 msgid "san_ip: Mandatory field configuration. san_ip is not set."
 msgstr "san_ip: Konfiguration für Pflichtfeld. san_ip ist nicht festgelegt. "
@@ -10904,11 +10912,11 @@ msgid "vdisk %s is not defined."
 msgstr "Virtuelle Platte %s ist nicht definiert."
 
 msgid "vmemclient python library not found"
-msgstr "vmemclient-python-Bibliothek nicht gefunden"
+msgstr "vmemclient-python-Bibliothek nicht gefunden."
 
 #, python-format
 msgid "volume %s not found in drbdmanage"
-msgstr "Datenträger %s in drbdmanage nicht gefunden"
+msgstr "Datenträger %s in drbdmanage nicht gefunden."
 
 msgid "volume assigned"
 msgstr "Datenträger zugeordnet"
