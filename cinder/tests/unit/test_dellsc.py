@@ -2121,9 +2121,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                       mock_close_connection,
                       mock_open_connection,
                       mock_init):
-        volume = {'id': fake.VOLUME_ID}
+        volume = {'id': fake.VOLUME_ID, 'provider_id': '11111.1'}
         self.driver.unmanage(volume)
-        mock_find_volume.assert_called_once_with(fake.VOLUME_ID)
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, '11111.1')
         mock_unmanage.assert_called_once_with(self.VOLUME)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2137,9 +2137,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                        mock_close_connection,
                                        mock_open_connection,
                                        mock_init):
-        volume = {'id': fake.VOLUME_ID}
+        volume = {'id': fake.VOLUME_ID, 'provider_id': '11111.1'}
         self.driver.unmanage(volume)
-        mock_find_volume.assert_called_once_with(fake.VOLUME_ID)
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, '11111.1')
         self.assertFalse(mock_unmanage.called)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2310,31 +2310,36 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver._get_unmanaged_replay,
                           mock_api,
-                          'guid',
+                          fake.VOLUME_ID,
+                          '11111.1',
                           existing_ref)
         existing_ref = {'source-id': 'Not a source-name'}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver._get_unmanaged_replay,
                           mock_api,
-                          'guid',
+                          fake.VOLUME_ID,
+                          '11111.1',
                           existing_ref)
         existing_ref = {'source-name': 'name'}
         mock_api.find_volume = mock.MagicMock(return_value=None)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver._get_unmanaged_replay,
                           mock_api,
-                          'guid',
+                          fake.VOLUME_ID,
+                          '11111.1',
                           existing_ref)
-        mock_api.find_volume.return_value = {'instanceId': '1'}
+        mock_api.find_volume.return_value = {'instanceId': '11111.1'}
         mock_api.find_replay = mock.MagicMock(return_value=None)
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver._get_unmanaged_replay,
                           mock_api,
-                          'guid',
+                          fake.VOLUME_ID,
+                          '11111.1',
                           existing_ref)
-        mock_api.find_replay.return_value = {'instanceId': 2}
-        ret = self.driver._get_unmanaged_replay(mock_api, 'guid', existing_ref)
-        self.assertEqual({'instanceId': 2}, ret)
+        mock_api.find_replay.return_value = {'instanceId': '11111.101'}
+        ret = self.driver._get_unmanaged_replay(mock_api, fake.VOLUME_ID,
+                                                '11111.1', existing_ref)
+        self.assertEqual({'instanceId': '11111.101'}, ret)
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        '_get_unmanaged_replay')
