@@ -64,9 +64,17 @@ class API(base.Base):
         """Return message with the specified id."""
         return self.db.message_get(context, id)
 
-    def get_all(self, context):
+    def get_all(self, context, filters=None, marker=None,
+                limit=None, offset=None, sort_keys=None,
+                sort_dirs=None):
         """Return all messages for the given context."""
-        messages = self.db.message_get_all(context)
+
+        filters = filters or {}
+
+        messages = self.db.message_get_all(context, filters=filters,
+                                           marker=marker, limit=limit,
+                                           offset=offset, sort_keys=sort_keys,
+                                           sort_dirs=sort_dirs)
         return messages
 
     def delete(self, context, id):

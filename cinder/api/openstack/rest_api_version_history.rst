@@ -60,3 +60,7 @@ user documentation.
 ---
   Added the filter parameters ``glance_metadata`` to
   list/detail volumes requests.
+
+3.5
+---
+  Added pagination support to /messages API

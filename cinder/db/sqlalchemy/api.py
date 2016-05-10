@@ -4296,28 +4296,74 @@ def _translate_message(message):
     }
 
 
-@require_context
-def message_get(context, message_id):
+def _message_get(context, message_id, session=None):
     query = model_query(context,
                         models.Message,
                         read_deleted="no",
-                        project_only="yes")
+                        project_only="yes",
+                        session=session)
     result = query.filter_by(id=message_id).first()
     if not result:
         raise exception.MessageNotFound(message_id=message_id)
+    return result
+
+
+@require_context
+def message_get(context, message_id, session=None):
+    result = _message_get(context, message_id, session)
     return _translate_message(result)
 
 
 @require_context
-def message_get_all(context):
-    """Fetch all messages for the contexts project."""
+def message_get_all(context, filters=None, marker=None, limit=None,
+                    offset=None, sort_keys=None, sort_dirs=None):
+    """Retrieves all messages.
+
+    If no sort parameters are specified then the returned messages are
+    sorted first by the 'created_at' key and then by the 'id' key in
+    descending order.
+
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see
+                    _process_messages_filters function for more
+                    information
+    :returns: list of matching messages
+    """
     messages = models.Message
-    query = (model_query(context,
-                         messages,
-                         read_deleted="no",
-                         project_only="yes"))
-    results = query.all()
-    return _translate_messages(results)
+
+    session = get_session()
+    with session.begin():
+        # Generate the paginate query
+        query = _generate_paginate_query(context, session, marker,
+                                         limit, sort_keys, sort_dirs, filters,
+                                         offset, messages)
+        if query is None:
+            return []
+        results = query.all()
+        return _translate_messages(results)
+
+
+def _process_messages_filters(query, filters):
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.Message, filters):
+            return None
+        query = query.filter_by(**filters)
+    return query
+
+
+def _messages_get_query(context, session=None, project_only=False):
+    return model_query(context, models.Message, session=session,
+                       project_only=project_only)
 
 
 @require_context
@@ -4402,7 +4448,9 @@ PAGINATION_HELPERS = {
                          _volume_type_get_db_object),
     models.ConsistencyGroup: (_consistencygroups_get_query,
                               _process_consistencygroups_filters,
-                              _consistencygroup_get)
+                              _consistencygroup_get),
+    models.Message: (_messages_get_query, _process_messages_filters,
+                     _message_get)
 }
 
 
