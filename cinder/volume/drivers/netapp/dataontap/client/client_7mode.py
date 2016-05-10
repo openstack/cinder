@@ -465,12 +465,14 @@ class Client(client_base.Client):
         flexvol_info_list = result.get_child_by_name('volumes')
         flexvol_info = flexvol_info_list.get_children()[0]
 
-        total_bytes = float(
-            flexvol_info.get_child_content('size-total'))
-        available_bytes = float(
+        size_total = float(flexvol_info.get_child_content('size-total'))
+        size_available = float(
             flexvol_info.get_child_content('size-available'))
 
-        return total_bytes, available_bytes
+        return {
+            'size-total': size_total,
+            'size-available': size_available,
+        }
 
     def get_performance_instance_names(self, object_name):
         """Get names of performance instances for a node."""

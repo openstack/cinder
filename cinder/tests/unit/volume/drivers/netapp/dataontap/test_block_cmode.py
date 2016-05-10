@@ -338,9 +338,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'raid_type': 'raiddp'
         }
         test_volume.space = {
-            'size_total_bytes': '10737418240',
             'space-guarantee': 'file',
-            'size_avl_bytes': '2147483648',
             'space-guarantee-enabled': False,
             'thin_provisioned': False
         }
@@ -366,6 +364,13 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             netapp_lun_space_reservation)
         self.library.perf_library.get_node_utilization_for_pool = (
             mock.Mock(return_value=30.0))
+        mock_capacities = {
+            'size-total': 10737418240.0,
+            'size-available': 2147483648.0,
+        }
+        self.mock_object(
+            self.zapi_client, 'get_flexvol_capacity',
+            mock.Mock(return_value=mock_capacities))
 
         netapp_thin = 'true' if thin else 'false'
         netapp_thick = 'false' if thin else 'true'
@@ -677,6 +682,13 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=[fake.FAKE_CMODE_VOL1]))
         self.library.perf_library.get_node_utilization_for_pool = (
             mock.Mock(return_value=30.0))
+        mock_capacities = {
+            'size-total': 5000000000.0,
+            'size-available': 4000000000.0,
+        }
+        self.mock_object(
+            self.zapi_client, 'get_flexvol_capacity',
+            mock.Mock(return_value=mock_capacities))
 
         pools = self.library._get_pool_stats(filter_function='filter',
                                              goodness_function='goodness')

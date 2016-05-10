@@ -72,6 +72,13 @@ class Client(client_base.Client):
         num_records = api_result_element.get_child_content('num-records')
         return bool(num_records and '0' != num_records)
 
+    def _get_record_count(self, api_result_element):
+        try:
+            return int(api_result_element.get_child_content('num-records'))
+        except TypeError:
+            msg = _('Missing record count for NetApp iterator API invocation.')
+            raise exception.NetAppDriverException(msg)
+
     def set_vserver(self, vserver):
         self.connection.set_vserver(vserver)
 
@@ -691,15 +698,19 @@ class Client(client_base.Client):
         return [lif_info.get_child_content('address') for lif_info in
                 lif_info_list.get_children()]
 
-    def get_flexvol_capacity(self, flexvol_path):
+    def get_flexvol_capacity(self, flexvol_path=None, flexvol_name=None):
         """Gets total capacity and free capacity, in bytes, of the flexvol."""
+
+        volume_id_attributes = {}
+        if flexvol_path:
+            volume_id_attributes['junction-path'] = flexvol_path
+        if flexvol_name:
+            volume_id_attributes['name'] = flexvol_name
 
         api_args = {
             'query': {
                 'volume-attributes': {
-                    'volume-id-attributes': {
-                        'junction-path': flexvol_path
-                    }
+                    'volume-id-attributes': volume_id_attributes,
                 }
             },
             'desired-attributes': {
@@ -713,6 +724,10 @@ class Client(client_base.Client):
         }
 
         result = self.send_request('volume-get-iter', api_args)
+        if self._get_record_count(result) != 1:
+            msg = _('Volume %s not found.')
+            msg_args = flexvol_path or flexvol_name
+            raise exception.NetAppDriverException(msg % msg_args)
 
         attributes_list = result.get_child_by_name('attributes-list')
         volume_attributes = attributes_list.get_child_by_name(
@@ -725,7 +740,10 @@ class Client(client_base.Client):
         size_total = float(
             volume_space_attributes.get_child_content('size-total'))
 
-        return size_total, size_available
+        return {
+            'size-total': size_total,
+            'size-available': size_available,
+        }
 
     @utils.trace_method
     def delete_file(self, path_to_file):

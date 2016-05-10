@@ -104,10 +104,12 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         self.assertEqual('new_fake_value', fake_object.fake_attr)
 
     def test_round_down(self):
+        self.assertAlmostEqual(na_utils.round_down(5.567), 5.56)
         self.assertAlmostEqual(na_utils.round_down(5.567, '0.00'), 5.56)
         self.assertAlmostEqual(na_utils.round_down(5.567, '0.0'), 5.5)
         self.assertAlmostEqual(na_utils.round_down(5.567, '0'), 5)
         self.assertAlmostEqual(na_utils.round_down(0, '0.00'), 0)
+        self.assertAlmostEqual(na_utils.round_down(-5.567), -5.56)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0.00'), -5.56)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0.0'), -5.5)
         self.assertAlmostEqual(na_utils.round_down(-5.567, '0'), -5)

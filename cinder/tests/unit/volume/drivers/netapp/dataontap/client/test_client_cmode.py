@@ -17,6 +17,7 @@
 
 import uuid
 
+import ddt
 from lxml import etree
 import mock
 import paramiko
@@ -41,6 +42,7 @@ CONNECTION_INFO = {'hostname': 'hostname',
                    'vserver': 'fake_vserver'}
 
 
+@ddt.ddt
 class NetAppCmodeClientTestCase(test.TestCase):
 
     def setUp(self):
@@ -80,6 +82,26 @@ class NetAppCmodeClientTestCase(test.TestCase):
             netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE))
 
         self.assertFalse(result)
+
+    @ddt.data((fake_client.AGGR_GET_ITER_RESPONSE, 2),
+              (fake_client.NO_RECORDS_RESPONSE, 0))
+    @ddt.unpack
+    def test_get_record_count(self, response, expected):
+
+        api_response = netapp_api.NaElement(response)
+
+        result = self.client._get_record_count(api_response)
+
+        self.assertEqual(expected, result)
+
+    def test_get_records_count_invalid(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.INVALID_GET_ITER_RESPONSE_NO_RECORDS)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.client._get_record_count,
+                          api_response)
 
     def test_get_iscsi_target_details_no_targets(self):
         response = netapp_api.NaElement(
@@ -936,31 +958,53 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(expected_result, address_list)
 
-    def test_get_flexvol_capacity(self):
-        expected_total_size = 1000
-        expected_available_size = 750
-        fake_flexvol_path = '/fake/vol'
-        api_response = netapp_api.NaElement(
-            etree.XML("""
-            <results status="passed">
-                <attributes-list>
-                    <volume-attributes>
-                        <volume-space-attributes>
-                            <size-available>%(available_size)s</size-available>
-                            <size-total>%(total_size)s</size-total>
-                        </volume-space-attributes>
-                    </volume-attributes>
-                </attributes-list>
-            </results>""" % {'available_size': expected_available_size,
-                             'total_size': expected_total_size}))
+    @ddt.data({'flexvol_path': '/fake/vol'},
+              {'flexvol_name': 'fake_volume'},
+              {'flexvol_path': '/fake/vol', 'flexvol_name': 'fake_volume'})
+    def test_get_flexvol_capacity(self, kwargs):
 
+        api_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_ITER_RESPONSE)
         self.mock_send_request.return_value = api_response
 
-        total_size, available_size = (
-            self.client.get_flexvol_capacity(fake_flexvol_path))
+        capacity = self.client.get_flexvol_capacity(**kwargs)
 
-        self.assertEqual(expected_total_size, total_size)
-        self.assertEqual(expected_available_size, available_size)
+        volume_id_attributes = {}
+        if 'flexvol_path' in kwargs:
+            volume_id_attributes['junction-path'] = kwargs['flexvol_path']
+        if 'flexvol_name' in kwargs:
+            volume_id_attributes['name'] = kwargs['flexvol_name']
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': volume_id_attributes,
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-space-attributes': {
+                        'size-available': None,
+                        'size-total': None,
+                    }
+                }
+            },
+        }
+        self.mock_send_request.assert_called_once_with(
+            'volume-get-iter', volume_get_iter_args)
+
+        self.assertEqual(fake_client.VOLUME_SIZE_TOTAL, capacity['size-total'])
+        self.assertEqual(fake_client.VOLUME_SIZE_AVAILABLE,
+                         capacity['size-available'])
+
+    def test_get_flexvol_capacity_not_found(self):
+
+        self.mock_send_request.return_value = netapp_api.NaElement(
+            fake_client.NO_RECORDS_RESPONSE)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.client.get_flexvol_capacity,
+                          flexvol_path='fake_path')
 
     def test_get_aggregates(self):
 

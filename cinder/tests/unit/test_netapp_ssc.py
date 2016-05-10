@@ -581,8 +581,6 @@ class SscUtilsTestCase(test.TestCase):
                     <type>rw</type>
                 </volume-id-attributes>
                 <volume-space-attributes>
-                    <size-available>214748364</size-available>
-                    <size-total>224748364</size-total>
                     <space-guarantee-enabled>enabled</space-guarantee-enabled>
                     <space-guarantee>file</space-guarantee>
                 </volume-space-attributes>
@@ -607,8 +605,6 @@ class SscUtilsTestCase(test.TestCase):
                     <type>rw</type>
                 </volume-id-attributes>
                 <volume-space-attributes>
-                    <size-available>14748364</size-available>
-                    <size-total>24748364</size-total>
                     <space-guarantee-enabled>enabled
                     </space-guarantee-enabled>
                     <space-guarantee>volume</space-guarantee>
@@ -634,8 +630,6 @@ class SscUtilsTestCase(test.TestCase):
                     <type>rw</type>
                 </volume-id-attributes>
                 <volume-space-attributes>
-                    <size-available>14748364</size-available>
-                    <size-total>24748364</size-total>
                     <space-guarantee-enabled>enabled
                     </space-guarantee-enabled>
                     <space-guarantee>volume</space-guarantee>
@@ -683,7 +677,7 @@ class SscUtilsTestCase(test.TestCase):
             return_value=[netapp_api.NaElement(body)]))
 
         vols = ssc_cmode.query_cluster_vols_for_ssc(na_server, 'Openstack')
-        self.assertEqual(2, len(vols))
+        self.assertEqual(3, len(vols))
         for vol in vols:
             if vol.id['name'] != 'iscsi' or vol.id['name'] != 'nfsvol':
                 pass

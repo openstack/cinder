@@ -47,8 +47,7 @@ class NetAppVolume(object):
        state - status, vserver_root, cluster_volume,
        inconsistent, invalid, junction_active
        qos - qos_policy_group
-       space - space-guarantee-enabled, space-guarantee,
-       thin_provisioned, size_avl_bytes, size_total_bytes
+       space - space-guarantee-enabled, space-guarantee, thin_provisioned
        mirror - mirrored i.e. dp mirror
        export - path
     """
@@ -73,23 +72,6 @@ class NetAppVolume(object):
     def __hash__(self):
         """Computes hash for the object."""
         return hash(self.id['name'])
-
-    def __cmp__(self, other):
-        """Implements comparison logic for volumes."""
-        self_size_avl = self.space.get('size_avl_bytes')
-        other_size_avl = other.space.get('size_avl_bytes')
-        if self_size_avl is None and other_size_avl is not None:
-            return -1
-        elif self_size_avl is not None and other_size_avl is None:
-            return 1
-        elif self_size_avl is None and other_size_avl is None:
-            return 0
-        elif int(self_size_avl) < int(other_size_avl):
-            return -1
-        elif int(self_size_avl) > int(other_size_avl):
-            return 1
-        else:
-            return 0
 
     def __str__(self):
         """Returns human readable form for object."""
@@ -231,11 +213,6 @@ def create_vol_list(vol_attrs):
             # aggr attributes mandatory.
             vol.aggr['name'] =\
                 v['volume-id-attributes']['containing-aggregate-name']
-            # space attributes mandatory.
-            vol.space['size_avl_bytes'] =\
-                v['volume-space-attributes']['size-available']
-            vol.space['size_total_bytes'] =\
-                v['volume-space-attributes']['size-total']
             vol.space['space-guarantee-enabled'] =\
                 na_utils.to_bool(
                     v['volume-space-attributes'].get_child_content(
