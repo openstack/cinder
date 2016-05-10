@@ -236,10 +236,12 @@ class HPE3PARCommon(object):
         3.0.18 - create_cloned_volume account for larger size.  bug #1554740
         3.0.19 - Remove metadata that tracks the instance ID. bug #1572665
         3.0.20 - Fix lun_id of 0 issue. bug #1573298
+        3.0.21 - Driver no longer fails to initialize if
+                 System Reporter license is missing. bug #1568078
 
     """
 
-    VERSION = "3.0.20"
+    VERSION = "3.0.21"
 
     stats = {}
 
@@ -272,6 +274,7 @@ class HPE3PARCommon(object):
     PRIORITY_OPT_LIC = "Priority Optimization"
     THIN_PROV_LIC = "Thin Provisioning"
     REMOTE_COPY_LIC = "Remote Copy"
+    SYSTEM_REPORTER_LIC = "System Reporter"
 
     # Valid values for volume type extra specs
     # The first value in the list is the default value
@@ -1226,6 +1229,7 @@ class HPE3PARCommon(object):
         qos_support = True
         thin_support = True
         remotecopy_support = True
+        sr_support = True
         if 'licenseInfo' in info:
             if 'licenses' in info['licenseInfo']:
                 valid_licenses = info['licenseInfo']['licenses']
@@ -1238,25 +1242,34 @@ class HPE3PARCommon(object):
                 remotecopy_support = self._check_license_enabled(
                     valid_licenses, self.REMOTE_COPY_LIC,
                     "Replication")
+                sr_support = self._check_license_enabled(
+                    valid_licenses, self.SYSTEM_REPORTER_LIC,
+                    "System_reporter_support")
 
         for cpg_name in self._client_conf['hpe3par_cpg']:
             try:
+                stat_capabilities = {
+                    THROUGHPUT: None,
+                    BANDWIDTH: None,
+                    LATENCY: None,
+                    IO_SIZE: None,
+                    QUEUE_LENGTH: None,
+                    AVG_BUSY_PERC: None
+                }
                 cpg = self.client.getCPG(cpg_name)
-                if (self.API_VERSION >= SRSTATLD_API_VERSION):
+                if (self.API_VERSION >= SRSTATLD_API_VERSION and sr_support):
                     interval = 'daily'
                     history = '7d'
-                    stat_capabilities = self.client.getCPGStatData(cpg_name,
-                                                                   interval,
-                                                                   history)
-                else:
-                    stat_capabilities = {
-                        THROUGHPUT: None,
-                        BANDWIDTH: None,
-                        LATENCY: None,
-                        IO_SIZE: None,
-                        QUEUE_LENGTH: None,
-                        AVG_BUSY_PERC: None
-                    }
+                    try:
+                        stat_capabilities = self.client.getCPGStatData(
+                            cpg_name,
+                            interval,
+                            history)
+                    except Exception as ex:
+                        LOG.warning(_LW("Exception at getCPGStatData() "
+                                        "for cpg: '%(cpg_name)s' "
+                                        "Reason: '%(reason)s'") %
+                                    {'cpg_name': cpg_name, 'reason': ex})
                 if 'numTDVVs' in cpg:
                     total_volumes = int(
                         cpg['numFPVVs'] + cpg['numTPVVs'] + cpg['numTDVVs']
