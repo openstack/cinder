@@ -23,7 +23,7 @@ class VolumeController(volumes_v2.VolumeController):
     """The Volumes API controller for the OpenStack API V3."""
 
     def __init__(self, ext_mgr):
-        super(VolumeController, self).__init__(volumes_v2.VolumeController)
+        super(VolumeController, self).__init__(ext_mgr)
 
     def _get_volumes(self, req, is_detail):
         """Returns a list of volumes, transformed through view builder."""
