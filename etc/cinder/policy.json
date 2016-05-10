@@ -72,6 +72,7 @@
     "volume:create_transfer": "rule:admin_or_owner",
     "volume:accept_transfer": "",
     "volume:delete_transfer": "rule:admin_or_owner",
+    "volume:get_transfer": "rule:admin_or_owner",
     "volume:get_all_transfers": "rule:admin_or_owner",
 
     "volume_extension:replication:promote": "rule:admin_api",

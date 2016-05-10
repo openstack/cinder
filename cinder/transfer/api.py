@@ -57,6 +57,7 @@ class API(base.Base):
         super(API, self).__init__(db_driver)
 
     def get(self, context, transfer_id):
+        volume_api.check_policy(context, 'get_transfer')
         rv = self.db.transfer_get(context, transfer_id)
         return dict(rv)
 
