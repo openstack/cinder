@@ -6,19 +6,16 @@
 # Eduardo Gonzalez Gutierrez <dabarren@gmail.com>, 2015
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # Jose Enrique Ruiz Navarro <joseenriquernavarro@gmail.com>, 2014
-# OpenStack Infra <zanata@openstack.org>, 2015. #zanata
-# Tom Cocozzello <tjcocozz@us.ibm.com>, 2015. #zanata
 # Eugènia Torrella <tester03@es.ibm.com>, 2016. #zanata
-# Tom Cocozzello <tjcocozz@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev26\n"
+"Project-Id-Version: cinder 8.0.1.dev27\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-05-01 21:05+0000\n"
+"POT-Creation-Date: 2016-05-09 14:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-05-08 09:47+0000\n"
+"PO-Revision-Date: 2016-05-09 08:32+0000\n"
 "Last-Translator: Eugènia Torrella <tester03@es.ibm.com>\n"
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -303,13 +300,14 @@ msgstr "Se ha realizado una solicitud simultánea, posiblemente contradictoria."
 msgid ""
 "A free LUN (HLUN) was not found. Add a different host group. (LDEV: %(ldev)s)"
 msgstr ""
-"No se ha encontrado un LUN (HLUN) libre. Añada un grupo de host diferente. "
+"No se ha encontrado un LUN (HLUN) libre. Añada un grupo de hosts diferente. "
 "(LDEV: %(ldev)s)"
 
 #, python-format
 msgid "A host group could not be added. (port: %(port)s, name: %(name)s)"
 msgstr ""
-"No se ha podido añadir un grupo de host. (puerto: %(port)s, nombre: %(name)s)"
+"No se ha podido añadir un grupo de hosts. (puerto: %(port)s, nombre: "
+"%(name)s)"
 
 #, python-format
 msgid ""
@@ -321,7 +319,7 @@ msgstr ""
 
 #, python-format
 msgid "A host group is invalid. (host group: %(gid)s)"
-msgstr "Un grupo de host no es válido. (grupo de host: %(gid)s)"
+msgstr "Un grupo de hosts no es válido. (grupo de hosts: %(gid)s)"
 
 #, python-format
 msgid "A pair cannot be deleted. (P-VOL: %(pvol)s, S-VOL: %(svol)s)"
@@ -496,7 +494,7 @@ msgid ""
 "reason: %(reason)s)"
 msgstr ""
 "No se ha podido añadir un destino de iSCSI. (puerto: %(port)s, alias: "
-"%(alias)s, razón: %(reason)s)"
+"%(alias)s, motivo: %(reason)s)"
 
 #, python-format
 msgid ""
@@ -596,7 +594,7 @@ msgid ""
 "version."
 msgstr ""
 "Las especificaciones QoS de programa de fondo no se admiten en esta familia "
-"de almacenamiento y versión ONTAP ."
+"de almacenamiento y versión ONTAP."
 
 #, python-format
 msgid "Backend doesn't exist (%(backend)s)"
@@ -1621,8 +1619,8 @@ msgid ""
 "Container format: %s is unsupported by the VMDK driver, only 'bare' is "
 "supported."
 msgstr ""
-"Formato de contenedor: el controlador VMDK no da soporte a %s, sólo 'bare' "
-"se admite."
+"Formato de contenedor: el controlador VMDK no da soporte a %s, sólo se "
+"admite 'bare'."
 
 msgid "Container size smaller than required file size."
 msgstr ""
@@ -1842,7 +1840,7 @@ msgid "Create lun migration error."
 msgstr "Error al crear la migración de lun."
 
 msgid "Create luncopy error."
-msgstr "Error de crear luncopy."
+msgstr "Error al crear luncopy."
 
 msgid "Create lungroup error."
 msgstr "Error al crear el grupo de LUN."
@@ -1880,7 +1878,7 @@ msgid ""
 "Creating and activating zone set failed: (Zone set=%(cfg_name)s error="
 "%(err)s)."
 msgstr ""
-"Han fallado la creación y activación del conjunto de zonas: (Zone set="
+"Ha fallado la creación y activación del conjunto de zonas: (Zone set="
 "%(cfg_name)s error=%(err)s)."
 
 #, python-format
@@ -2085,7 +2083,8 @@ msgstr "Error al suprimir una instantánea."
 
 #, python-format
 msgid "Delete snapshot of volume not supported in state: %s."
-msgstr "La supresión de instantánea del volumen no se soporta en estado: %s."
+msgstr ""
+"No se admite suprimir instantáneas del volumen cuando el estado es: %s."
 
 #, python-format
 msgid ""
@@ -2807,7 +2806,7 @@ msgstr ""
 "Error al obtener el ID de dominio a partir del nombre %(name)s: %(id)s."
 
 msgid "Error getting initiator groups."
-msgstr "Error al obtener los grupos de iniciador."
+msgstr "Error al obtener los grupos de iniciadores."
 
 #, python-format
 msgid "Error getting pool id from name %(pool)s: %(err)s."
@@ -3003,7 +3002,7 @@ msgstr "Error al comprobar la versión de firmware %s."
 
 #, python-format
 msgid "Error while checking transaction status: %s"
-msgstr "Error al comprobar estado de transacción: %s"
+msgstr "Error al comprobar el estado de transacción: %s"
 
 #, python-format
 msgid "Error while checking whether VF is available for management %s."
@@ -3264,7 +3263,7 @@ msgstr "No se han podido obtener detalles para la agrupación %s."
 #, python-format
 msgid "Failed removing connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr ""
-"No se ha podido eliminar conexión para tejido=%(fabric)s: Error:%(err)s"
+"No se ha podido eliminar la conexión para el tejido=%(fabric)s: Error:%(err)s"
 
 #, python-format
 msgid "Failed to Extend Volume %(volname)s"
@@ -3276,7 +3275,7 @@ msgstr "No se ha podido iniciar la sesión en 3PAR (%(url)s) debido a %(err)s"
 
 msgid "Failed to access active zoning configuration."
 msgstr ""
-"No se ha podido acceder a configuración de distribución en zonas activa."
+"No se ha podido acceder a la configuración de distribución en zonas activa."
 
 #, python-format
 msgid "Failed to access zoneset status:%s"
@@ -3307,7 +3306,7 @@ msgstr ""
 "%(cgName)s. Código de retorno: %(rc)lu. Error: %(error)s."
 
 msgid "Failed to add zoning configuration."
-msgstr "No se ha podido añadir configuración de distribución en zonas."
+msgstr "No se ha podido añadir la configuración de distribución en zonas."
 
 #, python-format
 msgid ""
@@ -3825,7 +3824,7 @@ msgstr ""
 "desde el clon"
 
 msgid "Failed to get name server info."
-msgstr "No se ha podido obtener información de servidor de nombres."
+msgstr "No se ha podido obtener información del servidor de nombres."
 
 msgid "Failed to get network info."
 msgstr "No se ha podido obtener información de red."
@@ -4165,8 +4164,8 @@ msgstr ""
 #, python-format
 msgid "Failed to retrieve active zoning configuration %s"
 msgstr ""
-"No se ha podido recuperar la configuración de distribución en zonas activas "
-"%s"
+"No se ha podido recuperar la configuración de la distribución en zonas "
+"activas %s"
 
 #, python-format
 msgid ""
@@ -4230,7 +4229,7 @@ msgstr ""
 msgid "Failed to unmap a logical device. (LDEV: %(ldev)s, reason: %(reason)s)"
 msgstr ""
 "No se ha podido anular correlación de un dispositivo lógico. (LDEV: "
-"%(ldev)s, razón: %(reason)s)"
+"%(ldev)s, motivo: %(reason)s)"
 
 #, python-format
 msgid "Failed to update consistency group: %(cgName)s."
@@ -4838,7 +4837,7 @@ msgstr ""
 
 #, python-format
 msgid "Host type %s not supported."
-msgstr "El tipo de host %s no se soporta."
+msgstr "El tipo de host %s no se admite."
 
 #, python-format
 msgid "Host with ports %(ports)s not found."
@@ -6513,7 +6512,7 @@ msgid "Pool from volume['host'] failed with: %(ex)s."
 msgstr "La agrupación del volumen ['host'] ha fallado con: %(ex)s."
 
 msgid "Pool is not available in the volume host field."
-msgstr "La agrupación no está disponible en el campo del host del volumen."
+msgstr "La agrupación no está disponible en el campo de host del volumen."
 
 msgid "Pool is not available in the volume host fields."
 msgstr "La agrupación no está disponibles en los campos de host del volumen."
@@ -6570,7 +6569,7 @@ msgid ""
 "Protocol %(storage_protocol)s is not supported for storage family "
 "%(storage_family)s."
 msgstr ""
-"El protocolo %(storage_protocol)s no es admitido para la familia de "
+"El protocolo %(storage_protocol)s no se admite para la familia de "
 "almacenamiento %(storage_family)s."
 
 msgid "Provided backup record is missing an id"
@@ -7664,7 +7663,7 @@ msgid "The host group or iSCSI target could not be added."
 msgstr "No se ha podido añadir el grupo de host o el destino iSCSI."
 
 msgid "The host group or iSCSI target was not found."
-msgstr "No se ha encontrado el grupo de host o el destino iSCSI."
+msgstr "No se ha encontrado el grupo de hosts o el destino iSCSI."
 
 msgid ""
 "The host is not ready to be failed back. Please resynchronize the volumes "
@@ -8976,7 +8975,7 @@ msgstr "El volumen virtual '%s' no existe en la matriz."
 
 #, python-format
 msgid "Vol copy job for dest %s failed."
-msgstr "El trabajo de copia de volumen para destino %s ha fallado."
+msgstr "El trabajo de copia de volumen para el destino %s ha fallado."
 
 #, python-format
 msgid "Volume %(deviceID)s not found."
@@ -9391,7 +9390,7 @@ msgid ""
 "%(source_size)sGB. They must be >= original volume size."
 msgstr ""
 "El tamaño del volumen '%(size)s'GB no puede ser menor que el tamaño original "
-"del volumen  %(source_size)sGB. Deben ser >= tamaño de volumen original."
+"del volumen  %(source_size)sGB. Debe ser >= tamaño de volumen original."
 
 #, python-format
 msgid ""
