@@ -137,9 +137,8 @@ class VolumeManageController(wsgi.Controller):
                                                          volume['host'],
                                                          volume['ref'],
                                                          **kwargs)
-        except exception.ServiceNotFound:
-            msg = _("Service not found.")
-            raise exc.HTTPNotFound(explanation=msg)
+        except exception.ServiceNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
 
         utils.add_visible_admin_metadata(new_volume)
 
