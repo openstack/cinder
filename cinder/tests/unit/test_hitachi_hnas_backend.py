@@ -357,10 +357,8 @@ class HDSHNASBendTest(test.TestCase):
     @mock.patch.object(time, 'sleep')
     def test_run_cmd(self, m_sleep, m_utl, m_ssh, m_ssh_cli, m_pvt_key,
                      m_file, m_open):
-        save_hkey_file = CONF.ssh_hosts_key_file
-        save_spath = CONF.state_path
-        CONF.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
-        CONF.state_path = '/var/lib/cinder'
+        self.flags(ssh_hosts_key_file='/var/lib/cinder/ssh_known_hosts',
+                   state_path='/var/lib/cinder')
 
         # Test main flow
         self.hnas_bend.drv_configs['ssh_enabled'] = 'True'
@@ -395,9 +393,6 @@ class HDSHNASBendTest(test.TestCase):
         self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
                           'ssh', '0.0.0.0', 'supervisor', 'supervisor',
                           'df', '-a')
-
-        CONF.state_path = save_spath
-        CONF.ssh_hosts_key_file = save_hkey_file
 
     @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
                        side_effect=m_run_cmd)
