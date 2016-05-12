@@ -1251,12 +1251,13 @@ class TestVhdUtils(test.TestCase):
         mock_exec.assert_called_once_with('vhd-util', 'coalesce', '-n',
                                           vhd_path)
 
+    @mock.patch('cinder.image.image_utils.temporary_dir')
     @mock.patch('cinder.image.image_utils.coalesce_vhd')
     @mock.patch('cinder.image.image_utils.resize_vhd')
     @mock.patch('cinder.image.image_utils.get_vhd_size')
     @mock.patch('cinder.image.image_utils.utils.execute')
     def test_coalesce_chain(self, mock_exec, mock_size, mock_resize,
-                            mock_coal):
+                            mock_coal, mock_temp):
         vhd_chain = (mock.sentinel.first,
                      mock.sentinel.second,
                      mock.sentinel.third,
