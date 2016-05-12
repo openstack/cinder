@@ -953,7 +953,7 @@ class Client(client_base.Client):
                 'reason': error_reason,
             }
             if error_code == netapp_api.ESNAPSHOTNOTALLOWED:
-                raise exception.SnapshotUnavailable(msg % msg_args)
+                raise exception.SnapshotUnavailable(data=msg % msg_args)
             else:
                 raise exception.VolumeBackendAPIException(data=msg % msg_args)
 
