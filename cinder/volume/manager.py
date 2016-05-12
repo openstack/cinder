@@ -1606,7 +1606,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         rpcapi = volume_rpcapi.VolumeAPI()
 
         # Create new volume on remote host
-        skip = self._VOLUME_CLONE_SKIP_PROPERTIES | {'host'}
+        tmp_skip = {'snapshot_id', 'source_volid'}
+        skip = self._VOLUME_CLONE_SKIP_PROPERTIES | tmp_skip | {'host'}
         new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
         if new_type_id:
             new_vol_values['volume_type_id'] = new_type_id
@@ -1648,6 +1649,13 @@ class VolumeManager(manager.SchedulerDependentManager):
             # TODO(thangp): Replace get_by_id with refresh when it is
             # available
             new_volume = objects.Volume.get_by_id(ctxt, new_volume.id)
+
+        # Set skipped value to avoid calling
+        # function except for _create_raw_volume
+        tmp_skipped_values = {k: volume[k] for k in tmp_skip if volume.get(k)}
+        if tmp_skipped_values:
+            new_volume.update(tmp_skipped_values)
+            new_volume.save()
 
         # Copy the source volume to the destination volume
         try:
