@@ -822,6 +822,9 @@ class StringLengthTestCase(test.TestCase):
         self.assertRaises(exception.InvalidInput,
                           utils.check_string_length,
                           'a' * 256, 'name', max_length=255)
+        self.assertRaises(exception.InvalidInput,
+                          utils.check_string_length,
+                          dict(), 'name', max_length=255)
 
 
 class AddVisibleAdminMetadataTestCase(test.TestCase):
