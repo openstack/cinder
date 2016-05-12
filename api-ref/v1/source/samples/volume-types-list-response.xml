@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<volume_types xmlns="http://docs.openstack.org/volume/api/v1">
+    <volume_type id="289da7f8-6440-407c-9fb4-7db01ec49164"
+                 name="vol-type-001">
+        <extra_specs>
+            <extra_spec key="capabilities">gpu</extra_spec>
+        </extra_specs>
+    </volume_type>
+    <volume_type id="96c3bda7-c82a-4f50-be73-ca7621794835"
+                 name="vol-type-002" />
+</volume_types>

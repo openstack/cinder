@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<choices xmlns="http://docs.openstack.org/common/api/v1.0" xmlns:atom="http://www.w3.org/2005/Atom">
+    <version status="SUPPORTED" id="v1.0">
+        <media-types>
+            <media-type base="application/xml" type="application/vnd.openstack.volume+xml;version=1" />
+            <media-type base="application/json" type="application/vnd.openstack.volume+json;version=1" />
+        </media-types>
+        <atom:link href="http://23.253.248.171:8776/v1/v2.xml" rel="self" />
+    </version>
+    <version status="CURRENT" id="v2.0">
+        <media-types>
+            <media-type base="application/xml" type="application/vnd.openstack.volume+xml;version=1" />
+            <media-type base="application/json" type="application/vnd.openstack.volume+json;version=1" />
+        </media-types>
+        <atom:link href="http://23.253.248.171:8776/v2/v2.xml" rel="self" />
+    </version>
+</choices>

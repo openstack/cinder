@@ -1,0 +1,14 @@
+{
+    "consistencygroup": {
+        "name": "firstcg",
+        "description": "first consistency group",
+        "volume_types": [
+            "type1",
+            "type2"
+        ],
+        "user_id": "6f519a48-3183-46cf-a32f-41815f814546",
+        "project_id": "6f519a48-3183-46cf-a32f-41815f815555",
+        "availability_zone": "az0",
+        "status": "creating"
+    }
+}

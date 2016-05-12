@@ -1,0 +1,6 @@
+{
+    "quota_set": {
+        "force": true,
+        "instances": 9
+    }
+}
