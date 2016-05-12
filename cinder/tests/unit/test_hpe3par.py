@@ -6627,6 +6627,134 @@ class TestHPE3PARISCSIDriver(HPE3PARBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
             self.assertEqual(expected_model, model)
 
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_do_export_vlun_missing_chap_credentials(self, mock_utils):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP 3PAR client
+        config = self.setup_configuration()
+        config.hpe3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': self.VOLUME_ID}
+        mock_utils.return_value = 'random-pass'
+
+        mock_client.getHost.return_value = {
+            'name': 'osv-0DM4qZEVSKON-DXN-NwVpw',
+            'initiatorChapEnabled': True}
+
+        mock_client.getVolumeMetaData.side_effect = hpeexceptions.HTTPNotFound
+
+        expected = [
+            mock.call.getHostVLUNs('test-host'),
+            mock.call.getHost('test-host'),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY, 'test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY, 'random-pass')]
+
+        expected_model = {'provider_auth': 'CHAP test-host random-pass'}
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+
+            # vlun has remoteName
+            mock_client.getHostVLUNs.return_value = [
+                {'active': True, 'volumeName': self.VOLUME_3PAR_NAME,
+                 'lun': 1, 'type': 3,
+                 'remoteName': 'iqn.1993-08.org.debian:01:222'}]
+
+            model_with_remote_name = self.driver._do_export(common, volume)
+            mock_client.assert_has_calls(expected)
+            self.assertDictMatch(expected_model, model_with_remote_name)
+
+            # vlun does not has remoteName
+            mock_client.getHostVLUNs.return_value = [
+                {'active': False, 'volumeName': self.VOLUME_3PAR_NAME,
+                 'lun': None, 'type': 1}]
+
+            model_without_remote_name = self.driver._do_export(common, volume)
+            mock_client.assert_has_calls(expected)
+            self.assertDictMatch(expected_model, model_without_remote_name)
+
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_create_export(self, mock_utils):
+        config = self.setup_configuration()
+        config.hpe3par_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=config)
+        mock_utils.return_value = 'random-pass'
+        volume = {'host': 'test-host@3pariscsi',
+                  'id': self.VOLUME_ID}
+        mock_client.getHostVLUNs.return_value = [
+            {'active': True,
+             'volumeName': self.VOLUME_3PAR_NAME,
+             'lun': None, 'type': 3,
+             'remoteName': 'iqn.1993-08.org.debian:01:222'}]
+        mock_client.getHost.return_value = {
+            'name': 'osv-0DM4qZEVSKON-DXN-NwVpw',
+            'initiatorChapEnabled': True}
+        mock_client.getVolumeMetaData.return_value = {
+            'value': 'random-pass'}
+
+        expected = [
+            mock.call.getHostVLUNs('test-host'),
+            mock.call.getHost('test-host'),
+            mock.call.getVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_USER_KEY, 'test-host'),
+            mock.call.setVolumeMetaData(
+                'osv-0DM4qZEVSKON-DXN-NwVpw', CHAP_PASS_KEY, 'random-pass')]
+        expected_model = {'provider_auth': 'CHAP test-host random-pass'}
+        mock_create_client = self.mock_object(hpecommon.HPE3PARCommon,
+                                              '_create_client',
+                                              mock.Mock(return_value=
+                                                        mock_client))
+        mock_create_client.return_value = mock_client
+        model = self.driver.create_export(None, volume, None)
+        mock_client.assert_has_calls(expected)
+        self.assertDictMatch(expected_model, model)
+
+    def test_initialize_iscsi_ports_with_iscsi_ip_and_port(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        conf.hpe3par_iscsi_ips = ["10.10.220.252:1234"]
+        mock_client = self.setup_driver(config=conf)
+
+        mock_client.getPorts.return_value = PORTS_RET
+        expected = [mock.call.getPorts()]
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            common = self.driver._login()
+            self.driver.initialize_iscsi_ports(common)
+            mock_client.assert_has_calls(expected)
+
+    def test_initialize_iscsi_ports_with_wrong_ip_format_configured(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        conf = self.setup_configuration()
+        conf.hpe3par_iscsi_ips = ["10.10.220.252:1234:4567"]
+        mock_client = self.setup_driver(config=conf)
+
+        mock_client.getPorts.return_value = PORTS_RET
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            common = self.driver._login()
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.initialize_iscsi_ports,
+                              common)
+
     def test_ensure_export(self):
         # setup_mock_client drive with default configuration
         # and return the mock HTTP 3PAR client
