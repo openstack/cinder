@@ -1132,12 +1132,15 @@ class SheepdogDriverTestCase(test.TestCase):
         self.driver.copy_image_to_volume(None, self.test_data.TEST_VOLUME,
                                          FakeImageService(), None)
 
-    def test_copy_volume_to_image(self):
+    @mock.patch('six.moves.builtins.open')
+    @mock.patch('cinder.image.image_utils.temporary_file')
+    def test_copy_volume_to_image(self, mock_temp, mock_open):
         fake_context = {}
         fake_volume = {'name': 'volume-00000001'}
         fake_image_service = mock.Mock()
         fake_image_service_update = mock.Mock()
         fake_image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
+        temp_file = mock_temp.return_value.__enter__.return_value
 
         patch = mock.patch.object
         with patch(self.driver, '_try_execute') as fake_try_execute:
@@ -1158,11 +1161,13 @@ class SheepdogDriverTestCase(test.TestCase):
                                     self._port,
                                     fake_volume['name']),
                                 mock.ANY)
+                mock_open.assert_called_once_with(temp_file, 'rb')
                 fake_try_execute.assert_called_once_with(*expected_cmd)
                 fake_image_service_update.assert_called_once_with(
                     fake_context, fake_image_meta['id'], mock.ANY, mock.ANY)
 
-    def test_copy_volume_to_image_nonexistent_volume(self):
+    @mock.patch('os.makedirs')
+    def test_copy_volume_to_image_nonexistent_volume(self, mock_make):
         fake_context = {}
         fake_volume = {
             'name': 'nonexistent-volume-82c4539e-c2a5-11e4-a293-0aa186c60fe0'}
