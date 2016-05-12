@@ -47,6 +47,7 @@ class HostFiltersTestCase(test.TestCase):
             self.class_map[cls.__name__] = cls
 
 
+@ddt.ddt
 class CapacityFilterTestCase(HostFiltersTestCase):
     def setUp(self):
         super(CapacityFilterTestCase, self).setUp()
@@ -497,6 +498,37 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> True',
                              'capabilities:thick_provisioning_support':
                                  '<is> True'}
+        service = {'disabled': False}
+        host = fakes.FakeHostState('host1',
+                                   {'total_capacity_gb': 500,
+                                    'free_capacity_gb': 100,
+                                    'provisioned_capacity_gb': 400,
+                                    'max_over_subscription_ratio': 2.0,
+                                    'reserved_percentage': 0,
+                                    'thin_provisioning_support': True,
+                                    'thick_provisioning_support': True,
+                                    'updated_at': None,
+                                    'service': service})
+        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+
+    @ddt.data(
+        {'type_key': 'provisioning:type', 'type_val': 'thick',
+         'vol_type': 'volume_type', 'extra_specs': 'extra_specs'},
+        {'type_key': 'provisioning:type', 'type_val': 'thin',
+         'vol_type': 'volume_type', 'extra_specs': 'extra_specs'},
+        {'type_key': None, 'type_val': None,
+         'vol_type': 'volume_type', 'extra_specs': None},
+        {'type_key': None, 'type_val': None,
+         'vol_type': None, 'extra_specs': None},
+    )
+    @ddt.unpack
+    @mock.patch('cinder.utils.service_is_up')
+    def test_filter_provisioning_type(self, _mock_serv_is_up, type_key,
+                                      type_val, vol_type, extra_specs):
+        _mock_serv_is_up.return_value = True
+        filt_cls = self.class_map['CapacityFilter']()
+        filter_properties = {'size': 100,
+                             vol_type: {extra_specs: {type_key: type_val}}}
         service = {'disabled': False}
         host = fakes.FakeHostState('host1',
                                    {'total_capacity_gb': 500,

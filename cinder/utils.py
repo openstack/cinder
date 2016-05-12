@@ -977,7 +977,8 @@ def calculate_virtual_free_capacity(total_capacity,
                                     provisioned_capacity,
                                     thin_provisioning_support,
                                     max_over_subscription_ratio,
-                                    reserved_percentage):
+                                    reserved_percentage,
+                                    thin):
     """Calculate the virtual free capacity based on thin provisioning support.
 
     :param total_capacity:  total_capacity_gb of a host_state or pool.
@@ -990,13 +991,14 @@ def calculate_virtual_free_capacity(total_capacity,
                                         a host_state or a pool
     :param reserved_percentage: reserved_percentage of a host_state or
                                 a pool.
+    :param thin: whether volume to be provisioned is thin
     :returns: the calculated virtual free capacity.
     """
 
     total = float(total_capacity)
     reserved = float(reserved_percentage) / 100
 
-    if thin_provisioning_support:
+    if thin and thin_provisioning_support:
         free = (total * max_over_subscription_ratio
                 - provisioned_capacity
                 - math.floor(total * reserved))
