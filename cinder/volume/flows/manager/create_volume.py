@@ -511,13 +511,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
     def _copy_image_to_volume(self, context, volume,
                               image_id, image_location, image_service):
         """Downloads Glance image to the specified volume."""
-        copy_image_to_volume = self.driver.copy_image_to_volume
         LOG.debug("Attempting download of %(image_id)s (%(image_location)s)"
                   " to volume %(volume_id)s.",
                   {'image_id': image_id, 'volume_id': volume.id,
                    'image_location': image_location})
         try:
-            copy_image_to_volume(context, volume, image_service, image_id)
+            if volume.encryption_key_id:
+                self.driver.copy_image_to_encrypted_volume(
+                    context, volume, image_service, image_id)
+            else:
+                self.driver.copy_image_to_volume(
+                    context, volume, image_service, image_id)
         except processutils.ProcessExecutionError as ex:
             LOG.exception(_LE("Failed to copy image %(image_id)s to volume: "
                               "%(volume_id)s"),
@@ -583,7 +587,9 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         Returns a dict of volume properties eg. provider_location,
         boolean indicating whether cloning occurred
         """
-        if not image_location:
+        # NOTE (lixiaoy1): currently can't create volume from source vol with
+        # different encryptions, so just return.
+        if not image_location or volume.encryption_key_id:
             return None, False
 
         if (image_meta.get('container_format') != 'bare' or
@@ -663,6 +669,11 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         LOG.debug('Attempting to retrieve cache entry for image = '
                   '%(image_id)s on host %(host)s.',
                   {'image_id': image_id, 'host': volume.host})
+        # Currently can't create volume from source vol with different
+        # encryptions, so just return
+        if volume.encryption_key_id:
+            return None, False
+
         try:
             cache_entry = self.image_volume_cache.get_entry(internal_context,
                                                             volume,
@@ -704,11 +715,17 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
         # NOTE (singn): two params need to be returned
         # dict containing provider_location for cloned volume
         # and clone status.
-        model_update, cloned = self.driver.clone_image(context,
-                                                       volume,
-                                                       image_location,
-                                                       image_meta,
-                                                       image_service)
+        # NOTE (lixiaoy1): Currently all images are raw data, we can't
+        # use clone_image to copy data if new volume is encrypted.
+        volume_is_encrypted = volume.encryption_key_id is not None
+        cloned = False
+        model_update = None
+        if not volume_is_encrypted:
+            model_update, cloned = self.driver.clone_image(context,
+                                                           volume,
+                                                           image_location,
+                                                           image_meta,
+                                                           image_service)
 
         # Try and clone the image if we have it set as a glance location.
         if not cloned and 'cinder' in CONF.allowed_direct_url_schemes:
@@ -731,7 +748,8 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                     image_id,
                     image_meta
                 )
-                if not cloned:
+                # Don't cache encrypted volume.
+                if not cloned and not volume_is_encrypted:
                     should_create_cache_entry = True
 
         # Fall back to default behavior of creating volume,

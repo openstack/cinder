@@ -782,6 +782,18 @@ class BaseVD(object):
         self._stats = data
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
+        """Fetch image from image_service and write to unencrypted volume."""
+        self._copy_image_data_to_volume(
+            context, volume, image_service, image_id, False)
+
+    def copy_image_to_encrypted_volume(
+            self, context, volume, image_service, image_id):
+        """Fetch image from image_service and write to encrypted volume."""
+        self._copy_image_data_to_volume(
+            context, volume, image_service, image_id, True)
+
+    def _copy_image_data_to_volume(self, context, volume, image_service,
+                                   image_id, encrypted=False):
         """Fetch the image from image_service and write it to the volume."""
         LOG.debug('copy_image_to_volume %s.', volume['name'])
 
@@ -790,14 +802,25 @@ class BaseVD(object):
         properties = utils.brick_get_connector_properties(use_multipath,
                                                           enforce_multipath)
         attach_info, volume = self._attach_volume(context, volume, properties)
-
         try:
-            image_utils.fetch_to_raw(context,
-                                     image_service,
-                                     image_id,
-                                     attach_info['device']['path'],
-                                     self.configuration.volume_dd_blocksize,
-                                     size=volume['size'])
+            if encrypted:
+                encryption = self.db.volume_encryption_metadata_get(context,
+                                                                    volume.id)
+                utils.brick_attach_volume_encryptor(context,
+                                                    attach_info,
+                                                    encryption)
+            try:
+                image_utils.fetch_to_raw(
+                    context,
+                    image_service,
+                    image_id,
+                    attach_info['device']['path'],
+                    self.configuration.volume_dd_blocksize,
+                    size=volume['size'])
+            finally:
+                if encrypted:
+                    utils.brick_detach_volume_encryptor(attach_info,
+                                                        encryption)
         finally:
             self._detach_volume(context, attach_info, volume, properties)
 
