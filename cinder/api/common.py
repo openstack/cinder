@@ -240,11 +240,14 @@ def get_request_url(request):
 def remove_version_from_href(href):
     """Removes the first api version from the href.
 
-    Given: 'http://www.cinder.com/v1.1/123'
-    Returns: 'http://www.cinder.com/123'
+    Given: 'http://cinder.example.com/v1.1/123'
+    Returns: 'http://cinder.example.com/123'
 
-    Given: 'http://www.cinder.com/v1.1'
-    Returns: 'http://www.cinder.com'
+    Given: 'http://cinder.example.com/v1.1'
+    Returns: 'http://cinder.example.com'
+
+    Given: 'http://cinder.example.com/volume/drivers/v1.1/flashsystem'
+    Returns: 'http://cinder.example.com/volume/drivers/flashsystem'
 
     """
     parsed_url = urllib.parse.urlsplit(href)
@@ -252,8 +255,10 @@ def remove_version_from_href(href):
 
     # NOTE: this should match vX.X or vX
     expression = re.compile(r'^v([0-9]+|[0-9]+\.[0-9]+)(/.*|$)')
-    if expression.match(url_parts[1]):
-        del url_parts[1]
+    for x in range(len(url_parts)):
+        if expression.match(url_parts[x]):
+            del url_parts[x]
+            break
 
     new_path = '/'.join(url_parts)
 

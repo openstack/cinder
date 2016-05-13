@@ -354,6 +354,11 @@ class MiscFunctionsTest(test.TestCase):
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
+    def test_remove_version_from_href_version_not_trailing_domain(self):
+        fixture = 'http://www.testsite.com/cinder/v2'
+        expected = 'http://www.testsite.com/cinder'
+        self.assertEqual(expected, common.remove_version_from_href(fixture))
+
     def test_remove_version_from_href_bad_request(self):
         fixture = 'http://www.testsite.com/1.1/images'
         self.assertRaises(ValueError,
