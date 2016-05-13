@@ -266,7 +266,8 @@ class StorwizeSVCFCDriver(storwize_common.StorwizeSVCCommonDriver):
             info = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
 
-            host_name = self._helpers.get_host_from_connector(connector)
+            host_name = self._helpers.get_host_from_connector(
+                connector, volume_name=vol_name)
             if host_name is None:
                 msg = (_('terminate_connection: Failed to get host name from'
                          ' connector.'))

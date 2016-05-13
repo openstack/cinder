@@ -619,6 +619,8 @@ port_speed!N/A
         return self._print_info_cmd(rows=rows, **kwargs)
 
     def _cmd_lsfabric(self, **kwargs):
+        if self._next_cmd_error['lsfabric'] == 'no_hosts':
+            return ('', '')
         host_name = kwargs['host'].strip('\'\"') if 'host' in kwargs else None
         target_wwpn = kwargs['wwpn'] if 'wwpn' in kwargs else None
         host_infos = []
@@ -1012,7 +1014,7 @@ port_speed!N/A
                 return ('', '')
         else:
             if self._next_cmd_error['lshost'] == 'missing_host':
-                self._next_cmd_error['lshost'] == ''
+                self._next_cmd_error['lshost'] = ''
                 return self._errors['CMMVC5754E']
             host_name = kwargs['obj'].strip('\'\"')
             if host_name not in self._hosts_list:
@@ -2282,6 +2284,32 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         wwpns.remove(wwpns[0])
         host_name = helper.get_host_from_connector(self._connector)
 
+        self.assertIsNotNone(host_name)
+
+    def test_storwize_get_host_with_fc_connection_with_volume(self):
+        # create a FC volume
+        volume_fc = self._generate_vol_info(None, None)
+        self.fc_driver.create_volume(volume_fc)
+        extra_spec = {'capabilities:storage_protocol': '<in> FC'}
+        vol_type_fc = volume_types.create(self.ctxt, 'FC', extra_spec)
+        volume_fc['volume_type_id'] = vol_type_fc['id']
+
+        connector = {'host': 'storwize-svc-host',
+                     'wwnns': ['20000090fa17311e', '20000090fa17311f'],
+                     'wwpns': ['ff00000000000000', 'ff00000000000001'],
+                     'initiator': 'iqn.1993-08.org.debian:01:eac5ccc1aaa'}
+
+        self.fc_driver.initialize_connection(volume_fc, connector)
+        # Create a FC host
+        helper = self.fc_driver._helpers
+
+        if self.USESIM:
+            # tell lsfabric to not return anything
+            self.sim.error_injection('lsfabric', 'no_hosts')
+        host_name = helper.get_host_from_connector(
+            connector, volume_fc['name'])
+        if self.USESIM:
+            self.sim.error_injection('lsfabric', 'no_hosts')
         self.assertIsNotNone(host_name)
 
     def test_storwize_get_host_from_connector_with_lshost_failure(self):
