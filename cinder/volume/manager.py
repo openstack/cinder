@@ -1205,7 +1205,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                            'image_id': image_meta['id'],
                            'except': ex})
             QUOTAS.rollback(ctx, reservations)
-            return False
+            return
 
         QUOTAS.commit(ctx, reservations,
                       project_id=new_vol_values['project_id'])
@@ -1232,7 +1232,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             except exception.CinderException:
                 LOG.exception(_LE('Could not delete the image volume %(id)s.'),
                               {'id': volume.id})
-            return False
+            return
 
     def _clone_image_volume_and_add_location(self, ctx, volume, image_service,
                                              image_meta):
