@@ -1163,7 +1163,7 @@ class MigrateVolumeSeverRepl(task.Task):
         if not source:
             err = (_('Source with host ip/name: %s not found on the '
                      'target appliance for backend enabled volume '
-                     'migration, procedding with default migration.'),
+                     'migration, proceeding with default migration.'),
                    driver.configuration.san_ip)
             LOG.error(err)
             raise exception.VolumeBackendAPIException(data=err)

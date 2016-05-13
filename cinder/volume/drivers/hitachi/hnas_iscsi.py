@@ -318,7 +318,7 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         # If we've got here and found_tgt is not True, we run out of targets,
         # raise and go away.
         if not found_tgt:
-            LOG.error(_LE("No more targets avaliable."))
+            LOG.error(_LE("No more targets available."))
             raise exception.NoMoreTargets(param=tgt_alias)
 
         LOG.info(_LI("Using target label: %s."), tgt_alias)
