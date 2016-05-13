@@ -319,16 +319,6 @@ class GlanceImageService(object):
         except Exception:
             _reraise_translated_image_exception(image_id)
 
-    def delete_locations(self, context, image_id, url_set):
-        """Delete backend location urls from an image."""
-        if CONF.glance_api_version != 2:
-            raise exception.Invalid("Image API version 2 is disabled.")
-        client = GlanceClientWrapper(version=2)
-        try:
-            return client.call(context, 'delete_locations', image_id, url_set)
-        except Exception:
-            _reraise_translated_image_exception(image_id)
-
     def download(self, context, image_id, data=None):
         """Calls out to Glance for data and writes data."""
         if data and 'file' in CONF.allowed_direct_url_schemes:

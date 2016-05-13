@@ -61,7 +61,6 @@ from cinder.db import base
 from cinder.i18n import _LI
 from cinder import rpc
 from cinder.scheduler import rpcapi as scheduler_rpcapi
-from cinder import version
 
 from eventlet import greenpool
 
@@ -111,15 +110,6 @@ class Manager(base.Base, PeriodicTasks):
 
         """
         pass
-
-    def service_version(self):
-        return version.version_string()
-
-    def service_config(self):
-        config = {}
-        for key in CONF:
-            config[key] = CONF.get(key, None)
-        return config
 
     def is_working(self):
         """Method indicating if service is working correctly.
