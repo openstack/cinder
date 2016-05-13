@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<consistencygroups xmlns:consistencygroups="http://docs.openstack.org/volume/ext/consistencygroups/api/v1">
+    <consistencygroup
+        id="6f519a48-3183-46cf-a32f-41815f813986"
+        status="available"
+        availability_zone="az1"
+        created_at="2015-09-16T09:28:52.000000"
+        name="my-cg1"
+        description="my first consistency group">
+        <volume_types>
+            <volume_type>"123456"</volume_type>
+        </volume_types>
+    </consistencygroup>
+    <consistencygroup
+        id="aed36625-a6d7-4681-ba59-c7ba3d18c148"
+        status="error"
+        availability_zone="az2"
+        created_at="2015-09-16T09:31:15.000000"
+        name="my-cg2"
+        description="Edited description">
+        <volume_types>
+            <volume_type>"234567"</volume_type>
+        </volume_types>
+    </consistencygroup>
+</consistencygroups>

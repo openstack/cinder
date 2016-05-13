@@ -1,0 +1,33 @@
+{
+    "namespace": "OS::Storage::Capabilities::fake",
+    "vendor_name": "OpenStack",
+    "volume_backend_name": "lvm",
+    "pool_name": "pool",
+    "driver_version": "2.0.0",
+    "storage_protocol": "iSCSI",
+    "display_name": "Capabilities of Cinder LVM driver",
+    "description": "These are volume type options provided by Cinder LVM driver, blah, blah.",
+    "visibility": "public",
+    "properties": {
+        "compression": {
+            "title": "Compression",
+            "description": "Enables compression.",
+            "type": "boolean"
+        },
+        "qos": {
+            "title": "QoS",
+            "description": "Enables QoS.",
+            "type": "boolean"
+        },
+        "replication": {
+            "title": "Replication",
+            "description": "Enables replication.",
+            "type": "boolean"
+        },
+        "thin_provisioning": {
+            "title": "Thin Provisioning",
+            "description": "Sets thin provisioning.",
+            "type": "boolean"
+        }
+    }
+}

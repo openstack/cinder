@@ -1,0 +1,7 @@
+{
+    "quota_set": {
+        "gigabytes": 5,
+        "snapshots": 10,
+        "volumes": 20
+    }
+}

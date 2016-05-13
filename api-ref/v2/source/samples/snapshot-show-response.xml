@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<snapshot
+  xmlns:os-extended-snapshot-attributes="http://docs.openstack.org/openstack-block-storage/2.0/content/Extended_Snapshot_Attributes.html"
+  status="available" description="Very important"
+  created_at="2013-02-25 04:13:17"
+  volume_id="5aa119a8-d25b-45a7-8d1b-88e127885635" size="1"
+  id="2bb856e1-b3d8-4432-a858-09e4ce939389" name="snap-001"
+  os-extended-snapshot-attributes:project_id="0c2eba2c5af04d3f9e9d0d410b371fde"
+  os-extended-snapshot-attributes:progress="100%">
+  <metadata/>
+</snapshot>

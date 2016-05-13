@@ -1,0 +1,36 @@
+{
+    "volume": {
+        "status": "available",
+        "migration_status": null,
+        "user_id": "0eea4eabcf184061a3b6db1e0daaf010",
+        "attachments": [],
+        "links": [
+            {
+                "href": "http://localhost:8776/v2/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635",
+                "rel": "self"
+            },
+            {
+                "href": "http://localhost:8776/0c2eba2c5af04d3f9e9d0d410b371fde/volumes/5aa119a8-d25b-45a7-8d1b-88e127885635",
+                "rel": "bookmark"
+            }
+        ],
+        "availability_zone": "nova",
+        "bootable": "false",
+        "encrypted": false,
+        "created_at": "2015-11-29T03:01:44.000000",
+        "description": "This is yet, another volume.",
+        "updated_at": null,
+        "volume_type": "lvmdriver-1",
+        "name": "vol-003",
+        "replication_status": "disabled",
+        "consistencygroup_id": null,
+        "source_volid": null,
+        "snapshot_id": null,
+        "multiattach": false,
+        "metadata": {
+            "contents": "not junk"
+        },
+        "id": "5aa119a8-d25b-45a7-8d1b-88e127885635",
+        "size": 1
+    }
+}
