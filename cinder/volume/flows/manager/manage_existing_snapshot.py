@@ -304,7 +304,7 @@ class CreateSnapshotOnFinishTask(NotifySnapshotActionTask):
 def get_flow(context, db, driver, host, snapshot_id, ref):
     """Constructs and returns the manager entry point flow."""
 
-    LOG.debug("Input parmeter: context=%(context)s, db=%(db)s,"
+    LOG.debug("Input parameters: context=%(context)s, db=%(db)s,"
               "driver=%(driver)s, host=%(host)s, "
               "snapshot_id=(snapshot_id)s, ref=%(ref)s.",
               {'context': context,
