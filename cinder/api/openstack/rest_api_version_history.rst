@@ -170,3 +170,7 @@ user documentation.
 ----
   Added the filter parameters ``group_id`` to
   list/detail volumes requests.
+
+3.11
+----
+  Added group types and group specs API.

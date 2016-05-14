@@ -622,6 +622,94 @@ def volume_type_access_remove(context, type_id, project_id):
 ####################
 
 
+def group_type_create(context, values, projects=None):
+    """Create a new group type."""
+    return IMPL.group_type_create(context, values, projects)
+
+
+def group_type_update(context, group_type_id, values):
+    return IMPL.group_type_update(context, group_type_id, values)
+
+
+def group_type_get_all(context, inactive=False, filters=None, marker=None,
+                       limit=None, sort_keys=None, sort_dirs=None,
+                       offset=None, list_result=False):
+    """Get all group types.
+
+    :param context: context to query under
+    :param inactive: Include inactive group types to the result set
+    :param filters: Filters for the query in the form of key/value.
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param list_result: For compatibility, if list_result = True, return a list
+                        instead of dict.
+
+        :is_public: Filter group types based on visibility:
+
+            * **True**: List public group types only
+            * **False**: List private group types only
+            * **None**: List both public and private group types
+
+    :returns: list/dict of matching group types
+    """
+
+    return IMPL.group_type_get_all(context, inactive, filters, marker=marker,
+                                   limit=limit, sort_keys=sort_keys,
+                                   sort_dirs=sort_dirs, offset=offset,
+                                   list_result=list_result)
+
+
+def group_type_get(context, id, inactive=False, expected_fields=None):
+    """Get group type by id.
+
+    :param context: context to query under
+    :param id: Group type id to get.
+    :param inactive: Consider inactive group types when searching
+    :param expected_fields: Return those additional fields.
+                            Supported fields are: projects.
+    :returns: group type
+    """
+    return IMPL.group_type_get(context, id, inactive, expected_fields)
+
+
+def group_type_get_by_name(context, name):
+    """Get group type by name."""
+    return IMPL.group_type_get_by_name(context, name)
+
+
+def group_types_get_by_name_or_id(context, group_type_list):
+    """Get group types by name or id."""
+    return IMPL.group_types_get_by_name_or_id(context, group_type_list)
+
+
+def group_type_destroy(context, id):
+    """Delete a group type."""
+    return IMPL.group_type_destroy(context, id)
+
+
+def group_type_access_get_all(context, type_id):
+    """Get all group type access of a group type."""
+    return IMPL.group_type_access_get_all(context, type_id)
+
+
+def group_type_access_add(context, type_id, project_id):
+    """Add group type access for project."""
+    return IMPL.group_type_access_add(context, type_id, project_id)
+
+
+def group_type_access_remove(context, type_id, project_id):
+    """Remove group type access for project."""
+    return IMPL.group_type_access_remove(context, type_id, project_id)
+
+
+####################
+
+
 def volume_type_extra_specs_get(context, volume_type_id):
     """Get all extra specs for a volume type."""
     return IMPL.volume_type_extra_specs_get(context, volume_type_id)
@@ -643,6 +731,32 @@ def volume_type_extra_specs_update_or_create(context,
     return IMPL.volume_type_extra_specs_update_or_create(context,
                                                          volume_type_id,
                                                          extra_specs)
+
+
+###################
+
+
+def group_type_specs_get(context, group_type_id):
+    """Get all group specs for a group type."""
+    return IMPL.group_type_specs_get(context, group_type_id)
+
+
+def group_type_specs_delete(context, group_type_id, key):
+    """Delete the given group specs item."""
+    return IMPL.group_type_specs_delete(context, group_type_id, key)
+
+
+def group_type_specs_update_or_create(context,
+                                      group_type_id,
+                                      group_specs):
+    """Create or update group type specs.
+
+    This adds or modifies the key/value pairs specified in the group specs dict
+    argument.
+    """
+    return IMPL.group_type_specs_update_or_create(context,
+                                                  group_type_id,
+                                                  group_specs)
 
 
 ###################

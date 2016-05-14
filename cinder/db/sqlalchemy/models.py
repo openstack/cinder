@@ -323,6 +323,22 @@ class VolumeTypes(BASE, CinderBase):
                            'VolumeTypes.deleted == False)')
 
 
+class GroupTypes(BASE, CinderBase):
+    """Represent possible group_types of groups offered."""
+    __tablename__ = "group_types"
+    id = Column(String(36), primary_key=True)
+    name = Column(String(255))
+    description = Column(String(255))
+    is_public = Column(Boolean, default=True)
+    # TODO(xyang): Uncomment the following after groups table is added.
+    # groups = relationship(Group,
+    #                       backref=backref('group_type', uselist=False),
+    #                       foreign_keys=id,
+    #                       primaryjoin='and_('
+    #                       'Group.group_type_id == GroupTypes.id, '
+    #                       'GroupTypes.deleted == False)')
+
+
 class VolumeTypeProjects(BASE, CinderBase):
     """Represent projects associated volume_types."""
     __tablename__ = "volume_type_projects"
@@ -345,6 +361,28 @@ class VolumeTypeProjects(BASE, CinderBase):
         'VolumeTypeProjects.deleted == 0)')
 
 
+class GroupTypeProjects(BASE, CinderBase):
+    """Represent projects associated group_types."""
+    __tablename__ = "group_type_projects"
+    __table_args__ = (schema.UniqueConstraint(
+        "group_type_id", "project_id", "deleted",
+        name="uniq_group_type_projects0group_type_id0project_id0deleted"),
+    )
+    id = Column(Integer, primary_key=True)
+    group_type_id = Column(Integer, ForeignKey('group_types.id'),
+                           nullable=False)
+    project_id = Column(String(255))
+    deleted = Column(Integer, default=0)
+
+    group_type = relationship(
+        GroupTypes,
+        backref="projects",
+        foreign_keys=group_type_id,
+        primaryjoin='and_('
+        'GroupTypeProjects.group_type_id == GroupTypes.id,'
+        'GroupTypeProjects.deleted == 0)')
+
+
 class VolumeTypeExtraSpecs(BASE, CinderBase):
     """Represents additional specs as key/value pairs for a volume_type."""
     __tablename__ = 'volume_type_extra_specs'
@@ -361,6 +399,25 @@ class VolumeTypeExtraSpecs(BASE, CinderBase):
         primaryjoin='and_('
         'VolumeTypeExtraSpecs.volume_type_id == VolumeTypes.id,'
         'VolumeTypeExtraSpecs.deleted == False)'
+    )
+
+
+class GroupTypeSpecs(BASE, CinderBase):
+    """Represents additional specs as key/value pairs for a group_type."""
+    __tablename__ = 'group_type_specs'
+    id = Column(Integer, primary_key=True)
+    key = Column(String(255))
+    value = Column(String(255))
+    group_type_id = Column(String(36),
+                           ForeignKey('group_types.id'),
+                           nullable=False)
+    group_type = relationship(
+        GroupTypes,
+        backref="group_specs",
+        foreign_keys=group_type_id,
+        primaryjoin='and_('
+        'GroupTypeSpecs.group_type_id == GroupTypes.id,'
+        'GroupTypeSpecs.deleted == False)'
     )
 
 

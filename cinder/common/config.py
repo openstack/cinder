@@ -142,6 +142,8 @@ global_opts = [
                      'storage_availability_zone, instead of failing.'),
     cfg.StrOpt('default_volume_type',
                help='Default volume type to use'),
+    cfg.StrOpt('default_group_type',
+               help='Default group type to use'),
     cfg.StrOpt('volume_usage_audit_period',
                default='month',
                help='Time period for which to generate volume usages. '

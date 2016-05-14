@@ -111,6 +111,7 @@ OBJ_VERSIONS.add('1.7', {'Cluster': '1.0', 'ClusterList': '1.0',
                          'Service': '1.4', 'Volume': '1.4',
                          'ConsistencyGroup': '1.3'})
 OBJ_VERSIONS.add('1.8', {'RequestSpec': '1.0', 'VolumeProperties': '1.0'})
+OBJ_VERSIONS.add('1.9', {'GroupType': '1.0', 'GroupTypeList': '1.0'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):

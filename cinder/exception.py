@@ -204,6 +204,10 @@ class InvalidVolumeType(Invalid):
     message = _("Invalid volume type: %(reason)s")
 
 
+class InvalidGroupType(Invalid):
+    message = _("Invalid group type: %(reason)s")
+
+
 class InvalidVolume(Invalid):
     message = _("Invalid volume: %(reason)s")
 
@@ -358,6 +362,30 @@ class VolumeTypeInUse(CinderException):
                 "volumes present with the type.")
 
 
+class GroupTypeNotFound(NotFound):
+    message = _("Group type %(group_type_id)s could not be found.")
+
+
+class GroupTypeNotFoundByName(GroupTypeNotFound):
+    message = _("Group type with name %(group_type_name)s "
+                "could not be found.")
+
+
+class GroupTypeAccessNotFound(NotFound):
+    message = _("Group type access not found for %(group_type_id)s / "
+                "%(project_id)s combination.")
+
+
+class GroupTypeSpecsNotFound(NotFound):
+    message = _("Group Type %(group_type_id)s has no specs with "
+                "key %(group_specs_key)s.")
+
+
+class GroupTypeInUse(CinderException):
+    message = _("Group Type %(group_type_id)s deletion is not allowed with "
+                "groups present with the type.")
+
+
 class SnapshotNotFound(NotFound):
     message = _("Snapshot %(snapshot_id)s could not be found.")
 
@@ -503,6 +531,23 @@ class VolumeTypeEncryptionNotFound(NotFound):
     message = _("Volume type encryption for type %(type_id)s does not exist.")
 
 
+class GroupTypeExists(Duplicate):
+    message = _("Group Type %(id)s already exists.")
+
+
+class GroupTypeAccessExists(Duplicate):
+    message = _("Group type access for %(group_type_id)s / "
+                "%(project_id)s combination already exists.")
+
+
+class GroupTypeEncryptionExists(Invalid):
+    message = _("Group type encryption for type %(type_id)s already exists.")
+
+
+class GroupTypeEncryptionNotFound(NotFound):
+    message = _("Group type encryption for type %(type_id)s does not exist.")
+
+
 class MalformedRequestBody(CinderException):
     message = _("Malformed message body: %(reason)s")
 
@@ -593,6 +638,15 @@ class VolumeTypeCreateFailed(CinderException):
 
 class VolumeTypeUpdateFailed(CinderException):
     message = _("Cannot update volume_type %(id)s")
+
+
+class GroupTypeCreateFailed(CinderException):
+    message = _("Cannot create group_type with "
+                "name %(name)s and specs %(group_specs)s")
+
+
+class GroupTypeUpdateFailed(CinderException):
+    message = _("Cannot update group_type %(id)s")
 
 
 class UnknownCmd(VolumeDriverException):
