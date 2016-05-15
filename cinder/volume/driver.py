@@ -278,6 +278,7 @@ iser_opts = [
 CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 CONF.register_opts(iser_opts)
+CONF.import_opt('backup_use_same_host', 'cinder.backup.api')
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -995,7 +996,7 @@ class BaseVD(object):
                     LOG.error(err_msg)
                     raise exception.VolumeBackendAPIException(data=ex_msg)
                 raise exception.VolumeBackendAPIException(data=err_msg)
-        return (self._connect_device(conn), snapshot)
+        return self._connect_device(conn)
 
     def _connect_device(self, conn):
         # Use Brick's code to do attach/detach
@@ -1052,8 +1053,7 @@ class BaseVD(object):
         """
         backup_device = None
         is_snapshot = False
-        if (self.backup_use_temp_snapshot() and
-                self.snapshot_remote_attachable()):
+        if self.backup_use_temp_snapshot() and CONF.backup_use_same_host:
             (backup_device, is_snapshot) = (
                 self._get_backup_volume_temp_snapshot(context, backup))
         else:
