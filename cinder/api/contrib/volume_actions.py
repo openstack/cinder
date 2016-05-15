@@ -288,12 +288,11 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         try:
-            int(body['os-extend']['new_size'])
+            size = int(body['os-extend']['new_size'])
         except (KeyError, ValueError, TypeError):
             msg = _("New volume size must be specified as an integer.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        size = int(body['os-extend']['new_size'])
         try:
             self.volume_api.extend(context, volume, size)
         except exception.InvalidVolume as error:

@@ -3801,10 +3801,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test volume can be extended at API level."""
         # create a volume and assign to host
         volume = tests_utils.create_volume(self.context, size=2,
-                                           status='creating', host=CONF.host)
-        self.volume.create_volume(self.context, volume['id'])
-        volume['status'] = 'in-use'
-
+                                           status='in-use', host=CONF.host)
         volume_api = cinder.volume.api.API()
 
         # Extend fails when status != available
@@ -3814,7 +3811,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                           volume,
                           3)
 
-        volume['status'] = 'available'
+        db.volume_update(self.context, volume.id, {'status': 'available'})
         # Extend fails when new_size < orig_size
         self.assertRaises(exception.InvalidInput,
                           volume_api.extend,
@@ -3832,13 +3829,13 @@ class VolumeTestCase(BaseVolumeTestCase):
         # works when new_size > orig_size
         reserve.return_value = ["RESERVATION"]
         volume_api.extend(self.context, volume, 3)
-        volume = db.volume_get(context.get_admin_context(), volume['id'])
-        self.assertEqual('extending', volume['status'])
+        volume_db = db.volume_get(context.get_admin_context(), volume['id'])
+        self.assertEqual('extending', volume_db['status'])
         reserve.assert_called_once_with(self.context, gigabytes=1,
-                                        project_id=volume['project_id'])
+                                        project_id=volume.project_id)
 
         # Test the quota exceeded
-        volume['status'] = 'available'
+        db.volume_update(self.context, volume.id, {'status': 'available'})
         reserve.side_effect = exception.OverQuota(overs=['gigabytes'],
                                                   quotas={'gigabytes': 20},
                                                   usages={'gigabytes':
@@ -3922,7 +3919,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         # clean up
         self.volume.delete_volume(self.context, volume['id'])
 
-    def test_extend_volume_with_volume_type(self):
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.extend_volume')
+    def test_extend_volume_with_volume_type(self, mock_rpc_extend):
         elevated = context.get_admin_context()
         project_id = self.context.project_id
         db.volume_type_create(elevated, {'name': 'type', 'extra_specs': {}})
@@ -3937,11 +3935,10 @@ class VolumeTestCase(BaseVolumeTestCase):
         except exception.QuotaUsageNotFound:
             volumes_in_use = 0
         self.assertEqual(100, volumes_in_use)
-        volume['status'] = 'available'
-        volume['host'] = 'fakehost'
-        volume['volume_type_id'] = vol_type.get('id')
+        db.volume_update(self.context, volume.id, {'status': 'available'})
 
         volume_api.extend(self.context, volume, 200)
+        mock_rpc_extend.called_once_with(self.context, volume, 200, mock.ANY)
 
         try:
             usage = db.quota_usage_get(elevated, project_id, 'gigabytes_type')
