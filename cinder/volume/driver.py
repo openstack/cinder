@@ -1339,7 +1339,9 @@ class BaseVD(object):
         temp_snap_ref = objects.Snapshot(context=context, **kwargs)
         temp_snap_ref.create()
         try:
-            self.create_snapshot(temp_snap_ref)
+            model_update = self.create_snapshot(temp_snap_ref)
+            if model_update:
+                temp_snap_ref.update(model_update)
         except Exception:
             with excutils.save_and_reraise_exception():
                 with temp_snap_ref.obj_as_admin():
@@ -1361,6 +1363,7 @@ class BaseVD(object):
             'status': 'creating',
             'attach_status': 'detached',
             'availability_zone': volume.availability_zone,
+            'volume_type_id': volume.volume_type_id,
         }
         temp_vol_ref = self.db.volume_create(context, temp_volume)
         try:
@@ -1388,18 +1391,20 @@ class BaseVD(object):
             'status': 'creating',
             'attach_status': 'detached',
             'availability_zone': volume.availability_zone,
+            'volume_type_id': volume.volume_type_id,
         }
         temp_vol_ref = self.db.volume_create(context, temp_volume)
         try:
-            self.create_volume_from_snapshot(temp_vol_ref, snapshot)
+            model_update = self.create_volume_from_snapshot(temp_vol_ref,
+                                                            snapshot) or {}
         except Exception:
             with excutils.save_and_reraise_exception():
                 self.db.volume_destroy(context.elevated(),
                                        temp_vol_ref['id'])
 
-        self.db.volume_update(context, temp_vol_ref['id'],
-                              {'status': 'available'})
-        return temp_vol_ref
+        model_update['status'] = 'available'
+        self.db.volume_update(context, temp_vol_ref['id'], model_update)
+        return self.db.volume_get(context, temp_vol_ref['id'])
 
     def _delete_temp_snapshot(self, context, snapshot):
         self.delete_snapshot(snapshot)
