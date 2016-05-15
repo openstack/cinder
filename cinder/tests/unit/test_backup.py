@@ -34,6 +34,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_service_with_verify as fake_service
+from cinder.tests.unit import fake_driver
 from cinder.tests.unit import utils
 
 
@@ -605,6 +606,59 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
         self.assertEqual(vol_size, backup['size'])
+
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_snapshot')
+    def test_create_temp_snapshot(self, mock_create_snapshot):
+        volume_manager = importutils.import_object(CONF.volume_manager)
+        volume_manager.driver.set_initialized()
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size,
+                                              previous_status='in-use')
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        mock_create_snapshot.return_value = {'provider_id':
+                                             'fake_provider_id'}
+
+        temp_snap = volume_manager.driver._create_temp_snapshot(
+            self.ctxt, vol)
+
+        self.assertEqual('available', temp_snap['status'])
+        self.assertEqual('fake_provider_id', temp_snap['provider_id'])
+
+    @mock.patch.object(fake_driver.FakeISCSIDriver, 'create_cloned_volume')
+    def test_create_temp_cloned_volume(self, mock_create_cloned_volume):
+        volume_manager = importutils.import_object(CONF.volume_manager)
+        volume_manager.driver.set_initialized()
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size,
+                                              previous_status='in-use')
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        mock_create_cloned_volume.return_value = {'provider_id':
+                                                  'fake_provider_id'}
+
+        temp_vol = volume_manager.driver._create_temp_cloned_volume(
+            self.ctxt, vol)
+
+        self.assertEqual('available', temp_vol['status'])
+        self.assertEqual('fake_provider_id', temp_vol['provider_id'])
+
+    @mock.patch.object(fake_driver.FakeISCSIDriver,
+                       'create_volume_from_snapshot')
+    def test_create_temp_volume_from_snapshot(self, mock_create_vol_from_snap):
+        volume_manager = importutils.import_object(CONF.volume_manager)
+        volume_manager.driver.set_initialized()
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size,
+                                              previous_status='in-use')
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        snap = self._create_snapshot_db_entry(volume_id = vol_id)
+        mock_create_vol_from_snap.return_value = {'provider_id':
+                                                  'fake_provider_id'}
+
+        temp_vol = volume_manager.driver._create_temp_volume_from_snapshot(
+            self.ctxt, vol, snap)
+
+        self.assertEqual('available', temp_vol['status'])
+        self.assertEqual('fake_provider_id', temp_vol['provider_id'])
 
     @mock.patch('cinder.volume.utils.notify_about_backup_usage')
     def test_create_backup_with_notify(self, notify):
