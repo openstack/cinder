@@ -19,7 +19,6 @@ import datetime
 import ddt
 import os
 import shutil
-import socket
 import sys
 import tempfile
 import time
@@ -162,6 +161,16 @@ class BaseVolumeTestCase(test.TestCase):
             shutil.rmtree(CONF.volumes_dir)
         except OSError:
             pass
+
+    def assert_notify_called(self, mock_notify, calls):
+        for i in range(0, len(calls)):
+            mock_call = mock_notify.call_args_list[i]
+            call = calls[i]
+
+            posargs = mock_call[0]
+
+            self.assertEqual(call[0], posargs[0])
+            self.assertEqual(call[1], posargs[2])
 
     def fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
         return [{'name': 'cinder-volumes',
@@ -595,10 +604,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_snapshot(self.context, snapshot_obj)
         self.volume.delete_volume(self.context, volume.id, volume=volume)
 
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     @mock.patch.object(QUOTAS, 'reserve')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(QUOTAS, 'rollback')
-    def test_create_driver_not_initialized(self, reserve, commit, rollback):
+    def test_create_driver_not_initialized(self, reserve, commit, rollback,
+                                           mock_notify):
         self.volume.driver._initialized = False
 
         def fake_reserve(context, expire=None, project_id=None, **deltas):
@@ -618,8 +629,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         volume_id = volume['id']
         self.assertIsNone(volume['encryption_key_id'])
-        self.assertEqual(0, len(self.notifier.notifications),
-                         self.notifier.notifications)
+        mock_notify.assert_not_called()
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.create_volume,
                           self.context, volume_id, volume=volume)
@@ -674,10 +684,12 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         db.volume_destroy(context.get_admin_context(), volume_id)
 
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     @mock.patch.object(QUOTAS, 'rollback')
     @mock.patch.object(QUOTAS, 'commit')
     @mock.patch.object(QUOTAS, 'reserve')
-    def test_delete_driver_not_initialized(self, reserve, commit, rollback):
+    def test_delete_driver_not_initialized(self, reserve, commit, rollback,
+                                           mock_notify):
         self.volume.driver._initialized = False
 
         def fake_reserve(context, expire=None, project_id=None, **deltas):
@@ -696,8 +708,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             **self.volume_params)
 
         self.assertIsNone(volume['encryption_key_id'])
-        self.assertEqual(0, len(self.notifier.notifications),
-                         self.notifier.notifications)
+        mock_notify.assert_not_called()
         self.assertRaises(exception.DriverNotInitialized,
                           self.volume.delete_volume,
                           self.context, volume.id, volume=volume)
@@ -706,63 +717,39 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual("error_deleting", volume.status)
         volume.destroy()
 
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
     @mock.patch('cinder.quota.QUOTAS.rollback', new=mock.Mock())
     @mock.patch('cinder.quota.QUOTAS.commit', new=mock.Mock())
     @mock.patch('cinder.quota.QUOTAS.reserve', return_value=['RESERVATION'])
-    def test_create_delete_volume(self, _mock_reserve):
+    def test_create_delete_volume(self, _mock_reserve, mock_notify):
         """Test volume can be created and deleted."""
         volume = tests_utils.create_volume(
             self.context,
             availability_zone=CONF.storage_availability_zone,
             **self.volume_params)
         volume_id = volume['id']
+
+        mock_notify.assert_not_called()
+
         self.assertIsNone(volume['encryption_key_id'])
-        self.assertEqual(0, len(self.notifier.notifications),
-                         self.notifier.notifications)
+
         self.volume.create_volume(self.context, volume_id, volume=volume)
-        self.assertEqual(2, len(self.notifier.notifications),
-                         self.notifier.notifications)
-        msg = self.notifier.notifications[0]
-        self.assertEqual('volume.create.start', msg['event_type'])
-        expected = {
-            'status': 'creating',
-            'host': socket.gethostname(),
-            'display_name': 'test_volume',
-            'availability_zone': 'nova',
-            'tenant_id': self.context.project_id,
-            'created_at': 'DONTCARE',
-            'volume_id': volume_id,
-            'volume_type': None,
-            'snapshot_id': None,
-            'user_id': fake.USER_ID,
-            'launched_at': 'DONTCARE',
-            'size': 1,
-            'replication_status': 'disabled',
-            'replication_extended_status': None,
-            'replication_driver_data': None,
-            'metadata': [],
-            'volume_attachment': [],
-        }
-        self.assertDictMatch(expected, msg['payload'])
-        msg = self.notifier.notifications[1]
-        self.assertEqual('volume.create.end', msg['event_type'])
-        expected['status'] = 'available'
-        self.assertDictMatch(expected, msg['payload'])
-        self.assertEqual(volume_id, db.volume_get(context.get_admin_context(),
-                         volume_id).id)
+
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'volume.create.start'],
+                                   ['INFO', 'volume.create.end']))
 
         self.volume.delete_volume(self.context, volume_id, volume=volume)
         vol = db.volume_get(context.get_admin_context(read_deleted='yes'),
                             volume_id)
-        self.assertEqual('deleted', vol['status'])
-        self.assertEqual(4, len(self.notifier.notifications),
-                         self.notifier.notifications)
-        msg = self.notifier.notifications[2]
-        self.assertEqual('volume.delete.start', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
-        msg = self.notifier.notifications[3]
-        self.assertEqual('volume.delete.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
+        self.assertEqual(vol['status'], 'deleted')
+
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'volume.create.start'],
+                                   ['INFO', 'volume.create.end'],
+                                   ['INFO', 'volume.delete.start'],
+                                   ['INFO', 'volume.delete.end']))
+
         self.assertRaises(exception.NotFound,
                           db.volume_get,
                           self.context,
@@ -3059,30 +3046,21 @@ class VolumeTestCase(BaseVolumeTestCase):
         # This will allow us to test cross-node interactions
         pass
 
-    def test_create_delete_snapshot(self):
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
+    def test_create_delete_snapshot(self, mock_notify):
         """Test snapshot can be created and deleted."""
         volume = tests_utils.create_volume(
             self.context,
             availability_zone=CONF.storage_availability_zone,
             **self.volume_params)
-        self.assertEqual(0, len(self.notifier.notifications),
-                         self.notifier.notifications)
-        self.volume.create_volume(self.context, volume.id, volume=volume)
-        msg = self.notifier.notifications[0]
-        self.assertEqual('volume.create.start', msg['event_type'])
-        self.assertEqual('creating', msg['payload']['status'])
-        self.assertEqual('INFO', msg['priority'])
-        msg = self.notifier.notifications[1]
-        self.assertEqual('volume.create.end', msg['event_type'])
-        self.assertEqual('available', msg['payload']['status'])
-        self.assertEqual('INFO', msg['priority'])
-        if len(self.notifier.notifications) > 2:
-            # Cause an assert to print the unexpected item
-            # and all of the notifications.
-            self.assertFalse(self.notifier.notifications[2],
-                             self.notifier.notifications)
-        self.assertEqual(2, len(self.notifier.notifications),
-                         self.notifier.notifications)
+
+        mock_notify.assert_not_called()
+
+        self.volume.create_volume(self.context, volume['id'], volume=volume)
+
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'volume.create.start'],
+                                   ['INFO', 'volume.create.end']))
 
         snapshot = create_snapshot(volume['id'], size=volume['size'])
         snapshot_id = snapshot.id
@@ -3090,53 +3068,21 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(
             snapshot_id, objects.Snapshot.get_by_id(self.context,
                                                     snapshot_id).id)
-        msg = self.notifier.notifications[2]
-        self.assertEqual('snapshot.create.start', msg['event_type'])
-        expected = {
-            'created_at': 'DONTCARE',
-            'deleted': '',
-            'display_name': None,
-            'snapshot_id': snapshot_id,
-            'status': 'creating',
-            'tenant_id': fake.PROJECT_ID,
-            'user_id': fake.USER_ID,
-            'volume_id': volume['id'],
-            'volume_size': 1,
-            'availability_zone': 'nova',
-            'metadata': '',
-        }
-        self.assertDictMatch(expected, msg['payload'])
-        msg = self.notifier.notifications[3]
-        self.assertEqual('snapshot.create.end', msg['event_type'])
-        expected['status'] = fields.SnapshotStatus.AVAILABLE
-        self.assertDictMatch(expected, msg['payload'])
 
-        if len(self.notifier.notifications) > 4:
-            # Cause an assert to print the unexpected item
-            # and all of the notifications.
-            self.assertFalse(self.notifier.notifications[4],
-                             self.notifier.notifications)
-
-        self.assertEqual(4, len(self.notifier.notifications),
-                         self.notifier.notifications)
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'volume.create.start'],
+                                   ['INFO', 'volume.create.end'],
+                                   ['INFO', 'snapshot.create.start'],
+                                   ['INFO', 'snapshot.create.end']))
 
         self.volume.delete_snapshot(self.context, snapshot)
-        msg = self.notifier.notifications[4]
-        self.assertEqual('snapshot.delete.start', msg['event_type'])
-        expected['status'] = fields.SnapshotStatus.AVAILABLE
-        self.assertDictMatch(expected, msg['payload'])
-        msg = self.notifier.notifications[5]
-        self.assertEqual('snapshot.delete.end', msg['event_type'])
-        self.assertDictMatch(expected, msg['payload'])
-
-        if len(self.notifier.notifications) > 6:
-            # Cause an assert to print the unexpected item
-            # and all of the notifications.
-            self.assertFalse(self.notifier.notifications[6],
-                             self.notifier.notifications)
-
-        self.assertEqual(6, len(self.notifier.notifications),
-                         self.notifier.notifications)
+        self.assert_notify_called(mock_notify,
+                                  (['INFO', 'volume.create.start'],
+                                   ['INFO', 'volume.create.end'],
+                                   ['INFO', 'snapshot.create.start'],
+                                   ['INFO', 'snapshot.create.end'],
+                                   ['INFO', 'snapshot.delete.start'],
+                                   ['INFO', 'snapshot.delete.end']))
 
         snap = objects.Snapshot.get_by_id(context.get_admin_context(
             read_deleted='yes'), snapshot_id)
@@ -5109,7 +5055,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
 
         _run_migration_completion()
 
-    def test_retype_setup_fail_volume_is_available(self):
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
+    def test_retype_setup_fail_volume_is_available(self, mock_notify):
         """Verify volume is still available if retype prepare failed."""
         elevated = context.get_admin_context()
         project_id = self.context.project_id
@@ -5129,11 +5076,12 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                           self.context, volume, new_vol_type['id'])
 
         volume = db.volume_get(elevated, volume.id)
-        self.assertEqual(0, len(self.notifier.notifications),
-                         self.notifier.notifications)
+        mock_notify.assert_not_called()
         self.assertEqual('available', volume['status'])
 
-    def _retype_volume_exec(self, driver, snap=False, policy='on-demand',
+    @mock.patch('cinder.tests.unit.fake_notifier.FakeNotifier._notify')
+    def _retype_volume_exec(self, driver, mock_notify,
+                            snap=False, policy='on-demand',
                             migrate_exc=False, exc=None, diff_equal=False,
                             replica=False, reserve_vol_type_only=False):
         elevated = context.get_admin_context()
@@ -5245,33 +5193,21 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
             self.assertEqual('available', volume.status)
             self.assertEqual(CONF.host, volume.host)
             self.assertEqual(1, volumes_in_use)
-            self.assertEqual(1, len(self.notifier.notifications),
-                             "Notifier count incorrect %s" %
-                             (self.notifier.notifications))
-            self.assertEqual(vol_type['id'], self.notifier.notifications[0]
-                             ['payload']['volume_type'])
-            self.assertEqual('volume.retype', self.notifier.notifications[0]
-                             ['event_type'])
+            self.assert_notify_called(mock_notify,
+                                      (['INFO', 'volume.retype'],))
         elif not exc:
             self.assertEqual(old_vol_type['id'], volume.volume_type_id)
             self.assertEqual('retyping', volume.status)
             self.assertEqual(CONF.host, volume.host)
             self.assertEqual(1, volumes_in_use)
-            self.assertEqual(1, len(self.notifier.notifications),
-                             "Notifier count incorrect %s" %
-                             (self.notifier.notifications))
-            self.assertEqual(vol_type['id'], self.notifier.notifications[0]
-                             ['payload']['volume_type'])
-            self.assertEqual('volume.retype', self.notifier.notifications[0]
-                             ['event_type'])
+            self.assert_notify_called(mock_notify,
+                                      (['INFO', 'volume.retype'],))
         else:
             self.assertEqual(old_vol_type['id'], volume.volume_type_id)
             self.assertEqual('available', volume.status)
             self.assertEqual(CONF.host, volume.host)
             self.assertEqual(0, volumes_in_use)
-            self.assertEqual(0, len(self.notifier.notifications),
-                             "Notifier count incorrect %s" %
-                             (self.notifier.notifications))
+            mock_notify.assert_not_called()
 
     def test_retype_volume_driver_success(self):
         self._retype_volume_exec(True)
