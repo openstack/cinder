@@ -35,7 +35,7 @@ profiler = importutils.try_import('osprofiler.profiler')
 
 import cinder.context
 import cinder.exception
-from cinder.i18n import _LI
+from cinder.i18n import _LE, _LI
 from cinder import objects
 from cinder.objects import base
 
@@ -85,9 +85,8 @@ def initialized():
 
 def cleanup():
     global TRANSPORT, NOTIFICATION_TRANSPORT, NOTIFIER
-    assert TRANSPORT is not None
-    assert NOTIFICATION_TRANSPORT is not None
-    assert NOTIFIER is not None
+    if NOTIFIER is None:
+        LOG.exception(_LE("RPC cleanup: NOTIFIER is None"))
     TRANSPORT.cleanup()
     NOTIFICATION_TRANSPORT.cleanup()
     TRANSPORT = NOTIFICATION_TRANSPORT = NOTIFIER = None
