@@ -186,7 +186,8 @@ class ReplicaCommonDriver(object):
 
     def split(self, replica_id):
         running_status = (constants.REPLICA_RUNNING_STATUS_SPLIT,
-                          constants.REPLICA_RUNNING_STATUS_INVALID)
+                          constants.REPLICA_RUNNING_STATUS_INVALID,
+                          constants.REPLICA_RUNNING_STATUS_ERRUPTED)
         info = self.op.get_replica_info(replica_id)
         if self.op.is_running_status(running_status, info):
             return
