@@ -416,7 +416,9 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info(_LI("Created volume %(volname)s, volume id %(volid)s."),
                  {'volname': volname, 'volid': volume.id})
 
-        return {'provider_id': response['id']}
+        real_size = int(self._round_to_8_gran(volume.size))
+
+        return {'provider_id': response['id'], 'size': real_size}
 
     def _check_volume_size(self, size):
         if size % 8 != 0:
@@ -720,7 +722,6 @@ class ScaleIODriver(driver.VolumeDriver):
         stats['reserved_percentage'] = 0
         stats['QoS_support'] = True
         stats['consistencygroup_support'] = True
-
         pools = []
 
         verify_cert = self._get_verify_cert()
