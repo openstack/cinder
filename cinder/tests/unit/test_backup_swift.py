@@ -554,7 +554,7 @@ class BackupSwiftTestCase(test.TestCase):
         self.assertNotEqual(content1['sha256s'][20], content2['sha256s'][20])
 
     def test_create_backup_put_object_wraps_socket_error(self):
-        volume_id = 'b09b1ad4-5f0e-4d3f-8b9e-0000004f5ec2'
+        volume_id = 'c09b1ad4-5f0e-4d3f-8b9e-0000004caec8'
         container_name = 'socket_error_on_put'
         self._create_backup_db_entry(volume_id=volume_id,
                                      container=container_name)
