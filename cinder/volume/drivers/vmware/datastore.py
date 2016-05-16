@@ -17,12 +17,13 @@
 Classes and utility methods for datastore selection.
 """
 
-from oslo_log import log as logging
-from oslo_utils import excutils
-from oslo_vmware import exceptions
-from oslo_vmware import pbm
+import random
 
-from cinder.i18n import _LE, _LW
+from oslo_log import log as logging
+from oslo_vmware import pbm
+from oslo_vmware import vim_util
+
+from cinder.i18n import _LE
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
 
 
@@ -49,14 +50,14 @@ class DatastoreSelector(object):
 
     HARD_AFFINITY_DS_TYPE = "hardAffinityDatastoreTypes"
     HARD_ANTI_AFFINITY_DS = "hardAntiAffinityDatastores"
-    PREF_UTIL_THRESH = "preferredUtilizationThreshold"
     SIZE_BYTES = "sizeBytes"
     PROFILE_NAME = "storageProfileName"
 
     # TODO(vbala) Remove dependency on volumeops.
-    def __init__(self, vops, session):
+    def __init__(self, vops, session, max_objects):
         self._vops = vops
         self._session = session
+        self._max_objects = max_objects
 
     def get_profile_id(self, profile_name):
         """Get vCenter profile ID for the given profile name.
@@ -81,124 +82,183 @@ class DatastoreSelector(object):
         """Filter out input datastores that do not match the given profile."""
         cf = self._session.pbm.client.factory
         hubs = pbm.convert_datastores_to_hubs(cf, datastores)
-        filtered_hubs = pbm.filter_hubs_by_profile(self._session, hubs,
-                                                   profile_id)
-        return pbm.filter_datastores_by_hubs(filtered_hubs, datastores)
+        hubs = pbm.filter_hubs_by_profile(self._session, hubs, profile_id)
+        hub_ids = [hub.hubId for hub in hubs]
+        return {k: v for k, v in datastores.items() if k.value in hub_ids}
 
-    def _filter_datastores(self, datastores, size_bytes, profile_id,
-                           hard_anti_affinity_datastores,
-                           hard_affinity_ds_types):
-        """Filter datastores based on profile, size and affinity."""
-        LOG.debug(
-            "Filtering datastores: %(datastores)s based on size (bytes): "
-            "%(size)d, profile: %(profile)s, hard-anti-affinity-datastores: "
-            "%(hard_anti_affinity_datastores)s, hard-affinity-datastore-types:"
-            " %(hard_affinity_ds_types)s.",
-            {'datastores': datastores,
-             'size': size_bytes,
-             'profile': profile_id,
-             'hard_anti_affinity_datastores': hard_anti_affinity_datastores,
-             'hard_affinity_ds_types': hard_affinity_ds_types})
-        if hard_anti_affinity_datastores is None:
-            hard_anti_affinity_datastores = []
-        filtered_datastores = [ds for ds in datastores if ds.value not in
-                               hard_anti_affinity_datastores]
+    def _filter_datastores(self,
+                           datastores,
+                           size_bytes,
+                           profile_id,
+                           hard_anti_affinity_ds,
+                           hard_affinity_ds_types,
+                           valid_host_refs=None):
 
-        if filtered_datastores and profile_id is not None:
-            filtered_datastores = self._filter_by_profile(
-                filtered_datastores, profile_id)
-            LOG.debug("Profile: %(id)s matched by datastores: %(datastores)s.",
-                      {'datastores': filtered_datastores,
-                       'id': profile_id})
+        if not datastores:
+            return
 
-        filtered_summaries = [self._vops.get_summary(ds) for ds in
-                              filtered_datastores]
-
-        return [summary for summary in filtered_summaries
-                if (summary.freeSpace > size_bytes and
-                    summary.type.lower() in DatastoreType.get_all_types() and
+        def _is_valid_ds_type(summary):
+            ds_type = summary.type.lower()
+            return (ds_type in DatastoreType.get_all_types() and
                     (hard_affinity_ds_types is None or
-                     summary.type.lower() in hard_affinity_ds_types))]
+                     ds_type in hard_affinity_ds_types))
 
-    def _get_all_hosts(self):
-        """Get all ESX hosts managed by vCenter."""
-        all_hosts = []
+        def _is_ds_usable(summary):
+            return summary.accessible and not self._vops._in_maintenance(
+                summary)
 
-        retrieve_result = self._vops.get_hosts()
+        valid_host_refs = valid_host_refs or []
+        valid_hosts = [host_ref.value for host_ref in valid_host_refs]
+
+        def _is_ds_accessible_to_valid_host(host_mounts):
+            for host_mount in host_mounts:
+                if host_mount.key.value in valid_hosts:
+                    return True
+
+        def _is_ds_valid(ds_ref, ds_props):
+            summary = ds_props.get('summary')
+            host_mounts = ds_props.get('host')
+            if (summary is None or host_mounts is None):
+                return False
+
+            if (hard_anti_affinity_ds and
+                    ds_ref.value in hard_anti_affinity_ds):
+                return False
+
+            if summary.freeSpace < size_bytes:
+                return False
+
+            if (valid_hosts and
+                    not _is_ds_accessible_to_valid_host(host_mounts)):
+                return False
+
+            return _is_valid_ds_type(summary) and _is_ds_usable(summary)
+
+        datastores = {k: v for k, v in datastores.items()
+                      if _is_ds_valid(k, v)}
+
+        if datastores and profile_id:
+            datastores = self._filter_by_profile(datastores, profile_id)
+
+        return datastores
+
+    def _get_object_properties(self, obj_content):
+        props = {}
+        if hasattr(obj_content, 'propSet'):
+            prop_set = obj_content.propSet
+            if prop_set:
+                props = {prop.name: prop.val for prop in prop_set}
+        return props
+
+    def _get_datastores(self):
+        datastores = {}
+        retrieve_result = self._session.invoke_api(
+            vim_util,
+            'get_objects',
+            self._session.vim,
+            'Datastore',
+            self._max_objects,
+            properties_to_collect=['host', 'summary'])
+
         while retrieve_result:
-            hosts = retrieve_result.objects
-            if not hosts:
-                break
+            if retrieve_result.objects:
+                for obj_content in retrieve_result.objects:
+                    props = self._get_object_properties(obj_content)
+                    if ('host' in props and
+                            hasattr(props['host'], 'DatastoreHostMount')):
+                        props['host'] = props['host'].DatastoreHostMount
+                    datastores[obj_content.obj] = props
+            retrieve_result = self._session.invoke_api(vim_util,
+                                                       'continue_retrieval',
+                                                       self._session.vim,
+                                                       retrieve_result)
 
-            for host in hosts:
-                if self._vops.is_host_usable(host.obj):
-                    all_hosts.append(host.obj)
-            retrieve_result = self._vops.continue_retrieval(
-                retrieve_result)
-        return all_hosts
+        return datastores
 
-    def _compute_space_utilization(self, datastore_summary):
-        """Compute space utilization of the given datastore."""
-        return (
-            1.0 -
-            datastore_summary.freeSpace / float(datastore_summary.capacity)
-        )
+    def _get_host_properties(self, host_ref):
+        retrieve_result = self._session.invoke_api(vim_util,
+                                                   'get_object_properties',
+                                                   self._session.vim,
+                                                   host_ref,
+                                                   ['runtime', 'parent'])
 
-    def _select_best_summary(self, summaries):
-        """Selects the best datastore summary.
+        if retrieve_result:
+            return self._get_object_properties(retrieve_result[0])
 
-        Selects the datastore which is connected to maximum number of hosts.
-        Ties are broken based on space utilization-- datastore with low space
-        utilization is preferred.
-        """
-        best_summary = None
-        max_host_count = 0
-        best_space_utilization = 1.0
+    def _get_resource_pool(self, cluster_ref):
+        return self._session.invoke_api(vim_util,
+                                        'get_object_property',
+                                        self._session.vim,
+                                        cluster_ref,
+                                        'resourcePool')
 
-        for summary in summaries:
-            host_count = len(self._vops.get_connected_hosts(
-                summary.datastore))
-            if host_count > max_host_count:
-                max_host_count = host_count
-                best_space_utilization = self._compute_space_utilization(
-                    summary
-                )
-                best_summary = summary
-            elif host_count == max_host_count:
-                # break the tie based on space utilization
-                space_utilization = self._compute_space_utilization(
-                    summary
-                )
-                if space_utilization < best_space_utilization:
-                    best_space_utilization = space_utilization
-                    best_summary = summary
+    def _select_best_datastore(self, datastores, valid_host_refs=None):
 
-        LOG.debug("Datastore: %(datastore)s is connected to %(host_count)d "
-                  "host(s) and has space utilization: %(utilization)s.",
-                  {'datastore': best_summary.datastore,
-                   'host_count': max_host_count,
-                   'utilization': best_space_utilization})
-        return (best_summary, best_space_utilization)
+        if not datastores:
+            return
+
+        def _sort_key(ds_props):
+            host = ds_props.get('host')
+            summary = ds_props.get('summary')
+            space_utilization = (1.0 -
+                                 (summary.freeSpace / float(summary.capacity)))
+            return (-len(host), space_utilization)
+
+        host_prop_map = {}
+
+        def _is_host_usable(host_ref):
+            props = host_prop_map.get(host_ref.value)
+            if props is None:
+                props = self._get_host_properties(host_ref)
+                host_prop_map[host_ref.value] = props
+
+            runtime = props.get('runtime')
+            parent = props.get('parent')
+            if runtime and parent:
+                return (runtime.connectionState == 'connected' and
+                        not runtime.inMaintenanceMode)
+            else:
+                return False
+
+        valid_host_refs = valid_host_refs or []
+        valid_hosts = [host_ref.value for host_ref in valid_host_refs]
+
+        def _select_host(host_mounts):
+            random.shuffle(host_mounts)
+            for host_mount in host_mounts:
+                if valid_hosts and host_mount.key.value not in valid_hosts:
+                    continue
+                if (self._vops._is_usable(host_mount.mountInfo) and
+                        _is_host_usable(host_mount.key)):
+                    return host_mount.key
+
+        sorted_ds_props = sorted(datastores.values(), key=_sort_key)
+        for ds_props in sorted_ds_props:
+            host_ref = _select_host(ds_props['host'])
+            if host_ref:
+                rp = self._get_resource_pool(
+                    host_prop_map[host_ref.value]['parent'])
+                return (host_ref, rp, ds_props['summary'])
 
     def select_datastore(self, req, hosts=None):
         """Selects a datastore satisfying the given requirements.
 
-        Returns the selected datastore summary along with a compute host and
-        resource pool where a VM can be created.
+        A datastore which is connected to maximum number of hosts is
+        selected. Ties if any are broken based on space utilization--
+        datastore with least space utilization is preferred. It returns
+        the selected datastore's summary along with a host and resource
+        pool where the volume can be created.
 
         :param req: selection requirements
         :param hosts: list of hosts to consider
         :return: (host, resourcePool, summary)
         """
-        best_candidate = ()
-        best_utilization = 1.0
+        LOG.debug("Using requirements: %s for datastore selection.", req)
 
         hard_affinity_ds_types = req.get(
             DatastoreSelector.HARD_AFFINITY_DS_TYPE)
         hard_anti_affinity_datastores = req.get(
             DatastoreSelector.HARD_ANTI_AFFINITY_DS)
-        pref_utilization_thresh = req.get(DatastoreSelector.PREF_UTIL_THRESH,
-                                          -1)
         size_bytes = req[DatastoreSelector.SIZE_BYTES]
         profile_name = req.get(DatastoreSelector.PROFILE_NAME)
 
@@ -206,52 +266,16 @@ class DatastoreSelector(object):
         if profile_name is not None:
             profile_id = self.get_profile_id(profile_name)
 
-        if not hosts:
-            hosts = self._get_all_hosts()
-
-        LOG.debug("Using hosts: %(hosts)s for datastore selection based on "
-                  "requirements: %(req)s.",
-                  {'hosts': hosts,
-                   'req': req})
-        for host_ref in hosts:
-            try:
-                (datastores, rp) = self._vops.get_dss_rp(host_ref)
-            except exceptions.VimConnectionException:
-                # No need to try other hosts when there is a connection problem
-                with excutils.save_and_reraise_exception():
-                    LOG.exception(_LE("Error occurred while "
-                                      "selecting datastore."))
-            except exceptions.VimException:
-                # TODO(vbala) volumeops.get_dss_rp shouldn't throw VimException
-                # for empty datastore list.
-                LOG.warning(_LW("Unable to fetch datastores connected "
-                                "to host %s."), host_ref, exc_info=True)
-                continue
-
-            if not datastores:
-                continue
-
-            filtered_summaries = self._filter_datastores(
-                datastores, size_bytes, profile_id,
-                hard_anti_affinity_datastores, hard_affinity_ds_types)
-            LOG.debug("Datastores remaining after filtering: %s.",
-                      filtered_summaries)
-
-            if not filtered_summaries:
-                continue
-
-            (summary, utilization) = self._select_best_summary(
-                filtered_summaries)
-            if (pref_utilization_thresh == -1 or
-                    utilization <= pref_utilization_thresh):
-                return (host_ref, rp, summary)
-
-            if utilization < best_utilization:
-                best_candidate = (host_ref, rp, summary)
-                best_utilization = utilization
-
-        LOG.debug("Best candidate: %s.", best_candidate)
-        return best_candidate
+        datastores = self._get_datastores()
+        datastores = self._filter_datastores(datastores,
+                                             size_bytes,
+                                             profile_id,
+                                             hard_anti_affinity_datastores,
+                                             hard_affinity_ds_types,
+                                             valid_host_refs=hosts)
+        res = self._select_best_datastore(datastores, valid_host_refs=hosts)
+        LOG.debug("Selected (host, resourcepool, datastore): %s", res)
+        return res
 
     def is_datastore_compliant(self, datastore, profile_name):
         """Check if the datastore is compliant with given profile.

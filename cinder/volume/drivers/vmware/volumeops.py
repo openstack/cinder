@@ -374,6 +374,7 @@ class VMwareVolumeOps(object):
         self._session.invoke_api(vim_util, 'cancel_retrieval',
                                  self._session.vim, retrieve_result)
 
+    # TODO(vbala): move this method to datastore module
     def _is_usable(self, mount_info):
         """Check if a datastore is usable as per the given mount info.
 
@@ -427,6 +428,7 @@ class VMwareVolumeOps(object):
         hosts = self.get_connected_hosts(datastore)
         return host.value in hosts
 
+    # TODO(vbala): move this method to datastore module
     def _in_maintenance(self, summary):
         """Check if a datastore is entering maintenance or in maintenance.
 
