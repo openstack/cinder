@@ -83,12 +83,21 @@ LOG = logging.getLogger(__name__)
 
 QUOTAS = quota.QUOTAS
 CGQUOTAS = quota.CGQUOTAS
+GROUP_QUOTAS = quota.GROUP_QUOTAS
 VALID_REMOVE_VOL_FROM_CG_STATUS = (
     'available',
     'in-use',
     'error',
     'error_deleting')
+VALID_REMOVE_VOL_FROM_GROUP_STATUS = (
+    'available',
+    'in-use',
+    'error',
+    'error_deleting')
 VALID_ADD_VOL_TO_CG_STATUS = (
+    'available',
+    'in-use')
+VALID_ADD_VOL_TO_GROUP_STATUS = (
     'available',
     'in-use')
 VALID_CREATE_CG_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
@@ -170,7 +179,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     _VOLUME_CLONE_SKIP_PROPERTIES = {
         'id', '_name_id', 'name_id', 'name', 'status',
         'attach_status', 'migration_status', 'volume_type',
-        'consistencygroup', 'volume_attachment'}
+        'consistencygroup', 'volume_attachment', 'group'}
 
     def __init__(self, volume_driver=None, service_name=None,
                  *args, **kwargs):
@@ -2028,6 +2037,25 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context, volume, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
+    def _notify_about_group_usage(self,
+                                  context,
+                                  group,
+                                  event_suffix,
+                                  volumes=None,
+                                  extra_usage_info=None):
+        vol_utils.notify_about_group_usage(
+            context, group, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)
+
+        if not volumes:
+            volumes = self.db.volume_get_all_by_generic_group(
+                context, group.id)
+        if volumes:
+            for volume in volumes:
+                vol_utils.notify_about_volume_usage(
+                    context, volume, event_suffix,
+                    extra_usage_info=extra_usage_info, host=self.host)
+
     def _notify_about_cgsnapshot_usage(self,
                                        context,
                                        cgsnapshot,
@@ -2431,27 +2459,46 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def create_consistencygroup(self, context, group):
         """Creates the consistency group."""
+        return self._create_group(context, group, False)
+
+    def create_group(self, context, group):
+        """Creates the group."""
+        return self._create_group(context, group)
+
+    def _create_group(self, context, group, is_generic_group=True):
         context = context.elevated()
 
-        status = fields.ConsistencyGroupStatus.AVAILABLE
+        status = fields.GroupStatus.AVAILABLE
         model_update = None
 
-        self._notify_about_consistencygroup_usage(
-            context, group, "create.start")
+        if is_generic_group:
+            self._notify_about_group_usage(
+                context, group, "create.start")
+        else:
+            self._notify_about_consistencygroup_usage(
+                context, group, "create.start")
 
         try:
             utils.require_driver_initialized(self.driver)
 
-            LOG.info(_LI("Consistency group %s: creating"), group.name)
-            model_update = self.driver.create_consistencygroup(context,
-                                                               group)
+            LOG.info(_LI("Group %s: creating"), group.name)
+            if is_generic_group:
+                try:
+                    model_update = self.driver.create_group(context,
+                                                            group)
+                except NotImplementedError:
+                    model_update = self._create_group_generic(context,
+                                                              group)
+            else:
+                model_update = self.driver.create_consistencygroup(context,
+                                                                   group)
 
             if model_update:
                 if (model_update['status'] ==
-                        fields.ConsistencyGroupStatus.ERROR):
-                    msg = (_('Create consistency group failed.'))
+                        fields.GroupStatus.ERROR):
+                    msg = (_('Create group failed.'))
                     LOG.error(msg,
-                              resource={'type': 'consistency_group',
+                              resource={'type': 'group',
                                         'id': group.id})
                     raise exception.VolumeDriverException(message=msg)
                 else:
@@ -2459,22 +2506,26 @@ class VolumeManager(manager.SchedulerDependentManager):
                     group.save()
         except Exception:
             with excutils.save_and_reraise_exception():
-                group.status = fields.ConsistencyGroupStatus.ERROR
+                group.status = fields.GroupStatus.ERROR
                 group.save()
-                LOG.error(_LE("Consistency group %s: create failed"),
+                LOG.error(_LE("Group %s: create failed"),
                           group.name)
 
         group.status = status
         group.created_at = timeutils.utcnow()
         group.save()
-        LOG.info(_LI("Consistency group %s: created successfully"),
+        LOG.info(_LI("Group %s: created successfully"),
                  group.name)
 
-        self._notify_about_consistencygroup_usage(
-            context, group, "create.end")
+        if is_generic_group:
+            self._notify_about_group_usage(
+                context, group, "create.end")
+        else:
+            self._notify_about_consistencygroup_usage(
+                context, group, "create.end")
 
-        LOG.info(_LI("Create consistency group completed successfully."),
-                 resource={'type': 'consistency_group',
+        LOG.info(_LI("Create group completed successfully."),
+                 resource={'type': 'group',
                            'id': group.id})
         return group
 
@@ -2846,6 +2897,170 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'consistency_group',
                            'id': group.id})
 
+    def delete_group(self, context, group):
+        """Deletes group and the volumes in the group."""
+        context = context.elevated()
+        project_id = group.project_id
+
+        if context.project_id != group.project_id:
+            project_id = group.project_id
+        else:
+            project_id = context.project_id
+
+        volumes = objects.VolumeList.get_all_by_generic_group(
+            context, group.id)
+
+        for vol_obj in volumes:
+            if vol_obj.attach_status == "attached":
+                # Volume is still attached, need to detach first
+                raise exception.VolumeAttached(volume_id=vol_obj.id)
+            # self.host is 'host@backend'
+            # vol_obj.host is 'host@backend#pool'
+            # Extract host before doing comparison
+            if vol_obj.host:
+                new_host = vol_utils.extract_host(vol_obj.host)
+                msg = (_("Volume %(vol_id)s is not local to this node "
+                         "%(host)s") % {'vol_id': vol_obj.id,
+                                        'host': self.host})
+                if new_host != self.host:
+                    raise exception.InvalidVolume(reason=msg)
+
+        self._notify_about_group_usage(
+            context, group, "delete.start")
+
+        volumes_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            try:
+                model_update, volumes_model_update = (
+                    self.driver.delete_group(context, group, volumes))
+            except NotImplementedError:
+                model_update, volumes_model_update = (
+                    self._delete_group_generic(context, group, volumes))
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    # If we failed to delete a volume, make sure the
+                    # status for the group is set to error as well
+                    if (update['status'] in ['error_deleting', 'error']
+                            and model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = update['status']
+                self.db.volumes_update(context, volumes_model_update)
+
+            if model_update:
+                if model_update['status'] in ['error_deleting', 'error']:
+                    msg = (_('Delete group failed.'))
+                    LOG.error(msg,
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group.update(model_update)
+                    group.save()
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                group.status = 'error'
+                group.save()
+                # Update volume status to 'error' if driver returns
+                # None for volumes_model_update.
+                if not volumes_model_update:
+                    for vol_obj in volumes:
+                        vol_obj.status = 'error'
+                        vol_obj.save()
+
+        # Get reservations for group
+        try:
+            reserve_opts = {'groups': -1}
+            grpreservations = GROUP_QUOTAS.reserve(context,
+                                                   project_id=project_id,
+                                                   **reserve_opts)
+        except Exception:
+            grpreservations = None
+            LOG.exception(_LE("Delete group "
+                              "failed to update usages."),
+                          resource={'type': 'group',
+                                    'id': group.id})
+
+        for vol in volumes:
+            # Get reservations for volume
+            try:
+                reserve_opts = {'volumes': -1,
+                                'gigabytes': -vol.size}
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            vol.volume_type_id)
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+            except Exception:
+                reservations = None
+                LOG.exception(_LE("Delete group "
+                                  "failed to update usages."),
+                              resource={'type': 'group',
+                                        'id': group.id})
+
+            # Delete glance metadata if it exists
+            self.db.volume_glance_metadata_delete_by_volume(context, vol.id)
+
+            vol.destroy()
+
+            # Commit the reservations
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
+
+            self.stats['allocated_capacity_gb'] -= vol.size
+
+        if grpreservations:
+            GROUP_QUOTAS.commit(context, grpreservations,
+                                project_id=project_id)
+
+        group.destroy()
+        self._notify_about_group_usage(
+            context, group, "delete.end")
+        self.publish_service_capabilities(context)
+        LOG.info(_LI("Delete group "
+                     "completed successfully."),
+                 resource={'type': 'group',
+                           'id': group.id})
+
+    def _create_group_generic(self, context, group):
+        """Creates a group."""
+        # A group entry is already created in db. Just returns a status here.
+        model_update = {'status': fields.GroupStatus.AVAILABLE,
+                        'created_at': timeutils.utcnow()}
+        return model_update
+
+    def _delete_group_generic(self, context, group, volumes):
+        """Deletes a group and volumes in the group."""
+        model_update = {'status': group.status}
+        volume_model_updates = []
+        for volume_ref in volumes:
+            volume_model_update = {'id': volume_ref.id}
+            try:
+                self.driver.remove_export(context, volume_ref)
+                self.driver.delete_volume(volume_ref)
+                volume_model_update['status'] = 'deleted'
+            except exception.VolumeIsBusy:
+                volume_model_update['status'] = 'available'
+            except Exception:
+                volume_model_update['status'] = 'error'
+                model_update['status'] = fields.GroupStatus.ERROR
+            volume_model_updates.append(volume_model_update)
+
+        return model_update, volume_model_updates
+
+    def _update_group_generic(self, context, group,
+                              add_volumes=None, remove_volumes=None):
+        """Updates a group."""
+        # NOTE(xyang): The volume manager adds/removes the volume to/from the
+        # group in the database. This default implementation does not do
+        # anything in the backend storage.
+        return None, None, None
+
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
         """Updates consistency group.
@@ -2988,6 +3203,151 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Update consistency group "
                      "completed successfully."),
                  resource={'type': 'consistency_group',
+                           'id': group.id})
+
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates group.
+
+        Update group by adding volumes to the group,
+        or removing volumes from the group.
+        """
+
+        add_volumes_ref = []
+        remove_volumes_ref = []
+        add_volumes_list = []
+        remove_volumes_list = []
+        if add_volumes:
+            add_volumes_list = add_volumes.split(',')
+        if remove_volumes:
+            remove_volumes_list = remove_volumes.split(',')
+        for add_vol in add_volumes_list:
+            try:
+                add_vol_ref = objects.Volume.get_by_id(context, add_vol)
+            except exception.VolumeNotFound:
+                LOG.error(_LE("Update group "
+                              "failed to add volume-%(volume_id)s: "
+                              "VolumeNotFound."),
+                          {'volume_id': add_vol_ref.id},
+                          resource={'type': 'group',
+                                    'id': group.id})
+                raise
+            if add_vol_ref.status not in VALID_ADD_VOL_TO_GROUP_STATUS:
+                msg = (_("Cannot add volume %(volume_id)s to "
+                         "group %(group_id)s because volume is in an invalid "
+                         "state: %(status)s. Valid states are: %(valid)s.") %
+                       {'volume_id': add_vol_ref.id,
+                        'group_id': group.id,
+                        'status': add_vol_ref.status,
+                        'valid': VALID_ADD_VOL_TO_GROUP_STATUS})
+                raise exception.InvalidVolume(reason=msg)
+            # self.host is 'host@backend'
+            # volume_ref['host'] is 'host@backend#pool'
+            # Extract host before doing comparison
+            new_host = vol_utils.extract_host(add_vol_ref.host)
+            if new_host != self.host:
+                raise exception.InvalidVolume(
+                    reason=_("Volume is not local to this node."))
+            add_volumes_ref.append(add_vol_ref)
+
+        for remove_vol in remove_volumes_list:
+            try:
+                remove_vol_ref = objects.Volume.get_by_id(context, remove_vol)
+            except exception.VolumeNotFound:
+                LOG.error(_LE("Update group "
+                              "failed to remove volume-%(volume_id)s: "
+                              "VolumeNotFound."),
+                          {'volume_id': remove_vol_ref.id},
+                          resource={'type': 'group',
+                                    'id': group.id})
+                raise
+            if (remove_vol_ref.status not in
+                    VALID_REMOVE_VOL_FROM_GROUP_STATUS):
+                msg = (_("Cannot remove volume %(volume_id)s from "
+                         "group %(group_id)s because volume is in an invalid "
+                         "state: %(status)s. Valid states are: %(valid)s.") %
+                       {'volume_id': remove_vol_ref.id,
+                        'group_id': group.id,
+                        'status': remove_vol_ref.status,
+                        'valid': VALID_REMOVE_VOL_FROM_GROUP_STATUS})
+                raise exception.InvalidVolume(reason=msg)
+            remove_volumes_ref.append(remove_vol_ref)
+
+        self._notify_about_group_usage(
+            context, group, "update.start")
+
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            try:
+                model_update, add_volumes_update, remove_volumes_update = (
+                    self.driver.update_group(
+                        context, group,
+                        add_volumes=add_volumes_ref,
+                        remove_volumes=remove_volumes_ref))
+            except NotImplementedError:
+                model_update, add_volumes_update, remove_volumes_update = (
+                    self._update_group_generic(
+                        context, group,
+                        add_volumes=add_volumes_ref,
+                        remove_volumes=remove_volumes_ref))
+
+            if add_volumes_update:
+                self.db.volumes_update(context, add_volumes_update)
+
+            if remove_volumes_update:
+                self.db.volumes_update(context, remove_volumes_update)
+
+            if model_update:
+                if model_update['status'] in (
+                        [fields.GroupStatus.ERROR]):
+                    msg = (_('Error occurred when updating group '
+                             '%s.') % group.id)
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                group.update(model_update)
+                group.save()
+
+        except exception.VolumeDriverException:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error occurred in the volume driver when "
+                              "updating group %(group_id)s."),
+                          {'group_id': group.id})
+                group.status = 'error'
+                group.save()
+                for add_vol in add_volumes_ref:
+                    add_vol.status = 'error'
+                    add_vol.save()
+                for rem_vol in remove_volumes_ref:
+                    rem_vol.status = 'error'
+                    rem_vol.save()
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error occurred when updating "
+                              "group %(group_id)s."),
+                          {'group_id': group.id})
+                group.status = 'error'
+                group.save()
+                for add_vol in add_volumes_ref:
+                    add_vol.status = 'error'
+                    add_vol.save()
+                for rem_vol in remove_volumes_ref:
+                    rem_vol.status = 'error'
+                    rem_vol.save()
+
+        group.status = 'available'
+        group.save()
+        for add_vol in add_volumes_ref:
+            add_vol.group_id = group.id
+            add_vol.save()
+        for rem_vol in remove_volumes_ref:
+            rem_vol.group_id = None
+            rem_vol.save()
+
+        self._notify_about_group_usage(
+            context, group, "update.end")
+        LOG.info(_LI("Update group completed successfully."),
+                 resource={'type': 'group',
                            'id': group.id})
 
     def create_cgsnapshot(self, context, cgsnapshot):

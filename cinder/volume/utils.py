@@ -243,6 +243,36 @@ def notify_about_consistencygroup_usage(context, group, event_suffix,
         usage_info)
 
 
+def _usage_from_group(group_ref, **kw):
+    usage_info = dict(tenant_id=group_ref.project_id,
+                      user_id=group_ref.user_id,
+                      availability_zone=group_ref.availability_zone,
+                      group_id=group_ref.id,
+                      name=group_ref.name,
+                      created_at=group_ref.created_at.isoformat(),
+                      status=group_ref.status)
+
+    usage_info.update(kw)
+    return usage_info
+
+
+def notify_about_group_usage(context, group, event_suffix,
+                             extra_usage_info=None, host=None):
+    if not host:
+        host = CONF.host
+
+    if not extra_usage_info:
+        extra_usage_info = {}
+
+    usage_info = _usage_from_group(group,
+                                   **extra_usage_info)
+
+    rpc.get_notifier("group", host).info(
+        context,
+        'group.%s' % event_suffix,
+        usage_info)
+
+
 def _usage_from_cgsnapshot(cgsnapshot, **kw):
     usage_info = dict(
         tenant_id=cgsnapshot.project_id,

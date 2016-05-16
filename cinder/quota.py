@@ -45,6 +45,9 @@ quota_opts = [
     cfg.IntOpt('quota_consistencygroups',
                default=10,
                help='Number of consistencygroups allowed per project'),
+    cfg.IntOpt('quota_groups',
+               default=10,
+               help='Number of groups allowed per project'),
     cfg.IntOpt('quota_gigabytes',
                default=1000,
                help='Total amount of storage, in gigabytes, allowed '
@@ -1202,5 +1205,30 @@ class CGQuotaEngine(QuotaEngine):
     def register_resources(self, resources):
         raise NotImplementedError(_("Cannot register resources"))
 
+
+class GroupQuotaEngine(QuotaEngine):
+    """Represent the group quotas."""
+
+    @property
+    def resources(self):
+        """Fetches all possible quota resources."""
+
+        result = {}
+        # Global quotas.
+        argses = [('groups', '_sync_groups',
+                   'quota_groups'), ]
+        for args in argses:
+            resource = ReservableResource(*args)
+            result[resource.name] = resource
+
+        return result
+
+    def register_resource(self, resource):
+        raise NotImplementedError(_("Cannot register resource"))
+
+    def register_resources(self, resources):
+        raise NotImplementedError(_("Cannot register resources"))
+
 QUOTAS = VolumeTypeQuotaEngine()
 CGQUOTAS = CGQuotaEngine()
+GROUP_QUOTAS = GroupQuotaEngine()

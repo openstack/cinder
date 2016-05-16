@@ -1044,6 +1044,15 @@ class InvalidConsistencyGroup(Invalid):
     message = _("Invalid ConsistencyGroup: %(reason)s")
 
 
+# Group
+class GroupNotFound(NotFound):
+    message = _("Group %(group_id)s could not be found.")
+
+
+class InvalidGroup(Invalid):
+    message = _("Invalid Group: %(reason)s")
+
+
 # CgSnapshot
 class CgSnapshotNotFound(NotFound):
     message = _("CgSnapshot %(cgsnapshot_id)s could not be found.")

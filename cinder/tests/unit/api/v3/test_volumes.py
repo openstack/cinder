@@ -11,6 +11,9 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import datetime
+import ddt
+import iso8601
 
 import mock
 from oslo_config import cfg
@@ -21,17 +24,23 @@ from cinder.api.v3 import volumes
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder.group import api as group_api
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit.api.v2 import stubs
 from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
+from cinder.volume import api as volume_api
 from cinder.volume.api import API as vol_get
 
 version_header_name = 'OpenStack-API-Version'
 
 CONF = cfg.CONF
 
+DEFAULT_AZ = "zone1:host1"
 
+
+@ddt.ddt
 class VolumeApiTest(test.TestCase):
     def setUp(self):
         super(VolumeApiTest, self).setUp()
@@ -177,3 +186,178 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.summary(req)
         expected = {'volume-summary': {'total_size': 1.0, 'total_count': 1}}
         self.assertEqual(expected, res_dict)
+
+    def _vol_in_request_body(self,
+                             size=stubs.DEFAULT_VOL_SIZE,
+                             name=stubs.DEFAULT_VOL_NAME,
+                             description=stubs.DEFAULT_VOL_DESCRIPTION,
+                             availability_zone=DEFAULT_AZ,
+                             snapshot_id=None,
+                             source_volid=None,
+                             source_replica=None,
+                             consistencygroup_id=None,
+                             volume_type=None,
+                             image_ref=None,
+                             image_id=None,
+                             group_id=None):
+        vol = {"size": size,
+               "name": name,
+               "description": description,
+               "availability_zone": availability_zone,
+               "snapshot_id": snapshot_id,
+               "source_volid": source_volid,
+               "source_replica": source_replica,
+               "consistencygroup_id": consistencygroup_id,
+               "volume_type": volume_type,
+               "group_id": group_id,
+               }
+
+        if image_id is not None:
+            vol['image_id'] = image_id
+        elif image_ref is not None:
+            vol['imageRef'] = image_ref
+
+        return vol
+
+    def _expected_vol_from_controller(
+            self,
+            size=stubs.DEFAULT_VOL_SIZE,
+            availability_zone=DEFAULT_AZ,
+            description=stubs.DEFAULT_VOL_DESCRIPTION,
+            name=stubs.DEFAULT_VOL_NAME,
+            consistencygroup_id=None,
+            source_volid=None,
+            snapshot_id=None,
+            metadata=None,
+            attachments=None,
+            volume_type=stubs.DEFAULT_VOL_TYPE,
+            status=stubs.DEFAULT_VOL_STATUS,
+            with_migration_status=False,
+            group_id=None,
+            req_version=None):
+        metadata = metadata or {}
+        attachments = attachments or []
+        volume = {'volume':
+                  {'attachments': attachments,
+                   'availability_zone': availability_zone,
+                   'bootable': 'false',
+                   'consistencygroup_id': consistencygroup_id,
+                   'group_id': group_id,
+                   'created_at': datetime.datetime(
+                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.iso8601.Utc()),
+                   'updated_at': datetime.datetime(
+                       1900, 1, 1, 1, 1, 1, tzinfo=iso8601.iso8601.Utc()),
+                   'description': description,
+                   'id': stubs.DEFAULT_VOL_ID,
+                   'links':
+                   [{'href': 'http://localhost/v3/%s/volumes/%s' % (
+                             fake.PROJECT_ID, fake.VOLUME_ID),
+                     'rel': 'self'},
+                    {'href': 'http://localhost/%s/volumes/%s' % (
+                             fake.PROJECT_ID, fake.VOLUME_ID),
+                     'rel': 'bookmark'}],
+                   'metadata': metadata,
+                   'name': name,
+                   'replication_status': 'disabled',
+                   'multiattach': False,
+                   'size': size,
+                   'snapshot_id': snapshot_id,
+                   'source_volid': source_volid,
+                   'status': status,
+                   'user_id': fake.USER_ID,
+                   'volume_type': volume_type,
+                   'encrypted': False}}
+
+        if with_migration_status:
+            volume['volume']['migration_status'] = None
+
+        # Remove group_id if max version is less than 3.13.
+        if req_version and req_version.matches(None, "3.12"):
+            volume['volume'].pop('group_id')
+
+        return volume
+
+    def _expected_volume_api_create_kwargs(self, snapshot=None,
+                                           availability_zone=DEFAULT_AZ,
+                                           source_volume=None,
+                                           test_group=None,
+                                           req_version=None):
+        volume = {
+            'metadata': None,
+            'snapshot': snapshot,
+            'source_volume': source_volume,
+            'source_replica': None,
+            'consistencygroup': None,
+            'availability_zone': availability_zone,
+            'scheduler_hints': None,
+            'multiattach': False,
+            'group': test_group,
+        }
+
+        # Remove group_id if max version is less than 3.13.
+        if req_version and req_version.matches(None, "3.12"):
+            volume.pop('group')
+
+        return volume
+
+    @ddt.data('3.13', '3.12')
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_create(self, max_ver, mock_validate):
+        self.mock_object(volume_api.API, 'get', stubs.stub_volume_get)
+        self.mock_object(volume_api.API, "create",
+                         stubs.stub_volume_api_create)
+        self.mock_object(db.sqlalchemy.api, '_volume_type_get_full',
+                         stubs.stub_volume_type_get)
+
+        vol = self._vol_in_request_body()
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req.api_version_request = api_version.APIVersionRequest(max_ver)
+        res_dict = self.controller.create(req, body)
+        ex = self._expected_vol_from_controller(
+            req_version=req.api_version_request)
+        self.assertEqual(ex, res_dict)
+        self.assertTrue(mock_validate.called)
+
+    @ddt.data('3.13', '3.12')
+    @mock.patch.object(group_api.API, 'get')
+    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
+                       autospec=True)
+    @mock.patch.object(volume_api.API, 'get_snapshot', autospec=True)
+    @mock.patch.object(volume_api.API, 'create', autospec=True)
+    def test_volume_creation_from_snapshot(self, max_ver, create, get_snapshot,
+                                           volume_type_get, group_get):
+        create.side_effect = stubs.stub_volume_api_create
+        get_snapshot.side_effect = stubs.stub_snapshot_get
+        volume_type_get.side_effect = stubs.stub_volume_type_get
+        fake_group = {
+            'id': fake.GROUP_ID,
+            'group_type_id': fake.GROUP_TYPE_ID,
+            'name': 'fake_group'
+        }
+        group_get.return_value = fake_group
+
+        snapshot_id = fake.SNAPSHOT_ID
+        vol = self._vol_in_request_body(snapshot_id=snapshot_id,
+                                        group_id=fake.GROUP_ID)
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        req.api_version_request = api_version.APIVersionRequest(max_ver)
+        res_dict = self.controller.create(req, body)
+        ex = self._expected_vol_from_controller(
+            snapshot_id=snapshot_id,
+            req_version=req.api_version_request)
+        self.assertEqual(ex, res_dict)
+
+        context = req.environ['cinder.context']
+        get_snapshot.assert_called_once_with(self.controller.volume_api,
+                                             context, snapshot_id)
+
+        kwargs = self._expected_volume_api_create_kwargs(
+            stubs.stub_snapshot(snapshot_id),
+            test_group=fake_group,
+            req_version=req.api_version_request)
+        create.assert_called_once_with(self.controller.volume_api, context,
+                                       vol['size'], stubs.DEFAULT_VOL_NAME,
+                                       stubs.DEFAULT_VOL_DESCRIPTION, **kwargs)

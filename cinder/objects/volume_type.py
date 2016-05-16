@@ -145,3 +145,13 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
         types = db.qos_specs_associations_get(context, qos_id)
         return base.obj_make_list(context, cls(context), objects.VolumeType,
                                   types)
+
+    @classmethod
+    def get_all_by_group(cls, context, group_id):
+        # Generic volume group
+        types = volume_types.get_all_types_by_group(
+            context.elevated(), group_id)
+        expected_attrs = VolumeType._get_expected_attrs(context)
+        return base.obj_make_list(context, cls(context),
+                                  objects.VolumeType, types,
+                                  expected_attrs=expected_attrs)

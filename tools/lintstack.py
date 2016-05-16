@@ -59,6 +59,11 @@ ignore_messages = [
     # during runtime.
     "Class 'ConsistencyGroup' has no '__table__' member",
     "Class 'Cgsnapshot' has no '__table__' member",
+
+    # NOTE(xyang): this error message is for code [E1120] when checking if
+    # there are already 'groups' entries in 'quota_classes' `in DB migration
+    # (078_add_groups_and_group_volume_type_mapping_table).
+    "No value passed for parameter 'functions' in function call",
 ]
 
 # Note(maoy):  We ignore cinder.tests for now due to high false
@@ -99,6 +104,8 @@ objects_ignore_messages = [
     "Module 'cinder.objects' has no 'VolumeProperties' member",
     "Module 'cinder.objects' has no 'VolumeType' member",
     "Module 'cinder.objects' has no 'VolumeTypeList' member",
+    "Module 'cinder.objects' has no 'Group' member",
+    "Module 'cinder.objects' has no 'GroupList' member",
 ]
 objects_ignore_modules = ["cinder/objects/"]
 

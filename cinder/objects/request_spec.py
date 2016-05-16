@@ -25,10 +25,12 @@ CONF = cfg.CONF
 class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
                   base.CinderComparableObject):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Added group_id and group_backend
+    VERSION = '1.1'
 
     fields = {
         'consistencygroup_id': fields.UUIDField(nullable=True),
+        'group_id': fields.UUIDField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
         'image_id': fields.UUIDField(nullable=True),
         'snapshot_id': fields.UUIDField(nullable=True),
@@ -40,6 +42,7 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
         'volume_properties': fields.ObjectField('VolumeProperties',
                                                 nullable=True),
         'CG_backend': fields.StringField(nullable=True),
+        'group_backend': fields.StringField(nullable=True),
     }
 
     obj_extra_fields = ['resource_properties']
@@ -90,7 +93,8 @@ class RequestSpec(base.CinderObject, base.CinderObjectDictCompat,
 @base.CinderObjectRegistry.register
 class VolumeProperties(base.CinderObject, base.CinderObjectDictCompat):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Added group_id and group_type_id
+    VERSION = '1.1'
 
     # TODO(dulek): We should add this to initially move volume_properites to
     # ovo, but this should be removed as soon as possible. Most of the data
@@ -105,6 +109,7 @@ class VolumeProperties(base.CinderObject, base.CinderObjectDictCompat):
         'availability_zone': fields.StringField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
         'consistencygroup_id': fields.UUIDField(nullable=True),
+        'group_id': fields.UUIDField(nullable=True),
         'display_description': fields.StringField(nullable=True),
         'display_name': fields.StringField(nullable=True),
         'encryption_key_id': fields.UUIDField(nullable=True),
@@ -121,4 +126,5 @@ class VolumeProperties(base.CinderObject, base.CinderObjectDictCompat):
         'status': fields.StringField(nullable=True),
         'user_id': fields.StringField(nullable=True),
         'volume_type_id': fields.UUIDField(nullable=True),
+        'group_type_id': fields.UUIDField(nullable=True),
     }

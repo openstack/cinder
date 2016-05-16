@@ -269,6 +269,12 @@ def volume_get_all_by_group(context, group_id, filters=None):
     return IMPL.volume_get_all_by_group(context, group_id, filters=filters)
 
 
+def volume_get_all_by_generic_group(context, group_id, filters=None):
+    """Get all volumes belonging to a generic volume group."""
+    return IMPL.volume_get_all_by_generic_group(context, group_id,
+                                                filters=filters)
+
+
 def volume_get_all_by_project(context, project_id, marker, limit,
                               sort_keys=None, sort_dirs=None, filters=None,
                               offset=None):
@@ -297,6 +303,14 @@ def volume_update(context, volume_id, values):
 
     """
     return IMPL.volume_update(context, volume_id, values)
+
+
+def volumes_update(context, values_list):
+    """Set the given properties on a list of volumes and update them.
+
+    Raises NotFound if a volume does not exist.
+    """
+    return IMPL.volumes_update(context, values_list)
 
 
 def volume_include_in_cluster(context, cluster, partial_rename=True,
@@ -714,6 +728,11 @@ def group_type_access_add(context, type_id, project_id):
 def group_type_access_remove(context, type_id, project_id):
     """Remove group type access for project."""
     return IMPL.group_type_access_remove(context, type_id, project_id)
+
+
+def volume_type_get_all_by_group(context, group_id):
+    """Get all volumes in a group."""
+    return IMPL.volume_type_get_all_by_group(context, group_id)
 
 
 ####################
@@ -1276,6 +1295,53 @@ def consistencygroup_include_in_cluster(context, cluster, partial_rename=True,
     return IMPL.consistencygroup_include_in_cluster(context, cluster,
                                                     partial_rename,
                                                     **filters)
+
+
+###################
+
+
+def group_get(context, group_id):
+    """Get a group or raise if it does not exist."""
+    return IMPL.group_get(context, group_id)
+
+
+def group_get_all(context, filters=None, marker=None, limit=None,
+                  offset=None, sort_keys=None, sort_dirs=None):
+    """Get all groups."""
+    return IMPL.group_get_all(context, filters=filters,
+                              marker=marker, limit=limit,
+                              offset=offset, sort_keys=sort_keys,
+                              sort_dirs=sort_dirs)
+
+
+def group_create(context, values):
+    """Create a group from the values dictionary."""
+    return IMPL.group_create(context, values)
+
+
+def group_get_all_by_project(context, project_id, filters=None,
+                             marker=None, limit=None, offset=None,
+                             sort_keys=None, sort_dirs=None):
+    """Get all groups belonging to a project."""
+    return IMPL.group_get_all_by_project(context, project_id,
+                                         filters=filters,
+                                         marker=marker, limit=limit,
+                                         offset=offset,
+                                         sort_keys=sort_keys,
+                                         sort_dirs=sort_dirs)
+
+
+def group_update(context, group_id, values):
+    """Set the given properties on a group and update it.
+
+    Raises NotFound if group does not exist.
+    """
+    return IMPL.group_update(context, group_id, values)
+
+
+def group_destroy(context, group_id):
+    """Destroy the group or raise if it does not exist."""
+    return IMPL.group_destroy(context, group_id)
 
 
 ###################

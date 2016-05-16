@@ -342,6 +342,15 @@ def _sync_consistencygroups(context, project_id, session,
     return {key: groups}
 
 
+def _sync_groups(context, project_id, session,
+                 volume_type_id=None,
+                 volume_type_name=None):
+    (_junk, groups) = _group_data_get_for_project(
+        context, project_id, session=session)
+    key = 'groups'
+    return {key: groups}
+
+
 def _sync_backup_gigabytes(context, project_id, session, volume_type_id=None,
                            volume_type_name=None):
     key = 'backup_gigabytes'
@@ -356,7 +365,8 @@ QUOTA_SYNC_FUNCTIONS = {
     '_sync_gigabytes': _sync_gigabytes,
     '_sync_consistencygroups': _sync_consistencygroups,
     '_sync_backups': _sync_backups,
-    '_sync_backup_gigabytes': _sync_backup_gigabytes
+    '_sync_backup_gigabytes': _sync_backup_gigabytes,
+    '_sync_groups': _sync_groups,
 }
 
 
@@ -1662,14 +1672,16 @@ def _volume_get_query(context, session=None, project_only=False,
             options(joinedload('volume_admin_metadata')).\
             options(joinedload('volume_type')).\
             options(joinedload('volume_attachment')).\
-            options(joinedload('consistencygroup'))
+            options(joinedload('consistencygroup')).\
+            options(joinedload('group'))
     else:
         return model_query(context, models.Volume, session=session,
                            project_only=project_only).\
             options(joinedload('volume_metadata')).\
             options(joinedload('volume_type')).\
             options(joinedload('volume_attachment')).\
-            options(joinedload('consistencygroup'))
+            options(joinedload('consistencygroup')).\
+            options(joinedload('group'))
 
 
 @require_context
@@ -1832,7 +1844,7 @@ def volume_get_all_by_group(context, group_id, filters=None):
     """Retrieves all volumes associated with the group_id.
 
     :param context: context to query under
-    :param group_id: group ID for all volumes being retrieved
+    :param group_id: consistency group ID for all volumes being retrieved
     :param filters: dictionary of filters; values that are in lists, tuples,
                     or sets cause an 'IN' operation, while exact matching
                     is used for other values, see _process_volume_filters
@@ -1840,6 +1852,27 @@ def volume_get_all_by_group(context, group_id, filters=None):
     :returns: list of matching volumes
     """
     query = _volume_get_query(context).filter_by(consistencygroup_id=group_id)
+    if filters:
+        query = _process_volume_filters(query, filters)
+        # No volumes would match, return empty list
+        if query is None:
+            return []
+    return query.all()
+
+
+@require_context
+def volume_get_all_by_generic_group(context, group_id, filters=None):
+    """Retrieves all volumes associated with the group_id.
+
+    :param context: context to query under
+    :param group_id: group ID for all volumes being retrieved
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_filters
+                    function for more information
+    :returns: list of matching volumes
+    """
+    query = _volume_get_query(context).filter_by(group_id=group_id)
     if filters:
         query = _process_volume_filters(query, filters)
         # No volumes would match, return empty list
@@ -2138,6 +2171,38 @@ def volume_update(context, volume_id, values):
         volume_ref.update(values)
 
         return volume_ref
+
+
+@handle_db_data_error
+@require_context
+def volumes_update(context, values_list):
+    session = get_session()
+    with session.begin():
+        volume_refs = []
+        for values in values_list:
+            volume_id = values['id']
+            values.pop('id')
+            metadata = values.get('metadata')
+            if metadata is not None:
+                _volume_user_metadata_update(context,
+                                             volume_id,
+                                             values.pop('metadata'),
+                                             delete=True,
+                                             session=session)
+
+            admin_metadata = values.get('admin_metadata')
+            if is_admin_context(context) and admin_metadata is not None:
+                _volume_admin_metadata_update(context,
+                                              volume_id,
+                                              values.pop('admin_metadata'),
+                                              delete=True,
+                                              session=session)
+
+            volume_ref = _volume_get(context, volume_id, session=session)
+            volume_ref.update(values)
+            volume_refs.append(volume_ref)
+
+        return volume_refs
 
 
 @require_context
@@ -3554,7 +3619,12 @@ def volume_type_destroy(context, id):
         _volume_type_get(context, id, session)
         results = model_query(context, models.Volume, session=session). \
             filter_by(volume_type_id=id).all()
-        if results:
+        group_count = model_query(context,
+                                  models.GroupVolumeTypeMapping,
+                                  read_deleted="no",
+                                  session=session).\
+            filter_by(volume_type_id=id).count()
+        if results or group_count:
             LOG.error(_LE('VolumeType %s deletion failed, '
                           'VolumeType in use.'), id)
             raise exception.VolumeTypeInUse(volume_type_id=id)
@@ -3618,7 +3688,8 @@ def volume_get_active_by_window(context,
     query = (query.options(joinedload('volume_metadata')).
              options(joinedload('volume_type')).
              options(joinedload('volume_attachment')).
-             options(joinedload('consistencygroup')))
+             options(joinedload('consistencygroup')).
+             options(joinedload('group')))
 
     if is_admin_context(context):
         query = query.options(joinedload('volume_admin_metadata'))
@@ -3648,6 +3719,29 @@ def group_type_access_get_all(context, type_id):
     group_type_id = _group_type_get_id_from_group_type(context, type_id)
     return _group_type_access_query(context).\
         filter_by(group_type_id=group_type_id).all()
+
+
+def _group_volume_type_mapping_query(context, session=None):
+    return model_query(context, models.GroupVolumeTypeMapping, session=session,
+                       read_deleted="no")
+
+
+@require_admin_context
+def volume_type_get_all_by_group(context, group_id):
+    # Generic volume group
+    mappings = (_group_volume_type_mapping_query(context).
+                filter_by(group_id=group_id).all())
+    session = get_session()
+    with session.begin():
+        volume_type_ids = [mapping.volume_type_id for mapping in mappings]
+        query = (model_query(context,
+                             models.VolumeTypes,
+                             session=session,
+                             read_deleted='no').
+                 filter(models.VolumeTypes.id.in_(volume_type_ids)).
+                 options(joinedload('extra_specs')).
+                 all())
+        return query
 
 
 @require_admin_context
@@ -5067,6 +5161,188 @@ def consistencygroup_include_in_cluster(context, cluster,
 ###############################
 
 
+@require_admin_context
+def _group_data_get_for_project(context, project_id,
+                                session=None):
+    query = model_query(context,
+                        func.count(models.Group.id),
+                        read_deleted="no",
+                        session=session).\
+        filter_by(project_id=project_id)
+
+    result = query.first()
+
+    return (0, result[0] or 0)
+
+
+@require_context
+def _group_get(context, group_id, session=None):
+    result = (model_query(context, models.Group, session=session,
+                          project_only=True).
+              filter_by(id=group_id).
+              first())
+
+    if not result:
+        raise exception.GroupNotFound(group_id=group_id)
+
+    return result
+
+
+@require_context
+def group_get(context, group_id):
+    return _group_get(context, group_id)
+
+
+def _groups_get_query(context, session=None, project_only=False):
+    return model_query(context, models.Group, session=session,
+                       project_only=project_only)
+
+
+def _process_groups_filters(query, filters):
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.Group, filters):
+            return
+        query = query.filter_by(**filters)
+    return query
+
+
+def _group_get_all(context, filters=None, marker=None, limit=None,
+                   offset=None, sort_keys=None, sort_dirs=None):
+    if filters and not is_valid_model_filters(models.Group,
+                                              filters):
+        return []
+
+    session = get_session()
+    with session.begin():
+        # Generate the paginate query
+        query = _generate_paginate_query(context, session, marker,
+                                         limit, sort_keys, sort_dirs, filters,
+                                         offset, models.Group)
+
+        return query.all()if query else []
+
+
+@require_admin_context
+def group_get_all(context, filters=None, marker=None, limit=None,
+                  offset=None, sort_keys=None, sort_dirs=None):
+    """Retrieves all groups.
+
+    If no sort parameters are specified then the returned groups are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
+
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param filters: Filters for the query in the form of key/value.
+    :returns: list of matching  groups
+    """
+    return _group_get_all(context, filters, marker, limit, offset,
+                          sort_keys, sort_dirs)
+
+
+@require_context
+def group_get_all_by_project(context, project_id, filters=None,
+                             marker=None, limit=None, offset=None,
+                             sort_keys=None, sort_dirs=None):
+    """Retrieves all groups in a project.
+
+    If no sort parameters are specified then the returned groups are sorted
+    first by the 'created_at' key and then by the 'id' key in descending
+    order.
+
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param filters: Filters for the query in the form of key/value.
+    :returns: list of matching groups
+    """
+    authorize_project_context(context, project_id)
+    if not filters:
+        filters = {}
+    else:
+        filters = filters.copy()
+
+    filters['project_id'] = project_id
+    return _group_get_all(context, filters, marker, limit, offset,
+                          sort_keys, sort_dirs)
+
+
+@handle_db_data_error
+@require_context
+def group_create(context, values):
+    group = models.Group()
+    if not values.get('id'):
+        values['id'] = six.text_type(uuid.uuid4())
+
+    mappings = []
+    for item in values.get('volume_type_ids') or []:
+        mapping = models.GroupVolumeTypeMapping()
+        mapping['volume_type_id'] = item
+        mapping['group_id'] = values['id']
+        mappings.append(mapping)
+
+    values['volume_types'] = mappings
+
+    session = get_session()
+    with session.begin():
+        group.update(values)
+        session.add(group)
+
+        return _group_get(context, values['id'], session=session)
+
+
+@handle_db_data_error
+@require_context
+def group_update(context, group_id, values):
+    session = get_session()
+    with session.begin():
+        result = (model_query(context, models.Group,
+                              project_only=True).
+                  filter_by(id=group_id).
+                  first())
+
+        if not result:
+            raise exception.GroupNotFound(
+                _("No group with id %s") % group_id)
+
+        result.update(values)
+        result.save(session=session)
+    return result
+
+
+@require_admin_context
+def group_destroy(context, group_id):
+    session = get_session()
+    with session.begin():
+        (model_query(context, models.Group, session=session).
+         filter_by(id=group_id).
+         update({'status': fields.GroupStatus.DELETED,
+                 'deleted': True,
+                 'deleted_at': timeutils.utcnow(),
+                 'updated_at': literal_column('updated_at')}))
+
+        (session.query(models.GroupVolumeTypeMapping).
+         filter_by(group_id=group_id).
+         update({'deleted': True,
+                 'deleted_at': timeutils.utcnow(),
+                 'updated_at': literal_column('updated_at')}))
+
+
+###############################
+
+
 @require_context
 def _cgsnapshot_get(context, cgsnapshot_id, session=None):
     result = model_query(context, models.Cgsnapshot, session=session,
@@ -5436,6 +5712,9 @@ PAGINATION_HELPERS = {
                      _message_get),
     models.GroupTypes: (_group_type_get_query, _process_group_types_filters,
                         _group_type_get_db_object),
+    models.Group: (_groups_get_query,
+                   _process_groups_filters,
+                   _group_get),
 }
 
 

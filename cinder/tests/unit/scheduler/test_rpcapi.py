@@ -156,3 +156,16 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  rpc_method='call',
                                  filters=None,
                                  version='2.0')
+
+    def test_create_group(self):
+        self._test_scheduler_api('create_group',
+                                 rpc_method='cast',
+                                 topic='topic',
+                                 group='group',
+                                 group_spec='group_spec_p',
+                                 request_spec_list=['fake_request_spec_list'],
+                                 group_filter_properties=
+                                 'fake_group_filter_properties',
+                                 filter_properties_list=
+                                 ['fake_filter_properties_list'],
+                                 version='2.3')
