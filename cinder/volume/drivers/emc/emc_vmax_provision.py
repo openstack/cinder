@@ -14,6 +14,7 @@
 #    under the License.
 import time
 
+from oslo_concurrency import lockutils
 from oslo_log import log as logging
 import six
 
@@ -159,33 +160,38 @@ class EMCVMAXProvision(object):
         """
         startTime = time.time()
 
-        rc, job = conn.InvokeMethod(
-            'CreateGroup', controllerConfigService, GroupName=storageGroupName,
-            Type=self.utils.get_num(STORAGEGROUPTYPE, '16'),
-            Members=[volumeInstanceName])
+        @lockutils.synchronized(storageGroupName,
+                                "emc-sg-", True)
+        def do_create_storage_group():
+            rc, job = conn.InvokeMethod(
+                'CreateGroup', controllerConfigService,
+                GroupName=storageGroupName,
+                Type=self.utils.get_num(STORAGEGROUPTYPE, '16'),
+                Members=[volumeInstanceName])
 
-        if rc != 0:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
-                                                             extraSpecs)
             if rc != 0:
-                exceptionMessage = (_(
-                    "Error Create Group: %(groupName)s. "
-                    "Return code: %(rc)lu.  Error: %(error)s.")
-                    % {'groupName': storageGroupName,
-                       'rc': rc,
-                       'error': errordesc})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+                rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                                 extraSpecs)
+                if rc != 0:
+                    exceptionMessage = (_(
+                        "Error Create Group: %(groupName)s. "
+                        "Return code: %(rc)lu.  Error: %(error)s.")
+                        % {'groupName': storageGroupName,
+                           'rc': rc,
+                           'error': errordesc})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
 
-        LOG.debug("InvokeMethod CreateGroup "
-                  "took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(startTime,
-                                                      time.time())})
-        foundStorageGroupInstanceName = self._find_new_storage_group(
-            conn, job, storageGroupName)
+            LOG.debug("InvokeMethod CreateGroup "
+                      "took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(startTime,
+                                                          time.time())})
+            foundStorageGroupInstanceName = self._find_new_storage_group(
+                conn, job, storageGroupName)
 
-        return foundStorageGroupInstanceName
+            return foundStorageGroupInstanceName
+        return do_create_storage_group()
 
     def create_storage_group_no_members(
             self, conn, controllerConfigService, groupName, extraSpecs):
@@ -267,42 +273,57 @@ class EMCVMAXProvision(object):
         return volumeDict
 
     def remove_device_from_storage_group(
-            self, conn, controllerConfigService, storageGroupInstanceName,
+            self, conn, controllerConfigService, sgInstanceName,
             volumeInstanceName, volumeName, extraSpecs):
         """Remove a volume from a storage group.
 
         :param conn: the connection to the ecom server
         :param controllerConfigService: the controller configuration service
-        :param storageGroupInstanceName: the instance name of the storage group
+        :param sgInstanceName: the instance name of the storage group
         :param volumeInstanceName: the instance name of the volume
         :param volumeName: the volume name (String)
         :param extraSpecs: additional info
         :returns: int -- the return code of the job
         :raises: VolumeBackendAPIException
         """
-        startTime = time.time()
 
-        rc, jobDict = conn.InvokeMethod('RemoveMembers',
-                                        controllerConfigService,
-                                        MaskingGroup=storageGroupInstanceName,
-                                        Members=[volumeInstanceName])
-        if rc != 0:
-            rc, errorDesc = self.utils.wait_for_job_complete(conn, jobDict,
-                                                             extraSpecs)
+        try:
+            storageGroupInstance = conn.GetInstance(sgInstanceName)
+        except Exception:
+            exceptionMessage = (_(
+                "Unable to get the name of the storage group."))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
+
+        @lockutils.synchronized(storageGroupInstance['ElementName'],
+                                "emc-sg-", True)
+        def do_remove_volume_from_sg():
+            startTime = time.time()
+            rc, jobDict = conn.InvokeMethod('RemoveMembers',
+                                            controllerConfigService,
+                                            MaskingGroup=sgInstanceName,
+                                            Members=[volumeInstanceName])
             if rc != 0:
-                exceptionMessage = (_(
-                    "Error removing volume %(vol)s. %(error)s.")
-                    % {'vol': volumeName, 'error': errorDesc})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+                rc, errorDesc = self.utils.wait_for_job_complete(conn, jobDict,
+                                                                 extraSpecs)
+                if rc != 0:
+                    exceptionMessage = (_(
+                        "Error removing volume %(vol)s from %(sg). %(error)s.")
+                        % {'vol': volumeName,
+                           'sg': storageGroupInstance['ElementName'],
+                           'error': errorDesc})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
 
-        LOG.debug("InvokeMethod RemoveMembers "
-                  "took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(startTime,
-                                                      time.time())})
+            LOG.debug("InvokeMethod RemoveMembers "
+                      "took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(startTime,
+                                                          time.time())})
 
-        return rc
+            return rc
+        return do_remove_volume_from_sg()
 
     def add_members_to_masking_group(
             self, conn, controllerConfigService, storageGroupInstanceName,
@@ -317,28 +338,43 @@ class EMCVMAXProvision(object):
         :param extraSpecs: additional info
         :raises: VolumeBackendAPIException
         """
-        startTime = time.time()
+        try:
+            storageGroupInstance = conn.GetInstance(storageGroupInstanceName)
+        except Exception:
+            exceptionMessage = (_(
+                "Unable to get the name of the storage group."))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
 
-        rc, job = conn.InvokeMethod(
-            'AddMembers', controllerConfigService,
-            MaskingGroup=storageGroupInstanceName,
-            Members=[volumeInstanceName])
+        @lockutils.synchronized(storageGroupInstance['ElementName'],
+                                "emc-sg-", True)
+        def do_add_volume_to_sg():
+            startTime = time.time()
+            rc, job = conn.InvokeMethod(
+                'AddMembers', controllerConfigService,
+                MaskingGroup=storageGroupInstanceName,
+                Members=[volumeInstanceName])
 
-        if rc != 0:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
-                                                             extraSpecs)
             if rc != 0:
-                exceptionMessage = (_(
-                    "Error mapping volume %(vol)s. %(error)s.")
-                    % {'vol': volumeName, 'error': errordesc})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+                rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                                 extraSpecs)
+                if rc != 0:
+                    exceptionMessage = (_(
+                        "Error adding volume %(vol)s to %(sg). %(error)s.")
+                        % {'vol': volumeName,
+                           'sg': storageGroupInstance['ElementName'],
+                           'error': errordesc})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
 
-        LOG.debug("InvokeMethod AddMembers "
-                  "took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(startTime,
-                                                      time.time())})
+            LOG.debug("InvokeMethod AddMembers "
+                      "took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(startTime,
+                                                          time.time())})
+            return rc
+        return do_add_volume_to_sg()
 
     def unbind_volume_from_storage_pool(
             self, conn, storageConfigService,

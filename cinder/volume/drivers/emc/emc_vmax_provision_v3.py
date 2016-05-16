@@ -15,6 +15,7 @@
 
 import time
 
+from oslo_concurrency import lockutils
 from oslo_log import log as logging
 import six
 
@@ -111,41 +112,55 @@ class EMCVMAXProvisionV3(object):
         :returns: int -- return code
         :raises: VolumeBackendAPIException
         """
-        startTime = time.time()
+        try:
+            storageGroupInstance = conn.GetInstance(sgInstanceName)
+        except Exception:
+            exceptionMessage = (_(
+                "Unable to get the name of the storage group"))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
 
-        rc, job = conn.InvokeMethod(
-            'CreateOrModifyElementFromStoragePool',
-            storageConfigService, ElementName=volumeName,
-            EMCCollections=[sgInstanceName],
-            ElementType=self.utils.get_num(THINPROVISIONING, '16'),
-            Size=self.utils.get_num(volumeSize, '64'))
+        @lockutils.synchronized(storageGroupInstance['ElementName'],
+                                "emc-sg-", True)
+        def do_create_volume_from_sg():
+            startTime = time.time()
 
-        LOG.debug("Create Volume: %(volumename)s. Return code: %(rc)lu.",
-                  {'volumename': volumeName,
-                   'rc': rc})
+            rc, job = conn.InvokeMethod(
+                'CreateOrModifyElementFromStoragePool',
+                storageConfigService, ElementName=volumeName,
+                EMCCollections=[sgInstanceName],
+                ElementType=self.utils.get_num(THINPROVISIONING, '16'),
+                Size=self.utils.get_num(volumeSize, '64'))
 
-        if rc != 0:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
-                                                             extraSpecs)
+            LOG.debug("Create Volume: %(volumename)s. Return code: %(rc)lu.",
+                      {'volumename': volumeName,
+                       'rc': rc})
+
             if rc != 0:
-                exceptionMessage = (_(
-                    "Error Create Volume: %(volumeName)s. "
-                    "Return code: %(rc)lu.  Error: %(error)s.")
-                    % {'volumeName': volumeName,
-                       'rc': rc,
-                       'error': errordesc})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+                rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                                 extraSpecs)
+                if rc != 0:
+                    exceptionMessage = (_(
+                        "Error Create Volume: %(volumeName)s. "
+                        "Return code: %(rc)lu.  Error: %(error)s.")
+                        % {'volumeName': volumeName,
+                           'rc': rc,
+                           'error': errordesc})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
 
-        LOG.debug("InvokeMethod CreateOrModifyElementFromStoragePool "
-                  "took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(startTime,
-                                                      time.time())})
+            LOG.debug("InvokeMethod CreateOrModifyElementFromStoragePool "
+                      "took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(startTime,
+                                                          time.time())})
 
-        # Find the newly created volume.
-        volumeDict = self.get_volume_dict_from_job(conn, job['Job'])
-        return volumeDict, rc
+            # Find the newly created volume.
+            volumeDict = self.get_volume_dict_from_job(conn, job['Job'])
+            return volumeDict, rc
+
+        return do_create_volume_from_sg()
 
     def _find_new_storage_group(
             self, conn, maskingGroupDict, storageGroupName):
@@ -246,38 +261,51 @@ class EMCVMAXProvisionV3(object):
                 conn, extraSpecs[self.utils.POOL],
                 extraSpecs[self.utils.SLO],
                 extraSpecs[self.utils.WORKLOAD], storageSystemName))
-        if targetInstance is None and rsdInstance is None:
-            rc, job = conn.InvokeMethod(
-                'CreateElementReplica', repServiceInstanceName,
-                ElementName=cloneName,
-                SyncType=self.utils.get_num(syncType, '16'),
-                SourceElement=sourceInstance.path,
-                Collections=[sgInstanceName])
-        else:
-            rc, job = self._create_element_replica_extra_params(
-                conn, repServiceInstanceName, cloneName, syncType,
-                sourceInstance, targetInstance, rsdInstance,
-                sgInstanceName)
+        try:
+            storageGroupInstance = conn.GetInstance(sgInstanceName)
+        except Exception:
+            exceptionMessage = (_(
+                "Unable to get the name of the storage group"))
+            LOG.error(exceptionMessage)
+            raise exception.VolumeBackendAPIException(
+                data=exceptionMessage)
 
-        if rc != 0:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
-                                                             extraSpecs)
+        @lockutils.synchronized(storageGroupInstance['ElementName'],
+                                "emc-sg-", True)
+        def do_create_element_replica():
+            if targetInstance is None and rsdInstance is None:
+                rc, job = conn.InvokeMethod(
+                    'CreateElementReplica', repServiceInstanceName,
+                    ElementName=cloneName,
+                    SyncType=self.utils.get_num(syncType, '16'),
+                    SourceElement=sourceInstance.path,
+                    Collections=[sgInstanceName])
+            else:
+                rc, job = self._create_element_replica_extra_params(
+                    conn, repServiceInstanceName, cloneName, syncType,
+                    sourceInstance, targetInstance, rsdInstance,
+                    sgInstanceName)
+
             if rc != 0:
-                exceptionMessage = (_(
-                    "Error Create Cloned Volume: %(cloneName)s "
-                    "Return code: %(rc)lu. Error: %(error)s.")
-                    % {'cloneName': cloneName,
-                       'rc': rc,
-                       'error': errordesc})
-                LOG.error(exceptionMessage)
-                raise exception.VolumeBackendAPIException(
-                    data=exceptionMessage)
+                rc, errordesc = self.utils.wait_for_job_complete(conn, job,
+                                                                 extraSpecs)
+                if rc != 0:
+                    exceptionMessage = (_(
+                        "Error Create Cloned Volume: %(cloneName)s "
+                        "Return code: %(rc)lu. Error: %(error)s.")
+                        % {'cloneName': cloneName,
+                           'rc': rc,
+                           'error': errordesc})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
 
-        LOG.debug("InvokeMethod CreateElementReplica "
-                  "took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(startTime,
-                                                      time.time())})
-        return rc, job
+            LOG.debug("InvokeMethod CreateElementReplica "
+                      "took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(startTime,
+                                                          time.time())})
+            return rc, job
+        return do_create_element_replica()
 
     def _create_element_replica_extra_params(
             self, conn, repServiceInstanceName, cloneName, syncType,
@@ -363,36 +391,46 @@ class EMCVMAXProvisionV3(object):
         """
         startTime = time.time()
 
-        rc, job = conn.InvokeMethod(
-            'CreateGroup',
-            controllerConfigService,
-            GroupName=groupName,
-            Type=self.utils.get_num(4, '16'),
-            EMCSRP=srp,
-            EMCSLO=slo,
-            EMCWorkload=workload)
+        @lockutils.synchronized(groupName, "emc-sg-", True)
+        def do_create_storage_group_v3():
+            if slo and workload:
+                rc, job = conn.InvokeMethod(
+                    'CreateGroup',
+                    controllerConfigService,
+                    GroupName=groupName,
+                    Type=self.utils.get_num(4, '16'),
+                    EMCSRP=srp,
+                    EMCSLO=slo,
+                    EMCWorkload=workload)
+            else:
+                rc, job = conn.InvokeMethod(
+                    'CreateGroup',
+                    controllerConfigService,
+                    GroupName=groupName,
+                    Type=self.utils.get_num(4, '16'))
 
-        if rc != 0:
-            rc, errordesc = self.utils.wait_for_job_complete(conn, job,
-                                                             extraSpecs)
             if rc != 0:
-                LOG.error(_LE(
-                    "Error Create Group: %(groupName)s. "
-                    "Return code: %(rc)lu.  Error: %(error)s."),
-                    {'groupName': groupName,
-                     'rc': rc,
-                     'error': errordesc})
-                raise
+                rc, errordesc = self.utils.wait_for_job_complete(
+                    conn, job, extraSpecs)
+                if rc != 0:
+                    LOG.error(_LE(
+                        "Error Create Group: %(groupName)s. "
+                        "Return code: %(rc)lu.  Error: %(error)s."),
+                        {'groupName': groupName,
+                         'rc': rc,
+                         'error': errordesc})
+                    raise
 
-        LOG.debug("InvokeMethod CreateGroup "
-                  "took: %(delta)s H:MM:SS.",
-                  {'delta': self.utils.get_time_delta(startTime,
-                                                      time.time())})
+            LOG.debug("InvokeMethod CreateGroup "
+                      "took: %(delta)s H:MM:SS.",
+                      {'delta': self.utils.get_time_delta(startTime,
+                                                          time.time())})
 
-        foundStorageGroupInstanceName = self._find_new_storage_group(
-            conn, job, groupName)
+            foundStorageGroupInstanceName = self._find_new_storage_group(
+                conn, job, groupName)
 
-        return foundStorageGroupInstanceName
+            return foundStorageGroupInstanceName
+        return do_create_storage_group_v3()
 
     def get_storage_pool_capability(self, conn, poolInstanceName):
         """Get the pool capability.
