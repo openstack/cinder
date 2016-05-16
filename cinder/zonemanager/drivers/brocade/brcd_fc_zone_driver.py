@@ -1,4 +1,4 @@
-#    (c) Copyright 2015 Brocade Communications Systems Inc.
+#    (c) Copyright 2016 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -69,9 +69,10 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         1.2 - Added support for friendly zone name
         1.3 - Added HTTP connector support
         1.4 - Adds support to zone in Virtual Fabrics
+        1.5 - Initiator zoning updates thru zoneadd/zoneremove
     """
 
-    VERSION = "1.4"
+    VERSION = "1.5"
 
     def __init__(self, **kwargs):
         super(BrcdFCZoneDriver, self).__init__(**kwargs)
@@ -149,6 +150,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         # push changes to fabric.
         for initiator_key in initiator_target_map.keys():
             zone_map = {}
+            zone_update_map = {}
             initiator = initiator_key.lower()
             target_list = initiator_target_map[initiator_key]
             if zoning_policy == 'initiator-target':
@@ -185,31 +187,48 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     zone_name_prefix,
                     SUPPORTED_CHARS)
 
+                # If zone exists, then do a zoneadd to update
+                # the zone members in the existing zone.  Otherwise,
+                # do a zonecreate to create a new zone.
                 if len(zone_names) > 0 and (zone_name in zone_names):
-                    zone_members = zone_members + filter(
-                        lambda x: x not in zone_members,
-                        cfgmap_from_fabric['zones'][zone_name])
+                    # Verify that the target WWNs are not already members
+                    # of the existing zone.  If so, remove them from the
+                    # list of members to add, otherwise error will be
+                    # returned from the switch.
+                    for t in target_list:
+                        if t in cfgmap_from_fabric['zones'][zone_name]:
+                            zone_members.remove(utils.get_formatted_wwn(t))
+                    if zone_members:
+                        zone_update_map[zone_name] = zone_members
+                else:
+                    zone_map[zone_name] = zone_members
 
-                zone_map[zone_name] = zone_members
-
-            LOG.info(_LI("Zone map to add: %(zonemap)s"),
+            LOG.info(_LI("Zone map to create: %(zonemap)s"),
                      {'zonemap': zone_map})
+            LOG.info(_LI("Zone map to update: %(zone_update_map)s"),
+                     {'zone_update_map': zone_update_map})
 
-            if len(zone_map) > 0:
-                try:
-                    client.add_zones(
-                        zone_map, zone_activate,
-                        cfgmap_from_fabric)
-                except (exception.BrocadeZoningCliException,
-                        exception.BrocadeZoningHttpException) as brocade_ex:
-                    raise exception.FCZoneDriverException(brocade_ex)
-                except Exception:
-                    msg = _("Failed to add zoning configuration.")
-                    LOG.exception(msg)
-                    raise exception.FCZoneDriverException(msg)
-                LOG.debug("Zones added successfully: %(zonemap)s",
-                          {'zonemap': zone_map})
-            client.cleanup()
+            try:
+                if zone_map:
+                    client.add_zones(zone_map, zone_activate,
+                                     cfgmap_from_fabric)
+                    LOG.debug("Zones created successfully: %(zonemap)s",
+                              {'zonemap': zone_map})
+                if zone_update_map:
+                    client.update_zones(zone_update_map, zone_activate,
+                                        fc_zone_constants.ZONE_ADD,
+                                        cfgmap_from_fabric)
+                    LOG.debug("Zones updated successfully: %(updatemap)s",
+                              {'updatemap': zone_update_map})
+            except (exception.BrocadeZoningCliException,
+                    exception.BrocadeZoningHttpException) as brocade_ex:
+                raise exception.FCZoneDriverException(brocade_ex)
+            except Exception:
+                msg = _("Failed to add or update zoning configuration.")
+                LOG.exception(msg)
+                raise exception.FCZoneDriverException(msg)
+            finally:
+                client.cleanup()
 
     @lockutils.synchronized('brcd', 'fcfabric-', True)
     def delete_connection(self, fabric, initiator_target_map, host_name=None,
@@ -292,41 +311,47 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
                     SUPPORTED_CHARS)
 
                 if (zone_names and (zone_name in zone_names)):
+                    # Check to see if there are other zone members
+                    # in the zone besides the initiator and
+                    # the targets being removed.
                     filtered_members = filter(
                         lambda x: x not in zone_members,
                         cfgmap_from_fabric['zones'][zone_name])
 
-                    # The assumption here is that initiator is always there
-                    # in the zone as it is 'initiator' policy. We find the
-                    # filtered list and if it is non-empty, add initiator
-                    # to it and update zone if filtered list is empty, we
-                    # remove that zone.
-                    LOG.debug("Zone delete - initiator mode: "
-                              "filtered targets: %(targets)s",
-                              {'targets': filtered_members})
+                    # If there are other zone members, proceed with
+                    # zone update to remove the targets.  Otherwise,
+                    # delete the zone.
                     if filtered_members:
-                        filtered_members.append(formatted_initiator)
-                        LOG.debug("Filtered zone members to update: "
-                                  "%(members)s", {'members': filtered_members})
-                        zone_map[zone_name] = filtered_members
-                        LOG.debug("Filtered zone map to update: %(zonemap)s",
-                                  {'zonemap': zone_map})
+                        zone_members.remove(formatted_initiator)
+                        # Verify that the zone members in target list
+                        # are listed in zone definition.  If not, remove
+                        # the zone members from the list of members
+                        # to remove, otherwise switch will return error.
+                        zm_list = cfgmap_from_fabric['zones'][zone_name]
+                        for t in t_list:
+                            formatted_target = utils.get_formatted_wwn(t)
+                            if formatted_target not in zm_list:
+                                zone_members.remove(formatted_target)
+                        if zone_members:
+                            LOG.debug("Zone members to remove: "
+                                      "%(members)s", {'members': zone_members})
+                            zone_map[zone_name] = zone_members
                     else:
                         zones_to_delete.append(zone_name)
             else:
                 LOG.warning(_LW("Zoning policy not recognized: %(policy)s"),
                             {'policy': zoning_policy})
-            LOG.debug("Final zone map to update: %(zonemap)s",
+            LOG.debug("Zone map to update: %(zonemap)s",
                       {'zonemap': zone_map})
-            LOG.debug("Final zone list to delete: %(zones)s",
+            LOG.debug("Zone list to delete: %(zones)s",
                       {'zones': zones_to_delete})
             try:
                 # Update zone membership.
                 if zone_map:
-                    conn.add_zones(
-                        zone_map, zone_activate,
-                        cfgmap_from_fabric)
-                # Delete zones ~sk.
+                    conn.update_zones(zone_map, zone_activate,
+                                      fc_zone_constants.ZONE_REMOVE,
+                                      cfgmap_from_fabric)
+                # Delete zones
                 if zones_to_delete:
                     zone_name_string = ''
                     num_zones = len(zones_to_delete)
