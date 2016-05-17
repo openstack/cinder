@@ -67,6 +67,10 @@ from cinder.volume.drivers import blockbridge as \
 from cinder.volume.drivers.cloudbyte import options as \
     cinder_volume_drivers_cloudbyte_options
 from cinder.volume.drivers import coho as cinder_volume_drivers_coho
+from cinder.volume.drivers.coprhd import common as \
+    cinder_volume_drivers_coprhd_common
+from cinder.volume.drivers.coprhd import scaleio as \
+    cinder_volume_drivers_coprhd_scaleio
 from cinder.volume.drivers import datera as cinder_volume_drivers_datera
 from cinder.volume.drivers.dell import dell_storagecenter_common as \
     cinder_volume_drivers_dell_dellstoragecentercommon
@@ -217,6 +221,7 @@ def list_opts():
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi.
                 storwize_svc_iscsi_opts,
                 cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
+                cinder_volume_drivers_coprhd_scaleio.scaleio_opts,
                 cinder_backup_drivers_tsm.tsm_opts,
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
@@ -234,6 +239,7 @@ def list_opts():
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
                 [cinder_api_middleware_sizelimit.max_request_body_size_opt],
                 cinder_volume_drivers_solidfire.sf_opts,
+                cinder_volume_drivers_coprhd_common.volume_opts,
                 cinder_backup_drivers_swift.swiftbackup_service_opts,
                 cinder_volume_drivers_cloudbyte_options.
                 cloudbyte_add_qosgroup_opts,
