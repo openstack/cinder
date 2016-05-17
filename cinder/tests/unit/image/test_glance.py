@@ -223,6 +223,25 @@ class TestGlanceImageService(test.TestCase):
         self.assertEqual('test image', image_metas[0]['name'])
         self.assertFalse(image_metas[0]['is_public'])
 
+    def test_detail_v1(self):
+        """Confirm we send is_public = None as default when using Glance v1."""
+        self.override_config('glance_api_version', 1)
+        with mock.patch.object(self.service, '_client') as client_mock:
+            client_mock.return_value = []
+            result = self.service.detail(self.context)
+        self.assertListEqual([], result)
+        client_mock.call.assert_called_once_with(self.context, 'list',
+                                                 filters={'is_public': 'none'})
+
+    def test_detail_v2(self):
+        """Check we don't send is_public key by default with Glance v2."""
+        self.override_config('glance_api_version', 2)
+        with mock.patch.object(self.service, '_client') as client_mock:
+            client_mock.return_value = []
+            result = self.service.detail(self.context)
+        self.assertListEqual([], result)
+        client_mock.call.assert_called_once_with(self.context, 'list')
+
     def test_detail_marker(self):
         fixtures = []
         ids = []
