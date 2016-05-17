@@ -325,54 +325,54 @@ class SortParamUtilsTest(test.TestCase):
 class MiscFunctionsTest(test.TestCase):
 
     def test_remove_major_version_from_href(self):
-        fixture = 'http://www.testsite.com/v1/images'
-        expected = 'http://www.testsite.com/images'
+        fixture = 'http://cinder.example.com/v1/images'
+        expected = 'http://cinder.example.com/images'
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
     def test_remove_version_from_href(self):
-        fixture = 'http://www.testsite.com/v1.1/images'
-        expected = 'http://www.testsite.com/images'
+        fixture = 'http://cinder.example.com/v1.1/images'
+        expected = 'http://cinder.example.com/images'
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_2(self):
-        fixture = 'http://www.testsite.com/v1.1/'
-        expected = 'http://www.testsite.com/'
+        fixture = 'http://cinder.example.com/v1.1/'
+        expected = 'http://cinder.example.com/'
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_3(self):
-        fixture = 'http://www.testsite.com/v10.10'
-        expected = 'http://www.testsite.com'
+        fixture = 'http://cinder.example.com/v10.10'
+        expected = 'http://cinder.example.com'
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_4(self):
-        fixture = 'http://www.testsite.com/v1.1/images/v10.5'
-        expected = 'http://www.testsite.com/images/v10.5'
+        fixture = 'http://cinder.example.com/v1.1/images/v10.5'
+        expected = 'http://cinder.example.com/images/v10.5'
         actual = common.remove_version_from_href(fixture)
         self.assertEqual(expected, actual)
 
     def test_remove_version_from_href_version_not_trailing_domain(self):
-        fixture = 'http://www.testsite.com/cinder/v2'
-        expected = 'http://www.testsite.com/cinder'
+        fixture = 'http://cinder.example.com/cinder/v2'
+        expected = 'http://cinder.example.com/cinder'
         self.assertEqual(expected, common.remove_version_from_href(fixture))
 
     def test_remove_version_from_href_bad_request(self):
-        fixture = 'http://www.testsite.com/1.1/images'
+        fixture = 'http://cinder.example.com/1.1/images'
         self.assertRaises(ValueError,
                           common.remove_version_from_href,
                           fixture)
 
     def test_remove_version_from_href_bad_request_2(self):
-        fixture = 'http://www.testsite.com/v/images'
+        fixture = 'http://cinder.example.com/v/images'
         self.assertRaises(ValueError,
                           common.remove_version_from_href,
                           fixture)
 
     def test_remove_version_from_href_bad_request_3(self):
-        fixture = 'http://www.testsite.com/v1.1images'
+        fixture = 'http://cinder.example.com/v1.1images'
         self.assertRaises(ValueError,
                           common.remove_version_from_href,
                           fixture)
