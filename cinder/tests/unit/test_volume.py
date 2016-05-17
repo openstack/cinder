@@ -437,9 +437,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, vol3['id'])
         self.volume.delete_volume(self.context, vol4['id'])
 
+    @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
+    @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-scheduler': '1.3'})
     @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-scheduler': '1.5'})
-    def test_reset(self):
+    def test_reset(self, get_min_obj, get_min_rpc):
         vol_mgr = vol_manager.VolumeManager()
 
         scheduler_rpcapi = vol_mgr.scheduler_rpcapi
@@ -449,8 +451,10 @@ class VolumeTestCase(BaseVolumeTestCase):
         vol_mgr.reset()
 
         scheduler_rpcapi = vol_mgr.scheduler_rpcapi
-        self.assertIsNone(scheduler_rpcapi.client.version_cap)
-        self.assertIsNone(scheduler_rpcapi.client.serializer._base.version_cap)
+        self.assertEqual(get_min_rpc.return_value,
+                         scheduler_rpcapi.client.version_cap)
+        self.assertEqual(get_min_obj.return_value,
+                         scheduler_rpcapi.client.serializer._base.version_cap)
 
     @mock.patch.object(vol_manager.VolumeManager,
                        'update_service_capabilities')
