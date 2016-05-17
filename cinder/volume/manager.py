@@ -384,17 +384,18 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         updates, snapshot_updates = self.driver.update_provider_info(
             volumes, snapshots)
-        host_vols = utils.list_of_dicts_to_dict(volumes, 'id')
 
-        for u in updates or []:
-            update = {}
-            # NOTE(JDG): Make sure returned item is in this hosts volumes
-            if host_vols.get(u['id'], None):
-                update['provider_id'] = u['provider_id']
-            if update:
-                self.db.volume_update(ctxt,
-                                      u['id'],
-                                      update)
+        if updates:
+            for volume in volumes:
+                # NOTE(JDG): Make sure returned item is in this hosts volumes
+                update = (
+                    [updt for updt in updates if updt['id'] ==
+                        volume['id']][0])
+                if update:
+                    self.db.volume_update(
+                        ctxt,
+                        update['id'],
+                        {'provider_id': update['provider_id']})
 
         # NOTE(jdg): snapshots are slighty harder, because
         # we do not have a host column and of course no get
@@ -411,8 +412,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                     if update:
                         self.db.snapshot_update(
                             ctxt,
-                            updt['id'],
-                            {'provider_id': updt['provider_id']})
+                            update['id'],
+                            {'provider_id': update['provider_id']})
 
     def init_host(self):
         """Perform any required initialization."""
