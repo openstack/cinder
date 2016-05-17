@@ -6360,6 +6360,26 @@ class GenericVolumeDriverTestCase(DriverTestCase):
 
         mock_volume_get.assert_called_with(self.context, vol['id'])
 
+    def test_create_temp_cloned_volume(self):
+        with mock.patch.object(
+                self.volume.driver,
+                'create_cloned_volume') as mock_create_cloned_volume:
+            model_update = {'provider_location': 'dummy'}
+            mock_create_cloned_volume.return_value = model_update
+            vol = tests_utils.create_volume(self.context,
+                                            status='backing-up')
+            cloned_vol = self.volume.driver._create_temp_cloned_volume(
+                self.context, vol)
+            self.assertEqual('dummy', cloned_vol['provider_location'])
+            self.assertEqual('available', cloned_vol['status'])
+
+            mock_create_cloned_volume.return_value = None
+            vol = tests_utils.create_volume(self.context,
+                                            status='backing-up')
+            cloned_vol = self.volume.driver._create_temp_cloned_volume(
+                self.context, vol)
+            self.assertEqual('available', cloned_vol['status'])
+
     @mock.patch.object(utils, 'temporary_chown')
     @mock.patch('six.moves.builtins.open')
     @mock.patch.object(os_brick.initiator.connector,
