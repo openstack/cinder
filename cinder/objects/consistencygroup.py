@@ -60,7 +60,7 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
 
         if 'cgsnapshots' in expected_attrs:
             cgsnapshots = base.obj_make_list(
-                context, objects.CGSnapshotsList(context),
+                context, objects.CGSnapshotList(context),
                 objects.CGSnapshot,
                 db_consistencygroup['cgsnapshots'])
             consistencygroup.cgsnapshots = cgsnapshots
@@ -70,7 +70,7 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
                 context, objects.VolumeList(context),
                 objects.Volume,
                 db_consistencygroup['volumes'])
-            consistencygroup.cgsnapshots = volumes
+            consistencygroup.volumes = volumes
 
         consistencygroup._context = context
         consistencygroup.obj_reset_changes()
