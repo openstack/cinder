@@ -173,8 +173,9 @@ In the controller class::
         ....
 
 This method would only be available if the caller had specified an
-``OpenStack-API-Version`` of <= ``3.4``. If ``3.5`` or later
-is specified the server will respond with ``HTTP/404``.
+``OpenStack-API-Version`` of <= ``3.4``, and >= ``3.1``. If ``3.5`` or later
+is specified or if ``3.0`` or earlier (/v2 or /v1 endpoint), the server will
+respond with ``HTTP/404``
 
 Changing a method's behaviour
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
