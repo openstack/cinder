@@ -548,26 +548,6 @@ class BackupTestCase(BaseBackupTest):
         self.assertTrue(mock_run_backup.called)
 
     @mock.patch('cinder.utils.brick_get_connector_properties')
-    @mock.patch('cinder.utils.temporary_chown')
-    @mock.patch('six.moves.builtins.open')
-    def test_create_backup_old_volume_service(self, mock_open,
-                                              mock_temporary_chown,
-                                              mock_get_backup_device):
-        """Test error handling when there's too old volume service in env."""
-        vol_id = self._create_volume_db_entry(size=1)
-        backup = self._create_backup_db_entry(volume_id=vol_id)
-
-        with mock.patch.object(self.backup_mgr.volume_rpcapi.client,
-                               'version_cap', '1.37'):
-            self.assertRaises(exception.ServiceTooOld,
-                              self.backup_mgr.create_backup, self.ctxt, backup)
-            vol = db.volume_get(self.ctxt, vol_id)
-            self.assertEqual('available', vol['status'])
-            self.assertEqual('error_backing-up', vol['previous_status'])
-            backup = db.backup_get(self.ctxt, backup.id)
-            self.assertEqual(fields.BackupStatus.ERROR, backup['status'])
-
-    @mock.patch('cinder.utils.brick_get_connector_properties')
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
     @mock.patch('cinder.utils.temporary_chown')
     @mock.patch('six.moves.builtins.open')
@@ -677,31 +657,6 @@ class BackupTestCase(BaseBackupTest):
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
         self.assertTrue(mock_run_restore.called)
-
-    @mock.patch('cinder.utils.brick_get_connector_properties')
-    def test_restore_backup_with_old_volume_service(self, mock_get_conn):
-        """Test error handling when an error occurs during backup restore."""
-        vol_id = self._create_volume_db_entry(status='restoring-backup',
-                                              size=1)
-        backup = self._create_backup_db_entry(
-            status=fields.BackupStatus.RESTORING, volume_id=vol_id)
-
-        # Unmock secure_file_operations_enabled
-        self.volume_patches['secure_file_operations_enabled'].stop()
-
-        with mock.patch.object(self.backup_mgr.volume_rpcapi.client,
-                               'version_cap', '1.37'):
-            self.assertRaises(exception.ServiceTooOld,
-                              self.backup_mgr.restore_backup,
-                              self.ctxt,
-                              backup,
-                              vol_id)
-            vol = db.volume_get(self.ctxt, vol_id)
-            self.assertEqual('error_restoring', vol['status'])
-            backup = db.backup_get(self.ctxt, backup.id)
-            self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
-
-        self.volume_patches['secure_file_operations_enabled'].start()
 
     def test_restore_backup_with_bad_service(self):
         """Test error handling.
