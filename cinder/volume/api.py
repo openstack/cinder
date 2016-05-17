@@ -1562,22 +1562,24 @@ class API(base.Base):
             extra_specs = volume_types.get_volume_type_extra_specs(
                 volume_type['id'])
             volume_type['extra_specs'] = extra_specs
-        if availability_zone is None:
-            elevated = context.elevated()
-            try:
-                svc_host = volume_utils.extract_host(host, 'backend')
-                service = objects.Service.get_by_args(
-                    elevated, svc_host, 'cinder-volume')
-            except exception.ServiceNotFound:
-                with excutils.save_and_reraise_exception():
-                    LOG.error(_LE('Unable to find service: %(service)s for '
-                                  'given host: %(host)s.'),
-                              {'service': CONF.volume_topic, 'host': host})
-            if service.disabled:
-                LOG.error(_LE('Unable to manage_existing volume on a disabled '
-                              'service.'))
-                raise exception.ServiceUnavailable()
 
+        elevated = context.elevated()
+        try:
+            svc_host = volume_utils.extract_host(host, 'backend')
+            service = objects.Service.get_by_args(
+                elevated, svc_host, 'cinder-volume')
+        except exception.ServiceNotFound:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Unable to find service: %(service)s for '
+                              'given host: %(host)s.'),
+                          {'service': CONF.volume_topic, 'host': host})
+
+        if service.disabled:
+            LOG.error(_LE('Unable to manage_existing volume on a disabled '
+                          'service.'))
+            raise exception.ServiceUnavailable()
+
+        if availability_zone is None:
             availability_zone = service.get('availability_zone')
 
         manage_what = {
