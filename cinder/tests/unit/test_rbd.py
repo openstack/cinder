@@ -848,6 +848,7 @@ class RBDTestCase(test.TestCase):
                                        self.volume_a.name),
                     'hosts': hosts,
                     'ports': ports,
+                    'cluster_name': self.cfg.rbd_cluster_name,
                     'auth_enabled': False,
                     'auth_username': None,
                     'secret_type': 'ceph',
