@@ -18,6 +18,7 @@
 
 import copy
 import math
+import re
 
 from oslo_log import log as logging
 import six
@@ -55,8 +56,12 @@ class Client(client_base.Client):
 
         ontapi_version = self.get_ontapi_version()   # major, minor
 
+        ontapi_1_20 = ontapi_version >= (1, 20)
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
+
+        self.features.add_feature('USER_CAPABILITY_LIST',
+                                  supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
         self.features.add_feature('FAST_CLONE_DELETE', supported=ontapi_1_30)
         self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
@@ -613,67 +618,89 @@ class Client(client_base.Client):
                 if_list.extend(ifs)
         return if_list
 
-    def check_apis_on_cluster(self, api_list=None):
-        """Checks API availability and permissions on cluster.
+    def check_cluster_api(self, object_name, operation_name, api):
+        """Checks the availability of a cluster API.
 
-        Checks API availability and permissions for executing user.
-        Returns a list of failed apis.
+        Returns True if the specified cluster API exists and may be called by
+        the current user. The API is *called* on Data ONTAP versions prior to
+        8.2, while versions starting with 8.2 utilize an API designed for
+        this purpose.
         """
-        api_list = api_list or []
-        failed_apis = []
-        if api_list:
-            api_version = self.connection.get_api_version()
-            if api_version:
-                major, minor = api_version
-                if major == 1 and minor < 20:
-                    for api_name in api_list:
-                        na_el = netapp_api.NaElement(api_name)
-                        try:
-                            self.connection.invoke_successfully(na_el)
-                        except Exception as e:
-                            if isinstance(e, netapp_api.NaApiError):
-                                if (e.code == netapp_api.NaErrors
-                                        ['API_NOT_FOUND'].code or
-                                    e.code == netapp_api.NaErrors
-                                        ['INSUFFICIENT_PRIVS'].code):
-                                    failed_apis.append(api_name)
-                elif major == 1 and minor >= 20:
-                    failed_apis = copy.copy(api_list)
-                    result = netapp_api.invoke_api(
-                        self.connection,
-                        api_name='system-user-capability-get-iter',
-                        api_family='cm',
-                        additional_elems=None,
-                        is_iter=True)
-                    for res in result:
-                        attr_list = res.get_child_by_name('attributes-list')
-                        if attr_list:
-                            capabilities = attr_list.get_children()
-                            for capability in capabilities:
-                                op_list = capability.get_child_by_name(
-                                    'operation-list')
-                                if op_list:
-                                    ops = op_list.get_children()
-                                    for op in ops:
-                                        apis = op.get_child_content(
-                                            'api-name')
-                                        if apis:
-                                            api_list = apis.split(',')
-                                            for api_name in api_list:
-                                                if (api_name and
-                                                        api_name.strip()
-                                                        in failed_apis):
-                                                    failed_apis.remove(
-                                                        api_name)
-                                        else:
-                                            continue
-                else:
-                    msg = _("Unsupported Clustered Data ONTAP version.")
-                    raise exception.VolumeBackendAPIException(data=msg)
-            else:
-                msg = _("Data ONTAP API version could not be determined.")
-                raise exception.VolumeBackendAPIException(data=msg)
-        return failed_apis
+
+        if not self.features.USER_CAPABILITY_LIST:
+            return self._check_cluster_api_legacy(api)
+        else:
+            return self._check_cluster_api(object_name, operation_name, api)
+
+    def _check_cluster_api(self, object_name, operation_name, api):
+        """Checks the availability of a cluster API.
+
+        Returns True if the specified cluster API exists and may be called by
+        the current user.  This method assumes Data ONTAP 8.2 or higher.
+        """
+
+        api_args = {
+            'query': {
+                'capability-info': {
+                    'object-name': object_name,
+                    'operation-list': {
+                        'operation-info': {
+                            'name': operation_name,
+                        },
+                    },
+                },
+            },
+            'desired-attributes': {
+                'capability-info': {
+                    'operation-list': {
+                        'operation-info': {
+                            'api-name': None,
+                        },
+                    },
+                },
+            },
+        }
+        result = self.send_request(
+            'system-user-capability-get-iter', api_args, False)
+
+        if not self._has_records(result):
+            return False
+
+        capability_info_list = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+
+        for capability_info in capability_info_list.get_children():
+
+            operation_list = capability_info.get_child_by_name(
+                'operation-list') or netapp_api.NaElement('none')
+
+            for operation_info in operation_list.get_children():
+                api_name = operation_info.get_child_content('api-name') or ''
+                api_names = api_name.split(',')
+                if api in api_names:
+                    return True
+
+        return False
+
+    def _check_cluster_api_legacy(self, api):
+        """Checks the availability of a cluster API.
+
+        Returns True if the specified cluster API exists and may be called by
+        the current user.  This method should only be used for Data ONTAP 8.1,
+        and only getter APIs may be tested because the API is actually called
+        to perform the check.
+        """
+
+        if not re.match(".*-get$|.*-get-iter$|.*-list-info$", api):
+            raise ValueError(_('Non-getter API passed to API test method.'))
+
+        try:
+            self.send_request(api, enable_tunneling=False)
+        except netapp_api.NaApiError as ex:
+            if ex.code in (netapp_api.EAPIPRIVILEGE, netapp_api.EAPINOTFOUND):
+                return False
+
+        return True
 
     def get_operational_network_interface_addresses(self):
         """Gets the IP addresses of operational LIFs on the vserver."""

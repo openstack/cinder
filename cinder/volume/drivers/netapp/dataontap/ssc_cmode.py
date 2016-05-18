@@ -592,30 +592,3 @@ def get_volumes_for_specs(ssc_vols, specs):
                 if disk_type.lower() != vol_dtype:
                     result.discard(vol)
     return result
-
-
-@utils.trace_method
-def check_ssc_api_permissions(client_cmode):
-    """Checks backend SSC API permissions for the user."""
-    api_map = {'storage-disk-get-iter': ['netapp:disk_type'],
-               'snapmirror-get-iter': ['netapp_mirrored',
-                                       'netapp_unmirrored'],
-               'sis-get-iter': ['netapp_dedup', 'netapp_nodedup',
-                                'netapp_compression',
-                                'netapp_nocompression'],
-               'aggr-options-list-info': ['netapp:raid_type'],
-               'volume-get-iter': []}
-    failed_apis = client_cmode.check_apis_on_cluster(api_map.keys())
-    if failed_apis:
-        if 'volume-get-iter' in failed_apis:
-            msg = _("Fatal error: User not permitted"
-                    " to query NetApp volumes.")
-            raise exception.VolumeBackendAPIException(data=msg)
-        else:
-            unsupp_ssc_features = []
-            for fail in failed_apis:
-                unsupp_ssc_features.extend(api_map[fail])
-            LOG.warning(_LW("The user does not have access or sufficient "
-                            "privileges to use all netapp APIs. The "
-                            "following extra_specs will fail or be ignored: "
-                            "%s"), unsupp_ssc_features)

@@ -34,6 +34,7 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap import ssc_cmode
+from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
 
@@ -571,6 +572,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
             lambda a, b, c, synchronous: None)
         self.mock_object(utils, 'OpenStackInfo')
         self.mock_object(perf_7mode, 'Performance7modeLibrary')
+        self.mock_object(capabilities, 'CapabilitiesLibrary')
         self.mock_object(client_base.Client, '_init_ssh_client')
 
         configuration = self._set_config(create_configuration())

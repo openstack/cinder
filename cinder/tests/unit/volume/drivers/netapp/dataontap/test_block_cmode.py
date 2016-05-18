@@ -49,6 +49,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.zapi_client = mock.Mock()
         self.zapi_client = self.library.zapi_client
         self.library.perf_library = mock.Mock()
+        self.library.ssc_library = mock.Mock()
         self.library.vserver = mock.Mock()
         self.library.ssc_vols = None
         self.fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_NAME,
@@ -93,8 +94,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(
             block_base.NetAppBlockStorageLibrary, 'check_for_setup_error')
-        mock_check_ssc_api_permissions = self.mock_object(
-            ssc_cmode, 'check_ssc_api_permissions')
+        mock_check_api_permissions = self.mock_object(
+            self.library.ssc_library, 'check_api_permissions')
         mock_start_periodic_tasks = self.mock_object(
             self.library, '_start_periodic_tasks')
         self.mock_object(ssc_cmode, 'refresh_cluster_ssc')
@@ -104,14 +105,14 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.check_for_setup_error()
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
-        mock_check_ssc_api_permissions.assert_called_once_with(
-            self.library.zapi_client)
+        mock_check_api_permissions.assert_called_once_with()
         self.assertEqual(1, mock_start_periodic_tasks.call_count)
 
     def test_check_for_setup_error_no_filtered_pools(self):
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          'check_for_setup_error')
-        self.mock_object(ssc_cmode, 'check_ssc_api_permissions')
+        mock_check_api_permissions = self.mock_object(
+            self.library.ssc_library, 'check_api_permissions')
         self.mock_object(self.library, '_start_periodic_tasks')
         self.mock_object(ssc_cmode, 'refresh_cluster_ssc')
         self.mock_object(self.library, '_get_filtered_pools',
@@ -119,6 +120,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
+
+        mock_check_api_permissions.assert_called_once_with()
 
     def test_find_mapped_lun_igroup(self):
         igroups = [fake.IGROUP1]
