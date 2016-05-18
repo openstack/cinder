@@ -123,6 +123,7 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
                      'total_capacity_gb': 4468.0,
                      'reserved_percentage': 7,
                      'max_over_subscription_ratio': 19.0,
+                     'multiattach': True,
                      'provisioned_capacity_gb': 4456.0,
                      'utilization': 30.0,
                      'filter_function': 'filter',

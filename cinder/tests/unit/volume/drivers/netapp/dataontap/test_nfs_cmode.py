@@ -206,6 +206,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'QoS_support': True,
             'reserved_percentage': fake.RESERVED_PERCENTAGE,
             'max_over_subscription_ratio': fake.MAX_OVER_SUBSCRIPTION_RATIO,
+            'multiattach': True,
             'total_capacity_gb': total_capacity_gb,
             'free_capacity_gb': free_capacity_gb,
             'provisioned_capacity_gb': provisioned_capacity_gb,
