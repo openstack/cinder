@@ -18,3 +18,5 @@ features:
     detail, show, enable/disable).  Index and detail accept filtering by
     `name`, `binary`, `disabled`, `num_hosts`, `num_down_hosts`, and up/down
     status (`is_up`) as URL parameters.  Also added their respective policies."
+  - "HA A-A: Attach and detach operations are now cluster aware and make full
+    use of clustered cinder-volume services."
