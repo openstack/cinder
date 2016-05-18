@@ -203,7 +203,7 @@ def require_volume_exists(f):
     """
 
     def wrapper(context, volume_id, *args, **kwargs):
-        volume_get(context, volume_id)
+        _volume_get(context, volume_id, joined_load=False)
         return f(context, volume_id, *args, **kwargs)
     wrapper.__name__ = f.__name__
     return wrapper
