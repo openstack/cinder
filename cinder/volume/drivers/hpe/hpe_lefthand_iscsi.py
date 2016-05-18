@@ -572,7 +572,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 snapshot_update['status'] = 'error'
             except Exception as ex:
                 LOG.error(_LE("There was an error deleting snapshot %(id)s: "
-                              "%(error)."),
+                              "%(error)s."),
                           {'id': snapshot['id'],
                            'error': six.text_type(ex)})
                 snapshot_update['status'] = 'error'
