@@ -439,6 +439,69 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, vol3['id'])
         self.volume.delete_volume(self.context, vol4['id'])
 
+    @mock.patch.object(driver.BaseVD, "update_provider_info")
+    def test_init_host_sync_provider_info(self, mock_update):
+        vol0 = tests_utils.create_volume(
+            self.context, size=1, host=CONF.host)
+        vol1 = tests_utils.create_volume(
+            self.context, size=1, host=CONF.host)
+        snap0 = tests_utils.create_snapshot(self.context, vol0.id)
+        snap1 = tests_utils.create_snapshot(self.context, vol1.id)
+        # Return values for update_provider_info
+        volumes = [{'id': vol0.id, 'provider_id': '1 2 xxxx'},
+                   {'id': vol1.id, 'provider_id': '3 4 yyyy'}]
+        snapshots = [{'id': snap0.id, 'provider_id': '5 6 xxxx'},
+                     {'id': snap1.id, 'provider_id': '7 8 yyyy'}]
+        mock_update.return_value = (volumes, snapshots)
+        # initialize
+        self.volume.init_host()
+        # Grab volume and snapshot objects
+        vol0_obj = objects.Volume.get_by_id(context.get_admin_context(),
+                                            vol0.id)
+        vol1_obj = objects.Volume.get_by_id(context.get_admin_context(),
+                                            vol1.id)
+        snap0_obj = objects.Snapshot.get_by_id(self.context, snap0.id)
+        snap1_obj = objects.Snapshot.get_by_id(self.context, snap1.id)
+        # Check updated provider ids
+        self.assertEqual('1 2 xxxx', vol0_obj.provider_id)
+        self.assertEqual('3 4 yyyy', vol1_obj.provider_id)
+        self.assertEqual('5 6 xxxx', snap0_obj.provider_id)
+        self.assertEqual('7 8 yyyy', snap1_obj.provider_id)
+        # Clean up
+        self.volume.delete_snapshot(self.context, snap0_obj)
+        self.volume.delete_snapshot(self.context, snap1_obj)
+        self.volume.delete_volume(self.context, vol0.id)
+        self.volume.delete_volume(self.context, vol1.id)
+
+    @mock.patch.object(driver.BaseVD, "update_provider_info")
+    def test_init_host_sync_provider_info_no_update(self, mock_update):
+        vol0 = tests_utils.create_volume(
+            self.context, size=1, host=CONF.host)
+        vol1 = tests_utils.create_volume(
+            self.context, size=1, host=CONF.host)
+        snap0 = tests_utils.create_snapshot(self.context, vol0.id)
+        snap1 = tests_utils.create_snapshot(self.context, vol1.id)
+        mock_update.return_value = ([], [])
+        # initialize
+        self.volume.init_host()
+        # Grab volume and snapshot objects
+        vol0_obj = objects.Volume.get_by_id(context.get_admin_context(),
+                                            vol0.id)
+        vol1_obj = objects.Volume.get_by_id(context.get_admin_context(),
+                                            vol1.id)
+        snap0_obj = objects.Snapshot.get_by_id(self.context, snap0.id)
+        snap1_obj = objects.Snapshot.get_by_id(self.context, snap1.id)
+        # Check provider ids are not changed
+        self.assertIsNone(vol0_obj.provider_id)
+        self.assertIsNone(vol1_obj.provider_id)
+        self.assertIsNone(snap0_obj.provider_id)
+        self.assertIsNone(snap1_obj.provider_id)
+        # Clean up
+        self.volume.delete_snapshot(self.context, snap0_obj)
+        self.volume.delete_snapshot(self.context, snap1_obj)
+        self.volume.delete_volume(self.context, vol0.id)
+        self.volume.delete_volume(self.context, vol1.id)
+
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-scheduler': '1.3'})
