@@ -383,7 +383,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
 
     @gcs_client
     def test_create_backup_fail(self):
-        volume_id = 'b09b1ad4-5f0e-4d3f-8b9e-0000004f5ec2'
+        volume_id = 'b09b1ad4-5f0e-4d3f-8b9e-0000004f5ec3'
         container_name = 'gcs_api_failure'
         backup = self._create_backup_db_entry(volume_id=volume_id,
                                               container=container_name)
@@ -395,7 +395,7 @@ class GoogleBackupDriverTestCase(test.TestCase):
 
     @gcs_client
     def test_create_backup_fail2(self):
-        volume_id = 'b09b1ad4-5f0e-4d3f-8b9e-0000004f5ec2'
+        volume_id = 'b09b1ad4-5f0e-4d3f-8b9e-0000004f5ec4'
         container_name = 'gcs_oauth2_failure'
         backup = self._create_backup_db_entry(volume_id=volume_id,
                                               container=container_name)
