@@ -2109,7 +2109,6 @@ def _volume_admin_metadata_update(context, volume_id, metadata, delete,
 
 
 @require_admin_context
-@require_volume_exists
 def volume_admin_metadata_get(context, volume_id):
     return _volume_admin_metadata_get(context, volume_id)
 
@@ -2126,7 +2125,6 @@ def volume_admin_metadata_delete(context, volume_id, key):
 
 
 @require_admin_context
-@require_volume_exists
 @_retry_on_deadlock
 def volume_admin_metadata_update(context, volume_id, metadata, delete,
                                  add=True, update=True):
@@ -2137,8 +2135,8 @@ def volume_admin_metadata_update(context, volume_id, metadata, delete,
 ###################
 
 
-@handle_db_data_error
 @require_context
+@handle_db_data_error
 def snapshot_create(context, values):
     values['snapshot_metadata'] = _metadata_refs(values.get('metadata'),
                                                  models.SnapshotMetadata)
@@ -4194,8 +4192,8 @@ def cgsnapshot_create(context, values):
         return _cgsnapshot_get(context, values['id'], session=session)
 
 
-@handle_db_data_error
 @require_context
+@handle_db_data_error
 def cgsnapshot_update(context, cgsnapshot_id, values):
     session = get_session()
     with session.begin():
@@ -4569,8 +4567,8 @@ def is_orm_value(obj):
                             sqlalchemy.sql.expression.ColumnElement))
 
 
-@_retry_on_deadlock
 @require_context
+@_retry_on_deadlock
 def conditional_update(context, model, values, expected_values, filters=(),
                        include_deleted='no', project_only=False, order=None):
     """Compare-and-swap conditional update SQLAlchemy implementation."""
