@@ -98,10 +98,6 @@ class PurgeDeletedTest(test.TestCase):
         self.assertRaises(exception.InvalidParameterValue,
                           db.purge_deleted_rows, self.context,
                           age_in_days='ten')
-        # Test with negative value
-        self.assertRaises(exception.InvalidParameterValue,
-                          db.purge_deleted_rows, self.context,
-                          age_in_days=-1)
 
     def test_purge_deleted_rows_integrity_failure(self):
         dialect = self.engine.url.get_dialect()

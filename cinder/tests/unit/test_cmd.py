@@ -12,6 +12,7 @@
 
 import datetime
 import sys
+import time
 
 import mock
 from oslo_config import cfg
@@ -374,6 +375,11 @@ class TestCinderManageCmd(test.TestCase):
     def tearDown(self):
         super(TestCinderManageCmd, self).tearDown()
 
+    def _test_purge_invalid_age_in_days(self, age_in_days):
+        db_cmds = cinder_manage.DbCommands()
+        ex = self.assertRaises(SystemExit, db_cmds.purge, age_in_days)
+        self.assertEqual(1, ex.code)
+
     @mock.patch('cinder.db.migration.db_sync')
     def test_db_commands_sync(self, db_sync):
         version = mock.MagicMock()
@@ -408,6 +414,36 @@ class TestCinderManageCmd(test.TestCase):
         with mock.patch('sys.stdout', new=six.StringIO()):
             version_cmds.__call__()
             version_string.assert_called_once_with()
+
+    def test_purge_age_in_days_value_equal_to_zero(self):
+        age_in_days = 0
+        self._test_purge_invalid_age_in_days(age_in_days)
+
+    def test_purge_with_negative_age_in_days(self):
+        age_in_days = -1
+        self._test_purge_invalid_age_in_days(age_in_days)
+
+    def test_purge_exceeded_age_in_days_limit(self):
+        age_in_days = int(time.time() / 86400) + 1
+        self._test_purge_invalid_age_in_days(age_in_days)
+
+    @mock.patch('cinder.db.sqlalchemy.api.purge_deleted_rows')
+    @mock.patch('cinder.context.get_admin_context')
+    def test_purge_less_than_age_in_days_limit(self, get_admin_context,
+                                               purge_deleted_rows):
+        age_in_days = int(time.time() / 86400) - 1
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                      is_admin=True)
+        get_admin_context.return_value = ctxt
+
+        purge_deleted_rows.return_value = None
+
+        db_cmds = cinder_manage.DbCommands()
+        db_cmds.purge(age_in_days)
+
+        get_admin_context.assert_called_once_with()
+        purge_deleted_rows.assert_called_once_with(
+            ctxt, age_in_days=age_in_days)
 
     @mock.patch('cinder.db.service_get_all')
     @mock.patch('cinder.context.get_admin_context')
