@@ -606,7 +606,7 @@ HOST_3 = {
 
 VOLUME_MAPPING = {
     'lunMappingRef': '8800000000000000000000000000000000000000',
-    'lun': 0,
+    'lun': 1,
     'ssid': 16384,
     'perms': 15,
     'volumeRef': VOLUME['volumeRef'],
@@ -921,6 +921,7 @@ FAKE_POOL_ACTION_PROGRESS = [
     },
 ]
 
+FAKE_CHAP_SECRET = 'password123'
 FAKE_RESOURCE_URL = '/devmgr/v2/devmgr/utils/about'
 FAKE_APP_VERSION = '2015.2|2015.2.dev59|vendor|Linux-3.13.0-24-generic'
 FAKE_BACKEND = 'eseriesiSCSI'
@@ -934,6 +935,49 @@ FAKE_ABOUT_RESPONSE = {
     'version': '01.53.9010.0005',
     'systemId': 'a89355ab-692c-4d4a-9383-e249095c3c0',
 }
+
+FAKE_TARGET_IQN = 'iqn.1992-01.com.lsi:2365.60080e500023c73400000000515af323'
+
+FAKE_CHAP_USERNAME = 'eserieschapuser'
+
+FAKE_CHAP_PARAMETERS = {
+    'ChapAuthentication': True,
+    'iqn': FAKE_TARGET_IQN,
+    'chapSecret': FAKE_CHAP_SECRET,
+    'authMethod': 'CHAP',
+}
+
+FAKE_CLIENT_CHAP_PARAMETERS = (
+    FAKE_TARGET_IQN,
+    FAKE_CHAP_USERNAME,
+    FAKE_CHAP_SECRET,
+)
+
+FAKE_TARGET_DICT = {
+    'data': {
+        'auth_method': 'CHAP',
+        'auth_password': FAKE_CHAP_SECRET,
+        'auth_username': FAKE_CHAP_USERNAME,
+        'discovery_auth_method': 'CHAP',
+        'discovery_auth_password': FAKE_CHAP_SECRET,
+        'discovery_auth_username': FAKE_CHAP_USERNAME,
+        'target_discovered': False,
+        'target_iqn': FAKE_TARGET_IQN,
+        'target_lun': 1,
+        'target_portal': '172.20.123.66:3260',
+        'volume_id': '114774fb-e15a-4fae-8ee2-c9723e3645ef',
+    },
+    'driver_volume_type': 'iscsi',
+}
+
+FAKE_CHAP_POST_DATA = {
+    'enableChapAuthentication': True,
+    'alias': FAKE_CHAP_USERNAME,
+    'iqn': FAKE_TARGET_IQN,
+    'chapSecret': FAKE_CHAP_SECRET,
+    'authMethod': 'CHAP',
+}
+
 
 FAKE_CONTROLLERS = [
     {'serialNumber': FAKE_SERIAL_NUMBERS[0], 'modelName': '2752'},
@@ -1069,6 +1113,7 @@ def create_configuration_eseries():
     config.netapp_controller_ips = '10.11.12.13,10.11.12.14'
     config.netapp_webservice_path = '/devmgr/v2'
     config.netapp_enable_multiattach = False
+    config.use_chap_auth = False
     return config
 
 
@@ -1247,6 +1292,9 @@ class FakeEseriesClient(object):
 
     def add_autosupport_data(self, *args):
         pass
+
+    def set_chap_authentication(self, *args, **kwargs):
+        return FAKE_CHAP_PARAMETERS
 
     def get_serial_numbers(self):
         return FAKE_ASUP_DATA.get('controller1-serial'), FAKE_ASUP_DATA.get(

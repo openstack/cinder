@@ -2,8 +2,9 @@
 # Copyright (c) 2015 Rushil Chugh
 # Copyright (c) 2015 Navneet Singh
 # Copyright (c) 2015 Yogesh Kshirsagar
-# Copyright (c) 2015 Tom Barron
+# Copyright (c) 2015 Jose Porrua
 # Copyright (c) 2015 Michael Price
+# Copyright (c) 2015 Tom Barron
 #  All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -113,6 +114,7 @@ class NetAppESeriesLibrary(object):
     WORLDWIDENAME = 'worldWideName'
 
     DEFAULT_HOST_TYPE = 'linux_dm_mp'
+    DEFAULT_CHAP_USER_NAME = 'eserieschapuser'
 
     # Define name marker string to use in snapshot groups that are for copying
     # volumes.  This is to differentiate them from ordinary snapshot groups.
@@ -1298,7 +1300,35 @@ class NetAppESeriesLibrary(object):
         properties = na_utils.get_iscsi_connection_properties(lun_id, volume,
                                                               iqn, address,
                                                               port)
+        if self.configuration.use_chap_auth:
+            if self._client.features.CHAP_AUTHENTICATION:
+                chap_username, chap_password = self._configure_chap(iqn)
+                properties['data']['auth_username'] = chap_username
+                properties['data']['auth_password'] = chap_password
+                properties['data']['auth_method'] = 'CHAP'
+                properties['data']['discovery_auth_username'] = chap_username
+                properties['data']['discovery_auth_password'] = chap_password
+                properties['data']['discovery_auth_method'] = 'CHAP'
+            else:
+                msg = _("E-series proxy API version %(current_version)s does "
+                        "not support CHAP authentication. The proxy version "
+                        "must be at least %(min_version)s.")
+                min_version = (self._client.features.
+                               CHAP_AUTHENTICATION.minimum_version)
+                msg = msg % {'current_version': self._client.api_version,
+                             'min_version': min_version}
+
+                LOG.info(msg)
+                raise exception.NetAppDriverException(msg)
         return properties
+
+    def _configure_chap(self, target_iqn):
+        chap_username = self.DEFAULT_CHAP_USER_NAME
+        chap_password = volume_utils.generate_password()
+        self._client.set_chap_authentication(target_iqn,
+                                             chap_username,
+                                             chap_password)
+        return chap_username, chap_password
 
     def _get_iscsi_service_details(self):
         """Gets iscsi iqn, ip and port information."""
