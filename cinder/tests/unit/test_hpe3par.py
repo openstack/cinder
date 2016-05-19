@@ -2520,7 +2520,7 @@ class HPE3PARBaseDriver(object):
         # and return the mock HTTP 3PAR client
         mock_client = self.setup_driver()
         mock_client.getHostVLUNs.return_value = [
-            {'active': True,
+            {'active': False,
              'volumeName': self.VOLUME_3PAR_NAME,
              'lun': None, 'type': 0}]
 
@@ -2544,7 +2544,7 @@ class HPE3PARBaseDriver(object):
                 mock.call.deleteVLUN(
                     self.VOLUME_3PAR_NAME,
                     None,
-                    self.FAKE_HOST),
+                    hostname=self.FAKE_HOST),
                 mock.call.getHostVLUNs(self.FAKE_HOST),
                 mock.call.deleteHost(self.FAKE_HOST),
                 mock.call.removeVolumeMetaData(
@@ -4648,7 +4648,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         effects = [
-            [{'active': True, 'volumeName': self.VOLUME_3PAR_NAME,
+            [{'active': False, 'volumeName': self.VOLUME_3PAR_NAME,
               'lun': None, 'type': 0}],
             hpeexceptions.HTTPNotFound,
             hpeexceptions.HTTPNotFound]
@@ -4667,7 +4667,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             mock.call.deleteVLUN(
                 self.VOLUME_3PAR_NAME,
                 None,
-                self.FAKE_HOST),
+                hostname=self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.deleteHost(self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
@@ -4729,7 +4729,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
         mock_client = self.setup_driver()
 
         effects = [
-            [{'active': True, 'volumeName': self.VOLUME_3PAR_NAME,
+            [{'active': False, 'volumeName': self.VOLUME_3PAR_NAME,
               'lun': None, 'type': 0}],
             hpeexceptions.HTTPNotFound,
             hpeexceptions.HTTPNotFound]
@@ -4748,7 +4748,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             mock.call.deleteVLUN(
                 self.VOLUME_3PAR_NAME,
                 None,
-                self.FAKE_HOST),
+                hostname=self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.deleteHost(self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
@@ -4798,7 +4798,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
         # mock more than one vlun on the host (don't even try to remove host)
         mock_client.getHostVLUNs.return_value = \
             [
-                {'active': True,
+                {'active': False,
                  'volumeName': self.VOLUME_3PAR_NAME,
                  'lun': None, 'type': 0},
                 {'active': True,
@@ -4818,7 +4818,7 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             mock.call.deleteVLUN(
                 self.VOLUME_3PAR_NAME,
                 None,
-                self.FAKE_HOST),
+                hostname=self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST),
             mock.call.getHostVLUNs(self.FAKE_HOST)]
 
