@@ -11,15 +11,13 @@
 #    under the License.
 
 import datetime
-import six
 import sys
 
-from cinder import rpc
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+import mock
 from oslo_config import cfg
+import six
+
+from cinder import rpc
 
 try:
     import rtslib_fb
