@@ -735,7 +735,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             context, cgsnapshot['id'])
 
         for snapshot in snapshots:
-            snapshot.status = 'available'
+            snapshot.status = fields.SnapshotStatus.AVAILABLE
 
         model_update = {'status': 'available'}
 
@@ -750,7 +750,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             context, cgsnapshot['id'])
 
         for snapshot in snapshots:
-            snapshot.status = 'deleted'
+            snapshot.status = fields.SnapshotStatus.DELETED
 
         model_update = {'status': cgsnapshot.status}
 

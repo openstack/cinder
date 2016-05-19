@@ -31,7 +31,7 @@ object_data = {
     'ConsistencyGroupList': '1.1-73916823b697dfa0c7f02508d87e0f28',
     'Service': '1.3-66c8e1683f58546c54551e9ff0a3b111',
     'ServiceList': '1.1-cb758b200f0a3a90efabfc5aa2ffb627',
-    'Snapshot': '1.0-8bd748dde255ed977a1fa11888f13500',
+    'Snapshot': '1.1-ac41f2fe2fb0e34127155d1ec6e4c7e0',
     'SnapshotList': '1.0-71661e7180ef6cc51501704a9bea4bf1',
     'Volume': '1.3-049e3e5dc411b1a4deb7d6ee4f1ad5ef',
     'VolumeAttachment': '1.0-8fc9a9ac6f554fdf2a194d25dbf28a3b',

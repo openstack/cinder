@@ -522,7 +522,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                                    'snapshotName': snapshot_name}
                 snap_set.append(snap_set_member)
                 snapshot_update = {'id': snapshot['id'],
-                                   'status': 'available'}
+                                   'status': fields.SnapshotStatus.AVAILABLE}
                 snapshot_model_updates.append(snapshot_update)
 
             source_volume_id = snap_set[0]['volumeId']
@@ -562,20 +562,20 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
                 snap_name = snap_name_base + "-" + six.text_type(i)
                 snap_info = client.getSnapshotByName(snap_name)
                 client.deleteSnapshot(snap_info['id'])
-                snapshot_update['status'] = 'deleted'
+                snapshot_update['status'] = fields.SnapshotStatus.DELETED
             except hpeexceptions.HTTPServerError as ex:
                 in_use_msg = ('cannot be deleted because it is a clone '
                               'point')
                 if in_use_msg in ex.get_description():
                     LOG.error(_LE("The snapshot cannot be deleted because "
                                   "it is a clone point."))
-                snapshot_update['status'] = 'error'
+                snapshot_update['status'] = fields.SnapshotStatus.ERROR
             except Exception as ex:
                 LOG.error(_LE("There was an error deleting snapshot %(id)s: "
                               "%(error)."),
                           {'id': snapshot['id'],
                            'error': six.text_type(ex)})
-                snapshot_update['status'] = 'error'
+                snapshot_update['status'] = fields.SnapshotStatus.ERROR
             snapshot_model_updates.append(snapshot_update)
 
         self._logout(client)

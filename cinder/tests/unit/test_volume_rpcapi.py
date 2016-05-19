@@ -23,6 +23,7 @@ from oslo_serialization import jsonutils
 from cinder import context
 from cinder import db
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_backup
 from cinder.tests.unit import fake_constants as fake
@@ -51,7 +52,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         volume = db.volume_create(self.context, vol)
 
         kwargs = {
-            'status': "creating",
+            'status': fields.SnapshotStatus.CREATING,
             'progress': '0%',
             'display_name': 'fake_name',
             'display_description': 'fake_description'}
@@ -419,7 +420,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         snpshot = {
             'id': fake.SNAPSHOT_ID,
             'volume_id': fake.VOLUME_ID,
-            'status': "creating",
+            'status': fields.SnapshotStatus.CREATING,
             'progress': '0%',
             'volume_size': 0,
             'display_name': 'fake_name',

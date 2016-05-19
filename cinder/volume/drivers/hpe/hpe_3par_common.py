@@ -662,7 +662,7 @@ class HPE3PARCommon(object):
         snapshot_model_updates = []
         for snapshot in snapshots:
             snapshot_update = {'id': snapshot['id'],
-                               'status': 'available'}
+                               'status': fields.SnapshotStatus.AVAILABLE}
             snapshot_model_updates.append(snapshot_update)
 
         model_update = {'status': 'available'}
@@ -680,20 +680,20 @@ class HPE3PARCommon(object):
             try:
                 snap_name = cgsnap_name + "-" + six.text_type(i)
                 self.client.deleteVolume(snap_name)
-                snapshot_update['status'] = 'deleted'
+                snapshot_update['status'] = fields.SnapshotStatus.DELETED
             except hpeexceptions.HTTPNotFound as ex:
                 # We'll let this act as if it worked
                 # it helps clean up the cinder entries.
                 LOG.warning(_LW("Delete Snapshot id not found. Removing from "
                                 "cinder: %(id)s Ex: %(msg)s"),
                             {'id': snapshot['id'], 'msg': ex})
-                snapshot_update['status'] = 'error'
+                snapshot_update['status'] = fields.SnapshotStatus.ERROR
             except Exception as ex:
                 LOG.error(_LE("There was an error deleting snapshot %(id)s: "
                               "%(error)."),
                           {'id': snapshot['id'],
                            'error': six.text_type(ex)})
-                snapshot_update['status'] = 'error'
+                snapshot_update['status'] = fields.SnapshotStatus.ERROR
             snapshot_model_updates.append(snapshot_update)
 
         model_update = {'status': cgsnapshot.status}

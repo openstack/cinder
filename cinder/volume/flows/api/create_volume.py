@@ -23,6 +23,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LW
 from cinder import objects
+from cinder.objects import fields
 from cinder import policy
 from cinder import quota
 from cinder import utils
@@ -40,7 +41,7 @@ QUOTAS = quota.QUOTAS
 # Only in these 'sources' status can we attempt to create a volume from a
 # source volume or a source snapshot, other status states we can not create
 # from, 'error' being the common example.
-SNAPSHOT_PROCEED_STATUS = ('available',)
+SNAPSHOT_PROCEED_STATUS = (fields.SnapshotStatus.AVAILABLE,)
 SRC_VOL_PROCEED_STATUS = ('available', 'in-use',)
 REPLICA_PROCEED_STATUS = ('active', 'active-stopped',)
 CG_PROCEED_STATUS = ('available', 'creating',)

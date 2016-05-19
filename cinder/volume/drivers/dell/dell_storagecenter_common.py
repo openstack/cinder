@@ -18,6 +18,7 @@ from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder.objects import fields
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_api
 from cinder.volume.drivers.san.san import san_opts
@@ -755,7 +756,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     for snapshot in snapshots:
                         snapshot_updates.append({
                             'id': snapshot.id,
-                            'status': 'available'
+                            'status': fields.SnapshotStatus.AVAILABLE
                         })
 
                     model_update = {'status': 'available'}
@@ -796,7 +797,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     raise exception.VolumeBackendAPIException(data=msg)
 
             for snapshot in snapshots:
-                snapshot.status = 'deleted'
+                snapshot.status = fields.SnapshotStatus.DELETED
 
             model_update = {'status': 'deleted'}
 

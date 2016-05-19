@@ -1726,7 +1726,7 @@ class GPFSDriverTestCase(test.TestCase):
                                                                 [])
         self.driver.create_snapshot.assert_called_once_with(snapshot1)
         self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.assertEqual('available', snapshot1['status'])
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot1['status'])
         self.driver.db.snapshot_get_all_for_cgsnapshot.\
             assert_called_once_with(ctxt, cgsnap['id'])
 
@@ -1758,7 +1758,7 @@ class GPFSDriverTestCase(test.TestCase):
                                                                 [])
         self.driver.delete_snapshot.assert_called_once_with(snapshot1)
         self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.assertEqual('deleted', snapshot1['status'])
+        self.assertEqual(fields.SnapshotStatus.DELETED, snapshot1['status'])
         self.driver.db.snapshot_get_all_for_cgsnapshot.\
             assert_called_once_with(ctxt, cgsnap['id'])
 

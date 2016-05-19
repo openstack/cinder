@@ -84,3 +84,24 @@ class ReplicationStatus(Enum):
 
 class ReplicationStatusField(BaseEnumField):
     AUTO_TYPE = ReplicationStatus()
+
+
+class SnapshotStatus(Enum):
+    ERROR = 'error'
+    AVAILABLE = 'available'
+    CREATING = 'creating'
+    DELETING = 'deleting'
+    DELETED = 'deleted'
+    UPDATING = 'updating'
+    ERROR_DELETING = 'error_deleting'
+
+    ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
+           UPDATING, ERROR_DELETING)
+
+    def __init__(self):
+        super(SnapshotStatus, self).__init__(
+            valid_values=SnapshotStatus.ALL)
+
+
+class SnapshotStatusField(BaseEnumField):
+    AUTO_TYPE = SnapshotStatus()

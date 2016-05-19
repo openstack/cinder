@@ -19,6 +19,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import db
 import cinder.exception
+from cinder.objects import fields
 from cinder.objects import snapshot as obj_snap
 from cinder.objects import volume as obj_volume
 import cinder.test
@@ -402,7 +403,7 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
     def test_delete_snapshot(self, _clear_volume, _exists):
         TEST_SNAP = obj_snap.Snapshot(volume_id=fake.VOLUME_ID,
                                       provider_location='/dev/loop1',
-                                      status='available')
+                                      status=fields.SnapshotStatus.AVAILABLE)
 
         with mock.patch.object(self.drv, 'local_path',
                                return_value='/dev/loop1') as lp_mocked:

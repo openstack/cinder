@@ -24,6 +24,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v2 import stubs
@@ -44,7 +45,7 @@ def _get_default_snapshot_param():
     return {
         'id': UUID,
         'volume_id': fake.VOLUME_ID,
-        'status': 'available',
+        'status': fields.SnapshotStatus.AVAILABLE,
         'volume_size': 100,
         'created_at': None,
         'updated_at': None,
@@ -175,7 +176,7 @@ class SnapshotApiTest(test.TestCase):
         snapshot = {
             'id': UUID,
             'volume_id': fake.VOLUME_ID,
-            'status': 'available',
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
@@ -197,7 +198,7 @@ class SnapshotApiTest(test.TestCase):
             'snapshot': {
                 'id': UUID,
                 'volume_id': fake.VOLUME_ID,
-                'status': u'available',
+                'status': fields.SnapshotStatus.AVAILABLE,
                 'size': 100,
                 'created_at': None,
                 'updated_at': None,
@@ -242,7 +243,7 @@ class SnapshotApiTest(test.TestCase):
         snapshot = {
             'id': UUID,
             'volume_id': fake.VOLUME_ID,
-            'status': 'available',
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
@@ -274,7 +275,7 @@ class SnapshotApiTest(test.TestCase):
         snapshot = {
             'id': UUID,
             'volume_id': fake.VOLUME_ID,
-            'status': 'available',
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',
@@ -307,7 +308,7 @@ class SnapshotApiTest(test.TestCase):
         snapshot = {
             'id': UUID,
             'volume_id': fake.VOLUME_ID,
-            'status': 'available',
+            'status': fields.SnapshotStatus.AVAILABLE,
             'volume_size': 100,
             'display_name': 'Default name',
             'display_description': 'Default description',

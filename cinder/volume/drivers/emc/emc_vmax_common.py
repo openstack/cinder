@@ -2677,7 +2677,8 @@ class EMCVMAXCommon(object):
 
         for snapshot in snapshots:
             snapshots_model_update.append(
-                {'id': snapshot['id'], 'status': 'available'})
+                {'id': snapshot['id'],
+                 'status': fields.SnapshotStatus.AVAILABLE})
         modelUpdate = {'status': fields.ConsistencyGroupStatus.AVAILABLE}
 
         return modelUpdate, snapshots_model_update
@@ -2716,7 +2717,8 @@ class EMCVMAXCommon(object):
                 snapshots, extraSpecs)
             for snapshot in snapshots:
                 snapshots_model_update.append(
-                    {'id': snapshot['id'], 'status': 'deleted'})
+                    {'id': snapshot['id'],
+                     'status': fields.SnapshotStatus.DELETED})
         except Exception:
             exceptionMessage = (_("Failed to delete snapshot for cg: "
                                   "%(cgId)s.")

@@ -105,3 +105,25 @@ class TestConsistencyGroupStatus(TestField):
 
     def test_stringify_invalid(self):
         self.assertRaises(ValueError, self.field.stringify, 'not_a_status')
+
+
+class TestSnapshotStatus(TestField):
+    def setUp(self):
+        super(TestSnapshotStatus, self).setUp()
+        self.field = fields.SnapshotStatusField()
+        self.coerce_good_values = [('error', 'error'),
+                                   ('available', 'available'),
+                                   ('creating', 'creating'),
+                                   ('deleting', 'deleting'),
+                                   ('deleted', 'deleted'),
+                                   ('updating', 'updating'),
+                                   ('error_deleting', 'error_deleting')]
+        self.coerce_bad_values = ['acme']
+        self.to_primitive_values = self.coerce_good_values[0:1]
+        self.from_primitive_values = self.coerce_good_values[0:1]
+
+    def test_stringify(self):
+        self.assertEqual("'error'", self.field.stringify('error'))
+
+    def test_stringify_invalid(self):
+        self.assertRaises(ValueError, self.field.stringify, 'not_a_status')

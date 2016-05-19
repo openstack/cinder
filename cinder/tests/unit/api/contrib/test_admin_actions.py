@@ -390,7 +390,7 @@ class AdminActionsTest(BaseAdminTest):
             'cgsnapshot_id': None,
             'user_id': self.ctx.user_id,
             'project_id': self.ctx.project_id,
-            'status': 'error_deleting',
+            'status': fields.SnapshotStatus.ERROR_DELETING,
             'progress': '0%',
             'volume_size': volume['size'],
             'metadata': {}
@@ -400,17 +400,19 @@ class AdminActionsTest(BaseAdminTest):
         self.addCleanup(snapshot.destroy)
 
         resp = self._issue_snapshot_reset(self.ctx, snapshot,
-                                          {'status': 'error'})
+                                          {'status':
+                                           fields.SnapshotStatus.ERROR})
 
         self.assertEqual(202, resp.status_int)
         snapshot = objects.Snapshot.get_by_id(self.ctx, snapshot['id'])
-        self.assertEqual('error', snapshot.status)
+        self.assertEqual(fields.SnapshotStatus.ERROR, snapshot.status)
 
     def test_invalid_status_for_snapshot(self):
         volume = db.volume_create(self.ctx,
                                   {'status': 'available', 'host': 'test',
                                    'provider_location': '', 'size': 1})
-        snapshot = objects.Snapshot(self.ctx, status='available',
+        snapshot = objects.Snapshot(self.ctx,
+                                    status=fields.SnapshotStatus.AVAILABLE,
                                     volume_id=volume['id'])
         snapshot.create()
         self.addCleanup(snapshot.destroy)
@@ -419,7 +421,7 @@ class AdminActionsTest(BaseAdminTest):
                                           {'status': 'attaching'})
 
         self.assertEqual(400, resp.status_int)
-        self.assertEqual('available', snapshot.status)
+        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot.status)
 
     def test_force_delete(self):
         # current status is creating

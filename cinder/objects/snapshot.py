@@ -22,7 +22,7 @@ from cinder import exception
 from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
-
+from cinder.objects import fields as c_fields
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
@@ -31,7 +31,8 @@ LOG = logging.getLogger(__name__)
 class Snapshot(base.CinderPersistentObject, base.CinderObject,
                base.CinderObjectDictCompat):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Changed 'status' field to use SnapshotStatusField
+    VERSION = '1.1'
 
     # NOTE(thangp): OPTIONAL_FIELDS are fields that would be lazy-loaded. They
     # are typically the relationship in the sqlalchemy object.
@@ -45,7 +46,7 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
 
         'volume_id': fields.UUIDField(nullable=True),
         'cgsnapshot_id': fields.UUIDField(nullable=True),
-        'status': fields.StringField(nullable=True),
+        'status': c_fields.SnapshotStatusField(nullable=True),
         'progress': fields.StringField(nullable=True),
         'volume_size': fields.IntegerField(nullable=True),
 

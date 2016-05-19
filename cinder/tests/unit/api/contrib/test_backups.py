@@ -703,7 +703,8 @@ class BackupsAPITestCase(test.TestCase):
         if backup_from_snapshot:
             snapshot = utils.create_snapshot(self.context,
                                              volume_id,
-                                             status='available')
+                                             status=
+                                             fields.SnapshotStatus.AVAILABLE)
             snapshot_id = snapshot.id
         backup_id = self._create_backup(volume_id,
                                         status=fields.BackupStatus.AVAILABLE)

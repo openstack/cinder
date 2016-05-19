@@ -34,6 +34,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
+from cinder.objects import fields
 from cinder import test
 from cinder import utils
 from cinder.volume import driver as base_driver
@@ -987,7 +988,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                     'volume': volume,
                     'id': self.SNAP_UUID,
                     'context': ctxt,
-                    'status': 'asdf',
+                    'status': fields.SnapshotStatus.CREATING,
                     'progress': 'asdf'}
 
         snap_path = '%s.%s' % (volume_path, self.SNAP_UUID)
@@ -1003,7 +1004,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                            'new_file': snap_file}
 
             snap_ref_progress = snap_ref.copy()
-            snap_ref_progress['status'] = 'creating'
+            snap_ref_progress['status'] = fields.SnapshotStatus.CREATING
 
             snap_ref_progress_0p = snap_ref_progress.copy()
             snap_ref_progress_0p['progress'] = '0%'
@@ -1054,7 +1055,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(drv, '_nova') as mock_nova,\
                 mock.patch.object(time, 'sleep') as mock_sleep:
             snap_ref_progress = snap_ref.copy()
-            snap_ref_progress['status'] = 'creating'
+            snap_ref_progress['status'] = fields.SnapshotStatus.CREATING
 
             snap_ref_progress_0p = snap_ref_progress.copy()
             snap_ref_progress_0p['progress'] = '0%'
@@ -1064,7 +1065,7 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             snap_ref_progress_99p = snap_ref_progress.copy()
             snap_ref_progress_99p['progress'] = '99%'
-            snap_ref_progress_99p['status'] = 'error'
+            snap_ref_progress_99p['status'] = fields.SnapshotStatus.ERROR
 
             mock_snapshot_get.side_effect = [
                 snap_ref_progress_0p, snap_ref_progress_50p,

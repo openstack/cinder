@@ -18,6 +18,7 @@ import iso8601
 
 from cinder import exception as exc
 from cinder import objects
+from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 
@@ -160,7 +161,7 @@ def stub_volume_get_all_by_project(self, context, marker, limit,
 def stub_snapshot(id, **kwargs):
     snapshot = {'id': id,
                 'volume_id': fake.SNAPSHOT_ID,
-                'status': 'available',
+                'status': fields.SnapshotStatus.AVAILABLE,
                 'volume_size': 100,
                 'created_at': None,
                 'display_name': 'Default name',

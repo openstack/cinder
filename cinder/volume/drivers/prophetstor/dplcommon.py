@@ -934,7 +934,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                 cgsnapshot.get('description', ''),
                 True)
             for snapshot in snapshots:
-                snapshot.status = 'available'
+                snapshot.status = fields.SnapshotStatus.AVAILABLE
         except Exception as e:
             msg = _('Failed to create cg snapshot %(id)s '
                     'due to %(reason)s.') % {'id': cgsnapshot['id'],
@@ -960,7 +960,7 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                 self._conver_uuid2hex(cgsnapshot['consistencygroup_id']),
                 self._conver_uuid2hex(cgsnapshot['id']), True)
             for snapshot in snapshots:
-                snapshot.status = 'deleted'
+                snapshot.status = fields.SnapshotStatus.DELETED
         except Exception as e:
             msg = _('Failed to delete cgsnapshot %(id)s due to '
                     '%(reason)s.') % {'id': cgsnapshot['id'],

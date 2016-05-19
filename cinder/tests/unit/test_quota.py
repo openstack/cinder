@@ -96,7 +96,7 @@ class QuotaIntegrationTestCase(test.TestCase):
         snapshot.volume_id = volume['id']
         snapshot.volume_size = volume['size']
         snapshot.host = volume['host']
-        snapshot.status = 'available'
+        snapshot.status = fields.SnapshotStatus.AVAILABLE
         snapshot.create()
         return snapshot
 
