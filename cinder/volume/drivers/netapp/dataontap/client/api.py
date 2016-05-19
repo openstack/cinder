@@ -32,7 +32,7 @@ import six
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _
+from cinder.i18n import _, _LE
 from cinder import ssh_utils
 from cinder import utils
 
@@ -224,6 +224,7 @@ class NaServer(object):
         except urllib.error.HTTPError as e:
             raise NaApiError(e.code, e.msg)
         except Exception:
+            LOG.exception(_LE("Error communicating with NetApp filer."))
             raise NaApiError('Unexpected error')
 
         response_xml = response.read()
