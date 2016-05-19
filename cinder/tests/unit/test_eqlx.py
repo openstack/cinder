@@ -66,6 +66,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             configuration=self.configuration)
         self.volume_name = "fakevolume"
         self.volid = "fakeid"
+        self.volume = {'name': self.volume_name,
+                       'display_name': 'fake_display_name'}
         self.connector = {
             'ip': '10.0.0.2',
             'initiator': 'iqn.1993-08.org.debian:01:2227dab76162',
@@ -78,6 +80,11 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
 
         self.fake_iqn = 'iqn.2003-10.com.equallogic:group01:25366:fakev'
         self.fake_iqn_return = ['iSCSI target name is %s.' % self.fake_iqn]
+        self.fake_volume_output = ["Size: 5GB",
+                                   "iSCSI Name: %s" % self.fake_iqn,
+                                   "Description: "]
+        self.fake_volume_info = {'size': 5.0,
+                                 'iSCSI_Name': self.fake_iqn}
         self.driver._group_ip = '10.0.1.6'
         self.properties = {
             'target_discovered': True,
@@ -240,6 +247,63 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             mock_eql_execute.configure_mock(**mock_attrs)
             self.driver.extend_volume(volume, new_size)
 
+    def test_get_volume_info(self):
+        attrs = ('volume', 'select', self.volume, 'show')
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.return_value = self.fake_volume_output
+            data = self.driver._get_volume_info(self.volume)
+            mock_eql_execute.assert_called_with(*attrs)
+            self.assertEqual(self.fake_volume_info, data)
+
+    def test_get_volume_info_negative(self):
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.side_effect = processutils.ProcessExecutionError(
+                stdout='% Error ..... does not exist.\n')
+            self.assertRaises(exception.ManageExistingInvalidReference,
+                              self.driver._get_volume_info, self.volume_name)
+
+    def test_manage_existing(self):
+        ref = {'source-name': self.volume_name}
+        attrs = ('volume', 'select', self.volume_name,
+                 'multihost-access', 'enable')
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            with mock.patch.object(self.driver,
+                                   '_get_volume_info') as mock_volume_info:
+                mock_volume_info.return_value = self.fake_volume_info
+                mock_eql_execute.return_value = self.fake_iqn_return
+                model_update = self.driver.manage_existing(self.volume, ref)
+                mock_eql_execute.assert_called_with(*attrs)
+                self.assertEqual(self._model_update, model_update)
+
+    def test_manage_existing_invalid_ref(self):
+        ref = {}
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.manage_existing, self.volume, ref)
+
+    def test_manage_existing_get_size(self):
+        ref = {'source-name': self.volume_name}
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.return_value = self.fake_volume_output
+            size = self.driver.manage_existing_get_size(self.volume, ref)
+            self.assertEqual(float('5.0'), size)
+
+    def test_manage_existing_get_size_invalid_ref(self):
+        """Error on manage with invalid reference."""
+        ref = {}
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.manage_existing_get_size,
+                          self.volume, ref)
+
+    def test_unmanage(self):
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.return_value = None
+            self.driver.unmanage(self.volume)
+
     def test_initialize_connection(self):
         volume = {'name': self.volume_name}
         mock_attrs = {'args': ['volume', 'select', volume['name'], 'access',
@@ -349,8 +413,10 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
 
     def test_get_space_in_gb(self):
         self.assertEqual(123.0, self.driver._get_space_in_gb('123.0GB'))
+        self.assertEqual(124.0, self.driver._get_space_in_gb('123.5GB'))
         self.assertEqual(123.0 * 1024, self.driver._get_space_in_gb('123.0TB'))
         self.assertEqual(1.0, self.driver._get_space_in_gb('1024.0MB'))
+        self.assertEqual(2.0, self.driver._get_space_in_gb('1536.0MB'))
 
     def test_get_output(self):
 
