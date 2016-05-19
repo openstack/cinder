@@ -2254,6 +2254,8 @@ def volume_has_undeletable_snapshots_filter():
         and_(models.Volume.id == models.Snapshot.volume_id,
              ~models.Snapshot.deleted,
              or_(models.Snapshot.cgsnapshot_id != None,  # noqa: != None
+                 models.Snapshot.status.notin_(deletable_statuses)),
+             or_(models.Snapshot.group_snapshot_id != None,  # noqa: != None
                  models.Snapshot.status.notin_(deletable_statuses))))
 
 
@@ -2716,6 +2718,16 @@ def snapshot_get_all_for_cgsnapshot(context, cgsnapshot_id):
     return model_query(context, models.Snapshot, read_deleted='no',
                        project_only=True).\
         filter_by(cgsnapshot_id=cgsnapshot_id).\
+        options(joinedload('volume')).\
+        options(joinedload('snapshot_metadata')).\
+        all()
+
+
+@require_context
+def snapshot_get_all_for_group_snapshot(context, group_snapshot_id):
+    return model_query(context, models.Snapshot, read_deleted='no',
+                       project_only=True).\
+        filter_by(group_snapshot_id=group_snapshot_id).\
         options(joinedload('volume')).\
         options(joinedload('snapshot_metadata')).\
         all()
@@ -3743,6 +3755,14 @@ def volume_type_get_all_by_group(context, group_id):
                  options(joinedload('extra_specs')).
                  all())
         return query
+
+
+def _group_volume_type_mapping_get_all_by_group_volume_type(context, group_id,
+                                                            volume_type_id):
+    mappings = _group_volume_type_mapping_query(context).\
+        filter_by(group_id=group_id).\
+        filter_by(volume_type_id=volume_type_id).all()
+    return mappings
 
 
 @require_admin_context
@@ -5282,26 +5302,94 @@ def group_get_all_by_project(context, project_id, filters=None,
 
 @handle_db_data_error
 @require_context
-def group_create(context, values):
-    group = models.Group()
+def group_create(context, values, group_snapshot_id=None,
+                 source_group_id=None):
+    group_model = models.Group
+
+    values = values.copy()
     if not values.get('id'):
         values['id'] = six.text_type(uuid.uuid4())
 
-    mappings = []
-    for item in values.get('volume_type_ids') or []:
-        mapping = models.GroupVolumeTypeMapping()
-        mapping['volume_type_id'] = item
-        mapping['group_id'] = values['id']
-        mappings.append(mapping)
+    session = get_session()
+    with session.begin():
+        if group_snapshot_id:
+            conditions = [group_model.id == models.GroupSnapshot.group_id,
+                          models.GroupSnapshot.id == group_snapshot_id]
+        elif source_group_id:
+            conditions = [group_model.id == source_group_id]
+        else:
+            conditions = None
 
-    values['volume_types'] = mappings
+        if conditions:
+            # We don't want duplicated field values
+            values.pop('group_type_id', None)
+            values.pop('availability_zone', None)
+            values.pop('host', None)
+
+            sel = session.query(group_model.group_type_id,
+                                group_model.availability_zone,
+                                group_model.host,
+                                *(bindparam(k, v) for k, v in values.items())
+                                ).filter(*conditions)
+            names = ['group_type_id', 'availability_zone', 'host']
+            names.extend(values.keys())
+            insert_stmt = group_model.__table__.insert().from_select(
+                names, sel)
+            result = session.execute(insert_stmt)
+            # If we couldn't insert the row because of the conditions raise
+            # the right exception
+            if not result.rowcount:
+                if source_group_id:
+                    raise exception.GroupNotFound(
+                        group_id=source_group_id)
+                raise exception.GroupSnapshotNotFound(
+                    group_snapshot_id=group_snapshot_id)
+        else:
+            mappings = []
+            for item in values.get('volume_type_ids') or []:
+                mapping = models.GroupVolumeTypeMapping()
+                mapping['volume_type_id'] = item
+                mapping['group_id'] = values['id']
+                mappings.append(mapping)
+
+            values['volume_types'] = mappings
+
+            group = group_model()
+            group.update(values)
+            session.add(group)
+
+        return _group_get(context, values['id'], session=session)
+
+
+@handle_db_data_error
+@require_context
+def group_volume_type_mapping_create(context, group_id, volume_type_id):
+    """Add group volume_type mapping entry."""
+    # Verify group exists
+    _group_get(context, group_id)
+    # Verify volume type exists
+    _volume_type_get_id_from_volume_type(context, volume_type_id)
+
+    existing = _group_volume_type_mapping_get_all_by_group_volume_type(
+        context, group_id, volume_type_id)
+    if existing:
+        raise exception.GroupVolumeTypeMappingExists(
+            group_id=group_id,
+            volume_type_id=volume_type_id)
+
+    mapping = models.GroupVolumeTypeMapping()
+    mapping.update({"group_id": group_id,
+                    "volume_type_id": volume_type_id})
 
     session = get_session()
     with session.begin():
-        group.update(values)
-        session.add(group)
-
-        return _group_get(context, values['id'], session=session)
+        try:
+            mapping.save(session=session)
+        except db_exc.DBDuplicateEntry:
+            raise exception.GroupVolumeTypeMappingExists(
+                group_id=group_id,
+                volume_type_id=volume_type_id)
+        return mapping
 
 
 @handle_db_data_error
@@ -5339,6 +5427,46 @@ def group_destroy(context, group_id):
          update({'deleted': True,
                  'deleted_at': timeutils.utcnow(),
                  'updated_at': literal_column('updated_at')}))
+
+
+def group_has_group_snapshot_filter():
+    return sql.exists().where(and_(
+        models.GroupSnapshot.group_id == models.Group.id,
+        ~models.GroupSnapshot.deleted))
+
+
+def group_has_volumes_filter(attached_or_with_snapshots=False):
+    query = sql.exists().where(
+        and_(models.Volume.group_id == models.Group.id,
+             ~models.Volume.deleted))
+
+    if attached_or_with_snapshots:
+        query = query.where(or_(
+            models.Volume.attach_status == 'attached',
+            sql.exists().where(
+                and_(models.Volume.id == models.Snapshot.volume_id,
+                     ~models.Snapshot.deleted))))
+    return query
+
+
+def group_creating_from_src(group_id=None, group_snapshot_id=None):
+    # NOTE(geguileo): As explained in devref api_conditional_updates we use a
+    # subquery to trick MySQL into using the same table in the update and the
+    # where clause.
+    subq = sql.select([models.Group]).where(
+        and_(~models.Group.deleted,
+             models.Group.status == 'creating')).alias('group2')
+
+    if group_id:
+        match_id = subq.c.source_group_id == group_id
+    elif group_snapshot_id:
+        match_id = subq.c.group_snapshot_id == group_snapshot_id
+    else:
+        msg = _('group_creating_from_src must be called with group_id or '
+                'group_snapshot_id parameter.')
+        raise exception.ProgrammingError(reason=msg)
+
+    return sql.exists([subq]).where(match_id)
 
 
 ###############################
@@ -5492,6 +5620,148 @@ def cgsnapshot_creating_from_src():
         models.Cgsnapshot.consistencygroup_id == models.ConsistencyGroup.id,
         ~models.Cgsnapshot.deleted,
         models.Cgsnapshot.status == 'creating'))
+
+
+###############################
+
+
+@require_context
+def _group_snapshot_get(context, group_snapshot_id, session=None):
+    result = model_query(context, models.GroupSnapshot, session=session,
+                         project_only=True).\
+        filter_by(id=group_snapshot_id).\
+        first()
+
+    if not result:
+        raise exception.GroupSnapshotNotFound(
+            group_snapshot_id=group_snapshot_id)
+
+    return result
+
+
+@require_context
+def group_snapshot_get(context, group_snapshot_id):
+    return _group_snapshot_get(context, group_snapshot_id)
+
+
+def _group_snapshot_get_all(context, project_id=None, group_id=None,
+                            filters=None):
+    query = model_query(context, models.GroupSnapshot)
+
+    if filters:
+        if not is_valid_model_filters(models.GroupSnapshot, filters):
+            return []
+        query = query.filter_by(**filters)
+
+    if project_id:
+        query = query.filter_by(project_id=project_id)
+
+    if group_id:
+        query = query.filter_by(group_id=group_id)
+
+    return query.all()
+
+
+@require_admin_context
+def group_snapshot_get_all(context, filters=None):
+    return _group_snapshot_get_all(context, filters=filters)
+
+
+@require_admin_context
+def group_snapshot_get_all_by_group(context, group_id, filters=None):
+    return _group_snapshot_get_all(context, group_id=group_id, filters=filters)
+
+
+@require_context
+def group_snapshot_get_all_by_project(context, project_id, filters=None):
+    authorize_project_context(context, project_id)
+    return _group_snapshot_get_all(context, project_id=project_id,
+                                   filters=filters)
+
+
+@handle_db_data_error
+@require_context
+def group_snapshot_create(context, values):
+    if not values.get('id'):
+        values['id'] = six.text_type(uuid.uuid4())
+
+    group_id = values.get('group_id')
+    session = get_session()
+    model = models.GroupSnapshot
+    with session.begin():
+        if group_id:
+            # There has to exist at least 1 volume in the group and the group
+            # cannot be updating the composing volumes or being created.
+            conditions = [
+                sql.exists().where(and_(
+                    ~models.Volume.deleted,
+                    models.Volume.group_id == group_id)),
+                ~models.Group.deleted,
+                models.Group.id == group_id,
+                ~models.Group.status.in_(('creating', 'updating'))]
+
+            # NOTE(geguileo): We build a "fake" from_select clause instead of
+            # using transaction isolation on the session because we would need
+            # SERIALIZABLE level and that would have a considerable performance
+            # penalty.
+            binds = (bindparam(k, v) for k, v in values.items())
+            sel = session.query(*binds).filter(*conditions)
+            insert_stmt = model.__table__.insert().from_select(values.keys(),
+                                                               sel)
+            result = session.execute(insert_stmt)
+            # If we couldn't insert the row because of the conditions raise
+            # the right exception
+            if not result.rowcount:
+                msg = _("Source group cannot be empty or in 'creating' or "
+                        "'updating' state. No group snapshot will be created.")
+                raise exception.InvalidGroup(reason=msg)
+        else:
+            group_snapshot = model()
+            group_snapshot.update(values)
+            session.add(group_snapshot)
+        return _group_snapshot_get(context, values['id'], session=session)
+
+
+@require_context
+@handle_db_data_error
+def group_snapshot_update(context, group_snapshot_id, values):
+    session = get_session()
+    with session.begin():
+        result = model_query(context, models.GroupSnapshot,
+                             project_only=True).\
+            filter_by(id=group_snapshot_id).\
+            first()
+
+        if not result:
+            raise exception.GroupSnapshotNotFound(
+                _("No group snapshot with id %s") % group_snapshot_id)
+
+        result.update(values)
+        result.save(session=session)
+    return result
+
+
+@require_admin_context
+def group_snapshot_destroy(context, group_snapshot_id):
+    session = get_session()
+    with session.begin():
+        updated_values = {'status': 'deleted',
+                          'deleted': True,
+                          'deleted_at': timeutils.utcnow(),
+                          'updated_at': literal_column('updated_at')}
+        model_query(context, models.GroupSnapshot, session=session).\
+            filter_by(id=group_snapshot_id).\
+            update(updated_values)
+    del updated_values['updated_at']
+    return updated_values
+
+
+def group_snapshot_creating_from_src():
+    """Get a filter to check if a grp snapshot is being created from a grp."""
+    return sql.exists().where(and_(
+        models.GroupSnapshot.group_id == models.Group.id,
+        ~models.GroupSnapshot.deleted,
+        models.GroupSnapshot.status == 'creating'))
 
 
 ###############################
@@ -5913,6 +6183,7 @@ def get_model_for_versioned_object(versioned_object):
         'VolumeType': models.VolumeTypes,
         'CGSnapshot': models.Cgsnapshot,
         'GroupType': models.GroupTypes,
+        'GroupSnapshot': models.GroupSnapshot,
     }
 
     if isinstance(versioned_object, six.string_types):

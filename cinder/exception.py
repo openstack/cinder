@@ -540,6 +540,11 @@ class GroupTypeAccessExists(Duplicate):
                 "%(project_id)s combination already exists.")
 
 
+class GroupVolumeTypeMappingExists(Duplicate):
+    message = _("Group volume type mapping for %(group_id)s / "
+                "%(volume_type_id)s combination already exists.")
+
+
 class GroupTypeEncryptionExists(Invalid):
     message = _("Group type encryption for type %(type_id)s already exists.")
 
@@ -1060,6 +1065,15 @@ class CgSnapshotNotFound(NotFound):
 
 class InvalidCgSnapshot(Invalid):
     message = _("Invalid CgSnapshot: %(reason)s")
+
+
+# GroupSnapshot
+class GroupSnapshotNotFound(NotFound):
+    message = _("GroupSnapshot %(group_snapshot_id)s could not be found.")
+
+
+class InvalidGroupSnapshot(Invalid):
+    message = _("Invalid GroupSnapshot: %(reason)s")
 
 
 # Hitachi Block Storage Driver

@@ -186,6 +186,8 @@ class Group(BASE, CinderBase):
     description = Column(String(255))
     status = Column(String(255))
     group_type_id = Column(String(36))
+    group_snapshot_id = Column(String(36))
+    source_group_id = Column(String(36))
 
 
 class Cgsnapshot(BASE, CinderBase):
@@ -206,6 +208,27 @@ class Cgsnapshot(BASE, CinderBase):
         backref="cgsnapshots",
         foreign_keys=consistencygroup_id,
         primaryjoin='Cgsnapshot.consistencygroup_id == ConsistencyGroup.id')
+
+
+class GroupSnapshot(BASE, CinderBase):
+    """Represents a group snapshot."""
+    __tablename__ = 'group_snapshots'
+    id = Column(String(36), primary_key=True)
+
+    group_id = Column(String(36), nullable=False)
+    user_id = Column(String(255))
+    project_id = Column(String(255))
+
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+    group_type_id = Column(String(36))
+
+    group = relationship(
+        Group,
+        backref="group_snapshots",
+        foreign_keys=group_id,
+        primaryjoin='GroupSnapshot.group_id == Group.id')
 
 
 class Volume(BASE, CinderBase):
@@ -640,6 +663,7 @@ class Snapshot(BASE, CinderBase):
 
     volume_id = Column(String(36))
     cgsnapshot_id = Column(String(36))
+    group_snapshot_id = Column(String(36))
     status = Column(String(255))
     progress = Column(String(255))
     volume_size = Column(Integer)
@@ -663,6 +687,12 @@ class Snapshot(BASE, CinderBase):
         backref="snapshots",
         foreign_keys=cgsnapshot_id,
         primaryjoin='Snapshot.cgsnapshot_id == Cgsnapshot.id')
+
+    group_snapshot = relationship(
+        GroupSnapshot,
+        backref="snapshots",
+        foreign_keys=group_snapshot_id,
+        primaryjoin='Snapshot.group_snapshot_id == GroupSnapshot.id')
 
 
 class SnapshotMetadata(BASE, CinderBase):

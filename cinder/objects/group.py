@@ -20,14 +20,16 @@ from cinder.objects import base
 from cinder.objects import fields as c_fields
 from oslo_versionedobjects import fields
 
-OPTIONAL_FIELDS = ['volumes', 'volume_types']
+OPTIONAL_FIELDS = ['volumes', 'volume_types', 'group_snapshots']
 
 
 @base.CinderObjectRegistry.register
 class Group(base.CinderPersistentObject, base.CinderObject,
             base.CinderObjectDictCompat):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Added group_snapshots, group_snapshot_id, and
+    #              source_group_id
+    VERSION = '1.1'
 
     fields = {
         'id': fields.UUIDField(),
@@ -41,9 +43,13 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         'group_type_id': fields.StringField(),
         'volume_type_ids': fields.ListOfStringsField(nullable=True),
         'status': c_fields.GroupStatusField(nullable=True),
+        'group_snapshot_id': fields.UUIDField(nullable=True),
+        'source_group_id': fields.UUIDField(nullable=True),
         'volumes': fields.ObjectField('VolumeList', nullable=True),
         'volume_types': fields.ObjectField('VolumeTypeList',
                                            nullable=True),
+        'group_snapshots': fields.ObjectField('GroupSnapshotList',
+                                              nullable=True),
     }
 
     @staticmethod
@@ -71,11 +77,18 @@ class Group(base.CinderPersistentObject, base.CinderObject,
                 db_group['volume_types'])
             group.volume_types = volume_types
 
+        if 'group_snapshots' in expected_attrs:
+            group_snapshots = base.obj_make_list(
+                context, objects.GroupSnapshotList(context),
+                objects.GroupSnapshot,
+                db_group['group_snapshots'])
+            group.group_snapshots = group_snapshots
+
         group._context = context
         group.obj_reset_changes()
         return group
 
-    def create(self):
+    def create(self, group_snapshot_id=None, source_group_id=None):
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
                                               reason=_('already_created'))
@@ -90,8 +103,15 @@ class Group(base.CinderPersistentObject, base.CinderObject,
             raise exception.ObjectActionError(action='create',
                                               reason=_('volumes assigned'))
 
+        if 'group_snapshots' in updates:
+            raise exception.ObjectActionError(
+                action='create',
+                reason=_('group_snapshots assigned'))
+
         db_groups = db.group_create(self._context,
-                                    updates)
+                                    updates,
+                                    group_snapshot_id,
+                                    source_group_id)
         self._from_db_object(self._context, self, db_groups)
 
     def obj_load_attr(self, attrname):
@@ -111,6 +131,10 @@ class Group(base.CinderPersistentObject, base.CinderObject,
             self.volumes = objects.VolumeList.get_all_by_generic_group(
                 self._context, self.id)
 
+        if attrname == 'group_snapshots':
+            self.group_snapshots = objects.GroupSnapshotList.get_all_by_group(
+                self._context, self.id)
+
         self.obj_reset_changes(fields=[attrname])
 
     def save(self):
@@ -123,6 +147,11 @@ class Group(base.CinderPersistentObject, base.CinderObject,
                     action='save', reason=msg)
             if 'volumes' in updates:
                 msg = _('Cannot save volumes changes in group object update.')
+                raise exception.ObjectActionError(
+                    action='save', reason=msg)
+            if 'group_snapshots' in updates:
+                msg = _('Cannot save group_snapshots changes in group object '
+                        'update.')
                 raise exception.ObjectActionError(
                     action='save', reason=msg)
 
