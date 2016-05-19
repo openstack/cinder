@@ -93,6 +93,9 @@ class FlashSystemDriver(san.SanDriver):
         self._context = None
         self._system_name = None
         self._system_id = None
+        self._check_lock_interval = 5
+        self._vdisk_copy_in_progress = set()
+        self._vdisk_copy_lock = None
 
     def _ssh(self, ssh_cmd, check_exit_code=True):
         try:
@@ -137,6 +140,9 @@ class FlashSystemDriver(san.SanDriver):
             for t_wwpn in target_wwpns:
                 map[idx].append(t_wwpn)
         return map
+
+    def _check_vdisk_params(self, params):
+        raise NotImplementedError()
 
     def _connector_to_hostname_prefix(self, connector):
         """Translate connector info to storage system host name.
@@ -268,6 +274,9 @@ class FlashSystemDriver(san.SanDriver):
             self._unset_vdisk_copy_in_progress(
                 [src_vdisk_name, dest_vdisk_name])
 
+    def _create_host(self, connector):
+        raise NotImplementedError()
+
     def _create_vdisk(self, name, size, unit, opts):
         """Create a new vdisk."""
 
@@ -378,6 +387,9 @@ class FlashSystemDriver(san.SanDriver):
              'attr': six.text_type(attributes)})
 
         return attributes
+
+    def _find_host_exhaustive(self, connector, hosts):
+        raise NotImplementedError()
 
     def _get_hdr_dic(self, header, row, delim):
         """Return CLI row data as a dictionary indexed by names from header.
@@ -530,6 +542,10 @@ class FlashSystemDriver(san.SanDriver):
             'svcinfo', 'lsvdisk', '-bytes', '-delim', '!', vdisk_name]
 
         return self._execute_command_and_parse_attributes(ssh_cmd)
+
+    def _get_vdisk_map_properties(
+            self, connector, lun_id, vdisk_name, vdisk_id, vdisk_params):
+        raise NotImplementedError()
 
     def _get_vdiskhost_mappings(self, vdisk_name):
         """Return the defined storage mappings for a vdisk."""
