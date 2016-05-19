@@ -17,13 +17,11 @@ Unit Tests for cinder.volume.rpcapi
 """
 import copy
 
-import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
 from cinder import context
 from cinder import db
-from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_backup
@@ -221,58 +219,29 @@ class VolumeRpcAPITestCase(test.TestCase):
             else:
                 self.assertEqual(expected_msg[kwarg], value)
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_create_consistencygroup(self, mock_can_send_version):
+    def test_create_consistencygroup(self):
         self._test_volume_api('create_consistencygroup', rpc_method='cast',
                               group=self.fake_cg, host='fake_host1',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('create_consistencygroup', rpc_method='cast',
-                              group=self.fake_cg, host='fake_host1',
-                              version='1.26')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_delete_consistencygroup(self, mock_can_send_version):
+    def test_delete_consistencygroup(self):
         self._test_volume_api('delete_consistencygroup', rpc_method='cast',
                               group=self.fake_cg, version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('delete_consistencygroup', rpc_method='cast',
-                              group=self.fake_cg, version='1.26')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_update_consistencygroup(self, mock_can_send_version):
+    def test_update_consistencygroup(self):
         self._test_volume_api('update_consistencygroup', rpc_method='cast',
                               group=self.fake_cg, add_volumes=['vol1'],
                               remove_volumes=['vol2'], version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('update_consistencygroup', rpc_method='cast',
-                              group=self.fake_cg, add_volumes=['vol1'],
-                              remove_volumes=['vol2'], version='1.26')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_create_cgsnapshot(self, mock_can_send_version):
+    def test_create_cgsnapshot(self):
         self._test_volume_api('create_cgsnapshot', rpc_method='cast',
                               cgsnapshot=self.fake_cgsnap, version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('create_cgsnapshot', rpc_method='cast',
-                              cgsnapshot=self.fake_cgsnap, version='1.31')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_delete_cgsnapshot(self, mock_can_send_version):
+    def test_delete_cgsnapshot(self):
         self._test_volume_api('delete_cgsnapshot', rpc_method='cast',
                               cgsnapshot=self.fake_cgsnap, version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('delete_cgsnapshot', rpc_method='cast',
-                              cgsnapshot=self.fake_cgsnap, version='1.31')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=True)
-    def test_create_volume(self, can_send_version):
+    def test_create_volume(self):
         self._test_volume_api('create_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
@@ -281,26 +250,8 @@ class VolumeRpcAPITestCase(test.TestCase):
                               filter_properties='fake_properties',
                               allow_reschedule=True,
                               version='2.0')
-        can_send_version.assert_called_once_with('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
-    def test_create_volume_old(self, can_send_version):
-        # Tests backwards compatibility with older clients
-        self._test_volume_api('create_volume',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              host='fake_host1',
-                              request_spec='fake_request_spec',
-                              filter_properties='fake_properties',
-                              allow_reschedule=True,
-                              version='1.24')
-        can_send_version.assert_has_calls([mock.call('2.0'),
-                                           mock.call('1.32')])
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=True)
-    def test_create_volume_serialization(self, can_send_version):
+    def test_create_volume_serialization(self):
         request_spec = {"metadata": self.fake_volume_metadata}
         self._test_volume_api('create_volume',
                               rpc_method='cast',
@@ -310,59 +261,31 @@ class VolumeRpcAPITestCase(test.TestCase):
                               filter_properties='fake_properties',
                               allow_reschedule=True,
                               version='2.0')
-        can_send_version.assert_called_once_with('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=True)
-    def test_delete_volume(self, can_send_version):
+    def test_delete_volume(self):
         self._test_volume_api('delete_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
                               unmanage_only=False,
                               cascade=False,
                               version='2.0')
-        can_send_version.assert_called_once_with('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
-    def test_delete_volume_old(self, can_send_version):
-        self._test_volume_api('delete_volume',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              unmanage_only=False,
-                              version='1.15')
-        can_send_version.assert_has_calls([mock.call('2.0'),
-                                           mock.call('1.40'),
-                                           mock.call('1.33')])
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=True)
-    def test_delete_volume_cascade(self, can_send_version):
+    def test_delete_volume_cascade(self):
         self._test_volume_api('delete_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
                               unmanage_only=False,
                               cascade=True,
                               version='2.0')
-        can_send_version.assert_any_call('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_create_snapshot(self, mock_can_send_version):
+    def test_create_snapshot(self):
         self._test_volume_api('create_snapshot',
                               rpc_method='cast',
                               volume=self.fake_volume,
                               snapshot=self.fake_snapshot,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('create_snapshot',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              snapshot=self.fake_snapshot,
-                              version='1.20')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_delete_snapshot(self, mock_can_send_version):
+    def test_delete_snapshot(self):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
                               snapshot=self.fake_snapshot,
@@ -370,16 +293,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               unmanage_only=False,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('delete_snapshot',
-                              rpc_method='cast',
-                              snapshot=self.fake_snapshot,
-                              host='fake_host',
-                              unmanage_only=False,
-                              version='1.20')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_delete_snapshot_with_unmanage_only(self, mock_can_send_version):
+    def test_delete_snapshot_with_unmanage_only(self):
         self._test_volume_api('delete_snapshot',
                               rpc_method='cast',
                               snapshot=self.fake_snapshot,
@@ -387,16 +301,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               unmanage_only=True,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('delete_snapshot',
-                              rpc_method='cast',
-                              snapshot=self.fake_snapshot,
-                              host='fake_host',
-                              unmanage_only=True,
-                              version='1.20')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_attach_volume_to_instance(self, mock_can_send_version):
+    def test_attach_volume_to_instance(self):
         self._test_volume_api('attach_volume',
                               rpc_method='call',
                               volume=self.fake_volume,
@@ -406,18 +311,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               mode='ro',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('attach_volume',
-                              rpc_method='call',
-                              volume=self.fake_volume,
-                              instance_uuid='fake_uuid',
-                              host_name=None,
-                              mountpoint='fake_mountpoint',
-                              mode='ro',
-                              version='1.11')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_attach_volume_to_host(self, mock_can_send_version):
+    def test_attach_volume_to_host(self):
         self._test_volume_api('attach_volume',
                               rpc_method='call',
                               volume=self.fake_volume,
@@ -427,33 +321,14 @@ class VolumeRpcAPITestCase(test.TestCase):
                               mode='rw',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('attach_volume',
-                              rpc_method='call',
-                              volume=self.fake_volume,
-                              instance_uuid=None,
-                              host_name='fake_host',
-                              mountpoint='fake_mountpoint',
-                              mode='rw',
-                              version='1.11')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_detach_volume(self, mock_can_send_version):
+    def test_detach_volume(self):
         self._test_volume_api('detach_volume',
                               rpc_method='call',
                               volume=self.fake_volume,
                               attachment_id='fake_uuid',
                               version="2.0")
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('detach_volume',
-                              rpc_method='call',
-                              volume=self.fake_volume,
-                              attachment_id='fake_uuid',
-                              version="1.20")
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_copy_volume_to_image(self, mock_can_send_version):
+    def test_copy_volume_to_image(self):
         self._test_volume_api('copy_volume_to_image',
                               rpc_method='cast',
                               volume=self.fake_volume,
@@ -462,32 +337,14 @@ class VolumeRpcAPITestCase(test.TestCase):
                                           'disk_format': 'fake_type'},
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('copy_volume_to_image',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              image_meta={'id': 'fake_image_id',
-                                          'container_format': 'fake_type',
-                                          'disk_format': 'fake_type'},
-                              version='1.3')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_initialize_connection(self, mock_can_send_version):
+    def test_initialize_connection(self):
         self._test_volume_api('initialize_connection',
                               rpc_method='call',
                               volume=self.fake_volume,
                               connector='fake_connector',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('initialize_connection',
-                              rpc_method='call',
-                              volume=self.fake_volume,
-                              connector='fake_connector',
-                              version='1.0')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_terminate_connection(self, mock_can_send_version):
+    def test_terminate_connection(self):
         self._test_volume_api('terminate_connection',
                               rpc_method='call',
                               volume=self.fake_volume,
@@ -495,16 +352,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               force=False,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('terminate_connection',
-                              rpc_method='call',
-                              volume=self.fake_volume,
-                              connector='fake_connector',
-                              force=False,
-                              version='1.0')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_accept_transfer(self, mock_can_send_version):
+    def test_accept_transfer(self):
         self._test_volume_api('accept_transfer',
                               rpc_method='call',
                               volume=self.fake_volume,
@@ -514,42 +362,15 @@ class VolumeRpcAPITestCase(test.TestCase):
                                           '-8ffd-0800200c9a66',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('accept_transfer',
-                              rpc_method='call',
-                              volume=self.fake_volume,
-                              new_user='e5565fd0-06c8-11e3-'
-                                       '8ffd-0800200c9b77',
-                              new_project='e4465fd0-06c8-11e3'
-                                          '-8ffd-0800200c9a66',
-                              version='1.9')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=True)
-    def test_extend_volume(self, can_send_version):
+    def test_extend_volume(self):
         self._test_volume_api('extend_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
                               new_size=1,
                               reservations=self.fake_reservations,
                               version='2.0')
-        can_send_version.assert_called_once_with('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
-    def test_extend_volume_old(self, can_send_version):
-        self._test_volume_api('extend_volume',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              new_size=1,
-                              reservations=self.fake_reservations,
-                              version='1.14')
-        can_send_version.assert_has_calls([mock.call('2.0'),
-                                           mock.call('1.35')])
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=True)
-    def test_migrate_volume(self, can_send_version):
+    def test_migrate_volume(self):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
@@ -561,51 +382,16 @@ class VolumeRpcAPITestCase(test.TestCase):
                               dest_host=dest_host,
                               force_host_copy=True,
                               version='2.0')
-        can_send_version.assert_called_once_with('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
-    def test_migrate_volume_old(self, can_send_version):
-        class FakeHost(object):
-            def __init__(self):
-                self.host = 'host'
-                self.capabilities = {}
-        dest_host = FakeHost()
-        self._test_volume_api('migrate_volume',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              dest_host=dest_host,
-                              force_host_copy=True,
-                              version='1.8')
-        can_send_version.assert_has_calls([mock.call('2.0'),
-                                           mock.call('1.36')])
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=True)
-    def test_migrate_volume_completion(self, can_send_version):
+    def test_migrate_volume_completion(self):
         self._test_volume_api('migrate_volume_completion',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
                               new_volume=self.fake_volume_obj,
                               error=False,
                               version='2.0')
-        can_send_version.assert_called_once_with('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                return_value=False)
-    def test_migrate_volume_completion_old(self, can_send_version):
-        self._test_volume_api('migrate_volume_completion',
-                              rpc_method='call',
-                              volume=self.fake_volume_obj,
-                              new_volume=self.fake_volume_obj,
-                              error=False,
-                              version='1.10')
-        can_send_version.assert_has_calls([mock.call('2.0'),
-                                           mock.call('1.36')])
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    @mock.patch('cinder.quota.DbQuotaDriver.rollback')
-    def test_retype(self, rollback, can_send_version):
+    def test_retype(self):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
@@ -620,93 +406,15 @@ class VolumeRpcAPITestCase(test.TestCase):
                               reservations=self.fake_reservations,
                               old_reservations=self.fake_reservations,
                               version='2.0')
-        rollback.assert_not_called()
-        can_send_version.assert_called_once_with('2.0')
 
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                side_effect=[False, True])
-    @mock.patch('cinder.quota.DbQuotaDriver.rollback')
-    def test_retype_137(self, rollback, can_send_version):
-        class FakeHost(object):
-            def __init__(self):
-                self.host = 'host'
-                self.capabilities = {}
-        dest_host = FakeHost()
-        self._test_volume_api('retype',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              new_type_id='fake',
-                              dest_host=dest_host,
-                              migration_policy='never',
-                              reservations=self.fake_reservations,
-                              old_reservations=self.fake_reservations,
-                              version='1.37')
-        rollback.assert_not_called()
-        can_send_version.assert_any_call('2.0')
-        can_send_version.assert_any_call('1.37')
-
-    @mock.patch('cinder.quota.DbQuotaDriver.rollback')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                side_effect=[False, False, True])
-    def test_retype_version_134(self, can_send_version, rollback):
-        class FakeHost(object):
-            def __init__(self):
-                self.host = 'host'
-                self.capabilities = {}
-        dest_host = FakeHost()
-        self._test_volume_api('retype',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              new_type_id='fake',
-                              dest_host=dest_host,
-                              migration_policy='never',
-                              reservations=self.fake_reservations,
-                              old_reservations=self.fake_reservations,
-                              version='1.34')
-        self.assertTrue(rollback.called)
-        can_send_version.assert_any_call('2.0')
-        can_send_version.assert_any_call('1.37')
-        can_send_version.assert_any_call('1.34')
-
-    @mock.patch('cinder.quota.DbQuotaDriver.rollback')
-    @mock.patch('oslo_messaging.RPCClient.can_send_version',
-                side_effect=[False, False, False])
-    def test_retype_version_112(self, can_send_version, rollback):
-        class FakeHost(object):
-            def __init__(self):
-                self.host = 'host'
-                self.capabilities = {}
-        dest_host = FakeHost()
-        self._test_volume_api('retype',
-                              rpc_method='cast',
-                              volume=self.fake_volume_obj,
-                              new_type_id='fake',
-                              dest_host=dest_host,
-                              migration_policy='never',
-                              reservations=self.fake_reservations,
-                              old_reservations=self.fake_reservations,
-                              version='1.12')
-        self.assertTrue(rollback.called)
-        can_send_version.assert_any_call('1.37')
-        can_send_version.assert_any_call('1.34')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_manage_existing(self, mock_can_send_version):
+    def test_manage_existing(self):
         self._test_volume_api('manage_existing',
                               rpc_method='cast',
                               volume=self.fake_volume,
                               ref={'lv_name': 'foo'},
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('manage_existing',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              ref={'lv_name': 'foo'},
-                              version='1.15')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_manage_existing_snapshot(self, mock_can_send_version):
+    def test_manage_existing_snapshot(self):
         volume_update = {'host': 'fake_host'}
         snpshot = {
             'id': fake.SNAPSHOT_ID,
@@ -727,74 +435,33 @@ class VolumeRpcAPITestCase(test.TestCase):
                               host='fake_host',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('manage_existing_snapshot',
-                              rpc_method='cast',
-                              snapshot=my_fake_snapshot_obj,
-                              ref='foo',
-                              host='fake_host',
-                              version='1.28')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_promote_replica(self, mock_can_send_version):
+    def test_promote_replica(self):
         self._test_volume_api('promote_replica',
                               rpc_method='cast',
                               volume=self.fake_volume,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('promote_replica',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              version='1.17')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_reenable_replica(self, mock_can_send_version):
+    def test_reenable_replica(self):
         self._test_volume_api('reenable_replication',
                               rpc_method='cast',
                               volume=self.fake_volume,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('reenable_replication',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              version='1.17')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_freeze_host(self, mock_can_send_version):
+    def test_freeze_host(self):
         self._test_volume_api('freeze_host', rpc_method='call',
                               host='fake_host', version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('freeze_host', rpc_method='call',
-                              host='fake_host', version='1.39')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_thaw_host(self, mock_can_send_version):
+    def test_thaw_host(self):
         self._test_volume_api('thaw_host', rpc_method='call', host='fake_host',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('thaw_host', rpc_method='call', host='fake_host',
-                              version='1.39')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_failover_host(self, mock_can_send_version):
+    def test_failover_host(self):
         self._test_volume_api('failover_host', rpc_method='cast',
                               host='fake_host',
                               secondary_backend_id='fake_backend',
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('failover_host', rpc_method='cast',
-                              host='fake_host',
-                              secondary_backend_id='fake_backend',
-                              version='1.39')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_create_consistencygroup_from_src_cgsnapshot(
-            self, mock_can_send_version):
+    def test_create_consistencygroup_from_src_cgsnapshot(self):
         self._test_volume_api('create_consistencygroup_from_src',
                               rpc_method='cast',
                               group=self.fake_cg,
@@ -802,16 +469,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               source_cg=None,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('create_consistencygroup_from_src',
-                              rpc_method='cast',
-                              group=self.fake_cg,
-                              cgsnapshot=self.fake_cgsnap,
-                              source_cg=None,
-                              version='1.31')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_create_consistencygroup_from_src_cg(self, mock_can_send_version):
+    def test_create_consistencygroup_from_src_cg(self):
         self._test_volume_api('create_consistencygroup_from_src',
                               rpc_method='cast',
                               group=self.fake_cg2,
@@ -819,64 +477,28 @@ class VolumeRpcAPITestCase(test.TestCase):
                               source_cg=self.fake_src_cg,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('create_consistencygroup_from_src',
-                              rpc_method='cast',
-                              group=self.fake_cg2,
-                              cgsnapshot=None,
-                              source_cg=self.fake_src_cg,
-                              version='1.31')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_get_capabilities(self, mock_can_send_version):
+    def test_get_capabilities(self):
         self._test_volume_api('get_capabilities',
                               rpc_method='call',
                               host='fake_host',
                               discover=True,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('get_capabilities',
-                              rpc_method='call',
-                              host='fake_host',
-                              discover=True,
-                              version='1.29')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_remove_export(self, mock_can_send_version):
+    def test_remove_export(self):
         self._test_volume_api('remove_export',
                               rpc_method='cast',
                               volume=self.fake_volume,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self._test_volume_api('remove_export',
-                              rpc_method='cast',
-                              volume=self.fake_volume,
-                              version='1.30')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_get_backup_device(self, mock_can_send_version):
+    def test_get_backup_device(self):
         self._test_volume_api('get_backup_device',
                               rpc_method='call',
                               backup=self.fake_backup_obj,
                               volume=self.fake_volume_obj,
                               version='2.0')
 
-        mock_can_send_version.return_value = False
-        self.assertRaises(exception.ServiceTooOld, self._test_volume_api,
-                          'get_backup_device', rpc_method='call',
-                          backup=self.fake_backup_obj,
-                          volume=self.fake_volume_obj, version='1.38')
-
-    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
-    def test_secure_file_operations_enabled(self, mock_can_send_version):
+    def test_secure_file_operations_enabled(self):
         self._test_volume_api('secure_file_operations_enabled',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
                               version='2.0')
-
-        mock_can_send_version.return_value = False
-        self.assertRaises(exception.ServiceTooOld, self._test_volume_api,
-                          'secure_file_operations_enabled', rpc_method='call',
-                          volume=self.fake_volume_obj, version='1.38')

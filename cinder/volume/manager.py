@@ -236,7 +236,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         # update_service_capabilities needs service_name to be volume
         super(VolumeManager, self).__init__(service_name='volume',
                                             *args, **kwargs)
-        self.additional_endpoints.append(_VolumeV1Proxy(self))
         self.configuration = config.Configuration(volume_manager_opts,
                                                   config_group=service_name)
         self.stats = {}
@@ -506,10 +505,10 @@ class VolumeManager(manager.SchedulerDependentManager):
                     # threadpool to prevent the main volume service thread
                     # from being blocked.
                     self._add_to_threadpool(self.delete_volume, ctxt,
-                                            volume['id'])
+                                            volume['id'], volume=volume)
                 else:
                     # By default, delete volumes sequentially
-                    self.delete_volume(ctxt, volume['id'])
+                    self.delete_volume(ctxt, volume['id'], volume=volume)
                 LOG.info(_LI("Resume volume delete completed successfully."),
                          resource=volume)
 
@@ -562,7 +561,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                       filter_properties=None, allow_reschedule=True,
                       volume=None):
         """Creates the volume."""
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the volume
             # by its volume_id.
@@ -678,7 +677,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         context = context.elevated()
 
         try:
-            # FIXME(thangp): Remove this in v2.0 of RPC API.
+            # FIXME(dulek): Remove this in v3.0 of RPC API.
             if volume is None:
                 volume = objects.Volume.get_by_id(context, volume_id)
             else:
@@ -686,8 +685,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         except exception.VolumeNotFound:
             # NOTE(thingee): It could be possible for a volume to
             # be deleted when resuming deletes from init_host().
-            LOG.debug("Attempted delete of non-existent volume: %s",
-                      volume_id)
+            LOG.debug("Attempted delete of non-existent volume: %s", volume_id)
             return
 
         if context.project_id != volume.project_id:
@@ -1213,7 +1211,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         try:
             self.create_volume(ctx, image_volume.id,
-                               allow_reschedule=False)
+                               allow_reschedule=False, volume=image_volume)
             image_volume = self.db.volume_get(ctx, image_volume.id)
             if image_volume.status != 'available':
                 raise exception.InvalidVolume(_('Volume is not available.'))
@@ -1729,7 +1727,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                 # The above call is synchronous so we complete the migration
                 self.migrate_volume_completion(ctxt, volume.id,
                                                new_volume.id,
-                                               error=False)
+                                               error=False,
+                                               volume=volume,
+                                               new_volume=new_volume)
             else:
                 nova_api = compute.API()
                 # This is an async call to Nova, which will call the completion
@@ -1788,7 +1788,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
                                   error=False, volume=None, new_volume=None):
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None or new_volume is None:
             # For older clients, mimic the old behavior and look up the volume
             # by its volume_id.
@@ -1879,7 +1879,7 @@ class VolumeManager(manager.SchedulerDependentManager):
     def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
                        new_type_id=None, volume=None):
         """Migrate the volume to the specified host (called on source host)."""
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the volume
             # by its volume_id.
@@ -2060,7 +2060,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
     def extend_volume(self, context, volume_id, new_size, reservations,
                       volume=None):
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the volume
             # by its volume_id.
@@ -2131,7 +2131,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         context = ctxt.elevated()
 
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the volume
             # by its volume_id.
@@ -3172,15 +3172,8 @@ class VolumeManager(manager.SchedulerDependentManager):
         self._notify_about_cgsnapshot_usage(context, cgsnapshot, "delete.end",
                                             snapshots)
 
-    def update_migrated_volume(self, ctxt, volume, new_volume,
-                               volume_status):
+    def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
         """Finalize migration process on backend device."""
-        # FIXME(thangp): Remove this in v2.0 of RPC API.
-        if (not isinstance(volume, objects.Volume) or
-                not isinstance(new_volume, objects.Volume)):
-            volume = objects.Volume.get_by_id(ctxt, volume['id'])
-            new_volume = objects.Volume.get_by_id(ctxt, new_volume['id'])
-
         model_update = None
         model_update_default = {'_name_id': new_volume.name_id,
                                 'provider_location':
@@ -3434,148 +3427,3 @@ class VolumeManager(manager.SchedulerDependentManager):
     def secure_file_operations_enabled(self, ctxt, volume):
         secure_enabled = self.driver.secure_file_operations_enabled()
         return secure_enabled
-
-
-# TODO(dulek): This goes away immediately in Newton and is just present in
-# Mitaka so that we can receive v1.x and v2.0 messages
-class _VolumeV1Proxy(object):
-
-    target = messaging.Target(version='1.40')
-
-    def __init__(self, manager):
-        self.manager = manager
-
-    def create_volume(self, context, volume_id, request_spec=None,
-                      filter_properties=None, allow_reschedule=True,
-                      volume=None):
-        return self.manager.create_volume(
-            context, volume_id, request_spec=request_spec,
-            filter_properties=filter_properties,
-            allow_reschedule=allow_reschedule, volume=volume)
-
-    def delete_volume(self, context, volume_id, unmanage_only=False,
-                      volume=None, cascade=False):
-        return self.manager.delete_volume(
-            context, volume_id, unmanage_only=unmanage_only, volume=volume,
-            cascade=cascade)
-
-    def create_snapshot(self, context, volume_id, snapshot):
-        return self.manager.create_snapshot(context, volume_id, snapshot)
-
-    def delete_snapshot(self, context, snapshot, unmanage_only=False):
-        return self.manager.delete_snapshot(context, snapshot,
-                                            unmanage_only=unmanage_only)
-
-    def attach_volume(self, context, volume_id, instance_uuid, host_name,
-                      mountpoint, mode):
-        return self.manager.attach_volume(context, volume_id, instance_uuid,
-                                          host_name, mountpoint, mode)
-
-    def detach_volume(self, context, volume_id, attachment_id=None):
-        return self.manager.detach_volume(context, volume_id,
-                                          attachment_id=attachment_id)
-
-    def copy_volume_to_image(self, context, volume_id, image_meta):
-        return self.manager.copy_volume_to_image(context, volume_id,
-                                                 image_meta)
-
-    def initialize_connection(self, context, volume_id, connector):
-        return self.manager.initialize_connection(context, volume_id,
-                                                  connector)
-
-    def terminate_connection(self, context, volume_id, connector, force=False):
-        return self.manager.terminate_connection(context, volume_id, connector,
-                                                 force=force)
-
-    def remove_export(self, context, volume_id):
-        return self.manager.remove_export(context, volume_id)
-
-    def accept_transfer(self, context, volume_id, new_user, new_project):
-        return self.manager.accept_transfer(context, volume_id, new_user,
-                                            new_project)
-
-    def migrate_volume_completion(self, ctxt, volume_id, new_volume_id,
-                                  error=False, volume=None, new_volume=None):
-        return self.manager.migrate_volume_completion(
-            ctxt, volume_id, new_volume_id, error=error, volume=volume,
-            new_volume=new_volume)
-
-    def migrate_volume(self, ctxt, volume_id, host, force_host_copy=False,
-                       new_type_id=None, volume=None):
-        return self.manager.migrate_volume(
-            ctxt, volume_id, host, force_host_copy=force_host_copy,
-            new_type_id=new_type_id, volume=volume)
-
-    def publish_service_capabilities(self, context):
-        return self.manager.publish_service_capabilities(context)
-
-    def extend_volume(self, context, volume_id, new_size, reservations,
-                      volume=None):
-        return self.manager.extend_volume(context, volume_id, new_size,
-                                          reservations, volume=volume)
-
-    def retype(self, ctxt, volume_id, new_type_id, host,
-               migration_policy='never', reservations=None,
-               volume=None, old_reservations=None):
-        return self.manager.retype(ctxt, volume_id, new_type_id, host,
-                                   migration_policy=migration_policy,
-                                   reservations=reservations, volume=volume,
-                                   old_reservations=old_reservations)
-
-    def manage_existing(self, ctxt, volume_id, ref=None):
-        return self.manager.manage_existing(ctxt, volume_id, ref=ref)
-
-    def promote_replica(self, ctxt, volume_id):
-        return self.manager.promote_replica(ctxt, volume_id)
-
-    def reenable_replication(self, ctxt, volume_id):
-        return self.manager.reenable_replication(ctxt, volume_id)
-
-    def create_consistencygroup(self, context, group):
-        return self.manager.create_consistencygroup(context, group)
-
-    def create_consistencygroup_from_src(self, context, group,
-                                         cgsnapshot=None, source_cg=None):
-        return self.manager.create_consistencygroup_from_src(
-            context, group, cgsnapshot=cgsnapshot, source_cg=source_cg)
-
-    def delete_consistencygroup(self, context, group):
-        return self.manager.delete_consistencygroup(context, group)
-
-    def update_consistencygroup(self, context, group, add_volumes=None,
-                                remove_volumes=None):
-        return self.manager.update_consistencygroup(
-            context, group, add_volumes=add_volumes,
-            remove_volumes=remove_volumes)
-
-    def create_cgsnapshot(self, context, cgsnapshot):
-        return self.manager.create_cgsnapshot(context, cgsnapshot)
-
-    def delete_cgsnapshot(self, context, cgsnapshot):
-        return self.manager.delete_cgsnapshot(context, cgsnapshot)
-
-    def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
-        return self.manager.update_migrated_volume(ctxt, volume, new_volume,
-                                                   volume_status)
-
-    def failover_host(self, context, secondary_backend_id=None):
-        return self.manager.failover_host(
-            context, secondary_backend_id=secondary_backend_id)
-
-    def freeze_host(self, context):
-        return self.manager.freeze_host(context)
-
-    def thaw_host(self, context):
-        return self.manager.thaw_host(context)
-
-    def manage_existing_snapshot(self, ctxt, snapshot, ref=None):
-        return self.manager.manage_exisiting_snapshot(ctxt, snapshot, ref=ref)
-
-    def get_capabilities(self, context, discover):
-        return self.manager.get_capabilities(context, discover)
-
-    def get_backup_device(self, ctxt, backup):
-        return self.manager.get_backup_device(ctxt, backup)
-
-    def secure_file_operations_enabled(self, ctxt, volume):
-        return self.manager.secure_file_operations_enabled(ctxt, volume)
