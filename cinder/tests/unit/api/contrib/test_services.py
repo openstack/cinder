@@ -653,9 +653,13 @@ class ServicesTest(test.TestCase):
                           req, "disable-log-reason", body)
 
     def test_invalid_reason_field(self):
-        reason = ' '
+        # Check that empty strings are not allowed
+        reason = ' ' * 10
         self.assertFalse(self.controller._is_valid_as_reason(reason))
         reason = 'a' * 256
+        self.assertFalse(self.controller._is_valid_as_reason(reason))
+        # Check that spaces at the end are also counted
+        reason = 'a' * 255 + ' '
         self.assertFalse(self.controller._is_valid_as_reason(reason))
         reason = 'it\'s a valid reason.'
         self.assertTrue(self.controller._is_valid_as_reason(reason))

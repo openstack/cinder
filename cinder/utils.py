@@ -625,7 +625,8 @@ def get_blkdev_major_minor(path, lookup_for_file=True):
         raise exception.Error(msg)
 
 
-def check_string_length(value, name, min_length=0, max_length=None):
+def check_string_length(value, name, min_length=0, max_length=None,
+                        allow_all_spaces=True):
     """Check the length of specified string.
 
     :param value: the value of the string
@@ -639,6 +640,11 @@ def check_string_length(value, name, min_length=0, max_length=None):
                                      max_length=max_length)
     except(ValueError, TypeError) as exc:
         raise exception.InvalidInput(reason=exc)
+
+    if not allow_all_spaces and str.isspace(value):
+        msg = _('%(name)s cannot be all spaces.')
+        raise exception.InvalidInput(reason=msg)
+
 
 _visible_admin_metadata_keys = ['readonly', 'attached_mode']
 
