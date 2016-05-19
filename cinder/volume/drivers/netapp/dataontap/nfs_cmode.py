@@ -434,7 +434,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                                  'using local image cache.'),
                              {'img': image_id, 'vol': volume['id']})
             # Image cache was not present, attempt copy offload workflow
-            if not copy_success and col_path and major == 1 and minor >= 20:
+            if (not copy_success and col_path and
+                    major == 1 and minor >= 20):
                 LOG.debug('No result found in image cache')
                 self._copy_from_img_service(context, volume, image_service,
                                             image_id)
@@ -465,41 +466,81 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
         """Try copying image file_name from cached file_name."""
         LOG.debug("Trying copy from cache using copy offload.")
         copied = False
-        for res in cache_result:
-            try:
-                (share, file_name) = res
-                LOG.debug("Found cache file_name on share %s.", share)
-                if share != self._get_provider_location(volume['id']):
-                    col_path = self.configuration.netapp_copyoffload_tool_path
-                    src_ip = self._get_ip_verify_on_cluster(
-                        share.split(':')[0])
-                    src_path = os.path.join(share.split(':')[1], file_name)
-                    dst_ip = self._get_ip_verify_on_cluster(self._get_host_ip(
-                        volume['id']))
-                    dst_path = os.path.join(
-                        self._get_export_path(volume['id']), volume['name'])
-                    # Always run copy offload as regular user, it's sufficient
-                    # and rootwrap doesn't allow copy offload to run as root
-                    # anyways.
-                    self._execute(col_path, src_ip, dst_ip,
-                                  src_path, dst_path,
-                                  run_as_root=False,
-                                  check_exit_code=0)
-                    self._register_image_in_cache(volume, image_id)
-                    LOG.debug("Copied image from cache to volume %s using"
-                              " copy offload.", volume['id'])
-                else:
-                    self._clone_file_dst_exists(share, file_name,
-                                                volume['name'],
-                                                dest_exists=True)
-                    LOG.debug("Copied image from cache to volume %s using"
-                              " cloning.", volume['id'])
-                self._post_clone_image(volume)
+        cache_copy, found_local = self._find_image_location(cache_result,
+                                                            volume['id'])
+
+        try:
+            if found_local:
+                (nfs_share, file_name) = cache_copy
+                self._clone_file_dst_exists(
+                    nfs_share, file_name, volume['name'], dest_exists=True)
+                LOG.debug("Copied image from cache to volume %s using "
+                          "cloning.", volume['id'])
                 copied = True
-                break
-            except Exception as e:
-                LOG.exception(_LE('Error in workflow copy from cache. %s.'), e)
+            elif cache_copy:
+                self._copy_from_remote_cache(volume, image_id, cache_copy)
+                copied = True
+
+            if copied:
+                self._post_clone_image(volume)
+
+        except Exception as e:
+            LOG.exception(_LE('Error in workflow copy from cache. %s.'), e)
         return copied
+
+    def _find_image_location(self, cache_result, volume_id):
+        """Finds the location of a cached image.
+
+        Returns image location local to the NFS share, that matches the
+        volume_id, if it exists. Otherwise returns the last entry in
+        cache_result or None if cache_result is empty.
+        """
+
+        found_local_copy = False
+        cache_copy = None
+        provider_location = self._get_provider_location(volume_id)
+        for res in cache_result:
+            (share, file_name) = res
+            if share == provider_location:
+                cache_copy = res
+                found_local_copy = True
+                break
+            else:
+                cache_copy = res
+        return cache_copy, found_local_copy
+
+    def _copy_from_remote_cache(self, volume, image_id, cache_copy):
+        """Copies the remote cached image to the provided volume.
+
+        Executes the copy offload binary which copies the cached image to
+        the destination path of the provided volume. Also registers the new
+        copy of the image as a cached image.
+        """
+
+        (nfs_share, file_name) = cache_copy
+        col_path = self.configuration.netapp_copyoffload_tool_path
+        src_ip, src_path = self._get_source_ip_and_path(nfs_share, file_name)
+        dest_ip, dest_path = self._get_destination_ip_and_path(volume)
+
+        # Always run copy offload as regular user, it's sufficient
+        # and rootwrap doesn't allow copy offload to run as root anyways.
+        self._execute(col_path, src_ip, dest_ip, src_path, dest_path,
+                      run_as_root=False, check_exit_code=0)
+        self._register_image_in_cache(volume, image_id)
+        LOG.debug("Copied image from cache to volume %s using copy offload.",
+                  volume['id'])
+
+    def _get_source_ip_and_path(self, nfs_share, file_name):
+        src_ip = self._get_ip_verify_on_cluster(nfs_share.split(':')[0])
+        src_path = os.path.join(nfs_share.split(':')[1], file_name)
+        return src_ip, src_path
+
+    def _get_destination_ip_and_path(self, volume):
+        dest_ip = self._get_ip_verify_on_cluster(
+            self._get_host_ip(volume['id']))
+        dest_path = os.path.join(self._get_export_path(
+            volume['id']), volume['name'])
+        return dest_ip, dest_path
 
     def _clone_file_dst_exists(self, share, src_name, dst_name,
                                dest_exists=False):
