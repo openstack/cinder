@@ -4567,11 +4567,35 @@ def is_orm_value(obj):
                             sqlalchemy.sql.expression.ColumnElement))
 
 
+def _check_is_not_multitable(values, model):
+    """Check that we don't try to do multitable updates.
+
+    Since PostgreSQL doesn't support multitable updates we want to always fail
+    if we have such a query in our code, even if with MySQL it would work.
+    """
+    used_models = set()
+    for field in values:
+        if isinstance(field, sqlalchemy.orm.attributes.InstrumentedAttribute):
+            used_models.add(field.class_)
+        elif isinstance(field, six.string_types):
+            used_models.add(model)
+        else:
+            raise exception.ProgrammingError(
+                reason='DB Conditional update - Unknown field type, must be '
+                       'string or ORM field.')
+        if len(used_models) > 1:
+            raise exception.ProgrammingError(
+                reason='DB Conditional update - Error in query, multitable '
+                       'updates are not supported.')
+
+
 @require_context
 @_retry_on_deadlock
 def conditional_update(context, model, values, expected_values, filters=(),
                        include_deleted='no', project_only=False, order=None):
     """Compare-and-swap conditional update SQLAlchemy implementation."""
+    _check_is_not_multitable(values, model)
+
     # Provided filters will become part of the where clause
     where_conds = list(filters)
 
