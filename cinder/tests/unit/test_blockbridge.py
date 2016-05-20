@@ -17,10 +17,7 @@ Blockbridge EPS iSCSI Volume Driver Tests
 
 import base64
 
-try:
-    from unittest import mock
-except ImportError:
-    import mock
+import mock
 from oslo_serialization import jsonutils
 from oslo_utils import units
 import six
