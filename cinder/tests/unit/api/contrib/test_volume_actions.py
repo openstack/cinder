@@ -739,16 +739,16 @@ class VolumeRetypeActionsTest(test.TestCase):
         self._retype_volume_encryption('available', 202, False, False, False)
 
     def test_retype_volume_orig_no_type_dest_enc(self):
-        self._retype_volume_encryption('available', 400, False, False)
+        self._retype_volume_encryption('available', 202, False, False)
 
     def test_retype_volume_orig_type_no_enc_dest_no_enc(self):
         self._retype_volume_encryption('available', 202, True, False, False)
 
     def test_retype_volume_orig_type_no_enc_dest_enc(self):
-        self._retype_volume_encryption('available', 400, True, False)
+        self._retype_volume_encryption('available', 202, True, False)
 
     def test_retype_volume_orig_type_enc_dest_enc(self):
-        self._retype_volume_encryption('available', 400)
+        self._retype_volume_encryption('available', 202)
 
 
 def stub_volume_get(self, context, volume_id):

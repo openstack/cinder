@@ -511,3 +511,46 @@ class VolumeTypeTestCase(test.TestCase):
         volume_types.create(self.ctxt, "type-test", is_public=False)
         vtype = volume_types.get_volume_type_by_name(self.ctxt, 'type-test')
         self.assertIsNotNone(vtype.get('extra_specs', None))
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type_encryption')
+    def _exec_volume_types_encryption_changed(self, enc1, enc2,
+                                              expected_result,
+                                              mock_get_encryption):
+        def _get_encryption(ctxt, type_id):
+            if enc1 and enc1['volume_type_id'] == type_id:
+                return enc1
+            if enc2 and enc2['volume_type_id'] == type_id:
+                return enc2
+            return None
+
+        mock_get_encryption.side_effect = _get_encryption
+        actual_result = volume_types.volume_types_encryption_changed(
+            self.ctxt, fake.VOLUME_TYPE_ID, fake.VOLUME_TYPE2_ID)
+        self.assertEqual(expected_result, actual_result)
+
+    def test_volume_types_encryption_changed(self):
+        enc1 = {'volume_type_id': fake.VOLUME_TYPE_ID,
+                'cipher': 'fake',
+                'created_at': 'time1', }
+        enc2 = {'volume_type_id': fake.VOLUME_TYPE2_ID,
+                'cipher': 'fake',
+                'created_at': 'time2', }
+        self._exec_volume_types_encryption_changed(enc1, enc2, False)
+
+    def test_volume_types_encryption_changed2(self):
+        enc1 = {'volume_type_id': fake.VOLUME_TYPE_ID,
+                'cipher': 'fake1',
+                'created_at': 'time1', }
+        enc2 = {'volume_type_id': fake.VOLUME_TYPE2_ID,
+                'cipher': 'fake2',
+                'created_at': 'time1', }
+        self._exec_volume_types_encryption_changed(enc1, enc2, True)
+
+    def test_volume_types_encryption_changed3(self):
+        self._exec_volume_types_encryption_changed(None, None, False)
+
+    def test_volume_types_encryption_changed4(self):
+        enc1 = {'volume_type_id': fake.VOLUME_TYPE_ID,
+                'cipher': 'fake1',
+                'created_at': 'time1', }
+        self._exec_volume_types_encryption_changed(enc1, None, True)

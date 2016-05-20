@@ -42,7 +42,6 @@ import six
 import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import or_, and_, case
-from sqlalchemy.orm import aliased
 from sqlalchemy.orm import joinedload, joinedload_all, undefer_group
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.schema import Table
@@ -2262,29 +2261,6 @@ def volume_has_attachments_filter():
         and_(models.Volume.id == models.VolumeAttachment.volume_id,
              models.VolumeAttachment.attach_status != 'detached',
              ~models.VolumeAttachment.deleted))
-
-
-def volume_has_same_encryption_type(new_vol_type):
-    """Filter to check that encryption matches with new volume type.
-
-    They match if both don't have encryption or both have the same Encryption.
-    """
-    # Query for the encryption in the new volume type
-    encryption_alias = aliased(models.Encryption)
-    new_enc = sql.select((encryption_alias.encryption_id,)).where(and_(
-        ~encryption_alias.deleted,
-        encryption_alias.volume_type_id == new_vol_type))
-
-    # Query for the encryption in the old volume type
-    old_enc = sql.select((models.Encryption.encryption_id,)).where(and_(
-        ~models.Encryption.deleted,
-        models.Encryption.volume_type_id == models.Volume.volume_type_id))
-
-    # NOTE(geguileo): This query is optimizable, but at this moment I can't
-    #                 figure out how.
-    return or_(and_(new_enc.as_scalar().is_(None),
-                    old_enc.as_scalar().is_(None)),
-               new_enc.as_scalar() == old_enc.as_scalar())
 
 
 def volume_qos_allows_retype(new_vol_type):

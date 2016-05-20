@@ -5219,7 +5219,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
     def _retype_volume_exec(self, driver, mock_notify,
                             snap=False, policy='on-demand',
                             migrate_exc=False, exc=None, diff_equal=False,
-                            replica=False, reserve_vol_type_only=False):
+                            replica=False, reserve_vol_type_only=False,
+                            encryption_changed=False):
         elevated = context.get_admin_context()
         project_id = self.context.project_id
 
@@ -5279,7 +5280,10 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                 mock.patch.object(db.sqlalchemy.api, 'volume_get') as mock_get:
             mock_get.return_value = volume
             _retype.return_value = driver
-            _diff.return_value = ({}, diff_equal)
+            returned_diff = {}
+            if encryption_changed:
+                returned_diff = {'encryption': 'fake'}
+            _diff.return_value = (returned_diff, diff_equal)
             if migrate_exc:
                 _mig.side_effect = KeyError
             else:
@@ -5344,6 +5348,8 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
             self.assertEqual(CONF.host, volume.host)
             self.assertEqual(0, volumes_in_use)
             mock_notify.assert_not_called()
+        if encryption_changed:
+            self.assertTrue(_mig.called)
 
     def test_retype_volume_driver_success(self):
         self._retype_volume_exec(True)
@@ -5372,6 +5378,9 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
 
     def test_retype_volume_with_type_only(self):
         self._retype_volume_exec(True, reserve_vol_type_only=True)
+
+    def test_retype_volume_migration_encryption(self):
+        self._retype_volume_exec(False, encryption_changed=True)
 
     def test_migrate_driver_not_initialized(self):
         volume = tests_utils.create_volume(self.context, size=0,
@@ -5995,6 +6004,7 @@ class DriverTestCase(test.TestCase):
             self.volume.delete_volume(self.context, volume_id)
 
 
+@ddt.ddt
 class GenericVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver."""
     driver_name = "cinder.tests.fake_driver.LoggingVolumeDriver"
@@ -6215,7 +6225,12 @@ class GenericVolumeDriverTestCase(DriverTestCase):
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_detach_volume')
     @mock.patch.object(volutils, 'copy_volume')
     @mock.patch.object(volume_rpcapi.VolumeAPI, 'get_capabilities')
+    @mock.patch.object(cinder.volume.volume_types,
+                       'volume_types_encryption_changed')
+    @ddt.data(False, True)
     def test_copy_volume_data_mgr(self,
+                                  encryption_changed,
+                                  mock_encryption_changed,
                                   mock_get_capabilities,
                                   mock_copy,
                                   mock_detach,
@@ -6228,17 +6243,24 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         dest_vol = tests_utils.create_volume(self.context, size=1,
                                              host=CONF.host)
         mock_get_connector.return_value = {}
+        mock_encryption_changed.return_value = encryption_changed
         self.volume.driver._throttle = mock.MagicMock()
 
         attach_expected = [
-            mock.call(self.context, dest_vol, {}, remote=False),
-            mock.call(self.context, src_vol, {}, remote=False)]
+            mock.call(self.context, dest_vol, {},
+                      remote=False,
+                      attach_encryptor=encryption_changed),
+            mock.call(self.context, src_vol, {},
+                      remote=False,
+                      attach_encryptor=encryption_changed)]
 
         detach_expected = [
             mock.call(self.context, {'device': {'path': 'bar'}},
-                      dest_vol, {}, force=False, remote=False),
+                      dest_vol, {}, force=False, remote=False,
+                      attach_encryptor=encryption_changed),
             mock.call(self.context, {'device': {'path': 'foo'}},
-                      src_vol, {}, force=False, remote=False)]
+                      src_vol, {}, force=False, remote=False,
+                      attach_encryptor=encryption_changed)]
 
         attach_volume_returns = [
             {'device': {'path': 'bar'}},

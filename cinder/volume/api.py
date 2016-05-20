@@ -1488,18 +1488,17 @@ class API(base.Base):
         # We don't support changing QoS at the front-end yet for in-use volumes
         # TODO(avishay): Call Nova to change QoS setting (libvirt has support
         # - virDomainSetBlockIoTune() - Nova does not have support yet).
-        filters = [db.volume_has_same_encryption_type(vol_type_id),
-                   db.volume_qos_allows_retype(vol_type_id)]
+        filters = [db.volume_qos_allows_retype(vol_type_id)]
 
         updates = {'status': 'retyping',
                    'previous_status': objects.Volume.model.status}
 
         if not volume.conditional_update(updates, expected, filters):
             msg = _('Retype needs volume to be in available or in-use state, '
-                    'have same encryption requirements, not be part of an '
-                    'active migration or a group, requested type has to be '
-                    'different that the one from the volume, and for in-use '
-                    'volumes front-end qos specs cannot change.')
+                    'not be part of an active migration or a consistency '
+                    'group, requested type has to be different that the '
+                    'one from the volume, and for in-use volumes front-end '
+                    'qos specs cannot change.')
             LOG.error(msg)
             QUOTAS.rollback(context, reservations + old_reservations,
                             project_id=volume.project_id)
