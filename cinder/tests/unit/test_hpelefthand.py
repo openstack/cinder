@@ -15,6 +15,7 @@
 #
 """Unit tests for OpenStack Cinder volume drivers."""
 
+import copy
 import json
 import mock
 from oslo_utils import units
@@ -578,6 +579,79 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # validate call chain
             mock_client.assert_has_calls(expected)
 
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_initialize_connection_with_chap_disabled(self, mock_utils):
+        # setup_mock_client drive with CHAP disabled configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+        mock_utils.return_value = 'random-pass'
+        mock_client.getServerByName.return_value = {
+            'id': self.server_id,
+            'name': self.serverName,
+            'chapTargetSecret': 'random-pass'}
+        mock_client.getVolumeByName.return_value = {
+            'id': self.volume_id,
+            'iscsiSessions': None
+        }
+        expected = [
+            mock.call.getServerByName('fakehost'),
+            mock.call.getVolumeByName('fakevolume'),
+            mock.call.addServerAccess(1, 0),
+            mock.call.logout()]
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # test initialize_connection with chap disabled
+            # and chapTargetSecret
+            self.driver.initialize_connection(
+                self.volume,
+                self.connector)
+            mock_client.assert_has_calls(expected)
+
+    @mock.patch('cinder.volume.utils.generate_password')
+    def test_initialize_connection_with_chap_enabled(self, mock_utils):
+        # setup_mock_client drive with CHAP enabled configuration
+        # and return the mock HTTP LeftHand client
+        conf = self.default_mock_conf()
+        conf.hpelefthand_iscsi_chap_enabled = True
+        mock_client = self.setup_driver(config=conf)
+        mock_client.getServerByName.return_value = {
+            'id': self.server_id,
+            'name': self.serverName,
+            'chapTargetSecret': None}
+
+        mock_client.getVolumeByName.return_value = {
+            'id': self.volume_id,
+            'iscsiSessions': None}
+        expected = [
+            mock.call.getServerByName('fakehost'),
+            mock.call.getVolumeByName('fakevolume'),
+            mock.call.addServerAccess(1, 0),
+            mock.call.logout()]
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # test initialize_connection with chap enabled
+            # and chapTargetSecret is None
+            result = self.driver.initialize_connection(
+                self.volume,
+                self.connector)
+            mock_client.assert_has_calls(expected)
+
+            # test initialize_connection with chapAuthenticationRequired
+            mock_client.getServerByName.side_effect = (
+                hpeexceptions.HTTPNotFound())
+            mock_client.createServer.return_value = {
+                'id': self.server_id,
+                'chapAuthenticationRequired': True,
+                'chapTargetSecret': 'random-pass'}
+            result = self.driver.initialize_connection(
+                self.volume,
+                self.connector)
+            self.assertEqual('random-pass', result['data']['auth_password'])
+
     def test_terminate_connection(self):
 
         # setup drive with default configuration
@@ -741,6 +815,15 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             # ensure the raised exception is a cinder exception
             self.assertRaises(
                 exception.SnapshotIsBusy,
+                self.driver.delete_snapshot,
+                self.snapshot)
+
+            # Exception other than HTTPServerError and HTTPNotFound
+            ex = hpeexceptions.HTTPBadRequest({
+                'message': 'Bad request'})
+            mock_client.getSnapshotByName.side_effect = ex
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
                 self.driver.delete_snapshot,
                 self.snapshot)
 
@@ -1274,6 +1357,30 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                'provider_location': provider_location}
             self.assertEqual(expected_update, actual_update)
 
+    def test_update_migrated_volume_failed_to_rename(self):
+        mock_client = self.setup_driver()
+        volume_id = 'fake_vol_id'
+        clone_id = 'fake_clone_id'
+        fake_old_volume = {'id': volume_id}
+        provider_location = 'foo'
+        fake_new_volume = {'id': clone_id,
+                           '_name_id': clone_id,
+                           'provider_location': provider_location}
+        original_volume_status = 'available'
+        # mock HTTPServerError (array failure)
+        mock_client.modifyVolume.side_effect =\
+            hpeexceptions.HTTPServerError()
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            actual_update = self.driver.update_migrated_volume(
+                context.get_admin_context(), fake_old_volume,
+                fake_new_volume, original_volume_status)
+
+            expected_update = {'_name_id': clone_id,
+                               'provider_location': provider_location}
+            self.assertEqual(expected_update, actual_update)
+
     @mock.patch.object(volume_types, 'get_volume_type',
                        return_value={'extra_specs': {'hpelh:ao': 'true'}})
     def test_create_volume_with_ao_true(self, _mock_volume_type):
@@ -1404,6 +1511,24 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                                            {'name': 'volume-12345'}),
                     mock.call.logout()])
             self.assertEqual(expected_obj, obj)
+
+    def test_manage_existing_with_non_existing_virtual_volume(self):
+        mock_client = self.setup_driver()
+        self.driver.api_version = "1.1"
+        existing_ref = {'source-name': self.volume_name}
+        mock_client.getVolumeByName.side_effect = hpeexceptions.HTTPNotFound
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+            self.assertRaises(exception.InvalidInput,
+                              self.driver.manage_existing,
+                              self.volume,
+                              existing_ref)
+
+            mock_client.assert_has_calls(
+                self.driver_startup_call_stack + [
+                    mock.call.getVolumeByName(self.volume_name),
+                    mock.call.logout()])
 
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_manage_existing_retype(self, _mock_volume_types):
@@ -1764,6 +1889,72 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                               existing_ref=existing_ref)
 
             mock_client.assert_has_calls([])
+
+    def test_manage_snapshot(self):
+        mock_client = self.setup_driver()
+        self.driver.api_version = "1.1"
+        existing_ref = {'source-name': self.snapshot_name}
+        snapshot = {'volume_id': '222'}
+        snapshot.update(self.snapshot)
+        snapshot['id'] = '4'
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            # Failed to update the existing snapshot with the new name
+            mock_client.getSnapshotByName.return_value = {'id': '4'}
+            mock_client.getSnapshotParentVolume.return_value = {
+                'name': 'volume-222'}
+            mock_client.modifySnapshot.side_effect = \
+                hpeexceptions.HTTPServerError
+            expected = [mock.call.getSnapshotByName('fakeshapshot'),
+                        mock.call.getSnapshotParentVolume('fakeshapshot'),
+                        mock.call.modifySnapshot('4', {'name': 'snapshot-4'})]
+
+            self.driver._manage_snapshot(
+                client=mock_client,
+                volume=snapshot['volume'],
+                snapshot=snapshot,
+                target_snap_name= existing_ref['source-name'],
+                existing_ref=existing_ref)
+
+            mock_client.assert_has_calls(
+                expected)
+
+            # The provided snapshot is not a snapshot of the provided volume,
+            # raises InvalidInput exception
+            mock_client.getSnapshotParentVolume.return_value = {
+                'name': 'volume-111'}
+            self.assertRaises(exception.InvalidInput,
+                              self.driver._manage_snapshot,
+                              client=mock_client,
+                              volume=snapshot['volume'],
+                              snapshot=snapshot,
+                              target_snap_name= existing_ref['source-name'],
+                              existing_ref=existing_ref)
+
+            # Non existence of parent volume of a snapshot
+            # raises HTTPNotFound exception
+            mock_client.getSnapshotParentVolume.side_effect =\
+                hpeexceptions.HTTPNotFound
+            self.assertRaises(exception.InvalidInput,
+                              self.driver._manage_snapshot,
+                              client=mock_client,
+                              volume=snapshot['volume'],
+                              snapshot=snapshot,
+                              target_snap_name= existing_ref['source-name'],
+                              existing_ref=existing_ref)
+
+            # Non existence of a snapshot raises HTTPNotFound exception
+            mock_client.getSnapshotByName.side_effect =\
+                hpeexceptions.HTTPNotFound
+            self.assertRaises(exception.InvalidInput,
+                              self.driver._manage_snapshot,
+                              client=mock_client,
+                              volume=snapshot['volume'],
+                              snapshot=snapshot,
+                              target_snap_name= existing_ref['source-name'],
+                              existing_ref=existing_ref)
 
     def test_manage_existing_snapshot_get_size_invalid_input(self):
         mock_client = self.setup_driver()
@@ -2355,6 +2546,97 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 context.get_admin_context(),
                 [volume],
                 'default')
+
+    @mock.patch.object(volume_types, 'get_volume_type')
+    def test_do_volume_replication_setup(self, mock_get_volume_type):
+        # set up driver with default config
+        conf = self.default_mock_conf()
+        conf.replication_device = self.repl_targets_unmgd
+        mock_client = self.setup_driver(config=conf)
+        volume = self.volume
+        volume['volume_type_id'] = 4
+        mock_client.createVolume.return_value = {
+            'iscsiIqn': self.connector['initiator']}
+        mock_client.doesRemoteSnapshotScheduleExist.return_value = False
+        mock_replicated_client = self.setup_driver(config=conf)
+
+        with mock.patch.object(
+                hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                '_create_client') as mock_do_setup, \
+            mock.patch.object(
+                hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                '_create_replication_client') as mock_replication_client:
+            mock_do_setup.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+            client = self.driver._login()
+            # failed to create remote snapshot schedule on the primary system
+            mock_get_volume_type.return_value = {
+                'name': 'replicated',
+                'extra_specs': {'replication_enabled': '<is> True'}}
+            mock_client.createRemoteSnapshotSchedule.side_effect =\
+                hpeexceptions.HTTPServerError()
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver._do_volume_replication_setup,
+                volume,
+                client)
+            # remote retention count of a volume greater than max retention
+            # count raises an exception
+            mock_get_volume_type.return_value = {
+                'name': 'replicated',
+                'extra_specs': {
+                    'replication_enabled': '<is> True',
+                    'replication:remote_retention_count': '52'}}
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver._do_volume_replication_setup,
+                volume,
+                client)
+            # retention count of a volume greater than max retention
+            # count raises an exception
+            mock_get_volume_type.return_value = {
+                'name': 'replicated',
+                'extra_specs': {
+                    'replication_enabled': '<is> True',
+                    'replication:retention_count': '52'}}
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver._do_volume_replication_setup,
+                volume,
+                client)
+            # sync period of a volume less than minimum sync period
+            # raises an exception
+            mock_get_volume_type.return_value = {
+                'name': 'replicated',
+                'extra_specs': {
+                    'replication_enabled': '<is> True',
+                    'replication:sync_period': '1500'}}
+            self.assertRaises(
+                exception.VolumeBackendAPIException,
+                self.driver._do_volume_replication_setup,
+                volume,
+                client)
+
+    def test_do_setup_with_incorrect_replication_device_information(self):
+        conf = self.default_mock_conf()
+        repl_target = copy.deepcopy(self.repl_targets)
+        # delete left hand password so that replication device
+        # information become incorrect
+        del repl_target[0]['hpelefthand_password']
+        conf.replication_device = repl_target
+        mock_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver(config=conf)
+
+        with mock.patch.object(
+                hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                '_create_client') as mock_do_setup, \
+            mock.patch.object(
+                hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                '_create_replication_client') as mock_replication_client:
+            mock_do_setup.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+            self.driver.do_setup(None)
+            self.assertFalse(self.driver._replication_targets)
 
     def test__create_replication_client(self):
         # set up driver with default config
