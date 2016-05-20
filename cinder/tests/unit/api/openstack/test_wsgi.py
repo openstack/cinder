@@ -12,6 +12,8 @@
 
 import inspect
 
+import mock
+from oslo_utils import encodeutils
 import webob
 
 from cinder.api.openstack import wsgi
@@ -257,6 +259,35 @@ class ResourceTest(test.TestCase):
         actual = resource.dispatch(method, None, {'pants': 'off'})
         expected = 'off'
         self.assertEqual(expected, actual)
+
+    @mock.patch('oslo_utils.strutils.mask_password')
+    def test_process_stack_non_ascii(self, masker):
+        class Controller(wsgi.Controller):
+            @wsgi.action('fooAction')
+            def fooAction(self, req, id, body):
+                return 'done'
+
+        controller = Controller()
+        resource = wsgi.Resource(controller)
+        # The following body has a non-ascii chars
+        serialized_body = '{"foo": {"nonascii": "\xe2\x80\x96\xe2\x88\xa5"}}'
+        request = webob.Request.blank('/tests/fooAction')
+        action_args = {'id': 12}
+        # Now test _process_stack() mainline flow.
+        # Without the fix to safe_decode the body in _process_stack(),
+        # this test fails with:
+        #     UnicodeDecodeError: 'ascii' codec can't decode byte 0xe2 in
+        #                         position 22: ordinal not in range(128)
+        response = resource._process_stack(request, 'fooAction', action_args,
+                                           'application/json', serialized_body,
+                                           'application/json')
+        self.assertEqual('done', response)
+        # The following check verifies that mask_password was called with
+        # the decoded body.
+        masker.assert_called_once()
+        decoded_body = encodeutils.safe_decode(
+            serialized_body, errors='ignore')
+        self.assertIn(decoded_body, masker.call_args[0][0])
 
     def test_get_method_undefined_controller_action(self):
         class Controller(object):
