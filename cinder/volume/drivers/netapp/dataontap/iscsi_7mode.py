@@ -16,13 +16,8 @@
 Volume driver for NetApp Data ONTAP (7-mode) iSCSI storage systems.
 """
 
-from oslo_log import log as logging
-
 from cinder.volume import driver
 from cinder.volume.drivers.netapp.dataontap import block_7mode
-
-
-LOG = logging.getLogger(__name__)
 
 
 class NetApp7modeISCSIDriver(driver.BaseVD,

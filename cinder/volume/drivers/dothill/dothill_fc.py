@@ -14,14 +14,10 @@
 #    under the License.
 #
 
-from oslo_log import log as logging
-
 import cinder.volume.driver
 from cinder.volume.drivers.dothill import dothill_common
 from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
-
-LOG = logging.getLogger(__name__)
 
 
 class DotHillFCDriver(cinder.volume.driver.FibreChannelDriver):

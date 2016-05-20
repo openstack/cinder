@@ -23,13 +23,9 @@ number and the weighing has the opposite effect of the default.
 
 
 from oslo_config import cfg
-from oslo_log import log as logging
 
 from cinder import db
 from cinder.scheduler import weights
-
-
-LOG = logging.getLogger(__name__)
 
 
 volume_number_weight_opts = [
