@@ -84,7 +84,7 @@ class CapacityWeigher(weights.BaseHostWeigher):
         largest weight value is being used a weight of -1 is used instead.
         See _weigh_object method.
         """
-        tmp_weights = super(weights.BaseHostWeigher, self).weigh_objects(
+        tmp_weights = super(CapacityWeigher, self).weigh_objects(
             weighed_obj_list, weight_properties)
 
         if math.isinf(self.maxval):
