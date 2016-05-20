@@ -252,7 +252,11 @@ class CohoDriverTest(test.TestCase):
         mock_get_volume_location.assert_has_calls(
             [mock.call(INVALID_SNAPSHOT['volume_id'])])
 
-    def test_snapshot_failure_when_remote_is_unreachable(self):
+    @mock.patch('cinder.volume.drivers.coho.Client.init_socket',
+                side_effect=exception.CohoException(
+                    "Failed to establish connection."))
+    def test_snapshot_failure_when_remote_is_unreachable(self,
+                                                         mock_init_socket):
         drv = coho.CohoDriver(configuration=self.configuration)
 
         mock_get_volume_location = self.mock_object(coho.CohoDriver,
