@@ -203,10 +203,11 @@ def require_volume_exists(f):
     their first two arguments.
     """
 
+    @functools.wraps(f)
     def wrapper(context, volume_id, *args, **kwargs):
-        _volume_get(context, volume_id, joined_load=False)
+        if not resource_exists(context, models.Volume, volume_id):
+            raise exception.VolumeNotFound(volume_id=volume_id)
         return f(context, volume_id, *args, **kwargs)
-    wrapper.__name__ = f.__name__
     return wrapper
 
 
@@ -217,10 +218,11 @@ def require_snapshot_exists(f):
     their first two arguments.
     """
 
+    @functools.wraps(f)
     def wrapper(context, snapshot_id, *args, **kwargs):
-        snapshot_get(context, snapshot_id)
+        if not resource_exists(context, models.Snapshot, snapshot_id):
+            raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
         return f(context, snapshot_id, *args, **kwargs)
-    wrapper.__name__ = f.__name__
     return wrapper
 
 
@@ -4582,6 +4584,17 @@ def image_volume_cache_get_all_for_host(context, host):
 
 
 ###############################
+
+
+@require_context
+def resource_exists(context, model, resource_id):
+    # Match non deleted resources by the id
+    conditions = [model.id == resource_id, ~model.deleted]
+    # If the context is not admin we limit it to the context's project
+    if is_user_context(context) and hasattr(model, 'project_id'):
+        conditions.append(model.project_id == context.project_id)
+    query = get_session().query(sql.exists().where(and_(*conditions)))
+    return query.scalar()
 
 
 def get_model_for_versioned_object(versioned_object):

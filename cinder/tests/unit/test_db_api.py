@@ -2455,3 +2455,94 @@ class DBAPIImageVolumeCacheEntryTestCase(BaseTest):
         host = 'abc@123#poolz'
         entries = db.image_volume_cache_get_all_for_host(self.ctxt, host)
         self.assertEqual([], entries)
+
+
+class DBAPIGenericTestCase(BaseTest):
+    def test_resource_exists_volume(self):
+        # NOTE(geguileo): We create 2 volumes in this test (even if the second
+        # one is not being used) to confirm that the DB exists subquery is
+        # properly formulated and doesn't result in multiple rows, as such
+        # case would raise an exception when converting the result to an
+        # scalar.  This would happen if for example the query wasn't generated
+        # directly using get_session but using model_query like this:
+        #  query = model_query(context, model,
+        #                      sql.exists().where(and_(*conditions)))
+        # Instead of what we do:
+        #  query = get_session().query(sql.exists().where(and_(*conditions)))
+        db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
+        db.volume_create(self.ctxt, {'id': fake.VOLUME2_ID})
+        model = db.get_model_for_versioned_object(objects.Volume)
+        res = sqlalchemy_api.resource_exists(self.ctxt, model, fake.VOLUME_ID)
+        self.assertTrue(res, msg="Couldn't find existing Volume")
+
+    def test_resource_exists_volume_fails(self):
+        db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
+        model = db.get_model_for_versioned_object(objects.Volume)
+        res = sqlalchemy_api.resource_exists(self.ctxt, model, fake.VOLUME2_ID)
+        self.assertFalse(res, msg='Found nonexistent Volume')
+
+    def test_resource_exists_snapshot(self):
+        # Read NOTE in test_resource_exists_volume on why we create 2 snapshots
+        vol = db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
+        db.snapshot_create(self.ctxt, {'id': fake.SNAPSHOT_ID,
+                                       'volume_id': vol.id})
+        db.snapshot_create(self.ctxt, {'id': fake.SNAPSHOT2_ID,
+                                       'volume_id': vol.id})
+        model = db.get_model_for_versioned_object(objects.Snapshot)
+        res = sqlalchemy_api.resource_exists(self.ctxt, model,
+                                             fake.SNAPSHOT_ID)
+        self.assertTrue(res, msg="Couldn't find existing Snapshot")
+
+    def test_resource_exists_snapshot_fails(self):
+        vol = db.volume_create(self.ctxt, {'id': fake.VOLUME_ID})
+        db.snapshot_create(self.ctxt, {'id': fake.SNAPSHOT_ID,
+                                       'volume_id': vol.id})
+        model = db.get_model_for_versioned_object(objects.Snapshot)
+        res = sqlalchemy_api.resource_exists(self.ctxt, model,
+                                             fake.SNAPSHOT2_ID)
+        self.assertFalse(res, msg='Found nonexistent Snapshot')
+
+    def test_resource_exists_volume_project_separation(self):
+        user_context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                              is_admin=False)
+        user2_context = context.RequestContext(fake.USER2_ID, fake.PROJECT2_ID,
+                                               is_admin=False)
+        volume = db.volume_create(user_context,
+                                  {'project_id': fake.PROJECT_ID})
+        model = db.get_model_for_versioned_object(objects.Volume)
+
+        # Owner can find it
+        res = sqlalchemy_api.resource_exists(user_context, model, volume.id)
+        self.assertTrue(res, msg='Owner cannot find its own Volume')
+
+        # Non admin user that is not the owner cannot find it
+        res = sqlalchemy_api.resource_exists(user2_context, model, volume.id)
+        self.assertFalse(res, msg="Non admin user can find somebody else's "
+                                  "volume")
+
+        # Admin can find it
+        res = sqlalchemy_api.resource_exists(self.ctxt, model, volume.id)
+        self.assertTrue(res, msg="Admin cannot find the volume")
+
+    def test_resource_exists_snapshot_project_separation(self):
+        user_context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
+                                              is_admin=False)
+        user2_context = context.RequestContext(fake.USER2_ID, fake.PROJECT2_ID,
+                                               is_admin=False)
+        vol = db.volume_create(user_context, {'project_id': fake.PROJECT_ID})
+        snap = db.snapshot_create(self.ctxt, {'project_id': fake.PROJECT_ID,
+                                              'volume_id': vol.id})
+        model = db.get_model_for_versioned_object(objects.Snapshot)
+
+        # Owner can find it
+        res = sqlalchemy_api.resource_exists(user_context, model, snap.id)
+        self.assertTrue(res, msg='Owner cannot find its own Snapshot')
+
+        # Non admin user that is not the owner cannot find it
+        res = sqlalchemy_api.resource_exists(user2_context, model, snap.id)
+        self.assertFalse(res, msg="Non admin user can find somebody else's "
+                                  "Snapshot")
+
+        # Admin can find it
+        res = sqlalchemy_api.resource_exists(self.ctxt, model, snap.id)
+        self.assertTrue(res, msg="Admin cannot find the Snapshot")
