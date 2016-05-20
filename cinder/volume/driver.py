@@ -466,48 +466,26 @@ class BaseVD(object):
                 raise exception.RemoveExportException(volume=volume['id'],
                                                       reason=ex)
 
-    def _detach_snapshot(self, context, attach_info, snapshot, properties,
-                         force=False, remote=False):
+    def _detach_snapshot(self, ctxt, snapshot, properties, force=False):
         """Disconnect the snapshot from the host."""
-        # Use Brick's code to do attach/detach
-        connector = attach_info['connector']
-        connector.disconnect_volume(attach_info['conn']['data'],
-                                    attach_info['device'])
+        try:
+            self.terminate_connection_snapshot(snapshot, properties,
+                                               force=force)
+        except Exception as err:
+            err_msg = (_('Unable to terminate snapshot connection: %(err)s')
+                       % {'err': six.text_type(err)})
+            LOG.error(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
 
-        # NOTE(xyang): This method is introduced for non-disruptive backup.
-        # Currently backup service has to be on the same node as the volume
-        # driver. Therefore it is not possible to call a volume driver on a
-        # remote node. In the future, if backup can be done from a remote
-        # node, this function can be modified to allow RPC calls. The remote
-        # flag in the interface is for anticipation that it will be enabled
-        # in the future.
-        if remote:
-            LOG.error("Detaching snapshot from a remote node "
-                      "is not supported.")
-            raise exception.NotSupportedOperation(
-                operation=_("detach snapshot from remote node"))
-        else:
-            # Call local driver's terminate_connection and remove export.
-            # NOTE(avishay) This is copied from the manager's code - need to
-            # clean this up in the future.
-            try:
-                self.terminate_connection_snapshot(snapshot, properties,
-                                                   force=force)
-            except Exception as err:
-                err_msg = (_('Unable to terminate volume connection: %(err)s')
-                           % {'err': six.text_type(err)})
-                LOG.error(err_msg)
-                raise exception.VolumeBackendAPIException(data=err_msg)
-
-            try:
-                LOG.debug("Snapshot %s: removing export.", snapshot.id)
-                self.remove_export_snapshot(context, snapshot)
-            except Exception as ex:
-                LOG.exception("Error detaching snapshot %(snapshot)s, "
-                              "due to remove export failure.",
-                              {"snapshot": snapshot.id})
-                raise exception.RemoveExportException(volume=snapshot.id,
-                                                      reason=ex)
+        try:
+            LOG.debug("Snapshot %s: removing export.", snapshot.id)
+            self.remove_export_snapshot(ctxt, snapshot)
+        except Exception as ex:
+            LOG.exception("Error detaching snapshot %(snapshot)s, "
+                          "due to remove export failure.",
+                          {"snapshot": snapshot.id})
+            raise exception.RemoveExportException(volume=snapshot.id,
+                                                  reason=ex)
 
     def set_initialized(self):
         self._initialized = True
@@ -1016,63 +994,47 @@ class BaseVD(object):
 
         return (attach_info, volume)
 
-    def _attach_snapshot(self, context, snapshot, properties, remote=False):
+    def _attach_snapshot(self, ctxt, snapshot, properties):
         """Attach the snapshot."""
-        # NOTE(xyang): This method is introduced for non-disruptive backup.
-        # Currently backup service has to be on the same node as the volume
-        # driver. Therefore it is not possible to call a volume driver on a
-        # remote node. In the future, if backup can be done from a remote
-        # node, this function can be modified to allow RPC calls. The remote
-        # flag in the interface is for anticipation that it will be enabled
-        # in the future.
-        if remote:
-            LOG.error("Attaching snapshot from a remote node "
-                      "is not supported.")
-            raise exception.NotSupportedOperation(
-                operation=_("attach snapshot from remote node"))
-        else:
-            # Call local driver's create_export and initialize_connection.
-            # NOTE(avishay) This is copied from the manager's code - need to
-            # clean this up in the future.
-            model_update = None
-            try:
-                LOG.debug("Snapshot %s: creating export.", snapshot.id)
-                model_update = self.create_export_snapshot(context, snapshot,
-                                                           properties)
-                if model_update:
-                    snapshot.provider_location = model_update.get(
-                        'provider_location', None)
-                    snapshot.provider_auth = model_update.get(
-                        'provider_auth', None)
-                    snapshot.save()
-            except exception.CinderException as ex:
-                if model_update:
-                    LOG.exception("Failed updating model of snapshot "
-                                  "%(snapshot_id)s with driver provided "
-                                  "model %(model)s.",
-                                  {'snapshot_id': snapshot.id,
-                                   'model': model_update})
-                    raise exception.ExportFailure(reason=ex)
+        model_update = None
+        try:
+            LOG.debug("Snapshot %s: creating export.", snapshot.id)
+            model_update = self.create_export_snapshot(ctxt, snapshot,
+                                                       properties)
+            if model_update:
+                snapshot.provider_location = model_update.get(
+                    'provider_location', None)
+                snapshot.provider_auth = model_update.get(
+                    'provider_auth', None)
+                snapshot.save()
+        except exception.CinderException as ex:
+            if model_update:
+                LOG.exception("Failed updating model of snapshot "
+                              "%(snapshot_id)s with driver provided "
+                              "model %(model)s.",
+                              {'snapshot_id': snapshot.id,
+                               'model': model_update})
+                raise exception.ExportFailure(reason=ex)
 
+        try:
+            conn = self.initialize_connection_snapshot(
+                snapshot, properties)
+        except Exception as err:
             try:
-                conn = self.initialize_connection_snapshot(
-                    snapshot, properties)
-            except Exception as err:
-                try:
-                    err_msg = (_('Unable to fetch connection information from '
-                                 'backend: %(err)s') %
-                               {'err': six.text_type(err)})
-                    LOG.error(err_msg)
-                    LOG.debug("Cleaning up failed connect initialization.")
-                    self.remove_export_snapshot(context, snapshot)
-                except Exception as ex:
-                    ex_msg = (_('Error encountered during cleanup '
-                                'of a failed attach: %(ex)s') %
-                              {'ex': six.text_type(ex)})
-                    LOG.error(err_msg)
-                    raise exception.VolumeBackendAPIException(data=ex_msg)
-                raise exception.VolumeBackendAPIException(data=err_msg)
-        return self._connect_device(conn)
+                err_msg = (_('Unable to fetch connection information from '
+                             'backend: %(err)s') %
+                           {'err': six.text_type(err)})
+                LOG.error(err_msg)
+                LOG.debug("Cleaning up failed connect initialization.")
+                self.remove_export_snapshot(ctxt, snapshot)
+            except Exception as ex:
+                ex_msg = (_('Error encountered during cleanup '
+                            'of a failed attach: %(ex)s') %
+                          {'ex': six.text_type(ex)})
+                LOG.error(err_msg)
+                raise exception.VolumeBackendAPIException(data=ex_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        return conn
 
     def _connect_device(self, conn):
         # Use Brick's code to do attach/detach
@@ -1129,7 +1091,7 @@ class BaseVD(object):
         """
         backup_device = None
         is_snapshot = False
-        if self.backup_use_temp_snapshot() and CONF.backup_use_same_host:
+        if self.backup_use_temp_snapshot():
             (backup_device, is_snapshot) = (
                 self._get_backup_volume_temp_snapshot(context, backup))
         else:

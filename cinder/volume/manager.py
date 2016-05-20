@@ -1543,6 +1543,66 @@ class VolumeManager(manager.CleanableManager,
                  resource=volume)
         return conn_info
 
+    def initialize_connection_snapshot(self, ctxt, snapshot_id, connector):
+        utils.require_driver_initialized(self.driver)
+        snapshot = objects.Snapshot.get_by_id(ctxt, snapshot_id)
+        try:
+            self.driver.validate_connector(connector)
+        except exception.InvalidConnectorException as err:
+            raise exception.InvalidInput(reason=six.text_type(err))
+        except Exception as err:
+            err_msg = (_("Validate snapshot connection failed "
+                         "(error: %(err)s).") % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=snapshot)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        model_update = None
+        try:
+            LOG.debug("Snapshot %s: creating export.", snapshot.id)
+            model_update = self.driver.create_export_snapshot(
+                ctxt.elevated(), snapshot, connector)
+            if model_update:
+                snapshot.provider_location = model_update.get(
+                    'provider_location', None)
+                snapshot.provider_auth = model_update.get(
+                    'provider_auth', None)
+                snapshot.save()
+        except exception.CinderException as ex:
+            msg = _("Create export of snapshot failed (%s)") % ex.msg
+            LOG.exception(msg, resource=snapshot)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        try:
+            if model_update:
+                snapshot.update(model_update)
+                snapshot.save()
+        except exception.CinderException as ex:
+            LOG.exception("Model update failed.", resource=snapshot)
+            raise exception.ExportFailure(reason=six.text_type(ex))
+
+        try:
+            conn = self.driver.initialize_connection_snapshot(snapshot,
+                                                              connector)
+        except Exception as err:
+            try:
+                err_msg = (_('Unable to fetch connection information from '
+                             'backend: %(err)s') %
+                           {'err': six.text_type(err)})
+                LOG.error(err_msg)
+                LOG.debug("Cleaning up failed connect initialization.")
+                self.driver.remove_export_snapshot(ctxt.elevated(), snapshot)
+            except Exception as ex:
+                ex_msg = (_('Error encountered during cleanup '
+                            'of a failed attach: %(ex)s') %
+                          {'ex': six.text_type(ex)})
+                LOG.error(ex_msg)
+                raise exception.VolumeBackendAPIException(data=ex_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        LOG.info("Initialize snapshot connection completed successfully.",
+                 resource=snapshot)
+        return conn
+
     def terminate_connection(self, context, volume_id, connector, force=False):
         """Cleanup connection from host represented by connector.
 
@@ -1565,6 +1625,22 @@ class VolumeManager(manager.CleanableManager,
         LOG.info("Terminate volume connection completed successfully.",
                  resource=volume_ref)
 
+    def terminate_connection_snapshot(self, ctxt, snapshot_id,
+                                      connector, force=False):
+        utils.require_driver_initialized(self.driver)
+
+        snapshot = objects.Snapshot.get_by_id(ctxt, snapshot_id)
+        try:
+            self.driver.terminate_connection_snapshot(snapshot, connector,
+                                                      force=force)
+        except Exception as err:
+            err_msg = (_('Terminate snapshot connection failed: %(err)s')
+                       % {'err': six.text_type(err)})
+            LOG.exception(err_msg, resource=snapshot)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+        LOG.info("Terminate snapshot connection completed successfully.",
+                 resource=snapshot)
+
     def remove_export(self, context, volume_id):
         """Removes an export for a volume."""
         utils.require_driver_initialized(self.driver)
@@ -1578,6 +1654,20 @@ class VolumeManager(manager.CleanableManager,
 
         LOG.info("Remove volume export completed successfully.",
                  resource=volume_ref)
+
+    def remove_export_snapshot(self, ctxt, snapshot_id):
+        """Removes an export for a snapshot."""
+        utils.require_driver_initialized(self.driver)
+        snapshot = objects.Snapshot.get_by_id(ctxt, snapshot_id)
+        try:
+            self.driver.remove_export_snapshot(ctxt, snapshot)
+        except Exception:
+            msg = _("Remove snapshot export failed.")
+            LOG.exception(msg, resource=snapshot)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        LOG.info("Remove snapshot export completed successfully.",
+                 resource=snapshot)
 
     def accept_transfer(self, context, volume_id, new_user, new_project):
         # NOTE(flaper87): Verify the driver is enabled

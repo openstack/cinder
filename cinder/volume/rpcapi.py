@@ -122,15 +122,17 @@ class VolumeAPI(rpc.RPCAPI):
                that we were doing in init_host.
         3.8  - Make failover_host cluster aware and add failover_completed.
         3.9  - Adds new attach/detach methods
-        3.10 -  Returning objects instead of raw dictionaries in
+        3.10 - Returning objects instead of raw dictionaries in
                get_manageable_volumes & get_manageable_snapshots
         3.11 - Removes create_consistencygroup, delete_consistencygroup,
                create_cgsnapshot, delete_cgsnapshot, update_consistencygroup,
                and create_consistencygroup_from_src.
         3.12 - Adds set_log_levels and get_log_levels
+        3.13 - Add initialize_connection_snapshot,
+               terminate_connection_snapshot, and remove_export_snapshot.
     """
 
-    RPC_API_VERSION = '3.12'
+    RPC_API_VERSION = '3.13'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -398,6 +400,26 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(group_snapshot.service_topic_queue)
         cctxt.cast(ctxt, 'delete_group_snapshot',
                    group_snapshot=group_snapshot)
+
+    @rpc.assert_min_rpc_version('3.13')
+    def initialize_connection_snapshot(self, ctxt, snapshot, connector):
+        cctxt = self._get_cctxt(snapshot.service_topic_queue, version='3.13')
+        return cctxt.call(ctxt, 'initialize_connection_snapshot',
+                          snapshot_id=snapshot.id,
+                          connector=connector)
+
+    @rpc.assert_min_rpc_version('3.13')
+    def terminate_connection_snapshot(self, ctxt, snapshot, connector,
+                                      force=False):
+        cctxt = self._get_cctxt(snapshot.service_topic_queue, version='3.13')
+        return cctxt.call(ctxt, 'terminate_connection_snapshot',
+                          snapshot_id=snapshot.id,
+                          connector=connector, force=force)
+
+    @rpc.assert_min_rpc_version('3.13')
+    def remove_export_snapshot(self, ctxt, snapshot):
+        cctxt = self._get_cctxt(snapshot.service_topic_queue, version='3.13')
+        cctxt.cast(ctxt, 'remove_export_snapshot', snapshot_id=snapshot.id)
 
     @rpc.assert_min_rpc_version('3.9')
     def attachment_update(self, ctxt, vref, connector, attachment_id):
