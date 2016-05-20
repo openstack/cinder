@@ -416,6 +416,11 @@ class CinderPersistentObject(object):
                     setattr(self, field, current_field)
         self.obj_reset_changes()
 
+    @classmethod
+    def exists(cls, context, id_):
+        model = db.get_model_for_versioned_object(cls)
+        return db.resource_exists(context, model, id_)
+
 
 class CinderComparableObject(base.ComparableVersionedObject):
     def __eq__(self, obj):

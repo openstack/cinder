@@ -660,11 +660,10 @@ class LVMVolumeDriverTestCase(DriverTestCase):
             model_update = self.volume.driver.manage_existing(vol, ref)
             self.assertIsNone(model_update)
 
-    @mock.patch.object(db.sqlalchemy.api, 'volume_get')
-    def test_lvm_manage_existing_already_managed(self, mock_conf):
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    def test_lvm_manage_existing_already_managed(self, exists_mock):
         self._setup_stubs_for_manage_existing()
 
-        mock_conf.volume_name_template = 'volume-%s'
         vol_name = 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
         ref = {'source-name': vol_name}
         vol = {'name': 'test', 'id': 1, 'size': 0}
