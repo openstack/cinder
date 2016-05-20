@@ -322,7 +322,7 @@ class TestWindowsDriver(test.TestCase):
         fake_image_meta = db_fakes.get_fake_image_meta()
         fake_volume = db_fakes.get_fake_volume_info()
         fake_img_conv_dir = 'fake_img_conv_dir'
-        self._driver.configuration.image_conversion_dir = fake_img_conv_dir
+        self.flags(image_conversion_dir=fake_img_conv_dir)
 
         tgt_utils.get_supported_disk_format.return_value = disk_format
         mock_tmp_snap.return_value.__enter__.return_value = (
