@@ -1370,7 +1370,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             mock.Mock(return_value=fake.POOL_NAME))
 
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
-        mock_busy = self.mock_object(self.library, '_handle_busy_snapshot')
+        mock_busy = self.mock_object(
+            self.zapi_client, 'wait_for_busy_snapshot')
 
         self.library.create_cgsnapshot(fake.CG_SNAPSHOT, [snapshot])
 
@@ -1499,16 +1500,3 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         }
         mock_clone_source_to_destination.assert_called_once_with(
             clone_source_to_destination_args, fake.VOLUME)
-
-    def test_handle_busy_snapshot(self):
-        self.mock_object(block_base, 'LOG')
-        mock_get_snapshot = self.mock_object(
-            self.zapi_client, 'get_snapshot',
-            mock.Mock(return_value=fake.SNAPSHOT)
-        )
-
-        self.library._handle_busy_snapshot(fake.FLEXVOL, fake.SNAPSHOT_NAME)
-
-        self.assertEqual(1, block_base.LOG.info.call_count)
-        mock_get_snapshot.assert_called_once_with(fake.FLEXVOL,
-                                                  fake.SNAPSHOT_NAME)

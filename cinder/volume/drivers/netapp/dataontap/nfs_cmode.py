@@ -170,7 +170,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
                                        volume_id, share=None,
-                                       is_snapshot=False):
+                                       is_snapshot=False,
+                                       source_snapshot=None):
         """Clone backing file for Cinder volume."""
         (vserver, exp_volume) = self._get_vserver_and_exp_vol(volume_id, share)
         self.zapi_client.clone_file(exp_volume, volume_name, clone_name,
@@ -237,6 +238,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
             # Add driver capabilities and config info
             pool['QoS_support'] = True
+            pool['consistencygroup_support'] = True
 
             # Add up-to-date capacity info
             nfs_share = ssc_vol_info['pool_name']
@@ -366,6 +368,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 return ssc_vol_name
         return None
 
+    @utils.trace_method
     def delete_volume(self, volume):
         """Deletes a logical volume."""
         self._delete_backing_file_for_volume(volume)
@@ -383,9 +386,9 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         """Deletes file on nfs share that backs a cinder volume."""
         try:
             LOG.debug('Deleting backing file for volume %s.', volume['id'])
-            self._delete_volume_on_filer(volume)
+            self._delete_file(volume['id'], volume['name'])
         except Exception:
-            LOG.exception(_LE('Could not do delete of volume %s on filer, '
+            LOG.exception(_LE('Could not delete volume %s on backend, '
                               'falling back to exec of "rm" command.'),
                           volume['id'])
             try:
@@ -394,43 +397,35 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 LOG.exception(_LE('Exec of "rm" command on backing file for '
                                   '%s was unsuccessful.'), volume['id'])
 
-    def _delete_volume_on_filer(self, volume):
-        (_vserver, flexvol) = self._get_export_ip_path(volume_id=volume['id'])
-        path_on_filer = '/vol' + flexvol + '/' + volume['name']
-        LOG.debug('Attempting to delete backing file %s for volume %s on '
-                  'filer.', path_on_filer, volume['id'])
-        self.zapi_client.delete_file(path_on_filer)
+    def _delete_file(self, file_id, file_name):
+        (_vserver, flexvol) = self._get_export_ip_path(volume_id=file_id)
+        path_on_backend = '/vol' + flexvol + '/' + file_name
+        LOG.debug('Attempting to delete file %(path)s for ID %(file_id)s on '
+                  'backend.', {'path': path_on_backend, 'file_id': file_id})
+        self.zapi_client.delete_file(path_on_backend)
 
     @utils.trace_method
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
         self._delete_backing_file_for_snapshot(snapshot)
 
-    @utils.trace_method
     def _delete_backing_file_for_snapshot(self, snapshot):
         """Deletes file on nfs share that backs a cinder volume."""
         try:
             LOG.debug('Deleting backing file for snapshot %s.', snapshot['id'])
-            self._delete_snapshot_on_filer(snapshot)
+            self._delete_file(snapshot['volume_id'], snapshot['name'])
         except Exception:
-            LOG.exception(_LE('Could not do delete of snapshot %s on filer, '
+            LOG.exception(_LE('Could not delete snapshot %s on backend, '
                               'falling back to exec of "rm" command.'),
                           snapshot['id'])
             try:
+                # delete_file_from_share
                 super(NetAppCmodeNfsDriver, self).delete_snapshot(snapshot)
             except Exception:
                 LOG.exception(_LE('Exec of "rm" command on backing file for'
                                   ' %s was unsuccessful.'), snapshot['id'])
 
     @utils.trace_method
-    def _delete_snapshot_on_filer(self, snapshot):
-        (_vserver, flexvol) = self._get_export_ip_path(
-            volume_id=snapshot['volume_id'])
-        path_on_filer = '/vol' + flexvol + '/' + snapshot['name']
-        LOG.debug('Attempting to delete backing file %s for snapshot %s '
-                  'on filer.', path_on_filer, snapshot['id'])
-        self.zapi_client.delete_file(path_on_filer)
-
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume."""
         copy_success = False
@@ -653,6 +648,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             if os.path.exists(dst_img_local):
                 self._delete_file_at_path(dst_img_local)
 
+    @utils.trace_method
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.
 
@@ -678,3 +674,30 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
         """Failover a backend to a secondary replication target."""
 
         return self._failover_host(volumes, secondary_id=secondary_id)
+
+    def _get_backing_flexvol_names(self, hosts):
+        """Returns a set of flexvol names."""
+        flexvols = set()
+        ssc = self.ssc_library.get_ssc()
+
+        for host in hosts:
+            pool_name = volume_utils.extract_host(host, level='pool')
+
+            for flexvol_name, ssc_volume_data in ssc.items():
+                if ssc_volume_data['pool_name'] == pool_name:
+                    flexvols.add(flexvol_name)
+
+        return flexvols
+
+    @utils.trace_method
+    def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
+        """Delete files backing each snapshot in the cgsnapshot.
+
+        :return: An implicit update of snapshot models that the manager will
+                 interpret and subsequently set the model state to deleted.
+        """
+        for snapshot in snapshots:
+            self._delete_backing_file_for_snapshot(snapshot)
+            LOG.debug("Snapshot %s deletion successful", snapshot['name'])
+
+        return None, None

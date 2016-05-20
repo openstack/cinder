@@ -999,7 +999,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.connection.get_api_version.return_value = (1, 20)
 
         self.client.clone_file(expected_flex_vol, expected_src_path,
-                               expected_dest_path, self.vserver)
+                               expected_dest_path, self.vserver,
+                               source_snapshot=fake.CG_SNAPSHOT_ID)
 
         __, _args, __ = self.connection.invoke_successfully.mock_calls[0]
         actual_request = _args[0]
@@ -1013,6 +1014,9 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(expected_flex_vol, actual_flex_vol)
         self.assertEqual(expected_src_path, actual_src_path)
         self.assertEqual(expected_dest_path, actual_dest_path)
+        req_snapshot_child = actual_request.get_child_by_name('snapshot-name')
+        self.assertEqual(fake.CG_SNAPSHOT_ID, req_snapshot_child.get_content())
+
         self.assertEqual(actual_request.get_child_by_name(
             'destination-exists'), None)
 
@@ -3147,3 +3151,14 @@ class NetAppCmodeClientTestCase(test.TestCase):
             fake_client.VOLUME_NAME)
 
         self.assertEqual(expected_prov_opts, actual_prov_opts)
+
+    def test_wait_for_busy_snapshot(self):
+        mock_get_snapshot = self.mock_object(
+            self.client, 'get_snapshot',
+            mock.Mock(return_value=fake.SNAPSHOT)
+        )
+
+        self.client.wait_for_busy_snapshot(fake.FLEXVOL, fake.SNAPSHOT_NAME)
+
+        mock_get_snapshot.assert_called_once_with(fake.FLEXVOL,
+                                                  fake.SNAPSHOT_NAME)

@@ -433,3 +433,27 @@ class Client(object):
     def _commit_cg_snapshot(self, cg_id):
         snapshot_commit = {'cg-id': cg_id}
         self.send_request('cg-commit', snapshot_commit)
+
+    def get_snapshot(self, volume_name, snapshot_name):
+        """Gets a single snapshot."""
+        raise NotImplementedError()
+
+    @utils.retry(exception.SnapshotIsBusy)
+    def wait_for_busy_snapshot(self, flexvol, snapshot_name):
+        """Checks for and handles a busy snapshot.
+
+        If a snapshot is busy, for reasons other than cloning, an exception is
+        raised immediately. Otherwise, wait for a period of time for the clone
+        dependency to finish before giving up. If the snapshot is not busy then
+        no action is taken and the method exits.
+        """
+        snapshot = self.get_snapshot(flexvol, snapshot_name)
+        if not snapshot['busy']:
+            LOG.debug("Backing consistency group snapshot %s available for "
+                      "deletion.", snapshot_name)
+            return
+        else:
+            LOG.debug("Snapshot %(snap)s for vol %(vol)s is busy, waiting "
+                      "for volume clone dependency to clear.",
+                      {"snap": snapshot_name, "vol": flexvol})
+            raise exception.SnapshotIsBusy(snapshot_name=snapshot_name)

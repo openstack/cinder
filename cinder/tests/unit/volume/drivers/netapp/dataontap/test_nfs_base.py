@@ -69,6 +69,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
                 self.driver = nfs_base.NetAppNfsDriver(**kwargs)
                 self.driver.db = mock.Mock()
 
+        self.driver.zapi_client = mock.Mock()
+        self.zapi_client = self.driver.zapi_client
+
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
     @mock.patch.object(na_utils, 'check_flags')
     def test_do_setup(self, mock_check_flags, mock_super_do_setup):
@@ -125,7 +128,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_get_capacity_info_ipv4_share(self):
         expected = fake.CAPACITY_VALUES
-        self.driver.zapi_client = mock.Mock()
         get_capacity = self.driver.zapi_client.get_flexvol_capacity
         get_capacity.return_value = fake.CAPACITIES
 
@@ -137,7 +139,6 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_get_capacity_info_ipv6_share(self):
         expected = fake.CAPACITY_VALUES
-        self.driver.zapi_client = mock.Mock()
         get_capacity = self.driver.zapi_client.get_flexvol_capacity
         get_capacity.return_value = fake.CAPACITIES
 
@@ -322,8 +323,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
             fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'],
             fake.SNAPSHOT['volume_id'], is_snapshot=True)
 
-    @ddt.data(True, False)
-    def test_delete_snapshot(self, volume_present):
+    def test_delete_snapshot(self):
         updates = {
             'name': fake.SNAPSHOT_NAME,
             'volume_size': fake.SIZE,
@@ -332,24 +332,12 @@ class NetAppNfsDriverTestCase(test.TestCase):
             'busy': False,
         }
         snapshot = fake_snapshot.fake_snapshot_obj(self.ctxt, **updates)
-        self.mock_object(self.driver, '_get_provider_location',
-                         mock.Mock(return_value=fake.SNAPSHOT_MOUNT))
-        self.mock_object(self.driver, '_volume_not_present',
-                         mock.Mock(return_value=volume_present))
-        self.mock_object(self.driver, '_execute')
-        self.mock_object(self.driver, '_get_volume_path',
-                         mock.Mock(return_value='fake'))
-        self.driver._execute_as_root = True
+        self.mock_object(self.driver, '_delete_file')
 
-        retval = self.driver.delete_snapshot(snapshot)
+        self.driver.delete_snapshot(snapshot)
 
-        if volume_present:
-            self.assertTrue(retval)
-            self.driver._execute.assert_not_called()
-        else:
-            self.assertIsNone(retval)
-            self.driver._execute.assert_called_once_with(
-                'rm', 'fake', run_as_root=True)
+        self.driver._delete_file.assert_called_once_with(snapshot.volume_id,
+                                                         snapshot.name)
 
     def test__get_volume_location(self):
         volume_id = fake.VOLUME_ID
@@ -931,3 +919,156 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           self.driver.manage_existing_get_size,
                           volume,
                           vol_ref)
+
+    def test_create_consistency_group(self):
+        model_update = self.driver.create_consistencygroup(
+            fake.CG_CONTEXT, fake.CONSISTENCY_GROUP)
+        self.assertEqual('available', model_update['status'])
+
+    @ddt.data(True, False)
+    def test_delete_file(self, volume_not_present):
+        mock_get_provider_location = self.mock_object(
+            self.driver, '_get_provider_location')
+        mock_get_provider_location.return_value = fake.NFS_SHARE
+        mock_volume_not_present = self.mock_object(
+            self.driver, '_volume_not_present')
+        mock_volume_not_present.return_value = volume_not_present
+        mock_get_volume_path = self.mock_object(
+            self.driver, '_get_volume_path')
+        mock_get_volume_path.return_value = fake.PATH
+        mock_delete = self.mock_object(self.driver, '_delete')
+
+        self.driver._delete_file(fake.CG_VOLUME_ID, fake.CG_VOLUME_NAME)
+
+        mock_get_provider_location.assert_called_once_with(fake.CG_VOLUME_ID)
+        mock_volume_not_present.assert_called_once_with(
+            fake.NFS_SHARE, fake.CG_VOLUME_NAME)
+        if not volume_not_present:
+            mock_get_volume_path.assert_called_once_with(
+                fake.NFS_SHARE, fake.CG_VOLUME_NAME)
+            mock_delete.assert_called_once_with(fake.PATH)
+
+    def test_delete_file_volume_not_present(self):
+        mock_get_provider_location = self.mock_object(
+            self.driver, '_get_provider_location')
+        mock_get_provider_location.return_value = fake.NFS_SHARE
+        mock_volume_not_present = self.mock_object(
+            self.driver, '_volume_not_present')
+        mock_volume_not_present.return_value = True
+        mock_get_volume_path = self.mock_object(
+            self.driver, '_get_volume_path')
+        mock_delete = self.mock_object(self.driver, '_delete')
+
+        self.driver._delete_file(fake.CG_VOLUME_ID, fake.CG_VOLUME_NAME)
+
+        mock_get_provider_location.assert_called_once_with(fake.CG_VOLUME_ID)
+        mock_volume_not_present.assert_called_once_with(
+            fake.NFS_SHARE, fake.CG_VOLUME_NAME)
+        mock_get_volume_path.assert_not_called()
+        mock_delete.assert_not_called()
+
+    def test_update_consistencygroup(self):
+        model_update, add_volumes_update, remove_volumes_update = (
+            self.driver.update_consistencygroup(fake.CG_CONTEXT, "foo"))
+        self.assertIsNone(add_volumes_update)
+        self.assertIsNone(remove_volumes_update)
+
+    def test_create_consistencygroup_from_src(self):
+        mock_create_volume_from_snapshot = self.mock_object(
+            self.driver, 'create_volume_from_snapshot')
+
+        model_update, volumes_model_update = (
+            self.driver.create_consistencygroup_from_src(
+                fake.CG_CONTEXT, fake.CONSISTENCY_GROUP, [fake.VOLUME],
+                cgsnapshot=fake.CG_SNAPSHOT, snapshots=[fake.SNAPSHOT]))
+
+        mock_create_volume_from_snapshot.assert_called_once_with(
+            fake.VOLUME, fake.SNAPSHOT)
+        self.assertIsNone(model_update)
+        self.assertIsNone(volumes_model_update)
+
+    def test_create_consistencygroup_from_src_source_vols(self):
+        mock_get_snapshot_flexvols = self.mock_object(
+            self.driver, '_get_backing_flexvol_names')
+        mock_get_snapshot_flexvols.return_value = (set([fake.CG_POOL_NAME]))
+        mock_clone_backing_file = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+        fake_snapshot_name = 'snapshot-temp-' + fake.CONSISTENCY_GROUP['id']
+        mock_busy = self.mock_object(
+            self.driver.zapi_client, 'wait_for_busy_snapshot')
+
+        model_update, volumes_model_update = (
+            self.driver.create_consistencygroup_from_src(
+                fake.CG_CONTEXT, fake.CONSISTENCY_GROUP, [fake.VOLUME],
+                source_cg=fake.CONSISTENCY_GROUP,
+                source_vols=[fake.CG_VOLUME]))
+
+        mock_get_snapshot_flexvols.assert_called_once_with(
+            [fake.CG_VOLUME['host']])
+        self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
+            set([fake.CG_POOL_NAME]), fake_snapshot_name)
+        mock_clone_backing_file.assert_called_once_with(
+            fake.CG_VOLUME['name'], fake.VOLUME['name'], fake.CG_VOLUME['id'],
+            source_snapshot=fake_snapshot_name)
+        mock_busy.assert_called_once_with(
+            fake.CG_POOL_NAME, fake_snapshot_name)
+        self.driver.zapi_client.delete_snapshot.assert_called_once_with(
+            fake.CG_POOL_NAME, fake_snapshot_name)
+        self.assertIsNone(model_update)
+        self.assertIsNone(volumes_model_update)
+
+    def test_create_consistencygroup_from_src_invalid_parms(self):
+
+        model_update, volumes_model_update = (
+            self.driver.create_consistencygroup_from_src(
+                fake.CG_CONTEXT, fake.CONSISTENCY_GROUP, [fake.VOLUME]))
+
+        self.assertIn('error', model_update['status'])
+
+    def test_create_cgsnapshot(self):
+        snapshot = fake.CG_SNAPSHOT
+        snapshot['volume'] = fake.CG_VOLUME
+        mock_get_snapshot_flexvols = self.mock_object(
+            self.driver, '_get_backing_flexvol_names')
+        mock_get_snapshot_flexvols.return_value = (set([fake.CG_POOL_NAME]))
+        mock_clone_backing_file = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+        mock_busy = self.mock_object(
+            self.driver.zapi_client, 'wait_for_busy_snapshot')
+
+        self.driver.create_cgsnapshot(
+            fake.CG_CONTEXT, fake.CG_SNAPSHOT, [snapshot])
+
+        mock_get_snapshot_flexvols.assert_called_once_with(
+            [snapshot['volume']['host']])
+        self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
+            set([fake.CG_POOL_NAME]), fake.CG_SNAPSHOT_ID)
+        mock_clone_backing_file.assert_called_once_with(
+            snapshot['volume']['name'], snapshot['name'],
+            snapshot['volume']['id'], source_snapshot=fake.CG_SNAPSHOT_ID)
+        mock_busy.assert_called_once_with(
+            fake.CG_POOL_NAME, fake.CG_SNAPSHOT_ID)
+        self.driver.zapi_client.delete_snapshot.assert_called_once_with(
+            fake.CG_POOL_NAME, fake.CG_SNAPSHOT_ID)
+
+    def test_delete_consistencygroup_volume_delete_failure(self):
+        self.mock_object(self.driver, '_delete_file',
+                         mock.Mock(side_effect=Exception))
+
+        model_update, volumes = self.driver.delete_consistencygroup(
+            fake.CG_CONTEXT, fake.CONSISTENCY_GROUP, [fake.CG_VOLUME])
+
+        self.assertEqual('deleted', model_update['status'])
+        self.assertEqual('error_deleting', volumes[0]['status'])
+
+    def test_delete_consistencygroup(self):
+        mock_delete_file = self.mock_object(
+            self.driver, '_delete_file')
+
+        model_update, volumes = self.driver.delete_consistencygroup(
+            fake.CG_CONTEXT, fake.CONSISTENCY_GROUP, [fake.CG_VOLUME])
+
+        self.assertEqual('deleted', model_update['status'])
+        self.assertEqual('deleted', volumes[0]['status'])
+        mock_delete_file.assert_called_once_with(
+            fake.CG_VOLUME_ID, fake.CG_VOLUME_NAME)

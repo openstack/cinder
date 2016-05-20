@@ -1081,31 +1081,10 @@ class NetAppBlockStorageLibrary(object):
                             source_snapshot=cgsnapshot['id'])
 
         for flexvol in flexvols:
-            self._handle_busy_snapshot(flexvol, cgsnapshot['id'])
+            self.zapi_client.wait_for_busy_snapshot(flexvol, cgsnapshot['id'])
             self.zapi_client.delete_snapshot(flexvol, cgsnapshot['id'])
 
         return None, None
-
-    @utils.retry(exception.SnapshotIsBusy)
-    def _handle_busy_snapshot(self, flexvol, snapshot_name):
-        """Checks for and handles a busy snapshot.
-
-        If a snapshot is not busy, take no action.  If a snapshot is busy for
-        reasons other than a clone dependency, raise immediately.  Otherwise,
-        since we always start a clone split operation after cloning a share,
-        wait up to a minute for a clone dependency to clear before giving up.
-        """
-        snapshot = self.zapi_client.get_snapshot(flexvol, snapshot_name)
-        if not snapshot['busy']:
-            LOG.info(_LI("Backing consistency group snapshot %s "
-                         "available for deletion"), snapshot_name)
-            return
-        else:
-            LOG.debug('Snapshot %(snap)s for vol %(vol)s is busy, waiting '
-                      'for volume clone dependency to clear.',
-                      {'snap': snapshot_name, 'vol': flexvol})
-
-            raise exception.SnapshotIsBusy(snapshot_name=snapshot_name)
 
     def delete_cgsnapshot(self, cgsnapshot, snapshots):
         """Delete LUNs backing each snapshot in the cgsnapshot.

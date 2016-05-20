@@ -326,14 +326,19 @@ class Client(client_base.Client):
         raise exception.NotFound(_('No storage path found for export path %s')
                                  % (export_path))
 
-    def clone_file(self, src_path, dest_path):
+    def clone_file(self, src_path, dest_path, source_snapshot=None):
         LOG.debug("Cloning with src %(src_path)s, dest %(dest_path)s",
                   {'src_path': src_path, 'dest_path': dest_path})
+        zapi_args = {
+            'source-path': src_path,
+            'destination-path': dest_path,
+            'no-snap': 'true',
+        }
+        if source_snapshot:
+            zapi_args['snapshot-name'] = source_snapshot
+
         clone_start = netapp_api.NaElement.create_node_with_children(
-            'clone-start',
-            **{'source-path': src_path,
-               'destination-path': dest_path,
-               'no-snap': 'true'})
+            'clone-start', **zapi_args)
         result = self.connection.invoke_successfully(clone_start,
                                                      enable_tunneling=True)
         clone_id_el = result.get_child_by_name('clone-id')
