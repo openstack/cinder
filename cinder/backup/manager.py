@@ -350,6 +350,7 @@ class BackupManager(manager.SchedulerDependentManager):
                         with utils.temporary_chown(device_path):
                             with open(device_path) as device_file:
                                 backup_service.backup(backup, device_file)
+                # device_path is already file-like so no need to open it
                 else:
                     backup_service.backup(backup, device_path)
 
@@ -456,6 +457,7 @@ class BackupManager(manager.SchedulerDependentManager):
                         with open(device_path, 'wb') as device_file:
                             backup_service.restore(backup, volume.id,
                                                    device_file)
+            # device_path is already file-like so no need to open it
             else:
                 backup_service.restore(backup, volume.id, device_path)
         finally:
