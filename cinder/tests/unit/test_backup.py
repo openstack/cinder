@@ -25,6 +25,7 @@ from oslo_db import exception as db_exc
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
+import cinder
 from cinder.backup import api
 from cinder.backup import manager
 from cinder import context
@@ -202,8 +203,15 @@ class BaseBackupTest(test.TestCase):
 class BackupTestCase(BaseBackupTest):
     """Test Case for backups."""
 
+    @mock.patch.object(cinder.tests.unit.fake_driver.FakeISCSIDriver,
+                       'set_initialized')
+    @mock.patch.object(cinder.tests.unit.fake_driver.FakeISCSIDriver,
+                       'do_setup')
+    @mock.patch.object(cinder.tests.unit.fake_driver.FakeISCSIDriver,
+                       'check_for_setup_error')
     @mock.patch('cinder.context.get_admin_context')
-    def test_init_host(self, mock_get_admin_context):
+    def test_init_host(self, mock_get_admin_context, mock_check, mock_setup,
+                       mock_set_initialized):
         """Test stuck volumes and backups.
 
         Make sure stuck volumes and backups are reset to correct
@@ -245,7 +253,13 @@ class BackupTestCase(BaseBackupTest):
                                      temp_snapshot_id=temp_snap.id)
 
         mock_get_admin_context.side_effect = get_admin_context
+        self.volume = importutils.import_object(CONF.volume_manager)
+        self.backup_mgr.volume_managers = {'driver': self.volume}
         self.backup_mgr.init_host()
+
+        mock_setup.assert_called_once_with(self.ctxt)
+        mock_check.assert_called_once_with()
+        mock_set_initialized.assert_called_once_with()
 
         vol1 = db.volume_get(self.ctxt, vol1_id)
         self.assertEqual('available', vol1['status'])

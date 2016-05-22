@@ -95,6 +95,23 @@ class BackupManager(manager.SchedulerDependentManager):
                                             *args, **kwargs)
         self.additional_endpoints.append(_BackupV1Proxy(self))
 
+    def _init_volume_driver(self, ctxt, driver):
+        LOG.info(_LI("Starting volume driver %(driver_name)s (%(version)s)."),
+                 {'driver_name': driver.__class__.__name__,
+                  'version': driver.get_version()})
+        try:
+            driver.do_setup(ctxt)
+            driver.check_for_setup_error()
+        except Exception:
+            LOG.exception(_LE("Error encountered during initialization of "
+                              "driver: %(name)s."),
+                          {'name': driver.__class__.__name__})
+            # we don't want to continue since we failed
+            # to initialize the driver correctly.
+            return
+
+        driver.set_initialized()
+
     @property
     def driver_name(self):
         """This function maps old backup services to backup drivers."""
@@ -116,6 +133,9 @@ class BackupManager(manager.SchedulerDependentManager):
     def init_host(self):
         """Run initialization needed for a standalone service."""
         ctxt = context.get_admin_context()
+
+        for mgr in self.volume_managers.values():
+            self._init_volume_driver(ctxt, mgr.driver)
 
         try:
             self._cleanup_incomplete_backup_operations(ctxt)
