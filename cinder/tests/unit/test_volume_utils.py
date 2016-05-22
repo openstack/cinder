@@ -758,52 +758,116 @@ class VolumeUtilsTestCase(test.TestCase):
         host_2 = 'fake_host2@backend1'
         self.assertFalse(volume_utils.hosts_are_equivalent(host_1, host_2))
 
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_volume_name_vol_id_pattern(self, conf_mock):
+        conf_mock.volume_name_template = 'volume-%s'
+        vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_name = conf_mock.volume_name_template % vol_id
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertEqual(vol_id, result)
+
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_volume_name_vol_id_vol_pattern(self, conf_mock):
+        conf_mock.volume_name_template = 'volume-%s-volume'
+        vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_name = conf_mock.volume_name_template % vol_id
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertEqual(vol_id, result)
+
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_volume_name_id_vol_pattern(self, conf_mock):
+        conf_mock.volume_name_template = '%s-volume'
+        vol_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_name = conf_mock.volume_name_template % vol_id
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertEqual(vol_id, result)
+
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_volume_name_no_match(self, conf_mock):
+        conf_mock.volume_name_template = '%s-volume'
+        vol_name = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertIsNone(result)
+        vol_name = 'blahblahblah'
+        result = volume_utils.extract_id_from_volume_name(vol_name)
+        self.assertIsNone(result)
+
     @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
     def test_check_managed_volume_already_managed(self, exists_mock):
         id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
-        vol_id = 'volume-' + id_
-        result = volume_utils.check_already_managed_volume(vol_id)
-        self.assertTrue(result)
-        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
-
-    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
-    def test_check_already_managed_with_vol_id_vol_pattern(self, exists_mock):
-        template = 'volume-%s-volume'
-        self.override_config('volume_name_template', template)
-        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
-        vol_id = template % id_
-
-        result = volume_utils.check_already_managed_volume(vol_id)
-        self.assertTrue(result)
-        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
-
-    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
-    def test_check_already_managed_with_id_vol_pattern(self, exists_mock):
-        template = '%s-volume'
-        self.override_config('volume_name_template', template)
-        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
-        vol_id = template % id_
-
-        result = volume_utils.check_already_managed_volume(vol_id)
+        result = volume_utils.check_already_managed_volume(id_)
         self.assertTrue(result)
         exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
     @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=False)
-    def test_check_managed_volume_not_managed_cinder_like_name(self,
-                                                               exists_mock):
+    def test_check_managed_volume_not_managed_proper_uuid(self, exists_mock):
         id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
-        vol_id = 'volume-' + id_
-        result = volume_utils.check_already_managed_volume(vol_id)
+        result = volume_utils.check_already_managed_volume(id_)
         self.assertFalse(result)
         exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
-    def test_check_managed_volume_not_managed(self):
-        result = volume_utils.check_already_managed_volume('test-volume')
+    def test_check_managed_volume_not_managed_invalid_id(self):
+        result = volume_utils.check_already_managed_volume(1)
+        self.assertFalse(result)
+        result = volume_utils.check_already_managed_volume('not-a-uuid')
         self.assertFalse(result)
 
-    def test_check_managed_volume_not_managed_id_like_uuid(self):
-        result = volume_utils.check_already_managed_volume('volume-d8cd1fe')
-        self.assertFalse(result)
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_snapshot_name(self, conf_mock):
+        conf_mock.snapshot_name_template = '%s-snapshot'
+        snap_id = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        snap_name = conf_mock.snapshot_name_template % snap_id
+        result = volume_utils.extract_id_from_snapshot_name(snap_name)
+        self.assertEqual(snap_id, result)
+
+    @mock.patch('cinder.volume.utils.CONF')
+    def test_extract_id_from_snapshot_name_no_match(self, conf_mock):
+        conf_mock.snapshot_name_template = '%s-snapshot'
+        snap_name = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        result = volume_utils.extract_id_from_snapshot_name(snap_name)
+        self.assertIsNone(result)
+        snap_name = 'blahblahblah'
+        result = volume_utils.extract_id_from_snapshot_name(snap_name)
+        self.assertIsNone(result)
+
+    def test_paginate_entries_list_with_marker(self):
+        entries = [{'reference': {'name': 'vol03'}, 'size': 1},
+                   {'reference': {'name': 'vol01'}, 'size': 3},
+                   {'reference': {'name': 'vol02'}, 'size': 3},
+                   {'reference': {'name': 'vol04'}, 'size': 2},
+                   {'reference': {'name': 'vol06'}, 'size': 3},
+                   {'reference': {'name': 'vol07'}, 'size': 1},
+                   {'reference': {'name': 'vol05'}, 'size': 1}]
+        expected = [{'reference': {'name': 'vol04'}, 'size': 2},
+                    {'reference': {'name': 'vol03'}, 'size': 1},
+                    {'reference': {'name': 'vol05'}, 'size': 1}]
+        res = volume_utils.paginate_entries_list(entries, {'name': 'vol02'}, 3,
+                                                 1, ['size', 'reference'],
+                                                 ['desc', 'asc'])
+        self.assertEqual(expected, res)
+
+    def test_paginate_entries_list_without_marker(self):
+        entries = [{'reference': {'name': 'vol03'}, 'size': 1},
+                   {'reference': {'name': 'vol01'}, 'size': 3},
+                   {'reference': {'name': 'vol02'}, 'size': 3},
+                   {'reference': {'name': 'vol04'}, 'size': 2},
+                   {'reference': {'name': 'vol06'}, 'size': 3},
+                   {'reference': {'name': 'vol07'}, 'size': 1},
+                   {'reference': {'name': 'vol05'}, 'size': 1}]
+        expected = [{'reference': {'name': 'vol07'}, 'size': 1},
+                    {'reference': {'name': 'vol06'}, 'size': 3},
+                    {'reference': {'name': 'vol05'}, 'size': 1}]
+        res = volume_utils.paginate_entries_list(entries, None, 3, None,
+                                                 ['reference'], ['desc'])
+        self.assertEqual(expected, res)
+
+    def test_paginate_entries_list_marker_not_found(self):
+        entries = [{'reference': {'name': 'vol03'}, 'size': 1},
+                   {'reference': {'name': 'vol01'}, 'size': 3}]
+        self.assertRaises(exception.InvalidInput,
+                          volume_utils.paginate_entries_list,
+                          entries, {'name': 'vol02'}, 3, None,
+                          ['size', 'reference'], ['desc', 'asc'])
 
     def test_convert_config_string_to_dict(self):
         test_string = "{'key-1'='val-1' 'key-2'='val-2' 'key-3'='val-3'}"

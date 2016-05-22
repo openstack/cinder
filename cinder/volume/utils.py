@@ -16,7 +16,9 @@
 
 
 import ast
+import functools
 import math
+import operator
 import re
 import time
 import uuid
@@ -664,26 +666,83 @@ def read_proc_mounts():
         return mounts.readlines()
 
 
-def _extract_id(vol_name):
+def extract_id_from_volume_name(vol_name):
     regex = re.compile(
         CONF.volume_name_template.replace('%s', '(?P<uuid>.+)'))
     match = regex.match(vol_name)
     return match.group('uuid') if match else None
 
 
-def check_already_managed_volume(vol_name):
+def check_already_managed_volume(vol_id):
     """Check cinder db for already managed volume.
 
-    :param vol_name: volume name parameter
+    :param vol_id: volume id parameter
     :returns: bool -- return True, if db entry with specified
-                      volume name exist, otherwise return False
+                      volume id exists, otherwise return False
     """
-    vol_id = _extract_id(vol_name)
     try:
-        return (vol_id and uuid.UUID(vol_id, version=4) and
+        return (vol_id and isinstance(vol_id, six.string_types) and
+                uuid.UUID(vol_id, version=4) and
                 objects.Volume.exists(context.get_admin_context(), vol_id))
     except ValueError:
         return False
+
+
+def extract_id_from_snapshot_name(snap_name):
+    """Return a snapshot's ID from its name on the backend."""
+    regex = re.compile(
+        CONF.snapshot_name_template.replace('%s', '(?P<uuid>.+)'))
+    match = regex.match(snap_name)
+    return match.group('uuid') if match else None
+
+
+def paginate_entries_list(entries, marker, limit, offset, sort_keys,
+                          sort_dirs):
+    """Paginate a list of entries.
+
+    :param entries: list of dictionaries
+    :marker: The last element previously returned
+    :limit: The maximum number of items to return
+    :offset: The number of items to skip from the marker or from the first
+             element.
+    :sort_keys: A list of keys in the dictionaries to sort by
+    :sort_dirs: A list of sort directions, where each is either 'asc' or 'dec'
+    """
+    comparers = [(operator.itemgetter(key.strip()), multiplier)
+                 for (key, multiplier) in zip(sort_keys, sort_dirs)]
+
+    def comparer(left, right):
+        for fn, d in comparers:
+            left_val = fn(left)
+            right_val = fn(right)
+            if isinstance(left_val, dict):
+                left_val = sorted(left_val.values())[0]
+            if isinstance(right_val, dict):
+                right_val = sorted(right_val.values())[0]
+            if left_val == right_val:
+                continue
+            if d == 'asc':
+                return -1 if left_val < right_val else 1
+            else:
+                return -1 if left_val > right_val else 1
+        else:
+            return 0
+    sorted_entries = sorted(entries, key=functools.cmp_to_key(comparer))
+
+    start_index = 0
+    if offset is None:
+        offset = 0
+    if marker:
+        start_index = -1
+        for i, entry in enumerate(sorted_entries):
+            if entry['reference'] == marker:
+                start_index = i + 1
+                break
+        if start_index < 0:
+            msg = _('marker not found: %s') % marker
+            raise exception.InvalidInput(reason=msg)
+    range_end = start_index + limit
+    return sorted_entries[start_index + offset:range_end + offset]
 
 
 def convert_config_string_to_dict(config_string):

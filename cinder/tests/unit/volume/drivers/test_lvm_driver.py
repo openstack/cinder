@@ -791,6 +791,84 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         ret = self.volume.driver.unmanage(volume)
         self.assertIsNone(ret)
 
+    def test_lvm_get_manageable_volumes(self):
+        cinder_vols = [{'id': '00000000-0000-0000-0000-000000000000'}]
+        lvs = [{'name': 'volume-00000000-0000-0000-0000-000000000000',
+                'size': '1.75'},
+               {'name': 'volume-00000000-0000-0000-0000-000000000001',
+                'size': '3.0'},
+               {'name': 'snapshot-00000000-0000-0000-0000-000000000002',
+                'size': '2.2'},
+               {'name': 'myvol', 'size': '4.0'}]
+        self.volume.driver.vg = mock.Mock()
+        self.volume.driver.vg.get_volumes.return_value = lvs
+        self.volume.driver.vg.lv_is_snapshot.side_effect = [False, False,
+                                                            True, False]
+        self.volume.driver.vg.lv_is_open.side_effect = [True, False]
+        res = self.volume.driver.get_manageable_volumes(cinder_vols, None,
+                                                        1000, 0,
+                                                        ['size'], ['asc'])
+        exp = [{'size': 2, 'reason_not_safe': None, 'extra_info': None,
+                'reference': {'source-name':
+                              'volume-00000000-0000-0000-0000-000000000000'},
+                'cinder_id': '00000000-0000-0000-0000-000000000000',
+                'safe_to_manage': False, 'reason_not_safe': 'already managed'},
+               {'size': 3, 'reason_not_safe': 'volume in use',
+                'reference': {'source-name':
+                              'volume-00000000-0000-0000-0000-000000000001'},
+                'safe_to_manage': False, 'cinder_id': None,
+                'extra_info': None},
+               {'size': 4, 'reason_not_safe': None,
+                'safe_to_manage': True, 'reference': {'source-name': 'myvol'},
+                'cinder_id': None, 'extra_info': None}]
+        self.assertEqual(exp, res)
+
+    def test_lvm_get_manageable_snapshots(self):
+        cinder_snaps = [{'id': '00000000-0000-0000-0000-000000000000'}]
+        lvs = [{'name': 'snapshot-00000000-0000-0000-0000-000000000000',
+                'size': '1.75'},
+               {'name': 'volume-00000000-0000-0000-0000-000000000001',
+                'size': '3.0'},
+               {'name': 'snapshot-00000000-0000-0000-0000-000000000002',
+                'size': '2.2'},
+               {'name': 'mysnap', 'size': '4.0'}]
+        self.volume.driver.vg = mock.Mock()
+        self.volume.driver.vg.get_volumes.return_value = lvs
+        self.volume.driver.vg.lv_is_snapshot.side_effect = [True, False, True,
+                                                            True]
+        self.volume.driver.vg.lv_is_open.side_effect = [True, False]
+        self.volume.driver.vg.lv_get_origin.side_effect = [
+            'volume-00000000-0000-0000-0000-000000000000',
+            'volume-00000000-0000-0000-0000-000000000002',
+            'myvol']
+        res = self.volume.driver.get_manageable_snapshots(cinder_snaps, None,
+                                                          1000, 0,
+                                                          ['size'], ['asc'])
+        exp = [{'size': 2, 'reason_not_safe': 'already managed',
+                'reference':
+                {'source-name':
+                 'snapshot-00000000-0000-0000-0000-000000000000'},
+                'safe_to_manage': False, 'extra_info': None,
+                'cinder_id': '00000000-0000-0000-0000-000000000000',
+                'source_reference':
+                {'source-name':
+                 'volume-00000000-0000-0000-0000-000000000000'}},
+               {'size': 3, 'reason_not_safe': 'snapshot in use',
+                'reference':
+                {'source-name':
+                 'snapshot-00000000-0000-0000-0000-000000000002'},
+                'safe_to_manage': False, 'extra_info': None,
+                'cinder_id': None,
+                'source_reference':
+                {'source-name':
+                 'volume-00000000-0000-0000-0000-000000000002'}},
+               {'size': 4, 'reason_not_safe': None,
+                'reference': {'source-name': 'mysnap'},
+                'safe_to_manage': True, 'cinder_id': None,
+                'source_reference': {'source-name': 'myvol'},
+                'extra_info': None}]
+        self.assertEqual(exp, res)
+
     # Global setting, LVM setting, expected outcome
     @ddt.data((10.0, 2.0, 2.0))
     @ddt.data((10.0, None, 10.0))

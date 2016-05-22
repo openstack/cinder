@@ -178,6 +178,12 @@ class LVMVolumeDriver(driver.VolumeDriver):
             return snapshot_name
         return '_' + snapshot_name
 
+    def _unescape_snapshot(self, snapshot_name):
+        # Undo snapshot name change done by _escape_snapshot()
+        if not snapshot_name.startswith('_snapshot'):
+            return snapshot_name
+        return snapshot_name[1:]
+
     def _create_volume(self, name, size, lvm_type, mirror_count, vg=None):
         vg_ref = self.vg
         if vg is not None:
@@ -586,7 +592,8 @@ class LVMVolumeDriver(driver.VolumeDriver):
         lv_name = existing_ref['source-name']
         self.vg.get_volume(lv_name)
 
-        if volutils.check_already_managed_volume(lv_name):
+        vol_id = volutils.extract_id_from_volume_name(lv_name)
+        if volutils.check_already_managed_volume(vol_id):
             raise exception.ManageExistingAlreadyManaged(volume_ref=lv_name)
 
         # Attempt to rename the LV to match the OpenStack internal name.
@@ -653,6 +660,61 @@ class LVMVolumeDriver(driver.VolumeDriver):
         if not isinstance(existing_ref, dict):
             existing_ref = {"source-name": existing_ref}
         return self.manage_existing(snapshot_temp, existing_ref)
+
+    def _get_manageable_resource_info(self, cinder_resources, resource_type,
+                                      marker, limit, offset, sort_keys,
+                                      sort_dirs):
+        entries = []
+        lvs = self.vg.get_volumes()
+        cinder_ids = [resource['id'] for resource in cinder_resources]
+
+        for lv in lvs:
+            is_snap = self.vg.lv_is_snapshot(lv['name'])
+            if ((resource_type == 'volume' and is_snap) or
+                    (resource_type == 'snapshot' and not is_snap)):
+                continue
+
+            if resource_type == 'volume':
+                potential_id = volutils.extract_id_from_volume_name(lv['name'])
+            else:
+                unescape = self._unescape_snapshot(lv['name'])
+                potential_id = volutils.extract_id_from_snapshot_name(unescape)
+            lv_info = {'reference': {'source-name': lv['name']},
+                       'size': int(math.ceil(float(lv['size']))),
+                       'cinder_id': None,
+                       'extra_info': None}
+
+            if potential_id in cinder_ids:
+                lv_info['safe_to_manage'] = False
+                lv_info['reason_not_safe'] = 'already managed'
+                lv_info['cinder_id'] = potential_id
+            elif self.vg.lv_is_open(lv['name']):
+                lv_info['safe_to_manage'] = False
+                lv_info['reason_not_safe'] = '%s in use' % resource_type
+            else:
+                lv_info['safe_to_manage'] = True
+                lv_info['reason_not_safe'] = None
+
+            if resource_type == 'snapshot':
+                origin = self.vg.lv_get_origin(lv['name'])
+                lv_info['source_reference'] = {'source-name': origin}
+
+            entries.append(lv_info)
+
+        return volutils.paginate_entries_list(entries, marker, limit, offset,
+                                              sort_keys, sort_dirs)
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        return self._get_manageable_resource_info(cinder_volumes, 'volume',
+                                                  marker, limit,
+                                                  offset, sort_keys, sort_dirs)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        return self._get_manageable_resource_info(cinder_snapshots, 'snapshot',
+                                                  marker, limit,
+                                                  offset, sort_keys, sort_dirs)
 
     def retype(self, context, volume, new_type, diff, host):
         """Retypes a volume, allow QoS and extra_specs change."""
