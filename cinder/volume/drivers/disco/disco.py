@@ -50,7 +50,7 @@ disco_opts = [
                     'to communicate with DISCO request manager'),
     cfg.StrOpt('volume_name_prefix',
                default='openstack-',
-               help='Prefix before volume name to differenciate '
+               help='Prefix before volume name to differentiate '
                     'DISCO volume created through openstack '
                     'and the other ones'),
     cfg.IntOpt('snapshot_check_timeout',
