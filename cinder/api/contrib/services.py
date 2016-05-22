@@ -98,8 +98,8 @@ class ServiceController(wsgi.Controller):
         if not reason:
             return False
         try:
-            utils.check_string_length(reason.strip(), 'Disabled reason',
-                                      min_length=1, max_length=255)
+            utils.check_string_length(reason, 'Disabled reason', min_length=1,
+                                      max_length=255, allow_all_spaces=False)
         except exception.InvalidInput:
             return False
 
