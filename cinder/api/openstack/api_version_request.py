@@ -54,6 +54,7 @@ REST_API_VERSION_HISTORY = """
     * 3.5 - Add pagination support to messages API.
     * 3.6 - Allows to set empty description and empty name for consistency
             group in consisgroup-update operation.
+    * 3.7 - Add cluster API and cluster_name field to service list API
 
 """
 
@@ -62,7 +63,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.6"
+_MAX_API_VERSION = "3.7"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

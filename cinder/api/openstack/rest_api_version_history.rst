@@ -69,3 +69,80 @@ user documentation.
 ---
   Allowed to set empty description and empty name for consistency
   group in consisgroup-update operation.
+
+3.7
+---
+  Added ``cluster_name`` field to service list/detail.
+
+  Added /clusters endpoint to list/show/update clusters.
+
+  Show endpoint requires the cluster name and optionally the binary as a URL
+  paramter (default is "cinder-volume").  Returns:
+
+  .. code-block:: json
+
+     "cluster": {
+         "created_at": ...,
+         "disabled_reason": null,
+         "last_heartbeat": ...,
+         "name": "cluster_name",
+         "num_down_hosts": 4,
+         "num_hosts": 2,
+         "state": "up",
+         "status": "enabled",
+         "updated_at": ...
+     }
+
+  Update endpoint allows enabling and disabling a cluster in a similar way to
+  service's update endpoint, but in the body we must specify the name and
+  optionally the binary ("cinder-volume" is the default) and the disabled
+  reason. Returns:
+
+  .. code-block:: json
+
+     "cluster": {
+         "name": "cluster_name",
+         "state": "up",
+         "status": "enabled"
+         "disabled_reason": null
+     }
+
+  Index and detail accept filtering by `name`, `binary`, `disabled`,
+  `num_hosts` , `num_down_hosts`, and up/down status (`is_up`) as URL
+  parameters.
+
+  Index endpoint returns:
+
+  .. code-block:: json
+
+     "clusters": [
+         {
+             "name": "cluster_name",
+             "state": "up",
+             "status": "enabled"
+         },
+         {
+             ...
+         }
+     ]
+
+  Detail endpoint returns:
+
+  .. code-block:: json
+
+     "clusters": [
+         {
+             "created_at": ...,
+             "disabled_reason": null,
+             "last_heartbeat": ...,
+             "name": "cluster_name",
+             "num_down_hosts": 4,
+             "num_hosts": 2,
+             "state": "up",
+             "status": "enabled",
+             "updated_at": ...
+         },
+         {
+             ...
+         }
+     ]

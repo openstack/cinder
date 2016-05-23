@@ -111,5 +111,9 @@
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
     "message:delete": "rule:admin_or_owner",
     "message:get": "rule:admin_or_owner",
-    "message:get_all": "rule:admin_or_owner"
+    "message:get_all": "rule:admin_or_owner",
+
+    "clusters:get": "rule:admin_api",
+    "clusters:get_all": "rule:admin_api",
+    "clusters:update": "rule:admin_api",
 }
