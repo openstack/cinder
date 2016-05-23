@@ -65,8 +65,12 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         'cgsnapshot': fields.ObjectField('CGSnapshot', nullable=True),
     }
 
+    @property
+    def service_topic_queue(self):
+        return self.volume.service_topic_queue
+
     @classmethod
-    def _get_expected_attrs(cls, context):
+    def _get_expected_attrs(cls, context, *args, **kwargs):
         return 'metadata',
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
@@ -151,6 +155,9 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         if 'cgsnapshot' in updates:
             raise exception.ObjectActionError(action='create',
                                               reason=_('cgsnapshot assigned'))
+        if 'cluster' in updates:
+            raise exception.ObjectActionError(
+                action='create', reason=_('cluster assigned'))
 
         db_snapshot = db.snapshot_create(self._context, updates)
         self._from_db_object(self._context, self, db_snapshot)
@@ -164,6 +171,10 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
             if 'cgsnapshot' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('cgsnapshot changed'))
+
+            if 'cluster' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('cluster changed'))
 
             if 'metadata' in updates:
                 # Metadata items that are not specified in the

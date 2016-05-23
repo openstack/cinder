@@ -12,6 +12,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import versionutils
+
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
@@ -23,18 +25,22 @@ from oslo_versionedobjects import fields
 
 @base.CinderObjectRegistry.register
 class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
-                       base.CinderObjectDictCompat):
+                       base.CinderObjectDictCompat, base.ClusteredObject):
     # Version 1.0: Initial version
     # Version 1.1: Added cgsnapshots and volumes relationships
     # Version 1.2: Changed 'status' field to use ConsistencyGroupStatusField
-    VERSION = '1.2'
+    # Version 1.3: Added cluster fields
+    VERSION = '1.3'
 
-    OPTIONAL_FIELDS = ['cgsnapshots', 'volumes']
+    OPTIONAL_FIELDS = ('cgsnapshots', 'volumes', 'cluster')
 
     fields = {
         'id': fields.UUIDField(),
         'user_id': fields.StringField(),
         'project_id': fields.StringField(),
+        'cluster_name': fields.StringField(nullable=True),
+        'cluster': fields.ObjectField('Cluster', nullable=True,
+                                      read_only=True),
         'host': fields.StringField(nullable=True),
         'availability_zone': fields.StringField(nullable=True),
         'name': fields.StringField(nullable=True),
@@ -46,6 +52,18 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         'cgsnapshots': fields.ObjectField('CGSnapshotList', nullable=True),
         'volumes': fields.ObjectField('VolumeList', nullable=True),
     }
+
+    def obj_make_compatible(self, primitive, target_version):
+        """Make a CG representation compatible with a target version."""
+        # Convert all related objects
+        super(ConsistencyGroup, self).obj_make_compatible(primitive,
+                                                          target_version)
+
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        # Before v1.3 we didn't have cluster fields so we have to remove them.
+        if target_version < (1, 3):
+            for obj_field in ('cluster', 'cluster_name'):
+                primitive.pop(obj_field, None)
 
     @classmethod
     def _from_db_object(cls, context, consistencygroup, db_consistencygroup,
@@ -72,6 +90,18 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
                 db_consistencygroup['volumes'])
             consistencygroup.volumes = volumes
 
+        if 'cluster' in expected_attrs:
+            db_cluster = db_consistencygroup.get('cluster')
+            # If this consistency group doesn't belong to a cluster the cluster
+            # field in the ORM instance will have value of None.
+            if db_cluster:
+                consistencygroup.cluster = objects.Cluster(context)
+                objects.Cluster._from_db_object(context,
+                                                consistencygroup.cluster,
+                                                db_cluster)
+            else:
+                consistencygroup.cluster = None
+
         consistencygroup._context = context
         consistencygroup.obj_reset_changes()
         return consistencygroup
@@ -96,6 +126,10 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             raise exception.ObjectActionError(action='create',
                                               reason=_('volumes assigned'))
 
+        if 'cluster' in updates:
+            raise exception.ObjectActionError(
+                action='create', reason=_('cluster assigned'))
+
         db_consistencygroups = db.consistencygroup_create(self._context,
                                                           updates,
                                                           cg_snap_id,
@@ -119,6 +153,15 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             self.volumes = objects.VolumeList.get_all_by_group(self._context,
                                                                self.id)
 
+        # If this consistency group doesn't belong to a cluster (cluster_name
+        # is empty), then cluster field will be None.
+        if attrname == 'cluster':
+            if self.cluster_name:
+                self.cluster = objects.Cluster.get_by_id(
+                    self._context, name=self.cluster_name)
+            else:
+                self.cluster = None
+
         self.obj_reset_changes(fields=[attrname])
 
     def save(self):
@@ -130,6 +173,9 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
             if 'volumes' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('volumes changed'))
+            if 'cluster' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('cluster changed'))
 
             db.consistencygroup_update(self._context, self.id, updates)
             self.obj_reset_changes()
@@ -151,6 +197,26 @@ class ConsistencyGroupList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('ConsistencyGroup')
     }
+
+    @staticmethod
+    def include_in_cluster(context, cluster, partial_rename=True, **filters):
+        """Include all consistency groups matching the filters into a cluster.
+
+        When partial_rename is set we will not set the cluster_name with
+        cluster parameter value directly, we'll replace provided cluster_name
+        or host filter value with cluster instead.
+
+        This is useful when we want to replace just the cluster name but leave
+        the backend and pool information as it is.  If we are using
+        cluster_name to filter, we'll use that same DB field to replace the
+        cluster value and leave the rest as it is.  Likewise if we use the host
+        to filter.
+
+        Returns the number of consistency groups that have been changed.
+        """
+        return db.consistencygroup_include_in_cluster(context, cluster,
+                                                      partial_rename,
+                                                      **filters)
 
     @classmethod
     def get_all(cls, context, filters=None, marker=None, limit=None,

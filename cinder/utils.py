@@ -1027,6 +1027,6 @@ def validate_dictionary_string_length(specs):
                                 min_length=0, max_length=255)
 
 
-def service_expired_time():
-    return (timeutils.utcnow() -
+def service_expired_time(with_timezone=False):
+    return (timeutils.utcnow(with_timezone=with_timezone) -
             datetime.timedelta(seconds=CONF.service_down_time))

@@ -40,6 +40,10 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
         'snapshots': fields.ObjectField('SnapshotList', nullable=True),
     }
 
+    @property
+    def service_topic_queue(self):
+        return self.consistencygroup.service_topic_queue
+
     @classmethod
     def _from_db_object(cls, context, cgsnapshot, db_cgsnapshots,
                         expected_attrs=None):

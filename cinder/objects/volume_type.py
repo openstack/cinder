@@ -59,7 +59,7 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
                         primitive['extra_specs'][k] = ''
 
     @classmethod
-    def _get_expected_attrs(cls, context):
+    def _get_expected_attrs(cls, context, *args, **kwargs):
         return 'extra_specs', 'projects'
 
     @staticmethod

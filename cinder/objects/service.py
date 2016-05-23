@@ -25,18 +25,24 @@ from cinder.objects import fields as c_fields
 
 @base.CinderObjectRegistry.register
 class Service(base.CinderPersistentObject, base.CinderObject,
-              base.CinderObjectDictCompat,
-              base.CinderComparableObject):
+              base.CinderObjectDictCompat, base.CinderComparableObject,
+              base.ClusteredObject):
     # Version 1.0: Initial version
     # Version 1.1: Add rpc_current_version and object_current_version fields
     # Version 1.2: Add get_minimum_rpc_version() and get_minimum_obj_version()
     # Version 1.3: Add replication fields
-    VERSION = '1.3'
+    # Version 1.4: Add cluster fields
+    VERSION = '1.4'
+
+    OPTIONAL_FIELDS = ('cluster',)
 
     fields = {
         'id': fields.IntegerField(),
         'host': fields.StringField(nullable=True),
         'binary': fields.StringField(nullable=True),
+        'cluster_name': fields.StringField(nullable=True),
+        'cluster': fields.ObjectField('Cluster', nullable=True,
+                                      read_only=True),
         'topic': fields.StringField(nullable=True),
         'report_count': fields.IntegerField(default=0),
         'disabled': fields.BooleanField(default=False, nullable=True),
@@ -54,9 +60,23 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         'active_backend_id': fields.StringField(nullable=True),
     }
 
+    def obj_make_compatible(self, primitive, target_version):
+        """Make a service representation compatible with a target version."""
+        # Convert all related objects
+        super(Service, self).obj_make_compatible(primitive, target_version)
+
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        # Before v1.4 we didn't have cluster fields so we have to remove them.
+        if target_version < (1, 4):
+            for obj_field in ('cluster', 'cluster_name'):
+                primitive.pop(obj_field, None)
+
     @staticmethod
-    def _from_db_object(context, service, db_service):
+    def _from_db_object(context, service, db_service, expected_attrs=None):
+        expected_attrs = expected_attrs or []
         for name, field in service.fields.items():
+            if name in Service.OPTIONAL_FIELDS:
+                continue
             value = db_service.get(name)
             if isinstance(field, fields.IntegerField):
                 value = value or 0
@@ -65,8 +85,39 @@ class Service(base.CinderPersistentObject, base.CinderObject,
             service[name] = value
 
         service._context = context
+        if 'cluster' in expected_attrs:
+            db_cluster = db_service.get('cluster')
+            # If this service doesn't belong to a cluster the cluster field in
+            # the ORM instance will have value of None.
+            if db_cluster:
+                service.cluster = objects.Cluster(context)
+                objects.Cluster._from_db_object(context, service.cluster,
+                                                db_cluster)
+            else:
+                service.cluster = None
+
         service.obj_reset_changes()
         return service
+
+    def obj_load_attr(self, attrname):
+        if attrname not in self.OPTIONAL_FIELDS:
+            raise exception.ObjectActionError(
+                action='obj_load_attr',
+                reason=_('attribute %s not lazy-loadable') % attrname)
+        if not self._context:
+            raise exception.OrphanedObjectError(method='obj_load_attr',
+                                                objtype=self.obj_name())
+
+        # NOTE(geguileo): We only have 1 optional field, so we don't need to
+        # confirm that we are loading the cluster.
+        # If this service doesn't belong to a cluster (cluster_name is empty),
+        # then cluster field will be None.
+        if self.cluster_name:
+            self.cluster = objects.Cluster.get_by_id(self._context,
+                                                     name=self.cluster_name)
+        else:
+            self.cluster = None
+        self.obj_reset_changes(fields=(attrname,))
 
     @classmethod
     def get_by_host_and_topic(cls, context, host, topic):
@@ -84,11 +135,17 @@ class Service(base.CinderPersistentObject, base.CinderObject,
             raise exception.ObjectActionError(action='create',
                                               reason=_('already created'))
         updates = self.cinder_obj_get_changes()
+        if 'cluster' in updates:
+            raise exception.ObjectActionError(
+                action='create', reason=_('cluster assigned'))
         db_service = db.service_create(self._context, updates)
         self._from_db_object(self._context, self, db_service)
 
     def save(self):
         updates = self.cinder_obj_get_changes()
+        if 'cluster' in updates:
+            raise exception.ObjectActionError(
+                action='save', reason=_('cluster changed'))
         if updates:
             db.service_update(self._context, self.id, updates)
             self.obj_reset_changes()

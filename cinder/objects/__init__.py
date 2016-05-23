@@ -26,6 +26,7 @@ def register_all():
     # need to receive it via RPC.
     __import__('cinder.objects.backup')
     __import__('cinder.objects.cgsnapshot')
+    __import__('cinder.objects.cluster')
     __import__('cinder.objects.consistencygroup')
     __import__('cinder.objects.qos_specs')
     __import__('cinder.objects.service')

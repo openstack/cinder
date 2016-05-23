@@ -453,3 +453,24 @@ class TestVolumeList(test_objects.BaseObjectsTestCase):
             mock.sentinel.sorted_dirs, mock.sentinel.filters)
         self.assertEqual(1, len(volumes))
         TestVolume._compare(self, db_volume, volumes[0])
+
+    @mock.patch('cinder.db.volume_include_in_cluster')
+    def test_include_in_cluster(self, include_mock):
+        filters = {'host': mock.sentinel.host,
+                   'cluster_name': mock.sentinel.cluster_name}
+        cluster = 'new_cluster'
+        objects.VolumeList.include_in_cluster(self.context, cluster, **filters)
+        include_mock.assert_called_once_with(self.context, cluster, True,
+                                             **filters)
+
+    @mock.patch('cinder.db.volume_include_in_cluster')
+    def test_include_in_cluster_specify_partial(self, include_mock):
+        filters = {'host': mock.sentinel.host,
+                   'cluster_name': mock.sentinel.cluster_name}
+        cluster = 'new_cluster'
+        objects.VolumeList.include_in_cluster(self.context, cluster,
+                                              mock.sentinel.partial_rename,
+                                              **filters)
+        include_mock.assert_called_once_with(self.context, cluster,
+                                             mock.sentinel.partial_rename,
+                                             **filters)

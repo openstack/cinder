@@ -103,6 +103,9 @@ OBJ_VERSIONS.add('1.5', {'VolumeType': '1.1'})
 OBJ_VERSIONS.add('1.6', {'QualityOfServiceSpecs': '1.0',
                          'QualityOfServiceSpecsList': '1.0',
                          'VolumeType': '1.2'})
+OBJ_VERSIONS.add('1.7', {'Cluster': '1.0', 'ClusterList': '1.0',
+                         'Service': '1.4', 'Volume': '1.4',
+                         'ConsistencyGroup': '1.3'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):
@@ -262,7 +265,7 @@ class CinderPersistentObject(object):
             self._context = original_context
 
     @classmethod
-    def _get_expected_attrs(cls, context):
+    def _get_expected_attrs(cls, context, *args, **kwargs):
         return None
 
     @classmethod
@@ -274,9 +277,10 @@ class CinderPersistentObject(object):
                    (cls.obj_name()))
             raise NotImplementedError(msg)
 
-        model = db.get_model_for_versioned_object(cls)
-        orm_obj = db.get_by_id(context, model, id, *args, **kwargs)
+        orm_obj = db.get_by_id(context, cls.model, id, *args, **kwargs)
         expected_attrs = cls._get_expected_attrs(context)
+        # We pass parameters because fields to expect may depend on them
+        expected_attrs = cls._get_expected_attrs(context, *args, **kwargs)
         kargs = {}
         if expected_attrs:
             kargs = {'expected_attrs': expected_attrs}
@@ -417,8 +421,7 @@ class CinderPersistentObject(object):
 
     @classmethod
     def exists(cls, context, id_):
-        model = db.get_model_for_versioned_object(cls)
-        return db.resource_exists(context, model, id_)
+        return db.resource_exists(context, cls.model, id_)
 
 
 class CinderComparableObject(base.ComparableVersionedObject):
@@ -436,6 +439,12 @@ class ObjectListBase(base.ObjectListBase):
         _log_backport(self, target_version)
         super(ObjectListBase, self).obj_make_compatible(primitive,
                                                         target_version)
+
+
+class ClusteredObject(object):
+    @property
+    def service_topic_queue(self):
+        return self.cluster_name or self.host
 
 
 class CinderObjectSerializer(base.VersionedObjectSerializer):
