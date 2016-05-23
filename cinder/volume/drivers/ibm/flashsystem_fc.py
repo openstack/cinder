@@ -72,10 +72,14 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver,
                 terminate_connection
         1.0.7 - Fix bug #1505477, add host name check in
                 _find_host_exhaustive for FC
+        1.0.8 - Fix bug #1572743, multi-attach attribute
+                should not be hardcoded, only in iSCSI
+        1.0.9 - Fix bug #1570574, Cleanup host resource
+                leaking, changes only in iSCSI
 
     """
 
-    VERSION = "1.0.7"
+    VERSION = "1.0.9"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemFCDriver, self).__init__(*args, **kwargs)
