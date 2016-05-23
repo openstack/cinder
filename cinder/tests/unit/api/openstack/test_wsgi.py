@@ -284,7 +284,7 @@ class ResourceTest(test.TestCase):
         self.assertEqual('done', response)
         # The following check verifies that mask_password was called with
         # the decoded body.
-        masker.assert_called_once()
+        self.assertEqual(1, masker.call_count)
         decoded_body = encodeutils.safe_decode(
             serialized_body, errors='ignore')
         self.assertIn(decoded_body, masker.call_args[0][0])
