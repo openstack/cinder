@@ -504,6 +504,15 @@ def validate_assertTrue(logical_line):
         yield(0, msg)
 
 
+def no_assert_called_once(logical_line, filename):
+    if "cinder/tests" not in filename or "test_hacking" in filename:
+        return
+    msg = ("C314: assert_called_once is not a valid mock assertion, "
+           "use assert_equal(1, mocked.call_count) instead.")
+    if 'assert_called_once(' in logical_line:
+        yield (0, msg)
+
+
 def factory(register):
     register(no_vi_headers)
     register(no_translate_debug_logs)
@@ -526,3 +535,4 @@ def factory(register):
     register(no_test_log)
     register(validate_assertIsNone)
     register(validate_assertTrue)
+    register(no_assert_called_once)
