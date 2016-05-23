@@ -246,7 +246,7 @@ class WindowsDriver(driver.ISCSIDriver):
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
         disk_format = self._tgt_utils.get_supported_disk_format()
-        temp_vhd_path = os.path.join(self.configuration.image_conversion_dir,
+        temp_vhd_path = os.path.join(CONF.image_conversion_dir,
                                      str(image_meta['id']) + '.' + disk_format)
 
         try:
