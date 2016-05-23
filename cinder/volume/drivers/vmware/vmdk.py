@@ -86,7 +86,7 @@ vmdk_opts = [
                help='Number of times VMware vCenter server API must be '
                     'retried upon connection related issues.'),
     cfg.FloatOpt('vmware_task_poll_interval',
-                 default=0.5,
+                 default=2.0,
                  help='The interval (in seconds) for polling remote tasks '
                       'invoked on VMware vCenter server.'),
     cfg.StrOpt('vmware_volume_folder',
