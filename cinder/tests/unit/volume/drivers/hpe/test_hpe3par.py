@@ -25,7 +25,8 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
-from cinder.tests.unit import fake_hpe_3par_client as hpe3parclient
+from cinder.tests.unit.volume.drivers.hpe \
+    import fake_hpe_3par_client as hpe3parclient
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.hpe import hpe_3par_fc as hpefcdriver
 from cinder.volume.drivers.hpe import hpe_3par_iscsi as hpedriver

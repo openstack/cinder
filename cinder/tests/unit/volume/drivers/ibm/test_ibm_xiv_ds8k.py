@@ -293,8 +293,9 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         configuration = mock.Mock(conf.Configuration)
         configuration.san_is_local = False
-        configuration.xiv_ds8k_proxy = \
-            'cinder.tests.unit.test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver'
+        configuration.xiv_ds8k_proxy = (
+            'cinder.tests.unit.volume.drivers.ibm.' +
+            'test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver')
         configuration.xiv_ds8k_connection_type = 'iscsi'
         configuration.xiv_chap = 'disabled'
         configuration.san_ip = FAKE

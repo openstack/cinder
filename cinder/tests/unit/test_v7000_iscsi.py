@@ -21,7 +21,8 @@ import mock
 
 from cinder import exception
 from cinder import test
-from cinder.tests.unit import fake_vmem_client as vmemclient
+from cinder.tests.unit.volume.drivers.violin import \
+    fake_vmem_client as vmemclient
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.violin import v7000_common
 from cinder.volume.drivers.violin import v7000_iscsi

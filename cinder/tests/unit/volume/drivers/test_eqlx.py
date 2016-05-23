@@ -14,6 +14,7 @@
 #    under the License.
 
 import time
+import unittest
 
 from eventlet import greenthread
 import mock
@@ -528,6 +529,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.assertEqual(num_attempts + 1,
                          self.driver._ssh_execute.call_count)
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(greenthread, 'sleep')
     def test_ensure_retries_on_channel_timeout(self, _gt_sleep):
         num_attempts = 3
@@ -557,6 +559,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
 
         self.assertEqual(num_attempts + 1, self.driver._get_output.call_count)
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     def test_with_timeout(self):
         @eqlx.with_timeout
         def no_timeout(cmd, *args, **kwargs):
