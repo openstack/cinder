@@ -839,6 +839,39 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(messages.c.resource_type.type,
                               self.VARCHAR_TYPE)
 
+    def _check_075(self, engine, data):
+        """Test adding cluster table and cluster_id fields."""
+        self.assertTrue(engine.dialect.has_table(engine.connect(), 'clusters'))
+        clusters = db_utils.get_table(engine, 'clusters')
+
+        # Inherited fields from CinderBase
+        self.assertIsInstance(clusters.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(clusters.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(clusters.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(clusters.c.deleted.type,
+                              self.BOOL_TYPE)
+
+        # Cluster specific fields
+        self.assertIsInstance(clusters.c.id.type,
+                              self.INTEGER_TYPE)
+        self.assertIsInstance(clusters.c.name.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(clusters.c.binary.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(clusters.c.disabled.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(clusters.c.disabled_reason.type,
+                              self.VARCHAR_TYPE)
+
+        # Check that we have added cluster_name field to all required tables
+        for table_name in ('services', 'consistencygroups', 'volumes'):
+            table = db_utils.get_table(engine, table_name)
+            self.assertIsInstance(table.c.cluster_name.type,
+                                  self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 

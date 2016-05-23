@@ -284,6 +284,10 @@ class RPCTimeout(CinderException):
     code = 502
 
 
+class Duplicate(CinderException):
+    pass
+
+
 class NotFound(CinderException):
     message = _("Resource could not be found.")
     code = 404
@@ -394,6 +398,18 @@ class ServiceTooOld(Invalid):
     message = _("Service is too old to fulfil this request.")
 
 
+class ClusterNotFound(NotFound):
+    message = _('Cluster %(id)s could not be found.')
+
+
+class ClusterHasHosts(Invalid):
+    message = _("Cluster %(id)s still has hosts.")
+
+
+class ClusterExists(Duplicate):
+    message = _("Cluster %(name)s already exists.")
+
+
 class HostNotFound(NotFound):
     message = _("Host %(host)s could not be found.")
 
@@ -450,10 +466,6 @@ class OverQuota(CinderException):
 
 class FileNotFound(NotFound):
     message = _("File %(file_path)s could not be found.")
-
-
-class Duplicate(CinderException):
-    pass
 
 
 class VolumeTypeExists(Duplicate):

@@ -43,7 +43,7 @@ import sqlalchemy
 from sqlalchemy import MetaData
 from sqlalchemy import or_, and_, case
 from sqlalchemy.orm import aliased
-from sqlalchemy.orm import joinedload, joinedload_all
+from sqlalchemy.orm import joinedload, joinedload_all, undefer_group
 from sqlalchemy.orm import RelationshipProperty
 from sqlalchemy.schema import Table
 from sqlalchemy import sql
@@ -61,6 +61,7 @@ from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.i18n import _, _LW, _LE, _LI
 from cinder.objects import fields
+from cinder import utils
 
 
 CONF = cfg.CONF
@@ -366,8 +367,54 @@ def _clean_filters(filters):
     return {k: v for k, v in filters.items() if v is not None}
 
 
+def _filter_host(field, value, match_level=None):
+    """Generate a filter condition for host and cluster fields.
+
+    Levels are:
+    - 'pool': Will search for an exact match
+    - 'backend': Will search for exact match and value#*
+    - 'host'; Will search for exact match, value@* and value#*
+
+    If no level is provided we'll determine it based on the value we want to
+    match:
+    - 'pool': If '#' is present in value
+    - 'backend': If '@' is present in value and '#' is not present
+    - 'host': In any other case
+
+    :param field: ORM field.  Ex: objects.Volume.model.host
+    :param value: String to compare with
+    :param match_level: 'pool', 'backend', or 'host'
+    """
+    # If we don't set level we'll try to determine it automatically.  LIKE
+    # operations are expensive, so we try to reduce them to the minimum.
+    if match_level is None:
+        if '#' in value:
+            match_level = 'pool'
+        elif '@' in value:
+            match_level = 'backend'
+        else:
+            match_level = 'host'
+
+    # Mysql is not doing case sensitive filtering, so we force it
+    if CONF.database.connection.startswith('mysql:'):
+        cmp_value = func.binary(value)
+        like_op = 'LIKE_BINARY'
+    else:
+        cmp_value = value
+        like_op = 'LIKE'
+
+    conditions = [field == cmp_value]
+    if match_level != 'pool':
+        conditions.append(field.op(like_op)(value + '#%'))
+        if match_level == 'host':
+            conditions.append(field.op(like_op)(value + '@%'))
+
+    return or_(*conditions)
+
+
 def _service_query(context, session=None, read_deleted='no', host=None,
-                   is_up=None, **filters):
+                   cluster_name=None, is_up=None, backend_match_level=None,
+                   **filters):
     filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(models.Service, filters):
         return None
@@ -375,26 +422,21 @@ def _service_query(context, session=None, read_deleted='no', host=None,
     query = model_query(context, models.Service, session=session,
                         read_deleted=read_deleted)
 
-    # Host is a particular case of filter, because we must retrieve not only
-    # exact matches (single backend configuration), but also match hosts that
-    # have the backend defined (multi backend configuration).
+    # Host and cluster are particular cases of filters, because we must
+    # retrieve not only exact matches (single backend configuration), but also
+    # match those that have the backend defined (multi backend configuration).
     if host:
-        host_attr = models.Service.host
-        # Mysql is not doing case sensitive filtering, so we force it
-        if CONF.database.connection.startswith('mysql:'):
-            conditions = or_(host_attr == func.binary(host),
-                             host_attr.op('LIKE BINARY')(host + '@%'))
-        else:
-            conditions = or_(host_attr == host,
-                             host_attr.op('LIKE')(host + '@%'))
-        query = query.filter(conditions)
+        query = query.filter(_filter_host(models.Service.host, host,
+                                          backend_match_level))
+    if cluster_name:
+        query = query.filter(_filter_host(models.Service.cluster_name,
+                                          cluster_name, backend_match_level))
 
     if filters:
         query = query.filter_by(**filters)
 
     if is_up is not None:
-        date_limit = (timeutils.utcnow() -
-                      dt.timedelta(seconds=CONF.service_down_time))
+        date_limit = utils.service_expired_time()
         svc = models.Service
         filter_ = or_(
             and_(svc.created_at.isnot(None), svc.created_at >= date_limit),
@@ -414,16 +456,20 @@ def service_destroy(context, service_id):
 
 
 @require_admin_context
-def service_get(context, service_id=None, **filters):
+def service_get(context, service_id=None, backend_match_level=None, **filters):
     """Get a service that matches the criteria.
 
     A possible filter is is_up=True and it will filter nodes that are down.
 
     :param service_id: Id of the service.
     :param filters: Filters for the query in the form of key/value.
+    :param backend_match_level: 'pool', 'backend', or 'host' for host and
+                                cluster filters (as defined in _filter_host
+                                method)
     :raise ServiceNotFound: If service doesn't exist.
     """
-    query = _service_query(context, id=service_id, **filters)
+    query = _service_query(context, backend_match_level=backend_match_level,
+                           id=service_id, **filters)
     service = None if not query else query.first()
     if not service:
         serv_id = service_id or filters.get('topic') or filters.get('binary')
@@ -433,14 +479,18 @@ def service_get(context, service_id=None, **filters):
 
 
 @require_admin_context
-def service_get_all(context, **filters):
+def service_get_all(context, backend_match_level=None, **filters):
     """Get all services that match the criteria.
 
     A possible filter is is_up=True and it will filter nodes that are down.
 
     :param filters: Filters for the query in the form of key/value.
+    :param backend_match_level: 'pool', 'backend', or 'host' for host and
+                                cluster filters (as defined in _filter_host
+                                method)
     """
-    query = _service_query(context, **filters)
+    query = _service_query(context, backend_match_level=backend_match_level,
+                           **filters)
     return [] if not query else query.all()
 
 
@@ -469,6 +519,149 @@ def service_update(context, service_id, values):
     result = query.update(values)
     if not result:
         raise exception.ServiceNotFound(service_id=service_id)
+
+
+###################
+
+def _cluster_query(context, is_up=None, get_services=False,
+                   services_summary=False, read_deleted='no',
+                   name_match_level=None, name=None, session=None, **filters):
+    filters = _clean_filters(filters)
+    if filters and not is_valid_model_filters(models.Cluster, filters):
+        return None
+
+    query = model_query(context, models.Cluster, session=session,
+                        read_deleted=read_deleted)
+
+    # Cluster is a special case of filter, because we must match exact match
+    # as well as hosts that specify the backend
+    if name:
+        query = query.filter(_filter_host(models.Cluster.name, name,
+                                          name_match_level))
+
+    if filters:
+        query = query.filter_by(**filters)
+
+    if services_summary:
+        query = query.options(undefer_group('services_summary'))
+        # We bind the expiration time to now (as it changes with each query)
+        # and is required by num_down_hosts
+        query = query.params(expired=utils.service_expired_time())
+    elif 'num_down_hosts' in filters:
+        query = query.params(expired=utils.service_expired_time())
+
+    if get_services:
+        query = query.options(joinedload_all('services'))
+
+    if is_up is not None:
+        date_limit = utils.service_expired_time()
+        filter_ = and_(models.Cluster.last_heartbeat.isnot(None),
+                       models.Cluster.last_heartbeat >= date_limit)
+        query = query.filter(filter_ == is_up)
+
+    return query
+
+
+@require_admin_context
+def cluster_get(context, id=None, is_up=None, get_services=False,
+                services_summary=False, read_deleted='no',
+                name_match_level=None, **filters):
+    """Get a cluster that matches the criteria.
+
+    :param id: Id of the cluster.
+    :param is_up: Boolean value to filter based on the cluster's up status.
+    :param get_services: If we want to load all services from this cluster.
+    :param services_summary: If we want to load num_hosts and
+                             num_down_hosts fields.
+    :param read_deleted: Filtering based on delete status. Default value is
+                         "no".
+    :param filters: Field based filters in the form of key/value.
+    :param name_match_level: 'pool', 'backend', or 'host' for name filter (as
+                             defined in _filter_host method)
+    :raise ClusterNotFound: If cluster doesn't exist.
+    """
+    query = _cluster_query(context, is_up, get_services, services_summary,
+                           read_deleted, name_match_level, id=id, **filters)
+    cluster = None if not query else query.first()
+    if not cluster:
+        cluster_id = id or six.text_type(filters)
+        raise exception.ClusterNotFound(id=cluster_id)
+    return cluster
+
+
+@require_admin_context
+def cluster_get_all(context, is_up=None, get_services=False,
+                    services_summary=False, read_deleted='no',
+                    name_match_level=None, **filters):
+    """Get all clusters that match the criteria.
+
+    :param is_up: Boolean value to filter based on the cluster's up status.
+    :param get_services: If we want to load all services from this cluster.
+    :param services_summary: If we want to load num_hosts and
+                             num_down_hosts fields.
+    :param read_deleted: Filtering based on delete status. Default value is
+                         "no".
+    :param name_match_level: 'pool', 'backend', or 'host' for name filter (as
+                             defined in _filter_host method)
+    :param filters: Field based filters in the form of key/value.
+    """
+    query = _cluster_query(context, is_up, get_services, services_summary,
+                           read_deleted, name_match_level, **filters)
+    return [] if not query else query.all()
+
+
+@require_admin_context
+def cluster_create(context, values):
+    """Create a cluster from the values dictionary."""
+    cluster_ref = models.Cluster()
+    cluster_ref.update(values)
+    # Provided disabled value takes precedence
+    if values.get('disabled') is None:
+        cluster_ref.disabled = not CONF.enable_new_services
+
+    session = get_session()
+    try:
+        with session.begin():
+            cluster_ref.save(session)
+            # We mark that newly created cluster has no hosts to prevent
+            # problems at the OVO level
+            cluster_ref.last_heartbeat = None
+            return cluster_ref
+    # If we had a race condition (another non deleted cluster exists with the
+    # same name) raise Duplicate exception.
+    except db_exc.DBDuplicateEntry:
+        raise exception.ClusterExists(name=values.get('name'))
+
+
+@require_admin_context
+@_retry_on_deadlock
+def cluster_update(context, id, values):
+    """Set the given properties on an cluster and update it.
+
+    Raises ClusterNotFound if cluster does not exist.
+    """
+    query = _cluster_query(context, id=id)
+    result = query.update(values)
+    if not result:
+        raise exception.ClusterNotFound(id=id)
+
+
+@require_admin_context
+def cluster_destroy(context, id):
+    """Destroy the cluster or raise if it does not exist or has hosts."""
+    query = _cluster_query(context, id=id)
+    query = query.filter(models.Cluster.num_hosts == 0)
+    # If the update doesn't succeed we don't know if it's because the
+    # cluster doesn't exist or because it has hosts.
+    result = query.update(models.Cluster.delete_values(),
+                          synchronize_session=False)
+
+    if not result:
+        # This will fail if the cluster doesn't exist raising the right
+        # exception
+        cluster_get(context, id=id)
+        # If it doesn't fail, then the problem is that there are hosts
+        raise exception.ClusterHasHosts(id=id)
 
 
 ###################
@@ -1314,6 +1507,51 @@ def volume_destroy(context, volume_id):
                     'updated_at': literal_column('updated_at')})
     del updated_values['updated_at']
     return updated_values
+
+
+def _include_in_cluster(context, cluster, model, partial_rename, filters):
+    """Generic include in cluster method.
+
+    When we include resources in a cluster we have to be careful to preserve
+    the addressing sections that have not been provided.  That's why we allow
+    partial_renaming, so we can preserve the backend and pool if we are only
+    providing host/cluster level information, and preserve pool information if
+    we only provide backend level information.
+
+    For example when we include a host in a cluster we receive calls with
+    filters like {'host': 'localhost@lvmdriver-1'} and cluster with something
+    like 'mycluster@lvmdriver-1'.  Since in the DB the resources will have the
+    host field set to something like 'localhost@lvmdriver-1#lvmdriver-1' we
+    want to include original pool in the new cluster_name.  So we want to store
+    in cluster_name value 'mycluster@lvmdriver-1#lvmdriver-1'.
+    """
+    filters = _clean_filters(filters)
+    if filters and not is_valid_model_filters(model, filters):
+        return None
+    query = model_query(context, model)
+
+    # cluster_name and host are special filter cases
+    for field in {'cluster_name', 'host'}.intersection(filters):
+        value = filters.pop(field)
+        # We do a special backend filter
+        query = query.filter(_filter_host(getattr(model, field), value))
+        # If we want do do a partial rename and we haven't set the cluster
+        # already, the value we want to set is a SQL replace of existing field
+        # value.
+        if partial_rename and isinstance(cluster, six.string_types):
+            cluster = func.replace(getattr(model, field), value, cluster)
+
+    query = query.filter_by(**filters)
+    result = query.update({'cluster_name': cluster}, synchronize_session=False)
+    return result
+
+
+@require_admin_context
+def volume_include_in_cluster(context, cluster, partial_rename=True,
+                              **filters):
+    """Include all volumes matching the filters into a cluster."""
+    return _include_in_cluster(context, cluster, models.Volume,
+                               partial_rename, filters)
 
 
 @require_admin_context
@@ -4304,6 +4542,14 @@ def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
     return sql.exists([subq]).where(match_id)
 
 
+@require_admin_context
+def consistencygroup_include_in_cluster(context, cluster,
+                                        partial_rename=True, **filters):
+    """Include all consistency groups matching the filters into a cluster."""
+    return _include_in_cluster(context, cluster, models.ConsistencyGroup,
+                               partial_rename, filters)
+
+
 ###############################
 
 
@@ -4487,7 +4733,7 @@ def purge_deleted_rows(context, age_in_days):
 
     # Reorder the list so the volumes and volume_types tables are last
     # to avoid FK constraints
-    for table in ("volume_types", "snapshots", "volumes"):
+    for table in ("volume_types", "snapshots", "volumes", "clusters"):
         tables.remove(table)
         tables.append(table)
 

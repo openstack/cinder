@@ -16,6 +16,7 @@
 
 import datetime
 
+import ddt
 import enum
 import mock
 from oslo_config import cfg
@@ -93,12 +94,14 @@ class ModelsObjectComparatorMixin(object):
         for key, value in obj1.items():
             self.assertEqual(value, obj2[key])
 
-    def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None):
+    def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None,
+                                   msg=None):
         obj_to_dict = lambda o: self._dict_from_object(o, ignored_keys)
         sort_key = lambda d: [d[k] for k in sorted(d)]
         conv_and_sort = lambda obj: sorted(map(obj_to_dict, obj), key=sort_key)
 
-        self.assertListEqual(conv_and_sort(objs1), conv_and_sort(objs2))
+        self.assertListEqual(conv_and_sort(objs1), conv_and_sort(objs2),
+                             msg=msg)
 
     def _assertEqualListsOfPrimitivesAsSets(self, primitives1, primitives2):
         self.assertEqual(len(primitives1), len(primitives2))
@@ -122,6 +125,7 @@ class DBAPIServiceTestCase(BaseTest):
     def _get_base_values(self):
         return {
             'host': 'fake_host',
+            'cluster_name': None,
             'binary': 'fake_binary',
             'topic': 'fake_topic',
             'report_count': 3,
@@ -139,18 +143,21 @@ class DBAPIServiceTestCase(BaseTest):
         return service
 
     def test_service_create(self):
-        service = self._create_service({})
+        # Add a cluster value to the service
+        values = {'cluster_name': 'cluster'}
+        service = self._create_service(values)
         self.assertIsNotNone(service['id'])
-        for key, value in self._get_base_values().items():
+        expected = self._get_base_values()
+        expected.update(values)
+        for key, value in expected.items():
             self.assertEqual(value, service[key])
 
-    @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
-    def test_service_destroy(self, utcnow_mock):
+    def test_service_destroy(self):
         service1 = self._create_service({})
         service2 = self._create_service({'host': 'fake_host2'})
 
         self.assertDictEqual(
-            {'deleted': True, 'deleted_at': UTC_NOW},
+            {'deleted': True, 'deleted_at': mock.ANY},
             db.service_destroy(self.ctxt, service1['id']))
         self.assertRaises(exception.ServiceNotFound,
                           db.service_get, self.ctxt, service1['id'])
@@ -181,6 +188,16 @@ class DBAPIServiceTestCase(BaseTest):
         real_service1 = db.service_get(self.ctxt, service1['id'])
         self._assertEqualObjects(service1, real_service1)
 
+    def test_service_get_by_cluster(self):
+        service = self._create_service({'cluster_name': 'cluster@backend'})
+        # Search with an exact match
+        real_service = db.service_get(self.ctxt,
+                                      cluster_name='cluster@backend')
+        self._assertEqualObjects(service, real_service)
+        # Search without the backend
+        real_service = db.service_get(self.ctxt, cluster_name='cluster')
+        self._assertEqualObjects(service, real_service)
+
     def test_service_get_not_found_exception(self):
         self.assertRaises(exception.ServiceNotFound,
                           db.service_get, self.ctxt, 100500)
@@ -195,17 +212,19 @@ class DBAPIServiceTestCase(BaseTest):
         expired = (datetime.datetime.utcnow()
                    - datetime.timedelta(seconds=CONF.service_down_time + 1))
         values = [
+            # Now we are updating updated_at at creation as well so this one
+            # is up.
             {'host': 'host1', 'binary': 'b1', 'created_at': expired},
             {'host': 'host1@ceph', 'binary': 'b2'},
             {'host': 'host2', 'binary': 'b2'},
-            {'disabled': True, 'created_at': expired, 'updated_at': expired}
+            {'disabled': True, 'created_at': expired, 'updated_at': expired},
         ]
         services = [self._create_service(vals) for vals in values]
 
         disabled_services = services[-1:]
         non_disabled_services = services[:-1]
-        up_services = services[1:3]
-        down_services = [services[0], services[3]]
+        up_services = services[0:3]
+        down_services = [services[3]]
         expected = services[:2]
         expected_bin = services[1:3]
         compares = [
@@ -218,8 +237,9 @@ class DBAPIServiceTestCase(BaseTest):
             (up_services, db.service_get_all(self.ctxt, is_up=True)),
             (down_services, db.service_get_all(self.ctxt, is_up=False)),
         ]
-        for comp in compares:
-            self._assertEqualListsOfObjects(*comp)
+        for i, comp in enumerate(compares):
+            self._assertEqualListsOfObjects(*comp,
+                                            msg='Error comparing %s' % i)
 
     def test_service_get_all_by_topic(self):
         values = [
@@ -258,6 +278,18 @@ class DBAPIServiceTestCase(BaseTest):
         service2 = db.service_get(self.ctxt, host='host2', binary='b')
         self._assertEqualObjects(services[1], service2)
 
+    def test_service_get_all_by_cluster(self):
+        values = [
+            {'host': 'host1', 'cluster_name': 'cluster'},
+            {'host': 'host2', 'cluster_name': 'cluster'},
+            {'host': 'host3', 'cluster_name': 'cluster@backend'},
+            {'host': 'host4', 'cluster_name': 'cluster2'},
+        ]
+        services = [self._create_service(vals) for vals in values]
+        expected = services[:3]
+        real = db.service_get_all(self.ctxt, cluster_name='cluster')
+        self._assertEqualListsOfObjects(expected, real)
+
     def test_service_get_by_args_not_found_exception(self):
         self.assertRaises(exception.ServiceNotFound,
                           db.service_get,
@@ -278,6 +310,7 @@ class DBAPIServiceTestCase(BaseTest):
         self.assertEqual('binary', binary_op.name)
 
 
+@ddt.ddt
 class DBAPIVolumeTestCase(BaseTest):
 
     """Unit tests for cinder.db.api.volume_*."""
@@ -1211,6 +1244,79 @@ class DBAPIVolumeTestCase(BaseTest):
                                     ['desc'], filters=filters)
         self._assertEqualListsOfObjects([], volumes)
 
+    def _create_volumes_to_test_include_in(self):
+        """Helper method for test_volume_include_in_* tests."""
+        return [
+            db.volume_create(self.ctxt,
+                             {'host': 'host1@backend1#pool1',
+                              'cluster_name': 'cluster1@backend1#pool1'}),
+            db.volume_create(self.ctxt,
+                             {'host': 'host1@backend2#pool2',
+                              'cluster_name': 'cluster1@backend2#pool2'}),
+            db.volume_create(self.ctxt,
+                             {'host': 'host2@backend#poo1',
+                              'cluster_name': 'cluster2@backend#pool'}),
+        ]
+
+    @ddt.data('host1@backend1#pool1', 'host1@backend1')
+    def test_volume_include_in_cluster_by_host(self, host):
+        """Basic volume include test filtering by host and with full rename."""
+        vol = self._create_volumes_to_test_include_in()[0]
+
+        cluster_name = 'my_cluster'
+        result = db.volume_include_in_cluster(self.ctxt, cluster_name,
+                                              partial_rename=False,
+                                              host=host)
+        self.assertEqual(1, result)
+        db_vol = db.volume_get(self.ctxt, vol.id)
+        self.assertEqual(cluster_name, db_vol.cluster_name)
+
+    def test_volume_include_in_cluster_by_host_multiple(self):
+        """Partial cluster rename filtering with host level info."""
+        vols = self._create_volumes_to_test_include_in()[0:2]
+
+        host = 'host1'
+        cluster_name = 'my_cluster'
+        result = db.volume_include_in_cluster(self.ctxt, cluster_name,
+                                              partial_rename=True,
+                                              host=host)
+        self.assertEqual(2, result)
+        db_vols = [db.volume_get(self.ctxt, vols[0].id),
+                   db.volume_get(self.ctxt, vols[1].id)]
+        for i in range(2):
+            self.assertEqual(cluster_name + vols[i].host[len(host):],
+                             db_vols[i].cluster_name)
+
+    @ddt.data('cluster1@backend1#pool1', 'cluster1@backend1')
+    def test_volume_include_in_cluster_by_cluster_name(self, cluster_name):
+        """Basic volume include test filtering by cluster with full rename."""
+        vol = self._create_volumes_to_test_include_in()[0]
+
+        new_cluster_name = 'cluster_new@backend1#pool'
+        result = db.volume_include_in_cluster(self.ctxt, new_cluster_name,
+                                              partial_rename=False,
+                                              cluster_name=cluster_name)
+        self.assertEqual(1, result)
+        db_vol = db.volume_get(self.ctxt, vol.id)
+        self.assertEqual(new_cluster_name, db_vol.cluster_name)
+
+    def test_volume_include_in_cluster_by_cluster_multiple(self):
+        """Partial rename filtering with cluster with host level info."""
+        vols = self._create_volumes_to_test_include_in()[0:2]
+
+        cluster_name = 'cluster1'
+        new_cluster_name = 'my_cluster'
+        result = db.volume_include_in_cluster(self.ctxt, new_cluster_name,
+                                              partial_rename=True,
+                                              cluster_name=cluster_name)
+        self.assertEqual(2, result)
+        db_vols = [db.volume_get(self.ctxt, vols[0].id),
+                   db.volume_get(self.ctxt, vols[1].id)]
+        for i in range(2):
+            self.assertEqual(
+                new_cluster_name + vols[i].cluster_name[len(cluster_name):],
+                db_vols[i].cluster_name)
+
 
 class DBAPISnapshotTestCase(BaseTest):
 
@@ -1442,6 +1548,87 @@ class DBAPISnapshotTestCase(BaseTest):
         db.snapshot_metadata_delete(self.ctxt, 1, 'c')
 
         self.assertEqual(should_be, db.snapshot_metadata_get(self.ctxt, 1))
+
+
+@ddt.ddt
+class DBAPIConsistencygroupTestCase(BaseTest):
+    def _create_cgs_to_test_include_in(self):
+        """Helper method for test_consistencygroup_include_in_* tests."""
+        return [
+            db.consistencygroup_create(
+                self.ctxt, {'host': 'host1@backend1#pool1',
+                            'cluster_name': 'cluster1@backend1#pool1'}),
+            db.consistencygroup_create(
+                self.ctxt, {'host': 'host1@backend2#pool2',
+                            'cluster_name': 'cluster1@backend2#pool1'}),
+            db.consistencygroup_create(
+                self.ctxt, {'host': 'host2@backend#poo1',
+                            'cluster_name': 'cluster2@backend#pool'}),
+        ]
+
+    @ddt.data('host1@backend1#pool1', 'host1@backend1')
+    def test_consistencygroup_include_in_cluster_by_host(self, host):
+        """Basic CG include test filtering by host and with full rename."""
+        cg = self._create_cgs_to_test_include_in()[0]
+
+        cluster_name = 'my_cluster'
+        result = db.consistencygroup_include_in_cluster(self.ctxt,
+                                                        cluster_name,
+                                                        partial_rename=False,
+                                                        host=host)
+        self.assertEqual(1, result)
+        db_cg = db.consistencygroup_get(self.ctxt, cg.id)
+        self.assertEqual(cluster_name, db_cg.cluster_name)
+
+    def test_consistencygroup_include_in_cluster_by_host_multiple(self):
+        """Partial cluster rename filtering with host level info."""
+        cgs = self._create_cgs_to_test_include_in()[0:2]
+
+        host = 'host1'
+        cluster_name = 'my_cluster'
+        result = db.consistencygroup_include_in_cluster(self.ctxt,
+                                                        cluster_name,
+                                                        partial_rename=True,
+                                                        host=host)
+        self.assertEqual(2, result)
+        db_cgs = [db.consistencygroup_get(self.ctxt, cgs[0].id),
+                  db.consistencygroup_get(self.ctxt, cgs[1].id)]
+        for i in range(2):
+            self.assertEqual(cluster_name + cgs[i].host[len(host):],
+                             db_cgs[i].cluster_name)
+
+    @ddt.data('cluster1@backend1#pool1', 'cluster1@backend1')
+    def test_consistencygroup_include_in_cluster_by_cluster_name(self,
+                                                                 cluster_name):
+        """Basic CG include test filtering by cluster with full rename."""
+        cg = self._create_cgs_to_test_include_in()[0]
+
+        new_cluster_name = 'cluster_new@backend1#pool'
+        result = db.consistencygroup_include_in_cluster(
+            self.ctxt, new_cluster_name, partial_rename=False,
+            cluster_name=cluster_name)
+
+        self.assertEqual(1, result)
+        db_cg = db.consistencygroup_get(self.ctxt, cg.id)
+        self.assertEqual(new_cluster_name, db_cg.cluster_name)
+
+    def test_consistencygroup_include_in_cluster_by_cluster_multiple(self):
+        """Partial rename filtering with cluster with host level info."""
+        cgs = self._create_cgs_to_test_include_in()[0:2]
+
+        cluster_name = 'cluster1'
+        new_cluster_name = 'my_cluster'
+        result = db.consistencygroup_include_in_cluster(
+            self.ctxt, new_cluster_name, partial_rename=True,
+            cluster_name=cluster_name)
+
+        self.assertEqual(2, result)
+        db_cgs = [db.consistencygroup_get(self.ctxt, cgs[0].id),
+                  db.consistencygroup_get(self.ctxt, cgs[1].id)]
+        for i in range(2):
+            self.assertEqual(
+                new_cluster_name + cgs[i].cluster_name[len(cluster_name):],
+                db_cgs[i].cluster_name)
 
 
 class DBAPICgsnapshotTestCase(BaseTest):

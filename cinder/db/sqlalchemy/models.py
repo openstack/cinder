@@ -23,10 +23,12 @@ SQLAlchemy models for cinder data.
 from oslo_config import cfg
 from oslo_db.sqlalchemy import models
 from oslo_utils import timeutils
+from sqlalchemy import and_, func, select
+from sqlalchemy import bindparam
 from sqlalchemy import Column, Integer, String, Text, schema
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import ForeignKey, DateTime, Boolean
-from sqlalchemy.orm import relationship, backref, validates
+from sqlalchemy import ForeignKey, DateTime, Boolean, UniqueConstraint
+from sqlalchemy.orm import backref, column_property, relationship, validates
 
 
 CONF = cfg.CONF
@@ -63,8 +65,13 @@ class Service(BASE, CinderBase):
 
     __tablename__ = 'services'
     id = Column(Integer, primary_key=True)
+    cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     binary = Column(String(255))
+    # We want to overwrite default updated_at definition so we timestamp at
+    # creation as well, so we only need to check updated_at for the heartbeat
+    updated_at = Column(DateTime, default=timeutils.utcnow,
+                        onupdate=timeutils.utcnow)
     topic = Column(String(255))
     report_count = Column(Integer, nullable=False, default=0)
     disabled = Column(Boolean, default=False)
@@ -87,6 +94,63 @@ class Service(BASE, CinderBase):
     active_backend_id = Column(String(255))
     frozen = Column(Boolean, nullable=False, default=False)
 
+    cluster = relationship('Cluster',
+                           backref='services',
+                           foreign_keys=cluster_name,
+                           primaryjoin='and_('
+                                       'Service.cluster_name == Cluster.name,'
+                                       'Service.deleted == False)')
+
+
+class Cluster(BASE, CinderBase):
+    """Represents a cluster of hosts."""
+    __tablename__ = 'clusters'
+    # To remove potential races on creation we have a constraint set on name
+    # and race_preventer fields, and we set value on creation to 0, so 2
+    # clusters with the same name will fail this constraint.  On deletion we
+    # change this field to the same value as the id which will be unique and
+    # will not conflict with the creation of another cluster with the same
+    # name.
+    __table_args__ = (UniqueConstraint('name', 'binary', 'race_preventer'),)
+
+    id = Column(Integer, primary_key=True)
+    # NOTE(geguileo): Name is constructed in the same way that Server.host but
+    # using cluster configuration option instead of host.
+    name = Column(String(255), nullable=False)
+    binary = Column(String(255), nullable=False)
+    disabled = Column(Boolean, default=False)
+    disabled_reason = Column(String(255))
+    race_preventer = Column(Integer, nullable=False, default=0)
+
+    # Last heartbeat reported by any of the services of this cluster.  This is
+    # not deferred since we always want to load this field.
+    last_heartbeat = column_property(
+        select([func.max(Service.updated_at)]).
+        where(and_(Service.cluster_name == name, ~Service.deleted)).
+        correlate_except(Service), deferred=False)
+
+    # Number of existing services for this cluster
+    num_hosts = column_property(
+        select([func.count(Service.id)]).
+        where(and_(Service.cluster_name == name, ~Service.deleted)).
+        correlate_except(Service),
+        group='services_summary', deferred=True)
+
+    # Number of services that are down for this cluster
+    num_down_hosts = column_property(
+        select([func.count(Service.id)]).
+        where(and_(Service.cluster_name == name,
+                   ~Service.deleted,
+                   Service.updated_at < bindparam('expired'))).
+        correlate_except(Service),
+        group='services_summary', deferred=True)
+
+    @staticmethod
+    def delete_values():
+        return {'race_preventer': Cluster.id,
+                'deleted': True,
+                'deleted_at': timeutils.utcnow()}
+
 
 class ConsistencyGroup(BASE, CinderBase):
     """Represents a consistencygroup."""
@@ -96,6 +160,7 @@ class ConsistencyGroup(BASE, CinderBase):
     user_id = Column(String(255), nullable=False)
     project_id = Column(String(255), nullable=False)
 
+    cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))
     availability_zone = Column(String(255))
     name = Column(String(255))
@@ -150,6 +215,7 @@ class Volume(BASE, CinderBase):
 
     snapshot_id = Column(String(36))
 
+    cluster_name = Column(String(255), nullable=True)
     host = Column(String(255))  # , ForeignKey('hosts.id'))
     size = Column(Integer)
     availability_zone = Column(String(255))  # TODO(vish): foreign key?
@@ -654,7 +720,8 @@ def register_models():
               VolumeTypes,
               VolumeGlanceMetadata,
               ConsistencyGroup,
-              Cgsnapshot
+              Cgsnapshot,
+              Cluster,
               )
     engine = create_engine(CONF.database.connection, echo=False)
     for model in models:

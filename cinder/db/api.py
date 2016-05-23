@@ -99,27 +99,33 @@ def service_destroy(context, service_id):
     return IMPL.service_destroy(context, service_id)
 
 
-def service_get(context, service_id=None, **filters):
+def service_get(context, service_id=None, backend_match_level=None, **filters):
     """Get a service that matches the criteria.
 
     A possible filter is is_up=True and it will filter nodes that are down.
 
     :param service_id: Id of the service.
     :param filters: Filters for the query in the form of key/value.
-
+    :param backend_match_level: 'pool', 'backend', or 'host' for host and
+                                cluster filters (as defined in _filter_host
+                                method)
     :raise ServiceNotFound: If service doesn't exist.
     """
-    return IMPL.service_get(context, service_id, **filters)
+    return IMPL.service_get(context, service_id, backend_match_level,
+                            **filters)
 
 
-def service_get_all(context, **filters):
+def service_get_all(context, backend_match_level=None, **filters):
     """Get all services that match the criteria.
 
     A possible filter is is_up=True and it will filter nodes that are down.
 
     :param filters: Filters for the query in the form of key/value arguments.
+    :param backend_match_level: 'pool', 'backend', or 'host' for host and
+                                cluster filters (as defined in _filter_host
+                                method)
     """
-    return IMPL.service_get_all(context, **filters)
+    return IMPL.service_get_all(context, backend_match_level, **filters)
 
 
 def service_create(context, values):
@@ -133,6 +139,70 @@ def service_update(context, service_id, values):
     Raises NotFound if service does not exist.
     """
     return IMPL.service_update(context, service_id, values)
+
+
+###############
+
+
+def cluster_get(context, id=None, is_up=None, get_services=False,
+                services_summary=False, read_deleted='no',
+                name_match_level=None, **filters):
+    """Get a cluster that matches the criteria.
+
+    :param id: Id of the cluster.
+    :param is_up: Boolean value to filter based on the cluster's up status.
+    :param get_services: If we want to load all services from this cluster.
+    :param services_summary: If we want to load num_hosts and
+                             num_down_hosts fields.
+    :param read_deleted: Filtering based on delete status. Default value is
+                         "no".
+    :param name_match_level: 'pool', 'backend', or 'host' for name filter (as
+                             defined in _filter_host method)
+    :param filters: Field based filters in the form of key/value.
+    :raise ClusterNotFound: If cluster doesn't exist.
+    """
+    return IMPL.cluster_get(context, id, is_up, get_services, services_summary,
+                            read_deleted, name_match_level, **filters)
+
+
+def cluster_get_all(context, is_up=None, get_services=False,
+                    services_summary=False, read_deleted='no',
+                    name_match_level=None, **filters):
+    """Get all clusters that match the criteria.
+
+    :param is_up: Boolean value to filter based on the cluster's up status.
+    :param get_services: If we want to load all services from this cluster.
+    :param services_summary: If we want to load num_hosts and
+                             num_down_hosts fields.
+    :param read_deleted: Filtering based on delete status. Default value is
+                         "no".
+    :param name_match_level: 'pool', 'backend', or 'host' for name filter (as
+                             defined in _filter_host method)
+    :param filters: Field based filters in the form of key/value.
+    """
+    return IMPL.cluster_get_all(context, is_up, get_services, services_summary,
+                                read_deleted, name_match_level, **filters)
+
+
+def cluster_create(context, values):
+    """Create a cluster from the values dictionary."""
+    return IMPL.cluster_create(context, values)
+
+
+def cluster_update(context, id, values):
+    """Set the given properties on an cluster and update it.
+
+    Raises ClusterNotFound if cluster does not exist.
+    """
+    return IMPL.cluster_update(context, id, values)
+
+
+def cluster_destroy(context, id):
+    """Destroy the cluster or raise if it does not exist or has hosts.
+
+    :raise ClusterNotFound: If cluster doesn't exist.
+    """
+    return IMPL.cluster_destroy(context, id)
 
 
 ###############
@@ -218,6 +288,25 @@ def volume_update(context, volume_id, values):
 
     """
     return IMPL.volume_update(context, volume_id, values)
+
+
+def volume_include_in_cluster(context, cluster, partial_rename=True,
+                              **filters):
+    """Include all volumes matching the filters into a cluster.
+
+    When partial_rename is set we will not set the cluster_name with cluster
+    parameter value directly, we'll replace provided cluster_name or host
+    filter value with cluster instead.
+
+    This is useful when we want to replace just the cluster name but leave
+    the backend and pool information as it is.  If we are using cluster_name
+    to filter, we'll use that same DB field to replace the cluster value and
+    leave the rest as it is.  Likewise if we use the host to filter.
+
+    Returns the number of volumes that have been changed.
+    """
+    return IMPL.volume_include_in_cluster(context, cluster, partial_rename,
+                                          **filters)
 
 
 def volume_attachment_update(context, attachment_id, values):
@@ -1044,6 +1133,26 @@ def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
     consistencygroups table.
     """
     return IMPL.cg_creating_from_src(cg_id, cgsnapshot_id)
+
+
+def consistencygroup_include_in_cluster(context, cluster, partial_rename=True,
+                                        **filters):
+    """Include all consistency groups matching the filters into a cluster.
+
+    When partial_rename is set we will not set the cluster_name with cluster
+    parameter value directly, we'll replace provided cluster_name or host
+    filter value with cluster instead.
+
+    This is useful when we want to replace just the cluster name but leave
+    the backend and pool information as it is.  If we are using cluster_name
+    to filter, we'll use that same DB field to replace the cluster value and
+    leave the rest as it is.  Likewise if we use the host to filter.
+
+    Returns the number of consistency groups that have been changed.
+    """
+    return IMPL.consistencygroup_include_in_cluster(context, cluster,
+                                                    partial_rename,
+                                                    **filters)
 
 
 ###################

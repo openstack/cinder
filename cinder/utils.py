@@ -1025,3 +1025,8 @@ def validate_dictionary_string_length(specs):
         if value is not None:
             check_string_length(value, 'Value for key "%s"' % key,
                                 min_length=0, max_length=255)
+
+
+def service_expired_time():
+    return (timeutils.utcnow() -
+            datetime.timedelta(seconds=CONF.service_down_time))
