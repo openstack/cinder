@@ -1334,6 +1334,17 @@ class VMwareVolumeOps(object):
                   {'backing': backing,
                    'disk_uuid': disk_uuid})
 
+    def update_backing_extra_config(self, backing, extra_config):
+        cf = self._session.vim.client.factory
+        reconfig_spec = cf.create('ns0:VirtualMachineConfigSpec')
+        reconfig_spec.extraConfig = self._get_extra_config_option_values(
+            extra_config)
+        self._reconfigure_backing(backing, reconfig_spec)
+        LOG.debug("Backing: %(backing)s reconfigured with extra config: "
+                  "%(extra_config)s.",
+                  {'backing': backing,
+                   'extra_config': extra_config})
+
     def delete_file(self, file_path, datacenter=None):
         """Delete file or folder on the datastore.
 

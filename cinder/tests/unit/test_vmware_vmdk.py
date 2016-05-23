@@ -2587,6 +2587,18 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.update_backing_disk_uuid.assert_called_once_with(backing,
                                                               volume['id'])
 
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_unmanage(self, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        volume = self._create_volume_dict()
+        self._driver.unmanage(volume)
+
+        vops.get_backing.assert_called_once_with(volume['name'])
+        vops.update_backing_extra_config.assert_called_once_with(
+            backing, {vmdk.EXTRA_CONFIG_VOLUME_ID_KEY: ''})
+
     @mock.patch('oslo_vmware.api.VMwareAPISession')
     def test_session(self, apiSession):
         self._session = None

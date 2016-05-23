@@ -1386,6 +1386,27 @@ class VolumeOpsTestCase(test.TestCase):
         self.assertEqual(exp_factory_create_calls,
                          self.session.vim.client.factory.create.call_args_list)
 
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_get_extra_config_option_values')
+    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
+                '_reconfigure_backing')
+    def test_update_backing_extra_config(self,
+                                         reconfigure_backing,
+                                         get_extra_config_option_values):
+        reconfig_spec = mock.Mock()
+        self.session.vim.client.factory.create.return_value = reconfig_spec
+
+        option_values = mock.sentinel.option_values
+        get_extra_config_option_values.return_value = option_values
+
+        backing = mock.sentinel.backing
+        extra_config = mock.sentinel.extra_config
+        self.vops.update_backing_extra_config(backing, extra_config)
+
+        get_extra_config_option_values.assert_called_once_with(extra_config)
+        self.assertEqual(option_values, reconfig_spec.extraConfig)
+        reconfigure_backing.assert_called_once_with(backing, reconfig_spec)
+
     def test_change_backing_profile(self):
         # Test change to empty profile.
         reconfig_spec = mock.Mock()

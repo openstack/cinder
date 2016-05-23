@@ -1748,6 +1748,14 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             dest_path.get_descriptor_ds_file_path())
         self.volumeops.update_backing_disk_uuid(backing, volume['id'])
 
+    def unmanage(self, volume):
+        backing = self.volumeops.get_backing(volume['name'])
+        if backing:
+            extra_config = self._get_extra_config(volume)
+            for key in extra_config:
+                extra_config[key] = ''
+            self.volumeops.update_backing_extra_config(backing, extra_config)
+
     @property
     def session(self):
         if not self._session:
