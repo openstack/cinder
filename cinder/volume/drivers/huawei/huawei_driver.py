@@ -1987,7 +1987,8 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 self.client.delete_lungroup_mapping_view(view_id,
                                                          lungroup_id)
             self.client.delete_lungroup(lungroup_id)
-            if self.client.is_initiator_associated_to_host(initiator_name):
+            if self.client.is_initiator_associated_to_host(initiator_name,
+                                                           host_id):
                 self.client.remove_iscsi_from_host(initiator_name)
             hostgroup_name = constants.HOSTGROUP_PREFIX + host_id
             hostgroup_id = self.client.find_hostgroup(hostgroup_name)

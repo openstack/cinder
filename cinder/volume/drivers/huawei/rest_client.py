@@ -497,7 +497,7 @@ class RestClient(object):
         added = self._initiator_is_added_to_array(initiator_name)
         if not added:
             self._add_initiator_to_array(initiator_name)
-        if not self.is_initiator_associated_to_host(initiator_name):
+        if not self.is_initiator_associated_to_host(initiator_name, host_id):
             self._associate_initiator_to_host(initiator_name,
                                               host_id)
 
@@ -763,17 +763,25 @@ class RestClient(object):
             return True
         return False
 
-    def is_initiator_associated_to_host(self, ininame):
+    def is_initiator_associated_to_host(self, ininame, host_id):
         """Check whether the initiator is associated to the host."""
         url = "/iscsi_initiator?range=[0-256]"
         result = self.call(url, None, "GET")
         self._assert_rest_result(
             result, _('Check initiator associated to host error.'))
 
-        if 'data' in result:
-            for item in result['data']:
-                if item['ID'] == ininame and item['ISFREE'] == "true":
+        for item in result.get('data'):
+            if item['ID'] == ininame:
+                if item['ISFREE'] == "true":
                     return False
+                if item['PARENTID'] == host_id:
+                    return True
+                else:
+                    msg = (_("Initiator %(ini)s has been added to another "
+                             "host %(host)s.") % {"ini": ininame,
+                                                  "host": item['PARENTNAME']})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
         return True
 
     def _add_initiator_to_array(self, initiator_name):
