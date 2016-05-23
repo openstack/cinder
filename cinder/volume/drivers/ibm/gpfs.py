@@ -610,10 +610,17 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
             else:
                 path = mount_point
 
+            # -ignore_readdir_race is to prevent the command from exiting
+            # with nonzero RC when some files in the directory are removed
+            # by other delete operations. -quit is to end the execution as
+            # soon as we get one filename; it is not expected that two or
+            # more filenames found.
             (out, err) = self._execute('find', path, '-maxdepth', '1',
-                                       '-inum', inode, run_as_root=True)
+                                       '-ignore_readdir_race',
+                                       '-inum', inode, '-print0', '-quit',
+                                       run_as_root=True)
             if out:
-                fparent = out.split('\n', 1)[0]
+                fparent = out.split('\0', 1)[0]
 
         if mount_point is None:
             self._execute(
