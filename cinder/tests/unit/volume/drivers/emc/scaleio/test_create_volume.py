@@ -109,6 +109,11 @@ class TestCreateVolume(scaleio.TestScaleIODriver):
         """Valid create volume parameters"""
         self.driver.create_volume(self.volume)
 
+    def test_create_volume_non_8_gran(self):
+        self.volume.size = 14
+        model_update = self.driver.create_volume(self.volume)
+        self.assertEqual(16, model_update['size'])
+
     def test_create_volume_badstatus_response(self):
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
         self.assertRaises(exception.VolumeBackendAPIException,
