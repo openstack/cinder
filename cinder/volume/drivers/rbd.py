@@ -692,11 +692,11 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             try:
                 snaps = rbd_image.list_snaps()
                 for snap in snaps:
-                    if snap.name.endswith('.clone_snap'):
+                    if snap['name'].endswith('.clone_snap'):
                         LOG.debug("volume has clone snapshot(s)")
                         # We grab one of these and use it when fetching parent
                         # info in case the volume has been flattened.
-                        clone_snap = snap.name
+                        clone_snap = snap['name']
                         break
 
                     raise exception.VolumeIsBusy(volume_name=volume_name)
