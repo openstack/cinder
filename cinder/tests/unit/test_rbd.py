@@ -217,6 +217,17 @@ class RBDTestCase(test.TestCase):
                 mock_rbd_image_close.assert_called_once_with()
 
     @common_mocks
+    def test_manage_existing_get_non_integer_size(self):
+        rbd_image = self.driver.rbd.Image.return_value
+        rbd_image.size.return_value = int(1.75 * units.Gi)
+        existing_ref = {'source-name': self.volume_a.name}
+        return_size = self.driver.manage_existing_get_size(self.volume_a,
+                                                           existing_ref)
+        self.assertEqual(2, return_size)
+        rbd_image.size.assert_called_once_with()
+        rbd_image.close.assert_called_once_with()
+
+    @common_mocks
     def test_manage_existing_get_invalid_size(self):
 
         with mock.patch.object(self.driver.rbd.Image(), 'size') as \
