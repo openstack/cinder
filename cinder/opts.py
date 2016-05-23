@@ -207,6 +207,7 @@ def list_opts():
         ('DEFAULT',
             itertools.chain(
                 cinder_backup_driver.service_opts,
+                [cinder_cmd_volume.cluster_opt],
                 cinder_api_common.api_common_opts,
                 cinder_backup_drivers_ceph.service_opts,
                 cinder_volume_drivers_smbfs.volume_opts,

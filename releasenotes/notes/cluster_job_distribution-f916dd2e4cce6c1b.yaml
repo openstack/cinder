@@ -1,0 +1,12 @@
+---
+prelude: >
+    Everything in Cinder's release notes related to the High Availability
+    Active-Active effort -preluded with "HA A-A:"- is work in progress and
+    should not be used in production until it has been completed and the
+    appropriate release note has been issued stating its readiness for
+    production.
+
+features:
+  - "HA A-A: Add cluster configuration option to allow grouping hosts that
+    share the same backend configurations and should work in Active-Active
+    fashion."

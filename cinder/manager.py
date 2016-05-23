@@ -80,10 +80,11 @@ class Manager(base.Base, PeriodicTasks):
 
     target = messaging.Target(version=RPC_API_VERSION)
 
-    def __init__(self, host=None, db_driver=None):
+    def __init__(self, host=None, db_driver=None, cluster=None):
         if not host:
             host = CONF.host
         self.host = host
+        self.cluster = cluster
         self.additional_endpoints = []
         super(Manager, self).__init__(db_driver)
 
@@ -91,13 +92,17 @@ class Manager(base.Base, PeriodicTasks):
         """Tasks to be run at a periodic interval."""
         return self.run_periodic_tasks(context, raise_on_error=raise_on_error)
 
-    def init_host(self):
+    def init_host(self, added_to_cluster=None):
         """Handle initialization if this is a standalone service.
 
         A hook point for services to execute tasks before the services are made
         available (i.e. showing up on RPC and starting to accept RPC calls) to
         other components.  Child classes should override this method.
 
+        :param added_to_cluster: True when a host's cluster configuration has
+                                 changed from not being defined or being '' to
+                                 any other value and the DB service record
+                                 reflects this new value.
         """
         pass
 
@@ -140,12 +145,14 @@ class SchedulerDependentManager(Manager):
 
     """
 
-    def __init__(self, host=None, db_driver=None, service_name='undefined'):
+    def __init__(self, host=None, db_driver=None, service_name='undefined',
+                 cluster=None):
         self.last_capabilities = None
         self.service_name = service_name
         self.scheduler_rpcapi = scheduler_rpcapi.SchedulerAPI()
         self._tp = greenpool.GreenPool()
-        super(SchedulerDependentManager, self).__init__(host, db_driver)
+        super(SchedulerDependentManager, self).__init__(host, db_driver,
+                                                        cluster=cluster)
 
     def update_service_capabilities(self, capabilities):
         """Remember these capabilities to send on next periodic update."""
