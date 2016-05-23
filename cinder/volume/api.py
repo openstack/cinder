@@ -437,22 +437,22 @@ class API(base.Base):
 
     @wrap_check_policy
     def update(self, context, volume, fields):
-        if volume['status'] == 'maintenance':
+        # TODO(karthikp): Making sure volume is always oslo-versioned
+        # If not we convert it at the start of update method. This check
+        # needs to be removed once we have moved to ovo.
+        if not isinstance(volume, objects_base.CinderObject):
+            vol_obj = objects.Volume()
+            volume = objects.Volume._from_db_object(context, vol_obj, volume)
+
+        if volume.status == 'maintenance':
             LOG.info(_LI("Unable to update volume, "
                          "because it is in maintenance."), resource=volume)
             msg = _("The volume cannot be updated during maintenance.")
             raise exception.InvalidVolume(reason=msg)
 
-        # NOTE(thangp): Update is called by various APIs, some of which are
-        # not yet using oslo_versionedobjects.  We need to handle the case
-        # where volume is either a dict or an oslo_versionedobject.
-        if isinstance(volume, objects_base.CinderObject):
-            volume.update(fields)
-            volume.save()
-            LOG.info(_LI("Volume updated successfully."), resource=volume)
-        else:
-            vref = self.db.volume_update(context, volume['id'], fields)
-            LOG.info(_LI("Volume updated successfully."), resource=vref)
+        volume.update(fields)
+        volume.save()
+        LOG.info(_LI("Volume updated successfully."), resource=volume)
 
     def get(self, context, volume_id, viewable_admin_meta=False):
         volume = objects.Volume.get_by_id(context, volume_id)
