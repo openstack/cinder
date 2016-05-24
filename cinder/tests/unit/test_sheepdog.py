@@ -111,6 +111,10 @@ class SheepdogDriverTestDataGenerator(object):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'node', 'info',
                 '-a', SHEEP_ADDR, '-p', SHEEP_PORT, '-r')
 
+    def cmd_dog_node_list(self):
+        return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'node', 'list',
+                '-a', SHEEP_ADDR, '-p', SHEEP_PORT, '-r')
+
     CMD_DOG_CLUSTER_INFO = ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'cluster',
                             'info', '-a', SHEEP_ADDR, '-p', SHEEP_PORT)
 
@@ -151,6 +155,10 @@ class SheepdogDriverTestDataGenerator(object):
     COLLIE_NODE_INFO = """
 0 107287605248 3623897354 3%
 Total 107287605248 3623897354 3% 54760833024
+"""
+
+    COLLIE_NODE_LIST = """
+0 127.0.0.1:7000 128 1
 """
 
     COLLIE_CLUSTER_INFO_0_5 = """\
@@ -390,7 +398,8 @@ class SheepdogClientTestCase(test.TestCase):
         self.driver.db = self.db
         self.driver.do_setup(None)
         self.test_data = SheepdogDriverTestDataGenerator()
-        self.client = self.driver.client
+        node_list = [SHEEP_ADDR]
+        self.client = sheepdog.SheepdogClient(node_list, SHEEP_PORT)
         self._addr = SHEEP_ADDR
         self._port = SHEEP_PORT
         self._vdiname = self.test_data.TEST_VOLUME.name
@@ -465,7 +474,6 @@ class SheepdogClientTestCase(test.TestCase):
     @mock.patch.object(sheepdog, 'LOG')
     def test_run_dog_unknown_error(self, fake_logger, fake_execute):
         args = ('cluster', 'info')
-        cmd = self.test_data.CMD_DOG_CLUSTER_INFO
         cmd = self.test_data.CMD_DOG_CLUSTER_INFO
         exit_code = 1
         stdout = 'stdout dummy'
@@ -1055,6 +1063,32 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertTrue(fake_logger.error.called)
         self.assertEqual(expected_msg, ex.msg)
 
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    def test_update_node_list_success(self, fake_execute):
+        expected_cmd = ('node', 'list', '-r')
+        fake_execute.return_value = (self.test_data.COLLIE_NODE_LIST, '')
+        self.client.update_node_list()
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_update_node_list_unknown_error(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_node_list()
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = 'stderr_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.update_node_list)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
 
 class SheepdogDriverTestCase(test.TestCase):
     def setUp(self):
@@ -1078,10 +1112,12 @@ class SheepdogDriverTestCase(test.TestCase):
         self._dst_vdiname = self.test_data.TEST_CLONED_VOLUME.name
         self._dst_vdisize = self.test_data.TEST_CLONED_VOLUME.size
 
+    @mock.patch.object(sheepdog.SheepdogClient, 'update_node_list')
     @mock.patch.object(sheepdog.SheepdogClient, 'check_cluster_status')
-    def test_check_for_setup_error(self, fake_execute):
+    def test_check_for_setup_error(self, fake_check, fake_update):
         self.driver.check_for_setup_error()
-        fake_execute.assert_called_once_with()
+        fake_check.assert_called_once_with()
+        fake_update.assert_called_once_with()
 
     @mock.patch.object(sheepdog.SheepdogClient, 'create')
     def test_create_volume(self, fake_execute):
