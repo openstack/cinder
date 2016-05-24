@@ -1101,7 +1101,7 @@ class PureBaseVolumeDriver(san.SanDriver):
             self._disable_replication(volume)
         elif not previous_vol_replicated and new_vol_replicated:
             # Add to protection group.
-            self._enable_replication(volume)
+            self._enable_replication(self._get_current_array(), volume)
 
         return True, None
 
