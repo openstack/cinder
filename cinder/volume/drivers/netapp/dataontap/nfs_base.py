@@ -817,7 +817,6 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     def _check_volume_type(self, volume, share, file_name, extra_specs):
         """Match volume type for share file."""
-        raise NotImplementedError()
 
     def _convert_vol_ref_share_name_to_share_ip(self, vol_ref):
         """Converts the share point name to an IP address

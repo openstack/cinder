@@ -562,9 +562,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(1, log.call_count)
 
     def test_check_vol_type_for_lun(self):
-        self.assertRaises(NotImplementedError,
-                          self.library._check_volume_type_for_lun,
-                          'vol', 'lun', 'existing_ref', {})
+        result = self.library._check_volume_type_for_lun(
+            'vol', 'lun', 'existing_ref', {})
+        self.assertIsNone(result)
 
     def test_is_lun_valid_on_storage(self):
         self.assertTrue(self.library._is_lun_valid_on_storage('lun'))

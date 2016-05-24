@@ -348,30 +348,6 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             self._update_stale_vols(
                 volume=ssc_cmode.NetAppVolume(netapp_vol, self.vserver))
 
-    def _check_volume_type_for_lun(self, volume, lun, existing_ref,
-                                   extra_specs):
-        """Check if LUN satisfies volume type."""
-        def scan_ssc_data():
-            volumes = ssc_cmode.get_volumes_for_specs(self.ssc_vols,
-                                                      extra_specs)
-            for vol in volumes:
-                if lun.get_metadata_property('Volume') == vol.id['name']:
-                    return True
-            return False
-
-        match_read = scan_ssc_data()
-        if not match_read:
-            ssc_cmode.get_cluster_latest_ssc(
-                self, self.zapi_client.get_connection(), self.vserver)
-            match_read = scan_ssc_data()
-
-        if not match_read:
-            raise exception.ManageExistingVolumeTypeMismatch(
-                reason=(_("LUN with given ref %(ref)s does not satisfy volume"
-                          " type. Ensure LUN volume with ssc features is"
-                          " present on vserver %(vs)s.")
-                        % {'ref': existing_ref, 'vs': self.vserver}))
-
     def _get_preferred_target_from_list(self, target_details_list,
                                         filter=None):
         # cDOT iSCSI LIFs do not migrate from controller to controller

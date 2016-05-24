@@ -638,8 +638,7 @@ class NetAppBlockStorageLibrary(object):
 
     def _check_volume_type_for_lun(self, volume, lun, existing_ref,
                                    extra_specs):
-        """Checks if lun satifies the volume type."""
-        raise NotImplementedError()
+        """Checks if LUN satisfies the volume type."""
 
     def manage_existing(self, volume, existing_ref):
         """Brings an existing storage object under Cinder management.
