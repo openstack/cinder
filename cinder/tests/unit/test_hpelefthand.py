@@ -617,6 +617,28 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
                 self.volume,
                 self.connector)
 
+    def test_terminate_connection_from_primary_when_failed_over(self):
+        # setup drive with default configuration
+        # and return the mock HTTP LeftHand client
+        mock_client = self.setup_driver()
+
+        mock_client.getServerByName.side_effect = hpeexceptions.HTTPNotFound(
+            "The host does not exist.")
+
+        with mock.patch.object(hpe_lefthand_iscsi.HPELeftHandISCSIDriver,
+                               '_create_client') as mock_do_setup:
+            mock_do_setup.return_value = mock_client
+
+            self.driver._active_backend_id = 'some_id'
+            # execute terminate_connection
+            self.driver.terminate_connection(self.volume, self.connector)
+
+            # When the volume is still attached to the primary array after a
+            # fail-over, there should be no call to delete the server.
+            # We can assert this method is not called to make sure
+            # the proper exceptions are being raised.
+            self.assertEqual(0, mock_client.removeServerAccess.call_count)
+
     def test_terminate_connection_multiple_volumes_on_server(self):
 
         # setup drive with default configuration
