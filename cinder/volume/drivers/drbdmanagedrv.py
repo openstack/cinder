@@ -876,7 +876,7 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
                        dm_const.BOOL_FALSE) == dm_const.BOOL_TRUE
 
     def _return_connection_data(self, nodename, volume, d_res_name=None):
-        if self._is_external_node(nodename):
+        if nodename and self._is_external_node(nodename):
             return self._return_drbdadm_config(nodename,
                                                volume,
                                                d_res_name=d_res_name)
@@ -945,9 +945,12 @@ class DrbdManageDrbdDriver(DrbdManageBaseDriver):
         return self._return_connection_data(nodename, volume)
 
     def ensure_export(self, context, volume):
-
-        fields = context['provider_location'].split(" ")
-        nodename = fields[1]
+        p_location = volume['provider_location']
+        if p_location:
+            fields = p_location.split(" ")
+            nodename = fields[1]
+        else:
+            nodename = None
 
         return self._return_connection_data(nodename, volume)
 
