@@ -152,9 +152,10 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
         2.0.6 - Update replication to version 2.1
         2.0.7 - Fixed bug #1554746, Create clone volume with new size.
         2.0.8 - Add defaults for creating a replication client, bug #1556331
+        2.0.9 - Fix terminate connection on failover
     """
 
-    VERSION = "2.0.8"
+    VERSION = "2.0.9"
 
     device_stats = {}
 
@@ -744,6 +745,22 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
             if removeServer:
                 client.deleteServer(server_info['id'])
+        except hpeexceptions.HTTPNotFound as ex:
+            # If a host is failed-over, we want to allow the detach to
+            # to 'succeed' when it cannot find the host. We can simply
+            # return out of the terminate connection in order for things
+            # to be updated correctly.
+            if self._active_backend_id:
+                LOG.warning(_LW("Because the host is currently in a "
+                                "failed-over state, the volume will not "
+                                "be properly detached from the primary "
+                                "array. The detach will be considered a "
+                                "success as far as Cinder is concerned. "
+                                "The volume can now be attached to the "
+                                "secondary target."))
+                return
+            else:
+                raise exception.VolumeBackendAPIException(ex)
         except Exception as ex:
             raise exception.VolumeBackendAPIException(ex)
         finally:
