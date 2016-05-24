@@ -1510,10 +1510,13 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
                           self.driver.unmanage_snapshot,
                           SNAPSHOT)
 
-    def _test_retype_repl(self, mock_is_repl, is_vol_repl, repl_cabability):
+    def _test_retype_repl(self, mock_is_repl, is_vol_repl,
+                          repl_cabability, volume_id=None):
         mock_is_repl.return_value = is_vol_repl
         context = mock.MagicMock()
         volume = fake_volume.fake_volume_obj(context)
+        if volume_id:
+            volume.id = volume_id
         new_type = {
             'extra_specs': {
                 pure.EXTRA_SPECS_REPL_ENABLED:
@@ -1534,32 +1537,28 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def test_retype_non_repl_to_non_repl(self, mock_is_replicated_type):
         self._test_retype_repl(mock_is_replicated_type, False, False)
 
-    @mock.patch(BASE_DRIVER_OBJ + '._enable_replication')
-    @mock.patch(BASE_DRIVER_OBJ + '._disable_replication')
     @mock.patch(BASE_DRIVER_OBJ + '._is_volume_replicated_type', autospec=True)
-    def test_retype_non_repl_to_repl(self,
-                                     mock_is_replicated_type,
-                                     mock_replication_disable,
-                                     mock_replication_enable):
+    def test_retype_non_repl_to_repl(self, mock_is_replicated_type):
 
         context, volume = self._test_retype_repl(mock_is_replicated_type,
                                                  False,
-                                                 True)
-        self.assertFalse(mock_replication_disable.called)
-        mock_replication_enable.assert_called_with(volume)
+                                                 True,
+                                                 volume_id=VOLUME_ID)
+        self.array.set_pgroup.assert_called_once_with(
+            pure.REPLICATION_CG_NAME,
+            addvollist=[VOLUME_PURITY_NAME]
+        )
 
-    @mock.patch(BASE_DRIVER_OBJ + '._enable_replication')
-    @mock.patch(BASE_DRIVER_OBJ + '._disable_replication')
     @mock.patch(BASE_DRIVER_OBJ + '._is_volume_replicated_type', autospec=True)
-    def test_retype_repl_to_non_repl(self,
-                                     mock_is_replicated_type,
-                                     mock_replication_disable,
-                                     mock_replication_enable):
+    def test_retype_repl_to_non_repl(self, mock_is_replicated_type,):
         context, volume = self._test_retype_repl(mock_is_replicated_type,
                                                  True,
-                                                 False)
-        self.assertFalse(mock_replication_enable.called)
-        mock_replication_disable.assert_called_with(volume)
+                                                 False,
+                                                 volume_id=VOLUME_ID)
+        self.array.set_pgroup.assert_called_once_with(
+            pure.REPLICATION_CG_NAME,
+            remvollist=[VOLUME_PURITY_NAME]
+        )
 
     @mock.patch('cinder.volume.volume_types.get_volume_type')
     def test_is_vol_replicated_no_extra_specs(self, mock_get_vol_type):
