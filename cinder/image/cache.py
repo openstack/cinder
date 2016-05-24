@@ -20,6 +20,7 @@ from oslo_log import log as logging
 from oslo_utils import timeutils
 
 from cinder.i18n import _LW
+from cinder import objects
 from cinder import rpc
 
 CONF = cfg.CONF
@@ -191,10 +192,10 @@ class ImageVolumeCache(object):
 
     def _delete_image_volume(self, context, cache_entry):
         """Delete a volume and remove cache entry."""
-        volume_ref = self.db.volume_get(context, cache_entry['volume_id'])
+        volume = objects.Volume.get_by_id(context, cache_entry['volume_id'])
 
         # Delete will evict the cache entry.
-        self.volume_api.delete(context, volume_ref)
+        self.volume_api.delete(context, volume)
 
     def _should_update_entry(self, cache_entry, image_meta):
         """Ensure that the cache entry image data is still valid."""
