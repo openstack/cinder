@@ -76,7 +76,7 @@ def _usage_from_volume(context, volume_ref, **kw):
 
     usage_info.update(kw)
     try:
-        attachments = db.volume_attachment_get_used_by_volume_id(
+        attachments = db.volume_attachment_get_all_by_volume_id(
             context, volume_ref['id'])
         usage_info['volume_attachment'] = attachments
 

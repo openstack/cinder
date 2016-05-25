@@ -236,17 +236,19 @@ def volume_attachment_get(context, attachment_id, session=None):
     return IMPL.volume_attachment_get(context, attachment_id, session)
 
 
-def volume_attachment_get_used_by_volume_id(context, volume_id):
-    return IMPL.volume_attachment_get_used_by_volume_id(context, volume_id)
+def volume_attachment_get_all_by_volume_id(context, volume_id):
+    return IMPL.volume_attachment_get_all_by_volume_id(context, volume_id)
 
 
-def volume_attachment_get_by_host(context, volume_id, host):
-    return IMPL.volume_attachment_get_by_host(context, volume_id, host)
+def volume_attachment_get_all_by_host(context, volume_id, host):
+    return IMPL.volume_attachment_get_all_by_host(context, volume_id, host)
 
 
-def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
-    return IMPL.volume_attachment_get_by_instance_uuid(context, volume_id,
-                                                       instance_uuid)
+def volume_attachment_get_all_by_instance_uuid(context,
+                                               volume_id,
+                                               instance_uuid):
+    return IMPL.volume_attachment_get_all_by_instance_uuid(context, volume_id,
+                                                           instance_uuid)
 
 
 def volume_update_status_based_on_attachment(context, volume_id):

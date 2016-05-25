@@ -965,18 +965,19 @@ class VolumeManager(manager.SchedulerDependentManager):
                 raise exception.InvalidVolume(
                     reason=_("volume is already attached"))
 
-            attachment = None
             host_name_sanitized = utils.sanitize_hostname(
                 host_name) if host_name else None
             if instance_uuid:
-                attachment = \
-                    self.db.volume_attachment_get_by_instance_uuid(
+                attachments = \
+                    self.db.volume_attachment_get_all_by_instance_uuid(
                         context, volume_id, instance_uuid)
             else:
-                attachment = \
-                    self.db.volume_attachment_get_by_host(context, volume_id,
-                                                          host_name_sanitized)
-            if attachment is not None:
+                attachments = (
+                    self.db.volume_attachment_get_all_by_host(
+                        context,
+                        volume_id,
+                        host_name_sanitized))
+            if attachments:
                 self.db.volume_update(context, volume_id,
                                       {'status': 'in-use'})
                 return
@@ -1067,7 +1068,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             # We can try and degrade gracefully here by trying to detach
             # a volume without the attachment_id here if the volume only has
             # one attachment.  This is for backwards compatibility.
-            attachments = self.db.volume_attachment_get_used_by_volume_id(
+            attachments = self.db.volume_attachment_get_all_by_volume_id(
                 context, volume_id)
             if len(attachments) > 1:
                 # There are more than 1 attachments for this volume

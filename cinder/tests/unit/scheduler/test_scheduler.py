@@ -255,7 +255,7 @@ class SchedulerManagerTestCase(test.TestCase):
                                                   request_spec, {})
 
     @mock.patch('cinder.db.volume_update')
-    @mock.patch('cinder.db.volume_attachment_get_used_by_volume_id')
+    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
     def test_retype_volume_exception_returns_volume_state(
             self, _mock_vol_attachment_get, _mock_vol_update):
         # Test NoValidHost exception behavior for retype.
