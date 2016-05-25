@@ -448,9 +448,3 @@ class HackingTestCase(test.TestCase):
     def test_no_test_log(self, first, second, third, fourth):
         self.assertEqual(first, len(list(checks.no_test_log(
             "%s('arg')" % second, third, fourth))))
-
-    def test_no_assert_called_once(self):
-        self.assertEqual(1, len(list(checks.no_assert_called_once(
-            "masker.assert_called_once(", "cinder/tests/unit/fake.py"))))
-        self.assertEqual(0, len(list(checks.no_assert_called_once(
-            "masker.assert_called_once_with(", "cinder/tests/unit/fake.py"))))
