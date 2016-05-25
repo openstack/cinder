@@ -145,6 +145,11 @@ class CinderObject(base.VersionedObject):
         # Return modified dict
         return changes
 
+    def obj_make_compatible(self, primitive, target_version):
+        _log_backport(self, target_version)
+        super(CinderObject, self).obj_make_compatible(primitive,
+                                                      target_version)
+
     def __contains__(self, name):
         # We're using obj_extra_fields to provide aliases for some fields while
         # in transition period. This override is to make these aliases pass
@@ -400,7 +405,10 @@ class CinderComparableObject(base.ComparableVersionedObject):
 
 
 class ObjectListBase(base.ObjectListBase):
-    pass
+    def obj_make_compatible(self, primitive, target_version):
+        _log_backport(self, target_version)
+        super(ObjectListBase, self).obj_make_compatible(primitive,
+                                                        target_version)
 
 
 class CinderObjectSerializer(base.VersionedObjectSerializer):
@@ -448,3 +456,13 @@ class CinderObjectSerializer(base.VersionedObjectSerializer):
             backport_ver = self._get_capped_obj_version(entity)
             entity = entity.obj_to_primitive(backport_ver, self.manifest)
         return entity
+
+
+def _log_backport(ovo, target_version):
+    """Log backported versioned objects."""
+    if target_version and target_version != ovo.VERSION:
+        LOG.debug('Backporting %(obj_name)s from version %(src_vers)s '
+                  'to version %(dst_vers)s',
+                  {'obj_name': ovo.obj_name(),
+                   'src_vers': ovo.VERSION,
+                   'dst_vers': target_version})

@@ -705,6 +705,9 @@ class TestCinderDictObject(test_objects.BaseObjectsTestCase):
 
 @mock.patch('cinder.objects.base.OBJ_VERSIONS', fake_objects.MyHistory())
 class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
+    BACKPORT_MSG = ('Backporting %(obj_name)s from version %(src_vers)s to '
+                    'version %(dst_vers)s')
+
     def setUp(self):
         super(TestCinderObjectSerializer, self).setUp()
         self.obj = fake_objects.ChildObject(scheduled_at=None,
@@ -741,7 +744,8 @@ class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
         self.assertRaises(exception.CappedVersionUnknown,
                           objects.base.CinderObjectSerializer, '0.9')
 
-    def test_serialize_entity_basic_no_backport(self):
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_basic_no_backport(self, log_debug_mock):
         """Test single element serializer with no backport."""
         serializer = objects.base.CinderObjectSerializer('1.6')
         primitive = serializer.serialize_entity(self.context, self.obj)
@@ -749,8 +753,10 @@ class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
         data = primitive['versioned_object.data']
         self.assertEqual(1, data['integer'])
         self.assertEqual('text', data['text'])
+        log_debug_mock.assert_not_called()
 
-    def test_serialize_entity_basic_backport(self):
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_basic_backport(self, log_debug_mock):
         """Test single element serializer with backport."""
         serializer = objects.base.CinderObjectSerializer('1.5')
         primitive = serializer.serialize_entity(self.context, self.obj)
@@ -758,8 +764,13 @@ class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
         data = primitive['versioned_object.data']
         self.assertNotIn('integer', data)
         self.assertEqual('text', data['text'])
+        log_debug_mock.assert_called_once_with(self.BACKPORT_MSG,
+                                               {'obj_name': 'ChildObject',
+                                                'src_vers': '1.2',
+                                                'dst_vers': '1.1'})
 
-    def test_serialize_entity_full_no_backport(self):
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_full_no_backport(self, log_debug_mock):
         """Test related elements serialization with no backport."""
         serializer = objects.base.CinderObjectSerializer('1.6')
         primitive = serializer.serialize_entity(self.context, self.parent_list)
@@ -768,8 +779,11 @@ class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
         self.assertEqual('1.1', parent['versioned_object.version'])
         child = parent['versioned_object.data']['child']
         self.assertEqual('1.2', child['versioned_object.version'])
+        log_debug_mock.assert_not_called()
 
-    def test_serialize_entity_full_backport_last_children(self):
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_full_backport_last_children(self,
+                                                          log_debug_mock):
         """Test related elements serialization with backport of the last child.
 
         Test that using the manifest we properly backport a child object even
@@ -787,8 +801,13 @@ class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
         data = child['versioned_object.data']
         self.assertNotIn('integer', data)
         self.assertEqual('text', data['text'])
+        log_debug_mock.assert_called_once_with(self.BACKPORT_MSG,
+                                               {'obj_name': 'ChildObject',
+                                                'src_vers': '1.2',
+                                                'dst_vers': '1.1'})
 
-    def test_serialize_entity_full_backport(self):
+    @mock.patch('cinder.objects.base.LOG.debug')
+    def test_serialize_entity_full_backport(self, log_debug_mock):
         """Test backport of the whole tree of related elements."""
         serializer = objects.base.CinderObjectSerializer('1.3')
         primitive = serializer.serialize_entity(self.context, self.parent_list)
@@ -807,3 +826,13 @@ class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
         data = child['versioned_object.data']
         self.assertNotIn('integer', data)
         self.assertEqual('text', data['text'])
+        log_debug_mock.assert_has_calls([
+            mock.call(self.BACKPORT_MSG, {'obj_name': 'ParentObjectList',
+                                          'src_vers': '1.1',
+                                          'dst_vers': '1.0'}),
+            mock.call(self.BACKPORT_MSG, {'obj_name': 'ParentObject',
+                                          'src_vers': '1.1',
+                                          'dst_vers': '1.0'}),
+            mock.call(self.BACKPORT_MSG, {'obj_name': 'ChildObject',
+                                          'src_vers': '1.2',
+                                          'dst_vers': '1.1'})])
