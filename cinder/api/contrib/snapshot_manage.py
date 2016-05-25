@@ -113,10 +113,7 @@ class SnapshotManageController(wsgi.Controller):
 
         snapshot_parameters['metadata'] = snapshot.get('metadata', None)
         snapshot_parameters['description'] = snapshot.get('description', None)
-        # NOTE(wanghao) if name in request body, we are overriding the 'name'
-        snapshot_parameters['name'] = snapshot.get('name',
-                                                   snapshot.get('display_name')
-                                                   )
+        snapshot_parameters['name'] = snapshot.get('name')
 
         try:
             new_snapshot = self.volume_api.manage_existing_snapshot(
