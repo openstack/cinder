@@ -93,7 +93,8 @@ class NexentaEdgeJSONProxy(object):
         elif self.method == 'delete':
             req = requests.delete(self.url, data=data, headers=headers)
         else:
-            raise Exception('Unsupported method: %s' % self.method)
+            raise exception.VolumeDriverException(
+                'Unsupported method: %s' % self.method)
 
         rsp = req.json()
         req.close()

@@ -332,8 +332,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                             'filesystem': volume['name']})
             raise
 
-        if (('size' in volume) and (
-                volume['size'] > snapshot['volume_size'])):
+        if volume['size'] > snapshot['volume_size']:
             self.extend_volume(volume, volume['size'])
         return {'provider_location': volume['provider_location']}
 

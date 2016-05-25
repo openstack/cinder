@@ -76,6 +76,7 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
         self.cfg = mock.Mock(spec=conf.Configuration)
         self.cfg.safe_get = mock.Mock(side_effect=_safe_get)
         self.cfg.trace_flags = 'fake_trace_flags'
+        self.cfg.driver_data_namespace = 'fake_driver_data_namespace'
         self.cfg.nexenta_rest_protocol = 'http'
         self.cfg.nexenta_rest_address = '127.0.0.1'
         self.cfg.nexenta_rest_port = 8080
@@ -106,14 +107,18 @@ class TestNexentaEdgeNBDDriver(test.TestCase):
             exception.NexentaException, self.drv.check_for_setup_error)
 
     @patch('requests.get')
-    def test_check_do_setup__empty_response(self, get):
+    @patch('os.path.exists')
+    def test_check_do_setup__empty_response(self, exists, get):
         get.return_value = FakeResponse({})
+        exists.return_value = True
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.drv.check_for_setup_error)
 
     @patch('requests.get')
-    def test_check_do_setup(self, get):
+    @patch('os.path.exists')
+    def test_check_do_setup(self, exists, get):
         get.return_value = FakeResponse({'response': 'OK'})
+        exists.return_value = True
         self.drv.check_for_setup_error()
         get.assert_any_call(
             self.request_params.url(self.drv.bucket_url + '/objects/'),

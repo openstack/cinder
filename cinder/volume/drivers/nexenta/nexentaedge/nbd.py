@@ -22,7 +22,7 @@ from oslo_utils import excutils
 from oslo_utils import units
 
 from cinder import exception
-from cinder.i18n import _LE
+from cinder.i18n import _, _LE
 from cinder.image import image_utils
 from cinder import utils as cinder_utils
 from cinder.volume import driver
@@ -86,11 +86,11 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     def check_for_setup_error(self):
         try:
             if not self.symlinks_dir:
-                raise exception.NexentaException(
-                    "nexenta_nbd_symlinks_dir option is not specified")
+                msg = _("nexenta_nbd_symlinks_dir option is not specified")
+                raise exception.NexentaException(message=msg)
             if not os.path.exists(self.symlinks_dir):
-                raise exception.NexentaException(
-                    "NexentaEdge NBD symlinks directory doesn't exist")
+                msg = _("NexentaEdge NBD symlinks directory doesn't exist")
+                raise exception.NexentaException(message=msg)
             self.restapi.get(self.bucket_url + '/objects/')
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
@@ -123,7 +123,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                     return servers[sid]
         except exception.VolumeBackendAPIException:
             with excutils.save_and_reraise_exception():
-                LOG.exception(_LE('Error creating volume'))
+                LOG.exception(_LE('Error getting host info'))
         raise exception.VolumeBackendAPIException(
             'No %s hostname in NEdge cluster' % host)
 
@@ -136,8 +136,8 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
     def local_path(self, volume):
         number = self._get_nbd_number(volume)
         if number == -1:
-            raise exception.VolumeBackendAPIException(
-                'No NBD device for volume %s' % volume['name'])
+            msg = _('No NBD device for volume %s') % volume['name']
+            raise exception.VolumeBackendAPIException(data=msg)
         return self._get_symlink_path(number)
 
     def create_volume(self, volume):

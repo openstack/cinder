@@ -116,12 +116,13 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
                     if not found:
                         raise exception.VolumeBackendAPIException(
                             _("nexenta_client_address doesn't match any VIPs "
-                              "provided by service: {}".format(
-                                ", ".join([host['ip'] for host in vips]))))
+                                "provided by service: {}").format(", ".join(
+                                    [host['ip'] for host in vips])))
                 else:
                     if len(vips) == 1:
                         target_vip = vips[0]['ip']
-                        self.ha_vip = '/'.join((vips[0]['ip'], vips[0]['mask']))
+                        self.ha_vip = '/'.join(
+                            (vips[0]['ip'], vips[0]['mask']))
             if not target_vip:
                 LOG.error(_LE('No VIP configured for service %s'),
                           self.iscsi_service)

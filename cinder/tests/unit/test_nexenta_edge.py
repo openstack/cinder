@@ -171,9 +171,11 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
     def test_create_cloned_volume_larger(self):
         self.driver.create_cloned_volume(MOCK_VOL3, MOCK_VOL)
         # ignore the clone call, this has been tested before
-        self.mock_api.assert_called_with(NEDGE_URL + '/resize', {
+        self.mock_api.assert_called_with(NEDGE_URL, {
+            'blockSize': NEDGE_BLOCKSIZE,
             'objectPath': NEDGE_BUCKET + '/' + MOCK_VOL3['id'],
-            'newSizeMB': MOCK_VOL3['size'] * 1024
+            'volSizeMB': MOCK_VOL['size'] * 1024,
+            'chunkSize': NEDGE_CHUNKSIZE
         })
 
     def test_create_cloned_volume_fail(self):
