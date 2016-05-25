@@ -30,12 +30,12 @@ class TestInitializeConnection(scaleio.TestScaleIODriver):
         self.volume = fake_volume.fake_volume_obj(self.ctx)
 
     def test_only_qos(self):
-        qos = {'maxIOPS': 1000, 'maxBWS': 3000}
+        qos = {'maxIOPS': 1000, 'maxBWS': 2048}
         extraspecs = {}
         connection_properties = (
             self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(1000, connection_properties['iopsLimit'])
-        self.assertEqual(3000, connection_properties['bandwidthLimit'])
+        self.assertEqual(1000, int(connection_properties['iopsLimit']))
+        self.assertEqual(2048, int(connection_properties['bandwidthLimit']))
 
     def test_no_qos(self):
         qos = {}
@@ -47,19 +47,57 @@ class TestInitializeConnection(scaleio.TestScaleIODriver):
 
     def test_only_extraspecs(self):
         qos = {}
-        extraspecs = {'sio:iops_limit': 2000, 'sio:bandwidth_limit': 4000}
+        extraspecs = {'sio:iops_limit': 2000, 'sio:bandwidth_limit': 4096}
         connection_properties = (
             self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(2000, connection_properties['iopsLimit'])
-        self.assertEqual(4000, connection_properties['bandwidthLimit'])
+        self.assertEqual(2000, int(connection_properties['iopsLimit']))
+        self.assertEqual(4096, int(connection_properties['bandwidthLimit']))
 
     def test_qos_and_extraspecs(self):
-        qos = {'maxIOPS': 1000, 'maxBWS': 3000}
+        qos = {'maxIOPS': 1000, 'maxBWS': 3072}
         extraspecs = {'sio:iops_limit': 2000, 'sio:bandwidth_limit': 4000}
         connection_properties = (
             self._initialize_connection(qos, extraspecs)['data'])
-        self.assertEqual(1000, connection_properties['iopsLimit'])
-        self.assertEqual(3000, connection_properties['bandwidthLimit'])
+        self.assertEqual(1000, int(connection_properties['iopsLimit']))
+        self.assertEqual(3072, int(connection_properties['bandwidthLimit']))
+
+    def test_qos_scaling_and_max(self):
+        qos = {'maxIOPS': 100, 'maxBWS': 2048, 'maxIOPSperGB': 10,
+               'maxBWSperGB': 128}
+        extraspecs = {}
+        self.volume.size = 8
+        connection_properties = (
+            self._initialize_connection(qos, extraspecs)['data'])
+        self.assertEqual(80, int(connection_properties['iopsLimit']))
+        self.assertEqual(1024, int(connection_properties['bandwidthLimit']))
+
+        self.volume.size = 24
+        connection_properties = (
+            self._initialize_connection(qos, extraspecs)['data'])
+        self.assertEqual(100, int(connection_properties['iopsLimit']))
+        self.assertEqual(2048, int(connection_properties['bandwidthLimit']))
+
+    def test_qos_scaling_no_max(self):
+        qos = {'maxIOPSperGB': 10, 'maxBWSperGB': 128}
+        extraspecs = {}
+        self.volume.size = 8
+        connection_properties = (
+            self._initialize_connection(qos, extraspecs)['data'])
+        self.assertEqual(80, int(connection_properties['iopsLimit']))
+        self.assertEqual(1024, int(connection_properties['bandwidthLimit']))
+
+    def test_qos_round_up(self):
+        qos = {'maxBWS': 2000, 'maxBWSperGB': 100}
+        extraspecs = {}
+        self.volume.size = 8
+        connection_properties = (
+            self._initialize_connection(qos, extraspecs)['data'])
+        self.assertEqual(1024, int(connection_properties['bandwidthLimit']))
+
+        self.volume.size = 24
+        connection_properties = (
+            self._initialize_connection(qos, extraspecs)['data'])
+        self.assertEqual(2048, int(connection_properties['bandwidthLimit']))
 
     def _initialize_connection(self, qos, extraspecs):
         self.driver._get_volumetype_qos = mock.MagicMock()
