@@ -382,6 +382,16 @@ class PureDriverTestCase(test.TestCase):
                               func, *args, **kwargs)
             mock_func.side_effect = original_side_effect
 
+    @mock.patch('platform.platform')
+    def test_for_user_agent(self, mock_platform):
+        mock_platform.return_value = 'MyFavoritePlatform'
+        driver = pure.PureBaseVolumeDriver(configuration=self.mock_config)
+        expected_agent = "OpenStack Cinder %s/%s (MyFavoritePlatform)" % (
+            driver.__class__.__name__,
+            driver.VERSION
+        )
+        self.assertEqual(expected_agent, driver._user_agent)
+
 
 class PureBaseSharedDriverTestCase(PureDriverTestCase):
     def setUp(self):
@@ -1888,14 +1898,7 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             remvollist=[VOLUME_PURITY_NAME]
         )
 
-    @ddt.data(
-        dict(version='1.5.0'),
-        dict(version='2.0.0'),
-        dict(version='1.4.1'),
-    )
-    @ddt.unpack
-    def test_get_flasharray_verify_https(self, version):
-        self.purestorage_module.VERSION = version
+    def test_get_flasharray_verify_https(self):
         san_ip = '1.2.3.4'
         api_token = 'abcdef'
         cert_path = '/my/ssl/certs'
@@ -1910,38 +1913,8 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
             api_token=api_token,
             rest_version=None,
             verify_https=True,
-            ssl_cert=cert_path
-        )
-
-    def test_get_flasharray_dont_verify_https_version_too_old(self):
-        self.purestorage_module.VERSION = '1.4.0'
-        san_ip = '1.2.3.4'
-        api_token = 'abcdef'
-        self.purestorage_module.FlashArray.return_value = mock.MagicMock()
-
-        self.driver._get_flasharray(san_ip,
-                                    api_token,
-                                    verify_https=False,
-                                    ssl_cert_path=None)
-        self.purestorage_module.FlashArray.assert_called_with(
-            san_ip,
-            api_token=api_token,
-            rest_version=None
-        )
-
-    def test_get_flasharray_verify_https_version_too_old(self):
-        self.purestorage_module.VERSION = '1.4.0'
-        san_ip = '1.2.3.4'
-        api_token = 'abcdef'
-        self.purestorage_module.FlashArray.return_value = mock.MagicMock()
-
-        self.assertRaises(
-            exception.PureDriverException,
-            self.driver._get_flasharray,
-            san_ip,
-            api_token,
-            verify_https=True,
-            ssl_cert_path='/my/ssl/certs'
+            ssl_cert=cert_path,
+            user_agent=self.driver._user_agent,
         )
 
 
