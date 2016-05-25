@@ -105,6 +105,16 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
         test_obj = MyTestObjectNoId(uuid=fake.OBJECT_ID, name='foo')
         self.assertRaises(NotImplementedError, test_obj.refresh)
 
+    @mock.patch('cinder.objects.base.objects', mock.Mock())
+    def test_cls_init(self):
+        """Test that class init method gets called on registration."""
+        @objects.base.CinderObjectRegistry.register
+        class MyTestObject(objects.base.CinderObject,
+                           objects.base.CinderPersistentObject):
+            cinder_ovo_cls_init = mock.Mock()
+
+        MyTestObject.cinder_ovo_cls_init.assert_called_once_with()
+
 
 class TestCinderComparableObject(test_objects.BaseObjectsTestCase):
     def test_comparable_objects(self):
