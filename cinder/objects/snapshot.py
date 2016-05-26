@@ -283,7 +283,7 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
 
     @classmethod
     def get_by_host(cls, context, host, filters=None):
-        snapshots = db.snapshot_get_by_host(context, host, filters)
+        snapshots = db.snapshot_get_all_by_host(context, host, filters)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)
@@ -307,8 +307,8 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
                                   snapshots, expected_attrs=expected_attrs)
 
     @classmethod
-    def get_active_by_window(cls, context, begin, end):
-        snapshots = db.snapshot_get_active_by_window(context, begin, end)
+    def get_all_active_by_window(cls, context, begin, end):
+        snapshots = db.snapshot_get_all_active_by_window(context, begin, end)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,
                                   snapshots, expected_attrs=expected_attrs)

@@ -795,7 +795,7 @@ def quota_allocated_get_all_by_project(context, project_id):
 
 
 @require_context
-def _quota_get_by_resource(context, resource, session=None):
+def _quota_get_all_by_resource(context, resource, session=None):
     rows = model_query(context, models.Quota,
                        session=session,
                        read_deleted='no').filter_by(
@@ -831,7 +831,7 @@ def quota_update(context, project_id, resource, limit):
 def quota_update_resource(context, old_res, new_res):
     session = get_session()
     with session.begin():
-        quotas = _quota_get_by_resource(context, old_res, session=session)
+        quotas = _quota_get_all_by_resource(context, old_res, session=session)
         for quota in quotas:
             quota.resource = new_res
 
@@ -875,7 +875,7 @@ def quota_class_get(context, class_name, resource):
     return _quota_class_get(context, class_name, resource)
 
 
-def quota_class_get_default(context):
+def quota_class_get_defaults(context):
     rows = model_query(context, models.QuotaClass,
                        read_deleted="no").\
         filter_by(class_name=_DEFAULT_QUOTA_NAME).all()
@@ -2693,7 +2693,7 @@ def snapshot_get_all_for_volume(context, volume_id):
 
 
 @require_context
-def snapshot_get_by_host(context, host, filters=None):
+def snapshot_get_all_by_host(context, host, filters=None):
     if filters and not is_valid_model_filters(models.Snapshot, filters):
         return []
 
@@ -2812,7 +2812,8 @@ def snapshot_data_get_for_project(context, project_id, volume_type_id=None):
 
 
 @require_context
-def snapshot_get_active_by_window(context, begin, end=None, project_id=None):
+def snapshot_get_all_active_by_window(context, begin, end=None,
+                                      project_id=None):
     """Return snapshots that were active during window."""
 
     query = model_query(context, models.Snapshot, read_deleted="yes")
@@ -3697,10 +3698,10 @@ def group_type_destroy(context, id):
 
 
 @require_context
-def volume_get_active_by_window(context,
-                                begin,
-                                end=None,
-                                project_id=None):
+def volume_get_all_active_by_window(context,
+                                    begin,
+                                    end=None,
+                                    project_id=None):
     """Return volumes that were active during window."""
     query = model_query(context, models.Volume, read_deleted="yes")
     query = query.filter(or_(models.Volume.deleted_at == None,  # noqa
@@ -4005,7 +4006,7 @@ def qos_specs_create(context, values):
     session = get_session()
     with session.begin():
         try:
-            _qos_specs_get_by_name(context, values['name'], session)
+            _qos_specs_get_all_by_name(context, values['name'], session)
             raise exception.QoSSpecsExists(specs_id=values['name'])
         except exception.QoSSpecsNotFound:
             pass
@@ -4049,7 +4050,7 @@ def qos_specs_create(context, values):
 
 
 @require_admin_context
-def _qos_specs_get_by_name(context, name, session=None, inactive=False):
+def _qos_specs_get_all_by_name(context, name, session=None, inactive=False):
     read_deleted = 'yes' if inactive else 'no'
     results = model_query(context, models.QualityOfServiceSpecs,
                           read_deleted=read_deleted, session=session). \
@@ -4064,7 +4065,8 @@ def _qos_specs_get_by_name(context, name, session=None, inactive=False):
 
 
 @require_admin_context
-def _qos_specs_get_ref(context, qos_specs_id, session=None, inactive=False):
+def _qos_specs_get_all_ref(context, qos_specs_id, session=None,
+                           inactive=False):
     read_deleted = 'yes' if inactive else 'no'
     result = model_query(context, models.QualityOfServiceSpecs,
                          read_deleted=read_deleted, session=session). \
@@ -4110,7 +4112,8 @@ def _dict_with_qos_specs(rows):
 
 @require_admin_context
 def qos_specs_get(context, qos_specs_id, inactive=False):
-    rows = _qos_specs_get_ref(context, qos_specs_id, None, inactive)
+    rows = _qos_specs_get_all_ref(context, qos_specs_id, None, inactive)
+
     return _dict_with_qos_specs(rows)[0]
 
 
@@ -4188,7 +4191,7 @@ def _qos_specs_get(context, qos_spec_id, session=None):
 
 @require_admin_context
 def qos_specs_get_by_name(context, name, inactive=False):
-    rows = _qos_specs_get_by_name(context, name, None, inactive)
+    rows = _qos_specs_get_all_by_name(context, name, None, inactive)
 
     return _dict_with_qos_specs(rows)[0]
 
@@ -4247,7 +4250,7 @@ def qos_specs_item_delete(context, qos_specs_id, key):
 def qos_specs_delete(context, qos_specs_id):
     session = get_session()
     with session.begin():
-        _qos_specs_get_ref(context, qos_specs_id, session)
+        _qos_specs_get_all_ref(context, qos_specs_id, session)
         updated_values = {'deleted': True,
                           'deleted_at': timeutils.utcnow(),
                           'updated_at': literal_column('updated_at')}
@@ -4287,7 +4290,7 @@ def qos_specs_update(context, qos_specs_id, updates):
     session = get_session()
     with session.begin():
         # make sure qos specs exists
-        _qos_specs_get_ref(context, qos_specs_id, session)
+        _qos_specs_get_all_ref(context, qos_specs_id, session)
         specs = updates.get('specs', {})
 
         if 'consumer' in updates:
@@ -4729,7 +4732,7 @@ def backup_get_all_by_volume(context, volume_id, filters=None):
 
 
 @require_context
-def backup_get_active_by_window(context, begin, end=None, project_id=None):
+def backup_get_all_active_by_window(context, begin, end=None, project_id=None):
     """Return backups that were active during window."""
 
     query = model_query(context, models.Backup, read_deleted="yes")

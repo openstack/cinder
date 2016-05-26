@@ -923,14 +923,14 @@ class DbQuotaDriverBaseTestCase(test.TestCase):
     def _mock_quota_class_get_default(self):
         # Mock quota_class_get_default
         def fake_qcgd(context):
-            self.calls.append('quota_class_get_default')
+            self.calls.append('quota_class_get_defaults')
             return dict(volumes=10,
                         snapshots=10,
                         gigabytes=1000,
                         backups=10,
                         backup_gigabytes=1000
                         )
-        self.mock_object(db, 'quota_class_get_default', fake_qcgd)
+        self.mock_object(db, 'quota_class_get_defaults', fake_qcgd)
 
     def _mock_volume_type_get_all(self):
         def fake_vtga(context, inactive=False, filters=None):
@@ -1039,7 +1039,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                           'quota_usage_get_all_by_project',
                           'quota_allocated_get_all_by_project',
                           'quota_class_get_all_by_name',
-                          'quota_class_get_default', ], self.calls)
+                          'quota_class_get_defaults', ], self.calls)
         self.assertEqual(dict(volumes=dict(limit=10,
                                            in_use=2,
                                            reserved=0, ),
@@ -1061,7 +1061,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                               ), result)
 
     @mock.patch('cinder.quota.db.quota_get_all_by_project')
-    @mock.patch('cinder.quota.db.quota_class_get_default')
+    @mock.patch('cinder.quota.db.quota_class_get_defaults')
     def test_get_project_quotas_lazy_load_defaults(
             self, mock_defaults, mock_quotas):
         mock_quotas.return_value = self._default_quotas_non_child
@@ -1089,7 +1089,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['quota_get_all_by_project',
                           'quota_usage_get_all_by_project',
                           'quota_allocated_get_all_by_project',
-                          'quota_class_get_default', ], self.calls)
+                          'quota_class_get_defaults', ], self.calls)
         self.assertEqual(dict(volumes=dict(limit=10,
                                            in_use=2,
                                            reserved=0,
@@ -1125,7 +1125,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
 
         self.assertEqual(['quota_get_all_by_project',
                           'quota_usage_get_all_by_project',
-                          'quota_class_get_default', ], self.calls)
+                          'quota_class_get_defaults', ], self.calls)
         self.assertEqual(dict(volumes=dict(limit=10,
                                            in_use=2,
                                            reserved=0, ),
@@ -1156,7 +1156,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['quota_get_all_by_project',
                           'quota_usage_get_all_by_project',
                           'quota_class_get_all_by_name',
-                          'quota_class_get_default', ], self.calls)
+                          'quota_class_get_defaults', ], self.calls)
         self.assertEqual(dict(volumes=dict(limit=10,
                                            in_use=2,
                                            reserved=0, ),
@@ -1214,7 +1214,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
 
         self.assertEqual(['quota_get_all_by_project',
                           'quota_class_get_all_by_name',
-                          'quota_class_get_default', ], self.calls)
+                          'quota_class_get_defaults', ], self.calls)
         self.assertEqual(dict(volumes=dict(limit=10, ),
                               snapshots=dict(limit=10, ),
                               backups=dict(limit=10, ),

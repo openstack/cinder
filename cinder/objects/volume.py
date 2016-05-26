@@ -635,8 +635,8 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         return volumes
 
     @classmethod
-    def get_active_by_window(cls, context, begin, end):
-        volumes = db.volume_get_active_by_window(context, begin, end)
+    def get_all_active_by_window(cls, context, begin, end):
+        volumes = db.volume_get_all_active_by_window(context, begin, end)
         expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)

@@ -106,9 +106,9 @@ def main():
         'audit_period_ending': str(end),
     }
 
-    volumes = objects.VolumeList.get_active_by_window(admin_context,
-                                                      begin,
-                                                      end)
+    volumes = objects.VolumeList.get_all_active_by_window(admin_context,
+                                                          begin,
+                                                          end)
     LOG.info(_LI("Found %d volumes"), len(volumes))
     for volume_ref in volumes:
         try:
@@ -178,8 +178,8 @@ def main():
                 LOG.exception(_LE("Delete volume notification failed: %s"),
                               exc_msg, resource=volume_ref)
 
-    snapshots = objects.SnapshotList.get_active_by_window(admin_context,
-                                                          begin, end)
+    snapshots = objects.SnapshotList.get_all_active_by_window(admin_context,
+                                                              begin, end)
     LOG.info(_LI("Found %d snapshots"), len(snapshots))
     for snapshot_ref in snapshots:
         try:
@@ -248,8 +248,8 @@ def main():
                 LOG.exception(_LE("Delete snapshot notification failed: %s"),
                               exc_msg, resource=snapshot_ref)
 
-    backups = objects.BackupList.get_active_by_window(admin_context,
-                                                      begin, end)
+    backups = objects.BackupList.get_all_active_by_window(admin_context,
+                                                          begin, end)
 
     LOG.info(_LI("Found %d backups"), len(backups))
     for backup_ref in backups:
