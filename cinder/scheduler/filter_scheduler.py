@@ -199,8 +199,7 @@ class FilterScheduler(driver.Scheduler):
         return top_backend.obj
 
     def get_pools(self, context, filters):
-        # TODO(zhiteng) Add filters support
-        return self.host_manager.get_pools(context)
+        return self.host_manager.get_pools(context, filters)
 
     def _post_select_populate_filter_properties(self, filter_properties,
                                                 backend_state):
