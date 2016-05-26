@@ -3608,7 +3608,7 @@ class _VolumeV1Proxy(object):
         return self.manager.thaw_host(context)
 
     def manage_existing_snapshot(self, ctxt, snapshot, ref=None):
-        return self.manager.manage_exisiting_snapshot(ctxt, snapshot, ref=ref)
+        return self.manager.manage_existing_snapshot(ctxt, snapshot, ref=ref)
 
     def get_capabilities(self, context, discover):
         return self.manager.get_capabilities(context, discover)
