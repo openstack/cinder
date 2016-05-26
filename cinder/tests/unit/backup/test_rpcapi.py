@@ -24,7 +24,7 @@ from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import objects
 from cinder import test
-from cinder.tests.unit import fake_backup
+from cinder.tests.unit.backup import fake_backup
 from cinder.tests.unit import fake_constants as fake
 
 
