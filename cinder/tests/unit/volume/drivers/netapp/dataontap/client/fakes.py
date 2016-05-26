@@ -104,6 +104,13 @@ NO_RECORDS_RESPONSE = etree.XML("""
   </results>
 """)
 
+INVALID_GET_ITER_RESPONSE_NO_ATTRIBUTES = etree.XML("""
+  <results status="passed">
+    <num-records>1</num-records>
+    <next-tag>fake_tag</next-tag>
+  </results>
+""")
+
 INVALID_GET_ITER_RESPONSE_NO_RECORDS = etree.XML("""
   <results status="passed">
     <attributes-list/>
@@ -627,6 +634,131 @@ VOLUME_GET_ITER_RESPONSE = etree.XML("""
     'available_size': VOLUME_SIZE_AVAILABLE,
     'total_size': VOLUME_SIZE_TOTAL,
 })
+
+STORAGE_DISK_GET_ITER_RESPONSE_PAGE_1 = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.16</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.17</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.18</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.19</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.20</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.21</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.22</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.24</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.25</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.26</disk-name>
+      </storage-disk-info>
+    </attributes-list>
+    <next-tag>next_tag_1</next-tag>
+    <num-records>10</num-records>
+  </results>
+""")
+
+STORAGE_DISK_GET_ITER_RESPONSE_PAGE_2 = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.27</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.28</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.29</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v4.32</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.16</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.17</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.18</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.19</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.20</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.21</disk-name>
+      </storage-disk-info>
+    </attributes-list>
+    <next-tag>next_tag_2</next-tag>
+    <num-records>10</num-records>
+  </results>
+""")
+
+STORAGE_DISK_GET_ITER_RESPONSE_PAGE_3 = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.22</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.24</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.25</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.26</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.27</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.28</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.29</disk-name>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.32</disk-name>
+      </storage-disk-info>
+    </attributes-list>
+    <num-records>8</num-records>
+  </results>
+""")
+
+AGGREGATE_DISK_TYPE = 'FCAL'
+STORAGE_DISK_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.19</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % AGGREGATE_DISK_TYPE)
 
 SYSTEM_USER_CAPABILITY_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
