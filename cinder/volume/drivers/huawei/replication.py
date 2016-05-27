@@ -94,7 +94,7 @@ class PairOp(AbsReplicaOp):
             "REMOTERESID": rmt_lun_id,
             "REPLICATIONMODEL": replica_model,
             # recovery policy. 1: auto, 2: manual
-            "RECOVERYPOLICY": '2',
+            "RECOVERYPOLICY": '1',
             "SPEED": speed,
         }
 
