@@ -436,13 +436,23 @@ class BackupCommands(object):
             bk.save()
 
 
-class ServiceCommands(object):
+class BaseCommand(object):
+    @staticmethod
+    def _normalize_time(time_field):
+        return time_field and timeutils.normalize_time(time_field)
+
+    @staticmethod
+    def _state_repr(is_up):
+        return ':-)' if is_up else 'XXX'
+
+
+class ServiceCommands(BaseCommand):
     """Methods for managing services."""
     def list(self):
         """Show a list of all cinder services."""
         ctxt = context.get_admin_context()
         services = objects.ServiceList.get_all(ctxt)
-        print_format = "%-16s %-36s %-16s %-10s %-5s %-20s %-12s %-15s"
+        print_format = "%-16s %-36s %-16s %-10s %-5s %-20s %-12s %-15s %-36s"
         print(print_format % (_('Binary'),
                               _('Host'),
                               _('Zone'),
@@ -450,23 +460,20 @@ class ServiceCommands(object):
                               _('State'),
                               _('Updated At'),
                               _('RPC Version'),
-                              _('Object Version')))
+                              _('Object Version'),
+                              _('Cluster')))
         for svc in services:
-            alive = utils.service_is_up(svc)
-            art = ":-)" if alive else "XXX"
-            status = 'enabled'
-            if svc.disabled:
-                status = 'disabled'
-            updated_at = svc.updated_at
-            if updated_at:
-                updated_at = timeutils.normalize_time(updated_at)
+            art = self._state_repr(utils.service_is_up(svc))
+            status = 'disabled' if svc.disabled else 'enabled'
+            updated_at = self._normalize_time(svc.updated_at)
             rpc_version = (svc.rpc_current_version or
                            rpc.LIBERTY_RPC_VERSIONS.get(svc.binary, ''))
             object_version = (svc.object_current_version or 'liberty')
+            cluster = svc.cluster_name or ''
             print(print_format % (svc.binary, svc.host.partition('.')[0],
                                   svc.availability_zone, status, art,
-                                  updated_at, rpc_version,
-                                  object_version))
+                                  updated_at, rpc_version, object_version,
+                                  cluster))
 
     @args('binary', type=str,
           help='Service to delete from the host.')
@@ -487,9 +494,109 @@ class ServiceCommands(object):
         print(_("Service %(service)s on host %(host)s removed.") %
               {'service': binary, 'host': host_name})
 
+
+class ClusterCommands(BaseCommand):
+    """Methods for managing clusters."""
+    def list(self):
+        """Show a list of all cinder services."""
+        ctxt = context.get_admin_context()
+        clusters = objects.ClusterList.get_all(ctxt, services_summary=True)
+        print_format = "%-36s %-16s %-10s %-5s %-20s %-7s %-12s %-20s"
+        print(print_format % (_('Name'),
+                              _('Binary'),
+                              _('Status'),
+                              _('State'),
+                              _('Heartbeat'),
+                              _('Hosts'),
+                              _('Down Hosts'),
+                              _('Updated At')))
+        for cluster in clusters:
+            art = self._state_repr(cluster.is_up())
+            status = 'disabled' if cluster.disabled else 'enabled'
+            heartbeat = self._normalize_time(cluster.last_heartbeat)
+            updated_at = self._normalize_time(cluster.updated_at)
+            print(print_format % (cluster.name, cluster.binary, status, art,
+                                  heartbeat, cluster.num_hosts,
+                                  cluster.num_down_hosts, updated_at))
+
+    @args('--recursive', action='store_true', default=False,
+          help='Delete associated hosts.')
+    @args('binary', type=str,
+          help='Service to delete from the cluster.')
+    @args('cluster-name', type=str, help='Cluster to delete.')
+    def remove(self, recursive, binary, cluster_name):
+        """Completely removes a cluster."""
+        ctxt = context.get_admin_context()
+        try:
+            cluster = objects.Cluster.get_by_id(ctxt, None, name=cluster_name,
+                                                binary=binary,
+                                                get_services=recursive)
+        except exception.ClusterNotFound:
+            print(_("Couldn't remove cluster %s because it doesn't exist.") %
+                  cluster_name)
+            return 2
+
+        if recursive:
+            for service in cluster.services:
+                service.destroy()
+
+        try:
+            cluster.destroy()
+        except exception.ClusterHasHosts:
+            print(_("Couldn't remove cluster %s because it still has hosts.") %
+                  cluster_name)
+            return 2
+
+        msg = _('Cluster %s successfully removed.') % cluster_name
+        if recursive:
+            msg = (_('%(msg)s And %(num)s services from the cluster were also '
+                     'removed.') % {'msg': msg, 'num': len(cluster.services)})
+        print(msg)
+
+    @args('--full-rename', dest='partial',
+          action='store_false', default=True,
+          help='Do full cluster rename instead of just replacing provided '
+               'current cluster name and preserving backend and/or pool info.')
+    @args('current', help='Current cluster name.')
+    @args('new', help='New cluster name.')
+    def rename(self, partial, current, new):
+        """Rename cluster name for Volumes and Consistency Groups.
+
+        Useful when you want to rename a cluster, particularly when the
+        backend_name has been modified in a multi-backend config or we have
+        moved from a single backend to multi-backend.
+        """
+        ctxt = context.get_admin_context()
+
+        # Convert empty strings to None
+        current = current or None
+        new = new or None
+
+        # Update Volumes
+        num_vols = objects.VolumeList.include_in_cluster(
+            ctxt, new, partial_rename=partial, cluster_name=current)
+
+        # Update Consistency Groups
+        num_cgs = objects.ConsistencyGroupList.include_in_cluster(
+            ctxt, new, partial_rename=partial, cluster_name=current)
+
+        if num_vols or num_cgs:
+            msg = _('Successfully renamed %(num_vols)s volumes and '
+                    '%(num_cgs)s consistency groups from cluster %(current)s '
+                    'to %(new)s')
+            print(msg % {'num_vols': num_vols, 'num_cgs': num_cgs, 'new': new,
+                         'current': current})
+        else:
+            msg = _('No volumes or consistency groups exist in cluster '
+                    '%(current)s.')
+            print(msg % {'current': current})
+            return 2
+
+
 CATEGORIES = {
     'backup': BackupCommands,
     'config': ConfigCommands,
+    'cluster': ClusterCommands,
     'db': DbCommands,
     'host': HostCommands,
     'logs': GetLogCommands,
