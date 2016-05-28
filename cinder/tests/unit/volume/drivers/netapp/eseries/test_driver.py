@@ -273,19 +273,6 @@ class NetAppESeriesDriverTestCase(object):
                           self.library._get_iscsi_portal_for_vol,
                           vol_nomatch, portals, False)
 
-    def test_setup_error_unsupported_host_type(self):
-        configuration = self._set_config(self.create_configuration())
-        configuration.netapp_host_type = 'garbage'
-        driver = common.NetAppDriver(configuration=configuration)
-        self.assertRaises(exception.NetAppDriverException,
-                          driver.library.check_for_setup_error)
-
-    def test_check_host_type_default(self):
-        configuration = self._set_config(self.create_configuration())
-        driver = common.NetAppDriver(configuration=configuration)
-        driver.library._check_host_type()
-        self.assertEqual('LnxALUA', driver.library.host_type)
-
     def test_do_setup_all_default(self):
         configuration = self._set_config(self.create_configuration())
         driver = common.NetAppDriver(configuration=configuration)
