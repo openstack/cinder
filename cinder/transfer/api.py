@@ -169,8 +169,14 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
-        volume_utils.notify_about_volume_usage(context, vol_ref,
-                                               "transfer.accept.start")
+        try:
+            values = {'per_volume_gigabytes': vol_ref.size}
+            QUOTAS.limit_check(context, project_id=context.project_id,
+                               **values)
+        except exception.OverQuota as e:
+            quotas = e.kwargs['quotas']
+            raise exception.VolumeSizeExceedsLimit(
+                size=vol_ref.size, limit=quotas['per_volume_gigabytes'])
 
         try:
             reserve_opts = {'volumes': 1, 'gigabytes': vol_ref.size}
@@ -196,6 +202,8 @@ class API(base.Base):
             LOG.exception(_LE("Failed to update quota donating volume"
                               " transfer id %s"), transfer_id)
 
+        volume_utils.notify_about_volume_usage(context, vol_ref,
+                                               "transfer.accept.start")
         try:
             # Transfer ownership of the volume now, must use an elevated
             # context.
