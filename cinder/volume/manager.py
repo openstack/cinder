@@ -442,10 +442,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                     # threadpool to prevent the main volume service thread
                     # from being blocked.
                     self._add_to_threadpool(self.delete_volume, ctxt,
-                                            volume['id'], volume=volume)
+                                            volume['id'], volume=volume,
+                                            cascade=True)
                 else:
                     # By default, delete volumes sequentially
-                    self.delete_volume(ctxt, volume['id'], volume=volume)
+                    self.delete_volume(ctxt, volume['id'], volume=volume,
+                                       cascade=True)
                 LOG.info(_LI("Resume volume delete completed successfully."),
                          resource=volume)
 
