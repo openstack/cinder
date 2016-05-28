@@ -13,6 +13,7 @@
 #    under the License.
 #
 
+import datetime
 import socket
 import sys
 import uuid
@@ -196,6 +197,26 @@ def create_backup(ctxt,
     backup['snapshot_id'] = snapshot_id
     backup['data_timestamp'] = data_timestamp
     return db.backup_create(ctxt, backup)
+
+
+def create_message(ctxt,
+                   project_id='fake_project',
+                   request_id='test_backup',
+                   resource_type='This is a test backup',
+                   resource_uuid='3asf434-3s433df43-434adf3-343df443',
+                   event_id=None,
+                   message_level='Error'):
+    """Create a message in the DB."""
+    expires_at = (timeutils.utcnow() + datetime.timedelta(
+                  seconds=30))
+    message_record = {'project_id': project_id,
+                      'request_id': request_id,
+                      'resource_type': resource_type,
+                      'resource_uuid': resource_uuid,
+                      'event_id': event_id,
+                      'message_level': message_level,
+                      'expires_at': expires_at}
+    return db.message_create(ctxt, message_record)
 
 
 class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):

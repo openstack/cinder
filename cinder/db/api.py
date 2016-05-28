@@ -1126,8 +1126,11 @@ def message_get(context, message_id):
     return IMPL.message_get(context, message_id)
 
 
-def message_get_all(context):
-    return IMPL.message_get_all(context)
+def message_get_all(context, filters=None, marker=None, limit=None,
+                    offset=None, sort_keys=None, sort_dirs=None):
+    return IMPL.message_get_all(context, filters=filters, marker=marker,
+                                limit=limit, offset=offset,
+                                sort_keys=sort_keys, sort_dirs=sort_dirs)
 
 
 def message_create(context, values):

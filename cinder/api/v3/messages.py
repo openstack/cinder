@@ -18,6 +18,7 @@ from oslo_log import log as logging
 import webob
 from webob import exc
 
+from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v3.views import messages as messages_view
 from cinder import exception
@@ -89,8 +90,23 @@ class MessagesController(wsgi.Controller):
         """Returns a list of messages, transformed through view builder."""
         context = req.environ['cinder.context']
         check_policy(context, 'get_all')
+        filters = None
+        marker = None
+        limit = None
+        offset = None
+        sort_keys = None
+        sort_dirs = None
 
-        messages = self.message_api.get_all(context)
+        if (req.api_version_request.matches("3.5")):
+            filters = req.params.copy()
+            marker, limit, offset = common.get_pagination_params(filters)
+            sort_keys, sort_dirs = common.get_sort_params(filters)
+
+        messages = self.message_api.get_all(context, filters=filters,
+                                            marker=marker, limit=limit,
+                                            offset=offset,
+                                            sort_keys=sort_keys,
+                                            sort_dirs=sort_dirs)
 
         for message in messages:
             # Fetches message text based on event id passed to it.

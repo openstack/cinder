@@ -51,6 +51,7 @@ REST_API_VERSION_HISTORY = """
             passed to it as true.
     * 3.3 - Add user messages APIs.
     * 3.4 - Adds glance_metadata filter to list/detail volumes in _get_volumes.
+    * 3.5 - Add pagination support to messages API.
 
 """
 
@@ -59,7 +60,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.4"
+_MAX_API_VERSION = "3.5"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
