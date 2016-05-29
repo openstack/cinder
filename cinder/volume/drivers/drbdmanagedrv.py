@@ -784,7 +784,6 @@ class DrbdManageIscsiDriver(DrbdManageBaseDriver):
         return self.target_driver.terminate_connection(volume,
                                                        connector,
                                                        **kwargs)
-        return None
 
 # for backwards compatibility keep the old class name, too
 DrbdManageDriver = DrbdManageIscsiDriver
