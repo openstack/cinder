@@ -1056,7 +1056,7 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             # RBD image size is returned in bytes.  Attempt to parse
             # size as a float and round up to the next integer.
             try:
-                convert_size = int(math.ceil(int(image_size))) / units.Gi
+                convert_size = int(math.ceil(float(image_size) / units.Gi))
                 return convert_size
             except ValueError:
                 exception_message = (_("Failed to manage existing volume "
