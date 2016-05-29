@@ -18,7 +18,7 @@ import json
 import mock
 
 from cinder import context
-from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume

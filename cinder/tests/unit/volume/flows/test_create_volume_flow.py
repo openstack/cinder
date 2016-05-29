@@ -22,7 +22,7 @@ from oslo_utils import imageutils
 from cinder import context
 from cinder import exception
 from cinder import test
-from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image

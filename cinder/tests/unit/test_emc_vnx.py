@@ -26,8 +26,8 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
-from cinder.tests.unit import fake_cgsnapshot
-from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit.consistencygroup import fake_cgsnapshot
+from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume

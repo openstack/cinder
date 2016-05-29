@@ -29,7 +29,7 @@ from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
 from cinder.scheduler import manager
 from cinder import test
-from cinder.tests.unit import fake_consistencygroup
+from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit import utils as tests_utils
