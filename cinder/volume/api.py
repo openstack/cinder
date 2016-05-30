@@ -1335,10 +1335,11 @@ class API(base.Base):
         services = objects.ServiceList.get_all_by_topic(
             elevated, topic, disabled=False)
         found = False
+        svc_host = volume_utils.extract_host(host, 'backend')
         for service in services:
-            svc_host = volume_utils.extract_host(host, 'backend')
             if utils.service_is_up(service) and service.host == svc_host:
                 found = True
+                break
         if not found:
             msg = _('No available service named %s') % host
             LOG.error(msg)
