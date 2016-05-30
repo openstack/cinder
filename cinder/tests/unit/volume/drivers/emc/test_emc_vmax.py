@@ -158,6 +158,20 @@ class Fake_CIMProperty(object):
         cimproperty.value = '10.10.10.10'
         return cimproperty
 
+    def fake_getSupportedReplicationTypesCIMProperty(self, reptypes):
+        cimproperty = Fake_CIMProperty()
+        if reptypes == 'V3':
+            cimproperty.value = [6, 7]
+        elif reptypes == 'V3_SYNC':
+            cimproperty.value = [6]
+        elif reptypes == 'V3_ASYNC':
+            cimproperty.value = [7]
+        elif reptypes == 'V2':
+            cimproperty.value = [10]
+        else:
+            cimproperty.value = [2, 3, 4, 5]
+        return cimproperty
+
 
 class Fake_CIM_TierPolicyServiceCapabilities(object):
 
@@ -6031,6 +6045,8 @@ class EMCV3DriverTestCase(test.TestCase):
         common = self.driver.common
         common.provisionv3.utils.get_v3_default_sg_instance_name = mock.Mock(
             return_value=(None, None, self.data.default_sg_instance_name))
+        common.utils.is_clone_licensed = (
+            mock.Mock(return_value=True))
         common._initial_setup = mock.Mock(
             return_value=self.default_extraspec())
         self.driver.create_snapshot(self.data.test_volume_v3)
@@ -6078,6 +6094,8 @@ class EMCV3DriverTestCase(test.TestCase):
         cloneVol['BlockSize'] = self.data.block_size
         cloneVol['host'] = self.data.fake_host_v3
         common = self.driver.common
+        common.utils.is_clone_licensed = (
+            mock.Mock(return_value=True))
         common._initial_setup = mock.Mock(
             return_value=self.default_extraspec())
         common._get_or_create_storage_group_v3 = mock.Mock(
@@ -6390,6 +6408,8 @@ class EMCV3DriverTestCase(test.TestCase):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         e = exception.VolumeBackendAPIException('CreateElementReplica Ex')
         common = self.driver.common
+        common.utils.is_clone_licensed = (
+            mock.Mock(return_value=True))
         volumeDict = {'classname': u'Symm_StorageVolume',
                       'keybindings': EMCVMAXCommonData.keybindings}
         common._create_v3_volume = (
@@ -7826,6 +7846,7 @@ class EMCVMAXFCTest(test.TestCase):
         self.assertEqual(0, len(mvInstances))
 
 
+@ddt.ddt
 class EMCVMAXUtilsTest(test.TestCase):
     def setUp(self):
         self.data = EMCVMAXCommonData()
@@ -7888,6 +7909,40 @@ class EMCVMAXUtilsTest(test.TestCase):
             emc_vmax_provision.SYNC_CLONE_LOCAL,
             emc_vmax_provision.COPY_ON_WRITE, extraSpecs)
         self.assertIsNotNone(rsdInstance)
+
+    def getinstance_capability(self, reptypes):
+        repservicecap = CIM_ReplicationServiceCapabilities()
+        repservicecap['CreationClassName'] = (
+            'CIM_ReplicationServiceCapabilities')
+
+        classcimproperty = Fake_CIMProperty()
+        supportedReplicationTypes = (
+            classcimproperty.fake_getSupportedReplicationTypesCIMProperty(
+                reptypes))
+        properties = {u'SupportedReplicationTypes': supportedReplicationTypes}
+        repservicecap.properties = properties
+        return repservicecap
+
+    @ddt.data(('V3', True), ('V3_ASYNC', True), ('V3_SYNC', True),
+              ('V2', False))
+    @ddt.unpack
+    def test_is_clone_licensed(self, reptypes, isV3):
+        conn = FakeEcomConnection()
+        capabilityInstanceName = self.getinstance_capability(reptypes)
+        conn.GetInstance = mock.Mock(
+            return_value=capabilityInstanceName)
+        self.assertTrue(self.driver.utils.is_clone_licensed(
+            conn, capabilityInstanceName, isV3))
+
+    def test_is_clone_licensed_false(self):
+        conn = FakeEcomConnection()
+        isV3 = True
+        reptypes = None
+        capabilityInstanceName = self.getinstance_capability(reptypes)
+        conn.GetInstance = mock.Mock(
+            return_value=capabilityInstanceName)
+        self.assertFalse(self.driver.utils.is_clone_licensed(
+            conn, capabilityInstanceName, isV3))
 
 
 class EMCVMAXCommonTest(test.TestCase):
