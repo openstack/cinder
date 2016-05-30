@@ -188,6 +188,7 @@ class DbQuotaDriver(object):
         quotas = {}
         project_quotas = db.quota_get_all_by_project(context, project_id)
         allocated_quotas = None
+        default_quotas = None
         if usages:
             project_usages = db.quota_usage_get_all_by_project(context,
                                                                project_id)
@@ -206,20 +207,22 @@ class DbQuotaDriver(object):
         else:
             class_quotas = {}
 
-        # TODO(mc_nair): change this to be lazy loaded
-        default_quotas = self.get_defaults(context, resources, project_id)
-
         for resource in resources.values():
             # Omit default/quota class values
             if not defaults and resource.name not in project_quotas:
                 continue
 
-            quotas[resource.name] = dict(
-                limit=project_quotas.get(
-                    resource.name,
-                    class_quotas.get(resource.name,
-                                     default_quotas[resource.name])),
-            )
+            quota_val = project_quotas.get(resource.name)
+            if quota_val is None:
+                quota_val = class_quotas.get(resource.name)
+                if quota_val is None:
+                    # Lazy load the default quotas
+                    if default_quotas is None:
+                        default_quotas = self.get_defaults(
+                            context, resources, project_id)
+                    quota_val = default_quotas[resource.name]
+
+            quotas[resource.name] = {'limit': quota_val}
 
             # Include usages if desired.  This is optional because one
             # internal consumer of this interface wants to access the

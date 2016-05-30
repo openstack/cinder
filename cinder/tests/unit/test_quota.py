@@ -1063,6 +1063,24 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                                                         reserved= 0)
                               ), result)
 
+    @mock.patch('cinder.quota.db.quota_get_all_by_project')
+    @mock.patch('cinder.quota.db.quota_class_get_default')
+    def test_get_project_quotas_lazy_load_defaults(
+            self, mock_defaults, mock_quotas):
+        mock_quotas.return_value = self._default_quotas_non_child
+        self.driver.get_project_quotas(
+            FakeContext('test_project', None),
+            quota.QUOTAS.resources, 'test_project', usages=False)
+        # Shouldn't load a project's defaults if all the quotas are already
+        # defined in the DB
+        self.assertFalse(mock_defaults.called)
+
+        mock_quotas.return_value = {}
+        self.driver.get_project_quotas(
+            FakeContext('test_project', None),
+            quota.QUOTAS.resources, 'test_project', usages=False)
+        self.assertTrue(mock_defaults.called)
+
     def test_get_root_project_with_subprojects_quotas(self):
         self._stub_get_by_project()
         self._stub_volume_type_get_all()
@@ -1171,8 +1189,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
 
         self.assertEqual(['quota_get_all_by_project',
                           'quota_usage_get_all_by_project',
-                          'quota_class_get_all_by_name',
-                          'quota_class_get_default', ], self.calls)
+                          'quota_class_get_all_by_name'], self.calls)
         self.assertEqual(dict(backups=dict(limit=10,
                                            in_use=2,
                                            reserved=0, ),
