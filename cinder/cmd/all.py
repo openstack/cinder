@@ -106,6 +106,6 @@ def main():
             server = service.Service.create(binary='cinder-volume')
             launcher.launch_service(server)
     except (Exception, SystemExit):
-        LOG.exception(_LE('Failed to load conder-volume'))
+        LOG.exception(_LE('Failed to load cinder-volume'))
 
     launcher.wait()
