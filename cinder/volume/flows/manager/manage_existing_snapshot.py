@@ -23,6 +23,7 @@ from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI
 from cinder import objects
 from cinder import quota
+from cinder import quota_utils
 from cinder.volume.flows import common as flow_common
 from cinder.volume import utils as volume_utils
 
@@ -153,11 +154,10 @@ class QuotaReserveTask(flow_utils.CinderTask):
                 'reservations': reservations,
             }
         except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            quotas = e.kwargs['quotas']
-            usages = e.kwargs['usages']
-            volume_utils.process_reserve_over_quota(context, overs, usages,
-                                                    quotas, size)
+            quota_utils.process_reserve_over_quota(
+                context, e,
+                resource='snapshots',
+                size=size)
 
     def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.

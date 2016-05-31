@@ -70,37 +70,9 @@ def get_volume_type_reservation(ctxt, volume, type_id,
                                       project_id=project_id,
                                       **reserve_opts)
     except exception.OverQuota as e:
-        overs = e.kwargs['overs']
-        usages = e.kwargs['usages']
-        quotas = e.kwargs['quotas']
-
-        def _consumed(name):
-            return (usages[name]['reserved'] + usages[name]['in_use'])
-
-        for over in overs:
-            if 'gigabytes' in over:
-                s_size = volume['size']
-                d_quota = quotas[over]
-                d_consumed = _consumed(over)
-                LOG.warning(
-                    _LW("Quota exceeded for %(s_pid)s, tried to create "
-                        "%(s_size)sG volume - (%(d_consumed)dG of "
-                        "%(d_quota)dG already consumed)"),
-                    {'s_pid': ctxt.project_id,
-                     's_size': s_size,
-                     'd_consumed': d_consumed,
-                     'd_quota': d_quota})
-                raise exception.VolumeSizeExceedsAvailableQuota(
-                    requested=s_size, quota=d_quota, consumed=d_consumed)
-            elif 'volumes' in over:
-                LOG.warning(
-                    _LW("Quota exceeded for %(s_pid)s, tried to create "
-                        "volume (%(d_consumed)d volumes "
-                        "already consumed)"),
-                    {'s_pid': ctxt.project_id,
-                     'd_consumed': _consumed(over)})
-                raise exception.VolumeLimitExceeded(
-                    allowed=quotas[over])
+        process_reserve_over_quota(ctxt, e,
+                                   resource='volumes',
+                                   size=volume.size)
     return reservations
 
 
@@ -261,3 +233,65 @@ def _keystone_client(context, version=(3, 0)):
                                      (CONF.keystone_authtoken.cafile or True))
     return client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
                          session=client_session, version=version)
+
+
+OVER_QUOTA_RESOURCE_EXCEPTIONS = {'snapshots': exception.SnapshotLimitExceeded,
+                                  'backups': exception.BackupLimitExceeded,
+                                  'volumes': exception.VolumeLimitExceeded, }
+
+
+def process_reserve_over_quota(context, over_quota_exception,
+                               resource, size=None):
+    """Handle OverQuota exception.
+
+    Analyze OverQuota exception, and raise new exception related to
+    resource type. If there are unexpected items in overs,
+    UnexpectedOverQuota is raised.
+
+    :param context: security context
+    :param over_quota_exception: OverQuota exception
+    :param resource: can be backups, snapshots, and volumes
+    :param size: requested size in reservation
+    """
+    def _consumed(name):
+        return (usages[name]['reserved'] + usages[name]['in_use'])
+
+    overs = over_quota_exception.kwargs['overs']
+    usages = over_quota_exception.kwargs['usages']
+    quotas = over_quota_exception.kwargs['quotas']
+    invalid_overs = []
+
+    for over in overs:
+        if 'gigabytes' in over:
+            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                      "%(s_size)dG %(s_resource)s (%(d_consumed)dG of "
+                      "%(d_quota)dG already consumed).")
+            LOG.warning(msg, {'s_pid': context.project_id,
+                              's_size': size,
+                              's_resource': resource[:-1],
+                              'd_consumed': _consumed(over),
+                              'd_quota': quotas[over]})
+            if resource == 'backups':
+                exc = exception.VolumeBackupSizeExceedsAvailableQuota
+            else:
+                exc = exception.VolumeSizeExceedsAvailableQuota
+            raise exc(
+                name=over,
+                requested=size,
+                consumed=_consumed(over),
+                quota=quotas[over])
+        if (resource in OVER_QUOTA_RESOURCE_EXCEPTIONS.keys() and
+                resource in over):
+            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
+                      "%(s_resource)s (%(d_consumed)d %(s_resource)ss "
+                      "already consumed).")
+            LOG.warning(msg, {'s_pid': context.project_id,
+                              'd_consumed': _consumed(over),
+                              's_resource': resource[:-1]})
+            raise OVER_QUOTA_RESOURCE_EXCEPTIONS[resource](
+                allowed=quotas[over],
+                name=over)
+        invalid_overs.append(over)
+
+    if invalid_overs:
+        raise exception.UnexpectedOverQuota(name=', '.join(invalid_overs))
