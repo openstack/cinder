@@ -34,6 +34,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _
+from cinder import objects
 from cinder.objects import fields
 from cinder import ssh_utils
 from cinder import test
@@ -4254,6 +4255,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
 
         cg_snapshot, snapshots = self._create_cgsnapshot_in_db(cg['id'])
 
+        snapshots = objects.SnapshotList.get_all_for_cgsnapshot(
+            self.ctxt, cg_snapshot.id)
         model_update = self.driver.create_cgsnapshot(self.ctxt, cg_snapshot,
                                                      snapshots)
         self.assertEqual('available',

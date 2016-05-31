@@ -23,8 +23,10 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
+from cinder import objects
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import gpfs
@@ -721,19 +723,6 @@ class GPFSDriverTestCase(test.TestCase):
         self.flags(volume_driver=self.driver_name,
                    gpfs_storage_pool=org_value)
 
-    def test_get_volume_metadata(self):
-        volume = self._fake_volume()
-        volume['volume_metadata'] = [{'key': 'fake_key',
-                                      'value': 'fake_value'}]
-        expected_metadata = {'fake_key': 'fake_value'}
-        v_metadata = self.driver._get_volume_metadata(volume)
-        self.assertEqual(expected_metadata, v_metadata)
-        volume.pop('volume_metadata')
-        volume['metadata'] = {'key': 'value'}
-        expected_metadata = {'key': 'value'}
-        v_metadata = self.driver._get_volume_metadata(volume)
-        self.assertEqual(expected_metadata, v_metadata)
-
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_allocate_file_blocks')
@@ -1091,6 +1080,7 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertTrue(self.driver._is_gpfs_parent_file(''))
         self.assertFalse(self.driver._is_gpfs_parent_file(''))
 
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._gpfs_redirect')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.'
                 '_set_rw_permission')
@@ -1103,14 +1093,16 @@ class GPFSDriverTestCase(test.TestCase):
                              mock_local_path,
                              mock_create_gpfs_snap,
                              mock_set_rw_permission,
-                             mock_gpfs_redirect):
+                             mock_gpfs_redirect,
+                             mock_vol_get_by_id):
         org_value = self.driver.configuration.gpfs_mount_point_base
         mock_get_snapshot_path.return_value = "/tmp/fakepath"
         self.flags(volume_driver=self.driver_name,
                    gpfs_mount_point_base=self.volumes_path)
-        snapshot = {}
-        snapshot['volume_name'] = 'test'
-        self.driver.create_snapshot(snapshot)
+
+        vol = self._fake_volume()
+        mock_vol_get_by_id.return_value = vol
+        self.driver.create_snapshot(self._fake_snapshot())
         self.flags(volume_driver=self.driver_name,
                    gpfs_mount_point_base=org_value)
 
@@ -1144,7 +1136,7 @@ class GPFSDriverTestCase(test.TestCase):
         volume = self._fake_volume()
         mock_local_path.return_value = "/tmp/fakepath"
         data = self.driver.initialize_connection(volume, '')
-        self.assertEqual('test', data['data']['name'])
+        self.assertEqual(volume.name, data['data']['name'])
         self.assertEqual("/tmp/fakepath", data['data']['device_path'])
         self.assertEqual('gpfs', data['driver_volume_type'])
 
@@ -1717,65 +1709,49 @@ class GPFSDriverTestCase(test.TestCase):
     def test_create_cgsnapshot(self, mock_create_snap):
         ctxt = self.context
         cgsnap = self._fake_cgsnapshot()
-        self.driver.db = mock.Mock()
-        self.driver.db.snapshot_get_all_for_cgsnapshot = mock.Mock()
         snapshot1 = self._fake_snapshot()
-        snapshots = [snapshot1]
-        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
         model_update, snapshots = self.driver.create_cgsnapshot(ctxt, cgsnap,
-                                                                [])
+                                                                [snapshot1])
         self.driver.create_snapshot.assert_called_once_with(snapshot1)
-        self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.assertEqual(fields.SnapshotStatus.AVAILABLE, snapshot1['status'])
-        self.driver.db.snapshot_get_all_for_cgsnapshot.\
-            assert_called_once_with(ctxt, cgsnap['id'])
+        self.assertEqual({'status': fields.ConsistencyGroupStatus.AVAILABLE},
+                         model_update)
+        self.assertEqual({'id': snapshot1.id,
+                         'status': fields.SnapshotStatus.AVAILABLE},
+                         snapshots[0])
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.create_snapshot')
     def test_create_cgsnapshot_empty(self, mock_create_snap):
         ctxt = self.context
         cgsnap = self._fake_cgsnapshot()
-        self.driver.db = mock.Mock()
-        self.driver.db.snapshot_get_all_for_cgsnapshot = mock.Mock()
-        snapshots = []
-        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
         model_update, snapshots = self.driver.create_cgsnapshot(ctxt, cgsnap,
                                                                 [])
         self.assertFalse(self.driver.create_snapshot.called)
-        self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.driver.db.snapshot_get_all_for_cgsnapshot.\
-            assert_called_once_with(ctxt, cgsnap['id'])
+        self.assertEqual({'status': fields.ConsistencyGroupStatus.AVAILABLE},
+                         model_update)
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.delete_snapshot')
     def test_delete_cgsnapshot(self, mock_delete_snap):
         ctxt = self.context
         cgsnap = self._fake_cgsnapshot()
-        self.driver.db = mock.Mock()
-        self.driver.db.snapshot_get_all_for_cgsnapshot = mock.Mock()
         snapshot1 = self._fake_snapshot()
-        snapshots = [snapshot1]
-        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
         model_update, snapshots = self.driver.delete_cgsnapshot(ctxt, cgsnap,
-                                                                [])
+                                                                [snapshot1])
         self.driver.delete_snapshot.assert_called_once_with(snapshot1)
-        self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.assertEqual(fields.SnapshotStatus.DELETED, snapshot1['status'])
-        self.driver.db.snapshot_get_all_for_cgsnapshot.\
-            assert_called_once_with(ctxt, cgsnap['id'])
+        self.assertEqual({'status': fields.ConsistencyGroupStatus.DELETED},
+                         model_update)
+        self.assertEqual({'id': snapshot1.id,
+                         'status': fields.SnapshotStatus.DELETED},
+                         snapshots[0])
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.delete_snapshot')
     def test_delete_cgsnapshot_empty(self, mock_delete_snap):
         ctxt = self.context
         cgsnap = self._fake_cgsnapshot()
-        self.driver.db = mock.Mock()
-        self.driver.db.snapshot_get_all_for_cgsnapshot = mock.Mock()
-        snapshots = []
-        self.driver.db.snapshot_get_all_for_cgsnapshot.return_value = snapshots
         model_update, snapshots = self.driver.delete_cgsnapshot(ctxt, cgsnap,
                                                                 [])
         self.assertFalse(self.driver.delete_snapshot.called)
-        self.assertEqual({'status': cgsnap['status']}, model_update)
-        self.driver.db.snapshot_get_all_for_cgsnapshot.\
-            assert_called_once_with(ctxt, cgsnap['id'])
+        self.assertEqual({'status': fields.ConsistencyGroupStatus.DELETED},
+                         model_update)
 
     def test_local_path_volume_not_in_cg(self):
         volume = self._fake_volume()
@@ -1799,18 +1775,18 @@ class GPFSDriverTestCase(test.TestCase):
         self.assertEqual(volume_path, ret)
 
     @mock.patch('cinder.context.get_admin_context')
+    @mock.patch('cinder.objects.volume.Volume.get_by_id')
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver.local_path')
-    def test_get_snapshot_path(self, mock_local_path, mock_admin_context):
+    def test_get_snapshot_path(self, mock_local_path, mock_vol_get_by_id,
+                               mock_admin_context):
         volume = self._fake_volume()
-        self.driver.db = mock.Mock()
-        self.driver.db.volume_get = mock.Mock()
-        self.driver.db.volume_get.return_value = volume
+        mock_vol_get_by_id.return_value = volume
         volume_path = self.volumes_path
         mock_local_path.return_value = volume_path
         snapshot = self._fake_snapshot()
         ret = self.driver._get_snapshot_path(snapshot)
         self.assertEqual(
-            os.path.join(os.path.dirname(volume_path), snapshot['name']), ret
+            os.path.join(os.path.dirname(volume_path), snapshot.name), ret
         )
 
     @mock.patch('cinder.utils.execute')
@@ -1823,42 +1799,41 @@ class GPFSDriverTestCase(test.TestCase):
 
     def _fake_volume(self):
         volume = {}
-        volume['id'] = '123456'
-        volume['name'] = 'test'
+        volume['id'] = fake.VOLUME_ID
+        volume['display_name'] = 'test'
+        volume['metadata'] = {'key1': 'val1'}
+        volume['_name_id'] = None
         volume['size'] = 1000
-        volume['consistencygroup_id'] = 'cg-1234'
-        return volume
+        volume['consistencygroup_id'] = fake.CONSISTENCY_GROUP_ID
+
+        return objects.Volume(self.context, **volume)
 
     def _fake_snapshot(self):
         snapshot = {}
-        snapshot['id'] = '12345'
-        snapshot['name'] = 'test-snap'
+        snapshot['id'] = fake.SNAPSHOT_ID
+        snapshot['display_name'] = 'test-snap'
         snapshot['size'] = 1000
-        snapshot['volume_id'] = '123456'
+        snapshot['volume_id'] = fake.VOLUME_ID
         snapshot['status'] = 'available'
-        return snapshot
+        snapshot['snapshot_metadata'] = []
+
+        return objects.Snapshot(context=self.context, **snapshot)
 
     def _fake_volume_in_cg(self):
-        volume = {}
-        volume['id'] = '123456'
-        volume['name'] = 'test'
-        volume['size'] = 1000
-        volume['consistencygroup_id'] = 'fakecg'
+        volume = self._fake_volume()
+        volume.consistencygroup_id = fake.CONSISTENCY_GROUP_ID
         return volume
 
     def _fake_group(self):
         group = {}
         group['name'] = 'test_group'
-        group['id'] = '123456'
+        group['id'] = fake.CONSISTENCY_GROUP_ID
         return group
 
     def _fake_cgsnapshot(self):
-        cgsnap = {}
-        cgsnap['id'] = '123456'
-        cgsnap['name'] = 'testsnap'
-        cgsnap['consistencygroup_id'] = '123456'
-        cgsnap['status'] = 'available'
-        return cgsnap
+        snapshot = self._fake_snapshot()
+        snapshot.consistencygroup_id = fake.CONSISTENCY_GROUP_ID
+        return snapshot
 
     def _fake_qemu_qcow2_image_info(self, path):
         data = FakeQemuImgInfo()
@@ -1894,7 +1869,7 @@ class GPFSDriverTestCase(test.TestCase):
                                                       new_type_ref['id'])
 
         volume = self._fake_volume()
-        volume['host'] = host
+        volume['host'] = 'foo'
 
         return (volume, new_type, diff, host)
 
