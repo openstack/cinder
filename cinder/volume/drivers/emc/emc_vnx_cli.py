@@ -3873,7 +3873,8 @@ class EMCVnxCliBase(object):
     def remove_export_snapshot(self, context, snapshot):
         """Removes mount point for a snapshot."""
         smp_name = self._construct_tmp_smp_name(snapshot)
-        volume = {'name': smp_name, 'provider_location': None}
+        volume = {'name': smp_name, 'provider_location': None,
+                  'volume_type_id': None}
         self.delete_volume(volume, True)
 
     def manage_existing_get_size(self, volume, existing_ref):
