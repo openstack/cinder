@@ -4785,10 +4785,10 @@ class DellSCSanAPITestCase(test.TestCase):
                       'storageProfile': {'name': 'Fake',
                                          'instanceId': 'fakeId'}})
     @mock.patch.object(dell_storagecenter_api.HttpClient,
-                       'post',
+                       'put',
                        return_value=RESPONSE_200)
     def test_update_storage_profile(self,
-                                    mock_post,
+                                    mock_put,
                                     mock_prefs,
                                     mock_close_connection,
                                     mock_open_connection,
@@ -4797,7 +4797,7 @@ class DellSCSanAPITestCase(test.TestCase):
         fake_scvolume = {'name': 'name', 'instanceId': 'id'}
         res = self.scapi.update_storage_profile(fake_scvolume, None)
         self.assertTrue(res)
-        self.assertTrue('fakeId' in repr(mock_post.call_args_list[0]))
+        self.assertTrue('fakeId' in repr(mock_put.call_args_list[0]))
         self.assertEqual(1, LOG.info.call_count)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -5018,8 +5018,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._update_volume_profiles(scvolume, newid, None)
         self.assertTrue(mock_get_id.called)
         self.assertTrue(mock_get_volume_configuration.called)
-        mock_put.assert_called_once_with(expected_url,
-                                         expected_payload)
+        mock_put.assert_called_once_with(expected_url, expected_payload, True)
         self.assertTrue(res)
 
         # Now do a remove.  (Restarting with the original config so this will
@@ -5028,8 +5027,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._update_volume_profiles(scvolume, None, existingid)
         self.assertTrue(mock_get_id.called)
         self.assertTrue(mock_get_volume_configuration.called)
-        mock_put.assert_called_with(expected_url,
-                                    expected_payload)
+        mock_put.assert_called_with(expected_url, expected_payload, True)
         self.assertTrue(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -5066,8 +5064,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._update_volume_profiles(scvolume, newid, None)
         self.assertTrue(mock_get_id.called)
         self.assertTrue(mock_get_volume_configuration.called)
-        mock_put.assert_called_once_with(expected_url,
-                                         expected_payload)
+        mock_put.assert_called_once_with(expected_url, expected_payload, True)
         self.assertFalse(res)
 
         # Now do a remove.  (Restarting with the original config so this will
@@ -5076,8 +5073,7 @@ class DellSCSanAPITestCase(test.TestCase):
         res = self.scapi._update_volume_profiles(scvolume, None, existingid)
         self.assertTrue(mock_get_id.called)
         self.assertTrue(mock_get_volume_configuration.called)
-        mock_put.assert_called_with(expected_url,
-                                    expected_payload)
+        mock_put.assert_called_with(expected_url, expected_payload, True)
         self.assertFalse(res)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -5377,7 +5373,7 @@ class DellSCSanAPITestCase(test.TestCase):
         expected_url = 'StorageCenter/ScReplayProfile/100/CreateReplay'
         expected_payload = {'description': replayid, 'expireTime': expire}
         res = self.scapi.snap_cg_replay(profile, replayid, expire)
-        mock_post.assert_called_once_with(expected_url, expected_payload)
+        mock_post.assert_called_once_with(expected_url, expected_payload, True)
         self.assertTrue(mock_get_id.called)
         self.assertTrue(mock_init_cg_volumes.called)
         self.assertTrue(res)
@@ -5404,7 +5400,7 @@ class DellSCSanAPITestCase(test.TestCase):
         expected_url = 'StorageCenter/ScReplayProfile/100/CreateReplay'
         expected_payload = {'description': replayid, 'expireTime': expire}
         res = self.scapi.snap_cg_replay(profile, replayid, expire)
-        mock_post.assert_called_once_with(expected_url, expected_payload)
+        mock_post.assert_called_once_with(expected_url, expected_payload, True)
         self.assertTrue(mock_get_id.called)
         self.assertTrue(mock_init_cg_volumes.called)
         self.assertFalse(res)
@@ -5536,11 +5532,11 @@ class DellSCSanAPITestCase(test.TestCase):
         expected_url = ('StorageCenter/ScReplay/' +
                         self.RPLAYS[0]['instanceId'] +
                         '/Expire')
-        mock_post.assert_any_call(expected_url, {})
+        mock_post.assert_any_call(expected_url, {}, True)
         expected_url = ('StorageCenter/ScReplay/' +
                         self.RPLAYS[1]['instanceId'] +
                         '/Expire')
-        mock_post.assert_any_call(expected_url, {})
+        mock_post.assert_any_call(expected_url, {}, True)
         self.assertTrue(mock_find_cg_replays.called)
         self.assertTrue(res)
 
@@ -5560,7 +5556,7 @@ class DellSCSanAPITestCase(test.TestCase):
                         self.RPLAYS[0]['instanceId'] +
                         '/Expire')
         res = self.scapi.delete_cg_replay({}, '')
-        mock_post.assert_called_once_with(expected_url, {})
+        mock_post.assert_called_once_with(expected_url, {}, True)
         self.assertTrue(mock_find_cg_replays.called)
         self.assertFalse(res)
 
@@ -5612,7 +5608,7 @@ class DellSCSanAPITestCase(test.TestCase):
         expected_payload = {'Name': newname,
                             'VolumeFolder': '1'}
         self.scapi._import_one({'instanceId': '100'}, newname)
-        mock_put.assert_called_once_with(expected_url, expected_payload)
+        mock_put.assert_called_once_with(expected_url, expected_payload, True)
         self.assertTrue(mock_find_volume_folder.called)
         expected_payload = {'Name': newname}
         self.scapi._import_one({'instanceId': '100'}, newname)
@@ -5879,7 +5875,7 @@ class DellSCSanAPITestCase(test.TestCase):
         expected_payload = {'Name': newname}
         self.scapi.unmanage(scvolume)
         self.assertTrue(mock_get_id.called)
-        mock_put.assert_called_once_with(expected_url, expected_payload)
+        mock_put.assert_called_once_with(expected_url, expected_payload, True)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'put',
@@ -5902,7 +5898,7 @@ class DellSCSanAPITestCase(test.TestCase):
                           self.scapi.unmanage,
                           scvolume)
         self.assertTrue(mock_get_id.called)
-        mock_put.assert_called_once_with(expected_url, expected_payload)
+        mock_put.assert_called_once_with(expected_url, expected_payload, True)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post',
@@ -6025,7 +6021,7 @@ class DellSCSanAPITestCase(test.TestCase):
         expected = 'StorageCenter/ScReplication/%s' % (
             self.SCREPL[0]['instanceId'])
         ret = self.scapi.delete_replication(self.VOLUME, destssn)
-        mock_delete.assert_any_call(expected)
+        mock_delete.assert_any_call(expected, True)
         self.assertTrue(ret)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -6058,7 +6054,7 @@ class DellSCSanAPITestCase(test.TestCase):
         expected = 'StorageCenter/ScReplication/%s' % (
             self.SCREPL[0]['instanceId'])
         ret = self.scapi.delete_replication(self.VOLUME, destssn)
-        mock_delete.assert_any_call(expected)
+        mock_delete.assert_any_call(expected, True)
         self.assertFalse(ret)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -6106,7 +6102,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             False,
                                             None,
                                             False)
-        mock_post.assert_any_call('StorageCenter/ScReplication', payload)
+        mock_post.assert_any_call('StorageCenter/ScReplication', payload, True)
         self.assertDictEqual(self.SCREPL[0], ret)
         payload['Type'] = 'Synchronous'
         payload['ReplicateActiveReplay'] = True
@@ -6116,7 +6112,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             True,
                                             None,
                                             False)
-        mock_post.assert_any_call('StorageCenter/ScReplication', payload)
+        mock_post.assert_any_call('StorageCenter/ScReplication', payload, True)
         self.assertDictEqual(self.SCREPL[0], ret)
         ret = self.scapi.create_replication(self.VOLUME,
                                             str(destssn),
@@ -6124,7 +6120,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             True,
                                             None,
                                             True)
-        mock_post.assert_any_call('StorageCenter/ScReplication', payload)
+        mock_post.assert_any_call('StorageCenter/ScReplication', payload, True)
         self.assertDictEqual(self.SCREPL[0], ret)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -6171,7 +6167,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             False,
                                             None,
                                             False)
-        mock_post.assert_any_call('StorageCenter/ScReplication', payload)
+        mock_post.assert_any_call('StorageCenter/ScReplication', payload, True)
         self.assertIsNone(ret)
 
         payload['Type'] = 'Synchronous'
@@ -6182,7 +6178,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                             True,
                                             None,
                                             True)
-        mock_post.assert_any_call('StorageCenter/ScReplication', payload)
+        mock_post.assert_any_call('StorageCenter/ScReplication', payload, True)
         self.assertIsNone(ret)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
@@ -6453,7 +6449,8 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_put.return_value = self.RESPONSE_200
         ret = self.scapi.manage_replay(screplay, 'guid')
         self.assertTrue(ret)
-        mock_put.assert_called_once_with('StorageCenter/ScReplay/1', payload)
+        mock_put.assert_called_once_with('StorageCenter/ScReplay/1', payload,
+                                         True)
         mock_put.return_value = self.RESPONSE_400
         ret = self.scapi.manage_replay(screplay, 'guid')
         self.assertFalse(ret)
@@ -6471,7 +6468,8 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_put.return_value = self.RESPONSE_200
         ret = self.scapi.unmanage_replay(screplay)
         self.assertTrue(ret)
-        mock_put.assert_called_once_with('StorageCenter/ScReplay/1', payload)
+        mock_put.assert_called_once_with('StorageCenter/ScReplay/1', payload,
+                                         True)
         mock_put.return_value = self.RESPONSE_400
         ret = self.scapi.unmanage_replay(screplay)
         self.assertFalse(ret)

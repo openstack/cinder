@@ -16,6 +16,7 @@
 import json
 import os.path
 
+import eventlet
 from oslo_log import log as logging
 import requests
 from simplejson import scanner
@@ -111,45 +112,97 @@ class HttpClient(object):
     def __formatUrl(self, url):
         return '%s%s' % (self.baseUrl, url if url[0] != '/' else url[1:])
 
-    @utils.retry(exceptions=(requests.ConnectionError,))
-    def get(self, url):
-        LOG.debug('get: %(url)s', {'url': url})
-        return self.session.get(
-            self.__formatUrl(url),
-            headers=self.header,
-            verify=self.verify)
+    def _get_header(self, async):
+        if async:
+            header = self.header.copy()
+            header['async'] = True
+            return header
+        return self.header
+
+    def _wait_for_async_complete(self, asyncTask):
+        url = asyncTask.get('returnValue')
+        while True and url:
+            try:
+                r = self.session.get(url, headers=self.header,
+                                     verify=self.verify)
+                # We can leave this loop for a variety of reasons.
+                # Nothing returned.
+                # r.content blanks.
+                # Object returned switches to one without objectType or with
+                # a different objectType.
+                if r and r.content:
+                    content = r.json()
+                    if content.get('objectType') == 'AsyncTask':
+                        url = content.get('returnValue')
+                        eventlet.sleep(1)
+                        continue
+                return r
+            except exception:
+                methodname = asyncTask.get('methodName')
+                objectTypeName = asyncTask.get('objectTypeName')
+                msg = (_('Async error: Unable to retreive %(obj)s '
+                         'method %(method)s result')
+                       % {'obj': objectTypeName, 'method': methodname})
+                raise exception.VolumeBackendAPIException(message=msg)
+        return None
+
+    def _rest_ret(self, rest_response, async):
+        # If we made an async call and it was accepted
+        # we wait for our response.
+        if async:
+            if rest_response.status_code == 202:
+                asyncTask = rest_response.json()
+                return self._wait_for_async_complete(asyncTask)
+            else:
+                LOG.debug('REST Async error command not accepted:\n'
+                          '\tUrl:    %(url)s\n'
+                          '\tCode:   %(code)d\n'
+                          '\tReason: %(reason)s\n',
+                          {'url': rest_response.url,
+                           'code': rest_response.status_code,
+                           'reason': rest_response.reason})
+                msg = _('REST Async Error: Command not accepted.')
+                raise exception.VolumeBackendAPIException(message=msg)
+        return rest_response
 
     @utils.retry(exceptions=(requests.ConnectionError,))
-    def post(self, url, payload):
+    def get(self, url, async=False):
+        LOG.debug('get: %(url)s', {'url': url})
+        return self._rest_ret(self.session.get(self.__formatUrl(url),
+                                               headers=self._get_header(async),
+                                               verify=self.verify), async)
+
+    @utils.retry(exceptions=(requests.ConnectionError,))
+    def post(self, url, payload, async=False):
         LOG.debug('post: %(url)s data: %(payload)s',
                   {'url': url,
                    'payload': payload})
-        return self.session.post(
+        return self._rest_ret(self.session.post(
             self.__formatUrl(url),
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
-            headers=self.header,
-            verify=self.verify)
+            headers=self._get_header(async),
+            verify=self.verify), async)
 
     @utils.retry(exceptions=(requests.ConnectionError,))
-    def put(self, url, payload):
+    def put(self, url, payload, async=False):
         LOG.debug('put: %(url)s data: %(payload)s',
                   {'url': url,
                    'payload': payload})
-        return self.session.put(
+        return self._rest_ret(self.session.put(
             self.__formatUrl(url),
             data=json.dumps(payload,
                             ensure_ascii=False).encode('utf-8'),
-            headers=self.header,
-            verify=self.verify)
+            headers=self._get_header(async),
+            verify=self.verify), async)
 
     @utils.retry(exceptions=(requests.ConnectionError,))
-    def delete(self, url):
+    def delete(self, url, async=False):
         LOG.debug('delete: %(url)s', {'url': url})
-        return self.session.delete(
-            self.__formatUrl(url),
-            headers=self.header,
-            verify=self.verify)
+        return self._rest_ret(
+            self.session.delete(self.__formatUrl(url),
+                                headers=self._get_header(async),
+                                verify=self.verify), async)
 
 
 class StorageCenterApiHelper(object):
@@ -543,7 +596,7 @@ class StorageCenterApi(object):
             payload['Parent'] = parent
         payload['Notes'] = self.notes
 
-        r = self.client.post(url, payload)
+        r = self.client.post(url, payload, True)
         if self._check_result(r):
             scfolder = self._first_result(r)
         return scfolder
@@ -864,7 +917,7 @@ class StorageCenterApi(object):
         # This is a new volume so there is nothing to remove.
         if addids:
             payload['ReplayProfileList'] = addids
-        r = self.client.post('StorageCenter/ScVolume', payload)
+        r = self.client.post('StorageCenter/ScVolume', payload, True)
         if self._check_result(r):
             # Our volume should be in the return.
             scvolume = self._get_json(r)
@@ -1017,7 +1070,8 @@ class StorageCenterApi(object):
 
         # If we have an id then delete the volume.
         if provider_id:
-            r = self.client.delete('StorageCenter/ScVolume/%s' % provider_id)
+            r = self.client.delete('StorageCenter/ScVolume/%s' % provider_id,
+                                   True)
             if not self._check_result(r):
                 msg = _('Error deleting volume %(ssn)s: %(volume)s') % {
                     'ssn': self.ssn,
@@ -1065,7 +1119,7 @@ class StorageCenterApi(object):
         payload['WwnOrIscsiName'] = wwnoriscsiname
         payload['AllowManual'] = True
         r = self.client.post('StorageCenter/ScPhysicalServer/%s/AddHba'
-                             % self._get_id(scserver), payload)
+                             % self._get_id(scserver), payload, True)
         if not self._check_result(r):
             LOG.error(_LE('_add_hba error: %(wwn)s to %(srvname)s'),
                       {'wwn': wwnoriscsiname,
@@ -1153,7 +1207,7 @@ class StorageCenterApi(object):
             payload['ServerFolder'] = self._get_id(folder)
 
         # create our server
-        r = self.client.post('StorageCenter/ScPhysicalServer', payload)
+        r = self.client.post('StorageCenter/ScPhysicalServer', payload, True)
         if self._check_result(r):
             # Server was created
             scserver = self._first_result(r)
@@ -1606,8 +1660,8 @@ class StorageCenterApi(object):
             payload = {}
             payload['server'] = serverid
             payload['Advanced'] = {'MapToDownServerHbas': True}
-            r = self.client.post(
-                'StorageCenter/ScVolume/%s/MapToServer' % volumeid, payload)
+            r = self.client.post('StorageCenter/ScVolume/%s/MapToServer'
+                                 % volumeid, payload, True)
             if self._check_result(r):
                 # We just return our mapping
                 LOG.info(_LI('Volume %(vol)s mapped to %(srv)s'),
@@ -1640,7 +1694,7 @@ class StorageCenterApi(object):
                 prosrv = profile.get('server')
                 if prosrv is not None and self._get_id(prosrv) == serverid:
                     r = self.client.delete('StorageCenter/ScMappingProfile/%s'
-                                           % self._get_id(profile))
+                                           % self._get_id(profile), True)
                     if self._check_result(r):
                         # Check our result in the json.
                         result = self._get_json(r)
@@ -1705,8 +1759,7 @@ class StorageCenterApi(object):
             payload['description'] = replayid
             payload['expireTime'] = expire
             r = self.client.post('StorageCenter/ScVolume/%s/CreateReplay'
-                                 % self._get_id(scvolume),
-                                 payload)
+                                 % self._get_id(scvolume), payload, True)
             if self._check_result(r):
                 replay = self._first_result(r)
 
@@ -1766,8 +1819,7 @@ class StorageCenterApi(object):
             payload['description'] = replayid
             payload['expireTime'] = 0
             r = self.client.put('StorageCenter/ScReplay/%s' %
-                                self._get_id(screplay),
-                                payload)
+                                self._get_id(screplay), payload, True)
             if self._check_result(r):
                 return True
             LOG.error(_LE('Error managing replay %s'),
@@ -1784,8 +1836,7 @@ class StorageCenterApi(object):
             payload = {}
             payload['expireTime'] = 1440
             r = self.client.put('StorageCenter/ScReplay/%s' %
-                                self._get_id(screplay),
-                                payload)
+                                self._get_id(screplay), payload, True)
             if self._check_result(r):
                 return True
             LOG.error(_LE('Error unmanaging replay %s'),
@@ -1811,7 +1862,7 @@ class StorageCenterApi(object):
         if replay is not None:
             # expire our replay.
             r = self.client.post('StorageCenter/ScReplay/%s/Expire' %
-                                 self._get_id(replay), {})
+                                 self._get_id(replay), {}, True)
             ret = self._check_result(r)
         # If we couldn't find it we call that a success.
         return ret
@@ -1838,8 +1889,7 @@ class StorageCenterApi(object):
         if addids:
             payload['ReplayProfileList'] = addids
         r = self.client.post('StorageCenter/ScReplay/%s/CreateView'
-                             % self._get_id(screplay),
-                             payload)
+                             % self._get_id(screplay), payload, True)
         volume = None
         if self._check_result(r):
             volume = self._first_result(r)
@@ -1882,8 +1932,7 @@ class StorageCenterApi(object):
         payload = {}
         payload['NewSize'] = '%d GB' % newsize
         r = self.client.post('StorageCenter/ScVolume/%s/ExpandToSize'
-                             % self._get_id(scvolume),
-                             payload)
+                             % self._get_id(scvolume), payload, True)
         if self._check_result(r):
             vol = self._get_json(r)
         # More info might be good.
@@ -1955,10 +2004,8 @@ class StorageCenterApi(object):
                   'prof': profile.get('name')})
         payload = {}
         payload['StorageProfile'] = self._get_id(profile)
-        r = self.client.post('StorageCenter/ScVolumeConfiguration'
-                             '/%s/Modify'
-                             % self._get_id(scvolume),
-                             payload)
+        r = self.client.put('StorageCenter/ScVolumeConfiguration/%s'
+                            % self._get_id(scvolume), payload, True)
         if self._check_result(r):
             return True
 
@@ -1997,7 +2044,7 @@ class StorageCenterApi(object):
         LOG.debug('ScServer delete %s', self._get_id(scserver))
         if scserver.get('deleteAllowed') is True:
             r = self.client.delete('StorageCenter/ScServer/%s'
-                                   % self._get_id(scserver))
+                                   % self._get_id(scserver), True)
             if self._check_result(r):
                 LOG.debug('ScServer deleted.')
         else:
@@ -2044,7 +2091,7 @@ class StorageCenterApi(object):
             payload['Type'] = 'Consistent'
             payload['Notes'] = self.notes
             r = self.client.post('StorageCenter/ScReplayProfile',
-                                 payload)
+                                 payload, True)
             # 201 expected.
             if self._check_result(r):
                 profile = self._first_result(r)
@@ -2059,7 +2106,7 @@ class StorageCenterApi(object):
         """
         self.cg_except_on_no_support()
         r = self.client.delete('StorageCenter/ScReplayProfile/%s' %
-                               self._get_id(profile))
+                               self._get_id(profile), True)
         if self._check_result(r):
             LOG.info(_LI('Profile %s has been deleted.'),
                      profile.get('name'))
@@ -2110,8 +2157,7 @@ class StorageCenterApi(object):
                 payload = {}
                 payload['ReplayProfileList'] = newprofilelist
                 r = self.client.put('StorageCenter/ScVolumeConfiguration/%s' %
-                                    self._get_id(scvolumecfg),
-                                    payload)
+                                    self._get_id(scvolumecfg), payload, True)
                 # check result
                 LOG.debug('_update_volume_profiles %s : %s : %s',
                           self._get_id(scvolume),
@@ -2219,8 +2265,7 @@ class StorageCenterApi(object):
             payload['expireTime'] = expire
             r = self.client.post('StorageCenter/ScReplayProfile/%s/'
                                  'CreateReplay'
-                                 % self._get_id(profile),
-                                 payload)
+                                 % self._get_id(profile), payload, True)
             if self._check_result(r):
                 LOG.info(_LI('CreateReplay success %s'), replayid)
                 return True
@@ -2296,8 +2341,7 @@ class StorageCenterApi(object):
             instanceid = self._get_id(replay)
             LOG.debug('Expiring replay %s', instanceid)
             r = self.client.post('StorageCenter/ScReplay/%s/Expire'
-                                 % instanceid,
-                                 {})
+                                 % instanceid, {}, True)
             if not self._check_result(r):
                 return False
         # We either couldn't find it or expired it.
@@ -2346,8 +2390,7 @@ class StorageCenterApi(object):
             payload['VolumeFolder'] = self._get_id(folder)
 
         r = self.client.put('StorageCenter/ScVolume/%s' %
-                            self._get_id(scvolume),
-                            payload)
+                            self._get_id(scvolume), payload, True)
         if self._check_result(r):
             return self._get_json(r)
         return None
@@ -2438,8 +2481,7 @@ class StorageCenterApi(object):
         payload = {}
         payload['Name'] = newname
         r = self.client.put('StorageCenter/ScVolume/%s' %
-                            self._get_id(scvolume),
-                            payload)
+                            self._get_id(scvolume), payload, True)
         if self._check_result(r):
             LOG.info(_LI('Volume %s unmanaged.'), scvolume['name'])
         else:
@@ -2470,7 +2512,7 @@ class StorageCenterApi(object):
                 payload['StorageCenter'] = self.ssn
                 payload['BandwidthLimited'] = False
                 r = self.client.post('StorageCenter/ScReplicationQosNode',
-                                     payload)
+                                     payload, True)
                 if self._check_result(r):
                     return self._get_json(r)
 
@@ -2494,7 +2536,7 @@ class StorageCenterApi(object):
                     payload = {'ReplicateActiveReplay': replactive}
                     r = self.client.put('StorageCenter/ScReplication/%s' %
                                         replication['instanceId'],
-                                        payload)
+                                        payload, True)
                     if not self._check_result(r):
                         return False
         return True
@@ -2533,7 +2575,7 @@ class StorageCenterApi(object):
         replication = self.get_screplication(scvolume, destssn)
         if replication:
             r = self.client.delete('StorageCenter/ScReplication/%s' %
-                                   self._get_id(replication))
+                                   self._get_id(replication), True)
             if self._check_result(r):
                 # check that we whacked the dest volume
                 LOG.info(_LI('Replication %(vol)s to %(dest)s.'),
@@ -2558,7 +2600,7 @@ class StorageCenterApi(object):
             pf.append('scSerialNumber', ssn)
             pf.append('name', foldername)
             r = self.client.post('StorageCenter/ScDiskFolder/GetList',
-                                 pf.payload)
+                                 pf.payload, True)
             if self._check_result(r):
                 try:
                     # Go for broke.
@@ -2604,7 +2646,7 @@ class StorageCenterApi(object):
         if df:
             destinationvolumeattributes['DiskFolder'] = self._get_id(df)
         payload['DestinationVolumeAttributes'] = destinationvolumeattributes
-        r = self.client.post('StorageCenter/ScReplication', payload)
+        r = self.client.post('StorageCenter/ScReplication', payload, True)
         # 201 expected.
         if self._check_result(r):
             LOG.info(_LI('Replication created for %(volname)s to %(destsc)s'),
@@ -2638,8 +2680,7 @@ class StorageCenterApi(object):
         else:
             # Try the name.
             pf.append('Name', self._repl_name(guid))
-        r = self.client.post('StorageCenter/ScVolume/GetList',
-                             pf.payload)
+        r = self.client.post('StorageCenter/ScVolume/GetList', pf.payload)
         if self._check_result(r):
             volumes = self._get_json(r)
             if len(volumes) == 1:
@@ -2654,8 +2695,7 @@ class StorageCenterApi(object):
         """
         if scvol:
             r = self.client.post('StorageCenter/ScVolume/%s/Unmap' %
-                                 self._get_id(scvol),
-                                 {})
+                                 self._get_id(scvol), {}, True)
             return self._check_result(r)
         return False
 
