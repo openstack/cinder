@@ -78,10 +78,12 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver,
                 should not be hardcoded, only in iSCSI
         1.0.9 - Fix bug #1570574, Cleanup host resource
                 leaking, changes only in iSCSI
+        1.0.10 - Fix bug #1585085, add host name check in
+                 _find_host_exhaustive for iSCSI
 
     """
 
-    VERSION = "1.0.9"
+    VERSION = "1.0.10"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemFCDriver, self).__init__(*args, **kwargs)

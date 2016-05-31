@@ -303,3 +303,43 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
 
         # clean environment
         self.driver.delete_volume(volume_iscsi)
+
+    def test_flashsystem_find_host_exhaustive(self):
+        # case 1: create host and find it
+        self.sim.set_protocol('iSCSI')
+        self._set_flag('flashsystem_connection_protocol', 'iSCSI')
+        conn1 = {
+            'host': 'flashsystem-01',
+            'wwnns': ['1111111111abcdef', '1111111111abcdeg'],
+            'wwpns': ['1111111111000001', '1111111111000002'],
+            'initiator': 'iqn.111111'}
+        conn2 = {
+            'host': 'flashsystem-02',
+            'wwnns': ['2222222222abcdef', '2222222222abcdeg'],
+            'wwpns': ['2222222222000001', '2222222222000002'],
+            'initiator': 'iqn.222222'}
+        conn3 = {
+            'host': 'flashsystem-03',
+            'wwnns': ['3333333333abcdef', '3333333333abcdeg'],
+            'wwpns': ['3333333333000001', '3333333333000002'],
+            'initiator': 'iqn.333333'}
+        host1 = self.driver._create_host(conn1)
+        host2 = self.driver._create_host(conn2)
+        self.assertEqual(
+            host2,
+            self.driver._find_host_exhaustive(conn2, [host1, host2]))
+        self.assertIsNone(self.driver._find_host_exhaustive(conn3,
+                                                            [host1, host2]))
+
+        # case 2: hosts contains non-existent host info
+        with mock.patch.object(FlashSystemFakeISCSIDriver,
+                               '_ssh') as mock_ssh:
+            mock_ssh.return_value = ("pass", "")
+            self.driver._find_host_exhaustive(conn1, [host2])
+            self.assertFalse(mock_ssh.called)
+
+        # clear environment
+        self.driver._delete_host(host1)
+        self.driver._delete_host(host2)
+        self.sim.set_protocol('iSCSI')
+        self._reset_flags()
