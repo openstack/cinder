@@ -1100,14 +1100,24 @@ def get_booleans_for_table(table_name):
 ###################
 
 
-def driver_initiator_data_update(context, initiator, namespace, updates):
-    """Create DriverPrivateData from the values dictionary."""
-    return IMPL.driver_initiator_data_update(context, initiator,
-                                             namespace, updates)
+def driver_initiator_data_insert_by_key(context, initiator,
+                                        namespace, key, value):
+    """Updates DriverInitiatorData entry.
+
+    Sets the value for the specified key within the namespace.
+
+    If the entry already exists return False, if it inserted successfully
+    return True.
+    """
+    return IMPL.driver_initiator_data_insert_by_key(context,
+                                                    initiator,
+                                                    namespace,
+                                                    key,
+                                                    value)
 
 
 def driver_initiator_data_get(context, initiator, namespace):
-    """Query for an DriverPrivateData that has the specified key"""
+    """Query for an DriverInitiatorData that has the specified key"""
     return IMPL.driver_initiator_data_get(context, initiator, namespace)
 
 

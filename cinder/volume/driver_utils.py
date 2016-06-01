@@ -48,16 +48,25 @@ class VolumeDriverUtils(object):
                            'namespace': self._data_namespace})
             raise
 
-    def save_driver_initiator_data(self, initiator, model_update, ctxt=None):
+    def insert_driver_initiator_data(self, initiator, key, value, ctxt=None):
+        """Update the initiator data at key with value.
+
+        If the key has already been set to something return False, otherwise
+        if saved successfully return True.
+        """
         try:
-            self._db.driver_initiator_data_update(self._get_context(ctxt),
-                                                  initiator,
-                                                  self._data_namespace,
-                                                  model_update)
+            return self._db.driver_initiator_data_insert_by_key(
+                self._get_context(ctxt),
+                initiator,
+                self._data_namespace,
+                key,
+                value
+            )
         except exception.CinderException:
-            LOG.exception(_LE("Failed to update initiator data for"
+            LOG.exception(_LE("Failed to insert initiator data for"
                               " initiator %(initiator)s and backend"
-                              " %(backend)s"),
+                              " %(backend)s for key %(key)s."),
                           {'initiator': initiator,
-                           'backend': self._data_namespace})
+                           'backend': self._data_namespace,
+                           'key': key})
             raise

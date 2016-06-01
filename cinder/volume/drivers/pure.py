@@ -1552,26 +1552,27 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
     def _generate_chap_secret():
         return volume_utils.generate_password()
 
-    def _get_chap_credentials(self, host, initiator):
+    def _get_chap_secret_from_init_data(self, initiator):
         data = self.driver_utils.get_driver_initiator_data(initiator)
-        initiator_updates = None
-        username = host
-        password = None
         if data:
             for d in data:
                 if d["key"] == CHAP_SECRET_KEY:
-                    password = d["value"]
-                    break
+                    return d["value"]
+        return None
+
+    def _get_chap_credentials(self, host, initiator):
+        username = host
+        password = self._get_chap_secret_from_init_data(initiator)
         if not password:
             password = self._generate_chap_secret()
-            initiator_updates = {
-                "set_values": {
-                    CHAP_SECRET_KEY: password
-                }
-            }
-        if initiator_updates:
-            self.driver_utils.save_driver_initiator_data(initiator,
-                                                         initiator_updates)
+            success = self.driver_utils.insert_driver_initiator_data(
+                initiator, CHAP_SECRET_KEY, password)
+            if not success:
+                # The only reason the save would have failed is if someone
+                # else (read: another thread/instance of the driver) set
+                # one before we did. In that case just do another query.
+                password = self._get_chap_secret_from_init_data(initiator)
+
         return username, password
 
     @utils.synchronized(CONNECT_LOCK_NAME, external=True)
