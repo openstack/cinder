@@ -1355,7 +1355,7 @@ def volume_detached(context, volume_id, attachment_id):
             attachment['deleted_at'] = now
             attachment.save(session=session)
 
-        attachment_list = volume_attachment_get_used_by_volume_id(
+        attachment_list = volume_attachment_get_all_by_volume_id(
             context, volume_id, session=session)
         remain_attachment = False
         if attachment_list and len(attachment_list) > 0:
@@ -1442,7 +1442,7 @@ def volume_attachment_get(context, attachment_id, session=None):
 
 
 @require_context
-def volume_attachment_get_used_by_volume_id(context, volume_id, session=None):
+def volume_attachment_get_all_by_volume_id(context, volume_id, session=None):
     result = model_query(context, models.VolumeAttachment,
                          session=session).\
         filter_by(volume_id=volume_id).\
@@ -1452,7 +1452,7 @@ def volume_attachment_get_used_by_volume_id(context, volume_id, session=None):
 
 
 @require_context
-def volume_attachment_get_by_host(context, volume_id, host):
+def volume_attachment_get_all_by_host(context, volume_id, host):
     session = get_session()
     with session.begin():
         result = model_query(context, models.VolumeAttachment,
@@ -1460,12 +1460,14 @@ def volume_attachment_get_by_host(context, volume_id, host):
             filter_by(volume_id=volume_id).\
             filter_by(attached_host=host).\
             filter(models.VolumeAttachment.attach_status != 'detached').\
-            first()
+            all()
         return result
 
 
 @require_context
-def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
+def volume_attachment_get_all_by_instance_uuid(context,
+                                               volume_id,
+                                               instance_uuid):
     session = get_session()
     with session.begin():
         result = model_query(context, models.VolumeAttachment,
@@ -1473,7 +1475,7 @@ def volume_attachment_get_by_instance_uuid(context, volume_id, instance_uuid):
             filter_by(volume_id=volume_id).\
             filter_by(instance_uuid=instance_uuid).\
             filter(models.VolumeAttachment.attach_status != 'detached').\
-            first()
+            all()
         return result
 
 

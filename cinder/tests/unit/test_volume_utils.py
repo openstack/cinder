@@ -161,7 +161,7 @@ class NotifyUsageTestCase(test.TestCase):
         self.assertDictMatch(expected_snapshot, usage_info)
 
     @mock.patch('cinder.db.volume_glance_metadata_get')
-    @mock.patch('cinder.db.volume_attachment_get_used_by_volume_id')
+    @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
     def test_usage_from_volume(self, mock_attachment, mock_image_metadata):
         mock_image_metadata.return_value = {'image_id': 'fake_image_id'}
         mock_attachment.return_value = [{'instance_uuid': 'fake_instance_id'}]

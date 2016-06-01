@@ -5030,11 +5030,13 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                 mock_detach_volume.assert_called_with(self.context,
                                                       old_volume.id,
                                                       attachment_id)
-                attachment = db.volume_attachment_get_by_instance_uuid(
+                attachments = db.volume_attachment_get_all_by_instance_uuid(
                     self.context, old_volume.id, instance_uuid)
-                self.assertIsNotNone(attachment)
-                self.assertEqual(attached_host, attachment['attached_host'])
-                self.assertEqual(instance_uuid, attachment['instance_uuid'])
+                self.assertIsNotNone(attachments)
+                self.assertEqual(attached_host,
+                                 attachments[0]['attached_host'])
+                self.assertEqual(instance_uuid,
+                                 attachments[0]['instance_uuid'])
             else:
                 self.assertFalse(mock_detach_volume.called)
             self.assertTrue(mock_delete_volume.called)
