@@ -17,6 +17,7 @@ import sys
 
 import mock
 from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import exception
 from cinder.objects import volume as obj_volume
@@ -122,6 +123,7 @@ FAKE_GET_VOL_INFO_ONLINE = {
     'vol': {'target-name': 'iqn.test',
             'name': 'test_vol',
             'agent-type': 1,
+            'size': 2 * units.Gi,
             'online': True}}
 
 FAKE_GET_VOL_INFO_ERROR = {
@@ -617,6 +619,21 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
             self.driver.manage_existing,
             {'name': 'volume-abcdef'},
             {'source-name': 'test-vol'})
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    def test_manage_volume_get_size(self):
+        self.mock_client_service.service.getNetConfig.return_value = (
+            FAKE_POSITIVE_NETCONFIG_RESPONSE)
+        self.mock_client_service.service.getVolInfo.return_value = (
+            FAKE_GET_VOL_INFO_ONLINE)
+        size = self.driver.manage_existing_get_size(
+            {'name': 'volume-abcdef'}, {'source-name': 'test-vol'})
+        self.assertEqual(2, size)
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
