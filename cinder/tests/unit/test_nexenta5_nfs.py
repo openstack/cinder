@@ -158,11 +158,9 @@ class TestNexentaNfsDriver(test.TestCase):
            'NexentaNfsDriver.extend_volume')
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver.local_path')
-    @patch('cinder.volume.drivers.remotefs.'
-           'RemoteFSDriver._create_sparsed_file')
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
            'NexentaNfsDriver._share_folder')
-    def test_create_volume_from_snapshot(self, share, create, path, extend):
+    def test_create_volume_from_snapshot(self, share, path, extend):
         self._create_volume_db_entry()
         url = ('storage/filesystems/pool%2Fshare%2Fvolume2/promote')
 
@@ -171,7 +169,6 @@ class TestNexentaNfsDriver(test.TestCase):
         self.nef_mock.post.assert_called_with(url)
 
         # make sure the volume get extended!
-        create.assert_has_calls(path, 2)
         extend.assert_called_with(self.TEST_VOLUME2, 2)
 
     @patch('cinder.volume.drivers.nexenta.ns5.nfs.'
