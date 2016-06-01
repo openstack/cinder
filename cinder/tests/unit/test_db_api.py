@@ -31,6 +31,7 @@ from cinder.objects import fields
 from cinder import quota
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import utils
 
 THREE = 3
 THREE_HUNDREDS = 300
@@ -93,7 +94,7 @@ class ModelsObjectComparatorMixin(object):
         sort_key = lambda d: [d[k] for k in sorted(d)]
         conv_and_sort = lambda obj: sorted(map(obj_to_dict, obj), key=sort_key)
 
-        self.assertEqual(conv_and_sort(objs1), conv_and_sort(objs2))
+        self.assertListEqual(conv_and_sort(objs1), conv_and_sort(objs2))
 
     def _assertEqualListsOfPrimitivesAsSets(self, primitives1, primitives2):
         self.assertEqual(len(primitives1), len(primitives2))
@@ -1455,16 +1456,23 @@ class DBAPISnapshotTestCase(BaseTest):
 class DBAPICgsnapshotTestCase(BaseTest):
     """Tests for cinder.db.api.cgsnapshot_*."""
 
+    def _cgsnapshot_create(self, values):
+        return utils.create_cgsnapshot(self.ctxt, return_vo=False, **values)
+
     def test_cgsnapshot_get_all_by_filter(self):
-        cgsnapshot1 = db.cgsnapshot_create(self.ctxt, {'id': 1,
-                                           'consistencygroup_id': 'g1'})
-        cgsnapshot2 = db.cgsnapshot_create(self.ctxt, {'id': 2,
-                                           'consistencygroup_id': 'g1'})
-        cgsnapshot3 = db.cgsnapshot_create(self.ctxt, {'id': 3,
-                                           'consistencygroup_id': 'g2'})
+        cgsnapshot1 = self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP_ID})
+        cgsnapshot2 = self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT2_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP_ID})
+        cgsnapshot3 = self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT3_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP2_ID})
         tests = [
-            ({'consistencygroup_id': 'g1'}, [cgsnapshot1, cgsnapshot2]),
-            ({'id': 3}, [cgsnapshot3]),
+            ({'consistencygroup_id': fake.CONSISTENCY_GROUP_ID},
+             [cgsnapshot1, cgsnapshot2]),
+            ({'id': fake.CGSNAPSHOT3_ID}, [cgsnapshot3]),
             ({'fake_key': 'fake'}, [])
         ]
 
@@ -1480,17 +1488,20 @@ class DBAPICgsnapshotTestCase(BaseTest):
                                                 filters))
 
     def test_cgsnapshot_get_all_by_group(self):
-        cgsnapshot1 = db.cgsnapshot_create(self.ctxt, {'id': 1,
-                                           'consistencygroup_id': 'g1'})
-        cgsnapshot2 = db.cgsnapshot_create(self.ctxt, {'id': 2,
-                                           'consistencygroup_id': 'g1'})
-        db.cgsnapshot_create(self.ctxt, {'id': 3,
-                             'consistencygroup_id': 'g2'})
+        cgsnapshot1 = self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP_ID})
+        cgsnapshot2 = self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT2_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP_ID})
+        self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT3_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP2_ID})
         tests = [
-            ({'consistencygroup_id': 'g1'}, [cgsnapshot1, cgsnapshot2]),
-            ({'id': 3}, []),
-            ({'fake_key': 'fake'}, []),
-            ({'consistencygroup_id': 'g2'}, []),
+            ({'consistencygroup_id': fake.CONSISTENCY_GROUP_ID},
+             [cgsnapshot1, cgsnapshot2]),
+            ({'id': fake.CGSNAPSHOT3_ID}, []),
+            ({'consistencygroup_id': fake.CONSISTENCY_GROUP2_ID}, []),
             (None, [cgsnapshot1, cgsnapshot2]),
         ]
 
@@ -1498,7 +1509,7 @@ class DBAPICgsnapshotTestCase(BaseTest):
             self._assertEqualListsOfObjects(expected,
                                             db.cgsnapshot_get_all_by_group(
                                                 self.ctxt,
-                                                'g1',
+                                                fake.CONSISTENCY_GROUP_ID,
                                                 filters))
 
         db.cgsnapshot_destroy(self.ctxt, '1')
@@ -1506,18 +1517,18 @@ class DBAPICgsnapshotTestCase(BaseTest):
         db.cgsnapshot_destroy(self.ctxt, '3')
 
     def test_cgsnapshot_get_all_by_project(self):
-        cgsnapshot1 = db.cgsnapshot_create(self.ctxt,
-                                           {'id': 1,
-                                            'consistencygroup_id': 'g1',
-                                            'project_id': 1})
-        cgsnapshot2 = db.cgsnapshot_create(self.ctxt,
-                                           {'id': 2,
-                                            'consistencygroup_id': 'g1',
-                                            'project_id': 1})
-        project_id = 1
+        cgsnapshot1 = self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
+             'project_id': fake.PROJECT_ID})
+        cgsnapshot2 = self._cgsnapshot_create(
+            {'id': fake.CGSNAPSHOT2_ID,
+             'consistencygroup_id': fake.CONSISTENCY_GROUP_ID,
+             'project_id': fake.PROJECT_ID})
         tests = [
-            ({'id': 1}, [cgsnapshot1]),
-            ({'consistencygroup_id': 'g1'}, [cgsnapshot1, cgsnapshot2]),
+            ({'id': fake.CGSNAPSHOT_ID}, [cgsnapshot1]),
+            ({'consistencygroup_id': fake.CONSISTENCY_GROUP_ID},
+             [cgsnapshot1, cgsnapshot2]),
             ({'fake_key': 'fake'}, [])
         ]
 
@@ -1525,7 +1536,7 @@ class DBAPICgsnapshotTestCase(BaseTest):
             self._assertEqualListsOfObjects(expected,
                                             db.cgsnapshot_get_all_by_project(
                                                 self.ctxt,
-                                                project_id,
+                                                fake.PROJECT_ID,
                                                 filters))
 
 

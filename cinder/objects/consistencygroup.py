@@ -77,7 +77,13 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         return consistencygroup
 
     @base.remotable
-    def create(self):
+    def create(self, cg_snap_id=None, cg_id=None):
+        """Create a consistency group.
+
+        If cg_snap_id or cg_id are specified then volume_type_id,
+        availability_zone, and host will be taken from the source Consistency
+        Group.
+        """
         if self.obj_attr_is_set('id'):
             raise exception.ObjectActionError(action='create',
                                               reason=_('already_created'))
@@ -92,7 +98,9 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
                                               reason=_('volumes assigned'))
 
         db_consistencygroups = db.consistencygroup_create(self._context,
-                                                          updates)
+                                                          updates,
+                                                          cg_snap_id,
+                                                          cg_id)
         self._from_db_object(self._context, self, db_consistencygroups)
 
     def obj_load_attr(self, attrname):

@@ -284,10 +284,7 @@ class CgsnapshotsAPITestCase(test.TestCase):
                          res_dict['itemNotFound']['message'])
         consistencygroup.destroy()
 
-    @mock.patch.object(objects.CGSnapshot, 'create')
-    def test_create_cgsnapshot_from_empty_consistencygroup(
-            self,
-            mock_cgsnapshot_create):
+    def test_create_cgsnapshot_from_empty_consistencygroup(self):
         consistencygroup = utils.create_consistencygroup(self.context)
 
         body = {"cgsnapshot": {"name": "cg1",
@@ -305,13 +302,15 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        self.assertEqual('Invalid ConsistencyGroup: Consistency group is '
-                         'empty. No cgsnapshot will be created.',
-                         res_dict['badRequest']['message'])
+        expected = ("Invalid ConsistencyGroup: Source CG cannot be empty or "
+                    "in 'creating' or 'updating' state. No cgsnapshot will be "
+                    "created.")
+        self.assertEqual(expected, res_dict['badRequest']['message'])
 
         # If failed to create cgsnapshot, its DB object should not be created
-        self.assertFalse(mock_cgsnapshot_create.called)
-
+        self.assertListEqual(
+            [],
+            list(objects.CGSnapshotList.get_all(self.context)))
         consistencygroup.destroy()
 
     def test_delete_cgsnapshot_available(self):
@@ -338,6 +337,34 @@ class CgsnapshotsAPITestCase(test.TestCase):
         db.volume_destroy(context.get_admin_context(),
                           volume_id)
         consistencygroup.destroy()
+
+    def test_delete_cgsnapshot_available_used_as_source(self):
+        consistencygroup = utils.create_consistencygroup(self.context)
+        volume_id = utils.create_volume(
+            self.context,
+            consistencygroup_id=consistencygroup.id)['id']
+        cgsnapshot = utils.create_cgsnapshot(
+            self.context,
+            consistencygroup_id=consistencygroup.id,
+            status='available')
+
+        cg2 = utils.create_consistencygroup(
+            self.context, status='creating', cgsnapshot_id=cgsnapshot.id)
+        req = webob.Request.blank('/v2/fake/cgsnapshots/%s' %
+                                  cgsnapshot.id)
+        req.method = 'DELETE'
+        req.headers['Content-Type'] = 'application/json'
+        res = req.get_response(fakes.wsgi_app())
+
+        cgsnapshot = objects.CGSnapshot.get_by_id(self.context, cgsnapshot.id)
+        self.assertEqual(400, res.status_int)
+        self.assertEqual('available', cgsnapshot.status)
+
+        cgsnapshot.destroy()
+        db.volume_destroy(context.get_admin_context(),
+                          volume_id)
+        consistencygroup.destroy()
+        cg2.destroy()
 
     def test_delete_cgsnapshot_with_cgsnapshot_NotFound(self):
         req = webob.Request.blank('/v2/%s/cgsnapshots/%s' %
@@ -373,8 +400,10 @@ class CgsnapshotsAPITestCase(test.TestCase):
 
         self.assertEqual(400, res.status_int)
         self.assertEqual(400, res_dict['badRequest']['code'])
-        self.assertEqual('Invalid cgsnapshot',
-                         res_dict['badRequest']['message'])
+        expected = ('Invalid CgSnapshot: CgSnapshot status must be available '
+                    'or error, and no CG can be currently using it as source '
+                    'for its creation.')
+        self.assertEqual(expected, res_dict['badRequest']['message'])
 
         cgsnapshot.destroy()
         db.volume_destroy(context.get_admin_context(),
