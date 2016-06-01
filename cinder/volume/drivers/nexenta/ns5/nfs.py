@@ -243,7 +243,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                  {'id': volume['id'], 'size': new_size})
         if getattr(self.configuration,
                    self.driver_prefix + '_sparsed_volumes'):
-            self._create_sparsed_file(self.local_path(volume), new_size)
+            self._execute('truncate', '-s', '%sG' % new_size,
+                          self.local_path(volume),
+                          run_as_root=self._execute_as_root)
         else:
             block_size_mb = 1
             block_count = ((new_size - volume['size']) * units.Gi /
