@@ -792,6 +792,10 @@ class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")
 
 
+class PureRetryableException(VolumeBackendAPIException):
+    message = _("Retryable Pure Storage Exception encountered")
+
+
 # SolidFire
 class SolidFireAPIException(VolumeBackendAPIException):
     message = _("Bad response from SolidFire API")
