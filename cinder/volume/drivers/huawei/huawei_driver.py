@@ -14,6 +14,7 @@
 #    under the License.
 
 import json
+import math
 import re
 import six
 import uuid
@@ -1368,12 +1369,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def manage_existing_get_size(self, volume, external_ref):
         """Get the size of the existing volume."""
         lun_info = self._get_lun_info_by_ref(external_ref)
-        size = float(lun_info.get('CAPACITY')) // constants.CAPACITY_UNIT
-        remainder = float(lun_info.get('CAPACITY')) % constants.CAPACITY_UNIT
-        if int(remainder) > 0:
-            msg = _("Volume size must be multiple of 1 GB.")
-            raise exception.VolumeBackendAPIException(data=msg)
-        return int(size)
+        size = int(math.ceil(lun_info.get('CAPACITY') /
+                             constants.CAPACITY_UNIT))
+        return size
 
     def _check_snapshot_valid_for_manage(self, snapshot_info, external_ref):
         snapshot_id = snapshot_info.get('ID')
