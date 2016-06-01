@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import errno
 import os
 import six
 import socket
@@ -24,6 +25,7 @@ from random import randint
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import utils
 from cinder.volume.drivers import nfs
 
 #
@@ -54,6 +56,8 @@ COHO_V1 = 1
 COHO1_CREATE_SNAPSHOT = 1
 COHO1_DELETE_SNAPSHOT = 2
 COHO1_CREATE_VOLUME_FROM_SNAPSHOT = 3
+
+COHO_MAX_RETRIES = 5
 
 #
 # Simple RPC Client
@@ -226,8 +230,24 @@ class Client(object):
         self.unpacker.reset(reply)
         xid, verf = self.unpack_replyheader()
 
+    @utils.synchronized('coho-rpc', external=True)
     def _call(self, proc, args):
-        self._make_call(proc, args)
+        for retry in range(COHO_MAX_RETRIES):
+            try:
+                self._make_call(proc, args)
+                break
+            except socket.error as e:
+                if e.errno == errno.EPIPE:
+                    # Reopen connection to cluster and retry
+                    self.init_socket()
+                else:
+                    msg = (_('Unable to send requests: %s') %
+                           six.text_type(e))
+                    raise exception.CohoException(msg)
+        else:
+            msg = _('Failed to establish a stable connection')
+            raise exception.CohoException(msg)
+
         res = self.unpacker.unpack_uint()
         if res != SUCCESS:
             raise exception.CohoException(os.strerror(res))
