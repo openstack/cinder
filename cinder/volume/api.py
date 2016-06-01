@@ -49,7 +49,6 @@ from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import utils
 from cinder.volume.flows.api import create_volume
 from cinder.volume.flows.api import manage_existing
-from cinder.volume import qos_specs
 from cinder.volume import rpcapi as volume_rpcapi
 from cinder.volume import utils as volume_utils
 from cinder.volume import volume_types
@@ -1293,42 +1292,6 @@ class API(base.Base):
     def migrate_volume(self, context, volume, host, force_host_copy,
                        lock_volume):
         """Migrate the volume to the specified host."""
-
-        if volume.status not in ['available', 'in-use']:
-            msg = _('Volume %(vol_id)s status must be available or in-use, '
-                    'but current status is: '
-                    '%(vol_status)s.') % {'vol_id': volume.id,
-                                          'vol_status': volume.status}
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-
-        # Make sure volume is not part of a migration.
-        if self._is_volume_migrating(volume):
-            msg = _("Volume %s is already part of an active "
-                    "migration.") % volume.id
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-
-        # We only handle volumes without snapshots for now
-        snaps = objects.SnapshotList.get_all_for_volume(context, volume.id)
-        if snaps:
-            msg = _("Volume %s must not have snapshots.") % volume.id
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-
-        # We only handle non-replicated volumes for now
-        if (volume.replication_status is not None and
-                volume.replication_status != 'disabled'):
-            msg = _("Volume %s must not be replicated.") % volume.id
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-
-        if volume.consistencygroup_id:
-            msg = _("Volume %s must not be part of a consistency "
-                    "group.") % volume.id
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-
         # Make sure the host is in the list of available hosts
         elevated = context.elevated()
         topic = CONF.volume_topic
@@ -1344,12 +1307,17 @@ class API(base.Base):
             LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
 
-        # Make sure the destination host is different than the current one
-        if host == volume.host:
-            msg = _('Destination host must be different '
-                    'than the current host.')
-            LOG.error(msg)
-            raise exception.InvalidHost(reason=msg)
+        # Build required conditions for conditional update
+        expected = {'status': ('available', 'in-use'),
+                    'migration_status': self.AVAILABLE_MIGRATION_STATUS,
+                    'replication_status': (None, 'disabled'),
+                    'consistencygroup_id': (None, ''),
+                    'host': db.Not(host)}
+
+        filters = [~db.volume_has_snapshots_filter()]
+
+        updates = {'migration_status': 'starting',
+                   'previous_status': volume.model.status}
 
         # When the migration of an available volume starts, both the status
         # and the migration status of the volume will be changed.
@@ -1357,11 +1325,20 @@ class API(base.Base):
         # status is changed to 'maintenance', telling users
         # that this volume is in maintenance mode, and no action is allowed
         # on this volume, e.g. attach, detach, retype, migrate, etc.
-        updates = {'migration_status': 'starting',
-                   'previous_status': volume.status}
-        if lock_volume and volume.status == 'available':
-            updates['status'] = 'maintenance'
-        self.update(context, volume, updates)
+        if lock_volume:
+            updates['status'] = db.Case(
+                [(volume.model.status == 'available', 'maintenance')],
+                else_=volume.model.status)
+
+        result = volume.conditional_update(updates, expected, filters)
+
+        if not result:
+            msg = _('Volume %s status must be available or in-use, must not '
+                    'be migrating, have snapshots, be replicated, be part of '
+                    'a consistency group and destination host must be '
+                    'different than the current host') % {'vol_id': volume.id}
+            LOG.error(msg)
+            raise exception.InvalidVolume(reason=msg)
 
         # Call the scheduler to ensure that the host exists and that it can
         # accept the volume
@@ -1440,31 +1417,11 @@ class API(base.Base):
     @wrap_check_policy
     def retype(self, context, volume, new_type, migration_policy=None):
         """Attempt to modify the type associated with an existing volume."""
-        if volume.status not in ['available', 'in-use']:
-            msg = _('Unable to update type due to incorrect status: '
-                    '%(vol_status)s on volume: %(vol_id)s. Volume status '
-                    'must be available or '
-                    'in-use.') % {'vol_status': volume.status,
-                                  'vol_id': volume.id}
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-
-        if self._is_volume_migrating(volume):
-            msg = (_("Volume %s is already part of an active migration.")
-                   % volume.id)
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
-
-        if migration_policy and migration_policy not in ['on-demand', 'never']:
+        if migration_policy and migration_policy not in ('on-demand', 'never'):
             msg = _('migration_policy must be \'on-demand\' or \'never\', '
                     'passed: %s') % new_type
             LOG.error(msg)
             raise exception.InvalidInput(reason=msg)
-
-        if volume.consistencygroup_id:
-            msg = _("Volume must not be part of a consistency group.")
-            LOG.error(msg)
-            raise exception.InvalidVolume(reason=msg)
 
         # Support specifying volume type by ID or name
         try:
@@ -1480,44 +1437,6 @@ class API(base.Base):
             raise exception.InvalidInput(reason=msg)
 
         vol_type_id = vol_type['id']
-        vol_type_qos_id = vol_type['qos_specs_id']
-
-        old_vol_type = None
-        old_vol_type_id = volume.volume_type_id
-        old_vol_type_qos_id = None
-
-        # Error if the original and new type are the same
-        if volume.volume_type_id == vol_type_id:
-            msg = _('New volume_type same as original: %s.') % new_type
-            LOG.error(msg)
-            raise exception.InvalidInput(reason=msg)
-
-        if volume.volume_type_id:
-            old_vol_type = volume_types.get_volume_type(
-                context, old_vol_type_id)
-            old_vol_type_qos_id = old_vol_type['qos_specs_id']
-
-        # We don't support changing encryption requirements yet
-        old_enc = volume_types.get_volume_type_encryption(context,
-                                                          old_vol_type_id)
-        new_enc = volume_types.get_volume_type_encryption(context,
-                                                          vol_type_id)
-        if old_enc != new_enc:
-            msg = _('Retype cannot change encryption requirements.')
-            raise exception.InvalidInput(reason=msg)
-
-        # We don't support changing QoS at the front-end yet for in-use volumes
-        # TODO(avishay): Call Nova to change QoS setting (libvirt has support
-        # - virDomainSetBlockIoTune() - Nova does not have support yet).
-        if (volume.status != 'available' and
-                old_vol_type_qos_id != vol_type_qos_id):
-            for qos_id in [old_vol_type_qos_id, vol_type_qos_id]:
-                if qos_id:
-                    specs = qos_specs.get_qos_specs(context.elevated(), qos_id)
-                    if specs['consumer'] != 'back-end':
-                        msg = _('Retype cannot change front-end qos specs for '
-                                'in-use volume: %s.') % volume.id
-                        raise exception.InvalidInput(reason=msg)
 
         # We're checking here in so that we can report any quota issues as
         # early as possible, but won't commit until we change the type. We
@@ -1530,7 +1449,7 @@ class API(base.Base):
             reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
             QUOTAS.add_volume_type_opts(context,
                                         reserve_opts,
-                                        old_vol_type_id)
+                                        volume.volume_type_id)
             # NOTE(wanghao): We don't need to reserve volumes and gigabytes
             # quota for retyping operation since they didn't changed, just
             # reserve volume_type and type gigabytes is fine.
@@ -1546,8 +1465,32 @@ class API(base.Base):
             LOG.exception(msg, resource=volume)
             raise exception.CinderException(msg)
 
-        self.update(context, volume, {'status': 'retyping',
-                                      'previous_status': volume.status})
+        # Build required conditions for conditional update
+        expected = {'status': ('available', 'in-use'),
+                    'migration_status': self.AVAILABLE_MIGRATION_STATUS,
+                    'consistencygroup_id': (None, ''),
+                    'volume_type_id': db.Not(vol_type_id)}
+
+        # We don't support changing encryption requirements yet
+        # We don't support changing QoS at the front-end yet for in-use volumes
+        # TODO(avishay): Call Nova to change QoS setting (libvirt has support
+        # - virDomainSetBlockIoTune() - Nova does not have support yet).
+        filters = [db.volume_has_same_encryption_type(vol_type_id),
+                   db.volume_qos_allows_retype(vol_type_id)]
+
+        updates = {'status': 'retyping',
+                   'previous_status': objects.Volume.model.status}
+
+        if not volume.conditional_update(updates, expected, filters):
+            msg = _('Retype needs volume to be in available or in-use state, '
+                    'have same encryption requirements, not be part of an '
+                    'active migration or a consistency group, requested type '
+                    'has to be different that the one from the volume, and '
+                    'for in-use volumes front-end qos specs cannot change.')
+            LOG.error(msg)
+            QUOTAS.rollback(context, reservations + old_reservations,
+                            project_id=volume.project_id)
+            raise exception.InvalidVolume(reason=msg)
 
         request_spec = {'volume_properties': volume,
                         'volume_id': volume.id,

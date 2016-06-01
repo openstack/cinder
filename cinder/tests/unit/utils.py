@@ -47,6 +47,7 @@ def create_volume(ctxt,
                   replication_driver_data=None,
                   consistencygroup_id=None,
                   previous_status=None,
+                  testcase_instance=None,
                   **kwargs):
     """Create a volume object in the DB."""
     vol = {}
@@ -68,6 +69,7 @@ def create_volume(ctxt,
     for key in kwargs:
         vol[key] = kwargs[key]
     vol['replication_status'] = replication_status
+
     if replication_extended_status:
         vol['replication_extended_status'] = replication_extended_status
     if replication_driver_data:
@@ -77,6 +79,10 @@ def create_volume(ctxt,
 
     volume = objects.Volume(ctxt, **vol)
     volume.create()
+
+    # If we get a TestCase instance we add cleanup
+    if testcase_instance:
+        testcase_instance.addCleanup(volume.destroy)
     return volume
 
 
@@ -217,6 +223,33 @@ def create_message(ctxt,
                       'message_level': message_level,
                       'expires_at': expires_at}
     return db.message_create(ctxt, message_record)
+
+
+def create_volume_type(ctxt, testcase_instance=None, **kwargs):
+    vol_type = db.volume_type_create(ctxt, kwargs)
+
+    # If we get a TestCase instance we add cleanup
+    if testcase_instance:
+        testcase_instance.addCleanup(db.volume_type_destroy, ctxt, vol_type.id)
+
+    return vol_type
+
+
+def create_encryption(ctxt, vol_type_id, testcase_instance=None, **kwargs):
+    encrypt = db.volume_type_encryption_create(ctxt, vol_type_id, kwargs)
+
+    # If we get a TestCase instance we add cleanup
+    if testcase_instance:
+        testcase_instance.addCleanup(db.volume_type_encryption_delete, ctxt,
+                                     vol_type_id)
+    return encrypt
+
+
+def create_qos(ctxt, testcase_instance=None, **kwargs):
+    qos = db.qos_specs_create(ctxt, kwargs)
+    if testcase_instance:
+        testcase_instance.addCleanup(db.qos_specs_delete, ctxt, qos['id'])
+    return qos
 
 
 class ZeroIntervalLoopingCall(loopingcall.FixedIntervalLoopingCall):
