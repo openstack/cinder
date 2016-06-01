@@ -393,8 +393,8 @@ class CohoDriverTest(test.TestCase):
                                     "Failed to establish.*"):
             rpc_client.create_snapshot('src', 'dest', 0)
 
-        self.assertEqual(mock_make_call.call_count, coho.COHO_MAX_RETRIES)
-        self.assertEqual(mock_socket.call_count, coho.COHO_MAX_RETRIES + 1)
+        self.assertEqual(coho.COHO_MAX_RETRIES, mock_make_call.call_count)
+        self.assertEqual(coho.COHO_MAX_RETRIES + 1, mock_socket.call_count)
 
         # assert that on a none EPIPE error it only tries once
         socket_error.errno = errno.EINVAL
@@ -403,5 +403,5 @@ class CohoDriverTest(test.TestCase):
                                     "Unable to send request.*"):
             rpc_client.delete_snapshot('src')
 
-        self.assertEqual(mock_make_call.call_count, coho.COHO_MAX_RETRIES + 1)
-        self.assertEqual(mock_socket.call_count, coho.COHO_MAX_RETRIES + 1)
+        self.assertEqual(coho.COHO_MAX_RETRIES + 1, mock_make_call.call_count)
+        self.assertEqual(coho.COHO_MAX_RETRIES + 1, mock_socket.call_count)
