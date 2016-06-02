@@ -307,7 +307,10 @@ FAKE_STORAGE_POOL_RESPONSE = """
         "USERFREECAPACITY": "985661440",
         "ID": "0",
         "NAME": "OpenStack_Pool",
-        "USERTOTALCAPACITY": "985661440"
+        "USERTOTALCAPACITY": "985661440",
+        "TIER0CAPACITY": "100",
+        "TIER1CAPACITY": "0",
+        "TIER2CAPACITY": "0"
     }]
 }
 """
@@ -2433,7 +2436,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
 
     def test_get_volume_status(self):
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.8', data['driver_version'])
+        self.assertEqual(self.driver.VERSION, data['driver_version'])
 
     @mock.patch.object(rest_client.RestClient, 'get_lun_info',
                        return_value={"CAPACITY": 6291456})
@@ -2556,20 +2559,31 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                   "ID": "0",
                   "USERFREECAPACITY": "36",
                   "USERTOTALCAPACITY": "48",
-                  "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE},
+                  "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE,
+                  "TIER0CAPACITY": "48",
+                  "TIER1CAPACITY": "0",
+                  "TIER2CAPACITY": "0"},
                  {"NAME": "test002",
                   "ID": "1",
                   "USERFREECAPACITY": "37",
                   "USERTOTALCAPACITY": "49",
-                  "USAGETYPE": constants.FILE_SYSTEM_POOL_TYPE},
+                  "USAGETYPE": constants.FILE_SYSTEM_POOL_TYPE,
+                  "TIER0CAPACITY": "0",
+                  "TIER1CAPACITY": "49",
+                  "TIER2CAPACITY": "0"},
                  {"NAME": "test003",
                   "ID": "0",
                   "USERFREECAPACITY": "36",
                   "DATASPACE": "35",
                   "USERTOTALCAPACITY": "48",
-                  "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE}]
+                  "USAGETYPE": constants.BLOCK_STORAGE_POOL_TYPE,
+                  "TIER0CAPACITY": "0",
+                  "TIER1CAPACITY": "0",
+                  "TIER2CAPACITY": "48"}]
         pool_name = 'test001'
-        test_info = {'CAPACITY': '36', 'ID': '0', 'TOTALCAPACITY': '48'}
+        test_info = {'CAPACITY': '36', 'ID': '0', 'TOTALCAPACITY': '48',
+                     'TIER0CAPACITY': '48', 'TIER1CAPACITY': '0',
+                     'TIER2CAPACITY': '0'}
         pool_info = self.driver.client.get_pool_info(pool_name, pools)
         self.assertEqual(test_info, pool_info)
 
@@ -2584,7 +2598,9 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.assertEqual(test_info, pool_info)
 
         pool_name = 'test003'
-        test_info = {'CAPACITY': '35', 'ID': '0', 'TOTALCAPACITY': '48'}
+        test_info = {'CAPACITY': '35', 'ID': '0', 'TOTALCAPACITY': '48',
+                     'TIER0CAPACITY': '0', 'TIER1CAPACITY': '0',
+                     'TIER2CAPACITY': '48'}
         pool_info = self.driver.client.get_pool_info(pool_name, pools)
         self.assertEqual(test_info, pool_info)
 
@@ -3806,7 +3822,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
             'get_remote_device_by_wwn',
             mock.Mock(return_value=remote_device_info))
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.8', data['driver_version'])
+        self.assertEqual(self.driver.VERSION, data['driver_version'])
         self.assertTrue(data['pools'][0]['replication_enabled'])
         self.assertListEqual(['sync', 'async'],
                              data['pools'][0]['replication_type'])
@@ -3823,8 +3839,59 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
             'try_get_remote_wwn',
             mock.Mock(return_value={}))
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.8', data['driver_version'])
+        self.assertEqual(self.driver.VERSION, data['driver_version'])
         self.assertNotIn('replication_enabled', data['pools'][0])
+
+    @ddt.data({'TIER0CAPACITY': '100',
+               'TIER1CAPACITY': '0',
+               'TIER2CAPACITY': '0',
+               'disktype': 'ssd'},
+              {'TIER0CAPACITY': '0',
+               'TIER1CAPACITY': '100',
+               'TIER2CAPACITY': '0',
+               'disktype': 'sas'},
+              {'TIER0CAPACITY': '0',
+               'TIER1CAPACITY': '0',
+               'TIER2CAPACITY': '100',
+               'disktype': 'nl_sas'},
+              {'TIER0CAPACITY': '100',
+               'TIER1CAPACITY': '100',
+               'TIER2CAPACITY': '100',
+               'disktype': 'mix'},
+              {'TIER0CAPACITY': '0',
+               'TIER1CAPACITY': '0',
+               'TIER2CAPACITY': '0',
+               'disktype': ''})
+    def test_get_volume_disk_type(self, disk_type_value):
+        response_dict = json.loads(FAKE_STORAGE_POOL_RESPONSE)
+        storage_pool_sas = copy.deepcopy(response_dict)
+        storage_pool_sas['data'][0]['TIER0CAPACITY'] = (
+            disk_type_value['TIER0CAPACITY'])
+        storage_pool_sas['data'][0]['TIER1CAPACITY'] = (
+            disk_type_value['TIER1CAPACITY'])
+        storage_pool_sas['data'][0]['TIER2CAPACITY'] = (
+            disk_type_value['TIER2CAPACITY'])
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.do_setup()
+        driver.replica = None
+
+        self.mock_object(rest_client.RestClient, 'get_all_pools',
+                         mock.Mock(return_value=storage_pool_sas['data']))
+        data = driver.get_volume_stats()
+        if disk_type_value['disktype']:
+            self.assertEqual(disk_type_value['disktype'],
+                             data['pools'][0]['disk_type'])
+        else:
+            self.assertIsNone(data['pools'][0].get('disk_type'))
+
+    def test_get_disk_type_pool_info_none(self):
+        driver = FakeISCSIStorage(configuration=self.configuration)
+        driver.do_setup()
+        driver.replica = None
+        self.mock_object(rest_client.RestClient, 'get_pool_info',
+                         mock.Mock(return_value=None))
+        data = driver.get_volume_stats()
+        self.assertIsNone(data['pools'][0].get('disk_type'))
 
     def test_extend_volume(self):
         self.driver.extend_volume(self.volume, 3)

@@ -250,6 +250,9 @@ class RestClient(object):
             info['ID'] = pool['ID']
             info['CAPACITY'] = pool.get('DATASPACE', pool['USERFREECAPACITY'])
             info['TOTALCAPACITY'] = pool['USERTOTALCAPACITY']
+            info['TIER0CAPACITY'] = pool['TIER0CAPACITY']
+            info['TIER1CAPACITY'] = pool['TIER1CAPACITY']
+            info['TIER2CAPACITY'] = pool['TIER2CAPACITY']
 
         return info
 
@@ -1021,6 +1024,22 @@ class RestClient(object):
 
         return pool_capacity
 
+    def _get_disk_type(self, pool_name, result):
+        """Get disk type of the pool."""
+        pool_info = self.get_pool_info(pool_name, result)
+        if not pool_info:
+            return None
+
+        pool_disk = []
+        for i, x in enumerate(['ssd', 'sas', 'nl_sas']):
+            if pool_info['TIER%dCAPACITY' % i] != '0':
+                pool_disk.append(x)
+
+        if len(pool_disk) > 1:
+            pool_disk = ['mix']
+
+        return pool_disk[0] if pool_disk else None
+
     def get_luncopy_info(self, luncopy_id):
         """Get LUNcopy information."""
         url = "/LUNCOPY?range=[0-1023]"
@@ -1158,6 +1177,7 @@ class RestClient(object):
         result = self.get_all_pools()
         for pool_name in self.storage_pools:
             capacity = self._get_capacity(pool_name, result)
+            disk_type = self._get_disk_type(pool_name, result)
             pool = {}
             pool.update(dict(
                 location_info=self.device_id,
@@ -1177,6 +1197,9 @@ class RestClient(object):
                 hypermetro=True,
                 consistencygroup_support=True,
             ))
+            if disk_type:
+                pool['disk_type'] = disk_type
+
             data['pools'].append(pool)
         return data
 
