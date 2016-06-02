@@ -319,9 +319,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                      {'host': self.host})
             self.image_volume_cache = None
 
-    def _add_to_threadpool(self, func, *args, **kwargs):
-        self._tp.spawn_n(func, *args, **kwargs)
-
     def _count_allocated_capacity(self, ctxt, volume):
         pool = vol_utils.extract_host(volume['host'], 'pool')
         if pool is None:
