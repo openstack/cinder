@@ -1205,7 +1205,7 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
                 self.create_snapshot(snapshot)
         except exception.VolumeBackendAPIException as err:
             model_update['status'] = (
-                fields.ConsistencyGroupStatus.ERROR_CREATE)
+                fields.ConsistencyGroupStatus.ERROR)
             LOG.error(_LE("Failed to create the snapshot %(snap)s of "
                           "CGSnapshot. Exception: %(exception)s."),
                       {'snap': snapshot.name, 'exception': err})
