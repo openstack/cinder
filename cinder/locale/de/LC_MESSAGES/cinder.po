@@ -6,17 +6,18 @@
 # Alec Hans <alec.hans@alecsoft.net>, 2013
 # Ettore Atalan <atalanttore@googlemail.com>, 2014
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
+# Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev165\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-28 14:59+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-04-28 12:47+0000\n"
-"Last-Translator: Monika Wolf <vcomas3@de.ibm.com>\n"
+"PO-Revision-Date: 2016-06-01 11:06+0000\n"
+"Last-Translator: Andreas Jaeger <jaegerandi@gmail.com>\n"
 "Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -130,14 +131,6 @@ msgstr ""
 "%(port)d unter IP %(ip)s nicht durch einen anderen Dienst verwendet wird."
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr "Für %(name)s sind mindestens %(min_length)s Zeichen erforderlich."
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr "%(name)s hat mehr als %(max_length)s Zeichen."
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -208,10 +201,6 @@ msgstr "%s ist nicht vorhanden."
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s ist kein Verzeichnis."
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s ist keine Zeichenkette oder Unicode."
 
 #, python-format
 msgid "%s is not installed"
@@ -510,6 +499,9 @@ msgid ""
 msgstr ""
 "Ein iSCSI-Ziel konnte nicht gelöscht werden. (Port: %(port)s, Zielnummer: "
 "%(tno)s, Alias: %(alias)s)"
+
+msgid "An unknown error occurred."
+msgstr "Ein unbekannter Fehler ist aufgetreten."
 
 msgid "An unknown exception occurred."
 msgstr "Eine unbekannte Ausnahme ist aufgetreten."
@@ -1421,18 +1413,12 @@ msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr ""
 "Das Vorhandensein von object:%(instanceName)s kann nicht geprüft werden."
 
-msgid "Cascade option is not supported."
-msgstr "Weitergabeoption wird nicht unterstützt."
-
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "CgSnapshot %(cgsnapshot_id)s wurde nicht gefunden."
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cgsnahost ist leer. Es wird keine Konsistenzgruppe erstellt."
-
-msgid "Cgsnapshot status must be available or error"
-msgstr "Cgsnapshot-Status muss 'available' oder 'error' sein."
 
 msgid "Change hostlun id error."
 msgstr "Fehler beim Ändern der Host-LUN-ID."
@@ -1554,9 +1540,6 @@ msgstr "Die Konfiguration wurde nicht gefunden. "
 msgid "Configuration value %s is not set."
 msgstr "Konfigurationswert %s ist nicht festgelegt."
 
-msgid "Configured host type is not supported."
-msgstr "Konfigurierter Hosttyp wird nicht unterstützt."
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1584,34 +1567,8 @@ msgstr "Connector stellt Folgendes nicht bereit: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "Connector hat nicht die erforderlichen Informationen: %(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr ""
-"Konsistenzgruppe %s enthält noch Datenträger. Zum Löschen muss das "
-"Zwangsausführungsflag verwendet werden."
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr "Konsistenzgruppe %s hat immer noch abhängige Cgsnapshots."
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "Die Konsistenzgruppe ist leer. Es wird kein Cgsnapshot erstellt."
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr ""
-"Der Status der Konsistenzgruppe muss 'available' oder 'error' sein, aber der "
-"aktuelle Status ist %s."
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr ""
-"Der Status der Konsistenzgruppe muss 'available' sein, aber der aktuelle "
-"Status ist: %s."
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -2133,9 +2090,6 @@ msgstr "'Describe-resource' ist eine reine Administratorfunktion."
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "Ziel hat migration_status %(stat)s, erwartet %(exp)s."
-
-msgid "Destination host must be different than the current host."
-msgstr "Zielhost muss sich vom aktuellen Host unterscheiden."
 
 msgid "Destination volume not mid-migration."
 msgstr "Zieldatenträger befindet sich nicht in einer Migration."
@@ -4302,11 +4256,6 @@ msgstr "Fehler beim Verschieben von neuer geklonter LUN nach %s."
 msgid "Failure staging LUN %s to tmp."
 msgstr "Fehler beim Zwischenspeichern von LUN %s in temporärem Bereich."
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr ""
-"Schwerwiegender Fehler: Benutzer ist nicht zum Abfragen von NetApp-"
-"Datenträgern berechtigt."
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr ""
@@ -4768,17 +4717,6 @@ msgstr "HPELeftHand-URL nicht gefunden"
 
 #, python-format
 msgid ""
-"HTTPS certificate verification was requested but cannot be enabled with "
-"purestorage module version %(version)s. Upgrade to a newer version to enable "
-"this feature."
-msgstr ""
-"Es wurde eine Verifizierung des HTTPS-Zertifikats angefordert. Sie kann "
-"jedoch nicht mit der Purestorage-Modulversion %(version)s aktiviert werden. "
-"Führen Sie ein Upgrade auf eine neuere Version durch, um diese Funktion zu "
-"aktivieren."
-
-#, python-format
-msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
 "%(new)s. Old hash block size: %(old)s. Do a full backup."
 msgstr ""
@@ -5021,21 +4959,6 @@ msgstr "Ungültiger CgSnapshot: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Ungültige ConsistencyGroup: %(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: in-use"
-msgstr ""
-"Ungültige Konsistenzgruppe: Konsistenzgruppenstatus muss 'available' oder "
-"'error' sein, aber der aktuelle Status ist 'in-use'."
-
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr ""
-"Ungültige Konsistenzgruppe: Konsistenzgruppenstatus muss 'available' sein, "
-"aber der aktuelle Status ist: %s."
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr ""
 "Ungültige Konsistenzgruppe: Kein Host für die Erstellung der Konsistenzgruppe"
@@ -5121,9 +5044,6 @@ msgstr ""
 "Ungültige Barbican-API-URL: Die Version ist erforderlich. Beispiel: "
 "'http[s]://<IP-Adresse>|<FQDN>[:Port]/<Version>'. Angegebene URL: %s"
 
-msgid "Invalid cgsnapshot"
-msgstr "Ungültiger Cgsnapshot"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr "Ungültige Details des CHAP-Benutzers im CloudByte-Speicher gefunden."
 
@@ -5202,9 +5122,6 @@ msgstr ""
 
 msgid "Invalid imageRef provided."
 msgstr "Angabe für imageRef ungültig."
-
-msgid "Invalid initiator value received"
-msgstr "Ungültigen Initiatorwert empfangen."
 
 msgid "Invalid input"
 msgstr "Ungültige Eingabe"
@@ -5528,15 +5445,6 @@ msgstr "LUN-Zahl ({}) ist keine Ganzzahl."
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr ""
 "LUN-Nummer liegt außerhalb des gültigen Bereichs für Kanal-ID: %(ch_id)s."
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"LUN mit angegebener Referenz %(ref)s entspricht nicht Datenträgertyp. "
-"Stellen Sie sicher, dass LUN-Datenträger mit SSC-Funktionen auf dem "
-"virtuellen Server %(vs)s vorhanden ist."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -6004,10 +5912,6 @@ msgstr "Neuer Datenträgertyp muss angegeben werden."
 msgid "New volume type not specified in request_spec."
 msgstr "Der neue Datenträgertyp wurde nicht in request_spec angegeben."
 
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "Neuer volume_type ist mit dem ursprünglichen identisch: %s."
-
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble-Cinder-Treiberausnahme"
 
@@ -6374,14 +6278,6 @@ msgstr ""
 "Bei einer Erweiterungsoperation ist ein Fehler beim Hinzufügen des "
 "Datenträgers zu einem Verbunddatenträger aufgetreten: %(volumename)s."
 
-msgid ""
-"One of cinder-volume services is too old to accept such request. Are you "
-"running mixed Liberty-Mitaka cinder-volumes?"
-msgstr ""
-"Einer der Cinder-Datenträgerdienste ist zu alt, um diese Anforderung zu "
-"akzeptieren. Verwenden Sie Liberty-Mitaka-Cinderdatenträger in Ihrer "
-"Umgebung gemeinsam?"
-
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
 "Eine der erforderlichen Eingaben aus Host, Port oder Schema wurde nicht "
@@ -6742,11 +6638,6 @@ msgstr ""
 "Referenz muss der Datenträgername eines nicht verwalteten virtuellen "
 "Datenträgers sein."
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr ""
-"Referenz muss entweder Element 'source-id' oder Element 'source-name' "
-"enthalten."
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr ""
 "Referenz muss entweder das Element 'source-name' oder das Element 'source-"
@@ -7012,17 +6903,6 @@ msgstr "Wiederholungsanzahl für Befehl überschritten: %s"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "Es ist eine Retryable SolidFire-Ausnahme eingetreten."
 
-msgid "Retype cannot change encryption requirements."
-msgstr ""
-"Durch eine Typänderung können Verschlüsselungsanforderungen nicht geändert "
-"werden."
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr ""
-"Durch eine Typänderung können Frontend-QoS-Spezifikationen für Datenträger "
-"im Status 'in-use' nicht geändert werden: %s. "
-
 msgid "Retype requires migration but is not allowed."
 msgstr "'Retype' erfordert eine Migration; diese ist jedoch nicht zulässig."
 
@@ -7142,9 +7022,6 @@ msgstr "Der Dienst ist zu alt, um diese Anforderung zu erfüllen."
 
 msgid "Service is unavailable at this time."
 msgstr "Der Dienst ist derzeit nicht verfügbar."
-
-msgid "Service not found."
-msgstr "Dienst nicht gefunden."
 
 msgid "Set pair secondary access error."
 msgstr "Fehler beim Festlegen des sekundären Paarzugriffs."
@@ -7337,15 +7214,6 @@ msgstr "Geräte-ID für Quellendatenträger ist erforderlich."
 
 msgid "Source volume not mid-migration."
 msgstr "Quellendatenträger befindet sich nicht in einer Migration."
-
-#, python-format
-msgid ""
-"Source with host ip/name: %s not found on the target appliance for backend "
-"enabled volume migration, procedding with default migration."
-msgstr ""
-"Quelle mit Host-IP/Name: %s wurde auf der Zieleinheit für Backend-aktivierte "
-"Datenträgermigration nicht gefunden. Es wird mit der Standardmigration "
-"fortgefahren."
 
 msgid "SpaceInfo returned byarray is invalid"
 msgstr "SpaceInfo hat zurückgegeben, dass byarray ungültig ist."
@@ -7946,18 +7814,6 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "Die Datenträgerbezeichnung ist als Eingabe erforderlich."
-
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr ""
-"Die Datenträgermetadaten können nicht gelöscht werden, wenn der Datenträger "
-"im Wartungsmodus ist."
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr ""
-"Die Datenträgermetadaten können nicht aktualisiert werden, wenn der "
-"Datenträger im Wartungsmodus ist."
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -8619,15 +8475,6 @@ msgstr "Konsistenzgruppe %s konnte nicht aktualisiert werden."
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"Typ kann aufgrund von falschem Status %(vol_status)s von Datenträger "
-"%(vol_id)s nicht aktualisiert werden. Datenträgerstatus muss 'available' "
-"oder 'in-use' sein."
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr "Initiatorgruppe %(igGroupName)s in Maskenansicht %(maskingViewName)s. "
@@ -8793,9 +8640,6 @@ msgstr "gcs-Optionen  löschen: %s"
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr "'iscsiadm' nicht erfolgreich. Ausnahme: %(ex)s. "
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "Nicht unterstützte Clusterdaten-ONTAP-Version."
 
 msgid "Unsupported Content-Type"
 msgstr "Nicht unterstützter Inhaltstyp"
@@ -8992,20 +8836,8 @@ msgstr ""
 "Datenträger %(vol1)s stimmt nicht mit snapshot.volume_id %(vol2)s überein."
 
 #, python-format
-msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Der Status des Datenträgers %(vol_id)s muss 'available' oder 'in-use' sein, "
-"aber der aktuelle Status ist: %(vol_status)s."
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Der Status des Datenträgers %(vol_id)s muss für eine Erweiterung 'available' "
-"sein, aber der aktuelle Status ist: %(vol_status)s."
+msgid "Volume %(vol_id)s status must be %(statuses)s"
+msgstr "Der Status des Datenträgers %(vol_id)s muss %(statuses)s sein"
 
 #, python-format
 msgid ""
@@ -9112,10 +8944,6 @@ msgid "Volume %s is already managed by OpenStack."
 msgstr "Datenträger %s wird bereits von OpenStack verwaltet."
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "Der Datenträger %s ist bereits Teil einer aktiven Migration."
-
-#, python-format
 msgid ""
 "Volume %s is not of replicated type. This volume needs to be of a volume "
 "type with the extra spec replication_enabled set to '<is> True' to support "
@@ -9145,14 +8973,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Datenträger %s darf nicht Teil einer Konsistenzgruppe sein."
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "Der Datenträger %s darf nicht repliziert sein."
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "Der Datenträger %s darf keine Schattenkopie enthalten."
 
 #, python-format
 msgid "Volume %s not found."
@@ -9267,16 +9087,6 @@ msgstr ""
 "Der Datenträger hat untergeordnete Elemente und kann nicht gelöscht werden!"
 
 #, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr ""
-"Datenträger in Konsistenzgruppe %s ist angehängt. Er muss zuerst abgehängt "
-"werden."
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr ""
-"Datenträger in Konsistenzgruppe hat immer noch abhängige Schattenkopien."
-
-#, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr "Datenträger ist an einem Server angehängt. (%s)"
 
@@ -9318,9 +9128,6 @@ msgstr ""
 
 msgid "Volume must have a volume type"
 msgstr "Datenträger muss einen Datenträgertyp haben."
-
-msgid "Volume must not be part of a consistency group."
-msgstr "Datenträger darf nicht Teil einer Konsistenzgruppe sein."
 
 msgid "Volume must not be replicated."
 msgstr "Datenträger darf nicht repliziert sein. "
@@ -9419,9 +9226,6 @@ msgstr ""
 "Datenträgerstatus für Datenträger muss 'available' sein, aber der aktuelle "
 "Status ist: %s"
 
-msgid "Volume status is in-use."
-msgstr "Datenträgerstatus ist 'in-use'."
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
@@ -9476,11 +9280,6 @@ msgid ""
 msgstr ""
 "Datenträgertypzugriff für die Kombination %(volume_type_id)s / "
 "%(project_id)s nicht gefunden."
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr ""
-"Keine Übereinstimmung des Datenträgertyps für freigegebenes Verzeichnis %s."
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."

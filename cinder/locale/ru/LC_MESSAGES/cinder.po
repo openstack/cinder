@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -130,15 +130,6 @@ msgstr ""
 "адресе %(ip)s не занят другой службой."
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr ""
-"Минимальное число символов в %(name)s должно составлять %(min_length)s."
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr "%(name)s содержит более %(max_length)s символов."
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -208,10 +199,6 @@ msgstr "%s не существует."
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s не является каталогом."
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s не является строкой или unicode"
 
 #, python-format
 msgid "%s is not installed"
@@ -1344,20 +1331,12 @@ msgstr "Не удалось обновить volume_type %(id)s"
 msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr "Не удается проверить существование объекта %(instanceName)s."
 
-msgid "Cascade option is not supported."
-msgstr "Каскадная опция не поддерживается."
-
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "Моментальная копия группы согласования %(cgsnapshot_id)s не найдена."
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Пустой cgsnahost. Группа согласования создана не будет."
-
-msgid "Cgsnapshot status must be available or error"
-msgstr ""
-"Состояние моментальной копии группы согласования должно быть available или "
-"error"
 
 msgid "Change hostlun id error."
 msgstr "Ошибка изменения ИД lun хоста."
@@ -1474,9 +1453,6 @@ msgstr "Конфигурация не найдена."
 msgid "Configuration value %s is not set."
 msgstr "Значение конфигурации %s не задано."
 
-msgid "Configured host type is not supported."
-msgstr "Настроенный тип хоста не поддерживается."
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1503,36 +1479,10 @@ msgstr "Не передан коннектор: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "Коннектор не содержит требуемую информацию: %(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr ""
-"Группа согласования %s еще содержит тома. Требуется флаг force, чтобы ее "
-"удалить."
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr "Группа согласования %s имеет зависимые моментальные копии."
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr ""
 "Группа согласования пустая. Моментальные копии группы согласования "
 "создаваться не будут."
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr ""
-"Состояние группы согласования должно быть available или error. Текущее "
-"состояние: %s"
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr ""
-"Состояние группы согласования должно быть available, однако текущее "
-"состояние - %s."
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -2035,9 +1985,6 @@ msgstr "Функция Describe-resource доступна только адми�
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "migration_status целевого хоста - %(stat)s, ожидалось %(exp)s."
-
-msgid "Destination host must be different than the current host."
-msgstr "Целевой хост должен отличаться от текущего хоста."
 
 msgid "Destination volume not mid-migration."
 msgstr "Целевой том не в процессе переноса."
@@ -4126,11 +4073,6 @@ msgstr "Сбой при перемещении новой копии LUN в %s."
 msgid "Failure staging LUN %s to tmp."
 msgstr "Сбой промежуточного копирования LUN %s в tmp."
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr ""
-"Неустранимая ошибка: у пользователя нет прав доступа для запроса томов "
-"NetApp."
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr "Fexvisor не удалось добавить том %(id)s, причина: %(reason)s."
@@ -4571,15 +4513,6 @@ msgstr "URL HPELeftHand не найден"
 
 #, python-format
 msgid ""
-"HTTPS certificate verification was requested but cannot be enabled with "
-"purestorage module version %(version)s. Upgrade to a newer version to enable "
-"this feature."
-msgstr ""
-"Запрошенная проверка сертификата HTTPS невозможна с версией %(version)s "
-"модуля purestorage. Для работы с этой функцией обновите версию."
-
-#, python-format
-msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
 "%(new)s. Old hash block size: %(old)s. Do a full backup."
 msgstr ""
@@ -4816,21 +4749,6 @@ msgstr "Недопустимая моментальная копия групп�
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Недопустимая группа согласования: %(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: in-use"
-msgstr ""
-"Недопустимая группа согласования: состояние группы согласования должно быть "
-"available или error. Текущее состояние: in-use"
-
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr ""
-"Недопустимая группа согласования: состояние группы согласования должно быть "
-"available, однако текущее состояние - %s."
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr ""
 "Недопустимая группа согласования: нет хоста для создания группы согласования"
@@ -4912,9 +4830,6 @@ msgstr ""
 "Недопустимый url barbican api: необходимо указать версию, например, "
 "'http[s]://<ip-адрес>|<полное-имя>[:порт]/<версия>'; указан url: %s"
 
-msgid "Invalid cgsnapshot"
-msgstr "Недопустимая моментальная копия группы согласования"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr ""
 "Обнаружена недопустимая информация о пользователе chap в хранилище CloudByte."
@@ -4991,9 +4906,6 @@ msgstr ""
 
 msgid "Invalid imageRef provided."
 msgstr "Указан неверный imageRef."
-
-msgid "Invalid initiator value received"
-msgstr "Недопустимое значение инициатора"
 
 msgid "Invalid input"
 msgstr "Недопустимый ввод"
@@ -5307,14 +5219,6 @@ msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr ""
 "Номер LUN в ИД канала %(ch_id)s выходит за пределы диапазона допустимых "
 "значений."
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"LUN с данной ссылкой %(ref)s не удовлетворяет типу тома. Убедитесь, что том "
-"LUN с функциями ssc есть на vserver %(vs)s."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -5774,10 +5678,6 @@ msgstr "Должен быть указан тип нового тома."
 msgid "New volume type not specified in request_spec."
 msgstr "Новый тип тома не указан в request_spec."
 
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "Новое значение volume_type совпадает с прежним: %s."
-
 msgid "Nimble Cinder Driver exception"
 msgstr "Исключительная ситуация драйвера Nimble Cinder"
 
@@ -6113,13 +6013,6 @@ msgid ""
 msgstr ""
 "Ошибка в операции Extend при добавлении тома в составной том %(volumename)s."
 
-msgid ""
-"One of cinder-volume services is too old to accept such request. Are you "
-"running mixed Liberty-Mitaka cinder-volumes?"
-msgstr ""
-"Одна из служб cinder-volume устарела и не поддерживает этот запрос. "
-"Возможно, в системе есть тома cinder из смеси версий Liberty-Mitaka?"
-
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
 "Не найден один из обязательных входных параметров из хоста, порта или схемы."
@@ -6450,9 +6343,6 @@ msgstr "Ссылка должна быть именем неуправляемо
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "Для неуправляемого виртуального тома ссылка должна быть именем тома."
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr "Ссылка должна содержать элемент source-id или source-name."
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr "Ссылка должна содержать элемент source-name или source-id."
 
@@ -6711,15 +6601,6 @@ msgstr "Превышено число попыток для команды: %s"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "Обнаружена повторяемая исключительная ситуация SolidFire"
 
-msgid "Retype cannot change encryption requirements."
-msgstr "Изменение типа не может изменить требования к шифрованию."
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr ""
-"Изменение типа не изменяет спецификации QoS для клиентов у используемых "
-"томов: %s."
-
 msgid "Retype requires migration but is not allowed."
 msgstr "Для изменения типа требуется перенос, но он запрещен."
 
@@ -6839,9 +6720,6 @@ msgstr "Служба устарела и не поддерживает этот 
 
 msgid "Service is unavailable at this time."
 msgstr "В данный момент служба недоступна."
-
-msgid "Service not found."
-msgstr "Служба не найдена."
 
 msgid "Set pair secondary access error."
 msgstr "Ошибка настройки вспомогательного доступа к паре."
@@ -7018,15 +6896,6 @@ msgstr "Требуется ИД устройства исходного тома
 
 msgid "Source volume not mid-migration."
 msgstr "Исходный том не в процессе переноса."
-
-#, python-format
-msgid ""
-"Source with host ip/name: %s not found on the target appliance for backend "
-"enabled volume migration, procedding with default migration."
-msgstr ""
-"Источник с IP-адресом/именем хоста %s не найден на целевом устройстве для "
-"переноса с поддержкой базовой системы. Переход к выполнению переноса по "
-"умолчанию."
 
 msgid "SpaceInfo returned byarray is invalid"
 msgstr "SpaceInfo возвратил недопустимый byarray"
@@ -7575,16 +7444,6 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "Требуется метка тома во входных данных."
-
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr ""
-"Метаданные тома нельзя удалить, когда том находится в режиме обслуживания."
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr ""
-"Метаданные тома нельзя обновить, когда том находится в режиме обслуживания."
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -8214,14 +8073,6 @@ msgstr "Не удалось изменить группу согласовани
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"Не удалось изменить тип из-за неверного состояния %(vol_status)s у тома "
-"%(vol_id)s. Состояние тома должно быть available или in-use."
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr ""
@@ -8382,9 +8233,6 @@ msgstr "Сбросить параметры gcs: %s"
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr "Ошибка iscsiadm. Исключительная ситуация: %(ex)s. "
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "Неподдерживаемая версия ONTAP кластерных данных."
 
 msgid "Unsupported Content-Type"
 msgstr "Не поддерживаемый  тип содержимого"
@@ -8572,22 +8420,6 @@ msgstr "Том %(vol1)s не соответствует snapshot.volume_id %(vol
 
 #, python-format
 msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Состояние %(vol_id)s тома должно быть available или in-use, однако текущее "
-"состояние - %(vol_status)s."
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Для расширения состояние тома %(vol_id)s должно быть available, однако "
-"текущее состояние - %(vol_status)s."
-
-#, python-format
-msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
@@ -8680,10 +8512,6 @@ msgid "Volume %s is already managed by OpenStack."
 msgstr "Том %s уже находится под управлением OpenStack."
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "Том %s уже часть активной операции переноса."
-
-#, python-format
 msgid ""
 "Volume %s is not of replicated type. This volume needs to be of a volume "
 "type with the extra spec replication_enabled set to '<is> True' to support "
@@ -8710,14 +8538,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Том %s не должен быть частью группы согласования."
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "Репликация тома %s запрещена."
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "Том %s не должен иметь моментальных копий."
 
 #, python-format
 msgid "Volume %s not found."
@@ -8824,14 +8644,6 @@ msgid "Volume has children and cannot be deleted!"
 msgstr "Невозможно удалить том, у которого есть дочерние объекты."
 
 #, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr ""
-"Том в группе согласования %s подключен. Его необходимо сначала отключить."
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr "Том в группе согласования еще имеет зависимые моментальные копии."
-
-#, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr "Том подключен к серверу. (%s)"
 
@@ -8869,9 +8681,6 @@ msgstr "Том должен находиться в одной зоне дост
 
 msgid "Volume must have a volume type"
 msgstr "Должен быть задан тип тома"
-
-msgid "Volume must not be part of a consistency group."
-msgstr "Том не должен быть частью группы согласования."
 
 msgid "Volume must not be replicated."
 msgstr "Репликация тома запрещена."
@@ -8967,9 +8776,6 @@ msgstr "Размер тома должен быть кратен 1 ГБ."
 msgid "Volume status for volume must be available, but current status is: %s"
 msgstr "Состояние тома должно быть Доступен, но текущее состояние - %s"
 
-msgid "Volume status is in-use."
-msgstr "Состояние тома: используется"
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
@@ -9024,10 +8830,6 @@ msgid ""
 msgstr ""
 "Не найдены права доступа к комбинации типа тома %(volume_type_id)s / "
 "%(project_id)s ."
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr "Тип тома не совпадает с типом для %s."
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."

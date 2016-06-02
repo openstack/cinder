@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -124,14 +124,6 @@ msgstr ""
 "ip adrese %(ip)s nepoužívá jiná služba."
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr "%(name)s požaduje minimálně %(min_length)s znaků."
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr "%(name)s má více než %(max_length)s znaků."
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -192,10 +184,6 @@ msgstr "Konfigurační volba %s není nastavena."
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s není adresář."
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s není řetězec nebo unicode"
 
 #, python-format
 msgid "%s is not installed"
@@ -1152,9 +1140,6 @@ msgstr "Snímek skupiny jednotnosti %(cgsnapshot_id)s nemohl být nalezen."
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Snímek skupiny jednotnosti je prázdný. Žádná skupina nebude vytvořena."
 
-msgid "Cgsnapshot status must be available or error"
-msgstr "Stav snímku skupiny jednotnosti musí být dostupný nebo chybný"
-
 msgid "Change hostlun id error."
 msgstr "Chyba při změně id hostitele lun."
 
@@ -1263,9 +1248,6 @@ msgstr "Konfigurační soubor %(configurationFile)s neexistuje."
 msgid "Configuration value %s is not set."
 msgstr "Konfigurační volba %s není nastavena."
 
-msgid "Configured host type is not supported."
-msgstr "Nastavený typ hostitele není podporován."
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1292,34 +1274,10 @@ msgstr "Konektor nepodporuje: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "Konektor nemá požadované informace: %(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr ""
-"Skupina jednotnosti %s stále obsahuje svazky. Pro jejich smazání   je třeba "
-"použít příznak force."
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr "Skupina jednotnosti %s má stále na sobě závislé snímky."
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr ""
 "Skupina jednotnosti je prázdná. Nebude vytvořen žádný snímek skupiny "
 "jednotnosti."
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr ""
-"Stav skupiny jednotnosti musí být dostupný nebo chybný, ale současný stav "
-"je: %s"
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr "Stav skupiny jednotnosti musí být dostupný, ale současný stav je: %s."
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -1696,9 +1654,6 @@ msgstr "Describe-resource je funkce pouze pro správce"
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "Cíl má stav přesunu %(stat)s, očekáváno %(exp)s."
-
-msgid "Destination host must be different than the current host."
-msgstr "Cílový hostitel musí být odlišný od současného."
 
 msgid "Destination volume not mid-migration."
 msgstr "Cílový svazek není uprostřed přesunu."
@@ -3444,9 +3399,6 @@ msgstr "Nelze přesunout nově klonovaný LUN do %s."
 msgid "Failure staging LUN %s to tmp."
 msgstr "Nelze zařadit LUN %s do tmp."
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr "Kritická chyba: Uživatel nemá oprávnění dotazovat se na svazky NetApp."
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr "Flexvisor nemohl přidat svazek %(id)s, z důvodu %(reason)s."
@@ -4027,14 +3979,6 @@ msgstr "Neplatný snímek skupiny jednotnosti: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Neplatná skupina jednotnosti: %(reason)s"
 
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr ""
-"Neplatná skupina jednotnosti: Stav skupiny jednotnosti musí být dostupný, "
-"ale současný stav je: %s."
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr ""
 "Neplatná skupina jednotnosti: Žádný hostitel pro vytvoření skupiny "
@@ -4107,9 +4051,6 @@ msgid ""
 msgstr ""
 "Neplatná url barbican api: je požadována verze, např.  'http[s]://<ipadresa>|"
 "<doména>[:port]/<verze>', zadaná url je: %s"
-
-msgid "Invalid cgsnapshot"
-msgstr "Neplatný snímek skupiny jednotnosti"
 
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr ""
@@ -4463,14 +4404,6 @@ msgstr "LUN číslo ({}) není celé číslo."
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "Číslo LUN je mimo rozsah v kanálu s id: %(ch_id)s."
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"LUN se zadaným odkazem %(ref)s nesplňuje typ svazku. Ujistěte se, že je na "
-"virtuálním serveru %(vs)s přítomen svazek LUN mající funkce ssc."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -4877,10 +4810,6 @@ msgstr "Musíte zadat nový typ svazku."
 
 msgid "New volume type not specified in request_spec."
 msgstr "Nový typ svazku nebyl zadán ve specifikaci žádosti."
-
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "Nový typ svazku stejný jako původní: %s."
 
 msgid "Nimble Cinder Driver exception"
 msgstr "Výjimka ovladače Nimble Cinder"
@@ -5480,9 +5409,6 @@ msgstr "Odkaz musí být pro nespravovaný virtuální svazek."
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "Odkaz musí být název nespravovaného virtuálního svazku."
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr "Odkaz musí obsahovat prvek source-name nebo source-id."
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr "Odkaz musí obsahovat buď prvek source-name nebo source-id."
 
@@ -5685,14 +5611,6 @@ msgstr "Počet pokusů překročen pro příkaz: %s"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "Zjištěna opakovatelná výjimka SolidFire"
 
-msgid "Retype cannot change encryption requirements."
-msgstr "Přetypování nemůže změnit požadavky na šifrování."
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr ""
-"Přetypování nemůže změnit specifikace qos rozhraní pro používaný svazek: %s."
-
 msgid "Retype requires migration but is not allowed."
 msgstr "Přetypování vyžaduje přesun ale ten není povolen."
 
@@ -5786,9 +5704,6 @@ msgstr "Služba %s nenalezena."
 
 msgid "Service is unavailable at this time."
 msgstr "Služba je v tuto chvíli nedostupná."
-
-msgid "Service not found."
-msgstr "Služba nenalezena."
 
 msgid "Sets thin provisioning."
 msgstr "Nastaví mělké poskytování."
@@ -5930,14 +5845,6 @@ msgstr "ID zařízení zdrojového svazku je vyžadováno."
 
 msgid "Source volume not mid-migration."
 msgstr "Zdrojový svazek není uprostřed přesunu."
-
-#, python-format
-msgid ""
-"Source with host ip/name: %s not found on the target appliance for backend "
-"enabled volume migration, procedding with default migration."
-msgstr ""
-"Zdroj s ip/názvem hostitele: %s nebyl nalezen v cílovém zařízení pro přesun "
-"svazku pomocí podpůrné vrstvy, pokračuje se ve výchozím přesunu."
 
 msgid "SpaceInfo returned byarray is invalid"
 msgstr "Byarray vrácený od Spaceinfo je neplatný"
@@ -6405,17 +6312,6 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "Jmenovka svazku je vyžadována jako vstup."
-
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr ""
-"Popisná data svazku nemohou být smazána, zatímco je svazek v režimu údržby."
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr ""
-"Popisná data svazku nemohou být aktualizována, zatímco je svazek v režimu "
-"údržby."
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -6885,14 +6781,6 @@ msgstr "Nelze aktualizovat skupinu jednotnosti %s"
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"Nelze aktualizovat typ kvůli nesprávnému stavu: %(vol_status)s ve svazku: "
-"%(vol_id)s. Stav svazku musí být dostupný, nebo používaný."
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr ""
@@ -6987,9 +6875,6 @@ msgstr "Nerozpoznaná hodnota read_deleted '%s'"
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr "Neúspěšně iscsiadm. Zjištěná výjimka %(ex)s."
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "Nepodporovaná verze clusterovaného Data ONTAP."
 
 msgid "Unsupported Content-Type"
 msgstr "Nepodporovaný Content-Type"
@@ -7159,22 +7044,6 @@ msgstr "Svazek %(vol)s nemohl být vytvořen v zásobě %(pool)s."
 
 #, python-format
 msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Stav svazku %(vol_id)s musí být dostupný, nebo používaný, ale současný stav "
-"je: %(vol_status)s."
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Stav svazku %(vol_id)s musí být pro rozšíření dostupný, ale současný stav "
-"je: %(vol_status)s."
-
-#, python-format
-msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
@@ -7253,10 +7122,6 @@ msgid "Volume %s is already managed by OpenStack."
 msgstr "Svazek %s již je spravován OpenStack."
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "Svazek %s již je součástí aktivního přesunu."
-
-#, python-format
 msgid ""
 "Volume %s is online. Set volume to offline for managing using OpenStack."
 msgstr ""
@@ -7265,14 +7130,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Svazek %s nesmí být součástí skupiny jednotnosti."
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "Svazek %s nesmí být replikován."
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "Svazek %s nesmí mít snímky."
 
 #, python-format
 msgid "Volume %s not found."
@@ -7371,14 +7228,6 @@ msgid "Volume driver reported an error: %(message)s"
 msgstr "Ovladač svazku nahlásil chybu: %(message)s"
 
 #, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr ""
-"Svazek je ve skupině jednotnosti %s připojen. Je třeba ho nejdříve odpojit."
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr "Svazek ve skupině jednotnosti stále má na sobě závislé snímky."
-
-#, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr "Svazek je připojen k serveru. (%s)"
 
@@ -7413,9 +7262,6 @@ msgstr "Svazek musí být ve stejné zóně dostupnosti jako snímek"
 
 msgid "Volume must be in the same availability zone as the source volume"
 msgstr "Svazek musí být ve stejné zóně dostupnosti jako zdrojový svazek"
-
-msgid "Volume must not be part of a consistency group."
-msgstr "Svazek nesmí být součástí skupiny jednotnosti."
 
 msgid "Volume must not be replicated."
 msgstr "Svazek nesmí být replikován."
@@ -7499,9 +7345,6 @@ msgstr "Velikost svazku musí být násobkem 1GB."
 msgid "Volume status for volume must be available, but current status is: %s"
 msgstr "Stav svazku musí být dostupný, ale současný stav je: %s"
 
-msgid "Volume status is in-use."
-msgstr "Stav svazku je používaný."
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
@@ -7555,10 +7398,6 @@ msgid ""
 msgstr ""
 "Přístup k typu svazku nenalezen pro kombinaci %(volume_type_id)s / "
 "%(project_id)s."
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr "Typ svazku neodpovídá sdílení %s."
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."

@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -122,15 +122,6 @@ msgstr ""
 "bağlantı noktasının başka bir servis tarafından kullanılmadığından emin olun."
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr "%(name)s %(min_length)s asgari karakter gereksinimine sahip."
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr ""
-"%(name)s %(max_length)s azami karakter sayısından daha fazla karaktere sahip."
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -189,10 +180,6 @@ msgstr "%s yapılandırma seçeneği ayarlı değil."
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s bir dizin değil."
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s bir karakter dizisi ya da unicode değildir"
 
 #, python-format
 msgid "%s is not installed"
@@ -969,9 +956,6 @@ msgstr "CgSnapshot %(cgsnapshot_id)s bulunamadı."
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cgsnahost boş. Hiçbir tutarlılık grubu oluşturulamayacak."
 
-msgid "Cgsnapshot status must be available or error"
-msgstr "Cgsnapshot durumu kullanılabilir ya da hata olmalıdır"
-
 #, python-format
 msgid ""
 "Change would make usage less than 0 for the following resources: %(unders)s"
@@ -1021,9 +1005,6 @@ msgstr "Yapılandırma dosyası %(configurationFile)s bulunamıyor."
 msgid "Configuration value %s is not set."
 msgstr "Yapılandırma değeri %s ayarlanmamış."
 
-msgid "Configured host type is not supported."
-msgstr "Yapılandırılan istemci türü desteklenmiyor."
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1050,33 +1031,8 @@ msgstr "Bağlayıcı şunu sağlamıyor: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "Bağlayıcı gerekli bilgilere sahip değil: %(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr ""
-"%s tutarlılık grubu hala mantıksal sürücüler içeriyor. Bunları silmek için "
-"zorlama bayrağı gereklidir."
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr "Tutarlılık grubu %s hala bağımlı cgsnapshots sahiptir."
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "Tutarlılık grubu boş. Hiçbir cgsnapshot oluşturulamayacaktır."
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr ""
-"Tutarlılık grubu durumu kullanılabilir ya da hata olmalıdır ancak mevcut "
-"durum: %s"
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr ""
-"Tutarlılık grubu durumu kullanılabilir olmalıdır ancak mevcut durum: %s."
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -1357,9 +1313,6 @@ msgstr "Kaynak-tanımla sadece yönetici işlevidir"
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "Hedef migration_status %(stat)s durumuna sahip, beklenen %(exp)s."
-
-msgid "Destination host must be different than the current host."
-msgstr "Hedef istemci mevcut istemciden farklı olmalıdır."
 
 msgid "Destination volume not mid-migration."
 msgstr "Hedef mantıksal sürücü taşıma ortasında değildir."
@@ -2786,11 +2739,6 @@ msgstr "Yeni çoğaltılmış LUN'un %s e taşınması başarısız."
 msgid "Failure staging LUN %s to tmp."
 msgstr "LUN %s'in tmp'ye hazırlanması başarısız."
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr ""
-"Ölümcül hata: Kullanıcı NetApp mantıksal sürücülerini sorgulamaya yetkili "
-"değil."
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr "Flexvisor %(reason)s sebebiyle %(id)s mantıksal sürücüsünü ekleyemedi."
@@ -3242,14 +3190,6 @@ msgstr "Geçersiz CgSnapshot: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Geçersiz TutarlılıkGrubu: %(reason)s"
 
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr ""
-"Geçersiz TutarlılıkGrubu: Tutarlılık grubu durumu kullanılabilir olmalıdır "
-"ancak mevcut durum: %s."
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "Geçersiz TutarlılıkGrubu: Tutarlılık grubu oluşturmak için istemci yok"
 
@@ -3298,9 +3238,6 @@ msgstr "Geçersiz kimlik doğrulama anahtarı: %(reason)s"
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "Geçersiz yedekleme: %(reason)s"
-
-msgid "Invalid cgsnapshot"
-msgstr "Geçersiz cgsnapshot"
 
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr "CloudByte depolamada geçersiz chap kullanıcı ayrıntıları bulundu."
@@ -3590,15 +3527,6 @@ msgstr "Verilen %s referansına sahip LUN bulunamadı."
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN sayısı %(ch_id)s kanal kimliğinde sınırların dışında."
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"Verilen %(ref)s başvurusuna sahip LUN mantıksal sürücü türünü karşılamıyor. "
-"%(vs)s vserver'inde ssc özellikleri olan LUN mantıksal sürücü olduğuna emin "
-"olun."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -3963,10 +3891,6 @@ msgstr "Yeni mantıksal sürücü türü belirtilmelidir."
 
 msgid "New volume type not specified in request_spec."
 msgstr "request_spec içinde yeni mantıksal sürücü türü belirtilmemiş."
-
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "Özgün hale benzeyen yeni volume_type: %s."
 
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble Cinder Sürücü hatası"
@@ -4454,9 +4378,6 @@ msgstr ""
 "Referans yönetilmeyen bir sanal mantıksal sürücünün mantıksal sürücü ismi "
 "olmalı."
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr "Başvuru kaynak-id veya kaynak-isim öğelerini içermeli."
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr "Başvuru ya kaynak-ismi ya da kaynak-kimliği öğelerini içermeli."
 
@@ -4627,15 +4548,6 @@ msgstr "Komut için yeniden deneme sayısı aşıldı: %s"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "Yinelenebilir SolidFire İstisnası oluştu"
 
-msgid "Retype cannot change encryption requirements."
-msgstr "Retype şifreleme gereksinimlerini değiştiremiyor."
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr ""
-"Retype, kullanımdaki mantıksal sürücünün ön-uç qos özelliklerini "
-"değiştiremiyor: %s."
-
 msgid "Retype requires migration but is not allowed."
 msgstr "Retype göçe ihtiyaç duyuyor ama izin verilmiyor."
 
@@ -4723,9 +4635,6 @@ msgstr "Servis %s bulunamadı."
 
 msgid "Service is unavailable at this time."
 msgstr "Şu anda servis kullanılamıyor."
-
-msgid "Service not found."
-msgstr "Servis bulunamadı."
 
 msgid ""
 "Setting LUN QoS policy group is not supported on this storage family and "
@@ -5244,14 +5153,6 @@ msgstr ""
 "Mantıksal sürücü şu an 3PAR üzerinde meşgul ve silinemez. Daha sonra tekrar "
 "deneyebilirsiniz."
 
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr "Disk bölümü bakım modunda iken disk bölümü metadatası silinemez."
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr "Disk bölümü bakım modunda iken disk bölümü metadatası güncellenemez."
-
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
 msgstr "Kullanım için uygun kaynak yok. (kaynak: %(resource)s)"
@@ -5630,15 +5531,6 @@ msgstr "%s tutarlılık grubu güncellenemedi"
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"Hatalı durum nedeniyle tür güncellenemedi: %(vol_id)s sürücüsü durumu: "
-"%(vol_status)s. Mantıksal sürücü durumu kullanılabilir ya da kullanımda "
-"olmalıdır."
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr ""
@@ -5730,9 +5622,6 @@ msgstr "Tanınmayan destekleme biçimi: %s "
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "Tanınmayan silinmiş okuma değeri '%s'"
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "Desteklenmeyen Kümelenmiş Veri ONTAP sürümü."
 
 msgid "Unsupported Content-Type"
 msgstr "Desteklenmeyen içerik türü"
@@ -5870,22 +5759,6 @@ msgstr "Mantıksal sürücü %(vol)s %(pool)s havuzunda oluşturulamadı."
 
 #, python-format
 msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Mantıksal sürücü %(vol_id)s durumu kullanılabilir ya da kullanımda olmalıdır "
-"ancak mevcut durum: %(vol_status)s."
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Mantıksal sürücü %(vol_id)s durumu genişletmek için kullanılabilir olmalıdır "
-"ancak mevcut durum: %(vol_status)s."
-
-#, python-format
-msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
@@ -5966,20 +5839,8 @@ msgid "Volume %s doesn't exist on array."
 msgstr "Mantıksal sürücü %s dizide mevcut değil."
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "Mantıksal sürücü %s zaten aktif göçün parçasıdır."
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Mantıksal sürücü %s bir tutarlılık grubununun parçası olmamalıdır."
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "Mantıksal sürücü %s çoğaltılmış olmamalıdır."
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "Mantıksal sürücü %s anlık sistem görüntülerine sahip olmamalıdır."
 
 #, python-format
 msgid "Volume %s not found."
@@ -6069,16 +5930,6 @@ msgstr "Mantıksal sürücü hazır değil."
 msgid "Volume driver reported an error: %(message)s"
 msgstr "Mantıksal sürücü bir hata bildirdi: %(message)s"
 
-#, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr ""
-"%s tutarlılık grubunda mantıksal sürücü ekli. İlk önce ayrılması gerekir."
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr ""
-"Tutarlılık grubundaki mantıksal sürücü hala bağımlı anlık sistem "
-"görüntülerine sahiptir."
-
 msgid "Volume is in-use."
 msgstr "Mantıksal sürücü kullanımda."
 
@@ -6112,9 +5963,6 @@ msgid "Volume must be in the same availability zone as the source volume"
 msgstr ""
 "Mantıksal sürücü kaynak mantıksal sürücüyle aynı kullanılabilir bölgede "
 "olmalı"
-
-msgid "Volume must not be part of a consistency group."
-msgstr "Mantıksal sürücü bir tutarlılık grubunun parçası olmamalıdır."
 
 msgid "Volume must not be replicated."
 msgstr "Mantıksal sürücü çoğaltılmış olmamalı."
@@ -6188,9 +6036,6 @@ msgstr ""
 "Mantıksal sürücü için mantıksal sürücü durumu kullanılabilir olmalıdır ancak "
 "mevcut durum: %s"
 
-msgid "Volume status is in-use."
-msgstr "Mantıksal sürücü durumu kullanımda."
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
@@ -6231,10 +6076,6 @@ msgid ""
 msgstr ""
 "%(volume_type_id)s / %(project_id)s birleşimi için mantıksal sürücü erişimi "
 "bulunamadı."
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr "Mantıksal sürücü türü %s paylaşımıyla uyuşmuyor."
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."

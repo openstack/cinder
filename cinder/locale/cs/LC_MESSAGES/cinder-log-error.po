@@ -9,9 +9,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -939,9 +939,6 @@ msgstr "Při vytváření dočasné zálohy nastala chyba."
 msgid "Error occurred while creating volume: %(id)s from image: %(image_id)s."
 msgstr "Při vytváření svazku nastala chyba: %(id)s z obrazu %(image_id)s."
 
-msgid "Error occurred while selecting datastore."
-msgstr "Při zvolení datového úložiště nastala chyba."
-
 #, python-format
 msgid "Error on adding lun to consistency group. %s"
 msgstr "Chyba při přidávání lun do skupiny jednotnosti. %s"
@@ -1645,9 +1642,6 @@ msgstr "Nelze zadat příkaz mmlsfs, chyba: %s."
 msgid "Failed to load %s"
 msgstr "Nelze načíst %s"
 
-msgid "Failed to load conder-volume"
-msgstr "Nelze načíst svazek conder"
-
 msgid "Failed to load osapi_volume"
 msgstr "Nelze načíst svazek osapi"
 
@@ -2203,9 +2197,6 @@ msgstr "Pro službu nebylo nalezeno žádné nastavení: %s"
 #, python-format
 msgid "No configuration found for service: %s."
 msgstr "Pro službu nebylo nalezeno žádné nastavení: %s."
-
-msgid "No more targets avaliable."
-msgstr "Žádné cíle nejsou dostupné."
 
 #, python-format
 msgid ""

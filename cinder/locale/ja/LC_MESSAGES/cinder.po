@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -130,14 +130,6 @@ msgstr ""
 "ト %(port)d を使用していないことを確認してください。"
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr "%(name)s の最小文字数要件は %(min_length)s です。"
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr "%(name)s が %(max_length)s 文字を超えています。"
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -207,10 +199,6 @@ msgstr "%s は存在しません。"
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s はディレクトリーではありません。"
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s がバイト文字列でも Unicode でもありません"
 
 #, python-format
 msgid "%s is not installed"
@@ -1365,18 +1353,12 @@ msgstr "volume_type %(id)s を更新できません"
 msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr "オブジェクト %(instanceName)s の存在を確認できません。"
 
-msgid "Cascade option is not supported."
-msgstr "カスケードオプションはサポートされていません。"
-
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "CgSnapshot %(cgsnapshot_id)s が見つかりませんでした。"
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cgsnahost が空です。整合性グループは作成されません。"
-
-msgid "Cgsnapshot status must be available or error"
-msgstr "cgsnapshot 状況は「使用可能」または「エラー」でなければなりません"
 
 msgid "Change hostlun id error."
 msgstr "hostlun ID 変更のエラー。"
@@ -1496,9 +1478,6 @@ msgstr "設定が見つかりません。"
 msgid "Configuration value %s is not set."
 msgstr "構成値 %s が設定されていません。"
 
-msgid "Configured host type is not supported."
-msgstr "構成済みホストタイプはサポートされていません。"
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1525,33 +1504,8 @@ msgstr "コネクターが %s を提供しません"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "コネクターは必要な情報を持っていません: %(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr ""
-"整合性グループ %s には、まだボリュームがあります。これを削除するには「強制」"
-"フラグが必要です。"
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr "整合性グループ %s には、まだ従属 cgsnapshot があります。"
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "整合性グループが空です。cgsnapshot は作成されません。"
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr ""
-"整合性グループ状況は「使用可能」または「エラー」でなければなりませんが、現在"
-"の状況は %s です"
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr ""
-"整合性グループ状況は「使用可能」でなければなりませんが、現在の状況は%s です。"
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -2064,9 +2018,6 @@ msgstr "Describe-resource は管理者専用の機能です"
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr ""
 "宛先の migration_status は %(stat)s ですが、予期されたのは %(exp)s です。"
-
-msgid "Destination host must be different than the current host."
-msgstr "宛先ホストは現行ホストと異なっていなければなりません。"
 
 msgid "Destination volume not mid-migration."
 msgstr "宛先ボリュームはマイグレーション中ではありません"
@@ -4171,10 +4122,6 @@ msgstr "複製された新規 LUN を %s へ移動中に障害が発生しまし
 msgid "Failure staging LUN %s to tmp."
 msgstr "LUN %s を一時 lun へステージング中に障害が発生しました。"
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr ""
-"致命的エラー: ユーザーには NetApp ボリュームの照会が許可されていません。"
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr ""
@@ -4634,16 +4581,6 @@ msgstr "HPELeftHand url が見つかりません"
 
 #, python-format
 msgid ""
-"HTTPS certificate verification was requested but cannot be enabled with "
-"purestorage module version %(version)s. Upgrade to a newer version to enable "
-"this feature."
-msgstr ""
-"HTTPS の証明書の検証が要求されましたが、Pure Storage モジュールのバージョン "
-"%(version)s では有効化できません。この機能を有効化するにはより新しいバージョ"
-"ンにアップグレードしてください。"
-
-#, python-format
-msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
 "%(new)s. Old hash block size: %(old)s. Do a full backup."
 msgstr ""
@@ -4881,21 +4818,6 @@ msgstr "無効な CgSnapshot: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "無効な ConsistencyGroup: %(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: in-use"
-msgstr ""
-"無効な ConsistencyGroup: 整合性グループの状態は「利用可能」か「エラー」のいず"
-"れかである必要がありますが、現在の状態は「使用中」です。"
-
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr ""
-"無効な ConsistencyGroup: 整合性グループ状況は「使用可能」でなければなりません"
-"が、現在の状況は %s です。"
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr ""
 "無効な ConsistencyGroup: 整合性グループを作成するためのホストがありません。"
@@ -4978,9 +4900,6 @@ msgstr ""
 "Barbican API の URL が無効です: バージョンが必要です ('http[s]://<ipaddr>|"
 "<fqdn>[:port]/<version>' など)。指定された URL は %s です。"
 
-msgid "Invalid cgsnapshot"
-msgstr "無効な cgsnapshot"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr "CloudByte のストレージで無効な chap ユーザーの詳細が見つかりました。"
 
@@ -5053,9 +4972,6 @@ msgstr "イメージ ID が無効か、要求されたイメージにアクセ�
 
 msgid "Invalid imageRef provided."
 msgstr "無効な imageRef が指定されました。"
-
-msgid "Invalid initiator value received"
-msgstr "無効なイニシエーター値を受信しました"
 
 msgid "Invalid input"
 msgstr "無効な入力"
@@ -5371,15 +5287,6 @@ msgstr "LUN 番号 ({}) が整数ではありません。"
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 番号がチャンネル ID: %(ch_id)s の境界を越えています。"
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"指定された参照 %(ref)s を持つ LUN はボリュームタイプを満たしていません。ssc "
-"フィーチャーを持つ LUN ボリュームが vserver %(vs)s 上に存在することを確認して"
-"ください。"
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -5841,10 +5748,6 @@ msgstr "新規ボリュームタイプを指定する必要があります。"
 msgid "New volume type not specified in request_spec."
 msgstr "新規のボリュームタイプが要求仕様に指定されていません。"
 
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "新規 volume_type が元の値と同じです: %s。"
-
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble Cinder ドライバー例外"
 
@@ -6193,14 +6096,6 @@ msgstr ""
 "拡張操作時に複合ボリューム %(volumename)s へのボリュームの追加中にエラーが発"
 "生しました。"
 
-msgid ""
-"One of cinder-volume services is too old to accept such request. Are you "
-"running mixed Liberty-Mitaka cinder-volumes?"
-msgstr ""
-"cinder-volume サービスの 1 つが古すぎるため、このようなリクエストを受け付ける"
-"ことができません。Liberty と Mitaka のさまざまな cinder-volumes の組み合わせ"
-"を実行していますか。"
-
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
 "ホスト、ポート、またはスキーマからの必須の入力の 1 つが見つかりませんでした。"
@@ -6536,11 +6431,6 @@ msgstr "参照は非管理対象のスナップショットの名前でなけれ
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "参照は非管理対象仮想ボリュームのボリューム名でなければなりません。"
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr ""
-"参照には source-id または source-name のいずれかの要素が含まれていなければな"
-"りません。"
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr ""
 "参照には source-name または source-id のいずれかの要素が含まれていなければな"
@@ -6802,15 +6692,6 @@ msgstr "コマンドの再試行回数を超過しました: %s"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "再試行可能な SolidFire 例外が発生しました"
 
-msgid "Retype cannot change encryption requirements."
-msgstr "タイプ変更によって暗号化要件を変更することはできません。"
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr ""
-"タイプ変更によって使用中ボリュームのフロントエンド qos 仕様を変更することはで"
-"きません: %s。"
-
 msgid "Retype requires migration but is not allowed."
 msgstr "タイプ変更するにはマイグレーションが必要ですが、許可されていません。"
 
@@ -6931,9 +6812,6 @@ msgstr "サービスが古すぎるため、このリクエストに対応でき
 
 msgid "Service is unavailable at this time."
 msgstr "現在サービスは使用できません。"
-
-msgid "Service not found."
-msgstr "サービスが見つかりません。"
 
 msgid "Set pair secondary access error."
 msgstr "ペアのセカンダリーアクセス設定のエラー。"
@@ -7110,15 +6988,6 @@ msgstr "ソースボリュームのデバイス ID が必要です。"
 
 msgid "Source volume not mid-migration."
 msgstr "ソースボリュームはマイグレーション中ではありません"
-
-#, python-format
-msgid ""
-"Source with host ip/name: %s not found on the target appliance for backend "
-"enabled volume migration, procedding with default migration."
-msgstr ""
-"ホスト IP/名前: %s を持つソースがターゲットアプライアンスで見つかりませんでし"
-"た。これはバックエンドが有効になっているボリュームマイグレーションのためのア"
-"プライアンスであり、デフォルトのマイグレーションを使用して開始されます。"
 
 msgid "SpaceInfo returned byarray is invalid"
 msgstr "アレイによって返された SpaceInfo が無効です"
@@ -7684,18 +7553,6 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "入力としてボリュームラベルが必要です。"
-
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr ""
-"ボリュームがメンテナンスモードの場合は、ボリュームのメタデータを削除できませ"
-"ん。"
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr ""
-"ボリュームがメンテナンスモードの場合、ボリュームのメタデータは更新できませ"
-"ん。"
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -8330,14 +8187,6 @@ msgstr "整合性グループ %s を更新できません"
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"ボリューム %(vol_id)s の状況 %(vol_status)s が正しくないため、タイプを更新で"
-"きません。ボリューム状況は「使用可能」または「使用中」でなければなりません。"
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr ""
@@ -8496,9 +8345,6 @@ msgstr "gcs オプションの設定を解除します: %s"
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr "iscsiadm が正常に終了しませんでした。例外は %(ex)s です。 "
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "サポートされない Clustered Data ONTAP バージョンです。"
 
 msgid "Unsupported Content-Type"
 msgstr "サポートされない Content-Type"
@@ -8689,22 +8535,6 @@ msgstr "ボリューム%(vol1)s が snapshot.volume_id %(vol2)s と一致しま�
 
 #, python-format
 msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"ボリューム %(vol_id)s の状況は「使用可能」または「使用中」でなければなりませ"
-"んが、現在の状況は %(vol_status)s です。"
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"拡張するにはボリューム %(vol_id)s の状況が「使用可能」でなければなりません"
-"が、現在の状況は %(vol_status)s です。"
-
-#, python-format
-msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
@@ -8805,10 +8635,6 @@ msgid "Volume %s is already managed by OpenStack."
 msgstr "ボリューム %s は OpenStack により既に管理されています。"
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "ボリューム %s は既にアクティブマイグレーションの一部になっています。"
-
-#, python-format
 msgid ""
 "Volume %s is not of replicated type. This volume needs to be of a volume "
 "type with the extra spec replication_enabled set to '<is> True' to support "
@@ -8836,14 +8662,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "ボリューム %s は整合性グループの一部であってはなりません。"
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "ボリューム %s を複製してはいけません。"
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "ボリューム %s にスナップショットがあってはなりません。"
 
 #, python-format
 msgid "Volume %s not found."
@@ -8950,14 +8768,6 @@ msgid "Volume has children and cannot be deleted!"
 msgstr "ボリュームには子が含まれており、削除できません。"
 
 #, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr ""
-"整合性グループ %s のボリュームが接続されています。まず切り離してください。"
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr "整合性グループのボリュームには、まだ従属スナップショットがあります。"
-
-#, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr "ボリュームがサーバーに追加されています (%s)。"
 
@@ -8995,9 +8805,6 @@ msgstr "ボリュームはソースボリュームと同じ可用性ゾーンに
 
 msgid "Volume must have a volume type"
 msgstr "ボリュームにはボリューム種別が必要です"
-
-msgid "Volume must not be part of a consistency group."
-msgstr "ボリュームを整合性グループの一部にしないでください。"
 
 msgid "Volume must not be replicated."
 msgstr "ボリュームを複製することはできません。"
@@ -9097,9 +8904,6 @@ msgstr ""
 "ボリュームのボリューム状況は「使用可能」でなければなりませんが、現在の状況は "
 "%s です"
 
-msgid "Volume status is in-use."
-msgstr "ボリューム状況は「使用中」です。"
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
@@ -9153,10 +8957,6 @@ msgid ""
 msgstr ""
 "%(volume_type_id)s / %(project_id)s の組み合わせのボリューム種別アクセスが見"
 "つかりません。"
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr "共有 %s に関してボリュームタイプが一致しません。"
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."

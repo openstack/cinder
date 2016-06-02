@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev115\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-18 05:45+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1302,14 +1302,6 @@ msgstr "Zadaný bod připojení snímku %s není v současnosti připojen."
 
 #, python-format
 msgid ""
-"The user does not have access or sufficient privileges to use all netapp "
-"APIs. The following extra_specs will fail or be ignored: %s"
-msgstr ""
-"Uživatel nemá přístup nebo dostatečná oprávnění k použití všech API netapp. "
-"Následující dodatečné specifikace selžou nebo budou ignorovány: %s"
-
-#, python-format
-msgid ""
 "The volume: %(volumename)s was not first part of the default storage group "
 "for FAST policy %(fastPolicyName)s."
 msgstr ""
@@ -1378,10 +1370,6 @@ msgid ""
 msgstr ""
 "Nelze rozšířit svazek: %(vol)s na velikost %(size)s GB na současném datovém "
 "úložišti z důvodu nedostatku místa."
-
-#, python-format
-msgid "Unable to fetch datastores connected to host %s."
-msgstr "Nelze získat  datová úložiště spojená s hostitelem %s."
 
 #, python-format
 msgid "Unable to find Masking view: %(view)s."

@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -130,14 +130,6 @@ msgstr ""
 "l'adresse IP %(ip)s n'est pas utilisé par un autre service."
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr "%(name)s doit être long d'au moins %(min_length)s caractères."
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr "%(name)s contient plus de %(max_length)s caractères."
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -208,10 +200,6 @@ msgstr "%s n'existe pas."
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s n'est pas un répertoire."
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s n'est pas une chaîne ou unicode"
 
 #, python-format
 msgid "%s is not installed"
@@ -1414,19 +1402,12 @@ msgstr "Impossible de mettre à jour le type de volume %(id)s"
 msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr "Impossible de vérifier l'existence de l'objet %(instanceName)s."
 
-msgid "Cascade option is not supported."
-msgstr "L'option Cascade n'est pas prise en charge."
-
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "L'instantané de groupe de cohérence %(cgsnapshot_id)s est introuvable."
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cgsnahost est vide. Aucun groupe de cohérence ne sera créé."
-
-msgid "Cgsnapshot status must be available or error"
-msgstr ""
-"L'état d'instantané de groupe de cohérence doit être Disponible ou Erreur"
 
 msgid "Change hostlun id error."
 msgstr "Erreur lors du changement d'ID hostlun."
@@ -1555,9 +1536,6 @@ msgstr "Configuration introuvable."
 msgid "Configuration value %s is not set."
 msgstr "La valeur de configuration %s n'est pas définie."
 
-msgid "Configured host type is not supported."
-msgstr "Le type d'hôte configuré n'est pas pris en charge."
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1585,38 +1563,10 @@ msgstr "Le connecteur ne fournit pas : %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "Le connecteur n'a pas les informations requises : %(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr ""
-"Le groupe de cohérence %s contient encore des volumes. L'indicateur force "
-"est requis pour pouvoir le supprimer."
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr ""
-"Le groupe de cohérence %s contient encore des instantanés de groupe de "
-"cohérence dépendants."
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr ""
 "Le groupe de cohérence est vide. Aucun instantané de groupe de cohérence ne "
 "sera créé."
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr ""
-"L'état de groupe de cohérence doit être Disponible ou Erreur, mais l'état en "
-"cours est : %s"
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr ""
-"L'état du groupe de cohérence doit être disponible, mais l'état actuel est : "
-"%s."
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -2136,9 +2086,6 @@ msgstr "Describe-resource est une fonctionnalité admin uniquement"
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "La destination a pour migration_status %(stat)s, %(exp)s est attendu."
-
-msgid "Destination host must be different than the current host."
-msgstr "L'hôte de destination doit être différent de l'hôte en cours."
 
 msgid "Destination volume not mid-migration."
 msgstr "Le volume de destination n'est pas en cours de migration."
@@ -4309,10 +4256,6 @@ msgstr "Echec du déplacement du nouveau numéro d'unité logique cloné vers %s
 msgid "Failure staging LUN %s to tmp."
 msgstr "Echec du transfert du numéro d'unité logique %s vers tmp."
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr ""
-"Erreur fatale : Utilisateur non autorisé à interroger les volumes NetApp."
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr ""
@@ -4795,16 +4738,6 @@ msgstr "URL HPELeftHand introuvable"
 
 #, python-format
 msgid ""
-"HTTPS certificate verification was requested but cannot be enabled with "
-"purestorage module version %(version)s. Upgrade to a newer version to enable "
-"this feature."
-msgstr ""
-"La vérification du certificat HTTPS a été demandée mais ne peut pas être "
-"activée avec la version de module purestorage %(version)s. Effectuez une "
-"mise à niveau vers une version plus récente pour activer cette fonction."
-
-#, python-format
-msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
 "%(new)s. Old hash block size: %(old)s. Do a full backup."
 msgstr ""
@@ -5046,22 +4979,6 @@ msgstr "Instantané de groupe de cohérence non valide : %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "Groupe de cohérence non valide : %(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: in-use"
-msgstr ""
-"Groupe de cohérence (ConsistencyGroup) non valide : le statut du groupe de "
-"cohérence doit être available (disponible) ou error (erreur), mais le statut "
-"actuel est : in-use (en cours d'utilisation)"
-
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr ""
-"ConsistencyGroup non valide : l'état du groupe de cohérence doit être "
-"disponible, mais l'état actuel est : %s."
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr ""
 "ConsistencyGroup non valide : Aucun hôte pour créer le groupe de cohérence"
@@ -5146,9 +5063,6 @@ msgstr ""
 "URL d'API barbican non valide : la version est obligatoire, par exemple "
 "'http[s]://<ipaddr>|<fqdn>[:port]/<version>', l'URL indiquée est : %s"
 
-msgid "Invalid cgsnapshot"
-msgstr "Instantané de groupe de cohérence non valide"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr ""
 "Informations d'utilisateur chap non valides détectées dans le stockage "
@@ -5227,9 +5141,6 @@ msgstr ""
 
 msgid "Invalid imageRef provided."
 msgstr "imageRef fournie non valide."
-
-msgid "Invalid initiator value received"
-msgstr "Valeur d'initiateur non valide reçue"
 
 msgid "Invalid input"
 msgstr "Entrée incorrecte"
@@ -5552,15 +5463,6 @@ msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr ""
 "Le nombre de numéros d'unité logique est hors bornes sur l'ID de canal : "
 "%(ch_id)s."
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"LUN avec la réf donnée %(ref)s ne satisfait pas le type de volume. Assurez-"
-"vous que le volume LUN avec fonctionnalités ssc est présent sur vserver "
-"%(vs)s."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -6036,10 +5938,6 @@ msgstr "Le nouveau type de volume doit être indiqué."
 msgid "New volume type not specified in request_spec."
 msgstr "Nouveau type de volume non indiqué dans request_spec."
 
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "Nouveau volume_type identique à l'original : %s."
-
 msgid "Nimble Cinder Driver exception"
 msgstr "Exception du pilote Nimble Cinder"
 
@@ -6403,13 +6301,6 @@ msgstr ""
 "Sur une opération Extend, erreur d'ajout au volume composite : "
 "%(volumename)s."
 
-msgid ""
-"One of cinder-volume services is too old to accept such request. Are you "
-"running mixed Liberty-Mitaka cinder-volumes?"
-msgstr ""
-"L'un des services cinder-volume est trop ancien pour accepter une demande de "
-"ce type. Exécutez-vous des volumes cinder  Liberty-Mitaka mixtes ?"
-
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
 "L'une des entrées requises de l'hôte, du port ou du schéma n'a pas été "
@@ -6750,9 +6641,6 @@ msgstr "La référence doit correspondre au nom d'un instantané non géré."
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "La référence doit s'appliquer à un nom de volume virtuel non géré."
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr "La référence doit contenir l'élément source-id ou source-name."
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr "La référence doit contenir l'élément source-name ou source-id."
 
@@ -7013,15 +6901,6 @@ msgstr "Nombre de nouvelles tentatives dépassé pour la commande : %s"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "Exception SolidFire réessayable rencontrée"
 
-msgid "Retype cannot change encryption requirements."
-msgstr "Une nouvelle saisie ne peut pas modifier des exigences de chiffrement."
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr ""
-"Une nouvelle saisie ne peut pas modifier les spécifications QoS frontales "
-"pour le volume en cours d'utilisation : %s."
-
 msgid "Retype requires migration but is not allowed."
 msgstr "La nouvelle saisie nécessite la migration, mais n'est pas autorisée."
 
@@ -7141,9 +7020,6 @@ msgstr "Service trop ancien pour satisfaire cette demande."
 
 msgid "Service is unavailable at this time."
 msgstr "Le service est indisponible actuellement."
-
-msgid "Service not found."
-msgstr "Service introuvable."
 
 msgid "Set pair secondary access error."
 msgstr "Erreur lors de la définition d'accès secondaire à une paire."
@@ -7324,14 +7200,6 @@ msgstr "L'ID d'unité du volume source est requis."
 
 msgid "Source volume not mid-migration."
 msgstr "Le volume source n'est pas en cours de migration."
-
-#, python-format
-msgid ""
-"Source with host ip/name: %s not found on the target appliance for backend "
-"enabled volume migration, procedding with default migration."
-msgstr ""
-"La source avec l'adresse IP/nom d'hôte %s est introuvable pour la migration "
-"de volume activée pour le back-end. Exécution de la migration par défaut."
 
 msgid "SpaceInfo returned byarray is invalid"
 msgstr "SpaceInfo renvoyé par la matrice est incorrect"
@@ -7919,18 +7787,6 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "Le label du volume est requis comme entrée."
-
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr ""
-"Les métadonnées du volume ne peuvent pas être supprimées alors que le volume "
-"est en mode maintenance."
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr ""
-"Les métadonnées du volume ne peuvent pas être mises à jour alors que le "
-"volume est en mode maintenance."
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -8589,15 +8445,6 @@ msgstr "Impossible de mettre à jour le groupe de cohérence %s"
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"Impossible de mettre à jour le type en raison d'un état incorrect : "
-"%(vol_status)s sur le volume : %(vol_id)s. L'état du volume doit être "
-"Disponible ou En cours d'utilisation."
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr ""
@@ -8759,9 +8606,6 @@ msgstr "Options gcs non définies : %s"
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr "Echec d'iscsiadm. Exception : %(ex)s. "
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "Version de Clustered Data ONTAP non prise en charge."
 
 msgid "Unsupported Content-Type"
 msgstr "Type de contenu non pris en charge"
@@ -8959,22 +8803,6 @@ msgstr "Le volume %(vol1)s ne correspond pas à snapshot.volume_id %(vol2)s."
 
 #, python-format
 msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"Le volume %(vol_id)s doit être dans un état Disponible ou En cours "
-"d'utilisation, mais l'état en cours est : %(vol_status)s."
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"L'état du volume %(vol_id)s doit être Disponible pour extension, mais l'état "
-"en cours est : %(vol_status)s."
-
-#, python-format
-msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
@@ -9073,10 +8901,6 @@ msgid "Volume %s is already managed by OpenStack."
 msgstr "Le volume %s est déjà géré par OpenStack."
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "Le volume %s fait déjà partie d'une migration active."
-
-#, python-format
 msgid ""
 "Volume %s is not of replicated type. This volume needs to be of a volume "
 "type with the extra spec replication_enabled set to '<is> True' to support "
@@ -9104,14 +8928,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Le volume %s ne doit pas faire partie d'un groupe de cohérence."
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "Le volume %s ne doit pas être répliqué."
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "Le volume %s ne doit pas avoir d'instantanés."
 
 #, python-format
 msgid "Volume %s not found."
@@ -9223,16 +9039,6 @@ msgid "Volume has children and cannot be deleted!"
 msgstr "Ce volume a des enfants et ne peut pas être supprimé !"
 
 #, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr ""
-"Le volume du groupe de cohérence %s est connecté. Vous devez d'abord le "
-"déconnecter."
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr ""
-"Le volume du groupe de cohérence contient encore des instantanés dépendants."
-
-#, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr "Le volume est attaché à un serveur.  (%s)"
 
@@ -9272,9 +9078,6 @@ msgstr ""
 
 msgid "Volume must have a volume type"
 msgstr "Le volume doit comporter un type de volume"
-
-msgid "Volume must not be part of a consistency group."
-msgstr "Le volume ne doit pas faire partie d'un groupe de cohérence."
 
 msgid "Volume must not be replicated."
 msgstr "Le volume ne doit pas être répliqué."
@@ -9373,9 +9176,6 @@ msgstr ""
 "Le volume doit être dans un état de disponibilité, mais l'état en cours est :"
 "%s"
 
-msgid "Volume status is in-use."
-msgstr "L'état de volume est En cours d'utilisation."
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
@@ -9429,10 +9229,6 @@ msgid ""
 msgstr ""
 "Accès de type volume introuvable pour la combinaison %(volume_type_id)s / "
 "%(project_id)s."
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr "Le type de volume ne correspond pas pour le partage %s."
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."

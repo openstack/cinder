@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -130,14 +130,6 @@ msgstr ""
 "(를) 사용하고 있지 않은지 확인하십시오. "
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr "%(name)s에 최소 문자 요구사항(%(min_length)s)이 있습니다."
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr "%(name)s의 문자 수가 %(max_length)s문자를 초과합니다."
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -207,10 +199,6 @@ msgstr "%s이(가) 없습니다."
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s이(가) 디렉토리가 아닙니다. "
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s이(가) 문자열 또는 Unicode가 아님"
 
 #, python-format
 msgid "%s is not installed"
@@ -1302,18 +1290,12 @@ msgstr "volume_type %(id)s을(를) 업데이트할 수 없음"
 msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr "오브젝트의 존재를 확인할 수 없음: %(instanceName)s."
 
-msgid "Cascade option is not supported."
-msgstr "계단식 옵션은 지원되지 않습니다."
-
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "Cg 스냅샷 %(cgsnapshot_id)s을(를) 찾을 수 없습니다. "
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cgsnahost가 비어 있습니다. 일관성 그룹이 작성되지 않습니다. "
-
-msgid "Cgsnapshot status must be available or error"
-msgstr "cg 스냅샷 상태는 사용 가능 또는 오류여야 함"
 
 msgid "Change hostlun id error."
 msgstr "hostlun id 변경 오류."
@@ -1428,9 +1410,6 @@ msgstr "구성을 찾을 수 없습니다."
 msgid "Configuration value %s is not set."
 msgstr "구성 값 %s을(를) 설정하지 않았습니다."
 
-msgid "Configured host type is not supported."
-msgstr "구성된 호스트 유형이 지원되지 않습니다."
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1456,31 +1435,8 @@ msgstr "커넥터가 제공되지 않음: %s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "커넥터에 필수 정보가 없음: %(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr ""
-"일관성 그룹 %s에 아직 볼륨이 포함되어 있습니다. 강제 실행 플래그를 삭제해야 "
-"합니다."
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr "일관성 그룹 %s에 아직 종속자 cg 스냅샷이 있습니다."
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "일관성 그룹이 비어 있습니다. 작성된 cg 스냅샷이 없습니다."
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr ""
-"일관성 그룹 상태가 사용 가능 또는 오류여야 하지만 현재 상태가 %s입니다."
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr "일관성 그룹 상태가 사용 가능이어야 하지만 현재 상태가 %s입니다. "
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -1969,9 +1925,6 @@ msgstr "Describe-resource 기능은 관리자만 사용가능"
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "%(exp)s을(를) 예상했지만 대상에 migration_status %(stat)s이(가) 있음. "
-
-msgid "Destination host must be different than the current host."
-msgstr "대상 호스트가 현재 호스트와 달라야 합니다. "
 
 msgid "Destination volume not mid-migration."
 msgstr "대상 볼륨이 마이그레이션에 포함되지 않음 "
@@ -3985,9 +3938,6 @@ msgstr "복제된 새 LUN을 %s(으)로 이동하지 못했습니다."
 msgid "Failure staging LUN %s to tmp."
 msgstr "LUN %s을(를) tmp로 스테이징하지 못했습니다."
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr "심각한 오류: 사용자가 NetApp 볼륨을 조회하도록 허용되지 않습니다."
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr ""
@@ -4416,15 +4366,6 @@ msgstr "HPELeftHand url을 찾을 수 없음"
 
 #, python-format
 msgid ""
-"HTTPS certificate verification was requested but cannot be enabled with "
-"purestorage module version %(version)s. Upgrade to a newer version to enable "
-"this feature."
-msgstr ""
-"HTTPS 인증서 검증이 요청되었지만 purestorage 모듈 버전 %(version)s(으)로 사용"
-"하게 설정할 수 없습니다. 이 기능을 사용하려면 새 버전으로 업그레이드하십시오."
-
-#, python-format
-msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
 "%(new)s. Old hash block size: %(old)s. Do a full backup."
 msgstr ""
@@ -4656,21 +4597,6 @@ msgstr "올바르지 않은 Cg 스냅샷: %(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "올바르지 않은 일관성 그룹: %(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: in-use"
-msgstr ""
-"올바르지 않은 일관성 그룹: 일관성 그룹 상태가 사용 가능 또는 오류여야 하지만 "
-"현재 상태가 사용 중입니다."
-
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr ""
-"올바르지 않은 일관성 그룹: 일관성 그룹 상태가 사용 가능이어야 하지만현재 상태"
-"가 %s입니다. "
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "올바르지 않은 일관성 그룹: 일관성 그룹을 작성할 호스트가 없음"
 
@@ -4750,9 +4676,6 @@ msgstr ""
 "올바르지 않은 barbican api url: 버전이 필요합니다(예: 'http[s]://<ipaddr>|"
 "<fqdn>[:port]/<version>') 지정된 url은 %s입니다."
 
-msgid "Invalid cgsnapshot"
-msgstr "올바르지 않은 cg 스냅샷"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr ""
 "CloudByte 스토리지에서 올바르지 않은 chap 사용자 세부사항이 발견되었습니다. "
@@ -4826,9 +4749,6 @@ msgstr "이미지 ID가 올바르지 않거나 요청된 이미지에 액세스�
 
 msgid "Invalid imageRef provided."
 msgstr "올바르지 않은 imageRef가 제공되었습니다. "
-
-msgid "Invalid initiator value received"
-msgstr "올바르지 않은 개시자 값이 수신됨"
 
 msgid "Invalid input"
 msgstr "올바르지 않은 입력"
@@ -5136,14 +5056,6 @@ msgstr "LUN 번호({})가 정수가 아닙니다."
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 번호가 채널 id에 대한 경계를 벗어남: %(ch_id)s."
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"주어진 ref %(ref)s를 사용하는 LUN이 볼륨 유형을 충족하지 않습니다. ssc 기능"
-"이 있는 LUN 볼륨이 vserver %(vs)s에 있는지 확인하십시오."
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -5596,10 +5508,6 @@ msgstr "새 볼륨 유형을 지정해야 합니다."
 msgid "New volume type not specified in request_spec."
 msgstr "새 볼륨 유형이 request_spec에서 지정되지 않았습니다."
 
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "새 volume_type이 원본과 동일함: %s."
-
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble Cinder 드라이버 예외"
 
@@ -5934,13 +5842,6 @@ msgstr ""
 "확장 조작에서 컴포지트 볼륨 %(volumename)s에 볼륨을 추가하는 중에 오류가 발생"
 "했습니다."
 
-msgid ""
-"One of cinder-volume services is too old to accept such request. Are you "
-"running mixed Liberty-Mitaka cinder-volumes?"
-msgstr ""
-"cinder-volume 서비스 중 하나가 너무 오래되어 이러한 요청을 승인할 수 없습니"
-"다. 혼합된 Liberty-Mitaka cinder-볼륨을 사용 중입니까?"
-
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr "호스트, 포트 또는 스키마에서 필요한 입력 중 하나를 찾을 수 없습니다."
 
@@ -6263,9 +6164,6 @@ msgstr "참조는 관리되지 않은 스냅샷의 이름이어야 합니다."
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "참조는 관리되지 않는 가상 볼륨의 볼륨 이름이어야 합니다. "
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr "참조에는 source-id 또는 source-name 요소가 포함되어야 합니다. "
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr "참조에는 source-name 또는 source-id 요소가 포함되어야 합니다. "
 
@@ -6517,15 +6415,6 @@ msgstr "명령의 재시도 수 초과: %s"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "재시도할 수 있는 SolidFire 예외가 발생함"
 
-msgid "Retype cannot change encryption requirements."
-msgstr "다시 입력해도 암호화 요구사항을 변경할 수 없습니다. "
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr ""
-"다시 입력해도 사용 중인 볼륨 %s에 대한 프론트 엔드 qos 스펙을 변경할 수 없습"
-"니다. "
-
 msgid "Retype requires migration but is not allowed."
 msgstr "다시 입력에 마이그레이션이 필요하지만 허용되지 않습니다."
 
@@ -6641,9 +6530,6 @@ msgstr "서비스가 너무 오래되어 이 요청을 이행할 수 없습니�
 
 msgid "Service is unavailable at this time."
 msgstr "서비스가 지금 사용 불가능합니다. "
-
-msgid "Service not found."
-msgstr "서비스를 찾을 수 없습니다."
 
 msgid "Set pair secondary access error."
 msgstr "쌍 보조 액세스 설정 오류."
@@ -6815,14 +6701,6 @@ msgstr "소스 볼륨 디바이스 ID가 필요합니다. "
 
 msgid "Source volume not mid-migration."
 msgstr "소스 볼륨이 마이그레이션에 포함되지 않음 "
-
-#, python-format
-msgid ""
-"Source with host ip/name: %s not found on the target appliance for backend "
-"enabled volume migration, procedding with default migration."
-msgstr ""
-"백엔드 사용 볼륨 마이그레이션에 대한 대상 어플라이언스에서 호스트 ip/이름: %s"
-"을(를) 가진 소스를 찾을 수 없습니다. 기본 마이그레이션을 계속 진행합니다. "
 
 msgid "SpaceInfo returned byarray is invalid"
 msgstr "배열에서 리턴한 SpaceInfo가 올바르지 않음"
@@ -7368,15 +7246,6 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "볼륨 레이블이 입력으로 필요합니다. "
-
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr "볼륨이 유지보수 모드에 있으면 볼륨 메타데이터를 삭제할 수 없습니다. "
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr ""
-"볼륨이 유지보수 모드에 있으면 볼륨 메타데이터를 업데이트할 수 없습니다. "
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -7977,14 +7846,6 @@ msgstr "일관성 그룹 %s을(를) 업데이트할 수 없음"
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"올바르지 않은 상태 %(vol_status)s(으)로 인해 다음 볼륨에서 유형을 업데이트할 "
-"수 없음: %(vol_id)s. 볼륨 상태가 사용 가능 또는 사용 중이어야 합니다. "
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr ""
@@ -8142,9 +8003,6 @@ msgstr "gcs 옵션 설정 해제: %s"
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr "실패한 iscsiadm. 예외는 %(ex)s입니다. "
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "지원되지 않는 클러스터 데이터 ONTAP 버전입니다."
 
 msgid "Unsupported Content-Type"
 msgstr "지원되지 않는 Content-Type"
@@ -8331,22 +8189,6 @@ msgstr "%(vol1)s 볼륨이 snapshot.volume_id %(vol2)s과(와) 일치하지 않�
 
 #, python-format
 msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"볼륨 %(vol_id)s 상태가 사용 가능 또는 사용 중이어야 하지만 현재 상태가 "
-"%(vol_status)s입니다. "
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr ""
-"볼륨 %(vol_id)s 상태가 확장에 사용 가능 상태여야 하지만 현재 상태가 "
-"%(vol_status)s입니다. "
-
-#, python-format
-msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
@@ -8441,10 +8283,6 @@ msgid "Volume %s is already managed by OpenStack."
 msgstr "OpenStack에서 이미 볼륨 %s을(를) 관리합니다."
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "볼륨 %s은(는) 이미 활성 마이그레이션의 파트입니다."
-
-#, python-format
 msgid ""
 "Volume %s is not of replicated type. This volume needs to be of a volume "
 "type with the extra spec replication_enabled set to '<is> True' to support "
@@ -8471,14 +8309,6 @@ msgstr ""
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "볼륨 %s이(가) 일관성 그룹의 일부가 아니어야 합니다. "
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "볼륨 %s을(를) 복제하지 않아야 합니다. "
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "볼륨 %s에 스냅샷이 없어야 합니다. "
 
 #, python-format
 msgid "Volume %s not found."
@@ -8581,13 +8411,6 @@ msgid "Volume has children and cannot be deleted!"
 msgstr "볼륨에 하위가 있으므로 삭제할 수 없습니다!"
 
 #, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr "일관성 그룹 %s의 볼륨이 접속되었습니다. 먼저 분리해야 합니다."
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr "일관성 그룹의 볼륨에 아직 종속자 스냅샷이 있습니다."
-
-#, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr "볼륨이 서버에 연결됩니다(%s). "
 
@@ -8625,9 +8448,6 @@ msgstr "볼륨이 소스 볼륨과 동일한 가용성 구역에 있어야 함 "
 
 msgid "Volume must have a volume type"
 msgstr "볼륨에 볼륨 유형이 있어야 함"
-
-msgid "Volume must not be part of a consistency group."
-msgstr "볼륨은 일관성 그룹의 일부가 아니어야 합니다."
 
 msgid "Volume must not be replicated."
 msgstr "볼륨을 복제하지 않아야 합니다."
@@ -8720,9 +8540,6 @@ msgstr "볼륨 크기는 1GB의 배수여야 합니다. "
 msgid "Volume status for volume must be available, but current status is: %s"
 msgstr "볼륨의 볼륨 상태가 사용 가능이어야 하지만 현재 상태가 %s입니다."
 
-msgid "Volume status is in-use."
-msgstr "볼륨 상태가 사용 중입니다. "
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
@@ -8774,10 +8591,6 @@ msgid ""
 msgstr ""
 "%(volume_type_id)s / %(project_id)s 조합에 대한 볼륨 유형 액세스를 찾을 수 없"
 "습니다."
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr "볼륨 유형이 공유 %s과(와) 일치하지 않습니다. "
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."

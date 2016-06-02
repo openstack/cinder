@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-06-01 22:30+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -127,14 +127,6 @@ msgstr ""
 "一個服務使用。"
 
 #, python-format
-msgid "%(name)s has a minimum character requirement of %(min_length)s."
-msgstr "%(name)s 的字元數目下限必須是 %(min_length)s。"
-
-#, python-format
-msgid "%(name)s has more than %(max_length)s characters."
-msgstr "%(name)s 超過 %(max_length)s 個字元。"
-
-#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -194,10 +186,6 @@ msgstr "%s 不存在。"
 #, python-format
 msgid "%s is not a directory."
 msgstr "%s 不是目錄。"
-
-#, python-format
-msgid "%s is not a string or unicode"
-msgstr "%s 不是字串或 Unicode"
 
 #, python-format
 msgid "%s is not installed"
@@ -1235,18 +1223,12 @@ msgstr "無法更新 volume_type %(id)s"
 msgid "Cannot verify the existence of object:%(instanceName)s."
 msgstr "無法驗證物件 %(instanceName)s 是否存在。"
 
-msgid "Cascade option is not supported."
-msgstr "不支援連鎖選項。"
-
 #, python-format
 msgid "CgSnapshot %(cgsnapshot_id)s could not be found."
 msgstr "找不到 CgSnapshot %(cgsnapshot_id)s。"
 
 msgid "Cgsnahost is empty. No consistency group will be created."
 msgstr "Cgsnahost 是空的。將不會建立一致性群組。"
-
-msgid "Cgsnapshot status must be available or error"
-msgstr "CgSnapshot 狀態必須為可用或者錯誤"
 
 msgid "Change hostlun id error."
 msgstr "變更主機 LUN ID 時發生錯誤。"
@@ -1356,9 +1338,6 @@ msgstr "找不到配置。"
 msgid "Configuration value %s is not set."
 msgstr "未設定配置值 %s。"
 
-msgid "Configured host type is not supported."
-msgstr "不支援所配置的主機類型。"
-
 #, python-format
 msgid ""
 "Conflicting QoS specifications in volume type %s: when QoS spec is "
@@ -1384,28 +1363,8 @@ msgstr "連接器未提供：%s"
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "連接器沒有必要資訊：%(missing)s"
 
-#, python-format
-msgid ""
-"Consistency group %s still contains volumes. The force flag is required to "
-"delete it."
-msgstr "一致性群組 %s 仍包含磁區。需要強制旗標來將其刪除。"
-
-#, python-format
-msgid "Consistency group %s still has dependent cgsnapshots."
-msgstr "一致性群組 %s 仍具有相依 CgSnapshot。"
-
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "一致性群組是空的。將不建立 CgSnapshot。"
-
-#, python-format
-msgid ""
-"Consistency group status must be available or error, but current status is: "
-"%s"
-msgstr "一致性群組狀態必須為可用或錯誤，但現行狀態為：%s"
-
-#, python-format
-msgid "Consistency group status must be available, but current status is: %s."
-msgstr "一致性群組狀態必須為可用，但是現行狀態為：%s。"
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -1869,9 +1828,6 @@ msgstr "Describe-resource 是管理者專用功能"
 #, python-format
 msgid "Destination has migration_status %(stat)s, expected %(exp)s."
 msgstr "目的地具有 migration_status %(stat)s，預期狀態為 %(exp)s。"
-
-msgid "Destination host must be different than the current host."
-msgstr "目的地主機必須不同於現行主機。"
 
 msgid "Destination volume not mid-migration."
 msgstr "移轉期間找不到目的地磁區。"
@@ -3788,9 +3744,6 @@ msgstr "將新複製的 LUN 移至 %s 時失敗。"
 msgid "Failure staging LUN %s to tmp."
 msgstr "將 LUN %s 暫置到 tmp 時失敗。"
 
-msgid "Fatal error: User not permitted to query NetApp volumes."
-msgstr "嚴重錯誤：不允許使用者查詢 NetApp 磁區。"
-
 #, python-format
 msgid "Fexvisor failed to add volume %(id)s due to %(reason)s."
 msgstr "由於 %(reason)s，Fexvisor 無法新增磁區 %(id)s。"
@@ -4201,15 +4154,6 @@ msgstr "找不到 HPELeftHand URL"
 
 #, python-format
 msgid ""
-"HTTPS certificate verification was requested but cannot be enabled with "
-"purestorage module version %(version)s. Upgrade to a newer version to enable "
-"this feature."
-msgstr ""
-"已經要求 HTTPS 憑證驗證，但卻無法使用 purestorage 模組 %(version)s 版來啟用此"
-"驗證。請升級至更高版本以啟用此功能。"
-
-#, python-format
-msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
 "%(new)s. Old hash block size: %(old)s. Do a full backup."
 msgstr ""
@@ -4427,19 +4371,6 @@ msgstr "無效的 CgSnapshot：%(reason)s"
 msgid "Invalid ConsistencyGroup: %(reason)s"
 msgstr "無效的 ConsistencyGroup：%(reason)s"
 
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available or "
-"error, but current status is: in-use"
-msgstr ""
-"無效的 ConsistencyGroup：一致性群組狀態必須是「可用」或「錯誤」，但現行狀態卻"
-"是「使用中」"
-
-#, python-format
-msgid ""
-"Invalid ConsistencyGroup: Consistency group status must be available, but "
-"current status is: %s."
-msgstr "無效的一致性群組：一致性群組狀態必須為可用，但是現行狀態為：%s。"
-
 msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "無效的一致性群組：沒有用來建立一致性群組的主機"
 
@@ -4518,9 +4449,6 @@ msgstr ""
 "無效的 Barbican API URL：需要版本，例如 'http[s]://<ipaddr>|<fqdn>[:port]/"
 "<version>' URL，但指定的是：%s"
 
-msgid "Invalid cgsnapshot"
-msgstr "無效的 CgSnapshot"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr "在 CloudByte 儲存體中找到無效的 CHAP 使用者詳細資料。"
 
@@ -4592,9 +4520,6 @@ msgstr "映像檔 ID 無效，或無法存取所要求的映像檔。"
 
 msgid "Invalid imageRef provided."
 msgstr "提供的 imageRef 無效。"
-
-msgid "Invalid initiator value received"
-msgstr "所接收的起始器值無效"
 
 msgid "Invalid input"
 msgstr "無效的輸入"
@@ -4890,14 +4815,6 @@ msgstr "LUN 號碼 ({}) 不是整數。"
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
 msgstr "LUN 號碼已超出通道 ID %(ch_id)s 的範圍。"
-
-#, python-format
-msgid ""
-"LUN with given ref %(ref)s does not satisfy volume type. Ensure LUN volume "
-"with ssc features is present on vserver %(vs)s."
-msgstr ""
-"具有給定參照 %(ref)s 的 LUN 不滿足磁區類型。請確保具有 SSC 特性的 LUN 磁區存"
-"在於 vserver %(vs)s 上。"
 
 #, python-format
 msgid "Last %s cinder syslog entries:-"
@@ -5321,10 +5238,6 @@ msgstr "必須指定新的磁區類型。"
 msgid "New volume type not specified in request_spec."
 msgstr "request_spec 中沒有指定新的磁區類型。"
 
-#, python-format
-msgid "New volume_type same as original: %s."
-msgstr "新的 volume_type 與原始類型相同：%s。"
-
 msgid "Nimble Cinder Driver exception"
 msgstr "Nimble Cinder 驅動程式異常狀況"
 
@@ -5647,13 +5560,6 @@ msgid ""
 "%(volumename)s."
 msgstr "在「延伸」作業上，將磁區新增至下列複合磁區時發生錯誤：%(volumename)s。"
 
-msgid ""
-"One of cinder-volume services is too old to accept such request. Are you "
-"running mixed Liberty-Mitaka cinder-volumes?"
-msgstr ""
-"其中一個 Cinder 磁區服務太舊，無法接受此類要求。您要執行混合 Liberty-Mitaka "
-"Cinder 磁區嗎？"
-
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr "找不到來自主機的其中一個必需輸入、埠或綱目。"
 
@@ -5965,9 +5871,6 @@ msgstr "參照必須是受管理之 Snapshot 的名稱。"
 msgid "Reference must be the volume name of an unmanaged virtual volume."
 msgstr "參照必須是未受管理虛擬磁區的磁區名稱。"
 
-msgid "Reference must contain either source-id or source-name element."
-msgstr "參照必須包含 source-id 或 source-name 元素。"
-
 msgid "Reference must contain either source-name or source-id element."
 msgstr "參照必須包含 source-name 或 source-id 元素。"
 
@@ -6209,13 +6112,6 @@ msgstr "已超出指令 %s 的重試次數"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "發生「可重試的 SolidFire 異常狀況」"
 
-msgid "Retype cannot change encryption requirements."
-msgstr "Retype 無法變更加密需求。"
-
-#, python-format
-msgid "Retype cannot change front-end qos specs for in-use volume: %s."
-msgstr "Retype 無法變更使用中磁區的前端服務品質規格：%s。"
-
 msgid "Retype requires migration but is not allowed."
 msgstr "Retype 需要移轉，但系統不容許。"
 
@@ -6323,9 +6219,6 @@ msgstr "服務太舊，無法滿足此要求。"
 
 msgid "Service is unavailable at this time."
 msgstr "此時無法使用服務。"
-
-msgid "Service not found."
-msgstr "找不到服務。"
 
 msgid "Set pair secondary access error."
 msgstr "設定配對次要存取時發生錯誤。"
@@ -6481,14 +6374,6 @@ msgstr "需要來源磁區裝置 ID。"
 
 msgid "Source volume not mid-migration."
 msgstr "移轉期間找不到來源磁區。"
-
-#, python-format
-msgid ""
-"Source with host ip/name: %s not found on the target appliance for backend "
-"enabled volume migration, procedding with default migration."
-msgstr ""
-"在目標軟體驅動裝置上，找不到主機 IP/名稱為 %s 的來源（用於支援後端的磁區移"
-"轉），將使用預設移轉繼續執行。"
 
 msgid "SpaceInfo returned byarray is invalid"
 msgstr "陣列傳回的 SpaceInfo 無效"
@@ -6998,14 +6883,6 @@ msgstr "磁區目前在 3PAR 上正忙，因此此時無法將其刪除。您可
 
 msgid "The volume label is required as input."
 msgstr "需要磁區標籤作為輸入。"
-
-msgid ""
-"The volume metadata cannot be deleted when the volume is in maintenance mode."
-msgstr "當磁區處於維護模式時，無法刪除磁區 meta 資料。"
-
-msgid ""
-"The volume metadata cannot be updated when the volume is in maintenance mode."
-msgstr "當磁區處於維護模式時，無法更新磁區 meta 資料。"
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -7571,14 +7448,6 @@ msgstr "無法更新一致性群組 %s"
 
 #, python-format
 msgid ""
-"Unable to update type due to incorrect status: %(vol_status)s on volume: "
-"%(vol_id)s. Volume status must be available or in-use."
-msgstr ""
-"無法更新類型，因為磁區 %(vol_id)s 的狀態 %(vol_status)s 不正確。磁區狀態必須"
-"為可用或使用中。"
-
-#, python-format
-msgid ""
 "Unable to verify initiator group: %(igGroupName)s in masking view "
 "%(maskingViewName)s. "
 msgstr ""
@@ -7723,9 +7592,6 @@ msgstr "取消設定 gcs 選項：%s"
 #, python-format
 msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
 msgstr "iscsiadm 不成功。異常狀況為 %(ex)s。"
-
-msgid "Unsupported Clustered Data ONTAP version."
-msgstr "不支援的叢集資料 ONTAP 版本。"
 
 msgid "Unsupported Content-Type"
 msgstr "不支援的內容類型"
@@ -7898,18 +7764,6 @@ msgstr "磁區 %(vol1)s 與 snapshot.volume_id %(vol2)s 不符。"
 
 #, python-format
 msgid ""
-"Volume %(vol_id)s status must be available or in-use, but current status is: "
-"%(vol_status)s."
-msgstr "磁區 %(vol_id)s 狀態必須為可用或使用中，但是現行狀態為%(vol_status)s。"
-
-#, python-format
-msgid ""
-"Volume %(vol_id)s status must be available to extend, but current status is: "
-"%(vol_status)s."
-msgstr "磁區 %(vol_id)s 狀態必須為可用才能延伸，但是現行狀態為%(vol_status)s。"
-
-#, python-format
-msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
@@ -7998,10 +7852,6 @@ msgid "Volume %s is already managed by OpenStack."
 msgstr "磁區 %s 已經由 OpenStack 進行管理。"
 
 #, python-format
-msgid "Volume %s is already part of an active migration."
-msgstr "磁區 %s 已經是作用中移轉的一部分。"
-
-#, python-format
 msgid ""
 "Volume %s is not of replicated type. This volume needs to be of a volume "
 "type with the extra spec replication_enabled set to '<is> True' to support "
@@ -8024,14 +7874,6 @@ msgstr "磁區 %s 不得在移轉中、已連接、屬於某個一致性群組�
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "磁區 %s 不得為一致性群組的一部分。"
-
-#, python-format
-msgid "Volume %s must not be replicated."
-msgstr "不得抄寫磁區 %s。"
-
-#, python-format
-msgid "Volume %s must not have snapshots."
-msgstr "磁區 %s 不得具有 Snapshot。"
 
 #, python-format
 msgid "Volume %s not found."
@@ -8132,13 +7974,6 @@ msgid "Volume has children and cannot be deleted!"
 msgstr "磁區具有子項，且無法予以刪除！"
 
 #, python-format
-msgid "Volume in consistency group %s is attached. Need to detach first."
-msgstr "已連接一致性群組 %s 中的磁區。需要先將其分離。"
-
-msgid "Volume in consistency group still has dependent snapshots."
-msgstr "一致性群組中的磁區仍具有相依 Snapshot。"
-
-#, python-format
 msgid "Volume is attached to a server.  (%s)"
 msgstr "已將磁區連接至伺服器。(%s)"
 
@@ -8174,9 +8009,6 @@ msgstr "磁區和來源磁區必須位在同一個可用性區域中"
 
 msgid "Volume must have a volume type"
 msgstr "磁區必須具有磁區類型"
-
-msgid "Volume must not be part of a consistency group."
-msgstr "磁區不得隸屬於一致性群組。"
 
 msgid "Volume must not be replicated."
 msgstr "不得抄寫磁區。"
@@ -8267,9 +8099,6 @@ msgstr "磁區大小必須是 1 GB 的倍數。"
 msgid "Volume status for volume must be available, but current status is: %s"
 msgstr "磁區的磁區狀態必須為可用，但是現行狀態為：%s"
 
-msgid "Volume status is in-use."
-msgstr "磁區狀態為使用中。"
-
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr "對於 Snapshot，磁區狀態必須為「可用」或「使用中」。（是 %s）"
@@ -8315,10 +8144,6 @@ msgid ""
 "Volume type access not found for %(volume_type_id)s / %(project_id)s "
 "combination."
 msgstr "找不到 %(volume_type_id)s / %(project_id)s 組合的磁區類型存取。"
-
-#, python-format
-msgid "Volume type does not match for share %s."
-msgstr "共用 %s 的磁區類型不符。"
 
 #, python-format
 msgid "Volume type encryption for type %(type_id)s already exists."
