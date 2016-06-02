@@ -205,6 +205,36 @@ class ConsistencyGroupsController(wsgi.Controller):
         retval = self._view_builder.summary(req, new_consistencygroup)
         return retval
 
+    def _check_update_parameters(self, name, description, add_volumes,
+                                 remove_volumes):
+        if not (name or description or add_volumes or remove_volumes):
+            msg = _("Name, description, add_volumes, and remove_volumes "
+                    "can not be all empty in the request body.")
+            raise exc.HTTPBadRequest(explanation=msg)
+
+    def _update(self, context, id, name, description, add_volumes,
+                remove_volumes,
+                allow_empty=False):
+        LOG.info(_LI("Updating consistency group %(id)s with name %(name)s "
+                     "description: %(description)s add_volumes: "
+                     "%(add_volumes)s remove_volumes: %(remove_volumes)s."),
+                 {'id': id,
+                  'name': name,
+                  'description': description,
+                  'add_volumes': add_volumes,
+                  'remove_volumes': remove_volumes},
+                 context=context)
+
+        try:
+            group = self.consistencygroup_api.get(context, id)
+            self.consistencygroup_api.update(
+                context, group, name, description,
+                add_volumes, remove_volumes, allow_empty)
+        except exception.ConsistencyGroupNotFound as error:
+            raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.InvalidConsistencyGroup as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+
     def update(self, req, id, body):
         """Update the consistency group.
 
@@ -224,14 +254,12 @@ class ConsistencyGroupsController(wsgi.Controller):
 
         """
         LOG.debug('Update called for consistency group %s.', id)
-
         if not body:
             msg = _("Missing request body.")
             raise exc.HTTPBadRequest(explanation=msg)
 
         self.assert_valid_body(body, 'consistencygroup')
         context = req.environ['cinder.context']
-
         consistencygroup = body.get('consistencygroup', None)
         self.validate_name_and_description(consistencygroup)
         name = consistencygroup.get('name', None)
@@ -239,31 +267,10 @@ class ConsistencyGroupsController(wsgi.Controller):
         add_volumes = consistencygroup.get('add_volumes', None)
         remove_volumes = consistencygroup.get('remove_volumes', None)
 
-        if (not name and not description and not add_volumes
-                and not remove_volumes):
-            msg = _("Name, description, add_volumes, and remove_volumes "
-                    "can not be all empty in the request body.")
-            raise exc.HTTPBadRequest(explanation=msg)
-
-        LOG.info(_LI("Updating consistency group %(id)s with name %(name)s "
-                     "description: %(description)s add_volumes: "
-                     "%(add_volumes)s remove_volumes: %(remove_volumes)s."),
-                 {'id': id, 'name': name,
-                  'description': description,
-                  'add_volumes': add_volumes,
-                  'remove_volumes': remove_volumes},
-                 context=context)
-
-        try:
-            group = self.consistencygroup_api.get(context, id)
-            self.consistencygroup_api.update(
-                context, group, name, description,
-                add_volumes, remove_volumes)
-        except exception.ConsistencyGroupNotFound as error:
-            raise exc.HTTPNotFound(explanation=error.msg)
-        except exception.InvalidConsistencyGroup as error:
-            raise exc.HTTPBadRequest(explanation=error.msg)
-
+        self._check_update_parameters(name, description, add_volumes,
+                                      remove_volumes)
+        self._update(context, id, name, description, add_volumes,
+                     remove_volumes)
         return webob.Response(status_int=202)
 
 

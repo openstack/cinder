@@ -453,16 +453,25 @@ class API(base.Base):
         self.volume_rpcapi.delete_consistencygroup(context, group)
 
     def _check_update(self, group, name, description, add_volumes,
-                      remove_volumes):
-        if not (name or description or add_volumes or remove_volumes):
-            msg = (_("Cannot update consistency group %(group_id)s "
-                     "because no valid name, description, add_volumes, "
-                     "or remove_volumes were provided.") %
-                   {'group_id': group.id})
-            raise exception.InvalidConsistencyGroup(reason=msg)
+                      remove_volumes, allow_empty=False):
+        if allow_empty:
+            if (name is None and description is None
+                    and not add_volumes and not remove_volumes):
+                msg = (_("Cannot update consistency group %(group_id)s "
+                         "because no valid name, description, add_volumes, "
+                         "or remove_volumes were provided.") %
+                       {'group_id': group.id})
+                raise exception.InvalidConsistencyGroup(reason=msg)
+        else:
+            if not (name or description or add_volumes or remove_volumes):
+                msg = (_("Cannot update consistency group %(group_id)s "
+                         "because no valid name, description, add_volumes, "
+                         "or remove_volumes were provided.") %
+                       {'group_id': group.id})
+                raise exception.InvalidConsistencyGroup(reason=msg)
 
     def update(self, context, group, name, description,
-               add_volumes, remove_volumes):
+               add_volumes, remove_volumes, allow_empty=False):
         """Update consistency group."""
         add_volumes_list = []
         remove_volumes_list = []
@@ -489,18 +498,23 @@ class API(base.Base):
         # Validate description.
         if description == group.description:
             description = None
-
         self._check_update(group, name, description, add_volumes,
-                           remove_volumes)
+                           remove_volumes, allow_empty)
 
         fields = {'updated_at': timeutils.utcnow()}
 
         # Update name and description in db now. No need to
         # to send them over through an RPC call.
-        if name:
-            fields['name'] = name
-        if description:
-            fields['description'] = description
+        if allow_empty:
+            if name is not None:
+                fields['name'] = name
+            if description is not None:
+                fields['description'] = description
+        else:
+            if name:
+                fields['name'] = name
+            if description:
+                fields['description'] = description
 
         # NOTE(geguileo): We will use the updating status in the CG as a lock
         # mechanism to prevent volume add/remove races with other API, while we
@@ -531,7 +545,7 @@ class API(base.Base):
                 group.volumes, remove_volumes_list, group)
 
             self._check_update(group, name, description, add_volumes_new,
-                               remove_volumes_new)
+                               remove_volumes_new, allow_empty)
         except Exception:
             # If we have an error on the volume_lists we must return status to
             # available as we were doing before removing API races

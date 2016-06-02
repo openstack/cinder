@@ -64,3 +64,8 @@ user documentation.
 3.5
 ---
   Added pagination support to /messages API
+
+3.6
+---
+  Allowed to set empty description and empty name for consistency
+  group in consisgroup-update operation.
