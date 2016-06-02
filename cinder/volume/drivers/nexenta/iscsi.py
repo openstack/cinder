@@ -663,7 +663,10 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
             self.configuration.nexenta_volume, 'health|size|used|available')
 
         total_amount = utils.str2gib_size(stats['size'])
-        free_amount = utils.str2gib_size(stats['available'])
+        if self.configuration.nexenta_sparse:
+            free_amount = 'unknown'
+        else:
+            free_amount = utils.str2gib_size(stats['available'])
 
         location_info = '%(driver)s:%(host)s:%(volume)s' % {
             'driver': self.__class__.__name__,
