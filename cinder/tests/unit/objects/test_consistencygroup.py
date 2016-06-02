@@ -19,6 +19,7 @@ from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
 fake_consistencygroup = {
@@ -183,6 +184,21 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
             mock.call(
                 self.context,
                 fake.CONSISTENCY_GROUP_ID)])
+
+    def test_from_db_object_with_all_expected_attributes(self):
+        expected_attrs = ['volumes', 'cgsnapshots']
+        db_volumes = [fake_volume.fake_db_volume(admin_metadata={},
+                                                 volume_metadata={})]
+        db_cgsnaps = [fake_cgsnapshot.copy()]
+        db_cg = fake_consistencygroup.copy()
+        db_cg['volumes'] = db_volumes
+        db_cg['cgsnapshots'] = db_cgsnaps
+        cg = objects.ConsistencyGroup._from_db_object(
+            self.context, objects.ConsistencyGroup(), db_cg, expected_attrs)
+        self.assertEqual(len(db_volumes), len(cg.volumes))
+        self._compare(self, db_volumes[0], cg.volumes[0])
+        self.assertEqual(len(db_cgsnaps), len(cg.cgsnapshots))
+        self._compare(self, db_cgsnaps[0], cg.cgsnapshots[0])
 
 
 class TestConsistencyGroupList(test_objects.BaseObjectsTestCase):
