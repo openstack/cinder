@@ -225,6 +225,7 @@ FAKE_CREATE_VOLUME_RESPONSE = {"ID": "1",
                                "WWN": '6643e8c1004c5f6723e9f454003'}
 
 FakeConnector = {'initiator': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
+                 'multipath': False,
                  'wwpns': ['10000090fa0d6754'],
                  'wwnns': ['10000090fa0d6755'],
                  'host': 'ubuntuc',
@@ -522,17 +523,18 @@ FAKE_GET_SNAPSHOT_INFO_RESPONSE = """
 """
 
 # A fake response of get iscsi response
+
 FAKE_GET_ISCSI_INFO_RESPONSE = """
 {
     "data": [{
         "ETHPORTID": "139267",
-        "ID": "iqn.oceanstor:21004846fb8ca15f::22003:192.0.2.244",
-        "TPGT": "8196",
+        "ID": "0+iqn.oceanstor:21004846fb8ca15f::22004:192.0.2.1,t,0x2005",
+        "TPGT": "8197",
         "TYPE": 249
     },
     {
         "ETHPORTID": "139268",
-        "ID": "iqn.oceanstor:21004846fb8ca15f::22003:192.0.2.244",
+        "ID": "1+iqn.oceanstor:21004846fb8ca15f::22003:192.0.2.2,t,0x2004",
         "TPGT": "8196",
         "TYPE": 249
     }
@@ -2126,10 +2128,134 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.assertEqual(driver_data, model_update['replication_driver_data'])
         self.assertEqual('available', model_update['replication_status'])
 
-    def test_initialize_connection_success(self):
+    def test_initialize_connection_success_multipath_portgroup(self):
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        self.mock_object(rest_client.RestClient, 'get_tgt_port_group',
+                         mock.Mock(return_value = '11'))
         iscsi_properties = self.driver.initialize_connection(test_volume,
-                                                             FakeConnector)
-        self.assertEqual(1, iscsi_properties['data']['target_lun'])
+                                                             temp_connector)
+        self.assertEqual([1, 1], iscsi_properties['data']['target_luns'])
+
+    def test_initialize_connection_fail_multipath_portgroup(self):
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        self.mock_object(rest_client.RestClient, 'get_tgt_port_group',
+                         mock.Mock(return_value = '12'))
+        self.mock_object(rest_client.RestClient, '_get_tgt_ip_from_portgroup',
+                         mock.Mock(return_value = []))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.initialize_connection,
+                          test_volume, temp_connector)
+
+    def test_initialize_connection_success_multipath_targetip(self):
+        iscsi_info = [{'Name': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
+                       'TargetIP': '192.0.2.2',
+                       'CHAPinfo': 'mm-user;mm-user@storage',
+                       'ALUA': '1'}]
+
+        configuration = mock.Mock(spec = conf.Configuration)
+        configuration.hypermetro_devices = hypermetro_devices
+        self.mock_object(time, 'sleep', Fake_sleep)
+        driver = FakeISCSIStorage(configuration = self.configuration)
+        driver.do_setup()
+        driver.configuration.iscsi_info = iscsi_info
+        driver.client.iscsi_info = iscsi_info
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        iscsi_properties = driver.initialize_connection(test_volume,
+                                                        temp_connector)
+        self.assertEqual([1], iscsi_properties['data']['target_luns'])
+
+    def test_initialize_connection_fail_multipath_targetip(self):
+        iscsi_info = [{'Name': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
+                       'TargetIP': '192.0.2.6',
+                       'CHAPinfo': 'mm-user;mm-user@storage',
+                       'ALUA': '1'}]
+
+        configuration = mock.Mock(spec = conf.Configuration)
+        configuration.hypermetro_devices = hypermetro_devices
+        self.mock_object(time, 'sleep', Fake_sleep)
+        driver = FakeISCSIStorage(configuration = self.configuration)
+        driver.do_setup()
+        driver.configuration.iscsi_info = iscsi_info
+        driver.client.iscsi_info = iscsi_info
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          driver.initialize_connection,
+                          test_volume, temp_connector)
+
+    def test_initialize_connection_success_multipath_defaultip(self):
+        iscsi_info = [{'Name': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
+                       'CHAPinfo': 'mm-user;mm-user@storage',
+                       'ALUA': '1'}]
+        default_target_ip = ['192.0.2.2']
+        configuration = mock.Mock(spec = conf.Configuration)
+        configuration.hypermetro_devices = hypermetro_devices
+        self.mock_object(time, 'sleep', Fake_sleep)
+        driver = FakeISCSIStorage(configuration = self.configuration)
+        driver.do_setup()
+        driver.configuration.iscsi_info = iscsi_info
+        driver.client.iscsi_info = iscsi_info
+        driver.configuration.iscsi_default_target_ip = default_target_ip
+        driver.client.iscsi_default_target_ip = default_target_ip
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        iscsi_properties = driver.initialize_connection(test_volume,
+                                                        temp_connector)
+        self.assertEqual([1], iscsi_properties['data']['target_luns'])
+
+    def test_initialize_connection_fail_multipath_defaultip(self):
+        iscsi_info = [{'Name': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
+                       'CHAPinfo': 'mm-user;mm-user@storage',
+                       'ALUA': '1'}]
+
+        default_target_ip = ['192.0.2.6']
+        configuration = mock.Mock(spec = conf.Configuration)
+        configuration.hypermetro_devices = hypermetro_devices
+        self.mock_object(time, 'sleep', Fake_sleep)
+        driver = FakeISCSIStorage(configuration = self.configuration)
+        driver.do_setup()
+        driver.configuration.iscsi_info = iscsi_info
+        driver.client.iscsi_info = iscsi_info
+        driver.configuration.iscsi_default_target_ip = default_target_ip
+        driver.client.iscsi_default_target_ip = default_target_ip
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          driver.initialize_connection,
+                          test_volume, temp_connector)
+
+    def test_initialize_connection_fail_no_port_in_portgroup(self):
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        self.mock_object(rest_client.RestClient, 'get_tgt_port_group',
+                         mock.Mock(return_value = '11'))
+        self.mock_object(rest_client.RestClient, '_get_tgt_ip_from_portgroup',
+                         mock.Mock(return_value = []))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.initialize_connection,
+                          test_volume, temp_connector)
+
+    def test_initialize_connection_fail_multipath_no_ip(self):
+        iscsi_info = [{'Name': 'iqn.1993-08.debian:01:ec2bff7ac3a3',
+                       'CHAPinfo': 'mm-user;mm-user@storage',
+                       'ALUA': '1'}]
+        configuration = mock.Mock(spec = conf.Configuration)
+        configuration.hypermetro_devices = hypermetro_devices
+        self.mock_object(time, 'sleep', Fake_sleep)
+        driver = FakeISCSIStorage(configuration = self.configuration)
+        driver.do_setup()
+        driver.configuration.iscsi_info = iscsi_info
+        driver.client.iscsi_info = iscsi_info
+        driver.configuration.iscsi_default_target_ip = None
+        driver.client.iscsi_default_target_ip = None
+        temp_connector = copy.deepcopy(FakeConnector)
+        temp_connector['multipath'] = True
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          driver.initialize_connection,
+                          test_volume, temp_connector)
 
     def test_terminate_connection_success(self):
         self.driver.terminate_connection(test_volume, FakeConnector)

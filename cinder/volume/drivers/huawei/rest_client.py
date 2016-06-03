@@ -1213,21 +1213,61 @@ class RestClient(object):
     def get_iscsi_params(self, connector):
         """Get target iSCSI params, including iqn, IP."""
         initiator = connector['initiator']
+        multipath = connector['multipath']
         target_ips = []
         target_iqns = []
+        temp_tgt_ips = []
         portgroup = None
         portgroup_id = None
+
+        if multipath:
+            for ini in self.iscsi_info:
+                if ini['Name'] == initiator:
+                    portgroup = ini.get('TargetPortGroup')
+            if portgroup:
+                portgroup_id = self.get_tgt_port_group(portgroup)
+                temp_tgt_ips = self._get_tgt_ip_from_portgroup(portgroup_id)
+                valid_port_info = self._get_tgt_port_ip_from_rest()
+                valid_tgt_ips = valid_port_info
+
+                for ip in temp_tgt_ips:
+                    if ip in valid_tgt_ips:
+                        target_ips.append(ip)
+
+                if not target_ips:
+                    msg = (_(
+                        'get_iscsi_params: No valid port in portgroup. '
+                        'portgroup_id: %(id)s, please check it on storage.')
+                        % {'id': portgroup_id})
+                    LOG.error(msg)
+                    raise exception.VolumeBackendAPIException(data=msg)
+
+            else:
+                target_ips = self._get_target_ip(initiator)
+
+        else:
+            target_ips = self._get_target_ip(initiator)
+
+        # Deal with the remote tgt ip.
+        if 'remote_target_ip' in connector:
+            target_ips.append(connector['remote_target_ip'])
+        LOG.info(_LI('Get the default ip: %s.'), target_ips)
+
+        for ip in target_ips:
+            target_iqn = self._get_tgt_iqn_from_rest(ip)
+            if not target_iqn:
+                target_iqn = self._get_tgt_iqn(ip)
+            if target_iqn:
+                target_iqns.append(target_iqn)
+
+        return (target_iqns, target_ips, portgroup_id)
+
+    def _get_target_ip(self, initiator):
+        target_ips = []
         for ini in self.iscsi_info:
             if ini['Name'] == initiator:
-                for key in ini:
-                    if key == 'TargetPortGroup':
-                        portgroup = ini['TargetPortGroup']
-                    elif key == 'TargetIP':
-                        target_ips.append(ini['TargetIP'])
-
-        if portgroup:
-            portgroup_id = self.get_tgt_port_group(portgroup)
-            target_ips = self._get_tgt_ip_from_portgroup(portgroup_id)
+                if ini.get('TargetIP'):
+                    target_ips.append(ini.get('TargetIP'))
 
         # If not specify target IP for some initiators, use default IP.
         if not target_ips:
@@ -1241,20 +1281,42 @@ class RestClient(object):
                     'for initiator %(ini)s, please check config file.')
                     % {'ini': initiator})
                 LOG.error(msg)
-                raise exception.InvalidInput(reason=msg)
+                raise exception.VolumeBackendAPIException(data=msg)
 
-        # Deal with the remote tgt ip.
-        if 'remote_target_ip' in connector:
-            target_ips.append(connector['remote_target_ip'])
-        LOG.info(_LI('Get the default ip: %s.'), target_ips)
-        for ip in target_ips:
-            target_iqn = self._get_tgt_iqn_from_rest(ip)
-            if not target_iqn:
-                target_iqn = self._get_tgt_iqn(ip)
-            if target_iqn:
-                target_iqns.append(target_iqn)
+        return target_ips
 
-        return (target_iqns, target_ips, portgroup_id)
+    def _get_tgt_port_ip_from_rest(self):
+        url = "/iscsi_tgt_port"
+        result = self.call(url, None, "GET")
+        info_list = []
+        target_ips = []
+        if result['error']['code'] != 0:
+            LOG.warning(_LW("Can't find target port info from rest."))
+            return target_ips
+
+        elif not result['data']:
+            msg = (_(
+                "Can't find valid IP from rest, please check it on storage."))
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data = msg)
+
+        if 'data' in result:
+            for item in result['data']:
+                info_list.append(item['ID'])
+
+        if not info_list:
+            LOG.warning(_LW("Can't find target port info from rest."))
+            return target_ips
+
+        for info in info_list:
+            split_list = info.split(",")
+            info_before = split_list[0]
+            iqn_info = info_before.split("+")
+            target_iqn = iqn_info[1]
+            ip_info = target_iqn.split(":")
+            target_ip = ip_info[-1]
+            target_ips.append(target_ip)
+        return target_ips
 
     def _get_tgt_iqn_from_rest(self, target_ip):
         url = "/iscsi_tgt_port"
