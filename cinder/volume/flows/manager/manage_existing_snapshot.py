@@ -17,7 +17,6 @@ from oslo_log import log as logging
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
-from taskflow.utils import misc
 
 from cinder import exception
 from cinder import flow_utils
@@ -57,7 +56,7 @@ class ExtractSnapshotRefTask(flow_utils.CinderTask):
         return snapshot_ref
 
     def revert(self, context, snapshot_id, result, **kwargs):
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         flow_common.error_out_snapshot(context, self.db, snapshot_id)
@@ -162,7 +161,7 @@ class QuotaReserveTask(flow_utils.CinderTask):
 
     def revert(self, context, result, optional_args, **kwargs):
         # We never produced a result and therefore can't destroy anything.
-        if isinstance(result, misc.Failure):
+        if isinstance(result, ft.Failure):
             return
 
         if optional_args['is_quota_committed']:
