@@ -15,6 +15,7 @@
 Volume driver test for Tintri storage.
 """
 
+import ddt
 import mock
 
 from oslo_utils import units
@@ -40,6 +41,7 @@ class FakeImage(object):
         return self.__dict__[key]
 
 
+@ddt.ddt
 class TintriDriverTestCase(test.TestCase):
     def setUp(self):
         super(TintriDriverTestCase, self).setUp()
@@ -250,14 +252,16 @@ class TintriDriverTestCase(test.TestCase):
                               self._driver.manage_existing,
                               volume, existing)
 
-    def test_manage_existing_get_size(self):
+    @ddt.data((123, 123), (123.5, 124))
+    @ddt.unpack
+    def test_manage_existing_get_size(self, st_size, exp_size):
         volume = fake_volume.fake_volume_obj(self.context)
         existing = {'source-name': self._provider_location + '/' +
                     volume.name}
-        file = mock.Mock(st_size=123 * units.Gi)
+        file = mock.Mock(st_size=int(st_size * units.Gi))
         with mock.patch('os.path.isfile', return_value=True):
             with mock.patch('os.stat', return_value=file):
-                self.assertEqual(float(file.st_size / units.Gi),
+                self.assertEqual(exp_size,
                                  self._driver.manage_existing_get_size(
                                      volume, existing))
 
