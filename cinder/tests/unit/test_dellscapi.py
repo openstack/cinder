@@ -14,6 +14,7 @@
 
 import ddt
 import mock
+import requests
 from requests import models
 import uuid
 
@@ -6853,3 +6854,190 @@ class DellSCSanAPIConnectionTestCase(test.TestCase):
                                       mock_post):
         self.scapi.close_connection()
         self.assertTrue(mock_post.called)
+
+
+class DellHttpClientTestCase(test.TestCase):
+
+    """DellSCSanAPIConnectionTestCase
+
+    Class to test the Storage Center API connection using Mock.
+    """
+
+    ASYNCTASK = {"state": "Running",
+                 "methodName": "GetScUserPreferencesDefaults",
+                 "error": "",
+                 "started": True,
+                 "userName": "",
+                 "localizedError": "",
+                 "returnValue": "https://localhost:3033/api/rest/"
+                                "ApiConnection/AsyncTask/1418394170395",
+                 "storageCenter": 0,
+                 "errorState": "None",
+                 "successful": False,
+                 "stepMessage": "Running Method [Object: ScUserPreferences] "
+                                "[Method: GetScUserPreferencesDefaults]",
+                 "localizedStepMessage": "",
+                 "warningList": [],
+                 "totalSteps": 2,
+                 "timeFinished": "1969-12-31T18:00:00-06:00",
+                 "timeStarted": "2015-01-07T14:07:10-06:00",
+                 "currentStep": 1,
+                 "objectTypeName": "ScUserPreferences",
+                 "objectType": "AsyncTask",
+                 "instanceName": "1418394170395",
+                 "instanceId": "1418394170395"}
+
+    # Create a Response object that indicates OK
+    response_ok = models.Response()
+    response_ok.status_code = 200
+    response_ok.reason = u'ok'
+    RESPONSE_200 = response_ok
+
+    # Create a Response object with no content
+    response_nc = models.Response()
+    response_nc.status_code = 204
+    response_nc.reason = u'duplicate'
+    RESPONSE_204 = response_nc
+
+    # Create a Response object is a pure error.
+    response_bad = models.Response()
+    response_bad.status_code = 400
+    response_bad.reason = u'bad request'
+    RESPONSE_400 = response_bad
+
+    def setUp(self):
+        super(DellHttpClientTestCase, self).setUp()
+        self.host = 'localhost'
+        self.port = '3033'
+        self.user = 'johnnyuser'
+        self.password = 'password'
+        self.verify = False
+        self.apiversion = '3.1'
+        self.httpclient = dell_storagecenter_api.HttpClient(
+            self.host, self.port, self.user, self.password,
+            self.verify, self.apiversion)
+
+    def test_get_async_url(self):
+        url = self.httpclient._get_async_url(self.ASYNCTASK)
+        self.assertEqual('api/rest/ApiConnection/AsyncTask/1418394170395', url)
+
+    def test_get_async_url_no_id_on_url(self):
+        badTask = self.ASYNCTASK.copy()
+        badTask['returnValue'] = ('https://localhost:3033/api/rest/'
+                                  'ApiConnection/AsyncTask/')
+        url = self.httpclient._get_async_url(badTask)
+        self.assertEqual('api/rest/ApiConnection/AsyncTask/1418394170395', url)
+
+    def test_get_async_url_none(self):
+        self.assertRaises(AttributeError, self.httpclient._get_async_url, None)
+
+    def test_get_async_url_no_id(self):
+        badTask = self.ASYNCTASK.copy()
+        badTask['returnValue'] = ('https://localhost:3033/api/rest/'
+                                  'ApiConnection/AsyncTask/')
+        badTask['instanceId'] = ''
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.httpclient._get_async_url, badTask)
+
+    def test_rest_ret(self):
+        rest_response = self.RESPONSE_200
+        response = self.httpclient._rest_ret(rest_response, False)
+        self.assertEqual(self.RESPONSE_200, response)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       '_wait_for_async_complete',
+                       return_value=RESPONSE_200)
+    def test_rest_ret_async(self,
+                            mock_wait_for_async_complete):
+        mock_rest_response = mock.MagicMock()
+        mock_rest_response.status_code = 202
+        response = self.httpclient._rest_ret(mock_rest_response, True)
+        self.assertEqual(self.RESPONSE_200, response)
+        self.assertTrue(mock_wait_for_async_complete.called)
+
+    def test_rest_ret_async_error(self):
+        mock_rest_response = mock.MagicMock()
+        mock_rest_response.status_code = 400
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.httpclient._rest_ret, mock_rest_response, True)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_wait_for_async_complete(self,
+                                     mock_get):
+        ret = self.httpclient._wait_for_async_complete(self.ASYNCTASK)
+        self.assertEqual(self.RESPONSE_200, ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       '_get_async_url',
+                       return_value=None)
+    def test_wait_for_async_complete_bad_url(self,
+                                             mock_get_async_url):
+        ret = self.httpclient._wait_for_async_complete(self.ASYNCTASK)
+        self.assertIsNone(ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_400)
+    def test_wait_for_async_complete_bad_result(self,
+                                                mock_get):
+        ret = self.httpclient._wait_for_async_complete(self.ASYNCTASK)
+        self.assertEqual(self.RESPONSE_400, ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_wait_for_async_complete_loop(self,
+                                          mock_get):
+        mock_response = mock.MagicMock()
+        mock_response.content = mock.MagicMock()
+        mock_response.json = mock.MagicMock()
+        mock_response.json.side_effect = [self.ASYNCTASK,
+                                          {'objectType': 'ScVol'}]
+        ret = self.httpclient._wait_for_async_complete(self.ASYNCTASK)
+        self.assertEqual(self.RESPONSE_200, ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    def test_wait_for_async_complete_get_raises(self,
+                                                mock_get):
+        mock_get.side_effect = (exception.DellDriverRetryableException())
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.httpclient._wait_for_async_complete,
+                          self.ASYNCTASK)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       '_rest_ret',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(requests.Session,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_get(self,
+                 mock_get,
+                 mock_rest_ret):
+        ret = self.httpclient.get('url', False)
+        self.assertEqual(self.RESPONSE_200, ret)
+        mock_rest_ret.assert_called_once_with(self.RESPONSE_200, False)
+        expected_headers = self.httpclient.header.copy()
+        mock_get.assert_called_once_with('https://localhost:3033/api/rest/url',
+                                         headers=expected_headers,
+                                         verify=False)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       '_rest_ret',
+                       return_value=RESPONSE_200)
+    @mock.patch.object(requests.Session,
+                       'get',
+                       return_value=RESPONSE_200)
+    def test_get_async(self,
+                       mock_get,
+                       mock_rest_ret):
+        ret = self.httpclient.get('url', True)
+        self.assertEqual(self.RESPONSE_200, ret)
+        mock_rest_ret.assert_called_once_with(self.RESPONSE_200, True)
+        expected_headers = self.httpclient.header.copy()
+        expected_headers['async'] = True
+        mock_get.assert_called_once_with('https://localhost:3033/api/rest/url',
+                                         headers=expected_headers,
+                                         verify=False)

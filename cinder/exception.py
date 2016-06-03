@@ -787,6 +787,11 @@ class VolumeDeviceNotFound(CinderException):
 
 
 # Driver specific exceptions
+# Dell
+class DellDriverRetryableException(VolumeBackendAPIException):
+    message = _("Retryable Dell Exception encountered")
+
+
 # Pure Storage
 class PureDriverException(VolumeDriverException):
     message = _("Pure Storage Cinder driver failure: %(reason)s")

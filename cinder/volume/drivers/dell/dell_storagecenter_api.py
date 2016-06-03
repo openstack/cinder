@@ -87,7 +87,7 @@ class HttpClient(object):
                        should be turned on or not.
         :param apiversion: Dell API version.
         """
-        self.baseUrl = 'https://%s:%s/api/rest/' % (host, port)
+        self.baseUrl = 'https://%s:%s/' % (host, port)
 
         self.session = requests.Session()
         self.session.auth = (user, password)
@@ -110,7 +110,11 @@ class HttpClient(object):
         self.session.close()
 
     def __formatUrl(self, url):
-        return '%s%s' % (self.baseUrl, url if url[0] != '/' else url[1:])
+        baseurl = self.baseUrl
+        # Some url sources have api/rest and some don't. Handle.
+        if 'api/rest' not in url:
+            baseurl += 'api/rest/'
+        return '%s%s' % (baseurl, url if url[0] != '/' else url[1:])
 
     def _get_header(self, async):
         if async:
@@ -119,25 +123,53 @@ class HttpClient(object):
             return header
         return self.header
 
+    def _get_async_url(self, asyncTask):
+        """Handle a bug in SC API that gives a full url."""
+        try:
+            # strip off the https.
+            url = asyncTask.get('returnValue').split(
+                'https://')[1].split('/', 1)[1]
+        except IndexError:
+            url = asyncTask.get('returnValue')
+        # Check for incomplete url error case.
+        if url.endswith('/'):
+            # Try to fix.
+            id = asyncTask.get('instanceId')
+            if id:
+                # We have an id so note the error and add the id.
+                LOG.debug('_get_async_url: url format error. (%s)', asyncTask)
+                url = url + id
+            else:
+                # No hope.
+                LOG.error(_LE('_get_async_url: Bogus return url %s'), url)
+                raise exception.VolumeBackendAPIException(
+                    message=_('_get_async_url: Invalid URL.'))
+        return url
+
     def _wait_for_async_complete(self, asyncTask):
-        url = asyncTask.get('returnValue')
+        url = self._get_async_url(asyncTask)
         while True and url:
             try:
-                r = self.session.get(url, headers=self.header,
-                                     verify=self.verify)
+                r = self.get(url)
                 # We can leave this loop for a variety of reasons.
                 # Nothing returned.
                 # r.content blanks.
                 # Object returned switches to one without objectType or with
                 # a different objectType.
-                if r and r.content:
-                    content = r.json()
-                    if content.get('objectType') == 'AsyncTask':
-                        url = content.get('returnValue')
-                        eventlet.sleep(1)
-                        continue
+                if not StorageCenterApi._check_result(r):
+                    LOG.debug('Async error: status_code: %s', r.status_code)
+                else:
+                    # In theory we have a good run.
+                    if r.content:
+                        content = r.json()
+                        if content.get('objectType') == 'AsyncTask':
+                            url = self._get_async_url(content)
+                            eventlet.sleep(1)
+                            continue
+                    else:
+                        LOG.debug('Async debug: r.content is None')
                 return r
-            except exception:
+            except Exception:
                 methodname = asyncTask.get('methodName')
                 objectTypeName = asyncTask.get('objectTypeName')
                 msg = (_('Async error: Unable to retreive %(obj)s '
@@ -165,12 +197,17 @@ class HttpClient(object):
                 raise exception.VolumeBackendAPIException(message=msg)
         return rest_response
 
-    @utils.retry(exceptions=(requests.ConnectionError,))
+    @utils.retry(exceptions=(requests.ConnectionError,
+                             exception.DellDriverRetryableException))
     def get(self, url, async=False):
         LOG.debug('get: %(url)s', {'url': url})
-        return self._rest_ret(self.session.get(self.__formatUrl(url),
-                                               headers=self._get_header(async),
-                                               verify=self.verify), async)
+        rest_response = self._rest_ret(self.session.get(
+            self.__formatUrl(url), headers=self._get_header(async),
+            verify=self.verify), async)
+        if rest_response and rest_response.status_code == 400 and (
+                'Unhandled Exception' in rest_response.text):
+            raise exception.DellDriverRetryableException()
+        return rest_response
 
     @utils.retry(exceptions=(requests.ConnectionError,))
     def post(self, url, payload, async=False):
@@ -344,26 +381,30 @@ class StorageCenterApi(object):
         :param rest_response: The result from a REST API call.
         :returns: ``True`` if success, ``False`` otherwise.
         """
-        if 200 <= rest_response.status_code < 300:
-            # API call was a normal success
-            return True
+        if rest_response:
+            if 200 <= rest_response.status_code < 300:
+                # API call was a normal success
+                return True
 
-        # Some versions return this as a dict.
-        try:
-            response_text = rest_response.text['result']
-        except Exception:
-            # We do not care why that failed. Just use the text.
-            response_text = rest_response.text
+            # Some versions return this as a dict.
+            try:
+                response_json = rest_response.json()
+                response_text = response_json.text['result']
+            except Exception:
+                # We do not care why that failed. Just use the text.
+                response_text = rest_response.text
 
-        LOG.debug('REST call result:\n'
-                  '\tUrl:    %(url)s\n'
-                  '\tCode:   %(code)d\n'
-                  '\tReason: %(reason)s\n'
-                  '\tText:   %(text)s',
-                  {'url': rest_response.url,
-                   'code': rest_response.status_code,
-                   'reason': rest_response.reason,
-                   'text': response_text})
+            LOG.debug('REST call result:\n'
+                      '\tUrl:    %(url)s\n'
+                      '\tCode:   %(code)d\n'
+                      '\tReason: %(reason)s\n'
+                      '\tText:   %(text)s',
+                      {'url': rest_response.url,
+                       'code': rest_response.status_code,
+                       'reason': rest_response.reason,
+                       'text': response_text})
+        else:
+            LOG.warning(_LW('Failed to get REST call result.'))
         return False
 
     @staticmethod
@@ -2627,7 +2668,7 @@ class StorageCenterApi(object):
             pf.append('scSerialNumber', ssn)
             pf.append('name', foldername)
             r = self.client.post('StorageCenter/ScDiskFolder/GetList',
-                                 pf.payload, True)
+                                 pf.payload)
             if self._check_result(r):
                 try:
                     # Go for broke.
