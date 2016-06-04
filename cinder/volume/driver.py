@@ -83,7 +83,9 @@ volume_opts = [
                help='Method used to wipe old volumes'),
     cfg.IntOpt('volume_clear_size',
                default=0,
-               help='Size in MiB to wipe at start of old volumes. 0 => all'),
+               max=1024,
+               help='Size in MiB to wipe at start of old volumes. 1024 MiB'
+                    'at max. 0 => all'),
     cfg.StrOpt('volume_clear_ionice',
                help='The flag to pass to ionice to alter the i/o priority '
                     'of the process used to zero a volume after deletion, '
