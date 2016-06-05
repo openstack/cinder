@@ -503,7 +503,10 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         # NOTE(jdg): all attributes are copied via clone, need to do an update
         # to set any that were provided
+        qos = self._retrieve_qos_setting(vref)
         params = {'volumeID': sf_volume_id}
+        if qos:
+            params['qos'] = qos
         create_time = vref['created_at'].isoformat()
         attributes = {'uuid': vref['id'],
                       'is_clone': 'True',
