@@ -4453,9 +4453,12 @@ def purge_deleted_rows(context, age_in_days):
                 and hasattr(model_class, "deleted"):
             tables.append(model_class.__tablename__)
 
-    # Reorder the list so the volumes table is last to avoid FK constraints
-    tables.remove("volumes")
-    tables.append("volumes")
+    # Reorder the list so the volumes and volume_types tables are last
+    # to avoid FK constraints
+    for table in ("volume_types", "volumes"):
+        tables.remove(table)
+        tables.append(table)
+
     for table in tables:
         t = Table(table, metadata, autoload=True)
         LOG.info(_LI('Purging deleted rows older than age=%(age)d days '
