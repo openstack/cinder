@@ -27,12 +27,15 @@ from cinder.volume import volume_types
 
 # We patch these here as they are used by every test to keep
 # from trying to contact a Dell Storage Center.
+MOCKAPI = mock.MagicMock()
+
+
 @mock.patch.object(dell_storagecenter_api.HttpClient,
                    '__init__',
                    return_value=None)
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                    'open_connection',
-                   return_value=mock.MagicMock())
+                   return_value=MOCKAPI)
 @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                    'close_connection')
 class DellSCSanISCSIDriverTestCase(test.TestCase):
@@ -269,10 +272,6 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
             'provider_location': "%s:3260,1 %s 0"
             % (self.driver.configuration.dell_sc_iscsi_ip,
                self.fake_iqn)
-            #                              ,
-            #            'provider_auth': 'CHAP %s %s' % (
-            #                self.configuration.eqlx_chap_login,
-            #                self.configuration.eqlx_chap_password)
         }
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
@@ -2048,7 +2047,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
 
         res = self.driver.retype(
             None, {'id': fake.VOLUME_ID}, None,
-            {'extra_specs': {'replication_enabled': [False, True]}},
+            {'extra_specs': {'replication_enabled': [None, '<is> True']}},
             None)
         self.assertTrue(mock_create_replications.called)
         self.assertFalse(mock_delete_replications.called)
@@ -2056,7 +2055,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           'replication_driver_data': '54321'}, res)
         res = self.driver.retype(
             None, {'id': fake.VOLUME_ID}, None,
-            {'extra_specs': {'replication_enabled': [True, False]}},
+            {'extra_specs': {'replication_enabled': ['<is> True', None]}},
             None)
         self.assertTrue(mock_delete_replications.called)
         self.assertEqual({'replication_status': 'disabled',
@@ -2210,7 +2209,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                        'find_volume')
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'remove_mappings')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'failback_volumes')
     def test_failover_host(self,
+                           mock_failback_volumes,
                            mock_remove_mappings,
                            mock_find_volume,
                            mock_parse_secondary,
@@ -2258,6 +2260,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                     'provider_id': '2.1'}},
                                   {'volume_id': fake.VOLUME2_ID, 'updates':
                                    {'status': 'error'}}]
+        self.driver.failed_over = False
+        self.driver.active_backend_id = None
         destssn, volume_update = self.driver.failover_host(
             {}, volumes, '12345')
         self.assertEqual(expected_destssn, destssn)
@@ -2270,6 +2274,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                     'provider_id': '2.1'}},
                                   {'volume_id': fake.VOLUME2_ID, 'updates':
                                    {'status': 'error'}}]
+        self.driver.failed_over = False
+        self.driver.active_backend_id = None
         destssn, volume_update = self.driver.failover_host(
             {}, volumes, '12345')
         self.assertEqual(expected_destssn, destssn)
@@ -2281,12 +2287,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                    {'status': 'error'}},
                                   {'volume_id': fake.VOLUME2_ID, 'updates':
                                    {'status': 'error'}}]
+        self.driver.failed_over = False
+        self.driver.active_backend_id = None
         destssn, volume_update = self.driver.failover_host(
             {}, volumes, '12345')
         self.assertEqual(expected_destssn, destssn)
         self.assertEqual(expected_volume_update, volume_update)
         # Secondary not found.
         mock_parse_secondary.return_value = None
+        self.driver.failed_over = False
+        self.driver.active_backend_id = None
         self.assertRaises(exception.InvalidInput,
                           self.driver.failover_host,
                           {},
@@ -2294,11 +2304,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                           '54321')
         # Already failed over.
         self.driver.failed_over = True
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.failover_host,
-                          {},
-                          volumes,
-                          '12345')
+        self.driver.failover_host({}, volumes, 'default')
+        mock_failback_volumes.assert_called_once_with(volumes)
         self.driver.replication_enabled = False
 
     def test__get_unmanaged_replay(self,
@@ -2420,3 +2427,780 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         mock_find_replay.return_value = screplay
         self.driver.unmanage_snapshot(snapshot)
         mock_unmanage_replay.assert_called_once_with(screplay)
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_qos',
+                       return_value='cinderqos')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_parse_extraspecs',
+                       return_value={'replay_profile_string': 'pro'})
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_repl_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_replication')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'replicate_to_common')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'remove_mappings')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_wait_for_replication')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_reattach_remaining_replications')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_fixup_types')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_volume_updates',
+                       return_value=[])
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_update_backend')
+    def test_failback_volumes(self,
+                              mock_update_backend,
+                              mock_volume_updates,
+                              mock_fixup_types,
+                              mock_reattach_remaining_replications,
+                              mock_wait_for_replication,
+                              mock_remove_mappings,
+                              mock_replicate_to_common,
+                              mock_delete_replication,
+                              mock_find_repl_volume,
+                              mock_find_volume,
+                              mock_parse_extraspecs,
+                              mock_get_qos,
+                              mock_close_connection,
+                              mock_open_connection,
+                              mock_init):
+        self.driver.replication_enabled = True
+        self.driver.failed_over = True
+        self.driver.active_backend_id = 12345
+        self.driver.primaryssn = 11111
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'qosnode': 'cinderqos'}]
+        volumes = [{'id': fake.VOLUME_ID,
+                    'replication_driver_data': '12345',
+                    'provider_id': '12345.1'},
+                   {'id': fake.VOLUME2_ID,
+                    'replication_driver_data': '12345',
+                    'provider_id': '12345.2'}]
+        mock_find_volume.side_effect = [{'instanceId': '12345.1'},
+                                        {'instanceId': '12345.2'}]
+        mock_find_repl_volume.side_effect = [{'instanceId': '11111.1'},
+                                             {'instanceId': '11111.2'}]
+        mock_replicate_to_common.side_effect = [{'instanceId': '12345.100',
+                                                 'destinationVolume':
+                                                     {'instanceId': '11111.3'}
+                                                 },
+                                                {'instanceId': '12345.200',
+                                                 'destinationVolume':
+                                                     {'instanceId': '11111.4'}
+                                                 }]
+        # we don't care about the return.  We just want to make sure that
+        # _wait_for_replication is called with the proper replitems.
+        self.driver.failback_volumes(volumes)
+        expected = [{'volume': volumes[0],
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.100',
+                     'cvol': '12345.1',
+                     'ovol': '11111.1',
+                     'nvol': '11111.3',
+                     'rdd': '12345',
+                     'status': 'inprogress'},
+                    {'volume': volumes[1],
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.200',
+                     'cvol': '12345.2',
+                     'ovol': '11111.2',
+                     'nvol': '11111.4',
+                     'rdd': '12345',
+                     'status': 'inprogress'}
+                    ]
+        # We are stubbing everything out so we just want to be sure this hits
+        # _volume_updates as expected.  (Ordinarily this would be modified by
+        # the time it hit this but since it isn't we use this to our advantage
+        # and check that our replitems was set correctly coming out of the
+        # main loop.)
+        mock_volume_updates.assert_called_once_with(expected)
+
+        self.driver.replication_enabled = False
+        self.driver.failed_over = False
+        self.driver.backends = backends
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_qos',
+                       return_value='cinderqos')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_parse_extraspecs',
+                       return_value={'replay_profile_string': 'pro'})
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_repl_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'delete_replication')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'replicate_to_common')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'remove_mappings')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_wait_for_replication')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_reattach_remaining_replications')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_fixup_types')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_volume_updates',
+                       return_value=[])
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_update_backend')
+    def test_failback_volumes_with_some_not_replicated(
+            self,
+            mock_update_backend,
+            mock_volume_updates,
+            mock_fixup_types,
+            mock_reattach_remaining_replications,
+            mock_wait_for_replication,
+            mock_remove_mappings,
+            mock_replicate_to_common,
+            mock_delete_replication,
+            mock_find_repl_volume,
+            mock_find_volume,
+            mock_parse_extraspecs,
+            mock_get_qos,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        self.driver.replication_enabled = True
+        self.driver.failed_over = True
+        self.driver.active_backend_id = 12345
+        self.driver.primaryssn = 11111
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'qosnode': 'cinderqos'}]
+        volumes = [{'id': fake.VOLUME_ID,
+                    'replication_driver_data': '12345',
+                    'provider_id': '12345.1'},
+                   {'id': fake.VOLUME2_ID,
+                    'replication_driver_data': '12345',
+                    'provider_id': '12345.2'},
+                   {'id': fake.VOLUME3_ID, 'provider_id': '11111.10'}]
+        mock_find_volume.side_effect = [{'instanceId': '12345.1'},
+                                        {'instanceId': '12345.2'}]
+        mock_find_repl_volume.side_effect = [{'instanceId': '11111.1'},
+                                             {'instanceId': '11111.2'}]
+        mock_replicate_to_common.side_effect = [{'instanceId': '12345.100',
+                                                 'destinationVolume':
+                                                     {'instanceId': '11111.3'}
+                                                 },
+                                                {'instanceId': '12345.200',
+                                                 'destinationVolume':
+                                                     {'instanceId': '11111.4'}
+                                                 }]
+        expected = [{'volume': volumes[0],
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.100',
+                     'cvol': '12345.1',
+                     'ovol': '11111.1',
+                     'nvol': '11111.3',
+                     'rdd': '12345',
+                     'status': 'inprogress'},
+                    {'volume': volumes[1],
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.200',
+                     'cvol': '12345.2',
+                     'ovol': '11111.2',
+                     'nvol': '11111.4',
+                     'rdd': '12345',
+                     'status': 'inprogress'}
+                    ]
+        ret = self.driver.failback_volumes(volumes)
+        mock_volume_updates.assert_called_once_with(expected)
+
+        # make sure ret is right. In this case just the unreplicated volume
+        # as our volume updates elsewhere return nothing.
+        expected_updates = [{'volume_id': fake.VOLUME3_ID,
+                             'updates': {'status': 'available'}}]
+        self.assertEqual(expected_updates, ret)
+        self.driver.replication_enabled = False
+        self.driver.failed_over = False
+        self.driver.backends = backends
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_qos',
+                       return_value='cinderqos')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_update_backend')
+    def test_failback_volumes_with_none_replicated(
+            self,
+            mock_update_backend,
+            mock_get_qos,
+            mock_close_connection,
+            mock_open_connection,
+            mock_init):
+        self.driver.replication_enabled = True
+        self.driver.failed_over = True
+        self.driver.active_backend_id = 12345
+        self.driver.primaryssn = 11111
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'qosnode': 'cinderqos'}]
+        volumes = [{'id': fake.VOLUME_ID,
+                    'provider_id': '11111.1'},
+                   {'id': fake.VOLUME2_ID, 'provider_id': '11111.2'},
+                   {'id': fake.VOLUME3_ID, 'provider_id': '11111.10'}]
+
+        ret = self.driver.failback_volumes(volumes)
+
+        # make sure ret is right. In this case just the unreplicated volume
+        # as our volume updates elsewhere return nothing.
+        expected_updates = [{'volume_id': fake.VOLUME_ID,
+                             'updates': {'status': 'available'}},
+                            {'volume_id': fake.VOLUME2_ID,
+                             'updates': {'status': 'available'}},
+                            {'volume_id': fake.VOLUME3_ID,
+                             'updates': {'status': 'available'}}]
+        self.assertEqual(expected_updates, ret)
+        self.driver.replication_enabled = False
+        self.driver.failed_over = False
+        self.driver.backends = backends
+
+    def test_volume_updates(self,
+                            mock_close_connection,
+                            mock_open_connection,
+                            mock_init):
+        items = [{'volume': {'id': fake.VOLUME_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.100',
+                  'cvol': '12345.1',
+                  'ovol': '11111.1',
+                  'nvol': '11111.3',
+                  'rdd': '12345,67890',
+                  'status': 'available'},
+                 {'volume': {'id': fake.VOLUME2_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.200',
+                  'cvol': '12345.2',
+                  'ovol': '11111.2',
+                  'nvol': '11111.4',
+                  'rdd': '12345,67890',
+                  'status': 'available'}
+                 ]
+        ret = self.driver._volume_updates(items)
+        expected = [{'volume_id': fake.VOLUME_ID,
+                     'updates': {'status': 'available',
+                                 'replication_status': 'enabled',
+                                 'provider_id': '11111.3',
+                                 'replication_driver_data': '12345,67890'}},
+                    {'volume_id': fake.VOLUME2_ID,
+                     'updates': {'status': 'available',
+                                 'replication_status': 'enabled',
+                                 'provider_id': '11111.4',
+                                 'replication_driver_data': '12345,67890'}}
+                    ]
+        self.assertEqual(expected, ret)
+        items.append({'volume': {'id': fake.VOLUME3_ID},
+                      'specs': {'replay_profile_string': 'pro'},
+                      'qosnode': 'cinderqos',
+                      'screpl': '12345.300',
+                      'cvol': '12345.5',
+                      'ovol': '11111.5',
+                      'nvol': '11111.6',
+                      'rdd': '12345',
+                      'status': 'error'})
+
+        ret = self.driver._volume_updates(items)
+        expected.append({'volume_id': fake.VOLUME3_ID,
+                         'updates': {'status': 'error',
+                                     'replication_status': 'error',
+                                     'provider_id': '11111.6',
+                                     'replication_driver_data': '12345'}})
+        self.assertEqual(expected, ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume',
+                       return_value=VOLUME)
+    def test_fixup_types(self,
+                         mock_get_volume,
+                         mock_close_connection,
+                         mock_open_connection,
+                         mock_init):
+        items = [{'volume': {'id': fake.VOLUME_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.100',
+                  'cvol': '12345.1',
+                  'ovol': '11111.1',
+                  'nvol': '11111.3',
+                  'rdd': '12345,67890',
+                  'status': 'reattached'},
+                 {'volume': {'id': fake.VOLUME2_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.200',
+                  'cvol': '12345.2',
+                  'ovol': '11111.2',
+                  'nvol': '11111.4',
+                  'rdd': '12345,67890',
+                  'status': 'reattached'}
+                 ]
+        mock_api = mock.Mock()
+        mock_api.update_replay_profiles.return_value = True
+        self.driver._fixup_types(mock_api, items)
+        expected = [{'volume': {'id': fake.VOLUME_ID},
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.100',
+                     'cvol': '12345.1',
+                     'ovol': '11111.1',
+                     'nvol': '11111.3',
+                     'rdd': '12345,67890',
+                     'status': 'available'},
+                    {'volume': {'id': fake.VOLUME2_ID},
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.200',
+                     'cvol': '12345.2',
+                     'ovol': '11111.2',
+                     'nvol': '11111.4',
+                     'rdd': '12345,67890',
+                     'status': 'available'}]
+        self.assertEqual(expected, items)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume',
+                       return_value=VOLUME)
+    def test_fixup_types_with_error(self,
+                                    mock_get_volume,
+                                    mock_close_connection,
+                                    mock_open_connection,
+                                    mock_init):
+        items = [{'volume': {'id': fake.VOLUME_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.100',
+                  'cvol': '12345.1',
+                  'ovol': '11111.1',
+                  'nvol': '11111.3',
+                  'rdd': '12345,67890',
+                  'status': 'reattached'},
+                 {'volume': {'id': fake.VOLUME2_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.200',
+                  'cvol': '12345.2',
+                  'ovol': '11111.2',
+                  'nvol': '11111.4',
+                  'rdd': '12345,67890',
+                  'status': 'reattached'}
+                 ]
+        # One good one fail.
+        mock_api = mock.Mock()
+        mock_api.update_replay_profiles.side_effect = [True, False]
+        self.driver._fixup_types(mock_api, items)
+        expected = [{'volume': {'id': fake.VOLUME_ID},
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.100',
+                     'cvol': '12345.1',
+                     'ovol': '11111.1',
+                     'nvol': '11111.3',
+                     'rdd': '12345,67890',
+                     'status': 'available'},
+                    {'volume': {'id': fake.VOLUME2_ID},
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.200',
+                     'cvol': '12345.2',
+                     'ovol': '11111.2',
+                     'nvol': '11111.4',
+                     'rdd': '12345,67890',
+                     'status': 'error'}]
+        self.assertEqual(expected, items)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume',
+                       return_value=VOLUME)
+    def test_fixup_types_with_previous_error(self,
+                                             mock_get_volume,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        items = [{'volume': {'id': fake.VOLUME_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.100',
+                  'cvol': '12345.1',
+                  'ovol': '11111.1',
+                  'nvol': '11111.3',
+                  'rdd': '12345,67890',
+                  'status': 'reattached'},
+                 {'volume': {'id': fake.VOLUME2_ID},
+                  'specs': {'replay_profile_string': 'pro'},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.200',
+                  'cvol': '12345.2',
+                  'ovol': '11111.2',
+                  'nvol': '11111.4',
+                  'rdd': '12345,67890',
+                  'status': 'error'}
+                 ]
+        mock_api = mock.Mock()
+        mock_api.update_replay_profiles.return_value = True
+        self.driver._fixup_types(mock_api, items)
+        expected = [{'volume': {'id': fake.VOLUME_ID},
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.100',
+                     'cvol': '12345.1',
+                     'ovol': '11111.1',
+                     'nvol': '11111.3',
+                     'rdd': '12345,67890',
+                     'status': 'available'},
+                    {'volume': {'id': fake.VOLUME2_ID},
+                     'specs': {'replay_profile_string': 'pro'},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.200',
+                     'cvol': '12345.2',
+                     'ovol': '11111.2',
+                     'nvol': '11111.4',
+                     'rdd': '12345,67890',
+                     'status': 'error'}]
+        self.assertEqual(expected, items)
+
+    def test_reattach_remaining_replications(self,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        self.driver.replication_enabled = True
+        self.driver.failed_over = True
+        self.driver.active_backend_id = 12345
+        self.driver.primaryssn = 11111
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'qosnode': 'cinderqos'}]
+        items = [{'volume': {'id': fake.VOLUME_ID},
+                  'specs': {'replicationtype': 'Synchronous',
+                            'activereplay': False},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.100',
+                  'cvol': '12345.1',
+                  'ovol': '11111.1',
+                  'nvol': '11111.3',
+                  'rdd': '12345',
+                  'status': 'synced'},
+                 {'volume': {'id': fake.VOLUME2_ID},
+                  'specs': {'replicationtype': 'Asynchronous',
+                            'activereplay': True},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.200',
+                  'cvol': '12345.2',
+                  'ovol': '11111.2',
+                  'nvol': '11111.4',
+                  'rdd': '12345',
+                  'status': 'synced'}
+                 ]
+        mock_api = mock.Mock()
+        mock_api.ssn = self.driver.active_backend_id
+        mock_api.get_volume.return_value = self.VOLUME
+        mock_api.find_repl_volume.return_value = self.VOLUME
+        mock_api.start_replication.side_effect = [{'instanceId': '11111.1001'},
+                                                  {'instanceId': '11111.1002'},
+                                                  None,
+                                                  {'instanceId': '11111.1001'}]
+        self.driver._reattach_remaining_replications(mock_api, items)
+
+        expected = [{'volume': {'id': fake.VOLUME_ID},
+                     'specs': {'replicationtype': 'Synchronous',
+                               'activereplay': False},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.100',
+                     'cvol': '12345.1',
+                     'ovol': '11111.1',
+                     'nvol': '11111.3',
+                     'rdd': '12345,67890',
+                     'status': 'reattached'},
+                    {'volume': {'id': fake.VOLUME2_ID},
+                     'specs': {'replicationtype': 'Asynchronous',
+                               'activereplay': True},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.200',
+                     'cvol': '12345.2',
+                     'ovol': '11111.2',
+                     'nvol': '11111.4',
+                     'rdd': '12345,67890',
+                     'status': 'reattached'}]
+        self.assertEqual(expected, items)
+        mock_api.start_replication.assert_any_call(self.VOLUME, self.VOLUME,
+                                                   'Synchronous', 'cinderqos',
+                                                   False)
+
+        mock_api.start_replication.assert_any_call(self.VOLUME, self.VOLUME,
+                                                   'Asynchronous', 'cinderqos',
+                                                   True)
+        items = [{'volume': {'id': fake.VOLUME_ID},
+                  'specs': {'replicationtype': 'Synchronous',
+                            'activereplay': False},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.100',
+                  'cvol': '12345.1',
+                  'ovol': '11111.1',
+                  'nvol': '11111.3',
+                  'rdd': '12345',
+                  'status': 'synced'},
+                 {'volume': {'id': fake.VOLUME2_ID},
+                  'specs': {'replicationtype': 'Asynchronous',
+                            'activereplay': True},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.200',
+                  'cvol': '12345.2',
+                  'ovol': '11111.2',
+                  'nvol': '11111.4',
+                  'rdd': '12345',
+                  'status': 'synced'}
+                 ]
+        self.driver._reattach_remaining_replications(mock_api, items)
+
+        expected = [{'volume': {'id': fake.VOLUME_ID},
+                     'specs': {'replicationtype': 'Synchronous',
+                               'activereplay': False},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.100',
+                     'cvol': '12345.1',
+                     'ovol': '11111.1',
+                     'nvol': '11111.3',
+                     'rdd': '12345',
+                     'status': 'error'},
+                    {'volume': {'id': fake.VOLUME2_ID},
+                     'specs': {'replicationtype': 'Asynchronous',
+                               'activereplay': True},
+                     'qosnode': 'cinderqos',
+                     'screpl': '12345.200',
+                     'cvol': '12345.2',
+                     'ovol': '11111.2',
+                     'nvol': '11111.4',
+                     'rdd': '12345,67890',
+                     'status': 'reattached'}]
+        self.assertEqual(expected, items)
+        mock_api.start_replication.assert_any_call(self.VOLUME, self.VOLUME,
+                                                   'Synchronous', 'cinderqos',
+                                                   False)
+
+        mock_api.start_replication.assert_any_call(self.VOLUME, self.VOLUME,
+                                                   'Asynchronous', 'cinderqos',
+                                                   True)
+
+        self.driver.backends = backends
+
+    def _setup_items(self):
+        self.driver.replication_enabled = True
+        self.driver.failed_over = True
+        self.driver.active_backend_id = 12345
+        self.driver.primaryssn = 11111
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'qosnode': 'cinderqos'},
+                                {'target_device_id': '67890',
+                                 'qosnode': 'cinderqos'}]
+        volumes = [{'id': fake.VOLUME_ID,
+                    'replication_driver_data': '12345',
+                    'provider_id': '12345.1'},
+                   {'id': fake.VOLUME2_ID,
+                    'replication_driver_data': '12345',
+                    'provider_id': '12345.2'}]
+
+        items = [{'volume': volumes[0],
+                  'specs': {'replay_profile_string': 'pro',
+                            'replicationtype': 'Asynchronous',
+                            'activereplay': True},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.100',
+                  'cvol': '12345.1',
+                  'ovol': '11111.1',
+                  'nvol': '11111.3',
+                  'rdd': '12345',
+                  'status': 'inprogress'},
+                 {'volume': volumes[1],
+                  'specs': {'replay_profile_string': 'pro',
+                            'replicationtype': 'Asynchronous',
+                            'activereplay': True},
+                  'qosnode': 'cinderqos',
+                  'screpl': '12345.200',
+                  'cvol': '12345.2',
+                  'ovol': '11111.2',
+                  'nvol': '11111.4',
+                  'rdd': '12345',
+                  'status': 'inprogress'}
+                 ]
+        return items, backends
+
+    def test_wait_for_replication(self,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        items, backends = self._setup_items()
+        expected = []
+        for item in items:
+            expected.append(dict(item))
+        expected[0]['status'] = 'synced'
+        expected[1]['status'] = 'synced'
+        mock_api = mock.Mock()
+        mock_api.flip_replication.return_value = True
+        mock_api.get_volume.return_value = self.VOLUME
+        mock_api.replication_progress.return_value = (True, 0)
+        mock_api.rename_volume.return_value = True
+        self.driver._wait_for_replication(mock_api, items)
+        self.assertEqual(expected, items)
+        self.backends = backends
+
+    def test_wait_for_replication_flip_flops(self,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        items, backends = self._setup_items()
+        expected = []
+        for item in items:
+            expected.append(dict(item))
+        expected[0]['status'] = 'synced'
+        expected[1]['status'] = 'error'
+        mock_api = mock.Mock()
+        mock_api.flip_replication.side_effect = [True, False]
+        mock_api.get_volume.return_value = self.VOLUME
+        mock_api.replication_progress.return_value = (True, 0)
+        mock_api.rename_volume.return_value = True
+        self.driver._wait_for_replication(mock_api, items)
+        self.assertEqual(expected, items)
+        self.backends = backends
+
+    def test_wait_for_replication_flip_no_vol(self,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        items, backends = self._setup_items()
+        expected = []
+        for item in items:
+            expected.append(dict(item))
+        expected[0]['status'] = 'synced'
+        expected[1]['status'] = 'error'
+        mock_api = mock.Mock()
+        mock_api.flip_replication.return_value = True
+        mock_api.get_volume.side_effect = [self.VOLUME, self.VOLUME,
+                                           self.VOLUME,
+                                           self.VOLUME, None]
+        mock_api.replication_progress.return_value = (True, 0)
+        mock_api.rename_volume.return_value = True
+        self.driver._wait_for_replication(mock_api, items)
+        self.assertEqual(expected, items)
+        self.backends = backends
+
+    def test_wait_for_replication_cant_find_orig(self,
+                                                 mock_close_connection,
+                                                 mock_open_connection,
+                                                 mock_init):
+        items, backends = self._setup_items()
+        expected = []
+        for item in items:
+            expected.append(dict(item))
+        expected[0]['status'] = 'synced'
+        expected[1]['status'] = 'synced'
+        mock_api = mock.Mock()
+        mock_api.flip_replication.return_value = True
+        mock_api.get_volume.side_effect = [self.VOLUME, self.VOLUME,
+                                           None,
+                                           self.VOLUME, self.VOLUME,
+                                           None]
+        mock_api.replication_progress.return_value = (True, 0)
+        mock_api.rename_volume.return_value = True
+        self.driver._wait_for_replication(mock_api, items)
+        self.assertEqual(expected, items)
+        self.backends = backends
+
+    def test_wait_for_replication_rename_fail(self,
+                                              mock_close_connection,
+                                              mock_open_connection,
+                                              mock_init):
+        items, backends = self._setup_items()
+        expected = []
+        for item in items:
+            expected.append(dict(item))
+        expected[0]['status'] = 'synced'
+        expected[1]['status'] = 'synced'
+        mock_api = mock.Mock()
+        mock_api.flip_replication.return_value = True
+        mock_api.get_volume.return_value = self.VOLUME
+        mock_api.replication_progress.return_value = (True, 0)
+        mock_api.rename_volume.return_value = True
+        self.driver._wait_for_replication(mock_api, items)
+        self.assertEqual(expected, items)
+        self.backends = backends
+
+    def test_wait_for_replication_timeout(self,
+                                          mock_close_connection,
+                                          mock_open_connection,
+                                          mock_init):
+        items, backends = self._setup_items()
+        expected = []
+        for item in items:
+            expected.append(dict(item))
+        expected[0]['status'] = 'error'
+        expected[1]['status'] = 'error'
+        self.assertNotEqual(items, expected)
+        mock_api = mock.Mock()
+        mock_api.get_volume.side_effect = [self.VOLUME, self.VOLUME,
+                                           self.VOLUME,
+                                           self.VOLUME, None]
+        mock_api.replication_progress.return_value = (False, 500)
+        self.driver.failback_timeout = 1
+        self.driver._wait_for_replication(mock_api, items)
+        self.assertEqual(expected, items)
+        self.backends = backends
+
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_get_volume_extra_specs')
+    def test_parse_extraspecs(self,
+                              mock_get_volume_extra_specs,
+                              mock_close_connection,
+                              mock_open_connection,
+                              mock_init):
+        volume = {'id': fake.VOLUME_ID}
+        mock_get_volume_extra_specs.return_value = {}
+        ret = self.driver._parse_extraspecs(volume)
+        expected = {'replicationtype': 'Asynchronous',
+                    'activereplay': False,
+                    'storage_profile': None,
+                    'replay_profile_string': None}
+        self.assertEqual(expected, ret)
+
+    def test_get_qos(self,
+                     mock_close_connection,
+                     mock_open_connection,
+                     mock_init):
+        backends = self.driver.backends
+        self.driver.backends = [{'target_device_id': '12345',
+                                 'qosnode': 'cinderqos1'},
+                                {'target_device_id': '67890',
+                                 'qosnode': 'cinderqos2'}]
+        ret = self.driver._get_qos(12345)
+        self.assertEqual('cinderqos1', ret)
+        ret = self.driver._get_qos(67890)
+        self.assertEqual('cinderqos2', ret)
+        ret = self.driver._get_qos(11111)
+        self.assertIsNone(ret)
+        self.driver.backends[0] = {'target_device_id': '12345'}
+        ret = self.driver._get_qos(12345)
+        self.assertEqual('cinderqos', ret)
+        self.driver.backends = backends
