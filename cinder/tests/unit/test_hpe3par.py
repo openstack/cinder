@@ -4348,6 +4348,91 @@ class HPE3PARBaseDriver(object):
                 [volume],
                 'default')
 
+    def test_get_pool_with_existing_volume(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            actual_cpg = self.driver.get_pool(self.volume)
+            expected_cpg = HPE3PAR_CPG
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME)
+            ]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
+            self.assertEqual(expected_cpg, actual_cpg)
+
+    def test_get_pool_with_non_existing_volume(self):
+        mock_client = self.setup_driver()
+        mock_client.getVolume.side_effect = hpeexceptions.HTTPNotFound
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+
+            expected = [
+                mock.call.getVolume(self.VOLUME_3PAR_NAME)
+            ]
+
+            try:
+                self.assertRaises(
+                    hpeexceptions.HTTPNotFound,
+                    self.driver.get_pool,
+                    self.volume)
+
+            except exception.InvalidVolume:
+                mock_client.assert_has_calls(
+                    self.standard_login +
+                    expected +
+                    self.standard_logout)
+
+    def test_driver_login_with_wrong_credential_and_replication_disabled(self):
+        mock_client = self.setup_driver()
+        mock_client.login.side_effect = hpeexceptions.HTTPUnauthorized
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            expected = [
+                mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS)
+            ]
+            self.assertRaises(
+                exception.InvalidInput,
+                self.driver._login)
+            mock_client.assert_has_calls(expected)
+
+    def test_driver_login_with_wrong_credential_and_replication_enabled(self):
+        conf = self.setup_configuration()
+        self.replication_targets[0]['replication_mode'] = 'periodic'
+        conf.replication_device = self.replication_targets
+        mock_client = self.setup_driver(config=conf)
+        mock_replicated_client = self.setup_driver(config=conf)
+        mock_client.login.side_effect = hpeexceptions.HTTPUnauthorized
+
+        with mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_client') as mock_create_client, \
+            mock.patch.object(
+                hpecommon.HPE3PARCommon,
+                '_create_replication_client') as mock_replication_client:
+            mock_create_client.return_value = mock_client
+            mock_replication_client.return_value = mock_replicated_client
+            expected = [
+                mock.call.login(HPE3PAR_USER_NAME, HPE3PAR_USER_PASS)
+            ]
+
+            common = self.driver._login()
+            mock_client.assert_has_calls(
+                expected)
+            self.assertTrue(common._replication_enabled)
+
 
 class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
 

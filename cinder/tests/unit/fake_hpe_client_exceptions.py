@@ -100,6 +100,11 @@ class HTTPBadRequest(Exception):
     message = "Bad request"
 
 
+class HTTPUnauthorized(ClientException):
+    http_status = 401
+    message = "Unauthorized"
+
+
 class HTTPServerError(Exception):
     http_status = 500
     message = "Error"
