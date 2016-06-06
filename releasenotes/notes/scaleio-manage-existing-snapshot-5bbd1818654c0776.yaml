@@ -1,0 +1,3 @@
+---
+features:
+  - Added support for manage/unmanage snapshot in the ScaleIO driver.

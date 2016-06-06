@@ -1022,31 +1022,60 @@ class ScaleIODriver(driver.VolumeDriver):
                          "%(new_name)s."),
                      {'vol': vol_id, 'new_name': new_name})
 
+    def _query_scaleio_volume(self, volume, existing_ref):
+        request = self._create_scaleio_get_volume_request(volume, existing_ref)
+        r, response = self._execute_scaleio_get_request(request)
+        LOG.info(_LI("Get Volume response: %(res)s"),
+                 {'res': response})
+        self._manage_existing_check_legal_response(r, existing_ref)
+        return response
+
     def manage_existing(self, volume, existing_ref):
         """Manage an existing ScaleIO volume.
 
         existing_ref is a dictionary of the form:
         {'source-id': <id of ScaleIO volume>}
         """
-        request = self._create_scaleio_get_volume_request(volume, existing_ref)
-        r, response = self._execute_scaleio_get_request(request)
-        LOG.info(_LI("Get Volume response: %s"), response)
-        self._manage_existing_check_legal_response(r, existing_ref)
-        if response['mappedSdcInfo'] is not None:
-            reason = _("manage_existing cannot manage a volume "
-                       "connected to hosts. Please disconnect this volume "
-                       "from existing hosts before importing")
+        response = self._query_scaleio_volume(volume, existing_ref)
+        return {'provider_id': response['id']}
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        return self._get_volume_size(volume, existing_ref)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        """Manage an existing ScaleIO snapshot.
+
+        :param existing_ref: dictionary of the form:
+            {'source-id': <id of ScaleIO snapshot>}
+        """
+        response = self._query_scaleio_volume(snapshot, existing_ref)
+        not_real_parent = (response.get('orig_parent_overriden') or
+                           response.get('is_source_deleted'))
+        if not_real_parent:
+            reason = (_("The snapshot's parent is not the original parent due "
+                        "to deletion or revert action, therefore "
+                        "this snapshot cannot be managed."))
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason
+            )
+        ancestor_id = response['ancestorVolumeId']
+        volume_id = snapshot.volume.provider_id
+        if ancestor_id != volume_id:
+            reason = (_("The snapshot's parent in ScaleIO is %(ancestor)s "
+                        "and not %(volume)s.") %
+                      {'ancestor': ancestor_id, 'volume': volume_id})
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
                 reason=reason
             )
         return {'provider_id': response['id']}
 
-    def manage_existing_get_size(self, volume, existing_ref):
-        request = self._create_scaleio_get_volume_request(volume, existing_ref)
-        r, response = self._execute_scaleio_get_request(request)
-        LOG.info(_LI("Get Volume response: %s"), response)
-        self._manage_existing_check_legal_response(r, existing_ref)
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        return self._get_volume_size(snapshot, existing_ref)
+
+    def _get_volume_size(self, volume, existing_ref):
+        response = self._query_scaleio_volume(volume, existing_ref)
         return int(response['sizeInKb'] / units.Mi)
 
     def _execute_scaleio_get_request(self, request):
@@ -1091,6 +1120,15 @@ class ScaleIODriver(driver.VolumeDriver):
         if response.status_code != OK_STATUS_CODE:
             reason = (_("Error managing volume: %s.") % response.json()[
                 'message'])
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=reason
+            )
+
+        if response.json()['mappedSdcInfo'] is not None:
+            reason = _("manage_existing cannot manage a volume "
+                       "connected to hosts. Please disconnect this volume "
+                       "from existing hosts before importing.")
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
                 reason=reason
