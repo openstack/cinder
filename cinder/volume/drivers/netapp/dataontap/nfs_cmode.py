@@ -560,7 +560,7 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
                     src_ip = self._get_ip_verify_on_cluster(conn.split(':')[0])
                     selected_loc = location
                     break
-                except Exception.NotFound:
+                except exception.NotFound:
                     pass
         if src_ip is None:
             raise exception.NotFound(_("Source host details not found."))
