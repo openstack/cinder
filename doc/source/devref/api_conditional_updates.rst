@@ -347,11 +347,58 @@ Limitations
 -----------
 
 We can only use functionality that works on **all** supported DBs, and that's
-why we don't allow multi table updates and will raise DBError exception even
-when the code is running against a DB engine that supports this functionality.
+why we don't allow multi table updates and will raise ProgrammingError
+exception even when the code is running against a DB engine that supports this
+functionality.
 
 This way we make sure that we don't inadvertently add a multi table update that
 works on MySQL but will surely fail on PostgreSQL.
+
+MySQL DB engine also has some limitations that we should be aware of when
+creating our filters.
+
+One that is very common is when we are trying to check if there is a row that
+matches a specific criteria in the same table that we are updating.  For
+example, when deleting a Consistency Group we want to check that it is not
+being used as the source for a Consistency Group that is in the process of
+being created.
+
+The straightforward way of doing this is using the core exists expression and
+use an alias to differentiate general query fields and the exists subquery.
+Code would look like this:
+
+.. code:: python
+
+    def cg_creating_from_src(cg_id):
+       model = aliased(models.ConsistencyGroup)
+       return sql.exists().where(and_(
+           ~model.deleted,
+           model.status == 'creating',
+           conditions.append(model.source_cgid == cg_id))
+
+While this will work in SQLite and PostgreSQL, it will not work on MySQL and an
+error will be raised when the query is executed: "You can't specify target
+table 'consistencygroups' for update in FROM clause".
+
+To solve this we have 2 options:
+
+- Create a specific query for MySQL using a feature only available in MySQL,
+  which is an update with a left self join.
+- Use a trick -using a select subquery- that will work on all DBs.
+
+Considering that it's always better to have only 1 way of doing things and that
+SQLAlchemy doesn't support MySQL's non standard behavior we should generate
+these filters using the select subquery method like this:
+
+.. code:: python
+
+    def cg_creating_from_src(cg_id):
+       subq = sql.select([models.ConsistencyGroup]).where(and_(
+           ~model.deleted,
+           model.status == 'creating')).alias('cg2')
+
+       return sql.exists([subq]).where(subq.c.source_cgid == cgid)
+
 
 Considerations for new ORM & Versioned Objects
 ----------------------------------------------
