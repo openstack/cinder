@@ -700,7 +700,7 @@ class StorwizeHelpers(object):
                 wwpns.add(wwpn)
         return list(wwpns)
 
-    def get_host_from_connector(self, connector):
+    def get_host_from_connector(self, connector, volume_name=None):
         """Return the Storwize host described by the connector."""
         LOG.debug('Enter: get_host_from_connector: %s.', connector)
 
@@ -725,8 +725,24 @@ class StorwizeHelpers(object):
 
         # That didn't work, so try exhaustive search
         hosts_info = self.ssh.lshost()
+        # If we have a volume name we have a potential fast path
+        # for finding the matching host for that volume.
+        # Add the host_names that have mappings for our volume to the
+        # head of the list of host names to search them first
+        if volume_name:
+            hosts_map_info = self.ssh.lsvdiskhostmap(volume_name)
+            hosts_map_info_list = list(hosts_map_info.select('host_name'))
+            hosts_info_list = list(hosts_info.select('name'))
+            # remove the fast path host names from the end of the list
+            # so they are only searched for once.
+            for host in hosts_map_info_list:
+                idx = hosts_info_list.index(host)
+                del hosts_info_list[idx]
+            host_list = hosts_map_info_list + hosts_info_list
+        else:
+            host_list = list(hosts_info.select('name'))
         found = False
-        for name in hosts_info.select('name'):
+        for name in host_list:
             try:
                 resp = self.ssh.lshost(host=name)
             except processutils.ProcessExecutionError as ex:
