@@ -1607,9 +1607,10 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         2.0.2 - Refactor HuaweiISCSIDriver
         2.0.3 - Manage/unmanage snapshot support
         2.0.5 - Replication V2 support
+        2.0.6 - Support iSCSI configuration in Replication
     """
 
-    VERSION = "2.0.5"
+    VERSION = "2.0.6"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
@@ -1667,7 +1668,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         LOG.info(_LI("initialize_connection, host lun id is: %s."),
                  hostlun_id)
 
-        chapinfo = self.client.find_chap_info(self.configuration.iscsi_info,
+        chapinfo = self.client.find_chap_info(self.client.iscsi_info,
                                               initiator_name)
 
         # Return iSCSI properties.
@@ -1716,7 +1717,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
         portgroup_id = None
         view_id = None
         left_lunnum = -1
-        for ini in self.configuration.iscsi_info:
+        for ini in self.client.iscsi_info:
             if ini['Name'] == initiator_name:
                 for key in ini:
                     if key == 'TargetPortGroup':

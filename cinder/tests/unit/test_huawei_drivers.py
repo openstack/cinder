@@ -1886,12 +1886,20 @@ class FakeHuaweiConf(huawei_conf.HuaweiConf):
                       'TargetPortGroup': 'portgroup-test', }
         setattr(self.conf, 'iscsi_info', [iscsi_info])
 
+        rmt_iscsi_info = ('{ Name: iqn.1993-08.debian:01:ec2bff7acxxx;\n'
+                          'TargetIP:1.1.1.1;CHAPinfo:mm-user#mm-user@storage;'
+                          'ALUA:1; TargetPortGroup:portgroup-test};\t\n '
+                          '{ Name: iqn.1993-08.debian:01:ec2bff7acyyy;\n'
+                          'TargetIP:2.2.2.2;CHAPinfo:nn-user#nn-user@storage;'
+                          'ALUA:0; TargetPortGroup:portgroup-test1}\t\n')
+
         targets = [{'backend_id': REPLICA_BACKEND_ID,
                     'storage_pool': 'OpenStack_Pool',
                     'san_address':
                         'https://192.0.2.69:8088/deviceManager/rest/',
                     'san_user': 'admin',
-                    'san_password': 'Admin@storage1'}]
+                    'san_password': 'Admin@storage1',
+                    'iscsi_info': rmt_iscsi_info}]
         setattr(self.conf, 'replication_device', targets)
 
         setattr(self.conf, 'safe_get', self.safe_get)
@@ -2032,6 +2040,27 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         self.portgroup_id = 11
         self.driver.client.login()
 
+    def test_parse_rmt_iscsi_info(self):
+        rmt_devs = self.driver.huawei_conf.get_replication_devices()
+        iscsi_info = rmt_devs[0]['iscsi_info']
+        expected_iscsi_info = [{'Name': 'iqn.1993-08.debian:01:ec2bff7acxxx',
+                                'TargetIP': '1.1.1.1',
+                                'CHAPinfo': 'mm-user;mm-user@storage',
+                                'ALUA': '1',
+                                'TargetPortGroup': 'portgroup-test'},
+                               {'Name': 'iqn.1993-08.debian:01:ec2bff7acyyy',
+                                'TargetIP': '2.2.2.2',
+                                'CHAPinfo': 'nn-user;nn-user@storage',
+                                'ALUA': '0',
+                                'TargetPortGroup': 'portgroup-test1'}]
+        self.assertEqual(expected_iscsi_info, iscsi_info)
+
+    def test_parse_rmt_iscsi_info_without_iscsi_configuration(self):
+        self.configuration.replication_device[0]['iscsi_info'] = ''
+        rmt_devs = self.driver.huawei_conf.get_replication_devices()
+        iscsi_info = rmt_devs[0]['iscsi_info']
+        self.assertEqual([], iscsi_info)
+
     def test_login_success(self):
         device_id = self.driver.client.login()
         self.assertEqual('210235G7J20000000000', device_id)
@@ -2136,7 +2165,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def test_get_volume_status(self):
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.5', data['driver_version'])
+        self.assertEqual('2.0.6', data['driver_version'])
 
     @mock.patch.object(rest_client.RestClient, 'get_lun_info',
                        return_value={"CAPACITY": 6291456})
