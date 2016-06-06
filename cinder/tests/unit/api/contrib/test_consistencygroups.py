@@ -501,15 +501,15 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                          fake.WILL_NOT_BE_FOUND_ID,
                          res_dict['itemNotFound']['message'])
 
-    def test_delete_consistencygroup_with_Invalidconsistencygroup(self):
+    def test_delete_consistencygroup_with_invalid_consistencygroup(self):
         consistencygroup = self._create_consistencygroup(
-            status=fields.ConsistencyGroupStatus.IN_USE)
+            status=fields.ConsistencyGroupStatus.CREATING)
         self._assert_deleting_result_400(consistencygroup.id)
         consistencygroup.destroy()
 
     def test_delete_consistencygroup_invalid_force(self):
         consistencygroup = self._create_consistencygroup(
-            status=fields.ConsistencyGroupStatus.IN_USE)
+            status=fields.ConsistencyGroupStatus.CREATING)
         req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
                                   (fake.PROJECT_ID, consistencygroup.id))
         req.method = 'POST'
@@ -1080,7 +1080,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
     def test_update_consistencygroup_invalid_state(self):
         consistencygroup = self._create_consistencygroup(
-            status=fields.ConsistencyGroupStatus.IN_USE,
+            status=fields.ConsistencyGroupStatus.CREATING,
             ctxt=self.ctxt)
         req = webob.Request.blank('/v2/%s/consistencygroups/%s/update' %
                                   (fake.PROJECT_ID, consistencygroup.id))

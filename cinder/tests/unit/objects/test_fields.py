@@ -94,7 +94,6 @@ class TestConsistencyGroupStatus(TestField):
                                    ('deleting', 'deleting'),
                                    ('deleted', 'deleted'),
                                    ('updating', 'updating'),
-                                   ('in-use', 'in-use'),
                                    ('error_deleting', 'error_deleting')]
         self.coerce_bad_values = ['acme']
         self.to_primitive_values = self.coerce_good_values[0:1]

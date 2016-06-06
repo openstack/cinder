@@ -50,11 +50,10 @@ class ConsistencyGroupStatus(Enum):
     DELETING = 'deleting'
     DELETED = 'deleted'
     UPDATING = 'updating'
-    IN_USE = 'in-use'
     ERROR_DELETING = 'error_deleting'
 
     ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
-           UPDATING, IN_USE, ERROR_DELETING)
+           UPDATING, ERROR_DELETING)
 
     def __init__(self):
         super(ConsistencyGroupStatus, self).__init__(
