@@ -198,7 +198,6 @@ class TestNexentaISCSIDriver(test.TestCase):
                 'snapshot': snapshot['name']
             }, '')
         self.nms_mock.volume.object_exists.assert_called_with(volume_name)
-        self.mox.ReplayAll()
 
     def test_create_snapshot(self):
         self.drv.create_snapshot(self.TEST_SNAPSHOT_REF)
