@@ -4232,13 +4232,23 @@ def cg_has_volumes_filter(attached_or_with_snapshots=False):
 
 
 def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
-    model = aliased(models.ConsistencyGroup)
-    conditions = [~model.deleted, model.status == 'creating']
+    # NOTE(geguileo): As explained in devref api_conditional_updates we use a
+    # subquery to trick MySQL into using the same table in the update and the
+    # where clause.
+    subq = sql.select([models.ConsistencyGroup]).where(
+        and_(~models.ConsistencyGroup.deleted,
+             models.ConsistencyGroup.status == 'creating')).alias('cg2')
+
     if cg_id:
-        conditions.append(model.source_cgid == cg_id)
-    if cgsnapshot_id:
-        conditions.append(model.cgsnapshot_id == cgsnapshot_id)
-    return sql.exists().where(and_(*conditions))
+        match_id = subq.c.source_cgid == cg_id
+    elif cgsnapshot_id:
+        match_id = subq.c.cgsnapshot_id == cgsnapshot_id
+    else:
+        msg = _('cg_creating_from_src must be called with cg_id or '
+                'cgsnapshot_id parameter.')
+        raise exception.ProgrammingError(reason=msg)
+
+    return sql.exists([subq]).where(match_id)
 
 
 ###############################

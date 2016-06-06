@@ -466,6 +466,29 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         consistencygroup.destroy()
         cg2.destroy()
 
+    def test_delete_consistencygroup_available_used_as_source_success(self):
+        consistencygroup = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
+        req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
+                                  (fake.PROJECT_ID, consistencygroup.id))
+        # The other CG used the first CG as source, but it's no longer in
+        # creating status, so we should be able to delete it.
+        cg2 = self._create_consistencygroup(
+            status=fields.ConsistencyGroupStatus.AVAILABLE,
+            source_cgid=consistencygroup.id)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes({})
+        res = req.get_response(fakes.wsgi_app())
+
+        consistencygroup = objects.ConsistencyGroup.get_by_id(
+            self.ctxt, consistencygroup.id)
+        self.assertEqual(202, res.status_int)
+        self.assertEqual('deleting', consistencygroup.status)
+
+        consistencygroup.destroy()
+        cg2.destroy()
+
     def test_delete_consistencygroup_available_no_force(self):
         consistencygroup = self._create_consistencygroup(status='available')
         req = webob.Request.blank('/v2/%s/consistencygroups/%s/delete' %
