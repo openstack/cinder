@@ -39,6 +39,10 @@ class DateraVolumeTestCase(test.TestCase):
         self.cfg.datera_api_port = '7717'
         self.cfg.datera_api_version = '1'
         self.cfg.datera_num_replicas = '2'
+        self.cfg.datera_503_timeout = 0.01
+        self.cfg.datera_503_interval = 0.001
+        self.cfg.datera_acl_allow_all = False
+        self.cfg.datera_debug = False
         self.cfg.san_login = 'user'
         self.cfg.san_password = 'pass'
 
@@ -152,16 +156,12 @@ class DateraVolumeTestCase(test.TestCase):
                           self.driver.delete_volume, self.volume)
 
     def test_ensure_export_success(self):
-        self.mock_api.side_effect = self._generate_fake_api_request()
-        ctxt = context.get_admin_context()
-        expected = {
-            'provider_location': '172.28.94.11:3260 iqn.2013-05.com.daterainc'
-                                 ':c20aba21-6ef6-446b-b374-45733b4883ba--ST'
-                                 '--storage-1:01:sn:34e5b20fbadd3abb 0'}
-
-        self.assertEqual(expected, self.driver.ensure_export(ctxt,
-                                                             self.volume,
-                                                             None))
+        with mock.patch('time.sleep'):
+            self.mock_api.side_effect = self._generate_fake_api_request()
+            ctxt = context.get_admin_context()
+            self.assertIsNone(self.driver.ensure_export(ctxt,
+                                                        self.volume,
+                                                        None))
 
     def test_ensure_export_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
@@ -170,26 +170,62 @@ class DateraVolumeTestCase(test.TestCase):
                           self.driver.ensure_export, ctxt, self.volume, None)
 
     def test_create_export_target_does_not_exist_success(self):
-        self.mock_api.side_effect = self._generate_fake_api_request(
-            targets_exist=False)
-        ctxt = context.get_admin_context()
-        expected = {
-            'provider_location': '172.28.94.11:3260 iqn.2013-05.com.daterainc'
-                                 ':c20aba21-6ef6-446b-b374-45733b4883ba--ST'
-                                 '--storage-1:01:sn:34e5b20fbadd3abb 0'}
-
-        self.assertEqual(expected, self.driver.create_export(ctxt,
-                                                             self.volume,
-                                                             None))
+        with mock.patch('time.sleep'):
+            self.mock_api.side_effect = self._generate_fake_api_request(
+                targets_exist=False)
+            ctxt = context.get_admin_context()
+            self.assertIsNone(self.driver.create_export(ctxt,
+                                                        self.volume,
+                                                        None))
 
     def test_create_export_fails(self):
+        with mock.patch('time.sleep'):
+            self.mock_api.side_effect = exception.DateraAPIException
+            ctxt = context.get_admin_context()
+            self.assertRaises(exception.DateraAPIException,
+                              self.driver.create_export,
+                              ctxt,
+                              self.volume,
+                              None)
+
+    def test_initialize_connection_success(self):
+        self.mock_api.side_effect = self._generate_fake_api_request()
+        connector = {}
+
+        expected = {
+            'driver_volume_type': 'iscsi',
+            'data': {
+                'target_discovered': False,
+                'volume_id': self.volume['id'],
+                'target_iqn': ('iqn.2013-05.com.daterainc:c20aba21-6ef6-'
+                               '446b-b374-45733b4883ba--ST--storage-1:01:'
+                               'sn:34e5b20fbadd3abb'),
+                'target_portal': '172.28.94.11:3260',
+                'target_lun': 0,
+                'discard': False}}
+        self.assertEqual(expected,
+                         self.driver.initialize_connection(self.volume,
+                                                           connector))
+
+    def test_initialize_connection_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
-        ctxt = context.get_admin_context()
+        connector = {}
         self.assertRaises(exception.DateraAPIException,
-                          self.driver.create_export, ctxt, self.volume, None)
+                          self.driver.initialize_connection,
+                          self.volume,
+                          connector)
 
     def test_detach_volume_success(self):
-        self.mock_api.return_value = {}
+        self.mock_api.side_effect = [
+            {},
+            self._generate_fake_api_request()(
+                "acl_policy"),
+            self._generate_fake_api_request()(
+                "ig_group"),
+            {},
+            {},
+            {},
+            {}]
         ctxt = context.get_admin_context()
         volume = _stub_volume(status='in-use')
         self.assertIsNone(self.driver.detach_volume(ctxt, volume))
@@ -278,7 +314,23 @@ class DateraVolumeTestCase(test.TestCase):
                     'c20aba21-6ef6-446b-b374-45733b4883ba'):
                 return stub_app_instance[
                     'c20aba21-6ef6-446b-b374-45733b4883ba']
+            elif resource_type == 'acl_policy':
+                return stub_acl
+            elif resource_type == 'ig_group':
+                return stub_ig
         return _fake_api_request
+
+stub_acl = {
+    'initiator_groups': [
+        '/initiator_groups/IG-8739f309-dae9-4534-aa02-5b8e9e96eefd'],
+    'initiators': [],
+    'path': ('/app_instances/8739f309-dae9-4534-aa02-5b8e9e96eefd/'
+             'storage_instances/storage-1/acl_policy')}
+
+stub_ig = {
+    'members': ['/initiators/iqn.1993-08.org.debian:01:ed22de8d75c0'],
+    'name': 'IG-21e08155-8b95-4108-b148-089f64623963',
+    'path': '/initiator_groups/IG-21e08155-8b95-4108-b148-089f64623963'}
 
 
 stub_create_export = {
