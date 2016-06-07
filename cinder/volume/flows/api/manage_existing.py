@@ -83,7 +83,7 @@ class EntryCreateTask(flow_utils.CinderTask):
             'volume': volume,
         }
 
-    def revert(self, context, result, optional_args, **kwargs):
+    def revert(self, context, result, optional_args=None, **kwargs):
         # We never produced a result and therefore can't destroy anything.
         if isinstance(result, ft.Failure):
             return
