@@ -158,7 +158,7 @@ Basic Usage
          'consistencygroup_id': None
      }
 
-      volume.conditional_update(values, expected_values)
+     volume.conditional_update(values, expected_values)
 
 - **Filters**
 
@@ -179,7 +179,7 @@ Basic Usage
 
   .. code:: python
 
-    def volume_has_snapshots_filter():volume_has_snapshots_filter
+    def volume_has_snapshots_filter():
         return IMPL.volume_has_snapshots_filter()
 
   And finally used in the API (notice how we are negating the filter at the
@@ -198,6 +198,67 @@ Basic Usage
      }
 
      volume.conditional_update(values, expected_values, filters)
+
+Returning Errors
+----------------
+
+The most important downside of using conditional updates to remove API races is
+the inherent uncertainty of the cause of failure resulting in more generic
+error messages.
+
+When we use the `conditional_update` method we'll use returned value to
+determine the success of the operation, as a value of 0 indicates that no rows
+have been updated and the conditions were not met.  But we don't know which
+one, or which ones, were the cause of the failure.
+
+There are 2 approaches to this issue:
+
+- On failure we go one by one checking the conditions and return the first one
+  that fails.
+
+- We return a generic error message indicating all conditions that must be met
+  for the operation to succeed.
+
+It was decided that we would go with the second approach, because even though
+the first approach was closer to what we already had and would give a better
+user experience, it had considerable implications such as:
+
+- More code was needed to do individual checks making operations considerable
+  longer and less readable.  This was greatly alleviated using helper methods
+  to return the errors.
+
+- Higher number of DB queries required to determine failure cause.
+
+- Since there could be races because DB contents could be changed between the
+  failed update and the follow up queries that checked the values for the
+  specific error, a loop would be needed to make sure that either the
+  conditional update succeeds or one of the condition checks fails.
+
+- Having such a loop means that a small error in the code could lead to an
+  endless loop in a production environment.  This coding error could be an
+  incorrect conditional update filter that would always fail or a missing or
+  incorrect condition that checked for the specific issue to return the error.
+
+A simple example of a generic error can be found in `begin_detaching` code:
+
+.. code:: python
+
+   @wrap_check_policy
+   def begin_detaching(self, context, volume):
+       # If we are in the middle of a volume migration, we don't want the
+       # user to see that the volume is 'detaching'. Having
+       # 'migration_status' set will have the same effect internally.
+       expected = {'status': 'in-use',
+                   'attach_status': 'attached',
+                   'migration_status': self.AVAILABLE_MIGRATION_STATUS}
+
+       result = volume.conditional_update({'status': 'detaching'}, expected)
+
+       if not (result or self._is_volume_migrating(volume)):
+           msg = _("Unable to detach volume. Volume status must be 'in-use' "
+                   "and attach_status must be 'attached' to detach.")
+           LOG.error(msg)
+           raise exception.InvalidVolume(reason=msg)
 
 Building filters on the API
 ---------------------------
@@ -374,7 +435,7 @@ Code would look like this:
        return sql.exists().where(and_(
            ~model.deleted,
            model.status == 'creating',
-           conditions.append(model.source_cgid == cg_id))
+           conditions.append(model.source_cgid == cg_id)))
 
 While this will work in SQLite and PostgreSQL, it will not work on MySQL and an
 error will be raised when the query is executed: "You can't specify target
@@ -382,8 +443,8 @@ table 'consistencygroups' for update in FROM clause".
 
 To solve this we have 2 options:
 
-- Create a specific query for MySQL using a feature only available in MySQL,
-  which is an update with a left self join.
+- Create a specific query for MySQL engines using an update with a left self
+  join, which is a feature only available in MySQL.
 - Use a trick -using a select subquery- that will work on all DBs.
 
 Considering that it's always better to have only 1 way of doing things and that
