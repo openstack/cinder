@@ -266,6 +266,10 @@ class DrbdManageFakeDriver(object):
         else:
             return [(mock_dm_exc.DM_SUCCESS, "ack", [])]
 
+    def set_drbdsetup_props(self, options):
+        self.calls.append(["set_drbdsetup_props", options])
+        return [[mock_dm_exc.DM_SUCCESS, "ack", []]]
+
 
 class DrbdManageIscsiTestCase(test.TestCase):
 
@@ -276,7 +280,19 @@ class DrbdManageIscsiTestCase(test.TestCase):
         if key.endswith('_policy'):
             return '{}'
 
+        if key.endswith('_options'):
+            return '{}'
+
         return None
+
+    def _fake_safe_get_with_options(self, key):
+        if key == 'drbdmanage_net_options':
+            return('{"connect-int": "4", "allow-two-primaries": "yes", '
+                   '"ko-count": "30"}')
+        if key == 'drbdmanage_resource_options':
+            return '{"auto-promote-timeout": "300"}'
+
+        return self._fake_safe_get(key)
 
     @staticmethod
     def _fake_sleep(amount):
@@ -341,11 +357,43 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
         self.assertEqual("create_resource", dmd.odm.calls[0][0])
-        self.assertEqual("list_volumes", dmd.odm.calls[1][0])
-        self.assertEqual("create_volume", dmd.odm.calls[2][0])
-        self.assertEqual(1048576, dmd.odm.calls[2][2])
-        self.assertEqual("auto_deploy", dmd.odm.calls[3][0])
-        self.assertEqual(5, len(dmd.odm.calls))
+        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[1][0])
+        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[2][0])
+        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
+        self.assertEqual("create_volume", dmd.odm.calls[4][0])
+        self.assertEqual(1048576, dmd.odm.calls[4][2])
+        self.assertEqual("auto_deploy", dmd.odm.calls[5][0])
+        self.assertEqual(7, len(dmd.odm.calls))
+
+    def test_create_volume_with_options(self):
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'deadbeef-8068-11e4-98c0-5254008ea111',
+                   'volume_type_id': 'drbdmanage',
+                   'created_at': timeutils.utcnow()}
+
+        self.configuration.safe_get = self._fake_safe_get_with_options
+        dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
+        dmd.drbdmanage_devs_on_controller = False
+        dmd.odm = DrbdManageFakeDriver()
+        dmd.create_volume(testvol)
+
+        self.assertEqual("create_resource", dmd.odm.calls[0][0])
+
+        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[1][0])
+        self.assertEqual("reso", dmd.odm.calls[1][1]["type"])
+        self.assertEqual("300", dmd.odm.calls[1][1]["auto-promote-timeout"])
+
+        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[2][0])
+        self.assertEqual("neto", dmd.odm.calls[2][1]["type"])
+        self.assertEqual("30", dmd.odm.calls[2][1]["ko-count"])
+
+        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
+        self.assertEqual("create_volume", dmd.odm.calls[4][0])
+        self.assertEqual(1048576, dmd.odm.calls[4][2])
+        self.assertEqual("auto_deploy", dmd.odm.calls[5][0])
+        self.assertEqual(7, len(dmd.odm.calls))
 
     def test_create_volume_controller_all_vols(self):
         testvol = {'project_id': 'testprjid',
@@ -359,14 +407,16 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd.drbdmanage_devs_on_controller = True
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
-        self.assertEqual(6, len(dmd.odm.calls))
+        self.assertEqual(8, len(dmd.odm.calls))
         self.assertEqual("create_resource", dmd.odm.calls[0][0])
-        self.assertEqual("list_volumes", dmd.odm.calls[1][0])
-        self.assertEqual("create_volume", dmd.odm.calls[2][0])
-        self.assertEqual(1048576, dmd.odm.calls[2][2])
-        self.assertEqual("auto_deploy", dmd.odm.calls[3][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[4][0])
-        self.assertEqual("assign", dmd.odm.calls[5][0])
+        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[1][0])
+        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[2][0])
+        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
+        self.assertEqual("create_volume", dmd.odm.calls[4][0])
+        self.assertEqual(1048576, dmd.odm.calls[4][2])
+        self.assertEqual("auto_deploy", dmd.odm.calls[5][0])
+        self.assertEqual("run_external_plugin", dmd.odm.calls[6][0])
+        self.assertEqual("assign", dmd.odm.calls[7][0])
 
     def test_delete_volume(self):
         testvol = {'project_id': 'testprjid',
