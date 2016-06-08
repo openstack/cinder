@@ -14,13 +14,13 @@
 """RADOS Block Device Driver"""
 
 from __future__ import absolute_import
-import io
 import json
 import math
 import os
 import tempfile
 
 from eventlet import tpool
+from os_brick.initiator import linuxrbd
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import fileutils
@@ -92,114 +92,6 @@ RBD_OPTS = [
 
 CONF = cfg.CONF
 CONF.register_opts(RBD_OPTS)
-
-
-class RBDImageMetadata(object):
-    """RBD image metadata to be used with RBDImageIOWrapper."""
-    def __init__(self, image, pool, user, conf):
-        self.image = image
-        self.pool = utils.convert_str(pool)
-        self.user = utils.convert_str(user)
-        self.conf = utils.convert_str(conf)
-
-
-class RBDImageIOWrapper(io.RawIOBase):
-    """Enables LibRBD.Image objects to be treated as Python IO objects.
-
-    Calling unimplemented interfaces will raise IOError.
-    """
-
-    def __init__(self, rbd_meta):
-        super(RBDImageIOWrapper, self).__init__()
-        self._rbd_meta = rbd_meta
-        self._offset = 0
-
-    def _inc_offset(self, length):
-        self._offset += length
-
-    @property
-    def rbd_image(self):
-        return self._rbd_meta.image
-
-    @property
-    def rbd_user(self):
-        return self._rbd_meta.user
-
-    @property
-    def rbd_pool(self):
-        return self._rbd_meta.pool
-
-    @property
-    def rbd_conf(self):
-        return self._rbd_meta.conf
-
-    def read(self, length=None):
-        offset = self._offset
-        total = self._rbd_meta.image.size()
-
-        # NOTE(dosaboy): posix files do not barf if you read beyond their
-        # length (they just return nothing) but rbd images do so we need to
-        # return empty string if we have reached the end of the image.
-        if (offset >= total):
-            return b''
-
-        if length is None:
-            length = total
-
-        if (offset + length) > total:
-            length = total - offset
-
-        self._inc_offset(length)
-        return self._rbd_meta.image.read(int(offset), int(length))
-
-    def write(self, data):
-        self._rbd_meta.image.write(data, self._offset)
-        self._inc_offset(len(data))
-
-    def seekable(self):
-        return True
-
-    def seek(self, offset, whence=0):
-        if whence == 0:
-            new_offset = offset
-        elif whence == 1:
-            new_offset = self._offset + offset
-        elif whence == 2:
-            new_offset = self._rbd_meta.image.size()
-            new_offset += offset
-        else:
-            raise IOError(_("Invalid argument - whence=%s not supported") %
-                          (whence))
-
-        if (new_offset < 0):
-            raise IOError(_("Invalid argument"))
-
-        self._offset = new_offset
-
-    def tell(self):
-        return self._offset
-
-    def flush(self):
-        try:
-            self._rbd_meta.image.flush()
-        except AttributeError:
-            LOG.warning(_LW("flush() not supported in "
-                            "this version of librbd"))
-
-    def fileno(self):
-        """RBD does not have support for fileno() so we raise IOError.
-
-        Raising IOError is recommended way to notify caller that interface is
-        not supported - see http://docs.python.org/2/library/io.html#io.IOBase
-        """
-        raise IOError(_("fileno() not supported by RBD()"))
-
-    # NOTE(dosaboy): if IO object is not closed explicitly, Python auto closes
-    # it which, if this is not overridden, calls flush() prior to close which
-    # in this case is unwanted since the rbd image may have been closed prior
-    # to the autoclean - currently triggering a segfault in librbd.
-    def close(self):
-        pass
 
 
 class RBDVolumeProxy(object):
@@ -977,10 +869,11 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
         with RBDVolumeProxy(self, volume.name,
                             self.configuration.rbd_pool) as rbd_image:
-            rbd_meta = RBDImageMetadata(rbd_image, self.configuration.rbd_pool,
-                                        self.configuration.rbd_user,
-                                        self.configuration.rbd_ceph_conf)
-            rbd_fd = RBDImageIOWrapper(rbd_meta)
+            rbd_meta = linuxrbd.RBDImageMetadata(
+                rbd_image, self.configuration.rbd_pool,
+                self.configuration.rbd_user,
+                self.configuration.rbd_ceph_conf)
+            rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
             backup_service.backup(backup, rbd_fd)
 
         LOG.debug("volume backup complete.")
@@ -989,10 +882,11 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
         """Restore an existing backup to a new or existing volume."""
         with RBDVolumeProxy(self, volume.name,
                             self.configuration.rbd_pool) as rbd_image:
-            rbd_meta = RBDImageMetadata(rbd_image, self.configuration.rbd_pool,
-                                        self.configuration.rbd_user,
-                                        self.configuration.rbd_ceph_conf)
-            rbd_fd = RBDImageIOWrapper(rbd_meta)
+            rbd_meta = linuxrbd.RBDImageMetadata(
+                rbd_image, self.configuration.rbd_pool,
+                self.configuration.rbd_user,
+                self.configuration.rbd_ceph_conf)
+            rbd_fd = linuxrbd.RBDVolumeIOWrapper(rbd_meta)
             backup_service.restore(backup, volume.id, rbd_fd)
 
         LOG.debug("volume restore complete.")

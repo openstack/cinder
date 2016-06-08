@@ -20,6 +20,7 @@ import tempfile
 import uuid
 
 import mock
+from os_brick.initiator import linuxrbd
 from oslo_concurrency import processutils
 from oslo_serialization import jsonutils
 from oslo_utils import units
@@ -35,7 +36,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
-from cinder.volume.drivers import rbd as rbddriver
 
 # This is used to collect raised exceptions so that tests may check what was
 # raised.
@@ -117,9 +117,9 @@ class BackupCephTestCase(test.TestCase):
         return self.counter
 
     def _get_wrapped_rbd_io(self, rbd_image):
-        rbd_meta = rbddriver.RBDImageMetadata(rbd_image, 'pool_foo',
-                                              'user_foo', 'conf_foo')
-        return rbddriver.RBDImageIOWrapper(rbd_meta)
+        rbd_meta = linuxrbd.RBDImageMetadata(rbd_image, 'pool_foo',
+                                             'user_foo', 'conf_foo')
+        return linuxrbd.RBDVolumeIOWrapper(rbd_meta)
 
     def _setup_mock_popen(self, mock_popen, retval=None, p1hook=None,
                           p2hook=None):
@@ -432,11 +432,11 @@ class BackupCephTestCase(test.TestCase):
                         with tempfile.NamedTemporaryFile() as test_file:
                             checksum = hashlib.sha256()
                             image = self.service.rbd.Image()
-                            meta = rbddriver.RBDImageMetadata(image,
-                                                              'pool_foo',
-                                                              'user_foo',
-                                                              'conf_foo')
-                            rbdio = rbddriver.RBDImageIOWrapper(meta)
+                            meta = linuxrbd.RBDImageMetadata(image,
+                                                             'pool_foo',
+                                                             'user_foo',
+                                                             'conf_foo')
+                            rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
                             self.service.backup(self.backup, rbdio)
 
                             self.assertEqual(['popen_init',
@@ -515,11 +515,11 @@ class BackupCephTestCase(test.TestCase):
                     with tempfile.NamedTemporaryFile() as test_file:
                         checksum = hashlib.sha256()
                         image = self.service.rbd.Image()
-                        meta = rbddriver.RBDImageMetadata(image,
-                                                          'pool_foo',
-                                                          'user_foo',
-                                                          'conf_foo')
-                        rbdio = rbddriver.RBDImageIOWrapper(meta)
+                        meta = linuxrbd.RBDImageMetadata(image,
+                                                         'pool_foo',
+                                                         'user_foo',
+                                                         'conf_foo')
+                        rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
 
                         # We expect that the second exception is
                         # notified.
@@ -580,11 +580,11 @@ class BackupCephTestCase(test.TestCase):
                 with tempfile.NamedTemporaryFile() as test_file:
                     checksum = hashlib.sha256()
                     image = self.service.rbd.Image()
-                    meta = rbddriver.RBDImageMetadata(image,
-                                                      'pool_foo',
-                                                      'user_foo',
-                                                      'conf_foo')
-                    rbdio = rbddriver.RBDImageIOWrapper(meta)
+                    meta = linuxrbd.RBDImageMetadata(image,
+                                                     'pool_foo',
+                                                     'user_foo',
+                                                     'conf_foo')
+                    rbdio = linuxrbd.RBDVolumeIOWrapper(meta)
 
                     # We expect that the second exception is
                     # notified.
