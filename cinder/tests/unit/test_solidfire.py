@@ -186,7 +186,7 @@ class SolidFireVolumeTestCase(test.TestCase):
                              'name': test_name,
                              'accountID': 8,
                              'sliceCount': 1,
-                             'totalSize': 1 * units.Gi,
+                             'totalSize': int(1.75 * units.Gi),
                              'enable512e': True,
                              'access': "readWrite",
                              'status': "active",
@@ -815,6 +815,20 @@ class SolidFireVolumeTestCase(test.TestCase):
         model_update = sfv.manage_existing(testvol, external_ref)
         self.assertIsNotNone(model_update)
         self.assertIsNone(model_update.get('provider_geometry', None))
+
+    def test_manage_existing_get_size(self):
+        external_ref = {'name': 'existing volume', 'source-id': 5}
+        testvol = {'project_id': 'testprjid',
+                   'name': 'testvol',
+                   'size': 1,
+                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'created_at': timeutils.utcnow()}
+        mock_issue_api_request = self.mock_object(solidfire.SolidFireDriver,
+                                                  '_issue_api_request')
+        mock_issue_api_request.side_effect = self.fake_issue_api_request
+        sfv = solidfire.SolidFireDriver(configuration=self.configuration)
+        size = sfv.manage_existing_get_size(testvol, external_ref)
+        self.assertEqual(2, size)
 
     @mock.patch.object(solidfire.SolidFireDriver, '_issue_api_request')
     @mock.patch.object(solidfire.SolidFireDriver, '_create_template_account')
