@@ -126,6 +126,8 @@ from cinder.volume.drivers.ibm import xiv_ds8k as \
     cinder_volume_drivers_ibm_xivds8k
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli as \
     cinder_volume_drivers_infortrend_eonstor_ds_cli_commoncli
+from cinder.volume.drivers.kaminario import kaminario_common as \
+    cinder_volume_drivers_kaminario_kaminariocommon
 from cinder.volume.drivers.lenovo import lenovo_common as \
     cinder_volume_drivers_lenovo_lenovocommon
 from cinder.volume.drivers import lvm as cinder_volume_drivers_lvm
@@ -310,6 +312,8 @@ def list_opts():
                 [cinder_scheduler_scheduleroptions.
                     scheduler_json_config_location_opt],
                 cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,
+                cinder_volume_drivers_kaminario_kaminariocommon.
+                kaminario1_opts,
                 cinder_volume_drivers_disco_disco.disco_opts,
                 cinder_volume_drivers_hgst.hgst_opts,
                 cinder_message_api.messages_opts,
