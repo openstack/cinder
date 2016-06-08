@@ -297,7 +297,7 @@ def fetch_to_volume_format(context, image_service,
             return
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
-        virt_size = data.virtual_size / units.Gi
+        virt_size = int(math.ceil(float(data.virtual_size) / units.Gi))
 
         # NOTE(xqueralt): If the image virtual size doesn't fit in the
         # requested volume there is no point on resizing it because it will

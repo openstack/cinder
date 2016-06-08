@@ -925,7 +925,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         data = mock_info.return_value
         data.file_format = volume_format
         data.backing_file = None
-        data.virtual_size = 4321 * 1024 ** 3
+        data.virtual_size = int(1234.5 * units.Gi)
         tmp = mock_temp.return_value.__enter__.return_value
 
         self.assertRaises(
