@@ -214,7 +214,7 @@ class NetAppApiServerTests(test.TestCase):
         na_element = zapi_fakes.FAKE_NA_ELEMENT
         self.mock_object(self.root, '_create_request', mock.Mock(
             return_value=('abc', zapi_fakes.FAKE_NA_ELEMENT)))
-        self.mock_object(netapp_api, 'LOG')
+        mock_log = self.mock_object(netapp_api, 'LOG')
         self.root._opener = zapi_fakes.FAKE_HTTP_OPENER
         self.mock_object(self.root, '_build_opener')
         self.mock_object(self.root._opener, 'open', mock.Mock(
@@ -222,6 +222,7 @@ class NetAppApiServerTests(test.TestCase):
 
         self.assertRaises(netapp_api.NaApiError, self.root.send_http_request,
                           na_element)
+        self.assertEqual(1, mock_log.exception.call_count)
 
     def test_send_http_request_valid(self):
         """Tests the method send_http_request with valid parameters"""
