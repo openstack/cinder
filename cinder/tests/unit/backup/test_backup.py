@@ -20,6 +20,7 @@ import tempfile
 import uuid
 
 import mock
+import os_brick
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_utils import importutils
@@ -35,6 +36,7 @@ from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_service_with_verify as fake_service
 from cinder.tests.unit import utils
+from cinder.volume import driver
 
 
 CONF = cfg.CONF
@@ -584,6 +586,56 @@ class BackupTestCase(BaseBackupTest):
 
         vol = objects.Volume.get_by_id(self.ctxt, vol_id)
         self.assertEqual('available', vol['status'])
+        self.assertEqual('backing-up', vol['previous_status'])
+        backup = db.backup_get(self.ctxt, backup.id)
+        self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
+        self.assertEqual(vol_size, backup['size'])
+
+    @mock.patch('cinder.utils.brick_get_connector_properties')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.get_backup_device')
+    @mock.patch('cinder.utils.temporary_chown')
+    @mock.patch('six.moves.builtins.open')
+    def test_create_backup_with_temp_snapshot(self, mock_open,
+                                              mock_temporary_chown,
+                                              mock_get_backup_device,
+                                              mock_get_conn):
+        """Test backup in-use volume using temp snapshot."""
+        self.override_config('backup_use_same_host', True)
+        self.backup_mgr._setup_volume_drivers()
+        vol_size = 1
+        vol_id = self._create_volume_db_entry(size=vol_size,
+                                              previous_status='in-use')
+        backup = self._create_backup_db_entry(volume_id=vol_id)
+        snap = self._create_snapshot_db_entry(volume_id = vol_id)
+
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        mock_get_backup_device.return_value = {'backup_device': snap,
+                                               'secure_enabled': False,
+                                               'is_snapshot': True, }
+
+        attach_info = {
+            'device': {'path': '/dev/null'},
+            'conn': {'data': {}},
+            'connector': os_brick.initiator.connector.FakeConnector(None)}
+        mock_detach_snapshot = self.mock_object(driver.BaseVD,
+                                                '_detach_snapshot')
+        mock_attach_snapshot = self.mock_object(driver.BaseVD,
+                                                '_attach_snapshot')
+        mock_attach_snapshot.return_value = attach_info
+        properties = {}
+        mock_get_conn.return_value = properties
+        mock_open.return_value = open('/dev/null', 'rb')
+
+        self.backup_mgr.create_backup(self.ctxt, backup)
+        mock_temporary_chown.assert_called_once_with('/dev/null')
+        mock_attach_snapshot.assert_called_once_with(self.ctxt, snap,
+                                                     properties)
+        mock_get_backup_device.assert_called_once_with(self.ctxt, backup, vol)
+        mock_get_conn.assert_called_once_with()
+        mock_detach_snapshot.assert_called_once_with(self.ctxt, attach_info,
+                                                     snap, properties, False)
+        vol = objects.Volume.get_by_id(self.ctxt, vol_id)
+        self.assertEqual('in-use', vol['status'])
         self.assertEqual('backing-up', vol['previous_status'])
         backup = db.backup_get(self.ctxt, backup.id)
         self.assertEqual(fields.BackupStatus.AVAILABLE, backup['status'])
