@@ -36,6 +36,7 @@ intact.
 
 """
 
+
 import requests
 import time
 
@@ -217,7 +218,7 @@ def locked_snapshot_operation(f):
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '2.0'
+    RPC_API_VERSION = '2.1'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -2321,6 +2322,25 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource=vol_ref)
         return vol_ref['id']
 
+    def get_manageable_volumes(self, ctxt, marker, limit, offset, sort_keys,
+                               sort_dirs):
+        try:
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Listing manageable volumes failed, due "
+                                  "to uninitialized driver."))
+
+        cinder_volumes = objects.VolumeList.get_all_by_host(ctxt, self.host)
+        try:
+            driver_entries = self.driver.get_manageable_volumes(
+                cinder_volumes, marker, limit, offset, sort_keys, sort_dirs)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Listing manageable volumes failed, due "
+                                  "to driver error."))
+        return driver_entries
+
     def promote_replica(self, ctxt, volume_id):
         """Promote volume replica secondary to be the primary volume."""
         volume = self.db.volume_get(ctxt, volume_id)
@@ -3410,6 +3430,25 @@ class VolumeManager(manager.SchedulerDependentManager):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
         return snapshot.id
+
+    def get_manageable_snapshots(self, ctxt, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        try:
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Listing manageable snapshots failed, due "
+                                  "to uninitialized driver."))
+
+        cinder_snapshots = self.db.snapshot_get_by_host(ctxt, self.host)
+        try:
+            driver_entries = self.driver.get_manageable_snapshots(
+                cinder_snapshots, marker, limit, offset, sort_keys, sort_dirs)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Listing manageable snapshots failed, due "
+                                  "to driver error."))
+        return driver_entries
 
     def get_capabilities(self, context, discover):
         """Get capabilities of backend storage."""

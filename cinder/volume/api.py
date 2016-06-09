@@ -1506,14 +1506,7 @@ class API(base.Base):
         LOG.info(_LI("Retype volume request issued successfully."),
                  resource=volume)
 
-    def manage_existing(self, context, host, ref, name=None, description=None,
-                        volume_type=None, metadata=None,
-                        availability_zone=None, bootable=False):
-        if volume_type and 'extra_specs' not in volume_type:
-            extra_specs = volume_types.get_volume_type_extra_specs(
-                volume_type['id'])
-            volume_type['extra_specs'] = extra_specs
-
+    def _get_service_by_host(self, context, host):
         elevated = context.elevated()
         try:
             svc_host = volume_utils.extract_host(host, 'backend')
@@ -1529,6 +1522,18 @@ class API(base.Base):
             LOG.error(_LE('Unable to manage_existing volume on a disabled '
                           'service.'))
             raise exception.ServiceUnavailable()
+
+        return service
+
+    def manage_existing(self, context, host, ref, name=None, description=None,
+                        volume_type=None, metadata=None,
+                        availability_zone=None, bootable=False):
+        if volume_type and 'extra_specs' not in volume_type:
+            extra_specs = volume_types.get_volume_type_extra_specs(
+                volume_type['id'])
+            volume_type['extra_specs'] = extra_specs
+
+        service = self._get_service_by_host(context, host)
 
         if availability_zone is None:
             availability_zone = service.get('availability_zone')
@@ -1564,6 +1569,14 @@ class API(base.Base):
                      resource=vol_ref)
             return vol_ref
 
+    def get_manageable_volumes(self, context, host, marker=None, limit=None,
+                               offset=None, sort_keys=None, sort_dirs=None):
+        self._get_service_by_host(context, host)
+        return self.volume_rpcapi.get_manageable_volumes(context, host,
+                                                         marker, limit,
+                                                         offset, sort_keys,
+                                                         sort_dirs)
+
     def manage_existing_snapshot(self, context, ref, volume,
                                  name=None, description=None,
                                  metadata=None):
@@ -1590,6 +1603,14 @@ class API(base.Base):
         self.volume_rpcapi.manage_existing_snapshot(context, snapshot_object,
                                                     ref, host)
         return snapshot_object
+
+    def get_manageable_snapshots(self, context, host, marker=None, limit=None,
+                                 offset=None, sort_keys=None, sort_dirs=None):
+        self._get_service_by_host(context, host)
+        return self.volume_rpcapi.get_manageable_snapshots(context, host,
+                                                           marker, limit,
+                                                           offset, sort_keys,
+                                                           sort_dirs)
 
     # FIXME(jdg): Move these Cheesecake methods (freeze, thaw and failover)
     # to a services API because that's what they are

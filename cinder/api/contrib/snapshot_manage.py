@@ -16,8 +16,10 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from webob import exc
 
+from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.api.views import manageable_snapshots as list_manageable_view
 from cinder.api.views import snapshots as snapshot_views
 from cinder import exception
 from cinder.i18n import _
@@ -25,7 +27,10 @@ from cinder import volume as cinder_volume
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
-authorize = extensions.extension_authorizer('snapshot', 'snapshot_manage')
+authorize_manage = extensions.extension_authorizer('snapshot',
+                                                   'snapshot_manage')
+authorize_list_manageable = extensions.extension_authorizer('snapshot',
+                                                            'list_manageable')
 
 
 class SnapshotManageController(wsgi.Controller):
@@ -36,6 +41,7 @@ class SnapshotManageController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(SnapshotManageController, self).__init__(*args, **kwargs)
         self.volume_api = cinder_volume.API()
+        self._list_manageable_view = list_manageable_view.ViewBuilder()
 
     @wsgi.response(202)
     def create(self, req, body):
@@ -81,7 +87,7 @@ class SnapshotManageController(wsgi.Controller):
 
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_manage(context)
 
         if not self.is_valid_body(body, 'snapshot'):
             msg = _("Missing required element snapshot in request body.")
@@ -130,6 +136,24 @@ class SnapshotManageController(wsgi.Controller):
 
         return self._view_builder.detail(req, new_snapshot)
 
+    @wsgi.extends
+    def index(self, req):
+        """Returns a summary list of snapshots available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, False, self.volume_api.get_manageable_snapshots,
+            self._list_manageable_view)
+
+    @wsgi.extends
+    def detail(self, req):
+        """Returns a detailed list of snapshots available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, True, self.volume_api.get_manageable_snapshots,
+            self._list_manageable_view)
+
 
 class Snapshot_manage(extensions.ExtensionDescriptor):
     """Allows existing backend storage to be 'managed' by Cinder."""
@@ -141,4 +165,6 @@ class Snapshot_manage(extensions.ExtensionDescriptor):
     def get_resources(self):
         controller = SnapshotManageController()
         return [extensions.ResourceExtension(Snapshot_manage.alias,
-                                             controller)]
+                                             controller,
+                                             collection_actions=
+                                             {'detail': 'GET'})]

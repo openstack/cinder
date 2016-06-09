@@ -67,6 +67,7 @@
 
     "volume_extension:volume_manage": "rule:admin_api",
     "volume_extension:volume_unmanage": "rule:admin_api",
+    "volume_extension:list_manageable": "rule:admin_api",
 
     "volume_extension:capabilities": "rule:admin_api",
 
@@ -94,6 +95,7 @@
     "snapshot_extension:snapshot_actions:update_snapshot_status": "",
     "snapshot_extension:snapshot_manage": "rule:admin_api",
     "snapshot_extension:snapshot_unmanage": "rule:admin_api",
+    "snapshot_extension:list_manageable": "rule:admin_api",
 
     "consistencygroup:create" : "group:nobody",
     "consistencygroup:delete": "group:nobody",

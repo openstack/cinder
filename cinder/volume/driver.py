@@ -1819,6 +1819,37 @@ class ManageableVD(object):
         """
         return
 
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """List volumes on the backend available for management by Cinder.
+
+        Returns a list of dictionaries, each specifying a volume in the host,
+        with the following keys:
+        - reference (dictionary): The reference for a volume, which can be
+          passed to "manage_existing".
+        - size (int): The size of the volume according to the storage
+          backend, rounded up to the nearest GB.
+        - safe_to_manage (boolean): Whether or not this volume is safe to
+          manage according to the storage backend. For example, is the volume
+          in use or invalid for any reason.
+        - reason_not_safe (string): If safe_to_manage is False, the reason why.
+        - cinder_id (string): If already managed, provide the Cinder ID.
+        - extra_info (string): Any extra information to return to the user
+
+        :param cinder_volumes: A list of volumes in this host that Cinder
+                               currently manages, used to determine if
+                               a volume is manageable or not.
+        :param marker:    The last item of the previous page; we return the
+                          next results after this value (after sorting)
+        :param limit:     Maximum number of items to return
+        :param offset:    Number of items to skip after marker
+        :param sort_keys: List of keys to sort results by (valid keys are
+                          'identifier' and 'size')
+        :param sort_dirs: List of directions to sort by, corresponding to
+                          sort_keys (valid directions are 'asc' and 'desc')
+        """
+        return []
+
     @abc.abstractmethod
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.
@@ -1870,6 +1901,40 @@ class ManageableSnapshotsVD(object):
         When calculating the size, round up to the next GB.
         """
         return
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        """List snapshots on the backend available for management by Cinder.
+
+        Returns a list of dictionaries, each specifying a snapshot in the host,
+        with the following keys:
+        - reference (dictionary): The reference for a snapshot, which can be
+          passed to "manage_existing_snapshot".
+        - size (int): The size of the snapshot according to the storage
+          backend, rounded up to the nearest GB.
+        - safe_to_manage (boolean): Whether or not this snapshot is safe to
+          manage according to the storage backend. For example, is the snapshot
+          in use or invalid for any reason.
+        - reason_not_safe (string): If safe_to_manage is False, the reason why.
+        - cinder_id (string): If already managed, provide the Cinder ID.
+        - extra_info (string): Any extra information to return to the user
+        - source_reference (string): Similar to "reference", but for the
+          snapshot's source volume.
+
+        :param cinder_snapshots: A list of snapshots in this host that Cinder
+                                 currently manages, used to determine if
+                                 a snapshot is manageable or not.
+        :param marker:    The last item of the previous page; we return the
+                          next results after this value (after sorting)
+        :param limit:     Maximum number of items to return
+        :param offset:    Number of items to skip after marker
+        :param sort_keys: List of keys to sort results by (valid keys are
+                          'identifier' and 'size')
+        :param sort_dirs: List of directions to sort by, corresponding to
+                          sort_keys (valid directions are 'asc' and 'desc')
+
+        """
+        return []
 
     # NOTE: Can't use abstractmethod before all drivers implement it
     def unmanage_snapshot(self, snapshot):
@@ -2025,6 +2090,11 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
         msg = _("Manage existing volume not implemented.")
         raise NotImplementedError(msg)
 
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        msg = _("Get manageable volumes not implemented.")
+        raise NotImplementedError(msg)
+
     def unmanage(self, volume):
         pass
 
@@ -2034,6 +2104,11 @@ class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
 
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         msg = _("Manage existing snapshot not implemented.")
+        raise NotImplementedError(msg)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        msg = _("Get manageable snapshots not implemented.")
         raise NotImplementedError(msg)
 
     def unmanage_snapshot(self, snapshot):

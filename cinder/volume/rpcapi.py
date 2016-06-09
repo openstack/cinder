@@ -99,9 +99,10 @@ class VolumeAPI(rpc.RPCAPI):
         the version_cap being set to 1.40.
 
         2.0  - Remove 1.x compatibility
+        2.1  - Add get_manageable_volumes() and get_manageable_snapshots().
     """
 
-    RPC_API_VERSION = '2.0'
+    RPC_API_VERSION = '2.1'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
 
@@ -296,3 +297,17 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(volume.host, '2.0')
         return cctxt.call(ctxt, 'secure_file_operations_enabled',
                           volume=volume)
+
+    def get_manageable_volumes(self, ctxt, host, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        cctxt = self._get_cctxt(host, '2.1')
+        return cctxt.call(ctxt, 'get_manageable_volumes', marker=marker,
+                          limit=limit, offset=offset, sort_keys=sort_keys,
+                          sort_dirs=sort_dirs)
+
+    def get_manageable_snapshots(self, ctxt, host, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        cctxt = self._get_cctxt(host, '2.1')
+        return cctxt.call(ctxt, 'get_manageable_snapshots', marker=marker,
+                          limit=limit, offset=offset, sort_keys=sort_keys,
+                          sort_dirs=sort_dirs)

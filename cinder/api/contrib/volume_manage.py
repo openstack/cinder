@@ -16,9 +16,11 @@ from oslo_log import log as logging
 from oslo_utils import uuidutils
 from webob import exc
 
+from cinder.api.contrib import resource_common_manage
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.v2.views import volumes as volume_views
+from cinder.api.views import manageable_volumes as list_manageable_view
 from cinder import exception
 from cinder.i18n import _
 from cinder import utils
@@ -26,7 +28,9 @@ from cinder import volume as cinder_volume
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('volume', 'volume_manage')
+authorize_manage = extensions.extension_authorizer('volume', 'volume_manage')
+authorize_list_manageable = extensions.extension_authorizer('volume',
+                                                            'list_manageable')
 
 
 class VolumeManageController(wsgi.Controller):
@@ -37,6 +41,7 @@ class VolumeManageController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(VolumeManageController, self).__init__(*args, **kwargs)
         self.volume_api = cinder_volume.API()
+        self._list_manageable_view = list_manageable_view.ViewBuilder()
 
     @wsgi.response(202)
     def create(self, req, body):
@@ -93,7 +98,7 @@ class VolumeManageController(wsgi.Controller):
 
         """
         context = req.environ['cinder.context']
-        authorize(context)
+        authorize_manage(context)
 
         self.assert_valid_body(body, 'volume')
 
@@ -145,6 +150,24 @@ class VolumeManageController(wsgi.Controller):
 
         return self._view_builder.detail(req, new_volume)
 
+    @wsgi.extends
+    def index(self, req):
+        """Returns a summary list of volumes available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, False, self.volume_api.get_manageable_volumes,
+            self._list_manageable_view)
+
+    @wsgi.extends
+    def detail(self, req):
+        """Returns a detailed list of volumes available to manage."""
+        context = req.environ['cinder.context']
+        authorize_list_manageable(context)
+        return resource_common_manage.get_manageable_resources(
+            req, True, self.volume_api.get_manageable_volumes,
+            self._list_manageable_view)
+
 
 class Volume_manage(extensions.ExtensionDescriptor):
     """Allows existing backend storage to be 'managed' by Cinder."""
@@ -156,5 +179,7 @@ class Volume_manage(extensions.ExtensionDescriptor):
     def get_resources(self):
         controller = VolumeManageController()
         res = extensions.ResourceExtension(Volume_manage.alias,
-                                           controller)
+                                           controller,
+                                           collection_actions=
+                                           {'detail': 'GET'})
         return [res]
