@@ -1025,14 +1025,32 @@ def consistencygroup_destroy(context, consistencygroup_id):
 
 
 def cg_has_cgsnapshot_filter():
+    """Return a filter that checks if a CG has CG Snapshots."""
     return IMPL.cg_has_cgsnapshot_filter()
 
 
 def cg_has_volumes_filter(attached_or_with_snapshots=False):
+    """Return a filter to check if a CG has volumes.
+
+    When attached_or_with_snapshots parameter is given a True value only
+    attached volumes or those with snapshots will be considered.
+    """
     return IMPL.cg_has_volumes_filter(attached_or_with_snapshots)
 
 
 def cg_creating_from_src(cg_id=None, cgsnapshot_id=None):
+    """Return a filter to check if a CG is being used as creation source.
+
+    Returned filter is meant to be used in the Conditional Update mechanism and
+    checks if provided CG ID or CG Snapshot ID is currently being used to
+    create another CG.
+
+    This filter will not include CGs that have used the ID but have already
+    finished their creation (status is no longer creating).
+
+    Filter uses a subquery that allows it to be used on updates to the
+    consistencygroups table.
+    """
     return IMPL.cg_creating_from_src(cg_id, cgsnapshot_id)
 
 
@@ -1078,6 +1096,7 @@ def cgsnapshot_destroy(context, cgsnapshot_id):
 
 
 def cgsnapshot_creating_from_src():
+    """Get a filter that checks if a CGSnapshot is being created from a CG."""
     return IMPL.cgsnapshot_creating_from_src()
 
 
