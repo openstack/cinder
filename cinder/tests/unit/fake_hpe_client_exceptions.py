@@ -73,7 +73,7 @@ class ClientException(Exception):
         return formatted_string
 
 
-class HTTPConflict(Exception):
+class HTTPConflict(ClientException):
     http_status = 409
     message = "Conflict"
 
@@ -85,7 +85,7 @@ class HTTPConflict(Exception):
         return self._error_desc
 
 
-class HTTPNotFound(Exception):
+class HTTPNotFound(ClientException):
     http_status = 404
     message = "Not found"
 
@@ -95,12 +95,12 @@ class HTTPForbidden(ClientException):
     message = "Forbidden"
 
 
-class HTTPBadRequest(Exception):
+class HTTPBadRequest(ClientException):
     http_status = 400
     message = "Bad request"
 
 
-class HTTPServerError(Exception):
+class HTTPServerError(ClientException):
     http_status = 500
     message = "Error"
 

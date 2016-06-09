@@ -1683,6 +1683,29 @@ class HPE3PARBaseDriver(object):
                 expected +
                 self.standard_logout)
 
+    def test_delete_volume_online_clone_active(self):
+        # setup_mock_client drive with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            ex = hpeexceptions.HTTPConflict("Online clone is active.")
+            ex._error_code = 151
+            mock_client.deleteVolume = mock.Mock(side_effect=ex)
+            mock_client.isOnlinePhysicalCopy.return_value = True
+            self.driver.delete_volume(self.volume)
+
+            expected = [
+                mock.call.deleteVolume(self.VOLUME_3PAR_NAME),
+                mock.call.isOnlinePhysicalCopy(self.VOLUME_3PAR_NAME),
+                mock.call.stopOnlinePhysicalCopy(self.VOLUME_3PAR_NAME)]
+
+            mock_client.assert_has_calls(
+                self.standard_login +
+                expected +
+                self.standard_logout)
+
     @mock.patch.object(volume_types, 'get_volume_type')
     def test_delete_volume_replicated(self, _mock_volume_types):
         # setup_mock_client drive with default configuration
