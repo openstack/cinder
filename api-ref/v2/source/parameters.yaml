@@ -96,6 +96,24 @@ volume_type_id:
   type: string
 
 # variables in query
+action:
+  description: |
+    The action. Valid values are "set" or "unset."
+  in: query
+  required: true
+  type: string
+all-tenants:
+  description: |
+    Shows details for all tenants. Admin only..
+  in: query
+  required: false
+  type: string
+bootable_query:
+  description: |
+    Filters results by bootable status. Default=None.
+  in: query
+  required: false
+  type: boolean
 detail:
   description: |
     Indicates whether to show pool details or only
@@ -104,6 +122,12 @@ detail:
   in: query
   required: false
   type: boolean
+image-id:
+  description: |
+    Creates volume from image ID. Default=None.
+  in: query
+  required: false
+  type: string
 limit:
   description: |
     Requests a page size of items. Returns a number
@@ -120,6 +144,26 @@ marker:
     parameter to make an initial limited request and use the ID of the
     last-seen item from the response as the ``marker`` parameter value
     in a subsequent limited request.
+  in: query
+  required: false
+  type: string
+metadata_query:
+  description: |
+    Filters results by a metadata key and value pair.
+    Default=None.
+  in: query
+  required: true
+  type: object
+migration_status_query:
+  description: |
+    Filters results by a migration status. Default=None.
+    Admin only.
+  in: query
+  required: false
+  type: string
+name_volume:
+  description: |
+    Filters results by a name. Default=None.
   in: query
   required: false
   type: string
@@ -159,6 +203,12 @@ sort_key_1:
   in: query
   required: false
   type: string
+status_query:
+  description: |
+    Filters results by a status. Default=None.
+  in: query
+  required: false
+  type: boolean
 usage:
   description: |
     Set to ``usage=true`` to show quota usage.
@@ -168,12 +218,6 @@ usage:
   type: boolean
 
 # variables in body
-QoS_support:
-  description: |
-    The quality of service (QoS) support.
-  in: body
-  required: true
-  type: boolean
 absolute:
   description: |
     An ``absolute`` limits object.
@@ -446,12 +490,6 @@ extra_specs:
   in: body
   required: true
   type: object
-is_public:
-  description:
-    Volume type which is accessible to the public.
-  in: body
-  required: false
-  type: boolean
 extra_specs_1:
   description: |
     A key and value pair that contains additional
@@ -641,6 +679,12 @@ is_incremental:
     Indicates whether the backup mode is incremental.
     If this value is ``true``, the backup mode is incremental. If this
     value is ``false``, the backup mode is full.
+  in: body
+  required: false
+  type: boolean
+is_public:
+  description:
+    Volume type which is accessible to the public.
   in: body
   required: false
   type: boolean
@@ -836,7 +880,7 @@ multiattach_1:
   type: boolean
 name:
   description: |
-    The name of the volume transfer.
+    The name of the Volume Transfer.
   in: body
   required: true
   type: string
@@ -1115,6 +1159,12 @@ qos_specs:
   in: body
   required: true
   type: object
+QoS_support:
+  description: |
+    The quality of service (QoS) support.
+  in: body
+  required: true
+  type: boolean
 quota_set:
   description: |
     A ``quota_set`` object.
@@ -1355,6 +1405,14 @@ storage_protocol_1:
   in: body
   required: true
   type: string
+total_capacity:
+  description: |
+    The total capacity for the back-end volume, in
+    GBs. A valid value is a string, such as ``unknown``, or an
+    integer.
+  in: body
+  required: true
+  type: string
 totalBackupGigabytesUsed:
   description: |
     The total number of backups gibibytes (GiB) used.
@@ -1385,14 +1443,6 @@ totalVolumesUsed:
   in: body
   required: true
   type: integer
-total_capacity:
-  description: |
-    The total capacity for the back-end volume, in
-    GBs. A valid value is a string, such as ``unknown``, or an
-    integer.
-  in: body
-  required: true
-  type: string
 updated:
   description: |
     The date and time stamp when the extension was
