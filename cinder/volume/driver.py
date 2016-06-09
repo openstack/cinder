@@ -1821,6 +1821,7 @@ class ManageableVD(object):
         :param volume:       Cinder volume to manage
         :param existing_ref: Driver-specific information used to identify a
                              volume
+        :returns size:       Volume size in GiB (integer)
         """
         return
 
