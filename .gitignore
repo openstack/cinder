@@ -24,12 +24,12 @@ instances
 keeper
 keys
 local_settings.py
-tools/conf/cinder.conf*
 tools/lintstack.head.py
 tools/pylint_exceptions
 tags
 # Files created by Sphinx build
 doc/build
+doc/source/_static/cinder.conf.sample
 
 #Files created for API reference
 api-ref/build

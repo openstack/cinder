@@ -52,6 +52,14 @@ API Extensions
 
 Go to http://api.openstack.org for information about Cinder API extensions.
 
+Sample Configuration File
+=========================
+
+.. toctree::
+    :maxdepth: 1
+
+    sample_config
+
 Outstanding Documentation Tasks
 ===============================
 

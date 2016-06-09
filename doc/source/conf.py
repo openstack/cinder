@@ -34,8 +34,12 @@ extensions = ['sphinx.ext.autodoc',
               'sphinx.ext.ifconfig',
               'sphinx.ext.graphviz',
               'oslosphinx',
-              'stevedore.sphinxext'
+              'stevedore.sphinxext',
+              'oslo_config.sphinxconfiggen',
               ]
+
+config_generator_config_file = '../../cinder/config/cinder-config-generator.conf'
+sample_config_basename = '_static/cinder'
 
 # autodoc generation is a bit aggressive and a nuisance
 # when doing heavy text edit cycles. Execute "export SPHINX_DEBUG=1"
