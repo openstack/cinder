@@ -255,6 +255,9 @@ def _keystone_client(context, version=(3, 0)):
         auth_url=CONF.keystone_authtoken.auth_uri,
         token=context.auth_token,
         project_id=context.project_id)
-    client_session = session.Session(auth=auth_plugin)
+    client_session = session.Session(auth=auth_plugin,
+                                     verify=False if
+                                     CONF.keystone_authtoken.insecure else
+                                     (CONF.keystone_authtoken.cafile or True))
     return client.Client(auth_url=CONF.keystone_authtoken.auth_uri,
                          session=client_session, version=version)
