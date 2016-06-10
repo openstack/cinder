@@ -1502,10 +1502,16 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         version = self._driver._get_vc_version()
         self.assertEqual(ver.LooseVersion('6.0.1'), version)
 
+    @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
     @ddt.data('5.1', '5.5')
-    def test_validate_vcenter_version(self, version):
+    def test_validate_vcenter_version(self, version, log):
         # vCenter versions 5.1 and above should pass validation.
         self._driver._validate_vcenter_version(ver.LooseVersion(version))
+        # Deprecation warning should be logged for vCenter version 5.1.
+        if version == '5.1':
+            log.warning.assert_called_once()
+        else:
+            log.warning.assert_not_called()
 
     def test_validate_vcenter_version_with_less_than_min_supported_version(
             self):
