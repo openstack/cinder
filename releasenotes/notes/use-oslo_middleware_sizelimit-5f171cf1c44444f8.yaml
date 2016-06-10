@@ -1,0 +1,9 @@
+---
+upgrade:
+  - use oslo_middleware.sizelimit rather than cinder.api.middleware.sizelimit
+    compatibility shim
+deprecations:
+  - cinder.api.middleware.sizelimit was deprecated in kilo and compatability
+    shim added to call into oslo_middleware.  Using oslo_middleware.sizelimit
+    directly will allow us to remove the compatability shim in a future
+    release.

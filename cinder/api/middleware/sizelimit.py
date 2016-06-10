@@ -15,7 +15,9 @@
 Request Body limiting middleware.
 Compatibility shim for Kilo, while operators migrate to oslo.middleware.
 """
-
+# TODO(tbarron): remove this shim in Ocata.  Note that although the shim
+# was added in Kilo, api-paste.ini was not converted to use oslo.middleware
+# until Newton.
 
 from oslo_config import cfg
 from oslo_log import versionutils
