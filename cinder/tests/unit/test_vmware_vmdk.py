@@ -68,8 +68,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     CLUSTERS = ["cls-1", "cls-2"]
     DEFAULT_VC_VERSION = '5.5'
 
-    VOL_ID = 'abcdefab-cdef-abcd-efab-cdefabcdefab',
-    DISPLAY_NAME = 'foo',
+    VOL_ID = 'abcdefab-cdef-abcd-efab-cdefabcdefab'
+    DISPLAY_NAME = 'foo'
     VOL_TYPE_ID = 'd61b8cb3-aa1b-4c9b-b79e-abcdbda8b58a'
     VOL_SIZE = 2
     PROJECT_ID = 'd45beabe-f5de-47b7-b462-0d9ea02889bc'
