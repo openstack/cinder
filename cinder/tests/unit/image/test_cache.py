@@ -144,7 +144,8 @@ class ImageVolumeCacheTestCase(test.TestCase):
         self.assertEqual(image_id, msg['payload']['image_id'])
         self.assertEqual(1, len(self.notifier.notifications))
 
-    def test_get_entry_needs_update(self):
+    @mock.patch('cinder.objects.Volume.get_by_id')
+    def test_get_entry_needs_update(self, mock_volume_by_id):
         cache = self._build_cache()
         entry = self._build_entry()
         volume_ref = {
@@ -160,8 +161,9 @@ class ImageVolumeCacheTestCase(test.TestCase):
         }
         (self.mock_db.
          image_volume_cache_get_and_update_last_used.return_value) = entry
-        mock_volume = mock.Mock()
-        self.mock_db.volume_get.return_value = mock_volume
+
+        mock_volume = mock.MagicMock()
+        mock_volume_by_id.return_value = mock_volume
 
         found_entry = cache.get_entry(self.context,
                                       volume_ref,
