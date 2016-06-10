@@ -241,10 +241,11 @@ class HPE3PARCommon(object):
         3.0.22 - Rework delete_vlun. Bug #1582922
         3.0.23 - Fix CG create failures with long display name or special
                  characters. bug #1573647
+        3.0.24 - Fix terminate connection on failover
 
     """
 
-    VERSION = "3.0.23"
+    VERSION = "3.0.24"
 
     stats = {}
 
@@ -2509,12 +2510,26 @@ class HPE3PARCommon(object):
             return
         except hpeexceptions.HTTPNotFound as e:
             if 'host does not exist' in e.get_description():
-                # use the wwn to see if we can find the hostname
-                hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
-                # no 3par host, re-throw
-                if hostname is None:
-                    LOG.error(_LE("Exception: %s"), e)
-                    raise
+                # If a host is failed-over, we want to allow the detach to
+                # 'succeed' when it cannot find the host. We can simply
+                # return out of the terminate connection in order for things
+                # to be updated correctly.
+                if self._active_backend_id:
+                    LOG.warning(_LW("Because the host is currently in a "
+                                    "failed-over state, the volume will not "
+                                    "be properly detached from the primary "
+                                    "array. The detach will be considered a "
+                                    "success as far as Cinder is concerned. "
+                                    "The volume can now be attached to the "
+                                    "secondary target."))
+                    return
+                else:
+                    # use the wwn to see if we can find the hostname
+                    hostname = self._get_3par_hostname_from_wwn_iqn(wwn, iqn)
+                    # no 3par host, re-throw
+                    if hostname is None:
+                        LOG.error(_LE("Exception: %s"), e)
+                        raise
             else:
                 # not a 'host does not exist' HTTPNotFound exception, re-throw
                 LOG.error(_LE("Exception: %s"), e)
