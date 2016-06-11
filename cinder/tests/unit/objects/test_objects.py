@@ -38,7 +38,7 @@ object_data = {
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'VolumeAttachment': '1.0-b30dacf62b2030dd83d8a1603f1064ff',
     'VolumeAttachmentList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'VolumeType': '1.0-6673dd9ce7c27e9c85279afb20833877',
+    'VolumeType': '1.1-6673dd9ce7c27e9c85279afb20833877',
     'VolumeTypeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
 }
 

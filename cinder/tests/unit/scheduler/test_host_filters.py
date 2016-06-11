@@ -1236,6 +1236,18 @@ class ExtraSpecsOpsTestCase(test.TestCase):
             req='>= 3',
             matches=False)
 
+    def test_extra_specs_fails_none_req(self):
+        self._do_extra_specs_ops_test(
+            value='foo',
+            req=None,
+            matches=False)
+
+    def test_extra_specs_matches_none_req(self):
+        self._do_extra_specs_ops_test(
+            value=None,
+            req=None,
+            matches=True)
+
 
 class BasicFiltersTestCase(HostFiltersTestCase):
     """Test case for host filters."""
@@ -1316,10 +1328,34 @@ class BasicFiltersTestCase(HostFiltersTestCase):
             especs={'capabilities:scope_lv0:scope_lv1:scope_lv2:opt1': '>= 2'},
             passes=True)
 
+    def test_capability_filter_fails_unenough_level_scope_extra_specs(self):
+        self._do_test_type_filter_extra_specs(
+            ecaps={'scope_lv0': {'scope_lv1': None}},
+            especs={'capabilities:scope_lv0:scope_lv1:scope_lv2:opt1': '>= 2'},
+            passes=False)
+
     def test_capability_filter_fails_wrong_scope_extra_specs(self):
         self._do_test_type_filter_extra_specs(
             ecaps={'scope_lv0': {'opt1': 10}},
             especs={'capabilities:scope_lv1:opt1': '>= 2'},
+            passes=False)
+
+    def test_capability_filter_passes_none_extra_specs(self):
+        self._do_test_type_filter_extra_specs(
+            ecaps={'scope_lv0': {'opt1': None}},
+            especs={'capabilities:scope_lv0:opt1': None},
+            passes=True)
+
+    def test_capability_filter_fails_none_extra_specs(self):
+        self._do_test_type_filter_extra_specs(
+            ecaps={'scope_lv0': {'opt1': 10}},
+            especs={'capabilities:scope_lv0:opt1': None},
+            passes=False)
+
+    def test_capability_filter_fails_none_caps(self):
+        self._do_test_type_filter_extra_specs(
+            ecaps={'scope_lv0': {'opt1': None}},
+            especs={'capabilities:scope_lv0:opt1': 'foo'},
             passes=False)
 
     def test_json_filter_passes(self):

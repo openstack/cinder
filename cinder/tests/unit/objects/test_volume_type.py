@@ -31,6 +31,23 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                                    fake.VOLUME_TYPE_ID)
         self._compare(self, db_volume_type, volume_type)
 
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
+    def test_get_by_id_null_spec(self, volume_type_get):
+        db_volume_type = fake_volume.fake_db_volume_type(
+            extra_specs={'foo': None})
+        volume_type_get.return_value = db_volume_type
+        volume_type = objects.VolumeType.get_by_id(self.context,
+                                                   fake.VOLUME_TYPE_ID)
+        self._compare(self, db_volume_type, volume_type)
+
+    def test_obj_make_compatible(self):
+        volume_type = objects.VolumeType(context=self.context)
+        volume_type.extra_specs = {'foo': None, 'bar': 'baz'}
+        primitive = volume_type.obj_to_primitive('1.0')
+        volume_type = objects.VolumeType.obj_from_primitive(primitive)
+        self.assertEqual('', volume_type.extra_specs['foo'])
+        self.assertEqual('baz', volume_type.extra_specs['bar'])
+
     @mock.patch('cinder.volume.volume_types.create')
     def test_create(self, volume_type_create):
         db_volume_type = fake_volume.fake_db_volume_type()
