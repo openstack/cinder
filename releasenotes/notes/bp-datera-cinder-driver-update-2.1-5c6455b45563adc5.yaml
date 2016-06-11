@@ -1,0 +1,7 @@
+---
+features:
+  - Updating the Datera Elastic DataFabric Storage Driver
+    to version 2.1.  This adds ACL support, Multipath
+    support and basic IP pool support.
+  - Changes config option default for datera_num_replicas
+    from 1 to 3
