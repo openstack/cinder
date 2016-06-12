@@ -251,6 +251,7 @@ SNAPSHOT_INFO_FOR_PRESENT_NOT_BUSY_SNAPSHOT_CMODE = etree.XML("""
         <name>%(snapshot_name)s</name>
         <busy>False</busy>
         <volume>%(vol_name)s</volume>
+        <snapshot-instance-uuid>abcd-ef01-2345-6789</snapshot-instance-uuid>
       </snapshot-info>
     </attributes-list>
     <num-records>1</num-records>
@@ -283,6 +284,39 @@ SNAPSHOT_INFO_FOR_PRESENT_NOT_BUSY_SNAPSHOT_7MODE = etree.XML("""
         <name>%(snapshot_name)s</name>
         <busy>False</busy>
         <volume>%(vol_name)s</volume>
+        <snapshot-instance-uuid>abcd-ef01-2345-6789</snapshot-instance-uuid>
+      </snapshot-info>
+    </snapshots>
+    </results>
+""" % {
+    'snapshot_name': fake.SNAPSHOT['name'],
+    'vol_name': fake.SNAPSHOT['volume_id'],
+})
+
+SNAPSHOT_INFO_MARKED_FOR_DELETE_SNAPSHOT_7MODE = etree.XML("""
+    <results status="passed">
+    <snapshots>
+      <snapshot-info>
+        <name>deleted_cinder_%(snapshot_name)s</name>
+        <busy>False</busy>
+        <volume>%(vol_name)s</volume>
+        <snapshot-instance-uuid>abcd-ef01-2345-6789</snapshot-instance-uuid>
+      </snapshot-info>
+    </snapshots>
+    </results>
+""" % {
+    'snapshot_name': fake.SNAPSHOT['name'],
+    'vol_name': fake.SNAPSHOT['volume_id'],
+})
+
+SNAPSHOT_INFO_MARKED_FOR_DELETE_SNAPSHOT_7MODE_BUSY = etree.XML("""
+    <results status="passed">
+    <snapshots>
+      <snapshot-info>
+        <name>deleted_cinder_busy_snapshot</name>
+        <busy>True</busy>
+        <volume>%(vol_name)s</volume>
+        <snapshot-instance-uuid>abcd-ef01-2345-6789</snapshot-instance-uuid>
       </snapshot-info>
     </snapshots>
     </results>

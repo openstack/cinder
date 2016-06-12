@@ -591,3 +591,20 @@ class NetAppBaseClientTestCase(test.TestCase):
             mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
         ]
         mock_get_snapshot.assert_has_calls(calls)
+
+    def test_rename_snapshot(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rename_snapshot(
+            fake.SNAPSHOT['volume_id'], fake.SNAPSHOT_NAME,
+            client_base.DELETED_PREFIX + fake.SNAPSHOT_NAME)
+
+        api_args = {
+            'volume': fake.SNAPSHOT['volume_id'],
+            'current-name': fake.SNAPSHOT_NAME,
+            'new-name':
+                client_base.DELETED_PREFIX + fake.SNAPSHOT_NAME,
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'snapshot-rename', api_args)

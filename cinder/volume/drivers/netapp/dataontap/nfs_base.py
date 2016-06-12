@@ -32,7 +32,6 @@ import time
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_service import loopingcall
 from oslo_utils import units
 import six
 from six.moves import urllib
@@ -42,6 +41,7 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder import utils
 from cinder.volume import driver
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
@@ -83,6 +83,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         self.configuration.append_config_values(na_opts.netapp_img_cache_opts)
         self.configuration.append_config_values(na_opts.netapp_nfs_extra_opts)
         self.backend_name = self.host.split('@')[1]
+        self.loopingcalls = loopingcalls.LoopingCalls()
 
     def do_setup(self, context):
         super(NetAppNfsDriver, self).do_setup(context)
@@ -93,20 +94,26 @@ class NetAppNfsDriver(driver.ManageableVD,
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         super(NetAppNfsDriver, self).check_for_setup_error()
-        self._start_periodic_tasks()
+        self.loopingcalls.start_tasks()
 
-    def _start_periodic_tasks(self):
-        """Start recurring tasks common to all Data ONTAP NFS drivers."""
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval.
 
-        # Start the task that runs other housekeeping tasks, such as deletion
-        # of previously soft-deleted storage artifacts.
-        housekeeping_periodic_task = loopingcall.FixedIntervalLoopingCall(
-            self._handle_housekeeping_tasks)
-        housekeeping_periodic_task.start(
-            interval=HOUSEKEEPING_INTERVAL_SECONDS, initial_delay=0)
+        Inheriting class overrides and then explicitly calls this method.
+        """
+        # Add the task that deletes snapshots marked for deletion.
+        self.loopingcalls.add_task(
+            self._delete_snapshots_marked_for_deletion,
+            loopingcalls.ONE_MINUTE,
+            loopingcalls.ONE_MINUTE)
 
-    def _handle_housekeeping_tasks(self):
-        """Handle various cleanup activities."""
+    def _delete_snapshots_marked_for_deletion(self):
+        volume_list = self._get_backing_flexvol_names()
+        snapshots = self.zapi_client.get_snapshots_marked_for_deletion(
+            volume_list)
+        for snapshot in snapshots:
+            self.zapi_client.delete_snapshot(
+                snapshot['volume_name'], snapshot['name'])
 
     def get_pool(self, volume):
         """Return pool name where volume resides.
@@ -266,7 +273,11 @@ class NetAppNfsDriver(driver.ManageableVD,
         """Clone backing file for Cinder volume."""
         raise NotImplementedError()
 
-    def _get_backing_flexvol_names(self, hosts):
+    def _get_backing_flexvol_names(self):
+        """Returns backing flexvol names."""
+        raise NotImplementedError()
+
+    def _get_flexvol_names_from_hosts(self, hosts):
         """Returns a set of flexvol names."""
         raise NotImplementedError()
 
@@ -1083,7 +1094,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         """
 
         hosts = [snapshot['volume']['host'] for snapshot in snapshots]
-        flexvols = self._get_backing_flexvol_names(hosts)
+        flexvols = self._get_flexvol_names_from_hosts(hosts)
 
         # Create snapshot for backing flexvol
         self.zapi_client.create_cg_snapshot(flexvols, cgsnapshot['id'])
@@ -1096,9 +1107,14 @@ class NetAppNfsDriver(driver.ManageableVD,
 
         # Delete backing flexvol snapshots
         for flexvol_name in flexvols:
-            self.zapi_client.wait_for_busy_snapshot(
-                flexvol_name, cgsnapshot['id'])
-            self.zapi_client.delete_snapshot(flexvol_name, cgsnapshot['id'])
+            try:
+                self.zapi_client.wait_for_busy_snapshot(
+                    flexvol_name, cgsnapshot['id'])
+                self.zapi_client.delete_snapshot(
+                    flexvol_name, cgsnapshot['id'])
+            except exception.SnapshotIsBusy:
+                self.zapi_client.mark_snapshot_for_deletion(
+                    flexvol_name, cgsnapshot['id'])
 
         return None, None
 
@@ -1118,16 +1134,19 @@ class NetAppNfsDriver(driver.ManageableVD,
         """
         LOG.debug("VOLUMES %s ", [dict(vol) for vol in volumes])
         model_update = None
+        volumes_model_update = []
 
         if cgsnapshot:
             vols = zip(volumes, snapshots)
 
             for volume, snapshot in vols:
-                self.create_volume_from_snapshot(volume, snapshot)
+                update = self.create_volume_from_snapshot(volume, snapshot)
+                update['id'] = volume['id']
+                volumes_model_update.append(update)
 
         elif source_cg and source_vols:
             hosts = [source_vol['host'] for source_vol in source_vols]
-            flexvols = self._get_backing_flexvol_names(hosts)
+            flexvols = self._get_flexvol_names_from_hosts(hosts)
 
             # Create snapshot for backing flexvol
             snapshot_name = 'snapshot-temp-' + source_cg['id']
@@ -1139,6 +1158,10 @@ class NetAppNfsDriver(driver.ManageableVD,
                 self._clone_backing_file_for_volume(
                     source_vol['name'], volume['name'],
                     source_vol['id'], source_snapshot=snapshot_name)
+            update = {'id': volume['id'],
+                      'provider_location': source_vol['provider_location'],
+                      }
+            volumes_model_update.append(update)
 
             # Delete backing flexvol snapshots
             for flexvol_name in flexvols:
@@ -1151,4 +1174,4 @@ class NetAppNfsDriver(driver.ManageableVD,
             model_update = {}
             model_update['status'] = 'error'
 
-        return model_update, None
+        return model_update, volumes_model_update

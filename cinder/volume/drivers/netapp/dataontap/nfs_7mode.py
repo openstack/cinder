@@ -80,7 +80,12 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         else:
             msg = _("Data ONTAP API version could not be determined.")
             raise exception.VolumeBackendAPIException(data=msg)
+        self._add_looping_tasks()
         super(NetApp7modeNfsDriver, self).check_for_setup_error()
+
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval."""
+        super(NetApp7modeNfsDriver, self)._add_looping_tasks()
 
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
                                        volume_id, share=None,
@@ -223,7 +228,17 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         # 7-mode DOT does not support QoS.
         return
 
-    def _get_backing_flexvol_names(self, hosts):
+    def _get_backing_flexvol_names(self):
+        """Returns a list of backing flexvol names."""
+        flexvol_names = []
+        for nfs_share in self._mounted_shares:
+            flexvol_name = nfs_share.rsplit('/', 1)[1]
+            flexvol_names.append(flexvol_name)
+            LOG.debug("Found flexvol %s", flexvol_name)
+
+        return flexvol_names
+
+    def _get_flexvol_names_from_hosts(self, hosts):
         """Returns a set of flexvol names."""
         flexvols = set()
         for host in hosts:

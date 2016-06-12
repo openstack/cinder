@@ -549,3 +549,40 @@ class Client(client_base.Client):
             raise exception.SnapshotNotFound(snapshot_id=snapshot_name)
 
         return snapshot
+
+    def get_snapshots_marked_for_deletion(self, volume_list=None):
+        """Get a list of snapshots marked for deletion."""
+        snapshots = []
+
+        for volume_name in volume_list:
+            api_args = {
+                'target-name': volume_name,
+                'target-type': 'volume',
+                'terse': 'true',
+            }
+            result = self.send_request('snapshot-list-info', api_args)
+            snapshots.extend(
+                self._parse_snapshot_list_info_result(result, volume_name))
+
+        return snapshots
+
+    def _parse_snapshot_list_info_result(self, result, volume_name):
+        snapshots = []
+        snapshots_elem = result.get_child_by_name(
+            'snapshots') or netapp_api.NaElement('none')
+        snapshot_info_list = snapshots_elem.get_children()
+        for snapshot_info in snapshot_info_list:
+            snapshot_name = snapshot_info.get_child_content('name')
+            snapshot_busy = strutils.bool_from_string(
+                snapshot_info.get_child_content('busy'))
+            snapshot_id = snapshot_info.get_child_content(
+                'snapshot-instance-uuid')
+            if (not snapshot_busy and
+                    snapshot_name.startswith(client_base.DELETED_PREFIX)):
+                snapshots.append({
+                    'name': snapshot_name,
+                    'instance_id': snapshot_id,
+                    'volume_name': volume_name,
+                })
+
+        return snapshots

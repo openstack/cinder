@@ -28,7 +28,6 @@ import uuid
 import ddt
 import mock
 from oslo_log import versionutils
-from oslo_service import loopingcall
 from oslo_utils import units
 import six
 
@@ -39,6 +38,7 @@ from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 
@@ -769,44 +769,31 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.do_setup(mock.Mock())
         self.zapi_client.get_lun_list.return_value = ['lun1']
         self.library._extract_and_populate_luns = mock.Mock()
-        mock_start_periodic_tasks = self.mock_object(
-            self.library, '_start_periodic_tasks')
+        mock_looping_start_tasks = self.mock_object(
+            self.library.loopingcalls, 'start_tasks')
+
         self.library.check_for_setup_error()
 
         self.library._extract_and_populate_luns.assert_called_once_with(
             ['lun1'])
-        mock_start_periodic_tasks.assert_called_once_with()
+        mock_looping_start_tasks.assert_called_once_with()
 
     @mock.patch.object(na_utils, 'check_flags', mock.Mock())
     def test_check_for_setup_error_no_os_host(self):
+        mock_start_tasks = self.mock_object(
+            self.library.loopingcalls, 'start_tasks')
         self.library.configuration.netapp_lun_ostype = None
         self.library.configuration.netapp_host_type = None
         self.library.do_setup(mock.Mock())
         self.zapi_client.get_lun_list.return_value = ['lun1']
         self.library._extract_and_populate_luns = mock.Mock()
-        mock_start_periodic_tasks = self.mock_object(
-            self.library, '_start_periodic_tasks')
 
         self.library.check_for_setup_error()
+
         self.library._extract_and_populate_luns.assert_called_once_with(
             ['lun1'])
-        mock_start_periodic_tasks.assert_called_once_with()
 
-    def test_start_periodic_tasks(self):
-
-        mock_handle_housekeeping_tasks = self.mock_object(
-            self.library, '_handle_housekeeping_tasks')
-
-        housekeeping_periodic_task = mock.Mock()
-        mock_loopingcall = self.mock_object(
-            loopingcall, 'FixedIntervalLoopingCall',
-            mock.Mock(return_value=housekeeping_periodic_task))
-
-        self.library._start_periodic_tasks()
-
-        mock_loopingcall.assert_called_once_with(
-            mock_handle_housekeeping_tasks)
-        self.assertTrue(housekeeping_periodic_task.start.called)
+        mock_start_tasks.assert_called_once_with()
 
     def test_delete_volume(self):
         mock_delete_lun = self.mock_object(self.library, '_delete_lun')
@@ -1372,6 +1359,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
         mock_busy = self.mock_object(
             self.zapi_client, 'wait_for_busy_snapshot')
+        mock_delete_snapshot = self.mock_object(
+            self.zapi_client, 'delete_snapshot')
 
         self.library.create_cgsnapshot(fake.CG_SNAPSHOT, [snapshot])
 
@@ -1383,6 +1372,37 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.CG_VOLUME_NAME, fake.CG_SNAPSHOT_NAME,
             source_snapshot=fake.CG_SNAPSHOT_ID)
         mock_busy.assert_called_once_with(fake.POOL_NAME, fake.CG_SNAPSHOT_ID)
+        mock_delete_snapshot.assert_called_once_with(
+            fake.POOL_NAME, fake.CG_SNAPSHOT_ID)
+
+    def test_create_cgsnapshot_busy_snapshot(self):
+        snapshot = fake.CG_SNAPSHOT
+        snapshot['volume'] = fake.CG_VOLUME
+
+        mock_extract_host = self.mock_object(
+            volume_utils, 'extract_host',
+            mock.Mock(return_value=fake.POOL_NAME))
+        mock_clone_lun = self.mock_object(self.library, '_clone_lun')
+        mock_busy = self.mock_object(
+            self.zapi_client, 'wait_for_busy_snapshot')
+        mock_busy.side_effect = exception.SnapshotIsBusy(snapshot['name'])
+        mock_delete_snapshot = self.mock_object(
+            self.zapi_client, 'delete_snapshot')
+        mock_mark_snapshot_for_deletion = self.mock_object(
+            self.zapi_client, 'mark_snapshot_for_deletion')
+
+        self.library.create_cgsnapshot(fake.CG_SNAPSHOT, [snapshot])
+
+        mock_extract_host.assert_called_once_with(
+            fake.CG_VOLUME['host'], level='pool')
+        self.zapi_client.create_cg_snapshot.assert_called_once_with(
+            set([fake.POOL_NAME]), fake.CG_SNAPSHOT_ID)
+        mock_clone_lun.assert_called_once_with(
+            fake.CG_VOLUME_NAME, fake.CG_SNAPSHOT_NAME,
+            source_snapshot=fake.CG_SNAPSHOT_ID)
+        mock_delete_snapshot.assert_not_called()
+        mock_mark_snapshot_for_deletion.assert_called_once_with(
+            fake.POOL_NAME, fake.CG_SNAPSHOT_ID)
 
     def test_delete_cgsnapshot(self):
 
@@ -1500,3 +1520,37 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         }
         mock_clone_source_to_destination.assert_called_once_with(
             clone_source_to_destination_args, fake.VOLUME)
+
+    def test_add_looping_tasks(self):
+        mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
+        mock_call = self.mock_object(
+            self.library, '_delete_snapshots_marked_for_deletion')
+
+        self.library._add_looping_tasks()
+
+        mock_add_task.assert_called_once_with(
+            mock_call,
+            loopingcalls.ONE_MINUTE,
+            loopingcalls.ONE_MINUTE)
+
+    def test_delete_snapshots_marked_for_deletion(self):
+        snapshots = [{
+            'name': fake.SNAPSHOT_NAME,
+            'volume_name': fake.VOLUME['name']
+        }]
+        mock_get_backing_flexvol_names = self.mock_object(
+            self.library, '_get_backing_flexvol_names')
+        mock_get_backing_flexvol_names.return_value = [fake.VOLUME['name']]
+        mock_get_snapshots_marked = self.mock_object(
+            self.zapi_client, 'get_snapshots_marked_for_deletion')
+        mock_get_snapshots_marked.return_value = snapshots
+        mock_delete_snapshot = self.mock_object(
+            self.zapi_client, 'delete_snapshot')
+
+        self.library._delete_snapshots_marked_for_deletion()
+
+        mock_get_backing_flexvol_names.assert_called_once_with()
+        mock_get_snapshots_marked.assert_called_once_with(
+            [fake.VOLUME['name']])
+        mock_delete_snapshot.assert_called_once_with(
+            fake.VOLUME['name'], fake.SNAPSHOT_NAME)

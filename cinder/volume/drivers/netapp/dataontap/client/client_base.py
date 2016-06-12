@@ -34,6 +34,8 @@ from cinder.volume.drivers.netapp import utils as na_utils
 
 LOG = logging.getLogger(__name__)
 
+DELETED_PREFIX = 'deleted_cinder_'
+
 
 @six.add_metaclass(utils.TraceWrapperMetaclass)
 class Client(object):
@@ -457,3 +459,17 @@ class Client(object):
                       "for volume clone dependency to clear.",
                       {"snap": snapshot_name, "vol": flexvol})
             raise exception.SnapshotIsBusy(snapshot_name=snapshot_name)
+
+    def mark_snapshot_for_deletion(self, volume, snapshot_name):
+        """Mark snapshot for deletion by renaming snapshot."""
+        return self.rename_snapshot(
+            volume, snapshot_name, DELETED_PREFIX + snapshot_name)
+
+    def rename_snapshot(self, volume, current_name, new_name):
+        """Renames a snapshot."""
+        api_args = {
+            'volume': volume,
+            'current-name': current_name,
+            'new-name': new_name,
+        }
+        return self.send_request('snapshot-rename', api_args)

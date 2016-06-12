@@ -20,7 +20,6 @@ Mock unit tests for the NetApp block storage C-mode library
 
 import ddt
 import mock
-from oslo_service import loopingcall
 
 from cinder import exception
 from cinder import test
@@ -34,6 +33,7 @@ from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
@@ -104,21 +104,28 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             block_base.NetAppBlockStorageLibrary, 'check_for_setup_error')
         mock_check_api_permissions = self.mock_object(
             self.library.ssc_library, 'check_api_permissions')
+        mock_add_looping_tasks = self.mock_object(
+            self.library, '_add_looping_tasks')
         mock_get_pool_map = self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
             mock.Mock(return_value={'fake_map': None}))
+        mock_add_looping_tasks = self.mock_object(
+            self.library, '_add_looping_tasks')
 
         self.library.check_for_setup_error()
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
         mock_check_api_permissions.assert_called_once_with()
+        self.assertEqual(1, mock_add_looping_tasks.call_count)
         mock_get_pool_map.assert_called_once_with()
+        mock_add_looping_tasks.assert_called_once_with()
 
     def test_check_for_setup_error_no_filtered_pools(self):
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          'check_for_setup_error')
         mock_check_api_permissions = self.mock_object(
             self.library.ssc_library, 'check_api_permissions')
+        self.mock_object(self.library, '_add_looping_tasks')
         self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
             mock.Mock(return_value={}))
@@ -127,25 +134,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                           self.library.check_for_setup_error)
 
         mock_check_api_permissions.assert_called_once_with()
-
-    def test_start_periodic_tasks(self):
-
-        mock_update_ssc = self.mock_object(
-            self.library, '_update_ssc')
-        super_start_periodic_tasks = self.mock_object(
-            block_base.NetAppBlockStorageLibrary, '_start_periodic_tasks')
-
-        update_ssc_periodic_task = mock.Mock()
-        mock_loopingcall = self.mock_object(
-            loopingcall, 'FixedIntervalLoopingCall',
-            mock.Mock(return_value=update_ssc_periodic_task))
-
-        self.library._start_periodic_tasks()
-
-        mock_loopingcall.assert_called_once_with(mock_update_ssc)
-        self.assertTrue(update_ssc_periodic_task.start.called)
-        mock_update_ssc.assert_called_once_with()
-        super_start_periodic_tasks.assert_called_once_with()
 
     @ddt.data({'replication_enabled': True, 'failed_over': False},
               {'replication_enabled': True, 'failed_over': True},
@@ -158,12 +146,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                          mock.Mock(return_value=fake_utils.SSC.keys()))
         self.library.replication_enabled = replication_enabled
         self.library.failed_over = failed_over
-        super_handle_housekeeping_tasks = self.mock_object(
-            block_base.NetAppBlockStorageLibrary, '_handle_housekeeping_tasks')
 
         self.library._handle_housekeeping_tasks()
 
-        super_handle_housekeeping_tasks.assert_called_once_with()
         (self.zapi_client.remove_unused_qos_policy_groups.
          assert_called_once_with())
         if replication_enabled and not failed_over:
@@ -706,3 +691,31 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.assertEqual('dev1', self.library.failed_over_backend_name)
         self.assertEqual('dev1', actual_active)
         self.assertEqual([], vol_updates)
+
+    def test_add_looping_tasks(self):
+        mock_update_ssc = self.mock_object(self.library, '_update_ssc')
+        mock_remove_unused_qos_policy_groups = self.mock_object(
+            self.zapi_client, 'remove_unused_qos_policy_groups')
+        mock_add_task = self.mock_object(self.library.loopingcalls, 'add_task')
+        mock_super_add_looping_tasks = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, '_add_looping_tasks')
+
+        self.library._add_looping_tasks()
+
+        mock_update_ssc.assert_called_once_with()
+        mock_add_task.assert_has_calls([
+            mock.call(mock_update_ssc,
+                      loopingcalls.ONE_HOUR,
+                      loopingcalls.ONE_HOUR),
+            mock.call(mock_remove_unused_qos_policy_groups,
+                      loopingcalls.ONE_MINUTE,
+                      loopingcalls.ONE_MINUTE)])
+        mock_super_add_looping_tasks.assert_called_once_with()
+
+    def test_get_backing_flexvol_names(self):
+        mock_ssc_library = self.mock_object(
+            self.library.ssc_library, 'get_ssc')
+
+        self.library._get_backing_flexvol_names()
+
+        mock_ssc_library.assert_called_once_with()
