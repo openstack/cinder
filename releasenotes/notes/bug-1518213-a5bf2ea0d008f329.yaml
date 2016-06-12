@@ -1,0 +1,3 @@
+---
+features:
+  - Added Keystone v3 support for Swift backup driver in single user mode. 

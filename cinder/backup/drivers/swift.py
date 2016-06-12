@@ -82,10 +82,22 @@ swiftbackup_service_opts = [
     cfg.StrOpt('backup_swift_auth_version',
                default='1',
                help='Swift authentication version. Specify "1" for auth 1.0'
-                    ', or "2" for auth 2.0'),
+                    ', or "2" for auth 2.0 or "3" for auth 3.0'),
     cfg.StrOpt('backup_swift_tenant',
                help='Swift tenant/account name. Required when connecting'
                     ' to an auth 2.0 system'),
+    cfg.StrOpt('backup_swift_user_domain',
+               default=None,
+               help='Swift user domain name. Required when connecting'
+                    ' to an auth 3.0 system'),
+    cfg.StrOpt('backup_swift_project_domain',
+               default=None,
+               help='Swift project domain name. Required when connecting'
+                    ' to an auth 3.0 system'),
+    cfg.StrOpt('backup_swift_project',
+               default=None,
+               help='Swift project/account name. Required when connecting'
+                    ' to an auth 3.0 system'),
     cfg.StrOpt('backup_swift_user',
                help='Swift user name'),
     cfg.StrOpt('backup_swift_key',
@@ -204,12 +216,22 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                               "but %(param)s not set"),
                           {'param': 'backup_swift_user'})
                 raise exception.ParameterNotFound(param='backup_swift_user')
+            os_options = {}
+            if CONF.backup_swift_user_domain is not None:
+                os_options['user_domain_name'] = CONF.backup_swift_user_domain
+            if CONF.backup_swift_project_domain is not None:
+                os_options['project_domain_name'] = (
+                    CONF.backup_swift_project_domain
+                )
+            if CONF.backup_swift_project is not None:
+                os_options['project_name'] = CONF.backup_swift_project
             self.conn = swift.Connection(
                 authurl=self.auth_url,
                 auth_version=CONF.backup_swift_auth_version,
                 tenant_name=CONF.backup_swift_tenant,
                 user=CONF.backup_swift_user,
                 key=CONF.backup_swift_key,
+                os_options=os_options,
                 retries=self.swift_attempts,
                 starting_backoff=self.swift_backoff,
                 insecure=self.backup_swift_auth_insecure,
