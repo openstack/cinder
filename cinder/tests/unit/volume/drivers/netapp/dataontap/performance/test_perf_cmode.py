@@ -331,6 +331,16 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         self.assertAlmostEqual(expected, result)
 
+    def test__update_for_failover(self):
+        self.mock_object(self.perf_library, 'update_performance_cache')
+        mock_client = mock.Mock(name='FAKE_ZAPI_CLIENT')
+
+        self.perf_library._update_for_failover(mock_client, self.fake_volumes)
+
+        self.assertEqual(mock_client, self.perf_library.zapi_client)
+        self.perf_library.update_performance_cache.assert_called_once_with(
+            self.fake_volumes)
+
     def test_get_aggregates_for_pools(self):
 
         result = self.perf_library._get_aggregates_for_pools(self.fake_volumes)

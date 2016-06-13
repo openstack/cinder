@@ -47,7 +47,10 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
     def setUp(self):
         super(NetAppBlockStorage7modeLibraryTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_7mode()}
+        kwargs = {
+            'configuration': self.get_config_7mode(),
+            'host': 'openstack@7modeblock',
+        }
         self.library = block_7mode.NetAppBlockStorage7modeLibrary(
             'driver', 'protocol', **kwargs)
 

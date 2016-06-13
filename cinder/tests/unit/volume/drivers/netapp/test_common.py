@@ -85,8 +85,11 @@ class NetAppDriverFactoryTestCase(test.TestCase):
         def get_full_class_name(obj):
             return obj.__module__ + '.' + obj.__class__.__name__
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
 
@@ -98,8 +101,11 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_create_driver_case_insensitive(self):
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         driver = na_common.NetAppDriver.create_driver('ONTAP_CLUSTER', 'FC',
                                                       **kwargs)
@@ -108,8 +114,11 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_create_driver_invalid_family(self):
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         self.assertRaises(exception.InvalidInput,
                           na_common.NetAppDriver.create_driver,
@@ -117,8 +126,11 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
     def test_create_driver_invalid_protocol(self):
 
-        kwargs = {'configuration': na_fakes.create_configuration(),
-                  'app_version': 'fake_info'}
+        kwargs = {
+            'configuration': na_fakes.create_configuration(),
+            'app_version': 'fake_info',
+            'host': 'fakehost@fakebackend',
+        }
 
         self.assertRaises(exception.InvalidInput,
                           na_common.NetAppDriver.create_driver,

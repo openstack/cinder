@@ -68,6 +68,10 @@ FAKE_NA_SERVER_API_1_20.set_vfiler('filer')
 FAKE_NA_SERVER_API_1_20.set_vserver('server')
 FAKE_NA_SERVER_API_1_20.set_api_version(1, 20)
 
+VOLUME_VSERVER_NAME = 'fake_vserver'
+VOLUME_NAMES = ('volume1', 'volume2')
+VOLUME_NAME = 'volume1'
+
 
 FAKE_QUERY = {'volume-attributes': None}
 
@@ -103,6 +107,20 @@ NO_RECORDS_RESPONSE = etree.XML("""
     <num-records>0</num-records>
   </results>
 """)
+
+VOLUME_GET_NAME_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(volume)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'volume': VOLUME_NAMES[0], 'vserver': VOLUME_VSERVER_NAME})
 
 INVALID_GET_ITER_RESPONSE_NO_ATTRIBUTES = etree.XML("""
   <results status="passed">
@@ -697,9 +715,6 @@ VOLUME_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
     'total_size': VOLUME_SIZE_TOTAL,
 })
 
-VOLUME_VSERVER_NAME = 'fake_vserver'
-VOLUME_NAMES = ('volume1', 'volume2')
-
 VOLUME_GET_ITER_LIST_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -733,6 +748,7 @@ VOLUME_GET_ITER_SSC_RESPONSE = etree.XML("""
           <junction-path>/%(volume)s</junction-path>
           <name>%(volume)s</name>
           <owning-vserver-name>%(vserver)s</owning-vserver-name>
+          <type>rw</type>
         </volume-id-attributes>
         <volume-mirror-attributes>
           <is-data-protection-mirror>false</is-data-protection-mirror>
@@ -744,7 +760,15 @@ VOLUME_GET_ITER_SSC_RESPONSE = etree.XML("""
         <volume-space-attributes>
           <is-space-guarantee-enabled>true</is-space-guarantee-enabled>
           <space-guarantee>none</space-guarantee>
+          <percentage-snapshot-reserve>5</percentage-snapshot-reserve>
+          <size>12345</size>
         </volume-space-attributes>
+        <volume-snapshot-attributes>
+          <snapshot-policy>default</snapshot-policy>
+        </volume-snapshot-attributes>
+        <volume-language-attributes>
+          <language-code>en_US</language-code>
+        </volume-language-attributes>
       </volume-attributes>
     </attributes-list>
     <num-records>1</num-records>
@@ -761,6 +785,11 @@ VOLUME_INFO_SSC = {
     'junction-path': '/%s' % VOLUME_NAMES[0],
     'aggregate': VOLUME_AGGREGATE_NAMES[0],
     'space-guarantee-enabled': True,
+    'language': 'en_US',
+    'percentage-snapshot-reserve': '5',
+    'snapshot-policy': 'default',
+    'type': 'rw',
+    'size': '12345',
     'space-guarantee': 'none',
     'qos-policy-group': 'fake_qos_policy_group_name',
 }
@@ -781,27 +810,6 @@ VOLUME_DEDUPE_INFO_SSC = {
     'compression': False,
     'dedupe': True,
 }
-
-SNAPMIRROR_GET_ITER_RESPONSE = etree.XML("""
-  <results status="passed">
-    <attributes-list>
-      <snapmirror-info>
-        <destination-location>%(vserver)s:%(volume2)s</destination-location>
-        <destination-volume>%(volume2)s</destination-volume>
-        <destination-vserver>%(vserver)s</destination-vserver>
-        <source-location>%(vserver)s:%(volume1)s</source-location>
-        <source-volume>%(volume1)s</source-volume>
-        <source-vserver>%(vserver)s</source-vserver>
-      </snapmirror-info>
-    </attributes-list>
-    <num-records>1</num-records>
-  </results>
-""" % {
-    'volume1': VOLUME_NAMES[0],
-    'volume2': VOLUME_NAMES[1],
-    'vserver': VOLUME_VSERVER_NAME,
-})
-
 
 STORAGE_DISK_GET_ITER_RESPONSE_PAGE_1 = etree.XML("""
   <results status="passed">
@@ -1123,3 +1131,139 @@ ISCSI_INITIATOR_GET_AUTH_ELEM = etree.XML("""
 ISCSI_INITIATOR_AUTH_LIST_INFO_FAILURE = etree.XML("""
 <results status="failed" errno="13112" reason="Initiator %s not found,
  please use default authentication." />""" % INITIATOR_IQN)
+
+CLUSTER_NAME = 'fake_cluster'
+REMOTE_CLUSTER_NAME = 'fake_cluster_2'
+CLUSTER_ADDRESS_1 = 'fake_cluster_address'
+CLUSTER_ADDRESS_2 = 'fake_cluster_address_2'
+VSERVER_NAME = 'fake_vserver'
+VSERVER_NAME_2 = 'fake_vserver_2'
+SM_SOURCE_VSERVER = 'fake_source_vserver'
+SM_SOURCE_VOLUME = 'fake_source_volume'
+SM_DEST_VSERVER = 'fake_destination_vserver'
+SM_DEST_VOLUME = 'fake_destination_volume'
+
+CLUSTER_PEER_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <cluster-peer-info>
+        <active-addresses>
+          <remote-inet-address>%(addr1)s</remote-inet-address>
+          <remote-inet-address>%(addr2)s</remote-inet-address>
+        </active-addresses>
+        <availability>available</availability>
+        <cluster-name>%(cluster)s</cluster-name>
+        <cluster-uuid>fake_uuid</cluster-uuid>
+        <peer-addresses>
+          <remote-inet-address>%(addr1)s</remote-inet-address>
+        </peer-addresses>
+        <remote-cluster-name>%(remote_cluster)s</remote-cluster-name>
+        <serial-number>fake_serial_number</serial-number>
+        <timeout>60</timeout>
+      </cluster-peer-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'addr1': CLUSTER_ADDRESS_1,
+    'addr2': CLUSTER_ADDRESS_2,
+    'cluster': CLUSTER_NAME,
+    'remote_cluster': REMOTE_CLUSTER_NAME,
+})
+
+CLUSTER_PEER_POLICY_GET_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes>
+      <cluster-peer-policy>
+        <is-unauthenticated-access-permitted>false</is-unauthenticated-access-permitted>
+        <passphrase-minimum-length>8</passphrase-minimum-length>
+      </cluster-peer-policy>
+    </attributes>
+  </results>
+""")
+
+VSERVER_PEER_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <vserver-peer-info>
+        <applications>
+          <vserver-peer-application>snapmirror</vserver-peer-application>
+        </applications>
+        <peer-cluster>%(cluster)s</peer-cluster>
+        <peer-state>peered</peer-state>
+        <peer-vserver>%(vserver2)s</peer-vserver>
+        <vserver>%(vserver1)s</vserver>
+      </vserver-peer-info>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {
+    'cluster': CLUSTER_NAME,
+    'vserver1': VSERVER_NAME,
+    'vserver2': VSERVER_NAME_2
+})
+
+SNAPMIRROR_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-info>
+        <destination-location>%(vserver)s:%(volume2)s</destination-location>
+        <destination-volume>%(volume2)s</destination-volume>
+        <destination-volume-node>fake_destination_node</destination-volume-node>
+        <destination-vserver>%(vserver)s</destination-vserver>
+        <exported-snapshot>fake_snapshot</exported-snapshot>
+        <exported-snapshot-timestamp>1442701782</exported-snapshot-timestamp>
+        <is-constituent>false</is-constituent>
+        <is-healthy>true</is-healthy>
+        <lag-time>2187</lag-time>
+        <last-transfer-duration>109</last-transfer-duration>
+        <last-transfer-end-timestamp>1442701890</last-transfer-end-timestamp>
+        <last-transfer-from>test:manila</last-transfer-from>
+        <last-transfer-size>1171456</last-transfer-size>
+        <last-transfer-type>initialize</last-transfer-type>
+        <max-transfer-rate>0</max-transfer-rate>
+        <mirror-state>snapmirrored</mirror-state>
+        <newest-snapshot>fake_snapshot</newest-snapshot>
+        <newest-snapshot-timestamp>1442701782</newest-snapshot-timestamp>
+        <policy>DPDefault</policy>
+        <relationship-control-plane>v2</relationship-control-plane>
+        <relationship-id>ea8bfcc6-5f1d-11e5-8446-123478563412</relationship-id>
+        <relationship-status>idle</relationship-status>
+        <relationship-type>data_protection</relationship-type>
+        <schedule>daily</schedule>
+        <source-location>%(vserver)s:%(volume1)s</source-location>
+        <source-volume>%(volume1)s</source-volume>
+        <source-vserver>%(vserver)s</source-vserver>
+        <vserver>fake_destination_vserver</vserver>
+      </snapmirror-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'volume1': VOLUME_NAMES[0],
+    'volume2': VOLUME_NAMES[1],
+    'vserver': VOLUME_VSERVER_NAME,
+})
+
+SNAPMIRROR_GET_ITER_FILTERED_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-info>
+        <destination-vserver>fake_destination_vserver</destination-vserver>
+        <destination-volume>fake_destination_volume</destination-volume>
+        <is-healthy>true</is-healthy>
+        <mirror-state>snapmirrored</mirror-state>
+        <schedule>daily</schedule>
+        <source-vserver>fake_source_vserver</source-vserver>
+        <source-volume>fake_source_volume</source-volume>
+      </snapmirror-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+SNAPMIRROR_INITIALIZE_RESULT = etree.XML("""
+  <results status="passed">
+    <result-status>succeeded</result-status>
+  </results>
+""")

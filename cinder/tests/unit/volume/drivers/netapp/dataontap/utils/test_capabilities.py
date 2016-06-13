@@ -153,6 +153,16 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         mock_get_ssc_aggregate_info.assert_has_calls([
             mock.call('aggr1'), mock.call('aggr2')])
 
+    def test__update_for_failover(self):
+        self.mock_object(self.ssc_library, 'update_ssc')
+        flexvol_map = {'volume1': fake.SSC_VOLUME_MAP['volume1']}
+        mock_client = mock.Mock(name='FAKE_ZAPI_CLIENT')
+
+        self.ssc_library._update_for_failover(mock_client, flexvol_map)
+
+        self.assertEqual(mock_client, self.ssc_library.zapi_client)
+        self.ssc_library.update_ssc.assert_called_once_with(flexvol_map)
+
     @ddt.data({'lun_space_guarantee': True},
               {'lun_space_guarantee': False})
     @ddt.unpack

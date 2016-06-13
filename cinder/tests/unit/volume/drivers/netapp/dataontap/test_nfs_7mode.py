@@ -33,7 +33,10 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetApp7modeNfsDriverTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_7mode()}
+        kwargs = {
+            'configuration': self.get_config_7mode(),
+            'host': 'openstack@7modenfs',
+        }
 
         with mock.patch.object(utils, 'get_root_helper',
                                return_value=mock.Mock()):

@@ -32,6 +32,7 @@ import time
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_service import loopingcall
 from oslo_utils import units
 import six
 from six.moves import urllib
@@ -49,6 +50,7 @@ from cinder.volume import utils as volume_utils
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
+HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
 
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
@@ -76,6 +78,7 @@ class NetAppNfsDriver(driver.ManageableVD,
         self.configuration.append_config_values(na_opts.netapp_transport_opts)
         self.configuration.append_config_values(na_opts.netapp_img_cache_opts)
         self.configuration.append_config_values(na_opts.netapp_nfs_extra_opts)
+        self.backend_name = self.host.split('@')[1]
 
     def do_setup(self, context):
         super(NetAppNfsDriver, self).do_setup(context)
@@ -86,6 +89,20 @@ class NetAppNfsDriver(driver.ManageableVD,
     def check_for_setup_error(self):
         """Returns an error if prerequisites aren't met."""
         super(NetAppNfsDriver, self).check_for_setup_error()
+        self._start_periodic_tasks()
+
+    def _start_periodic_tasks(self):
+        """Start recurring tasks common to all Data ONTAP NFS drivers."""
+
+        # Start the task that runs other housekeeping tasks, such as deletion
+        # of previously soft-deleted storage artifacts.
+        housekeeping_periodic_task = loopingcall.FixedIntervalLoopingCall(
+            self._handle_housekeeping_tasks)
+        housekeeping_periodic_task.start(
+            interval=HOUSEKEEPING_INTERVAL_SECONDS, initial_delay=0)
+
+    def _handle_housekeeping_tasks(self):
+        """Handle various cleanup activities."""
 
     def get_pool(self, volume):
         """Return pool name where volume resides.

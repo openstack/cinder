@@ -25,6 +25,7 @@ import ddt
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
 from oslo_concurrency import processutils
+from oslo_service import loopingcall
 from oslo_utils import units
 import shutil
 
@@ -56,7 +57,10 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.fake_mount_point = fake.MOUNT_POINT
         self.ctxt = context.RequestContext('fake', 'fake', auth_token=True)
 
-        kwargs = {'configuration': configuration}
+        kwargs = {
+            'configuration': configuration,
+            'host': 'openstack@netappnfs',
+        }
 
         with mock.patch.object(utils, 'get_root_helper',
                                return_value=mock.Mock()):
@@ -91,6 +95,33 @@ class NetAppNfsDriverTestCase(test.TestCase):
                          result['free_capacity_gb'])
         self.assertEqual(expected_reserved_percentage,
                          round(result['reserved_percentage']))
+
+    def test_check_for_setup_error(self):
+        super_check_for_setup_error = self.mock_object(
+            nfs.NfsDriver, 'check_for_setup_error')
+        mock_start_periodic_tasks = self.mock_object(
+            self.driver, '_start_periodic_tasks')
+
+        self.driver.check_for_setup_error()
+
+        super_check_for_setup_error.assert_called_once_with()
+        mock_start_periodic_tasks.assert_called_once_with()
+
+    def test_start_periodic_tasks(self):
+
+        mock_handle_housekeeping_tasks = self.mock_object(
+            self.driver, '_handle_housekeeping_tasks')
+
+        housekeeping_periodic_task = mock.Mock()
+        mock_loopingcall = self.mock_object(
+            loopingcall, 'FixedIntervalLoopingCall',
+            mock.Mock(return_value=housekeeping_periodic_task))
+
+        self.driver._start_periodic_tasks()
+
+        mock_loopingcall.assert_called_once_with(
+            mock_handle_housekeeping_tasks)
+        self.assertTrue(housekeeping_periodic_task.start.called)
 
     def test_get_capacity_info_ipv4_share(self):
         expected = fake.CAPACITY_VALUES

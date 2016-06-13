@@ -25,6 +25,7 @@ place to ensure re usability and better management of configuration options.
 """
 
 from oslo_config import cfg
+from oslo_config import types
 
 NETAPP_SIZE_MULTIPLIER_DEFAULT = 1.2
 
@@ -187,6 +188,30 @@ netapp_san_opts = [
                      'is only utilized when the storage protocol is '
                      'configured to use iSCSI or FC.')), ]
 
+netapp_replication_opts = [
+    cfg.MultiOpt('netapp_replication_aggregate_map',
+                 item_type=types.Dict(),
+                 help="Multi opt of dictionaries to represent the aggregate "
+                      "mapping between source and destination back ends when "
+                      "using whole back end replication. For every "
+                      "source aggregate associated with a cinder pool (NetApp "
+                      "FlexVol), you would need to specify the destination "
+                      "aggregate on the replication target device. A "
+                      "replication target device is configured with the "
+                      "configuration option replication_device. Specify this "
+                      "option as many times as you have replication devices. "
+                      "Each entry takes the standard dict config form: "
+                      "netapp_replication_aggregate_map = "
+                      "backend_id:<name_of_replication_device_section>,"
+                      "src_aggr_name1:dest_aggr_name1,"
+                      "src_aggr_name2:dest_aggr_name2,..."),
+    cfg.IntOpt('netapp_snapmirror_quiesce_timeout',
+               min=0,
+               default=3600,  # One Hour
+               help='The maximum time in seconds to wait for existing '
+                    'SnapMirror transfers to complete before aborting '
+                    'during a failover.'), ]
+
 CONF = cfg.CONF
 CONF.register_opts(netapp_proxy_opts)
 CONF.register_opts(netapp_connection_opts)
@@ -199,3 +224,4 @@ CONF.register_opts(netapp_img_cache_opts)
 CONF.register_opts(netapp_eseries_opts)
 CONF.register_opts(netapp_nfs_extra_opts)
 CONF.register_opts(netapp_san_opts)
+CONF.register_opts(netapp_replication_opts)

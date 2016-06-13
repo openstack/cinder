@@ -28,11 +28,12 @@ import uuid
 import ddt
 import mock
 from oslo_log import versionutils
+from oslo_service import loopingcall
 from oslo_utils import units
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _LW
 from cinder import test
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
@@ -48,7 +49,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def setUp(self):
         super(NetAppBlockStorageLibraryTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_base()}
+        kwargs = {
+            'configuration': self.get_config_base(),
+            'host': 'openstack@netappblock',
+        }
         self.library = block_base.NetAppBlockStorageLibrary(
             'driver', 'protocol', **kwargs)
         self.library.zapi_client = mock.Mock()
@@ -740,11 +744,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_setup_error_invalid_lun_os(self):
         self.library.configuration.netapp_lun_ostype = 'unknown'
         self.library.do_setup(mock.Mock())
+
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
-        msg = _("Invalid value for NetApp configuration"
-                " option netapp_lun_ostype.")
-        block_base.LOG.error.assert_called_once_with(msg)
+
+        block_base.LOG.error.assert_called_once_with(mock.ANY)
 
     @mock.patch.object(na_utils, 'check_flags', mock.Mock())
     @mock.patch.object(block_base, 'LOG', mock.Mock())
@@ -756,9 +760,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertRaises(exception.NetAppDriverException,
                           self.library.check_for_setup_error)
 
-        msg = _("Invalid value for NetApp configuration"
-                " option netapp_host_type.")
-        block_base.LOG.error.assert_called_once_with(msg)
+        block_base.LOG.error.assert_called_once_with(mock.ANY)
 
     @mock.patch.object(na_utils, 'check_flags', mock.Mock())
     def test_check_for_setup_error_both_config(self):
@@ -767,9 +769,13 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.do_setup(mock.Mock())
         self.zapi_client.get_lun_list.return_value = ['lun1']
         self.library._extract_and_populate_luns = mock.Mock()
+        mock_start_periodic_tasks = self.mock_object(
+            self.library, '_start_periodic_tasks')
         self.library.check_for_setup_error()
+
         self.library._extract_and_populate_luns.assert_called_once_with(
             ['lun1'])
+        mock_start_periodic_tasks.assert_called_once_with()
 
     @mock.patch.object(na_utils, 'check_flags', mock.Mock())
     def test_check_for_setup_error_no_os_host(self):
@@ -778,9 +784,29 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.do_setup(mock.Mock())
         self.zapi_client.get_lun_list.return_value = ['lun1']
         self.library._extract_and_populate_luns = mock.Mock()
+        mock_start_periodic_tasks = self.mock_object(
+            self.library, '_start_periodic_tasks')
+
         self.library.check_for_setup_error()
         self.library._extract_and_populate_luns.assert_called_once_with(
             ['lun1'])
+        mock_start_periodic_tasks.assert_called_once_with()
+
+    def test_start_periodic_tasks(self):
+
+        mock_handle_housekeeping_tasks = self.mock_object(
+            self.library, '_handle_housekeeping_tasks')
+
+        housekeeping_periodic_task = mock.Mock()
+        mock_loopingcall = self.mock_object(
+            loopingcall, 'FixedIntervalLoopingCall',
+            mock.Mock(return_value=housekeeping_periodic_task))
+
+        self.library._start_periodic_tasks()
+
+        mock_loopingcall.assert_called_once_with(
+            mock_handle_housekeeping_tasks)
+        self.assertTrue(housekeeping_periodic_task.start.called)
 
     def test_delete_volume(self):
         mock_delete_lun = self.mock_object(self.library, '_delete_lun')

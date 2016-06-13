@@ -113,6 +113,10 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
         return self.pool_utilization.get(pool_name,
                                          perf_base.DEFAULT_UTILIZATION)
 
+    def _update_for_failover(self, zapi_client, ssc_pools):
+        self.zapi_client = zapi_client
+        self.update_performance_cache(ssc_pools)
+
     def _get_aggregates_for_pools(self, ssc_pools):
         """Get the set of aggregates that contain the specified pools."""
 

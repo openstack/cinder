@@ -1385,6 +1385,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                         'name': None,
                         'owning-vserver-name': None,
                         'junction-path': None,
+                        'type': None,
                         'containing-aggregate-name': None,
                     },
                     'volume-mirror-attributes': {
@@ -1394,9 +1395,17 @@ class NetAppCmodeClientTestCase(test.TestCase):
                     'volume-space-attributes': {
                         'is-space-guarantee-enabled': None,
                         'space-guarantee': None,
+                        'percentage-snapshot-reserve': None,
+                        'size': None,
                     },
                     'volume-qos-attributes': {
                         'policy-group-name': None,
+                    },
+                    'volume-snapshot-attributes': {
+                        'snapshot-policy': None,
+                    },
+                    'volume-language-attributes': {
+                        'language-code': None,
                     }
                 },
             },
@@ -1416,6 +1425,193 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.client.get_flexvol,
                           flexvol_name=fake_client.VOLUME_NAMES[0])
+
+    def test_create_flexvol(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_flexvol(
+            fake_client.VOLUME_NAME, fake_client.VOLUME_AGGREGATE_NAME, 100)
+
+        volume_create_args = {
+            'containing-aggr-name': fake_client.VOLUME_AGGREGATE_NAME,
+            'size': '100g',
+            'volume': fake_client.VOLUME_NAME,
+            'volume-type': 'rw',
+            'junction-path': '/%s' % fake_client.VOLUME_NAME,
+        }
+
+        self.client.send_request.assert_called_once_with('volume-create',
+                                                         volume_create_args)
+
+    @ddt.data('dp', 'rw', None)
+    def test_create_volume_with_extra_specs(self, volume_type):
+
+        self.mock_object(self.client, 'enable_flexvol_dedupe')
+        self.mock_object(self.client, 'enable_flexvol_compression')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_flexvol(
+            fake_client.VOLUME_NAME, fake_client.VOLUME_AGGREGATE_NAME, 100,
+            space_guarantee_type='volume', language='en-US',
+            snapshot_policy='default', dedupe_enabled=True,
+            compression_enabled=True, snapshot_reserve=15,
+            volume_type=volume_type)
+
+        volume_create_args = {
+            'containing-aggr-name': fake_client.VOLUME_AGGREGATE_NAME,
+            'size': '100g',
+            'volume': fake_client.VOLUME_NAME,
+            'space-reserve': 'volume',
+            'language-code': 'en-US',
+            'volume-type': volume_type,
+            'percentage-snapshot-reserve': '15',
+        }
+
+        if volume_type != 'dp':
+            volume_create_args['snapshot-policy'] = 'default'
+            volume_create_args['junction-path'] = ('/%s' %
+                                                   fake_client.VOLUME_NAME)
+
+        self.client.send_request.assert_called_with('volume-create',
+                                                    volume_create_args)
+        self.client.enable_flexvol_dedupe.assert_called_once_with(
+            fake_client.VOLUME_NAME)
+        self.client.enable_flexvol_compression.assert_called_once_with(
+            fake_client.VOLUME_NAME)
+
+    def test_flexvol_exists(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.VOLUME_GET_NAME_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.flexvol_exists(fake_client.VOLUME_NAME)
+
+        volume_get_iter_args = {
+            'query': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': fake_client.VOLUME_NAME
+                    }
+                }
+            },
+            'desired-attributes': {
+                'volume-attributes': {
+                    'volume-id-attributes': {
+                        'name': None
+                    }
+                }
+            }
+        }
+
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('volume-get-iter', volume_get_iter_args)])
+        self.assertTrue(result)
+
+    def test_flexvol_exists_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        self.assertFalse(self.client.flexvol_exists(fake_client.VOLUME_NAME))
+
+    def test_rename_flexvol(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.rename_flexvol(fake_client.VOLUME_NAME, 'new_name')
+
+        volume_rename_api_args = {
+            'volume': fake_client.VOLUME_NAME,
+            'new-volume-name': 'new_name',
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'volume-rename', volume_rename_api_args)
+
+    def test_mount_flexvol_default_junction_path(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.mount_flexvol(fake_client.VOLUME_NAME)
+
+        volume_mount_args = {
+            'volume-name': fake_client.VOLUME_NAME,
+            'junction-path': '/%s' % fake_client.VOLUME_NAME,
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-mount', volume_mount_args)])
+
+    def test_mount_flexvol(self):
+
+        self.mock_object(self.client, 'send_request')
+        fake_path = '/fake_path'
+
+        self.client.mount_flexvol(fake_client.VOLUME_NAME,
+                                  junction_path=fake_path)
+
+        volume_mount_args = {
+            'volume-name': fake_client.VOLUME_NAME,
+            'junction-path': fake_path,
+        }
+
+        self.client.send_request.assert_has_calls([
+            mock.call('volume-mount', volume_mount_args)])
+
+    def test_enable_flexvol_dedupe(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.enable_flexvol_dedupe(fake_client.VOLUME_NAME)
+
+        sis_enable_args = {'path': '/vol/%s' % fake_client.VOLUME_NAME}
+
+        self.client.send_request.assert_called_once_with('sis-enable',
+                                                         sis_enable_args)
+
+    def test_disable_flexvol_dedupe(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.disable_flexvol_dedupe(fake_client.VOLUME_NAME)
+
+        sis_disable_args = {'path': '/vol/%s' % fake_client.VOLUME_NAME}
+
+        self.client.send_request.assert_called_once_with('sis-disable',
+                                                         sis_disable_args)
+
+    def test_enable_flexvol_compression(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.enable_flexvol_compression(fake_client.VOLUME_NAME)
+
+        sis_set_config_args = {
+            'path': '/vol/%s' % fake_client.VOLUME_NAME,
+            'enable-compression': 'true'
+        }
+
+        self.client.send_request.assert_called_once_with('sis-set-config',
+                                                         sis_set_config_args)
+
+    def test_disable_flexvol_compression(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.disable_flexvol_compression(fake_client.VOLUME_NAME)
+
+        sis_set_config_args = {
+            'path': '/vol/%s' % fake_client.VOLUME_NAME,
+            'enable-compression': 'false'
+        }
+
+        self.client.send_request.assert_called_once_with('sis-set-config',
+                                                         sis_set_config_args)
 
     def test_get_flexvol_dedupe_info(self):
 
@@ -2161,3 +2357,793 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertRaises(exception.SnapshotNotFound, self.client.get_snapshot,
                           expected_vol_name, expected_snapshot_name)
+
+    def test_create_cluster_peer(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_cluster_peer(['fake_address_1', 'fake_address_2'],
+                                        'fake_user', 'fake_password',
+                                        'fake_passphrase')
+
+        cluster_peer_create_args = {
+            'peer-addresses': [
+                {'remote-inet-address': 'fake_address_1'},
+                {'remote-inet-address': 'fake_address_2'},
+            ],
+            'user-name': 'fake_user',
+            'password': 'fake_password',
+            'passphrase': 'fake_passphrase',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('cluster-peer-create', cluster_peer_create_args)])
+
+    def test_get_cluster_peers(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.CLUSTER_PEER_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_cluster_peers()
+
+        cluster_peer_get_iter_args = {}
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('cluster-peer-get-iter', cluster_peer_get_iter_args)])
+
+        expected = [{
+            'active-addresses': [
+                fake_client.CLUSTER_ADDRESS_1,
+                fake_client.CLUSTER_ADDRESS_2
+            ],
+            'availability': 'available',
+            'cluster-name': fake_client.CLUSTER_NAME,
+            'cluster-uuid': 'fake_uuid',
+            'peer-addresses': [fake_client.CLUSTER_ADDRESS_1],
+            'remote-cluster-name': fake_client.REMOTE_CLUSTER_NAME,
+            'serial-number': 'fake_serial_number',
+            'timeout': '60',
+        }]
+
+        self.assertEqual(expected, result)
+
+    def test_get_cluster_peers_single(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.CLUSTER_PEER_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        self.client.get_cluster_peers(
+            remote_cluster_name=fake_client.CLUSTER_NAME)
+
+        cluster_peer_get_iter_args = {
+            'query': {
+                'cluster-peer-info': {
+                    'remote-cluster-name': fake_client.CLUSTER_NAME,
+                }
+            },
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('cluster-peer-get-iter', cluster_peer_get_iter_args)])
+
+    def test_get_cluster_peers_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_cluster_peers(
+            remote_cluster_name=fake_client.CLUSTER_NAME)
+
+        self.assertEqual([], result)
+        self.assertTrue(self.client.send_iter_request.called)
+
+    def test_delete_cluster_peer(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_cluster_peer(fake_client.CLUSTER_NAME)
+
+        cluster_peer_delete_args = {'cluster-name': fake_client.CLUSTER_NAME}
+        self.client.send_request.assert_has_calls([
+            mock.call('cluster-peer-delete', cluster_peer_delete_args)])
+
+    def test_get_cluster_peer_policy(self):
+
+        self.client.features.add_feature('CLUSTER_PEER_POLICY')
+
+        api_response = netapp_api.NaElement(
+            fake_client.CLUSTER_PEER_POLICY_GET_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_cluster_peer_policy()
+
+        expected = {
+            'is-unauthenticated-access-permitted': False,
+            'passphrase-minimum-length': 8,
+        }
+        self.assertEqual(expected, result)
+        self.assertTrue(self.client.send_request.called)
+
+    def test_get_cluster_peer_policy_not_supported(self):
+
+        result = self.client.get_cluster_peer_policy()
+
+        self.assertEqual({}, result)
+
+    def test_set_cluster_peer_policy_not_supported(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_cluster_peer_policy()
+
+        self.assertFalse(self.client.send_request.called)
+
+    def test_set_cluster_peer_policy_no_arguments(self):
+
+        self.client.features.add_feature('CLUSTER_PEER_POLICY')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_cluster_peer_policy()
+
+        self.assertFalse(self.client.send_request.called)
+
+    def test_set_cluster_peer_policy(self):
+
+        self.client.features.add_feature('CLUSTER_PEER_POLICY')
+        self.mock_object(self.client, 'send_request')
+
+        self.client.set_cluster_peer_policy(
+            is_unauthenticated_access_permitted=True,
+            passphrase_minimum_length=12)
+
+        cluster_peer_policy_modify_args = {
+            'is-unauthenticated-access-permitted': 'true',
+            'passphrase-minlength': '12',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('cluster-peer-policy-modify',
+                      cluster_peer_policy_modify_args)])
+
+    def test_create_vserver_peer(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_vserver_peer('fake_vserver', 'fake_vserver_peer')
+
+        vserver_peer_create_args = {
+            'vserver': 'fake_vserver',
+            'peer-vserver': 'fake_vserver_peer',
+            'applications': [
+                {'vserver-peer-application': 'snapmirror'},
+            ],
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('vserver-peer-create', vserver_peer_create_args)])
+
+    def test_delete_vserver_peer(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_vserver_peer('fake_vserver', 'fake_vserver_peer')
+
+        vserver_peer_delete_args = {
+            'vserver': 'fake_vserver',
+            'peer-vserver': 'fake_vserver_peer',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('vserver-peer-delete', vserver_peer_delete_args)])
+
+    def test_accept_vserver_peer(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.accept_vserver_peer('fake_vserver', 'fake_vserver_peer')
+
+        vserver_peer_accept_args = {
+            'vserver': 'fake_vserver',
+            'peer-vserver': 'fake_vserver_peer',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('vserver-peer-accept', vserver_peer_accept_args)])
+
+    def test_get_vserver_peers(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.VSERVER_PEER_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_vserver_peers(
+            vserver_name=fake_client.VSERVER_NAME,
+            peer_vserver_name=fake_client.VSERVER_NAME_2)
+
+        vserver_peer_get_iter_args = {
+            'query': {
+                'vserver-peer-info': {
+                    'vserver': fake_client.VSERVER_NAME,
+                    'peer-vserver': fake_client.VSERVER_NAME_2,
+                }
+            },
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('vserver-peer-get-iter', vserver_peer_get_iter_args)])
+
+        expected = [{
+            'vserver': 'fake_vserver',
+            'peer-vserver': 'fake_vserver_2',
+            'peer-state': 'peered',
+            'peer-cluster': 'fake_cluster'
+        }]
+        self.assertEqual(expected, result)
+
+    def test_get_vserver_peers_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_vserver_peers(
+            vserver_name=fake_client.VSERVER_NAME,
+            peer_vserver_name=fake_client.VSERVER_NAME_2)
+
+        self.assertEqual([], result)
+        self.assertTrue(self.client.send_iter_request.called)
+
+    def test_ensure_snapmirror_v2(self):
+
+        self.assertIsNone(self.client._ensure_snapmirror_v2())
+
+    def test_ensure_snapmirror_v2_not_supported(self):
+
+        self.client.features.add_feature('SNAPMIRROR_V2', supported=False)
+
+        self.assertRaises(exception.NetAppDriverException,
+                          self.client._ensure_snapmirror_v2)
+
+    @ddt.data({'schedule': 'fake_schedule', 'policy': 'fake_policy'},
+              {'schedule': None, 'policy': None})
+    @ddt.unpack
+    def test_create_snapmirror(self, schedule, policy):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.create_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            schedule=schedule, policy=policy)
+
+        snapmirror_create_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+            'relationship-type': 'data_protection',
+        }
+        if schedule:
+            snapmirror_create_args['schedule'] = schedule
+        if policy:
+            snapmirror_create_args['policy'] = policy
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-create', snapmirror_create_args)])
+
+    def test_create_snapmirror_already_exists(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(
+            code=netapp_api.ERELATION_EXISTS))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.client.create_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_create_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+            'relationship-type': 'data_protection',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-create', snapmirror_create_args)])
+
+    def test_create_snapmirror_error(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(
+            code=0))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.create_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+        self.assertTrue(self.client.send_request.called)
+
+    @ddt.data(
+        {
+            'source_snapshot': 'fake_snapshot',
+            'transfer_priority': 'fake_priority'
+        },
+        {
+            'source_snapshot': None,
+            'transfer_priority': None
+        }
+    )
+    @ddt.unpack
+    def test_initialize_snapmirror(self, source_snapshot, transfer_priority):
+
+        api_response = netapp_api.NaElement(
+            fake_client.SNAPMIRROR_INITIALIZE_RESULT)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.initialize_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            source_snapshot=source_snapshot,
+            transfer_priority=transfer_priority)
+
+        snapmirror_initialize_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        if source_snapshot:
+            snapmirror_initialize_args['source-snapshot'] = source_snapshot
+        if transfer_priority:
+            snapmirror_initialize_args['transfer-priority'] = transfer_priority
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-initialize', snapmirror_initialize_args)])
+
+        expected = {
+            'operation-id': None,
+            'status': 'succeeded',
+            'jobid': None,
+            'error-code': None,
+            'error-message': None
+        }
+        self.assertEqual(expected, result)
+
+    @ddt.data(True, False)
+    def test_release_snapmirror(self, relationship_info_only):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.release_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            relationship_info_only=relationship_info_only)
+
+        snapmirror_release_args = {
+            'query': {
+                'snapmirror-destination-info': {
+                    'source-vserver': fake_client.SM_SOURCE_VSERVER,
+                    'source-volume': fake_client.SM_SOURCE_VOLUME,
+                    'destination-vserver': fake_client.SM_DEST_VSERVER,
+                    'destination-volume': fake_client.SM_DEST_VOLUME,
+                    'relationship-info-only': ('true' if relationship_info_only
+                                               else 'false'),
+                }
+            }
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-release-iter', snapmirror_release_args)])
+
+    def test_quiesce_snapmirror(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.quiesce_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_quiesce_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-quiesce', snapmirror_quiesce_args)])
+
+    @ddt.data(True, False)
+    def test_abort_snapmirror(self, clear_checkpoint):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.abort_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            clear_checkpoint=clear_checkpoint)
+
+        snapmirror_abort_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+            'clear-checkpoint': 'true' if clear_checkpoint else 'false',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-abort', snapmirror_abort_args)])
+
+    def test_abort_snapmirror_no_transfer_in_progress(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(
+            code=netapp_api.ENOTRANSFER_IN_PROGRESS))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.client.abort_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_abort_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+            'clear-checkpoint': 'false',
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-abort', snapmirror_abort_args)])
+
+    def test_abort_snapmirror_error(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(code=0))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.abort_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    def test_break_snapmirror(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.break_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_break_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-break', snapmirror_break_args)])
+
+    @ddt.data(
+        {
+            'schedule': 'fake_schedule',
+            'policy': 'fake_policy',
+            'tries': 5,
+            'max_transfer_rate': 1024,
+        },
+        {
+            'schedule': None,
+            'policy': None,
+            'tries': None,
+            'max_transfer_rate': None,
+        }
+    )
+    @ddt.unpack
+    def test_modify_snapmirror(self, schedule, policy, tries,
+                               max_transfer_rate):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.modify_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            schedule=schedule, policy=policy, tries=tries,
+            max_transfer_rate=max_transfer_rate)
+
+        snapmirror_modify_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        if schedule:
+            snapmirror_modify_args['schedule'] = schedule
+        if policy:
+            snapmirror_modify_args['policy'] = policy
+        if tries:
+            snapmirror_modify_args['tries'] = tries
+        if max_transfer_rate:
+            snapmirror_modify_args['max-transfer-rate'] = max_transfer_rate
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-modify', snapmirror_modify_args)])
+
+    def test_delete_snapmirror(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.delete_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_delete_args = {
+            'query': {
+                'snapmirror-info': {
+                    'source-vserver': fake_client.SM_SOURCE_VSERVER,
+                    'source-volume': fake_client.SM_SOURCE_VOLUME,
+                    'destination-vserver': fake_client.SM_DEST_VSERVER,
+                    'destination-volume': fake_client.SM_DEST_VOLUME,
+                }
+            }
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-destroy-iter', snapmirror_delete_args)])
+
+    def test_update_snapmirror(self):
+
+        self.mock_object(self.client, 'send_request')
+
+        self.client.update_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_update_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-update', snapmirror_update_args)])
+
+    def test_update_snapmirror_already_transferring(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(
+            code=netapp_api.ETRANSFER_IN_PROGRESS))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.client.update_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_update_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-update', snapmirror_update_args)])
+
+    def test_update_snapmirror_already_transferring_two(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(
+            code=netapp_api.EANOTHER_OP_ACTIVE))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.client.update_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_update_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-update', snapmirror_update_args)])
+
+    def test_update_snapmirror_error(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(code=0))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.update_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    def test_resume_snapmirror(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.resume_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_resume_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-resume', snapmirror_resume_args)])
+
+    def test_resume_snapmirror_not_quiesed(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(
+            code=netapp_api.ERELATION_NOT_QUIESCED))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.client.resume_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_resume_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-resume', snapmirror_resume_args)])
+
+    def test_resume_snapmirror_error(self):
+        mock_send_req = mock.Mock(side_effect=netapp_api.NaApiError(code=0))
+        self.mock_object(self.client, 'send_request', mock_send_req)
+
+        self.assertRaises(netapp_api.NaApiError,
+                          self.client.resume_snapmirror,
+                          fake_client.SM_SOURCE_VSERVER,
+                          fake_client.SM_SOURCE_VOLUME,
+                          fake_client.SM_DEST_VSERVER,
+                          fake_client.SM_DEST_VOLUME)
+
+    def test_resync_snapmirror(self):
+        self.mock_object(self.client, 'send_request')
+
+        self.client.resync_snapmirror(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME)
+
+        snapmirror_resync_args = {
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+        }
+        self.client.send_request.assert_has_calls([
+            mock.call('snapmirror-resync', snapmirror_resync_args)])
+
+    def test__get_snapmirrors(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.SNAPMIRROR_GET_ITER_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        desired_attributes = {
+            'snapmirror-info': {
+                'source-vserver': None,
+                'source-volume': None,
+                'destination-vserver': None,
+                'destination-volume': None,
+                'is-healthy': None,
+            }
+        }
+
+        result = self.client._get_snapmirrors(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            desired_attributes=desired_attributes)
+
+        snapmirror_get_iter_args = {
+            'query': {
+                'snapmirror-info': {
+                    'source-vserver': fake_client.SM_SOURCE_VSERVER,
+                    'source-volume': fake_client.SM_SOURCE_VOLUME,
+                    'destination-vserver': fake_client.SM_DEST_VSERVER,
+                    'destination-volume': fake_client.SM_DEST_VOLUME,
+                },
+            },
+            'desired-attributes': {
+                'snapmirror-info': {
+                    'source-vserver': None,
+                    'source-volume': None,
+                    'destination-vserver': None,
+                    'destination-volume': None,
+                    'is-healthy': None,
+                },
+            },
+        }
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('snapmirror-get-iter', snapmirror_get_iter_args)])
+        self.assertEqual(1, len(result))
+
+    def test__get_snapmirrors_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client._get_snapmirrors()
+
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('snapmirror-get-iter', {})])
+
+        self.assertEqual([], result)
+
+    def test_get_snapmirrors(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.SNAPMIRROR_GET_ITER_FILTERED_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        desired_attributes = ['source-vserver', 'source-volume',
+                              'destination-vserver', 'destination-volume',
+                              'is-healthy', 'mirror-state', 'schedule']
+
+        result = self.client.get_snapmirrors(
+            fake_client.SM_SOURCE_VSERVER, fake_client.SM_SOURCE_VOLUME,
+            fake_client.SM_DEST_VSERVER, fake_client.SM_DEST_VOLUME,
+            desired_attributes=desired_attributes)
+
+        snapmirror_get_iter_args = {
+            'query': {
+                'snapmirror-info': {
+                    'source-vserver': fake_client.SM_SOURCE_VSERVER,
+                    'source-volume': fake_client.SM_SOURCE_VOLUME,
+                    'destination-vserver': fake_client.SM_DEST_VSERVER,
+                    'destination-volume': fake_client.SM_DEST_VOLUME,
+                },
+            },
+            'desired-attributes': {
+                'snapmirror-info': {
+                    'source-vserver': None,
+                    'source-volume': None,
+                    'destination-vserver': None,
+                    'destination-volume': None,
+                    'is-healthy': None,
+                    'mirror-state': None,
+                    'schedule': None,
+                },
+            },
+        }
+
+        expected = [{
+            'source-vserver': fake_client.SM_SOURCE_VSERVER,
+            'source-volume': fake_client.SM_SOURCE_VOLUME,
+            'destination-vserver': fake_client.SM_DEST_VSERVER,
+            'destination-volume': fake_client.SM_DEST_VOLUME,
+            'is-healthy': 'true',
+            'mirror-state': 'snapmirrored',
+            'schedule': 'daily',
+        }]
+
+        self.client.send_iter_request.assert_has_calls([
+            mock.call('snapmirror-get-iter', snapmirror_get_iter_args)])
+        self.assertEqual(expected, result)
+
+    def test_get_provisioning_options_from_flexvol(self):
+
+        self.mock_object(self.client, 'get_flexvol',
+                         mock.Mock(return_value=fake_client.VOLUME_INFO_SSC))
+        self.mock_object(self.client, 'get_flexvol_dedupe_info', mock.Mock(
+            return_value=fake_client.VOLUME_DEDUPE_INFO_SSC))
+
+        expected_prov_opts = {
+            'aggregate': 'fake_aggr1',
+            'compression_enabled': False,
+            'dedupe_enabled': True,
+            'language': 'en_US',
+            'size': 1,
+            'snapshot_policy': 'default',
+            'snapshot_reserve': '5',
+            'space_guarantee_type': 'none',
+            'volume_type': 'rw'
+        }
+
+        actual_prov_opts = self.client.get_provisioning_options_from_flexvol(
+            fake_client.VOLUME_NAME)
+
+        self.assertEqual(expected_prov_opts, actual_prov_opts)
