@@ -29,7 +29,6 @@ from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v1 import stubs
 from cinder.tests.unit import fake_constants as fake
-from cinder.tests.unit import fake_notifier
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
 from cinder.volume import api as volume_api
@@ -48,8 +47,6 @@ class VolumeApiTest(test.TestCase):
         fake_image.stub_out_image_service(self.stubs)
         self.controller = volumes.VolumeController(self.ext_mgr)
 
-        self.flags(host='fake',
-                   notification_driver=[fake_notifier.__name__])
         self.stubs.Set(db, 'volume_get_all', stubs.stub_volume_get_all)
         self.stubs.Set(db, 'service_get_all_by_topic',
                        stubs.stub_service_get_all_by_topic)

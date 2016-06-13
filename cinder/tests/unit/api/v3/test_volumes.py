@@ -23,7 +23,6 @@ from cinder import db
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
-from cinder.tests.unit import fake_notifier
 from cinder.volume.api import API as vol_get
 
 version_header_name = 'OpenStack-API-Version'
@@ -38,8 +37,7 @@ class VolumeApiTest(test.TestCase):
         self.ext_mgr.extensions = {}
         self.controller = volumes.VolumeController(self.ext_mgr)
 
-        self.flags(host='fake',
-                   notification_driver=[fake_notifier.__name__])
+        self.flags(host='fake')
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
     def test_check_volume_filters_called(self):
