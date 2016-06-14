@@ -126,8 +126,7 @@ class BaseVolumeTestCase(test.TestCase):
         self.extension_manager = extension.ExtensionManager(
             "BaseVolumeTestCase")
         vol_tmpdir = tempfile.mkdtemp()
-        self.flags(volumes_dir=vol_tmpdir,
-                   notification_driver=["test"])
+        self.flags(volumes_dir=vol_tmpdir)
         self.addCleanup(self._cleanup)
         self.volume = importutils.import_object(CONF.volume_manager)
         self.volume.message_api = mock.Mock()
