@@ -36,7 +36,6 @@ except ImportError:
     hpeexceptions = None
 
 from oslo_log import log as logging
-import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
@@ -114,10 +113,12 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.8 - Update replication to version 2.1
         3.0.9 - Use same LUN ID for each VLUN path #1551994
         3.0.10 - Remove metadata that tracks the instance ID. bug #1572665
+        3.0.11 - _create_3par_iscsi_host() now accepts iscsi_iqn as list only.
+                 Bug #1590180
 
     """
 
-    VERSION = "3.0.10"
+    VERSION = "3.0.11"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -501,7 +502,8 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         """
         # first search for an existing host
         host_found = None
-        hosts = common.client.queryHost(iqns=[iscsi_iqn])
+
+        hosts = common.client.queryHost(iqns=iscsi_iqn)
 
         if hosts and hosts['members'] and 'name' in hosts['members'][0]:
             host_found = hosts['members'][0]['name']
@@ -509,12 +511,8 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         if host_found is not None:
             return host_found
         else:
-            if isinstance(iscsi_iqn, six.string_types):
-                iqn = [iscsi_iqn]
-            else:
-                iqn = iscsi_iqn
             persona_id = int(persona_id)
-            common.client.createHost(hostname, iscsiNames=iqn,
+            common.client.createHost(hostname, iscsiNames=iscsi_iqn,
                                      optional={'domain': domain,
                                                'persona': persona_id})
             return hostname
@@ -562,7 +560,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
             # host doesn't exist, we have to create it
             hostname = self._create_3par_iscsi_host(common,
                                                     hostname,
-                                                    connector['initiator'],
+                                                    [connector['initiator']],
                                                     domain,
                                                     persona_id)
             self._set_3par_chaps(common, hostname, volume, username, password)
