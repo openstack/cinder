@@ -4553,6 +4553,10 @@ class VolumeTestCase(BaseVolumeTestCase):
                            'is_snapshot': False}
         self.assertEqual(expected_result, result)
 
+    def test_backup_use_temp_snapshot_config(self):
+        local_conf = self.volume.driver.configuration.local_conf
+        self.assertFalse(local_conf.backup_use_temp_snapshot)
+
     @mock.patch.object(QUOTAS, 'reserve',
                        side_effect = OVER_SNAPSHOT_QUOTA_EXCEPTION)
     def test_existing_snapshot_failed_quota_reserve(self, mock_reserve):

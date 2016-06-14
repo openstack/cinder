@@ -235,7 +235,7 @@ class HuaweiHyperMetro(object):
                 lungroup_id = self.rmt_client.find_lungroup_from_map(
                     view_id)
         if lungroup_id:
-            left_lunnum = self.rmt_client.get_lunnum_from_lungroup(
+            left_lunnum = self.rmt_client.get_obj_count_from_lungroup(
                 lungroup_id)
 
         if int(left_lunnum) > 0:

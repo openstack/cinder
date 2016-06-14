@@ -74,6 +74,8 @@ CONF.register_opts(huawei_opts)
 
 snap_attrs = ('id', 'volume_id', 'volume', 'provider_location')
 Snapshot = collections.namedtuple('Snapshot', snap_attrs)
+vol_attrs = ('id', 'lun_type', 'provider_location', 'metadata')
+Volume = collections.namedtuple('Volume', vol_attrs)
 
 
 class HuaweiBaseDriver(driver.VolumeDriver):
@@ -1158,6 +1160,18 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         """Remove an export for a volume."""
         pass
 
+    def create_export_snapshot(self, context, snapshot, connector):
+        """Export a snapshot."""
+        pass
+
+    def remove_export_snapshot(self, context, snapshot):
+        """Remove an export for a snapshot."""
+        pass
+
+    def backup_use_temp_snapshot(self):
+        # This config option has a default to be False, So just return it.
+        return self.configuration.safe_get("backup_use_temp_snapshot")
+
     def _copy_volume(self, volume, copy_name, src_lun, tgt_lun):
         luncopy_id = self.client.create_luncopy(copy_name,
                                                 src_lun,
@@ -1756,6 +1770,37 @@ class HuaweiBaseDriver(driver.VolumeDriver):
 
         return secondary_id, volumes_update
 
+    def initialize_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Map a snapshot to a host and return target iSCSI information."""
+        # From the volume structure.
+        volume = Volume(id=snapshot.id,
+                        provider_location=snapshot.provider_location,
+                        lun_type=constants.SNAPSHOT_TYPE,
+                        metadata=None)
+
+        return self.initialize_connection(volume, connector)
+
+    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
+        """Delete map between a snapshot and a host."""
+        # From the volume structure.
+        volume = Volume(id=snapshot.id,
+                        provider_location=snapshot.provider_location,
+                        lun_type=constants.SNAPSHOT_TYPE,
+                        metadata=None)
+
+        return self.terminate_connection(volume, connector)
+
+    def get_lun_id_and_type(self, volume):
+        if hasattr(volume, 'lun_type'):
+            lun_id = volume.provider_location
+            lun_type = constants.SNAPSHOT_TYPE
+        else:
+            lun_id = self._check_volume_exist_on_array(
+                volume, constants.VOLUME_NOT_EXISTS_RAISE)
+            lun_type = constants.LUN_TYPE
+
+        return lun_id, lun_type
+
 
 @interface.volumedriver
 class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
@@ -1784,9 +1829,10 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 Hypermetro consistency group support
                 Consistency group support
                 Cgsnapshot support
+        2.0.8 - Backup snapshot optimal path support
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
@@ -1804,9 +1850,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     @utils.synchronized('huawei', external=True)
     def initialize_connection(self, volume, connector):
         """Map a volume to a host and return target iSCSI information."""
-        lun_id = self._check_volume_exist_on_array(
-            volume, constants.VOLUME_NOT_EXISTS_RAISE)
-
+        lun_id, lun_type = self.get_lun_id_and_type(volume)
         initiator_name = connector['initiator']
         LOG.info(_LI(
             'initiator name: %(initiator_name)s, '
@@ -1837,9 +1881,11 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
 
         # Mapping lungroup and hostgroup to view.
         self.client.do_mapping(lun_id, hostgroup_id,
-                               host_id, portgroup_id)
+                               host_id, portgroup_id,
+                               lun_type)
 
-        hostlun_id = self.client.get_host_lun_id(host_id, lun_id)
+        hostlun_id = self.client.get_host_lun_id(host_id, lun_id,
+                                                 lun_type)
 
         LOG.info(_LI("initialize_connection, host lun id is: %s."),
                  hostlun_id)
@@ -1877,8 +1923,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     @utils.synchronized('huawei', external=True)
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
-        lun_id = self._check_volume_exist_on_array(
-            volume, constants.VOLUME_NOT_EXISTS_WARN)
+        lun_id, lun_type = self.get_lun_id_and_type(volume)
         initiator_name = connector['initiator']
         host_name = connector['host']
         lungroup_id = None
@@ -1912,10 +1957,12 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
 
         # Remove lun from lungroup.
         if lun_id and lungroup_id:
-            lungroup_ids = self.client.get_lungroupids_by_lunid(lun_id)
+            lungroup_ids = self.client.get_lungroupids_by_lunid(
+                lun_id, lun_type)
             if lungroup_id in lungroup_ids:
                 self.client.remove_lun_from_lungroup(lungroup_id,
-                                                     lun_id)
+                                                     lun_id,
+                                                     lun_type)
             else:
                 LOG.warning(_LW("LUN is not in lungroup. "
                                 "LUN ID: %(lun_id)s. "
@@ -1925,7 +1972,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
 
         # Remove portgroup from mapping view if no lun left in lungroup.
         if lungroup_id:
-            left_lunnum = self.client.get_lunnum_from_lungroup(lungroup_id)
+            left_lunnum = self.client.get_obj_count_from_lungroup(lungroup_id)
 
         if portgroup_id and view_id and (int(left_lunnum) <= 0):
             if self.client.is_portgroup_associated_to_view(view_id,
@@ -1981,9 +2028,10 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 Hypermetro consistency group support
                 Consistency group support
                 Cgsnapshot support
+        2.0.8 - Backup snapshot optimal path support
     """
 
-    VERSION = "2.0.7"
+    VERSION = "2.0.8"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiFCDriver, self).__init__(*args, **kwargs)
@@ -2002,9 +2050,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
     @utils.synchronized('huawei', external=True)
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
-        lun_id = self._check_volume_exist_on_array(
-            volume, constants.VOLUME_NOT_EXISTS_RAISE)
-
+        lun_id, lun_type = self.get_lun_id_and_type(volume)
         wwns = connector['wwpns']
         LOG.info(_LI(
             'initialize_connection, initiator: %(wwpns)s,'
@@ -2027,7 +2073,8 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
             zone_helper = fc_zone_helper.FCZoneHelper(self.fcsan, self.client)
             try:
                 (tgt_port_wwns, portg_id, init_targ_map) = (
-                    zone_helper.build_ini_targ_map(wwns, host_id, lun_id))
+                    zone_helper.build_ini_targ_map(wwns, host_id, lun_id,
+                                                   lun_type))
             except Exception as err:
                 self.remove_host_with_check(host_id)
                 msg = _('build_ini_targ_map fails. %s') % err
@@ -2065,8 +2112,10 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         # Add host into hostgroup.
         hostgroup_id = self.client.add_host_to_hostgroup(host_id)
         map_info = self.client.do_mapping(lun_id, hostgroup_id,
-                                          host_id, portg_id)
-        host_lun_id = self.client.get_host_lun_id(host_id, lun_id)
+                                          host_id, portg_id,
+                                          lun_type)
+        host_lun_id = self.client.get_host_lun_id(host_id, lun_id,
+                                                  lun_type)
 
         # Return FC properties.
         fc_info = {'driver_volume_type': 'fibre_channel',
@@ -2143,9 +2192,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Delete map between a volume and a host."""
-        lun_id = self._check_volume_exist_on_array(
-            volume, constants.VOLUME_NOT_EXISTS_WARN)
-
+        lun_id, lun_type = self.get_lun_id_and_type(volume)
         wwns = connector['wwpns']
 
         host_name = connector['host']
@@ -2165,10 +2212,12 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 lungroup_id = self.client.find_lungroup_from_map(view_id)
 
         if lun_id and lungroup_id:
-            lungroup_ids = self.client.get_lungroupids_by_lunid(lun_id)
+            lungroup_ids = self.client.get_lungroupids_by_lunid(lun_id,
+                                                                lun_type)
             if lungroup_id in lungroup_ids:
                 self.client.remove_lun_from_lungroup(lungroup_id,
-                                                     lun_id)
+                                                     lun_id,
+                                                     lun_type)
             else:
                 LOG.warning(_LW("LUN is not in lungroup. "
                                 "LUN ID: %(lun_id)s. "
@@ -2179,7 +2228,7 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
         else:
             LOG.warning(_LW("Can't find lun on the array."))
         if lungroup_id:
-            left_lunnum = self.client.get_lunnum_from_lungroup(lungroup_id)
+            left_lunnum = self.client.get_obj_count_from_lungroup(lungroup_id)
         if int(left_lunnum) > 0:
             fc_info = {'driver_volume_type': 'fibre_channel',
                        'data': {}}
