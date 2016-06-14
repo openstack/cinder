@@ -221,7 +221,8 @@ class WindowsSmbFsTestCase(test.TestCase):
                 mock.sentinel.block_size)
             drv._vhdutils.resize_vhd.assert_called_once_with(
                 self._FAKE_VOLUME_PATH,
-                self._FAKE_VOLUME['size'] * units.Gi)
+                self._FAKE_VOLUME['size'] * units.Gi,
+                is_file_max_size=False)
 
     def test_copy_volume_from_snapshot(self):
         drv = self._smbfs_driver
@@ -251,7 +252,8 @@ class WindowsSmbFsTestCase(test.TestCase):
             mock.sentinel.new_volume_path)
         drv._vhdutils.resize_vhd.assert_called_once_with(
             mock.sentinel.new_volume_path,
-            self._FAKE_VOLUME['size'] * units.Gi)
+            self._FAKE_VOLUME['size'] * units.Gi,
+            is_file_max_size=False)
 
     def test_rebase_img(self):
         drv = self._smbfs_driver
