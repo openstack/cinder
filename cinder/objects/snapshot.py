@@ -30,7 +30,7 @@ CONF = cfg.CONF
 
 @base.CinderObjectRegistry.register
 class Snapshot(cleanable.CinderCleanableObject, base.CinderObject,
-               base.CinderObjectDictCompat):
+               base.CinderObjectDictCompat, base.CinderComparableObject):
     # Version 1.0: Initial version
     # Version 1.1: Changed 'status' field to use SnapshotStatusField
     # Version 1.2: This object is now cleanable (adds rows to workers table)

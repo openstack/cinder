@@ -211,3 +211,60 @@ class BackupImport(Backup):
 
         db_backup = db.backup_create(self._context, updates)
         self._from_db_object(self._context, self, db_backup)
+
+
+@base.CinderObjectRegistry.register
+class BackupDeviceInfo(base.CinderObject, base.CinderObjectDictCompat,
+                       base.CinderComparableObject):
+    # Version 1.0: Initial version
+    VERSION = '1.0'
+    fields = {
+        'volume': fields.ObjectField('Volume', nullable=True),
+        'snapshot': fields.ObjectField('Snapshot', nullable=True),
+        'secure_enabled': fields.BooleanField(default=False),
+    }
+    obj_extra_fields = ['is_snapshot', 'device_obj']
+
+    @property
+    def is_snapshot(self):
+        if self.obj_attr_is_set('snapshot') == self.obj_attr_is_set('volume'):
+            msg = _("Either snapshot or volume field should be set.")
+            raise exception.ProgrammingError(message=msg)
+        return self.obj_attr_is_set('snapshot')
+
+    @property
+    def device_obj(self):
+        return self.snapshot if self.is_snapshot else self.volume
+
+    # FIXME(sborkows): This should go away in early O as we stop supporting
+    # backward compatibility with M.
+    @classmethod
+    def from_primitive(cls, primitive, context, expected_attrs=None):
+        backup_device = BackupDeviceInfo()
+        if primitive['is_snapshot']:
+            if isinstance(primitive['backup_device'], objects.Snapshot):
+                backup_device.snapshot = primitive['backup_device']
+            else:
+                backup_device.snapshot = objects.Snapshot._from_db_object(
+                    context, objects.Snapshot(), primitive['backup_device'],
+                    expected_attrs=expected_attrs)
+        else:
+            if isinstance(primitive['backup_device'], objects.Volume):
+                backup_device.volume = primitive['backup_device']
+            else:
+                backup_device.volume = objects.Volume._from_db_object(
+                    context, objects.Volume(), primitive['backup_device'],
+                    expected_attrs=expected_attrs)
+        backup_device.secure_enabled = primitive['secure_enabled']
+        return backup_device
+
+    # FIXME(sborkows): This should go away in early O as we stop supporting
+    # backward compatibility with M.
+    def to_primitive(self, context):
+        backup_device = (db.snapshot_get(context, self.snapshot.id)
+                         if self.is_snapshot
+                         else db.volume_get(context, self.volume.id))
+        primitive = {'backup_device': backup_device,
+                     'secure_enabled': self.secure_enabled,
+                     'is_snapshot': self.is_snapshot}
+        return primitive

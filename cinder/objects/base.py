@@ -120,6 +120,7 @@ OBJ_VERSIONS.add('1.12', {'VolumeType': '1.3'})
 OBJ_VERSIONS.add('1.13', {'CleanupRequest': '1.0'})
 OBJ_VERSIONS.add('1.14', {'VolumeAttachmentList': '1.1'})
 OBJ_VERSIONS.add('1.15', {'Volume': '1.6', 'Snapshot': '1.2'})
+OBJ_VERSIONS.add('1.16', {'BackupDeviceInfo': '1.0'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):

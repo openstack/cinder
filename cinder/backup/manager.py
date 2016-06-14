@@ -425,17 +425,18 @@ class BackupManager(manager.SchedulerDependentManager):
         backup_service = self.service.get_backup_driver(context)
 
         properties = utils.brick_get_connector_properties()
-        backup_dic = self.volume_rpcapi.get_backup_device(context,
-                                                          backup, volume)
         try:
-            backup_device = backup_dic.get('backup_device')
-            is_snapshot = backup_dic.get('is_snapshot')
-            attach_info = self._attach_device(context, backup_device,
-                                              properties, is_snapshot)
+            backup_device = self.volume_rpcapi.get_backup_device(context,
+                                                                 backup,
+                                                                 volume)
+            attach_info = self._attach_device(context,
+                                              backup_device.device_obj,
+                                              properties,
+                                              backup_device.is_snapshot)
             try:
                 device_path = attach_info['device']['path']
                 if isinstance(device_path, six.string_types):
-                    if backup_dic.get('secure_enabled', False):
+                    if backup_device.secure_enabled:
                         with open(device_path) as device_file:
                             backup_service.backup(backup, device_file)
                     else:
@@ -448,8 +449,8 @@ class BackupManager(manager.SchedulerDependentManager):
 
             finally:
                 self._detach_device(context, attach_info,
-                                    backup_device, properties,
-                                    is_snapshot)
+                                    backup_device.device_obj, properties,
+                                    backup_device.is_snapshot)
         finally:
             backup = objects.Backup.get_by_id(context, backup.id)
             self._cleanup_temp_volumes_snapshots_when_backup_created(
