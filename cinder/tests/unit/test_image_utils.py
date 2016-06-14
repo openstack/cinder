@@ -795,7 +795,7 @@ class TestFetchToVolumeFormat(test.TestCase):
         tmp = mock_temp.return_value.__enter__.return_value
         image_service.show.return_value = {'disk_format': 'raw',
                                            'size': 41126400}
-        image_size_m = math.ceil(41126400 / units.Mi)
+        image_size_m = math.ceil(float(41126400) / units.Mi)
 
         output = image_utils.fetch_to_volume_format(
             ctxt, image_service, image_id, dest, volume_format, blocksize,
