@@ -715,14 +715,6 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         """Not implemented."""
         pass
 
-    def backup_volume(self, context, backup, backup_service):
-        """Not implemented."""
-        pass
-
-    def restore_backup(self, context, backup, volume, backup_service):
-        """Not implemented."""
-        pass
-
     def _verify_clone_size(self, snapshot, size):
         """Check whether the clone size is the same as the parent volume."""
         lcfg = self.configuration
