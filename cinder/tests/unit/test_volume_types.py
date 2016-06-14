@@ -27,6 +27,7 @@ from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import conf_fixture
+from cinder.tests.unit import fake_constants as fake
 from cinder.volume import qos_specs
 from cinder.volume import volume_types
 
@@ -47,13 +48,15 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_volume_type_create_then_destroy(self):
         """Ensure volume types can be created and deleted."""
+        project_id = fake.PROJECT_ID
         prev_all_vtypes = volume_types.get_all_types(self.ctxt)
 
         # create
         type_ref = volume_types.create(self.ctxt,
                                        self.vol_type1_name,
                                        self.vol_type1_specs,
-                                       description=self.vol_type1_description)
+                                       description=self.vol_type1_description,
+                                       projects=[project_id], is_public=False)
         new = volume_types.get_volume_type_by_name(self.ctxt,
                                                    self.vol_type1_name)
 
@@ -67,6 +70,10 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertEqual(len(prev_all_vtypes) + 1,
                          len(new_all_vtypes),
                          'drive type was not created')
+        # Assert that volume type is associated to a project
+        vol_type_access = db.volume_type_access_get_all(self.ctxt,
+                                                        type_ref['id'])
+        self.assertIn(project_id, [a.project_id for a in vol_type_access])
 
         # update
         new_type_name = self.vol_type1_name + '_updated'
@@ -84,6 +91,11 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertEqual(prev_all_vtypes,
                          new_all_vtypes,
                          'drive type was not deleted')
+        # Assert that associated volume type access is deleted successfully
+        # on destroying the volume type
+        vol_type_access = db_api._volume_type_access_query(
+            self.ctxt).filter_by(volume_type_id=type_ref['id']).all()
+        self.assertFalse(vol_type_access)
 
     @mock.patch('cinder.quota.VolumeTypeQuotaEngine.'
                 'update_quota_resource')
@@ -290,7 +302,7 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertTrue(volume_types.is_encrypted(self.ctxt, volume_type_id))
 
     def test_add_access(self):
-        project_id = '456'
+        project_id = fake.PROJECT_ID
         vtype = volume_types.create(self.ctxt, 'type1', is_public=False)
         vtype_id = vtype.get('id')
 
@@ -299,8 +311,8 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertIn(project_id, [a.project_id for a in vtype_access])
 
     def test_remove_access(self):
-        project_id = '456'
-        vtype = volume_types.create(self.ctxt, 'type1', projects=['456'],
+        project_id = fake.PROJECT_ID
+        vtype = volume_types.create(self.ctxt, 'type1', projects=[project_id],
                                     is_public=False)
         vtype_id = vtype.get('id')
 
@@ -310,7 +322,7 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_add_access_with_non_admin(self):
         self.ctxt = context.RequestContext('fake', 'fake', is_admin=False)
-        project_id = '456'
+        project_id = fake.PROJECT_ID
         vtype = volume_types.create(self.ctxt, 'type1', is_public=False)
         vtype_id = vtype.get('id')
 
@@ -321,8 +333,8 @@ class VolumeTypeTestCase(test.TestCase):
 
     def test_remove_access_with_non_admin(self):
         self.ctxt = context.RequestContext('fake', 'fake', is_admin=False)
-        project_id = '456'
-        vtype = volume_types.create(self.ctxt, 'type1', projects=['456'],
+        project_id = fake.PROJECT_ID
+        vtype = volume_types.create(self.ctxt, 'type1', projects=[project_id],
                                     is_public=False)
         vtype_id = vtype.get('id')
 
@@ -468,7 +480,7 @@ class VolumeTypeTestCase(test.TestCase):
         self.assertIsNone(ret)
 
     def test_check_public_volume_type_failed(self):
-        project_id = '456'
+        project_id = fake.PROJECT_ID
         volume_type = volume_types.create(self.ctxt, "type1")
         volume_type_id = volume_type.get('id')
         self.assertRaises(exception.InvalidVolumeType,
