@@ -36,6 +36,9 @@ class VolumeController(volumes_v2.VolumeController):
         if req_version.matches(None, "3.3"):
             filters.pop('glance_metadata', None)
 
+        if req_version.matches(None, "3.9"):
+            filters.pop('group_id', None)
+
         utils.remove_invalid_filter_options(context, filters,
                                             self._get_volume_filter_options())
         # NOTE(thingee): v2 API allows name instead of display_name
@@ -45,6 +48,9 @@ class VolumeController(volumes_v2.VolumeController):
         if 'name' in filters:
             filters['display_name'] = filters['name']
             del filters['name']
+
+        if 'group_id' in filters:
+            filters['consistencygroup_id'] = filters.pop('group_id')
 
         strict = req.api_version_request.matches("3.2", None)
         self.volume_api.check_volume_filters(filters, strict)
