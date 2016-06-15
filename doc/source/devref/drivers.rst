@@ -28,8 +28,8 @@ Minimum features are enforced to avoid having a grid of what features are
 supported by which drivers and which releases. Cinder Core requires that all
 drivers implement the following minimum features.
 
-Havana
-------
+Core Functionality
+------------------
 
 * Volume Create/Delete
 * Volume Attach/Detach
@@ -39,11 +39,6 @@ Havana
 * Copy Image to Volume
 * Copy Volume to Image
 * Clone Volume
-
-Icehouse
---------
-
-* All of the above plus
 * Extend Volume
 
 Volume Stats
@@ -65,3 +60,25 @@ provided by a driver.
 total_capacity_gb, keywords can be provided instead. Please use 'unknown' if
 the array cannot report the value or 'infinite' if the array has no upper
 limit.
+
+Feature Enforcement
+-------------------
+
+All concrete driver implementations should use the
+``cinder.interface.volumedriver`` decorator on the driver class::
+
+    @interface.volumedriver
+    class LVMVolumeDriver(driver.VolumeDriver):
+
+This will register the driver and allow automated compliance tests to run
+against and verify the compliance of the driver against the required interface
+to support the `Core Functionality`_ listed above.
+
+Running ``tox -e compliance`` will verify all registered drivers comply to
+this interface. This can be used during development to perform self checks
+along the way. Any missing method calls will be identified by the compliance
+tests.
+
+The details for the required volume driver interfaces can be found in the
+``cinder/interface/volume_*_driver.py`` source.
+

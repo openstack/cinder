@@ -34,6 +34,7 @@ from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers import nfs
 
@@ -65,6 +66,7 @@ CONF = cfg.CONF
 CONF.register_opts(tintri_opts)
 
 
+@interface.volumedriver
 class TintriDriver(driver.ManageableVD,
                    driver.CloneableImageVD,
                    driver.SnapshotVD,

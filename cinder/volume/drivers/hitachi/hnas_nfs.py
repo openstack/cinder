@@ -33,6 +33,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils as cutils
 from cinder.volume.drivers.hitachi import hnas_backend
 from cinder.volume.drivers import nfs
@@ -150,6 +151,7 @@ def factory_bend(drv_config):
     return hnas_backend.HnasBackend(drv_config)
 
 
+@interface.volumedriver
 class HDSNFSDriver(nfs.NfsDriver):
     """Base class for Hitachi NFS driver.
 

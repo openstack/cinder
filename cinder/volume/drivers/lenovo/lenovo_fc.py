@@ -14,10 +14,12 @@
 #    under the License.
 #
 
+from cinder import interface
 from cinder.volume.drivers.dothill import dothill_fc
 from cinder.volume.drivers.lenovo import lenovo_common
 
 
+@interface.volumedriver
 class LenovoFCDriver(dothill_fc.DotHillFCDriver):
     """OpenStack Fibre Channel cinder drivers for Lenovo Storage arrays.
 

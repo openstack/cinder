@@ -16,12 +16,14 @@
 
 from oslo_log import log as logging
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vnx_cli
 
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class EMCCLIISCSIDriver(driver.ISCSIDriver):
     """EMC ISCSI Drivers for VNX using CLI.
 

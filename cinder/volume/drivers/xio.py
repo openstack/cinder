@@ -23,6 +23,7 @@ from six.moves import urllib
 from cinder import context
 from cinder import exception
 from cinder.i18n import _LE, _LI, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -1380,6 +1381,7 @@ class XIOISEDriver(object):
 # Protocol specific classes for entry.  They are wrappers around base class
 # above and every external API resuslts in a call to common function in base
 # class.
+@interface.volumedriver
 class XIOISEISCSIDriver(driver.ISCSIDriver):
 
     """Requires ISE Running FW version 3.1.0 or higher"""
@@ -1506,6 +1508,7 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
         return self.driver.remove_export(context, volume)
 
 
+@interface.volumedriver
 class XIOISEFCDriver(driver.FibreChannelDriver):
 
     """Requires ISE Running FW version 2.8.0 or higher"""

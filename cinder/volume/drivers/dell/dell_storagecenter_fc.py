@@ -19,6 +19,7 @@ from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_common
 from cinder.zonemanager import utils as fczm_utils
@@ -26,6 +27,7 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                                 driver.FibreChannelDriver):
 

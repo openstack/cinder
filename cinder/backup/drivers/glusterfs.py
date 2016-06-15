@@ -24,6 +24,7 @@ from oslo_config import cfg
 
 from cinder.backup.drivers import posix
 from cinder import exception
+from cinder import interface
 from cinder import utils
 
 
@@ -41,6 +42,7 @@ CONF = cfg.CONF
 CONF.register_opts(glusterfsbackup_service_opts)
 
 
+@interface.backupdriver
 class GlusterfsBackupDriver(posix.PosixBackupDriver):
     """Provides backup, restore and delete using GlusterFS repository."""
 

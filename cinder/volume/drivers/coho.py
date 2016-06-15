@@ -25,6 +25,7 @@ from random import randint
 
 from cinder import exception
 from cinder.i18n import _
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers import nfs
 
@@ -292,6 +293,7 @@ CONF = cfg.CONF
 CONF.register_opts(coho_opts)
 
 
+@interface.volumedriver
 class CohoDriver(nfs.NfsDriver):
     """Coho Data NFS based cinder driver.
 

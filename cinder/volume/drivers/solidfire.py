@@ -35,6 +35,7 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder.objects import fields
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -133,6 +134,7 @@ def retry(exc_tuple, tries=5, delay=1, backoff=2):
     return retry_dec
 
 
+@interface.volumedriver
 class SolidFireDriver(san.SanISCSIDriver):
     """OpenStack driver to enable SolidFire cluster.
 

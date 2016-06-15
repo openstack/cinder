@@ -27,6 +27,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
@@ -62,6 +63,7 @@ CONF = cfg.CONF
 CONF.register_opts(vzstorage_opts)
 
 
+@interface.volumedriver
 class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
     """Cinder driver for Virtuozzo Storage.
 

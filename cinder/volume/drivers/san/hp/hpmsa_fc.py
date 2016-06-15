@@ -14,10 +14,12 @@
 #    under the License.
 #
 
+from cinder import interface
 from cinder.volume.drivers.dothill import dothill_fc
 from cinder.volume.drivers.san.hp import hpmsa_common
 
 
+@interface.volumedriver
 class HPMSAFCDriver(dothill_fc.DotHillFCDriver):
     """OpenStack Fibre Channel cinder drivers for HPMSA arrays.
 

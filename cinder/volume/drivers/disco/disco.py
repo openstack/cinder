@@ -31,6 +31,7 @@ from cinder.db.sqlalchemy import api
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 
@@ -82,6 +83,7 @@ CONF.register_opts(disco_opts)
 
 
 # Driver to communicate with DISCO storage solution
+@interface.volumedriver
 class DiscoDriver(driver.VolumeDriver):
     """Execute commands related to DISCO Volumes."""
 

@@ -38,6 +38,7 @@ from cinder.i18n import _
 from cinder.i18n import _LE
 from cinder.i18n import _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume import utils as volutils
 
@@ -70,6 +71,7 @@ CONF = cfg.CONF
 CONF.register_opts(hgst_opts)
 
 
+@interface.volumedriver
 class HGSTDriver(driver.VolumeDriver):
     """This is the Class to set in cinder.conf (volume_driver).
 

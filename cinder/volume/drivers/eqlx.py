@@ -30,6 +30,7 @@ from six.moves import range
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW, _LI
+from cinder import interface
 from cinder import ssh_utils
 from cinder import utils
 from cinder.volume.drivers import san
@@ -102,6 +103,7 @@ def with_timeout(f):
     return __inner
 
 
+@interface.volumedriver
 class DellEQLSanISCSIDriver(san.SanISCSIDriver):
     """Implements commands for Dell EqualLogic SAN ISCSI management.
 

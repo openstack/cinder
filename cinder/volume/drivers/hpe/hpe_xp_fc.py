@@ -18,6 +18,7 @@ Fibre channel Cinder volume driver for Hewlett Packard Enterprise storage.
 
 from oslo_utils import importutils
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_xp_opts as opts
 from cinder.zonemanager import utils as fczm_utils
@@ -26,6 +27,7 @@ _DRIVER_DIR = 'cinder.volume.drivers.hpe'
 _DRIVER_CLASS = 'hpe_xp_horcm_fc.HPEXPHORCMFC'
 
 
+@interface.volumedriver
 class HPEXPFCDriver(driver.FibreChannelDriver):
     """OpenStack Fibre Channel driver to enable HPE XP storage."""
 

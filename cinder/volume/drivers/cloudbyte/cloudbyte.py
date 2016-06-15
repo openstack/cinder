@@ -26,6 +26,7 @@ from six.moves import urllib
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder.volume.drivers.cloudbyte import options
 from cinder.volume.drivers.san import san
 from cinder.volume import qos_specs
@@ -34,6 +35,7 @@ from cinder.volume import volume_types
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class CloudByteISCSIDriver(san.SanISCSIDriver):
     """CloudByte ISCSI Driver.
 

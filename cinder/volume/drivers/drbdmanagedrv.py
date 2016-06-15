@@ -38,6 +38,7 @@ from oslo_utils import units
 
 from cinder import exception
 from cinder.i18n import _, _LW, _LI, _LE
+from cinder import interface
 from cinder.volume import driver
 
 try:
@@ -758,7 +759,7 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
 
 
 # Class with iSCSI interface methods
-
+@interface.volumedriver
 class DrbdManageIscsiDriver(DrbdManageBaseDriver):
     """Cinder driver that uses the iSCSI protocol. """
 
@@ -820,6 +821,7 @@ DrbdManageDriver = DrbdManageIscsiDriver
 
 
 # Class with DRBD transport mode
+@interface.volumedriver
 class DrbdManageDrbdDriver(DrbdManageBaseDriver):
     """Cinder driver that uses the DRBD protocol. """
 

@@ -18,6 +18,7 @@ Volume driver for Pure Storage FlashArray storage system.
 This driver requires Purity version 4.0.0 or later.
 """
 
+import functools
 import math
 import platform
 import re
@@ -32,6 +33,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
@@ -119,6 +121,7 @@ def pure_driver_debug_trace(f):
     This should only be used on VolumeDriver class methods. It depends on
     having a 'self' argument that is a PureBaseVolumeDriver.
     """
+    @functools.wraps(f)
     def wrapper(*args, **kwargs):
         driver = args[0]  # self
         cls_name = driver.__class__.__name__
@@ -1470,6 +1473,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._array = array
 
 
+@interface.volumedriver
 class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
     VERSION = "4.0.0"
@@ -1632,6 +1636,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
         return connection
 
 
+@interface.volumedriver
 class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
     VERSION = "2.0.0"

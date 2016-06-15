@@ -14,10 +14,12 @@
 #    under the License.
 #
 
+from cinder import interface
 from cinder.volume.drivers.dothill import dothill_iscsi
 from cinder.volume.drivers.san.hp import hpmsa_common
 
 
+@interface.volumedriver
 class HPMSAISCSIDriver(dothill_iscsi.DotHillISCSIDriver):
     """OpenStack iSCSI cinder drivers for HPMSA arrays.
 

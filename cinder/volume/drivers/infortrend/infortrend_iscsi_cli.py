@@ -18,12 +18,14 @@ iSCSI Driver for Infortrend Eonstor based on CLI.
 
 from oslo_log import log as logging
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
 
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
     """Infortrend iSCSI Driver for Eonstor DS using CLI.

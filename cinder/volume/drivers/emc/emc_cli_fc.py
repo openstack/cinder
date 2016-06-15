@@ -16,6 +16,7 @@
 
 from oslo_log import log as logging
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vnx_cli
 from cinder.zonemanager import utils as zm_utils
@@ -24,6 +25,7 @@ from cinder.zonemanager import utils as zm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class EMCCLIFCDriver(driver.FibreChannelDriver):
     """EMC FC Driver for VNX using CLI.
 

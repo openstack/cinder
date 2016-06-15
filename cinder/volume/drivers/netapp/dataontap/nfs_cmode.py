@@ -32,6 +32,7 @@ import six
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
@@ -47,6 +48,7 @@ LOG = logging.getLogger(__name__)
 QOS_CLEANUP_INTERVAL_SECONDS = 60
 
 
+@interface.volumedriver
 @six.add_metaclass(utils.TraceWrapperWithABCMetaclass)
 class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
     """NetApp NFS driver for Data ONTAP (Cluster-mode)."""

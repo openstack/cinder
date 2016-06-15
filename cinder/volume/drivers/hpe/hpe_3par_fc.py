@@ -38,6 +38,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
@@ -46,6 +47,7 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class HPE3PARFCDriver(driver.TransferVD,
                       driver.ManageableVD,
                       driver.ExtendVD,

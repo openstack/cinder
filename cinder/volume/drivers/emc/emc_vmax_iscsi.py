@@ -24,6 +24,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.emc import emc_vmax_common
 
@@ -33,6 +34,7 @@ LOG = logging.getLogger(__name__)
 CINDER_CONF = '/etc/cinder/cinder.conf'
 
 
+@interface.volumedriver
 class EMCVMAXISCSIDriver(driver.ISCSIDriver):
     """EMC ISCSI Drivers for VMAX using SMI-S.
 

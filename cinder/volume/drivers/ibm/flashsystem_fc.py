@@ -33,6 +33,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder import utils
 import cinder.volume.driver
 from cinder.volume.drivers.ibm import flashsystem_common as fscommon
@@ -53,6 +54,7 @@ CONF = cfg.CONF
 CONF.register_opts(flashsystem_fc_opts)
 
 
+@interface.volumedriver
 class FlashSystemFCDriver(fscommon.FlashSystemDriver,
                           cinder.volume.driver.FibreChannelDriver):
     """IBM FlashSystem FC volume driver.

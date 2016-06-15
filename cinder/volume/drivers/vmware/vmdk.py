@@ -43,6 +43,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
@@ -207,6 +208,7 @@ class ImageDiskType(object):
                                               extra_spec_disk_type)
 
 
+@interface.volumedriver
 class VMwareVcVmdkDriver(driver.VolumeDriver):
     """Manage volumes on VMware vCenter server."""
 

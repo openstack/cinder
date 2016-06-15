@@ -26,6 +26,7 @@ from oslo_utils import units
 from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.huawei import constants
@@ -1586,6 +1587,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         return secondary_id, volumes_update
 
 
+@interface.volumedriver
 class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
     """ISCSI driver for Huawei storage arrays.
 
@@ -1777,6 +1779,7 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
             self.client.delete_mapping_view(view_id)
 
 
+@interface.volumedriver
 class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
     """FC driver for Huawei OceanStor storage arrays.
 

@@ -22,6 +22,7 @@ iSCSI Cinder Volume driver for Fujitsu ETERNUS DX S3 series.
 import six
 
 from cinder.i18n import _LI
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.fujitsu import eternus_dx_common
 from oslo_log import log as logging
@@ -29,6 +30,7 @@ from oslo_log import log as logging
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class FJDXISCSIDriver(driver.ISCSIDriver):
     """iSCSI Cinder Volume Driver for Fujitsu ETERNUS DX S3 series."""
 

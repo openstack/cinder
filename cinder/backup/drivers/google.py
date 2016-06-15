@@ -42,6 +42,7 @@ import six
 from cinder.backup import chunkeddriver
 from cinder import exception
 from cinder.i18n import _
+from cinder import interface
 
 
 LOG = logging.getLogger(__name__)
@@ -110,6 +111,7 @@ def gcs_logger(func):
     return func_wrapper
 
 
+@interface.backupdriver
 class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
     """Provides backup, restore and delete of backup objects within GCS."""
 

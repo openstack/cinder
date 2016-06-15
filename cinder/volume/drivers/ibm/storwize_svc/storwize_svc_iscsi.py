@@ -40,6 +40,7 @@ from oslo_utils import excutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import interface
 from cinder import utils
 
 from cinder.volume.drivers.ibm.storwize_svc import (
@@ -58,6 +59,7 @@ CONF = cfg.CONF
 CONF.register_opts(storwize_svc_iscsi_opts)
 
 
+@interface.volumedriver
 class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
     """IBM Storwize V7000 and SVC iSCSI volume driver.
 

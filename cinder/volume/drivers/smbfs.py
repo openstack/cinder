@@ -29,6 +29,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 
@@ -97,6 +98,7 @@ def update_allocation_data(delete=False):
     return wrapper
 
 
+@interface.volumedriver
 class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     """SMBFS based cinder volume driver."""
 

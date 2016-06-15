@@ -19,6 +19,7 @@ Fibre Channel Driver for Infortrend Eonstor based on CLI.
 
 from oslo_log import log as logging
 
+from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.infortrend.eonstor_ds_cli import common_cli
 from cinder.zonemanager import utils as fczm_utils
@@ -26,6 +27,7 @@ from cinder.zonemanager import utils as fczm_utils
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
     """Infortrend Fibre Channel Driver for Eonstor DS using CLI.

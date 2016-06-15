@@ -31,76 +31,16 @@ interfaces.
 
 from oslo_log import log as logging
 
+from cinder.interface import fczm_driver
 from cinder.zonemanager import fc_common
 
 LOG = logging.getLogger(__name__)
 
 
-class FCZoneDriver(fc_common.FCCommon):
+class FCZoneDriver(
+        fc_common.FCCommon, fczm_driver.FibreChannelZoneManagerDriver):
     """Interface to manage Connection control during attach/detach."""
 
     def __init__(self, **kwargs):
         super(FCZoneDriver, self).__init__(**kwargs)
         LOG.debug("Initializing FCZoneDriver")
-
-    def add_connection(self, fabric, initiator_target_map, host_name=None,
-                       storage_system=None):
-        """Add connection control.
-
-        Abstract method to add connection control.
-        All implementing drivers should provide concrete implementation
-        for this API.
-
-        :param fabric: Fabric name from cinder.conf file
-        :param initiator_target_map: Mapping of initiator to list of targets
-
-        .. code-block:: python
-
-            Example initiator_target_map:
-
-            {
-                '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
-            }
-
-        Note that WWPN can be in lower or upper case and can be ':'
-        separated strings
-        """
-        raise NotImplementedError()
-
-    def delete_connection(self, fabric, initiator_target_map, host_name=None,
-                          storage_system=None):
-        """Delete connection control.
-
-        Abstract method to remove connection control.
-        All implementing drivers should provide concrete implementation
-        for this API.
-
-        :param fabric: Fabric name from cinder.conf file
-        :param initiator_target_map: Mapping of initiator to list of targets
-
-        .. code-block:: python
-
-            Example initiator_target_map:
-
-            {
-                '10008c7cff523b01': ['20240002ac000a50', '20240002ac000a40']
-            }
-
-        Note that WWPN can be in lower or upper case and can be ':'
-        separated strings
-        """
-        raise NotImplementedError()
-
-    def get_san_context(self, target_wwn_list):
-        """Get SAN context for end devices.
-
-        Abstract method to get SAN contexts for given list of end devices
-        All implementing drivers should provide concrete implementation
-        for this API.
-        :param fabric: Fabric name from cinder.conf file
-        :param initiator_target_map: Mapping of initiator to list of targets
-        Example initiator_target_map: ['20240002ac000a50', '20240002ac000a40']
-        Note that WWPN can be in lower or upper case and can be
-        ':' separated strings
-        """
-        raise NotImplementedError()

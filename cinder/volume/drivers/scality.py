@@ -31,6 +31,7 @@ from six.moves import urllib
 from cinder import exception
 from cinder.i18n import _, _LI
 from cinder.image import image_utils
+from cinder import interface
 from cinder import utils
 from cinder.volume.drivers import remotefs as remotefs_drv
 from cinder.volume import utils as volume_utils
@@ -53,6 +54,7 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
+@interface.volumedriver
 class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
     """Scality SOFS cinder driver.
 

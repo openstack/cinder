@@ -31,6 +31,7 @@ from cinder.brick.local_dev import lvm as lvm
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
+from cinder import interface
 from cinder import objects
 from cinder import utils
 from cinder.volume import driver
@@ -75,6 +76,7 @@ CONF = cfg.CONF
 CONF.register_opts(volume_opts)
 
 
+@interface.volumedriver
 class LVMVolumeDriver(driver.VolumeDriver):
     """Executes commands relating to Volumes."""
 

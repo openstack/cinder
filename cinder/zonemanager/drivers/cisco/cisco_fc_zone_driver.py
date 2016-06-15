@@ -37,6 +37,7 @@ import string
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder.zonemanager.drivers.cisco import cisco_fabric_opts as fabric_opts
 from cinder.zonemanager.drivers import driver_utils
 from cinder.zonemanager.drivers import fc_zone_driver
@@ -56,6 +57,7 @@ CONF = cfg.CONF
 CONF.register_opts(cisco_opts, group='fc-zone-manager')
 
 
+@interface.fczmdriver
 class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
     """Cisco FC zone driver implementation.
 

@@ -39,6 +39,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import interface
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
@@ -50,6 +51,7 @@ import socket
 LOG = logging.getLogger(__name__)
 
 
+@interface.volumedriver
 class V7000FCPDriver(driver.FibreChannelDriver):
     """Executes commands relating to fibre channel based Violin Memory arrays.
 

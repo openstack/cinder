@@ -30,6 +30,7 @@ from cinder import exception
 from cinder import utils
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
+from cinder import interface
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -76,6 +77,7 @@ def factory_zfssa():
     return zfssarest.ZFSSANfsApi()
 
 
+@interface.volumedriver
 class ZFSSANFSDriver(nfs.NfsDriver):
     """ZFSSA Cinder NFS volume driver.
 
