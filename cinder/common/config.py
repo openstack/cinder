@@ -68,7 +68,8 @@ global_opts = [
     cfg.BoolOpt('glance_api_insecure',
                 default=False,
                 help='Allow to perform insecure SSL (https) requests to '
-                     'glance'),
+                     'glance (https will be used but cert validation will '
+                     'not be performed).'),
     cfg.BoolOpt('glance_api_ssl_compression',
                 default=False,
                 help='Enables or disables negotiation of SSL layer '
