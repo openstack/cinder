@@ -104,13 +104,13 @@ DATA_IN_GROUP = {'id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
 DATA_IN_VOLUME = {'id': 'abc123',
                   'display_name': 'abc123',
                   'display_description': '',
-                  'size': 1,
+                  'size': 10,
                   'host': "hostname@backend#%s" % POOLUUID}
 
 DATA_IN_VOLUME_VG = {'id': 'abc123',
                      'display_name': 'abc123',
                      'display_description': '',
-                     'size': 1,
+                     'size': 10,
                      'consistencygroup_id':
                          'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
                      'status': 'available',
@@ -120,7 +120,7 @@ DATA_IN_REMOVE_VOLUME_VG = {
     'id': 'fe2dbc515810451dab2f8c8a48d15bee',
     'display_name': 'fe2dbc515810451dab2f8c8a48d15bee',
     'display_description': '',
-    'size': 1,
+    'size': 10,
     'consistencygroup_id': 'fe2dbc51-5810-451d-ab2f-8c8a48d15bee',
     'status': 'available',
     'host': "hostname@backend#%s" % POOLUUID}
@@ -128,7 +128,7 @@ DATA_IN_REMOVE_VOLUME_VG = {
 DATA_IN_VOLUME1 = {'id': 'abc456',
                    'display_name': 'abc456',
                    'display_description': '',
-                   'size': 1,
+                   'size': 10,
                    'host': "hostname@backend#%s" % POOLUUID}
 
 DATA_IN_CG_SNAPSHOT = {
@@ -141,7 +141,8 @@ DATA_IN_CG_SNAPSHOT = {
 DATA_IN_SNAPSHOT = {'id': 'snapshot1',
                     'volume_id': 'abc123',
                     'display_name': 'snapshot1',
-                    'display_description': ''}
+                    'display_description': '',
+                    'size': 5}
 
 DATA_OUT_SNAPSHOT_CG = {
     'id': 'snapshot1',
@@ -577,6 +578,7 @@ class TestProphetStorDPLDriver(test.TestCase):
 
     def test_create_volume_from_snapshot(self):
         self.DPL_MOCK.create_vdev_from_snapshot.return_value = DATA_OUTPUT
+        self.DPL_MOCK.extend_vdev.return_value = DATA_OUTPUT
         self.dpldriver.create_volume_from_snapshot(DATA_IN_VOLUME,
                                                    DATA_IN_SNAPSHOT)
         self.DPL_MOCK.create_vdev_from_snapshot.assert_called_once_with(
@@ -586,6 +588,11 @@ class TestProphetStorDPLDriver(test.TestCase):
             self._conver_uuid2hex(DATA_IN_SNAPSHOT['id']),
             self.configuration.dpl_pool,
             True)
+        self.DPL_MOCK.extend_vdev.assert_called_once_with(
+            self._conver_uuid2hex(DATA_IN_VOLUME['id']),
+            DATA_IN_VOLUME['display_name'],
+            DATA_IN_VOLUME['display_description'],
+            DATA_IN_VOLUME['size'] * units.Gi)
 
     def test_create_cloned_volume(self):
         self.DPL_MOCK.clone_vdev.return_value = DATA_OUTPUT
