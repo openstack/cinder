@@ -33,11 +33,12 @@ from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LI
 from cinder import objects
 from cinder.objects import fields
 import cinder.policy
 from cinder import quota
+from cinder import quota_utils
 from cinder import utils
 import cinder.volume
 from cinder.volume import utils as volume_utils
@@ -279,37 +280,10 @@ class API(base.Base):
                             'backup_gigabytes': volume['size']}
             reservations = QUOTAS.reserve(context, **reserve_opts)
         except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            usages = e.kwargs['usages']
-            quotas = e.kwargs['quotas']
-
-            def _consumed(resource_name):
-                return (usages[resource_name]['reserved'] +
-                        usages[resource_name]['in_use'])
-
-            for over in overs:
-                if 'gigabytes' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "%(s_size)sG backup (%(d_consumed)dG of "
-                              "%(d_quota)dG already consumed)")
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      's_size': volume['size'],
-                                      'd_consumed': _consumed(over),
-                                      'd_quota': quotas[over]})
-                    raise exception.VolumeBackupSizeExceedsAvailableQuota(
-                        requested=volume['size'],
-                        consumed=_consumed('backup_gigabytes'),
-                        quota=quotas['backup_gigabytes'])
-                elif 'backups' in over:
-                    msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                              "backups (%(d_consumed)d backups "
-                              "already consumed)")
-
-                    LOG.warning(msg, {'s_pid': context.project_id,
-                                      'd_consumed': _consumed(over)})
-                    raise exception.BackupLimitExceeded(
-                        allowed=quotas[over])
-
+            quota_utils.process_reserve_over_quota(
+                context, e,
+                resource='backups',
+                size=volume.size)
         # Find the latest backup and use it as the parent backup to do an
         # incremental backup.
         latest_backup = None

@@ -88,6 +88,12 @@ fake_opt = [
 ]
 
 
+OVER_SNAPSHOT_QUOTA_EXCEPTION = exception.OverQuota(
+    overs=['snapshots'],
+    usages = {'snapshots': {'reserved': 1, 'in_use': 9}},
+    quotas = {'gigabytes': 10, 'snapshots': 10})
+
+
 def create_snapshot(volume_id, size=1, metadata=None, ctxt=None,
                     **kwargs):
     """Create a snapshot object."""
@@ -3099,10 +3105,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test exception handling when create snapshot in db failed."""
         test_volume = tests_utils.create_volume(
             self.context,
-            **self.volume_params)
-        self.volume.create_volume(self.context, test_volume.id,
-                                  volume=test_volume)
-        test_volume['status'] = 'available'
+            status='available',
+            host=CONF.host)
         volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidSnapshot,
                           volume_api.create_snapshot,
@@ -3115,10 +3119,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test exception handling when create snapshot in maintenance."""
         test_volume = tests_utils.create_volume(
             self.context,
-            **self.volume_params)
-        self.volume.create_volume(self.context, test_volume.id,
-                                  volume=test_volume)
-        test_volume['status'] = 'maintenance'
+            status='maintenance',
+            host=CONF.host)
         volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidVolume,
                           volume_api.create_snapshot,
@@ -3134,10 +3136,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         """Test exception handling when snapshot quota commit failed."""
         test_volume = tests_utils.create_volume(
             self.context,
-            **self.volume_params)
-        self.volume.create_volume(self.context, test_volume.id,
-                                  request_spec={}, volume=test_volume)
-        test_volume['status'] = 'available'
+            status='available',
+            host=CONF.host)
         volume_api = cinder.volume.api.API()
         self.assertRaises(exception.QuotaError,
                           volume_api.create_snapshot,
@@ -3145,6 +3145,40 @@ class VolumeTestCase(BaseVolumeTestCase):
                           test_volume,
                           'fake_name',
                           'fake_description')
+
+    @mock.patch.object(QUOTAS, 'reserve',
+                       side_effect = OVER_SNAPSHOT_QUOTA_EXCEPTION)
+    def test_create_snapshot_failed_quota_reserve(self, mock_reserve):
+        """Test exception handling when snapshot quota reserve failed."""
+        test_volume = tests_utils.create_volume(
+            self.context,
+            status='available',
+            host=CONF.host)
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.SnapshotLimitExceeded,
+                          volume_api.create_snapshot,
+                          self.context,
+                          test_volume,
+                          'fake_name',
+                          'fake_description')
+
+    @mock.patch.object(QUOTAS, 'reserve',
+                       side_effect = OVER_SNAPSHOT_QUOTA_EXCEPTION)
+    def test_create_snapshots_in_db_failed_quota_reserve(self, mock_reserve):
+        """Test exception handling when snapshot quota reserve failed."""
+        test_volume = tests_utils.create_volume(
+            self.context,
+            status='available',
+            host=CONF.host)
+        volume_api = cinder.volume.api.API()
+        self.assertRaises(exception.SnapshotLimitExceeded,
+                          volume_api.create_snapshots_in_db,
+                          self.context,
+                          [test_volume],
+                          'fake_name',
+                          'fake_description',
+                          False,
+                          fake.CONSISTENCY_GROUP_ID)
 
     def test_cannot_delete_volume_in_use(self):
         """Test volume can't be deleted in in-use status."""
@@ -4518,6 +4552,20 @@ class VolumeTestCase(BaseVolumeTestCase):
                            'secure_enabled': False,
                            'is_snapshot': False}
         self.assertEqual(expected_result, result)
+
+    @mock.patch.object(QUOTAS, 'reserve',
+                       side_effect = OVER_SNAPSHOT_QUOTA_EXCEPTION)
+    def test_existing_snapshot_failed_quota_reserve(self, mock_reserve):
+        vol = tests_utils.create_volume(self.context)
+        snap = tests_utils.create_snapshot(self.context, vol.id)
+        with mock.patch.object(
+                self.volume.driver,
+                'manage_existing_snapshot_get_size') as mock_get_size:
+            mock_get_size.return_value = 1
+            self.assertRaises(exception.SnapshotLimitExceeded,
+                              self.volume.manage_existing_snapshot,
+                              self.context,
+                              snap)
 
 
 @ddt.ddt

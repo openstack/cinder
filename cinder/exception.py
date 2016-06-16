@@ -540,6 +540,10 @@ class SnapshotLimitExceeded(QuotaError):
     message = _("Maximum number of snapshots allowed (%(allowed)d) exceeded")
 
 
+class UnexpectedOverQuota(QuotaError):
+    message = _("Unexpected over quota on %(name)s.")
+
+
 class BackupLimitExceeded(QuotaError):
     message = _("Maximum number of backups allowed (%(allowed)d) exceeded")
 

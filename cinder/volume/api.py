@@ -750,36 +750,10 @@ class API(base.Base):
                                             volume.get('volume_type_id'))
                 reservations = QUOTAS.reserve(context, **reserve_opts)
             except exception.OverQuota as e:
-                overs = e.kwargs['overs']
-                usages = e.kwargs['usages']
-                quotas = e.kwargs['quotas']
-
-                def _consumed(name):
-                    return (usages[name]['reserved'] + usages[name]['in_use'])
-
-                for over in overs:
-                    if 'gigabytes' in over:
-                        msg = _LW("Quota exceeded for %(s_pid)s, tried to "
-                                  "create %(s_size)sG snapshot (%(d_consumed)d"
-                                  "G of %(d_quota)dG already consumed).")
-                        LOG.warning(msg, {'s_pid': context.project_id,
-                                          's_size': volume['size'],
-                                          'd_consumed': _consumed(over),
-                                          'd_quota': quotas[over]})
-                        raise exception.VolumeSizeExceedsAvailableQuota(
-                            requested=volume['size'],
-                            consumed=_consumed('gigabytes'),
-                            quota=quotas['gigabytes'])
-                    elif 'snapshots' in over:
-                        msg = _LW("Quota exceeded for %(s_pid)s, tried to "
-                                  "create snapshot (%(d_consumed)d snapshots "
-                                  "already consumed).")
-
-                        LOG.warning(msg, {'s_pid': context.project_id,
-                                          'd_consumed': _consumed(over)})
-                        raise exception.SnapshotLimitExceeded(
-                            allowed=quotas[over])
-
+                quota_utils.process_reserve_over_quota(
+                    context, e,
+                    resource='snapshots',
+                    size=volume.size)
         self._check_metadata_properties(metadata)
 
         snapshot = None
@@ -893,11 +867,9 @@ class API(base.Base):
                             total_reserve_opts[key] + value
             reservations = QUOTAS.reserve(context, **total_reserve_opts)
         except exception.OverQuota as e:
-            overs = e.kwargs['overs']
-            usages = e.kwargs['usages']
-            quotas = e.kwargs['quotas']
-            volume_utils.process_reserve_over_quota(context, overs, usages,
-                                                    quotas, volume['size'])
+            quota_utils.process_reserve_over_quota(context, e,
+                                                   resource='snapshots',
+                                                   size=volume.size)
 
         return reservations
 

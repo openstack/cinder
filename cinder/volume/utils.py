@@ -710,29 +710,3 @@ def convert_config_string_to_dict(config_string):
                     {'config_string': config_string})
 
     return resultant_dict
-
-
-def process_reserve_over_quota(context, overs, usages, quotas, size):
-    def _consumed(name):
-        return (usages[name]['reserved'] + usages[name]['in_use'])
-
-    for over in overs:
-        if 'gigabytes' in over:
-            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                      "%(s_size)sG snapshot (%(d_consumed)dG of "
-                      "%(d_quota)dG already consumed).")
-            LOG.warning(msg, {'s_pid': context.project_id,
-                              's_size': size,
-                              'd_consumed': _consumed(over),
-                              'd_quota': quotas[over]})
-            raise exception.VolumeSizeExceedsAvailableQuota(
-                requested=size,
-                consumed=_consumed('gigabytes'),
-                quota=quotas['gigabytes'])
-        elif 'snapshots' in over:
-            msg = _LW("Quota exceeded for %(s_pid)s, tried to create "
-                      "snapshot (%(d_consumed)d snapshots "
-                      "already consumed).")
-            LOG.warning(msg, {'s_pid': context.project_id,
-                              'd_consumed': _consumed(over)})
-            raise exception.SnapshotLimitExceeded(allowed=quotas[over])
