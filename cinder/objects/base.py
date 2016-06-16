@@ -386,8 +386,9 @@ class CinderPersistentObject(object):
             # Only update attributes that are already set.  We do not want to
             # unexpectedly trigger a lazy-load.
             if self.obj_attr_is_set(field):
-                if self[field] != current[field]:
-                    self[field] = current[field]
+                current_field = getattr(current, field)
+                if getattr(self, field) != current_field:
+                    setattr(self, field, current_field)
         self.obj_reset_changes()
 
 
