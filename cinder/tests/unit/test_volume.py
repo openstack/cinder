@@ -42,6 +42,7 @@ from taskflow.engines.action_engine import engine
 from cinder.api import common
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import context
+from cinder import coordination
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
@@ -1552,17 +1553,16 @@ class VolumeTestCase(BaseVolumeTestCase):
     def _fake_execute(self, *cmd, **kwargs):
         pass
 
+    @mock.patch.object(coordination.Coordinator, 'get_lock')
     @mock.patch.object(cinder.volume.drivers.lvm.LVMVolumeDriver,
                        'create_volume_from_snapshot')
     def test_create_volume_from_snapshot_check_locks(
-            self, mock_lvm_create):
-        # mock the synchroniser so we can record events
-        self.stubs.Set(utils, 'synchronized', self._mock_synchronized)
+            self, mock_lvm_create, mock_lock):
         orig_flow = engine.ActionEngine.run
 
         def mock_flow_run(*args, **kwargs):
             # ensure the lock has been taken
-            self.assertEqual(1, len(self.called))
+            mock_lock.assert_called_with('%s-delete_snapshot' % snap_id)
             # now proceed with the flow.
             ret = orig_flow(*args, **kwargs)
             return ret
@@ -1593,45 +1593,35 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume_id=dst_vol_id,
                                   request_spec={'snapshot_id': snap_id},
                                   volume=dst_vol)
-        self.assertEqual(2, len(self.called))
+        mock_lock.assert_called_with('%s-delete_snapshot' % snap_id)
         self.assertEqual(dst_vol_id, db.volume_get(admin_ctxt, dst_vol_id).id)
         self.assertEqual(snap_id,
                          db.volume_get(admin_ctxt, dst_vol_id).snapshot_id)
 
         # locked
         self.volume.delete_volume(self.context, dst_vol_id, volume=dst_vol)
-        self.assertEqual(4, len(self.called))
+        mock_lock.assert_called_with('%s-delete_volume' % dst_vol_id)
 
         # locked
         self.volume.delete_snapshot(self.context, snapshot_obj)
-        self.assertEqual(6, len(self.called))
+        mock_lock.assert_called_with('%s-delete_snapshot' % snap_id)
 
         # locked
         self.volume.delete_volume(self.context, src_vol_id, volume=src_vol)
-        self.assertEqual(8, len(self.called))
-
-        self.assertEqual(['lock-%s' % ('%s-delete_snapshot' % (snap_id)),
-                          'unlock-%s' % ('%s-delete_snapshot' % (snap_id)),
-                          'lock-%s' % ('%s-delete_volume' % (dst_vol_id)),
-                          'unlock-%s' % ('%s-delete_volume' % (dst_vol_id)),
-                          'lock-%s' % ('%s-delete_snapshot' % (snap_id)),
-                          'unlock-%s' % ('%s-delete_snapshot' % (snap_id)),
-                          'lock-%s' % ('%s-delete_volume' % (src_vol_id)),
-                          'unlock-%s' % ('%s-delete_volume' % (src_vol_id))],
-                         self.called)
+        mock_lock.assert_called_with('%s-delete_volume' % src_vol_id)
 
         self.assertTrue(mock_lvm_create.called)
 
-    def test_create_volume_from_volume_check_locks(self):
+    @mock.patch.object(coordination.Coordinator, 'get_lock')
+    def test_create_volume_from_volume_check_locks(self, mock_lock):
         # mock the synchroniser so we can record events
-        self.stubs.Set(utils, 'synchronized', self._mock_synchronized)
         self.stubs.Set(utils, 'execute', self._fake_execute)
 
         orig_flow = engine.ActionEngine.run
 
         def mock_flow_run(*args, **kwargs):
             # ensure the lock has been taken
-            self.assertEqual(1, len(self.called))
+            mock_lock.assert_called_with('%s-delete_volume' % src_vol_id)
             # now proceed with the flow.
             ret = orig_flow(*args, **kwargs)
             return ret
@@ -1642,6 +1632,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # no lock
         self.volume.create_volume(self.context, src_vol_id, volume=src_vol)
+        self.assertEqual(0, mock_lock.call_count)
 
         dst_vol = tests_utils.create_volume(self.context,
                                             source_volid=src_vol_id,
@@ -1656,26 +1647,18 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume_id=dst_vol_id,
                                   request_spec={'source_volid': src_vol_id},
                                   volume=dst_vol)
-        self.assertEqual(2, len(self.called))
+        mock_lock.assert_called_with('%s-delete_volume' % src_vol_id)
         self.assertEqual(dst_vol_id, db.volume_get(admin_ctxt, dst_vol_id).id)
         self.assertEqual(src_vol_id,
                          db.volume_get(admin_ctxt, dst_vol_id).source_volid)
 
         # locked
         self.volume.delete_volume(self.context, dst_vol_id, volume=dst_vol)
-        self.assertEqual(4, len(self.called))
+        mock_lock.assert_called_with('%s-delete_volume' % dst_vol_id)
 
         # locked
         self.volume.delete_volume(self.context, src_vol_id, volume=src_vol)
-        self.assertEqual(6, len(self.called))
-
-        self.assertEqual(['lock-%s' % ('%s-delete_volume' % (src_vol_id)),
-                          'unlock-%s' % ('%s-delete_volume' % (src_vol_id)),
-                          'lock-%s' % ('%s-delete_volume' % (dst_vol_id)),
-                          'unlock-%s' % ('%s-delete_volume' % (dst_vol_id)),
-                          'lock-%s' % ('%s-delete_volume' % (src_vol_id)),
-                          'unlock-%s' % ('%s-delete_volume' % (src_vol_id))],
-                         self.called)
+        mock_lock.assert_called_with('%s-delete_volume' % src_vol_id)
 
     def test_create_volume_from_volume_delete_lock_taken(self):
         # create source volume

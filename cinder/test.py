@@ -40,6 +40,7 @@ from oslotest import moxstubout
 import testtools
 
 from cinder.common import config  # noqa Need to register global_opts
+from cinder import coordination
 from cinder.db import migration
 from cinder.db.sqlalchemy import api as sqla_api
 from cinder import i18n
@@ -231,6 +232,9 @@ class TestCase(testtools.TestCase):
         # get method in one test it would carry on to the next test.  So we
         # clear out the cache.
         sqla_api._GET_METHODS = {}
+
+        coordination.COORDINATOR.start()
+        self.addCleanup(coordination.COORDINATOR.stop)
 
     def _restore_obj_registry(self):
         objects_base.CinderObjectRegistry._registry._obj_classes = \
