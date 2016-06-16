@@ -1,4 +1,4 @@
-#    (c) Copyright 2014 Brocade Communications Systems Inc.
+#    (c) Copyright 2016 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -152,32 +152,16 @@ class BrcdFCZoneClientCLI(object):
             active_zone_set = self.get_active_zone_set()
             LOG.debug("Active zone set: %s", active_zone_set)
         zone_list = active_zone_set[zone_constant.CFG_ZONES]
-        zone_updated = []
         LOG.debug("zone list: %s", zone_list)
         for zone in zones.keys():
-            # If zone exists, its an update. Delete & insert
-            # TODO(skolathur): This still need to be optimized
-            # to an update call later. Now we just handled the
-            # same zone name with same zone members.
-            if (zone in zone_list):
-                if set(zones[zone]) == set(zone_list[zone]):
-                    break
-                try:
-                    self.delete_zones(zone, activate, active_zone_set)
-                    zone_updated.append(zone)
-                except exception.BrocadeZoningCliException:
-                    with excutils.save_and_reraise_exception():
-                        LOG.error(_LE("Deleting zone failed %s"), zone)
-                LOG.debug("Deleted Zone before insert : %s", zone)
             zone_members_with_sep = ';'.join(str(member) for
                                              member in zones[zone])
-            LOG.debug("Forming command for add zone")
+            LOG.debug("Forming command for create zone")
             cmd = 'zonecreate "%(zone)s", "%(zone_members_with_sep)s"' % {
                 'zone': zone,
                 'zone_members_with_sep': zone_members_with_sep}
-            LOG.debug("Adding zone, cmd to run %s", cmd)
+            LOG.debug("Creating zone, cmd to run %s", cmd)
             self.apply_zone_change(cmd.split())
-            LOG.debug("Created zones on the switch")
             if(iterator_count > 0):
                 zone_with_sep += ';'
             iterator_count += 1
@@ -185,12 +169,13 @@ class BrcdFCZoneClientCLI(object):
         if not zone_with_sep:
             return
         try:
-            # If all existing zones are to be updated, the active zone config
-            # will require a recreate, since all zones have been deleted.
-            if len(zone_list) == len(zone_updated):
-                cfg_name = None
-            else:
+            # If zone_list exists, there are active zones,
+            # so add new zone to existing active config.
+            # Otherwise, create the zone config.
+            if zone_list:
                 cfg_name = active_zone_set[zone_constant.ACTIVE_ZONE_CONFIG]
+            else:
+                cfg_name = None
             cmd = None
             if not cfg_name:
                 cfg_name = zone_constant.OPENSTACK_CFG_NAME
@@ -199,7 +184,7 @@ class BrcdFCZoneClientCLI(object):
             else:
                 cmd = 'cfgadd "%(zoneset)s", "%(zones)s"' \
                     % {'zoneset': cfg_name, 'zones': zone_with_sep}
-            LOG.debug("New zone %s", cmd)
+            LOG.debug("Zone config cmd to run %s", cmd)
             self.apply_zone_change(cmd.split())
             if activate:
                 self.activate_zoneset(cfg_name)
@@ -208,6 +193,71 @@ class BrcdFCZoneClientCLI(object):
         except Exception as e:
             self._cfg_trans_abort()
             msg = _("Creating and activating zone set failed: "
+                    "(Zone set=%(cfg_name)s error=%(err)s)."
+                    ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
+            LOG.error(msg)
+            raise exception.BrocadeZoningCliException(reason=msg)
+
+    def update_zones(self, zones, activate, operation, active_zone_set=None):
+        """Update the zone configuration.
+
+        This method will update the zone configuration passed by user.
+
+        :param zones: zone names mapped to members. Zone members
+                      are colon separated but case-insensitive
+
+        .. code-block:: python
+
+            {   zonename1:[zonememeber1, zonemember2,...],
+                zonename2:[zonemember1, zonemember2,...]...}
+
+            e.g:
+
+            {
+                'openstack50060b0000c26604201900051ee8e329':
+                        ['50:06:0b:00:00:c2:66:04',
+                         '20:19:00:05:1e:e8:e3:29']
+            }
+
+        :param activate: True/False
+        :param operation: zone add or zone remove
+        :param active_zone_set: active zone set dict retrieved from
+                                get_active_zone_set method
+
+        """
+        LOG.debug("Update Zones - Zones passed: %s", zones)
+        cfg_name = None
+        iterator_count = 0
+        zone_with_sep = ''
+        if not active_zone_set:
+            active_zone_set = self.get_active_zone_set()
+            LOG.debug("Active zone set: %s", active_zone_set)
+        zone_list = active_zone_set[zone_constant.CFG_ZONES]
+        LOG.debug("Active zone list: %s", zone_list)
+        for zone in zones.keys():
+            zone_members_with_sep = ';'.join(str(member) for
+                                             member in zones[zone])
+            cmd = '%(operation)s "%(zone)s", "%(zone_members_with_sep)s"' % {
+                'operation': operation,
+                'zone': zone,
+                'zone_members_with_sep': zone_members_with_sep}
+            LOG.debug("Updating zone, cmd to run %s", cmd)
+            self.apply_zone_change(cmd.split())
+            if(iterator_count > 0):
+                zone_with_sep += ';'
+            iterator_count += 1
+            zone_with_sep += zone
+        if not zone_with_sep:
+            return
+        try:
+            cfg_name = active_zone_set[zone_constant.ACTIVE_ZONE_CONFIG]
+            if activate:
+                self.activate_zoneset(cfg_name)
+            else:
+                self._cfg_save()
+        except Exception as e:
+            self._cfg_trans_abort()
+            msg = _("Activating zone set failed: "
                     "(Zone set=%(cfg_name)s error=%(err)s)."
                     ) % {'cfg_name': cfg_name, 'err': six.text_type(e)}
             LOG.error(msg)

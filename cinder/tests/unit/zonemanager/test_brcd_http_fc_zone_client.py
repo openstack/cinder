@@ -1,4 +1,4 @@
-#    (c) Copyright 2015 Brocade Communications Systems Inc.
+#    (c) Copyright 2016 Brocade Communications Systems Inc.
 #    All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -721,7 +721,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         get_session_info_mock.return_value = session_info_vf
         self.assertEqual((True, parsed_session_info_vf), self.is_vf_enabled())
 
-    def test_delete_update_zones_cfgs(self):
+    def test_delete_zones_cfgs(self):
 
         cfgs = {'openstack_cfg': 'zone1;zone2'}
         zones = {'zone1': '20:01:00:05:33:0e:96:15;20:00:00:05:33:0e:93:11',
@@ -729,7 +729,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         delete_zones_info = valid_zone_name
         self.assertEqual(
             (zones, cfgs, active_cfg),
-            self.delete_update_zones_cfgs(
+            self.delete_zones_cfgs(
                 cfgs_to_delete.copy(),
                 zones_to_delete.copy(),
                 delete_zones_info,
@@ -740,13 +740,13 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
         delete_zones_info = valid_zone_name + ";zone1"
         self.assertEqual(
             (zones, cfgs, active_cfg),
-            self.delete_update_zones_cfgs(
+            self.delete_zones_cfgs(
                 cfgs_to_delete.copy(),
                 zones_to_delete.copy(),
                 delete_zones_info,
                 active_cfg))
 
-    def test_add_update_zones_cfgs(self):
+    def test_add_zones_cfgs(self):
         add_zones_info = {valid_zone_name:
                           ['50:06:0b:00:00:c2:66:04',
                               '20:19:00:05:1e:e8:e3:29']
@@ -760,7 +760,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
             valid_zone_name:
             '50:06:0b:00:00:c2:66:04;20:19:00:05:1e:e8:e3:29'}
         self.assertEqual((updated_zones, updated_cfgs, active_cfg),
-                         self.add_update_zones_cfgs(
+                         self.add_zones_cfgs(
                          cfgs.copy(),
                          zones.copy(),
                          add_zones_info,
@@ -785,7 +785,7 @@ class TestBrcdHttpFCZoneClient(client.BrcdHTTPFCZoneClient, test.TestCase):
             'test4': '20:06:0b:00:00:b2:66:07;20:10:00:05:1e:b8:c3:19'}
         self.assertEqual(
             (updated_zones, updated_cfgs, active_cfg),
-            self.add_update_zones_cfgs(
+            self.add_zones_cfgs(
                 cfgs.copy(), zones.copy(), add_zones_info,
                 active_cfg, "openstack_cfg"))
 
