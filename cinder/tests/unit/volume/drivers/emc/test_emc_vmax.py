@@ -15,6 +15,7 @@
 
 import os
 import shutil
+import sys
 import tempfile
 import time
 import unittest
@@ -2145,6 +2146,12 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             self.driver.common.find_device_number(self.data.test_volume_v2,
                                                   host))
         self.assertEqual('OS-fakehost-MV', data['maskingview'])
+
+    @mock.patch.object(
+        FakeEcomConnection,
+        'ReferenceNames',
+        return_value=[])
+    def test_find_device_number_false(self, mock_ref_name):
         host = 'bogushost'
         data = (
             self.driver.common.find_device_number(self.data.test_volume_v2,
@@ -2660,6 +2667,33 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.driver.common.masking.remove_and_reset_members(
             conn, controllerConfigService, volumeInstance,
             volumeName, extraSpecs)
+
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        'get_associated_masking_groups_from_device',
+        return_value=EMCVMAXCommonData.storagegroups)
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_existing_instance',
+        return_value=None)
+    def test_remove_and_reset_members_v3(self, mock_inst, mock_sg):
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'pool': 'SRP_1',
+                      'workload': 'DSS',
+                      'slo': 'Bronze'}
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        volumeName = "1416035-Vol"
+
+        self.driver.common.masking.remove_and_reset_members(
+            conn, controllerConfigService, volumeInstance,
+            volumeName, extraSpecs, reset=False)
 
     # Bug 1393555 - masking view has been deleted by another process.
     def test_find_maskingview(self):
@@ -3209,6 +3243,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                                                 mock_storage_group,
                                                 mock_same_host,
                                                 mock_check):
+        emc_vmax_utils.LIVE_MIGRATION_FILE = (self.tempdir +
+                                              '/livemigrationarray')
         self.driver.initialize_connection(self.data.test_volume,
                                           self.data.connector)
 
@@ -8061,6 +8097,87 @@ class EMCVMAXUtilsTest(test.TestCase):
             1, modifiedInstance['EMCMaxIODynamicDistributionType'])
         self.assertEqual('CIM_DeviceMaskingGroup',
                          modifiedInstance['CreationClassName'])
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value={'SystemName': EMCVMAXCommonData.storage_system})
+    @mock.patch('builtins.open' if sys.version_info >= (3,)
+                else '__builtin__.open')
+    def test_insert_live_migration_record(self, mock_open, mock_lun):
+        conn = FakeEcomConnection()
+        self.driver.common.conn = conn
+        extraSpecs = self.data.extra_specs
+        connector = {'initiator': self.data.iscsi_initiator,
+                     'ip': '10.0.0.2',
+                     'platform': u'x86_64',
+                     'host': 'fakehost',
+                     'os_type': 'linux2',
+                     'multipath': False}
+        maskingviewdict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        emc_vmax_utils.LIVE_MIGRATION_FILE = ('/tempdir/livemigrationarray')
+        self.driver.utils.insert_live_migration_record(
+            self.data.test_volume, maskingviewdict, connector, extraSpecs)
+        mock_open.assert_called_once_with(
+            emc_vmax_utils.LIVE_MIGRATION_FILE, "wb")
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value={'SystemName': EMCVMAXCommonData.storage_system})
+    def test_delete_live_migration_record(self, mock_lun):
+        conn = FakeEcomConnection()
+        self.driver.common.conn = conn
+        extraSpecs = self.data.extra_specs
+        connector = {'initiator': self.data.iscsi_initiator,
+                     'ip': '10.0.0.2',
+                     'platform': u'x86_64',
+                     'host': 'fakehost',
+                     'os_type': 'linux2',
+                     'multipath': False}
+        maskingviewdict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        tempdir = tempfile.mkdtemp()
+        emc_vmax_utils.LIVE_MIGRATION_FILE = (tempdir +
+                                              '/livemigrationarray')
+        m = mock.mock_open()
+        with mock.patch('{}.open'.format(__name__), m, create=True):
+            with open(emc_vmax_utils.LIVE_MIGRATION_FILE, "wb") as f:
+                f.write('live migration details')
+        self.driver.utils.insert_live_migration_record(
+            self.data.test_volume, maskingviewdict, connector, extraSpecs)
+        self.driver.utils.delete_live_migration_record(self.data.test_volume)
+        m.assert_called_once_with(emc_vmax_utils.LIVE_MIGRATION_FILE, "wb")
+        shutil.rmtree(tempdir)
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_find_lun',
+        return_value={'SystemName': EMCVMAXCommonData.storage_system})
+    def test_get_live_migration_record(self, mock_lun):
+        conn = FakeEcomConnection()
+        self.driver.common.conn = conn
+        extraSpecs = self.data.extra_specs
+        connector = {'initiator': self.data.iscsi_initiator,
+                     'ip': '10.0.0.2',
+                     'platform': u'x86_64',
+                     'host': 'fakehost',
+                     'os_type': 'linux2',
+                     'multipath': False}
+        maskingviewdict = self.driver.common._populate_masking_dict(
+            self.data.test_volume, self.data.connector, extraSpecs)
+        tempdir = tempfile.mkdtemp()
+        emc_vmax_utils.LIVE_MIGRATION_FILE = (tempdir +
+                                              '/livemigrationarray')
+        self.driver.utils.insert_live_migration_record(
+            self.data.test_volume, maskingviewdict, connector, extraSpecs)
+        record = self.driver.utils.get_live_migration_record(
+            self.data.test_volume, False)
+        self.assertEqual(maskingviewdict, record[0])
+        self.assertEqual(connector, record[1])
+        os.remove(emc_vmax_utils.LIVE_MIGRATION_FILE)
+        shutil.rmtree(tempdir)
 
 
 class EMCVMAXCommonTest(test.TestCase):
