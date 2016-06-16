@@ -103,13 +103,19 @@ OBJ_VERSIONS.add('1.4', {'Snapshot': '1.1'})
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):
     def registration_hook(self, cls, index):
+        """Hook called when registering a class.
+
+        This method takes care of adding the class to cinder.objects namespace.
+
+        Should registering class have a method called cinder_ovo_cls_init it
+        will be called to support class initialization.  This is convenient
+        for all persistent classes that need to register their models.
+        """
         setattr(objects, cls.obj_name(), cls)
-        # For Versioned Object Classes that have a model store the model in
-        # a Class attribute named model
-        try:
-            cls.model = db.get_model_for_versioned_object(cls)
-        except (ImportError, AttributeError):
-            pass
+
+        # If registering class has a callable initialization method, call it.
+        if callable(getattr(cls, 'cinder_ovo_cls_init', None)):
+            cls.cinder_ovo_cls_init()
 
 
 class CinderObject(base.VersionedObject):
@@ -215,6 +221,19 @@ class CinderPersistentObject(object):
         'deleted': fields.BooleanField(default=False,
                                        nullable=True),
     }
+
+    @classmethod
+    def cinder_ovo_cls_init(cls):
+        """This method is called on OVO registration and sets the DB model."""
+        # Persistent Versioned Objects Classes should have a DB model, and if
+        # they don't, then we have a problem and we must raise an exception on
+        # registration.
+        try:
+            cls.model = db.get_model_for_versioned_object(cls)
+        except (ImportError, AttributeError):
+            msg = _("Couldn't find ORM model for Persistent Versioned "
+                    "Object %s.") % cls.obj_name()
+            raise exception.ProgrammingError(reason=msg)
 
     @contextlib.contextmanager
     def obj_as_admin(self):
