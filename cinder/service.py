@@ -37,6 +37,7 @@ osprofiler_web = importutils.try_import('osprofiler.web')
 profiler_opts = importutils.try_import('osprofiler.opts')
 
 from cinder import context
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
@@ -115,7 +116,7 @@ class Service(service.Service):
 
     def __init__(self, host, binary, topic, manager, report_interval=None,
                  periodic_interval=None, periodic_fuzzy_delay=None,
-                 service_name=None, *args, **kwargs):
+                 service_name=None, coordination=False, *args, **kwargs):
         super(Service, self).__init__()
 
         if not rpc.initialized():
@@ -125,6 +126,7 @@ class Service(service.Service):
         self.binary = binary
         self.topic = topic
         self.manager_class_name = manager
+        self.coordination = coordination
         manager_class = importutils.import_class(self.manager_class_name)
         if CONF.profiler.enabled:
             manager_class = profiler.trace_cls("rpc")(manager_class)
@@ -163,6 +165,10 @@ class Service(service.Service):
         LOG.info(_LI('Starting %(topic)s node (version %(version_string)s)'),
                  {'topic': self.topic, 'version_string': version_string})
         self.model_disconnected = False
+
+        if self.coordination:
+            coordination.COORDINATOR.start()
+
         self.manager.init_host()
 
         LOG.debug("Creating RPC server for service %s", self.topic)
@@ -234,7 +240,8 @@ class Service(service.Service):
     @classmethod
     def create(cls, host=None, binary=None, topic=None, manager=None,
                report_interval=None, periodic_interval=None,
-               periodic_fuzzy_delay=None, service_name=None):
+               periodic_fuzzy_delay=None, service_name=None,
+               coordination=False):
         """Instantiates class and passes back application object.
 
         :param host: defaults to CONF.host
@@ -265,7 +272,8 @@ class Service(service.Service):
                           report_interval=report_interval,
                           periodic_interval=periodic_interval,
                           periodic_fuzzy_delay=periodic_fuzzy_delay,
-                          service_name=service_name)
+                          service_name=service_name,
+                          coordination=coordination)
 
         return service_obj
 
@@ -283,6 +291,12 @@ class Service(service.Service):
                 x.stop()
             except Exception:
                 self.timers_skip.append(x)
+
+        if self.coordination:
+            try:
+                coordination.COORDINATOR.stop()
+            except Exception:
+                pass
         super(Service, self).stop(graceful=True)
 
     def wait(self):

@@ -78,7 +78,8 @@ def main():
             try:
                 server = service.Service.create(host=host,
                                                 service_name=backend,
-                                                binary='cinder-volume')
+                                                binary='cinder-volume',
+                                                coordination=True)
             except Exception:
                 msg = _('Volume service %s failed to start.') % host
                 LOG.exception(msg)
