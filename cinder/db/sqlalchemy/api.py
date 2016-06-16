@@ -4598,35 +4598,20 @@ def message_destroy(context, message):
 
 
 @require_context
-def driver_initiator_data_update(context, initiator, namespace, updates):
+def driver_initiator_data_insert_by_key(context, initiator, namespace,
+                                        key, value):
+    data = models.DriverInitiatorData()
+    data.initiator = initiator
+    data.namespace = namespace
+    data.key = key
+    data.value = value
     session = get_session()
-    with session.begin():
-        set_values = updates.get('set_values', {})
-        for key, value in set_values.items():
-            data = session.query(models.DriverInitiatorData).\
-                filter_by(initiator=initiator).\
-                filter_by(namespace=namespace).\
-                filter_by(key=key).\
-                first()
-
-            if data:
-                data.update({'value': value})
-                data.save(session=session)
-            else:
-                data = models.DriverInitiatorData()
-                data.initiator = initiator
-                data.namespace = namespace
-                data.key = key
-                data.value = value
-                session.add(data)
-
-        remove_values = updates.get('remove_values', [])
-        for key in remove_values:
-            session.query(models.DriverInitiatorData).\
-                filter_by(initiator=initiator).\
-                filter_by(namespace=namespace).\
-                filter_by(key=key).\
-                delete()
+    try:
+        with session.begin():
+            session.add(data)
+        return True
+    except db_exc.DBDuplicateEntry:
+        return False
 
 
 @require_context

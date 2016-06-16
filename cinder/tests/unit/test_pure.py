@@ -2098,18 +2098,15 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
         self.driver._connect(VOLUME, ISCSI_CONNECTOR)
         result["auth_username"] = chap_user
         result["auth_password"] = chap_password
-        expected_update = {
-            "set_values": {
-                pure.CHAP_SECRET_KEY: chap_password
-            },
-        }
+
         self.assertDictMatch(result, real_result)
         self.array.set_host.assert_called_with(PURE_HOST_NAME,
                                                host_user=chap_user,
                                                host_password=chap_password)
-        self.mock_utils.save_driver_initiator_data.assert_called_with(
+        self.mock_utils.insert_driver_initiator_data.assert_called_with(
             ISCSI_CONNECTOR['initiator'],
-            expected_update
+            pure.CHAP_SECRET_KEY,
+            chap_password
         )
 
     @mock.patch(ISCSI_DRIVER_OBJ + "._get_host", autospec=True)
@@ -2157,6 +2154,39 @@ class PureISCSIDriverTestCase(PureDriverTestCase):
                           ISCSI_CONNECTOR)
         self.assertTrue(self.array.connect_host.called)
         self.assertTrue(self.array.list_volume_private_connections)
+
+    @mock.patch(ISCSI_DRIVER_OBJ + "._generate_chap_secret")
+    def test_get_chap_credentials_create_new(self, mock_generate_secret):
+        self.mock_utils.get_driver_initiator_data.return_value = []
+        host = 'host1'
+        expected_password = 'foo123'
+        mock_generate_secret.return_value = expected_password
+        self.mock_utils.insert_driver_initiator_data.return_value = True
+        username, password = self.driver._get_chap_credentials(host,
+                                                               INITIATOR_IQN)
+        self.assertEqual(host, username)
+        self.assertEqual(expected_password, password)
+        self.mock_utils.insert_driver_initiator_data.assert_called_once_with(
+            INITIATOR_IQN, pure.CHAP_SECRET_KEY, expected_password
+        )
+
+    @mock.patch(ISCSI_DRIVER_OBJ + "._generate_chap_secret")
+    def test_get_chap_credentials_create_new_fail_to_set(self,
+                                                         mock_generate_secret):
+        host = 'host1'
+        expected_password = 'foo123'
+        mock_generate_secret.return_value = 'badpassw0rd'
+        self.mock_utils.insert_driver_initiator_data.return_value = False
+        self.mock_utils.get_driver_initiator_data.side_effect = [
+            [],
+            [{'key': pure.CHAP_SECRET_KEY, 'value': expected_password}],
+            exception.PureDriverException(reason='this should never be hit'),
+        ]
+
+        username, password = self.driver._get_chap_credentials(host,
+                                                               INITIATOR_IQN)
+        self.assertEqual(host, username)
+        self.assertEqual(expected_password, password)
 
 
 class PureFCDriverTestCase(PureDriverTestCase):
