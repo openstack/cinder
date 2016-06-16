@@ -19,6 +19,7 @@ This driver supports Nimble Storage controller CS-Series.
 
 """
 import functools
+import math
 import random
 import re
 import six
@@ -415,7 +416,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         LOG.debug('Volume size : %(size)s  Volume-name : %(name)s',
                   {'size': vol_info['size'], 'name': vol_info['name']})
 
-        return int(vol_info['size'] / units.Gi)
+        return int(math.ceil(float(vol_info['size']) / units.Gi))
 
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management."""

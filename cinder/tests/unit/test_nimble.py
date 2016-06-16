@@ -123,7 +123,7 @@ FAKE_GET_VOL_INFO_ONLINE = {
     'vol': {'target-name': 'iqn.test',
             'name': 'test_vol',
             'agent-type': 1,
-            'size': 2 * units.Gi,
+            'size': int(1.75 * units.Gi),
             'online': True}}
 
 FAKE_GET_VOL_INFO_ERROR = {
