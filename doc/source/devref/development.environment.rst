@@ -94,17 +94,12 @@ Grab the code::
 
 Running unit tests
 ------------------
-The unit tests will run by default inside a virtualenv in the ``.venv``
-directory. Run the unit tests by doing::
+Run the unit tests by doing::
 
-    ./run_tests.sh
+    tox -e py34
+    tox -e py27
 
-The first time you run them, you will be asked if you want to create a virtual
-environment (hit "y")::
-
-    No virtual environment found...create one? (Y/n)
-
-See :doc:`unit_tests` for more details.
+See :doc:`testing` for more details.
 
 .. _virtualenv:
 
