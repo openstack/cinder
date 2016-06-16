@@ -36,10 +36,14 @@ class CapabilitiesFilter(filters.BaseHostFilter):
             return True
 
         for key, req in six.iteritems(extra_specs):
-            # Either not scope format, or in capabilities scope
+
+            # Either not scoped format, or in capabilities scope
             scope = key.split(':')
+
+            # Ignore scoped (such as vendor-specific) capabilities
             if len(scope) > 1 and scope[0] != "capabilities":
                 continue
+            # Strip off prefix if spec started with 'capabilities:'
             elif scope[0] == "capabilities":
                 del scope[0]
 
@@ -51,10 +55,20 @@ class CapabilitiesFilter(filters.BaseHostFilter):
                     LOG.debug("Host doesn't provide capability '%(cap)s' " %
                               {'cap': scope[index]})
                     return False
-            if not extra_specs_ops.match(cap, req):
-                LOG.debug("extra_spec requirement '%(req)s' "
-                          "does not match '%(cap)s'",
-                          {'req': req, 'cap': cap})
+
+            # Make all capability values a list so we can handle lists
+            cap_list = [cap] if not isinstance(cap, list) else cap
+
+            # Loop through capability values looking for any match
+            for cap_value in cap_list:
+                if extra_specs_ops.match(cap_value, req):
+                    break
+            else:
+                # Nothing matched, so bail out
+                LOG.debug('Volume type extra spec requirement '
+                          '"%(key)s=%(req)s" does not match reported '
+                          'capability "%(cap)s"',
+                          {'key': key, 'req': req, 'cap': cap})
                 return False
         return True
 
