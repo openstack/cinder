@@ -1811,6 +1811,12 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                     '%s is not allowed.') % self.MIN_SUPPORTED_VC_VERSION
             LOG.error(msg)
             raise exceptions.VMwareDriverException(message=msg)
+        elif vc_version == self.MIN_SUPPORTED_VC_VERSION:
+            # TODO(vbala): enforce vCenter version 5.5 in Ocata release.
+            LOG.warning(_LW('Running Cinder with a VMware vCenter version '
+                            '%s is deprecated. The minimum required version '
+                            'of vCenter server will be raised to 5.5 in the '
+                            '10.0.0 release.'), self.MIN_SUPPORTED_VC_VERSION)
 
     def do_setup(self, context):
         """Any initialization the volume driver does while starting."""
