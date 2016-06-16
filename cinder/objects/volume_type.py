@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
 from cinder import exception
@@ -28,7 +29,8 @@ OPTIONAL_FIELDS = ['extra_specs', 'projects']
 class VolumeType(base.CinderPersistentObject, base.CinderObject,
                  base.CinderObjectDictCompat, base.CinderComparableObject):
     # Version 1.0: Initial version
-    VERSION = '1.0'
+    # Version 1.1: Changed extra_specs to DictOfNullableStringsField
+    VERSION = '1.1'
 
     fields = {
         'id': fields.UUIDField(),
@@ -36,8 +38,21 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
         'description': fields.StringField(nullable=True),
         'is_public': fields.BooleanField(default=True, nullable=True),
         'projects': fields.ListOfStringsField(nullable=True),
-        'extra_specs': fields.DictOfStringsField(nullable=True),
+        'extra_specs': fields.DictOfNullableStringsField(nullable=True),
     }
+
+    def obj_make_compatible(self, primitive, target_version):
+        super(VolumeType, self).obj_make_compatible(primitive, target_version)
+
+        target_version = versionutils.convert_version_to_tuple(target_version)
+        if target_version < (1, 1):
+            if primitive.get('extra_specs'):
+                # Before 1.1 extra_specs field didn't allowed None values. To
+                # make sure we won't explode on receiver side - change Nones to
+                # empty string.
+                for k, v in primitive['extra_specs'].items():
+                    if v is None:
+                        primitive['extra_specs'][k] = ''
 
     @classmethod
     def _get_expected_attrs(cls, context):
