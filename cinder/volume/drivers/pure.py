@@ -92,6 +92,7 @@ REPLICATION_CG_NAME = "cinder-group"
 CHAP_SECRET_KEY = "PURE_TARGET_CHAP_SECRET"
 
 ERR_MSG_NOT_EXIST = "does not exist"
+ERR_MSG_HOST_NOT_EXIST = "Host " + ERR_MSG_NOT_EXIST
 ERR_MSG_NO_SUCH_SNAPSHOT = "No such volume or snapshot"
 ERR_MSG_PENDING_ERADICATION = "has been destroyed"
 ERR_MSG_ALREADY_EXISTS = "already exists"
@@ -100,10 +101,10 @@ ERR_MSG_ALREADY_INCLUDES = "already includes"
 ERR_MSG_ALREADY_ALLOWED = "already allowed on"
 ERR_MSG_NOT_CONNECTED = "is not connected"
 ERR_MSG_ALREADY_BELONGS = "already belongs to"
+ERR_MSG_EXISTING_CONNECTIONS = "cannot be deleted due to existing connections"
+ERR_MSG_ALREADY_IN_USE = "already in use"
 
 EXTRA_SPECS_REPL_ENABLED = "replication_enabled"
-
-CONNECT_LOCK_NAME = 'PureVolumeDriver_connect'
 
 UNMANAGED_SUFFIX = '-unmanaged'
 MANAGE_SNAP_REQUIRED_API_VERSIONS = ['1.4', '1.5']
@@ -111,6 +112,8 @@ REPLICATION_REQUIRED_API_VERSIONS = ['1.3', '1.4', '1.5']
 
 REPL_SETTINGS_PROPAGATE_RETRY_INTERVAL = 5  # 5 seconds
 REPL_SETTINGS_PROPAGATE_MAX_RETRIES = 36  # 36 * 5 = 180 seconds
+
+HOST_CREATE_MAX_RETRIES = 5
 
 USER_AGENT_BASE = 'OpenStack Cinder'
 
@@ -433,7 +436,6 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
         raise NotImplementedError
 
-    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
     def _disconnect(self, array, volume, connector, **kwargs):
         vol_name = self._get_vol_name(volume)
         host = self._get_host(array, connector)
@@ -456,7 +458,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     @pure_driver_debug_trace
     def _disconnect_host(self, array, host_name, vol_name):
-        """Return value indicates if host was deleted on array or not"""
+        """Return value indicates if host should be cleaned up."""
         try:
             array.disconnect_host(host_name, vol_name)
         except purestorage.PureHTTPError as err:
@@ -466,23 +468,42 @@ class PureBaseVolumeDriver(san.SanDriver):
                     ctxt.reraise = False
                     LOG.error(_LE("Disconnection failed with message: "
                                   "%(msg)s."), {"msg": err.text})
-        if (GENERATED_NAME.match(host_name) and
-                not array.list_host_connections(host_name, private=True)):
-            LOG.info(_LI("Deleting unneeded host %(host_name)r."),
+        connections = None
+        try:
+            connections = array.list_host_connections(host_name, private=True)
+        except purestorage.PureHTTPError as err:
+            with excutils.save_and_reraise_exception() as ctxt:
+                if err.code == 400 and ERR_MSG_NOT_EXIST in err.text:
+                    ctxt.reraise = False
+
+        # Assume still used if volumes are attached
+        host_still_used = bool(connections)
+
+        if GENERATED_NAME.match(host_name) and not host_still_used:
+            LOG.info(_LI("Attempting to delete unneeded host %(host_name)r."),
                      {"host_name": host_name})
             try:
                 array.delete_host(host_name)
+                host_still_used = False
             except purestorage.PureHTTPError as err:
                 with excutils.save_and_reraise_exception() as ctxt:
-                    if err.code == 400 and ERR_MSG_NOT_EXIST in err.text:
-                        # Happens if the host is already deleted.
-                        # This is fine though, just treat it as a warning.
-                        ctxt.reraise = False
-                        LOG.warning(_LW("Purity host deletion failed: "
-                                        "%(msg)s."), {"msg": err.text})
-            return True
-
-        return False
+                    if err.code == 400:
+                        if ERR_MSG_NOT_EXIST in err.text:
+                            # Happens if the host is already deleted.
+                            # This is fine though, just log so we know what
+                            # happened.
+                            ctxt.reraise = False
+                            host_still_used = False
+                            LOG.debug("Purity host deletion failed: "
+                                      "%(msg)s.", {"msg": err.text})
+                        if ERR_MSG_EXISTING_CONNECTIONS in err.text:
+                            # If someone added a connection underneath us
+                            # that's ok, just keep going.
+                            ctxt.reraise = False
+                            host_still_used = True
+                            LOG.debug("Purity host deletion ignored: %(msg)s",
+                                      {"msg": err.text})
+        return not host_still_used
 
     @pure_driver_debug_trace
     def get_volume_stats(self, refresh=False):
@@ -1055,6 +1076,9 @@ class PureBaseVolumeDriver(san.SanDriver):
         try:
             connection = array.connect_host(host_name, vol_name)
         except purestorage.PureHTTPError as err:
+            if err.code == 400 and ERR_MSG_HOST_NOT_EXIST in err.text:
+                LOG.debug('Unable to attach volume to host: %s', err.text)
+                raise exception.PureRetryableException()
             with excutils.save_and_reraise_exception() as ctxt:
                 if (err.code == 400 and
                         ERR_MSG_ALREADY_EXISTS in err.text):
@@ -1579,7 +1603,8 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
         return username, password
 
-    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
+    @utils.retry(exception.PureRetryableException,
+                 retries=HOST_CREATE_MAX_RETRIES)
     def _connect(self, volume, connector):
         """Connect the host and volume; return dict describing connection."""
         iqn = connector["initiator"]
@@ -1619,12 +1644,29 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info(_LI("Creating host object %(host_name)r with IQN:"
                          " %(iqn)s."), {"host_name": host_name, "iqn": iqn})
-            current_array.create_host(host_name, iqnlist=[iqn])
+            try:
+                current_array.create_host(host_name, iqnlist=[iqn])
+            except purestorage.PureHTTPError as err:
+                if (err.code == 400 and
+                        (ERR_MSG_ALREADY_EXISTS in err.text or
+                            ERR_MSG_ALREADY_IN_USE in err.text)):
+                    # If someone created it before we could just retry, we will
+                    # pick up the new host.
+                    LOG.debug('Unable to create host: %s', err.text)
+                    raise exception.PureRetryableException()
 
             if self.configuration.use_chap_auth:
-                current_array.set_host(host_name,
-                                       host_user=chap_username,
-                                       host_password=chap_password)
+                try:
+                    current_array.set_host(host_name,
+                                           host_user=chap_username,
+                                           host_password=chap_password)
+                except purestorage.PureHTTPError as err:
+                    if (err.code == 400 and
+                            ERR_MSG_HOST_NOT_EXIST in err.text):
+                        # If the host disappeared out from under us that's ok,
+                        # we will just retry and snag a new host.
+                        LOG.debug('Unable to set CHAP info: %s', err.text)
+                        raise exception.PureRetryableException()
 
         connection = self._connect_host_to_vol(current_array,
                                                host_name,
@@ -1684,7 +1726,8 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
         return properties
 
-    @utils.synchronized(CONNECT_LOCK_NAME, external=True)
+    @utils.retry(exception.PureRetryableException,
+                 retries=HOST_CREATE_MAX_RETRIES)
     def _connect(self, volume, connector):
         """Connect the host and volume; return dict describing connection."""
         wwns = connector["wwpns"]
@@ -1701,7 +1744,16 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
             host_name = self._generate_purity_host_name(connector["host"])
             LOG.info(_LI("Creating host object %(host_name)r with WWN:"
                          " %(wwn)s."), {"host_name": host_name, "wwn": wwns})
-            current_array.create_host(host_name, wwnlist=wwns)
+            try:
+                current_array.create_host(host_name, wwnlist=wwns)
+            except purestorage.PureHTTPError as err:
+                if (err.code == 400 and
+                        (ERR_MSG_ALREADY_EXISTS in err.text or
+                            ERR_MSG_ALREADY_IN_USE in err.text)):
+                    # If someone created it before we could just retry, we will
+                    # pick up the new host.
+                    LOG.debug('Unable to create host: %s', err.text)
+                    raise exception.PureRetryableException()
 
         return self._connect_host_to_vol(current_array, host_name, vol_name)
 
