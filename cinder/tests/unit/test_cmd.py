@@ -234,6 +234,34 @@ class TestCinderManageCmd(test.TestCase):
         with mock.patch('sys.stdout', new=six.StringIO()):
             self.assertRaises(exception.InvalidInput, db_cmds.sync, 1)
 
+    @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
+                (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))
+    def test_db_commands_online_data_migrations(self):
+        db_cmds = cinder_manage.DbCommands()
+        exit = self.assertRaises(SystemExit, db_cmds.online_data_migrations)
+        self.assertEqual(0, exit.code)
+        cinder_manage.DbCommands.online_migrations[0].assert_has_calls(
+            (mock.call(mock.ANY, 50, False),) * 2)
+
+    @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
+                (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))
+    def test_db_commands_online_data_migrations_ignore_state_and_max(self):
+        db_cmds = cinder_manage.DbCommands()
+        exit = self.assertRaises(SystemExit, db_cmds.online_data_migrations,
+                                 2, True)
+        self.assertEqual(1, exit.code)
+        cinder_manage.DbCommands.online_migrations[0].assert_called_once_with(
+            mock.ANY, 2, True)
+
+    @mock.patch('cinder.cmd.manage.DbCommands.online_migrations',
+                (mock.Mock(side_effect=((2, 2), (0, 0)), __name__='foo'),))
+    def test_db_commands_online_data_migrations_max_negative(self):
+        db_cmds = cinder_manage.DbCommands()
+        exit = self.assertRaises(SystemExit, db_cmds.online_data_migrations,
+                                 -1)
+        self.assertEqual(127, exit.code)
+        cinder_manage.DbCommands.online_migrations[0].assert_not_called()
+
     @mock.patch('cinder.version.version_string')
     def test_versions_commands_list(self, version_string):
         version_cmds = cinder_manage.VersionCommands()
