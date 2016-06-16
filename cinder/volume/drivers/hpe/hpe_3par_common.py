@@ -242,10 +242,11 @@ class HPE3PARCommon(object):
         3.0.23 - Fix CG create failures with long display name or special
                  characters. bug #1573647
         3.0.24 - Fix terminate connection on failover
+        3.0.25 - Fix delete volume when online clone is active. bug #1349639
 
     """
 
-    VERSION = "3.0.24"
+    VERSION = "3.0.25"
 
     stats = {}
 
@@ -2097,16 +2098,24 @@ class HPE3PARCommon(object):
                         self.client.removeVolumeFromVolumeSet(vvset_name,
                                                               volume_name)
                     self.client.deleteVolume(volume_name)
-                elif (ex.get_code() == 151):
-                    # the volume is being operated on in a background
-                    # task on the 3PAR.
-                    # TODO(walter-boring) do a retry a few times.
-                    # for now lets log a better message
-                    msg = _("The volume is currently busy on the 3PAR"
-                            " and cannot be deleted at this time. "
-                            "You can try again later.")
-                    LOG.error(msg)
-                    raise exception.VolumeIsBusy(message=msg)
+                elif ex.get_code() == 151:
+                    if self.client.isOnlinePhysicalCopy(volume_name):
+                        LOG.debug("Found an online copy for %(volume)s",
+                                  {'volume': volume_name})
+                        # the volume is in process of being cloned.
+                        # stopOnlinePhysicalCopy will also delete
+                        # the volume once it stops the copy.
+                        self.client.stopOnlinePhysicalCopy(volume_name)
+                    else:
+                        # the volume is being operated on in a background
+                        # task on the 3PAR.
+                        # TODO(walter-boring) do a retry a few times.
+                        # for now lets log a better message
+                        msg = _("The volume is currently busy on the 3PAR"
+                                " and cannot be deleted at this time. "
+                                "You can try again later.")
+                        LOG.error(msg)
+                        raise exception.VolumeIsBusy(message=msg)
                 elif (ex.get_code() == 32):
                     # Error 32 means that the volume has children
 
