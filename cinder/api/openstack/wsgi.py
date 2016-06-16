@@ -841,10 +841,6 @@ class Resource(wsgi.Application):
         return self._process_stack(request, action, action_args,
                                    content_type, body, accept)
 
-    def _is_legacy_endpoint(self, request):
-        version_str = request.api_version_request.get_string()
-        return '1.0' in version_str or '2.0' in version_str
-
     def _process_stack(self, request, action, action_args,
                        content_type, body, accept):
         """Implement the processing stack."""
@@ -952,7 +948,7 @@ class Resource(wsgi.Application):
                 response.headers[hdr] = val
 
             if (not request.api_version_request.is_null() and
-               not self._is_legacy_endpoint(request)):
+               not _is_legacy_endpoint(request)):
                 response.headers[API_VERSION_REQUEST_HEADER] = (
                     VOLUME_SERVICE + ' ' +
                     request.api_version_request.get_string())
@@ -1312,9 +1308,10 @@ class Fault(webob.exc.HTTPException):
             if retry:
                 fault_data[fault_name]['retryAfter'] = retry
 
-        if not req.api_version_request.is_null():
+        if (not req.api_version_request.is_null() and not
+           _is_legacy_endpoint(req)):
             self.wrapped_exc.headers[API_VERSION_REQUEST_HEADER] = (
-                req.api_version_request.get_string())
+                VOLUME_SERVICE + ' ' + req.api_version_request.get_string())
             self.wrapped_exc.headers['Vary'] = API_VERSION_REQUEST_HEADER
 
         content_type = req.best_match_content_type()
@@ -1339,6 +1336,11 @@ def _set_request_id_header(req, headers):
     context = req.environ.get('cinder.context')
     if context:
         headers['x-compute-request-id'] = context.request_id
+
+
+def _is_legacy_endpoint(request):
+    version_str = request.api_version_request.get_string()
+    return '1.0' in version_str or '2.0' in version_str
 
 
 class OverLimitFault(webob.exc.HTTPException):
