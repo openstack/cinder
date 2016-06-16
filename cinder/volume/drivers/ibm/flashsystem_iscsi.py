@@ -35,7 +35,6 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder import interface
 from cinder import utils
-import cinder.volume.driver
 from cinder.volume.drivers.ibm import flashsystem_common as fscommon
 from cinder.volume.drivers.san import san
 
@@ -53,8 +52,7 @@ CONF.register_opts(flashsystem_iscsi_opts)
 
 
 @interface.volumedriver
-class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
-                             cinder.volume.driver.ISCSIDriver):
+class FlashSystemISCSIDriver(fscommon.FlashSystemDriver):
     """IBM FlashSystem iSCSI volume driver.
 
     Version history:
@@ -78,10 +76,10 @@ class FlashSystemISCSIDriver(fscommon.FlashSystemDriver,
                 leaking, changes only in iSCSI
         1.0.10 - Fix bug #1585085, add host name check in
                  _find_host_exhaustive for iSCSI
-
+        1.0.11 - Update driver to use ABC metaclasses
     """
 
-    VERSION = "1.0.10"
+    VERSION = "1.0.11"
 
     def __init__(self, *args, **kwargs):
         super(FlashSystemISCSIDriver, self).__init__(*args, **kwargs)
