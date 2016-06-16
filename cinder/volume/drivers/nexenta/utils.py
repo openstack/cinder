@@ -33,7 +33,7 @@ def str2size(s, scale=1024):
     if not s:
         return 0
 
-    if isinstance(s, int):
+    if isinstance(s, six.integer_types):
         return s
 
     match = re.match(r'^([\.\d]+)\s*([BbKkMmGgTtPpEeZzYy]?)', s)
