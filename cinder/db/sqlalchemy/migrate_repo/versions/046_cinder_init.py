@@ -156,7 +156,9 @@ def define_tables(meta):
         Column('deleted_at', DateTime),
         Column('deleted', Boolean),
         Column('id', String(36), primary_key=True, nullable=False),
-        Column('volume_id', String(36), ForeignKey('volumes.id')),
+        Column('volume_id', String(36),
+               ForeignKey('volumes.id', name='snapshots_volume_id_fkey'),
+               nullable=False),
         Column('user_id', String(255)),
         Column('project_id', String(255)),
         Column('status', String(255)),
@@ -254,7 +256,9 @@ def define_tables(meta):
         Column('deleted', Boolean),
         Column('id', Integer, primary_key=True, nullable=False),
         Column('volume_type_id', String(36),
-               ForeignKey('volume_types.id'), nullable=False),
+               ForeignKey('volume_types.id',
+                          name='volume_type_extra_specs_ibfk_1'),
+               nullable=False),
         Column('key', String(255)),
         Column('value', String(255)),
         mysql_engine='InnoDB'
@@ -418,9 +422,13 @@ def define_tables(meta):
         # volume type is not sufficient to identify a particular encryption
         # scheme unless each volume type is associated with at most one
         # encryption scheme.
-        Column('volume_type_id', String(36),
-               ForeignKey('volume_types.id')),
-        Column('encryption_id', String(36), primary_key=True, nullable=False),
+        Column('volume_type_id', String(36), nullable=is_nullable),
+        # NOTE (smcginnis): nullable=True triggers this to not set a default
+        # value, but since it's a primary key the resulting schema will end up
+        # still being NOT NULL. This is avoiding a case in MySQL where it will
+        # otherwise set this to NOT NULL DEFAULT ''. May be harmless, but
+        # inconsistent with previous schema.
+        Column('encryption_id', String(36), primary_key=True, nullable=True),
         mysql_engine='InnoDB',
         mysql_charset='utf8'
     )
