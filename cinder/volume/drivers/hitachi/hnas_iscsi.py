@@ -139,15 +139,15 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         configuration is found.
         :raises: ParameterNotFound
         """
+        LOG.debug("Available services: %(svc)s.",
+                  {'svc': self.config['services'].keys()})
         label = utils.extract_host(volume.host, level='pool')
-        LOG.info(_LI("Using service label: %(lbl)s."), {'lbl': label})
 
         if label in self.config['services'].keys():
             svc = self.config['services'][label]
+            LOG.info(_LI("Using service label: %(lbl)s."), {'lbl': label})
             return svc['hdp']
         else:
-            LOG.info(_LI("Available services: %(svc)s."),
-                     {'svc': self.config['services'].keys()})
             LOG.error(_LE("No configuration found for service: %(lbl)s."),
                       {'lbl': label})
             raise exception.ParameterNotFound(param=label)
@@ -175,6 +175,10 @@ class HNASISCSIDriver(driver.ISCSIDriver):
             service = (
                 svc['iscsi_ip'], svc['iscsi_port'], svc['evs'], svc['port'],
                 fs_label, lu_info['tgt']['alias'], lu_info['tgt']['secret'])
+            LOG.info(_LI("Volume %(vol_name)s already mapped on target "
+                         "%(tgt)s to LUN %(lunid)s."),
+                     {'vol_name': volume.name, 'tgt': lu_info['tgt']['alias'],
+                      'lunid': lu_info['id']})
             return service
 
         # Each EVS can have up to 32 targets. Each target can have up to 32
@@ -290,11 +294,11 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         hnas_stat['pools'] = self.pools
 
-        LOG.info(_LI("stats: %(stat)s."), {'stat': hnas_stat})
+        LOG.debug("stats: %(stat)s.", {'stat': hnas_stat})
         return hnas_stat
 
     def _check_fs_list(self):
-        """Verifies the FSs in HNAS array.
+        """Verifies the FSs list in HNAS.
 
         Verify that all FSs specified in the configuration files actually
         exists on the storage.
@@ -303,9 +307,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         for fs in fs_list:
             if not self.backend.get_fs_info(fs):
-                msg = (
-                    _("File system not found or not mounted: %(fs)s") %
-                    {'fs': fs})
+                msg = (_("File system not found or not mounted: %(fs)s") %
+                       {'fs': fs})
                 LOG.error(msg)
                 raise exception.ParameterNotFound(param=msg)
 
@@ -323,22 +326,22 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         pool_from_vol_type = hnas_utils.get_pool(self.config, volume)
 
         pool_from_host = utils.extract_host(volume.host, level='pool')
-
-        if self.config['services'][pool_from_vol_type]['hdp'] != fs_label:
-            msg = (_("Failed to manage existing volume because the pool of "
-                     "the volume type chosen does not match the file system "
-                     "passed in the volume reference."),
-                   {'File System passed': fs_label,
-                    'File System for volume type':
-                        self.config['services'][pool_from_vol_type]['hdp']})
+        pool = self.config['services'][pool_from_vol_type]['hdp']
+        if pool != fs_label:
+            msg = (_("Failed to manage existing volume because the "
+                     "pool %(pool)s of the volume type chosen does not "
+                     "match the file system %(fs_label)s passed in the "
+                     "volume reference.")
+                   % {'pool': pool, 'fs_label': fs_label})
+            LOG.error(msg)
             raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
         if pool_from_host != pool_from_vol_type:
-            msg = (_("Failed to manage existing volume because the pool of "
-                     "the volume type chosen does not match the pool of "
-                     "the host."),
-                   {'Pool of the volume type': pool_from_vol_type,
-                    'Pool of the host': pool_from_host})
+            msg = (_("Failed to manage existing volume because the pool "
+                     "%(pool)s of the volume type chosen does not match the "
+                     "pool %(pool_host)s of the host.") %
+                   {'pool': pool_from_vol_type, 'pool_host': pool_from_host})
+            LOG.error(msg)
             raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
     def _get_info_from_vol_ref(self, vol_ref):
@@ -359,9 +362,10 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
             return fs_label, vol_name
         else:
-            msg = (_("The reference to the volume in the backend should have "
-                     "the format file_system/volume_name (volume_name cannot "
-                     "contain '/')"))
+            msg = _("The reference to the volume in the backend should have "
+                    "the format file_system/volume_name (volume_name cannot "
+                    "contain '/')")
+            LOG.error(msg)
             raise exception.ManageExistingInvalidReference(
                 existing_ref=vol_ref, reason=msg)
 
@@ -373,6 +377,14 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         self.context = context
         self._check_fs_list()
 
+        version_info = self.backend.get_version()
+        LOG.info(_LI("HNAS iSCSI driver."))
+        LOG.info(_LI("HNAS model: %(mdl)s"), {'mdl': version_info['model']})
+        LOG.info(_LI("HNAS version: %(version)s"),
+                 {'version': version_info['version']})
+        LOG.info(_LI("HNAS hardware: %(hw)s"),
+                 {'hw': version_info['hardware']})
+        LOG.info(_LI("HNAS S/N: %(sn)s"), {'sn': version_info['serial']})
         service_list = self.config['services'].keys()
         for svc in service_list:
             svc = self.config['services'][svc]
@@ -383,7 +395,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
             self.pools.append(pool)
 
-        LOG.info(_LI("Configured pools: %(pool)s"), {'pool': self.pools})
+        LOG.debug("Configured pools: %(pool)s", {'pool': self.pools})
 
         evs_info = self.backend.get_evs_info()
         LOG.info(_LI("Configured EVSs: %(evs)s"), {'evs': evs_info})
@@ -391,7 +403,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         for svc in self.config['services'].keys():
             svc_ip = self.config['services'][svc]['iscsi_ip']
             if svc_ip in evs_info.keys():
-                LOG.info(_LI("iSCSI portal found for service: %s"), svc_ip)
+                LOG.info(_LI("iSCSI portal found for service: %(svc_ip)s"),
+                         {'svc_ip': svc_ip})
                 self.config['services'][svc]['evs'] = (
                     evs_info[svc_ip]['evs_number'])
                 self.config['services'][svc]['iscsi_port'] = '3260'
@@ -400,6 +413,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                 LOG.error(_LE("iSCSI portal not found "
                               "for service: %(svc)s"), {'svc': svc_ip})
                 raise exception.InvalidParameterValue(err=svc_ip)
+        LOG.info(_LI("HNAS iSCSI Driver loaded successfully."))
 
     def ensure_export(self, context, volume):
         pass
@@ -410,6 +424,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
     def remove_export(self, context, volume):
         pass
 
+    @cinder_utils.trace
     def create_volume(self, volume):
         """Creates a LU on HNAS.
 
@@ -421,11 +436,9 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         self.backend.create_lu(fs, size, volume.name)
 
-        LOG.info(_LI("LU %(lu)s of size %(sz)s GB is created."),
-                 {'lu': volume.name, 'sz': volume.size})
-
         return {'provider_location': self._get_provider_location(volume)}
 
+    @cinder_utils.trace
     def create_cloned_volume(self, dst, src):
         """Creates a clone of a volume.
 
@@ -438,14 +451,14 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         self.backend.create_cloned_lu(src.name, fs_label, dst.name)
 
         if src.size < dst.size:
-            size = dst.size
-            self.extend_volume(dst, size)
-
-        LOG.debug("LU %(lu)s of size %(size)d GB is cloned.",
-                  {'lu': src.name, 'size': src.size})
+            LOG.debug("Increasing dest size from %(old_size)s to "
+                      "%(new_size)s",
+                      {'old_size': src.size, 'new_size': dst.size})
+            self.extend_volume(dst, dst.size)
 
         return {'provider_location': self._get_provider_location(dst)}
 
+    @cinder_utils.trace
     def extend_volume(self, volume, new_size):
         """Extends an existing volume.
 
@@ -455,9 +468,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         fs = self._get_service(volume)
         self.backend.extend_lu(fs, new_size, volume.name)
 
-        LOG.info(_LI("LU %(lu)s extended to %(size)s GB."),
-                 {'lu': volume.name, 'size': new_size})
-
+    @cinder_utils.trace
     def delete_volume(self, volume):
         """Deletes the volume on HNAS.
 
@@ -466,9 +477,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         fs = self._get_service(volume)
         self.backend.delete_lu(fs, volume.name)
 
-        LOG.debug("Delete LU %(lu)s", {'lu': volume.name})
-
     @cinder_utils.synchronized('volume_mapping')
+    @cinder_utils.trace
     def initialize_connection(self, volume, connector):
         """Maps the created volume to connector['initiator'].
 
@@ -477,9 +487,6 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         :returns: The connection information
         :raises: ISCSITargetAttachFailed
         """
-        LOG.info(_LI("initialize volume %(vol)s connector %(conn)s"),
-                 {'vol': volume, 'conn': connector})
-
         service_info = self._get_service_target(volume)
         (ip, ipp, evs, port, _fs, tgtalias, secret) = service_info
 
@@ -491,7 +498,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         except processutils.ProcessExecutionError:
             msg = (_("Error attaching volume %(vol)s. "
                      "Target limit might be reached!") % {'vol': volume.id})
-            raise exception.ISCSITargetAttachFailed(message=msg)
+            LOG.error(msg)
+            raise exception.ISCSITargetAttachFailed(volume_id=volume.id)
 
         hnas_portal = ip + ':' + ipp
         lu_id = six.text_type(conn['lu_id'])
@@ -500,7 +508,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                volume.provider_location + ',' + evs + ',' +
                port + ',' + lu_id)
 
-        LOG.info(_LI("initiate: connection %s"), tgt)
+        LOG.info(_LI("initiate: connection %(tgt)s"), {'tgt': tgt})
 
         properties = {}
         properties['provider_location'] = tgt
@@ -516,12 +524,11 @@ class HNASISCSIDriver(driver.ISCSIDriver):
             properties['auth_password'] = secret
 
         conn_info = {'driver_volume_type': 'iscsi', 'data': properties}
-        LOG.debug("initialize_connection: conn_info: %(conn)s.",
-                  {'conn': conn_info})
 
         return conn_info
 
     @cinder_utils.synchronized('volume_mapping')
+    @cinder_utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume.
 
@@ -534,9 +541,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         self.backend.del_iscsi_conn(evs, tgtalias, lu_info['id'])
 
-        LOG.info(_LI("terminate_connection: %(vol)s"),
-                 {'vol': volume.provider_location})
-
+    @cinder_utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
@@ -548,11 +553,9 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         self.backend.create_cloned_lu(snapshot.name, fs, volume.name)
 
-        LOG.info(_LI("LU %(lu)s of size %(sz)d MB is created."),
-                 {'lu': snapshot.name, 'sz': snapshot.volume_size})
-
         return {'provider_location': self._get_provider_location(snapshot)}
 
+    @cinder_utils.trace
     def create_snapshot(self, snapshot):
         """Creates a snapshot.
 
@@ -563,11 +566,9 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         self.backend.create_cloned_lu(snapshot.volume_name, fs, snapshot.name)
 
-        LOG.debug("LU %(lu)s of size %(size)d GB is created.",
-                  {'lu': snapshot.name, 'size': snapshot.volume_size})
-
         return {'provider_location': self._get_provider_location(snapshot)}
 
+    @cinder_utils.trace
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot.
 
@@ -575,8 +576,6 @@ class HNASISCSIDriver(driver.ISCSIDriver):
        """
         fs = self._get_service(snapshot.volume)
         self.backend.delete_lu(fs, snapshot.name)
-
-        LOG.debug("Delete lu %(lu)s", {'lu': snapshot.name})
 
     def get_volume_stats(self, refresh=False):
         """Gets the volume driver stats.
@@ -589,6 +588,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         return self.driver_stats
 
+    @cinder_utils.trace
     def manage_existing_get_size(self, volume, existing_vol_ref):
         """Gets the size to manage_existing.
 
@@ -626,6 +626,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                          'If your volume name contains "/", please rename it '
                          'and try to manage again.'))
 
+    @cinder_utils.trace
     def manage_existing(self, volume, existing_vol_ref):
         """Manages an existing volume.
 
@@ -640,12 +641,12 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                                  volume
         :returns: the provider location of the volume managed
         """
+        LOG.info(_LI("Asked to manage ISCSI volume %(vol)s, with vol "
+                     "ref %(ref)s."), {'vol': volume.id,
+                                       'ref': existing_vol_ref['source-name']})
+
         fs_label, vol_name = (
             self._get_info_from_vol_ref(existing_vol_ref['source-name']))
-
-        LOG.debug("Asked to manage ISCSI volume %(vol)s, with vol "
-                  "ref %(ref)s.", {'vol': volume.id,
-                                   'ref': existing_vol_ref['source-name']})
 
         if volume.volume_type is not None:
             self._check_pool_and_fs(volume, fs_label)
@@ -657,6 +658,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         return {'provider_location': self._get_provider_location(volume)}
 
+    @cinder_utils.trace
     def unmanage(self, volume):
         """Unmanages a volume from cinder.
 
@@ -673,9 +675,10 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
         self.backend.rename_existing_lu(fslabel, volume.name, new_name)
 
-        LOG.info(_LI("Cinder ISCSI volume with current path %(path)s is "
-                     "no longer being managed. The new name is %(unm)s."),
-                 {'path': vol_path, 'unm': new_name})
+        LOG.info(_LI("The volume with path %(old)s is no longer being managed "
+                     "by Cinder. However, it was not deleted and can be found "
+                     "with the new name %(cr)s on backend."),
+                 {'old': vol_path, 'cr': new_name})
 
     def _get_provider_location(self, volume):
         """Gets the provider location of a given volume

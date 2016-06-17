@@ -129,8 +129,8 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         if label in self.config['services'].keys():
             svc = self.config['services'][label]
-            LOG.info(_LI("_get_service: %(lbl)s->%(svc)s"),
-                     {'lbl': label, 'svc': svc['export']['fs']})
+            LOG.debug("_get_service: %(lbl)s->%(svc)s",
+                      {'lbl': label, 'svc': svc['export']['fs']})
             service = (svc['hdp'], svc['export']['path'], svc['export']['fs'])
         else:
             LOG.info(_LI("Available services: %(svc)s"),
@@ -141,6 +141,7 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         return service
 
+    @cutils.trace
     def extend_volume(self, volume, new_size):
         """Extend an existing volume.
 
@@ -152,7 +153,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         path = self._get_volume_path(nfs_mount, volume.name)
 
         # Resize the image file on share to new size.
-        LOG.debug("Checking file for resize")
+        LOG.info(_LI("Checking file for resize."))
 
         if not self._is_file_size_equal(path, new_size):
             LOG.info(_LI("Resizing file to %(sz)sG"), {'sz': new_size})
@@ -162,7 +163,9 @@ class HNASNFSDriver(nfs.NfsDriver):
             LOG.info(_LI("LUN %(id)s extended to %(size)s GB."),
                      {'id': volume.id, 'size': new_size})
         else:
-            raise exception.InvalidResults(_("Resizing image file failed."))
+            msg = _("Resizing image file failed.")
+            LOG.error(msg)
+            raise exception.InvalidResults(msg)
 
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""
@@ -174,6 +177,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         else:
             return False
 
+    @cutils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
@@ -181,13 +185,12 @@ class HNASNFSDriver(nfs.NfsDriver):
         :param snapshot: source snapshot
         :returns: the provider_location of the volume created
         """
-        LOG.debug("create_volume_from %(vol)s", {'vol': volume})
-
         self._clone_volume(snapshot.volume, volume.name, snapshot.name)
         share = snapshot.volume.provider_location
 
         return {'provider_location': share}
 
+    @cutils.trace
     def create_snapshot(self, snapshot):
         """Create a snapshot.
 
@@ -202,12 +205,12 @@ class HNASNFSDriver(nfs.NfsDriver):
         # returns the mount point (not path)
         return {'provider_location': share}
 
+    @cutils.trace
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot.
 
         :param snapshot: dictionary snapshot reference
         """
-
         nfs_mount = snapshot.volume.provider_location
 
         if self._volume_not_present(nfs_mount, snapshot.name):
@@ -243,6 +246,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         return os.path.join(self._get_mount_point_for_share(nfs_share),
                             volume_name)
 
+    @cutils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume.
 
@@ -276,6 +280,8 @@ class HNASNFSDriver(nfs.NfsDriver):
             'reserved_percentage': percentage of size reserved
             }
         """
+        LOG.info(_LI("Getting volume stats"))
+
         _stats = super(HNASNFSDriver, self).get_volume_stats(refresh)
         _stats["vendor_name"] = 'Hitachi'
         _stats["driver_version"] = HNAS_NFS_VERSION
@@ -291,18 +297,20 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         _stats['pools'] = self.pools
 
-        LOG.info(_LI('Driver stats: %(stat)s'), {'stat': _stats})
+        LOG.debug('Driver stats: %(stat)s', {'stat': _stats})
 
         return _stats
 
     def do_setup(self, context):
         """Perform internal driver setup."""
         version_info = self.backend.get_version()
-        LOG.info(_LI("HNAS Array NFS driver"))
-        LOG.info(_LI("HNAS model: %s"), version_info['model'])
-        LOG.info(_LI("HNAS version: %s"), version_info['version'])
-        LOG.info(_LI("HNAS hardware: %s"), version_info['hardware'])
-        LOG.info(_LI("HNAS S/N: %s"), version_info['serial'])
+        LOG.info(_LI("HNAS NFS driver."))
+        LOG.info(_LI("HNAS model: %(mdl)s"), {'mdl': version_info['model']})
+        LOG.info(_LI("HNAS version: %(ver)s"),
+                 {'ver': version_info['version']})
+        LOG.info(_LI("HNAS hardware: %(hw)s"),
+                 {'hw': version_info['hardware']})
+        LOG.info(_LI("HNAS S/N: %(sn)s"), {'sn': version_info['serial']})
 
         self.context = context
         self._load_shares_config(
@@ -327,8 +335,8 @@ class HNASNFSDriver(nfs.NfsDriver):
             try:
                 out, err = self._execute('showmount', '-e', server_ip)
             except processutils.ProcessExecutionError:
-                LOG.error(_LE("NFS server %(srv)s not reachable!"),
-                          {'srv': server_ip})
+                LOG.exception(_LE("NFS server %(srv)s not reachable!"),
+                              {'srv': server_ip})
                 raise
 
             export_list = out.split('\n')[1:]
@@ -341,7 +349,7 @@ class HNASNFSDriver(nfs.NfsDriver):
                 LOG.error(_LE("Configured share %(share)s is not present"
                               "in %(srv)s."),
                           {'share': mountpoint, 'srv': server_ip})
-                msg = _('Section: %s') % svc_name
+                msg = _('Section: %(svc_name)s') % {'svc_name': svc_name}
                 raise exception.InvalidParameterValue(err=msg)
 
         LOG.debug("Loading services: %(svc)s", {
@@ -357,7 +365,8 @@ class HNASNFSDriver(nfs.NfsDriver):
 
             self.pools.append(pool)
 
-        LOG.info(_LI("Configured pools: %(pool)s"), {'pool': self.pools})
+        LOG.debug("Configured pools: %(pool)s", {'pool': self.pools})
+        LOG.info(_LI("HNAS NFS Driver loaded successfully."))
 
     def _clone_volume(self, src_vol, clone_name, src_name=None):
         """Clones mounted volume using the HNAS file_clone.
@@ -386,6 +395,7 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         self.backend.file_clone(fs_label, source_path, target_path)
 
+    @cutils.trace
     def create_volume(self, volume):
         """Creates a volume.
 
@@ -423,8 +433,8 @@ class HNASNFSDriver(nfs.NfsDriver):
         try:
             vol_ref_share_ip = cutils.resolve_hostname(share_split[0])
         except socket.gaierror as e:
-            LOG.error(_LE('Invalid hostname %(host)s'),
-                      {'host': share_split[0]})
+            LOG.exception(_LE('Invalid hostname %(host)s'),
+                          {'host': share_split[0]})
             LOG.debug('error: %(err)s', {'err': e.strerror})
             raise
 
@@ -467,8 +477,8 @@ class HNASNFSDriver(nfs.NfsDriver):
              file_path) = vol_ref_share.partition(cfg_share)
             if work_share == cfg_share:
                 file_path = file_path[1:]  # strip off leading path divider
-                LOG.debug("Found possible share %s; checking mount.",
-                          work_share)
+                LOG.debug("Found possible share %(shr)s; checking mount.",
+                          {'shr': work_share})
                 nfs_mount = self._get_mount_point_for_share(nfs_share)
                 vol_full_path = os.path.join(nfs_mount, file_path)
                 if os.path.isfile(vol_full_path):
@@ -485,6 +495,7 @@ class HNASNFSDriver(nfs.NfsDriver):
             existing_ref=vol_ref,
             reason=_('Volume not found on configured storage backend.'))
 
+    @cutils.trace
     def manage_existing(self, volume, existing_vol_ref):
         """Manages an existing volume.
 
@@ -506,9 +517,10 @@ class HNASNFSDriver(nfs.NfsDriver):
         (nfs_share, nfs_mount, vol_name
          ) = self._get_share_mount_and_vol_from_vol_ref(existing_vol_ref)
 
-        LOG.debug("Asked to manage NFS volume %(vol)s, with vol ref %(ref)s.",
-                  {'vol': volume.id,
-                   'ref': existing_vol_ref['source-name']})
+        LOG.info(_LI("Asked to manage NFS volume %(vol)s, "
+                     "with vol ref %(ref)s."),
+                 {'vol': volume.id,
+                  'ref': existing_vol_ref['source-name']})
 
         self._check_pool_and_share(volume, nfs_share)
 
@@ -525,12 +537,13 @@ class HNASNFSDriver(nfs.NfsDriver):
                           "to %(vol)s.", {'vol': volume.name})
                 self._set_rw_permissions_for_all(dst_vol)
             except (OSError, processutils.ProcessExecutionError) as err:
-                exception_msg = (_("Failed to manage existing volume "
-                                   "%(name)s, because rename operation "
-                                   "failed: Error msg: %(msg)s."),
-                                 {'name': existing_vol_ref['source-name'],
-                                  'msg': six.text_type(err)})
-                raise exception.VolumeBackendAPIException(data=exception_msg)
+                msg = (_("Failed to manage existing volume "
+                         "%(name)s, because rename operation "
+                         "failed: Error msg: %(msg)s.") %
+                       {'name': existing_vol_ref['source-name'],
+                        'msg': six.text_type(err)})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
         return {'provider_location': nfs_share}
 
     def _check_pool_and_share(self, volume, nfs_share):
@@ -547,23 +560,25 @@ class HNASNFSDriver(nfs.NfsDriver):
         pool_from_vol_type = hnas_utils.get_pool(self.config, volume)
 
         pool_from_host = utils.extract_host(volume.host, level='pool')
-
-        if self.config['services'][pool_from_vol_type]['hdp'] != nfs_share:
+        pool = self.config['services'][pool_from_vol_type]['hdp']
+        if pool != nfs_share:
             msg = (_("Failed to manage existing volume because the pool of "
-                     "the volume type chosen does not match the NFS share "
-                     "passed in the volume reference."),
-                   {'Share passed': nfs_share, 'Share for volume type':
-                       self.config['services'][pool_from_vol_type]['hdp']})
+                     "the volume type chosen (%(pool)s) does not match the "
+                     "NFS share passed in the volume reference (%(share)s).")
+                   % {'share': nfs_share, 'pool': pool})
+            LOG.error(msg)
             raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
         if pool_from_host != pool_from_vol_type:
             msg = (_("Failed to manage existing volume because the pool of "
-                     "the volume type chosen does not match the pool of "
-                     "the host."),
-                   {'Pool of the volume type': pool_from_vol_type,
-                    'Pool of the host': pool_from_host})
+                     "the volume type chosen (%(pool)s) does not match the "
+                     "pool of the host %(pool_host)s") %
+                   {'pool': pool_from_vol_type,
+                    'pool_host': pool_from_host})
+            LOG.error(msg)
             raise exception.ManageExistingVolumeTypeMismatch(reason=msg)
 
+    @cutils.trace
     def manage_existing_get_size(self, volume, existing_vol_ref):
         """Returns the size of volume to be managed by manage_existing.
 
@@ -594,6 +609,7 @@ class HNASNFSDriver(nfs.NfsDriver):
                                    "%(name)s, because of error in getting "
                                    "volume size."),
                                  {'name': existing_vol_ref['source-name']})
+            LOG.exception(exception_message)
             raise exception.VolumeBackendAPIException(data=exception_message)
 
         LOG.debug("Reporting size of NFS volume ref %(ref)s as %(size)d GB.",
@@ -601,6 +617,7 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         return vol_size
 
+    @cutils.trace
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management.
 
@@ -622,9 +639,11 @@ class HNASNFSDriver(nfs.NfsDriver):
             self._try_execute("mv", vol_path, new_path,
                               run_as_root=False, check_exit_code=True)
 
-            LOG.info(_LI("Cinder NFS volume with current path %(cr)s is "
-                         "no longer being managed."), {'cr': new_path})
+            LOG.info(_LI("The volume with path %(old)s is no longer being "
+                         "managed by Cinder. However, it was not deleted "
+                         "and can be found in the new path %(cr)s."),
+                     {'old': vol_path, 'cr': new_path})
 
         except (OSError, ValueError):
-            LOG.error(_LE("The NFS Volume %(cr)s does not exist."),
-                      {'cr': new_path})
+            LOG.exception(_LE("The NFS Volume %(cr)s does not exist."),
+                          {'cr': vol_path})
