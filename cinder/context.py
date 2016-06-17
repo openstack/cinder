@@ -76,8 +76,8 @@ class RequestContext(context.RequestContext):
                                              project_domain=project_domain,
                                              is_admin=is_admin,
                                              request_id=request_id,
-                                             overwrite=overwrite)
-        self.roles = roles or []
+                                             overwrite=overwrite,
+                                             roles=roles)
         self.project_name = project_name
         self.read_deleted = read_deleted
         self.remote_address = remote_address
@@ -128,7 +128,6 @@ class RequestContext(context.RequestContext):
         result['project_name'] = self.project_name
         result['domain'] = self.domain
         result['read_deleted'] = self.read_deleted
-        result['roles'] = self.roles
         result['remote_address'] = self.remote_address
         result['timestamp'] = self.timestamp.isoformat()
         result['quota_class'] = self.quota_class
