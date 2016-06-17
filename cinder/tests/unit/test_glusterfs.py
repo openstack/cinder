@@ -34,8 +34,9 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder.image import image_utils
-from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume import driver as base_driver
 from cinder.volume.drivers import glusterfs
@@ -43,16 +44,6 @@ from cinder.volume.drivers import remotefs as remotefs_drv
 
 
 CONF = cfg.CONF
-
-
-class DumbVolume(object):
-    fields = {}
-
-    def __setitem__(self, key, value):
-        self.fields[key] = value
-
-    def __getitem__(self, item):
-        return self.fields[item]
 
 
 class FakeDb(object):
@@ -66,6 +57,17 @@ class FakeDb(object):
         return []
 
 
+class SideEffectList(object):
+    def __init__(self, obj, **kwargs):
+        self.obj = obj
+        self.attrs = kwargs
+
+    def __call__(self, *args, **kw):
+        for attr in self.attrs.keys():
+            setattr(self.obj, attr, self.attrs[attr].pop(0))
+        return self.obj
+
+
 class GlusterFsDriverTestCase(test.TestCase):
     """Test case for GlusterFS driver."""
 
@@ -75,12 +77,10 @@ class GlusterFsDriverTestCase(test.TestCase):
     TEST_SIZE_IN_GB = 1
     TEST_MNT_POINT = '/mnt/glusterfs'
     TEST_MNT_POINT_BASE = '/mnt/test'
-    TEST_LOCAL_PATH = '/mnt/glusterfs/volume-123'
     TEST_FILE_NAME = 'test.txt'
     TEST_SHARES_CONFIG_FILE = '/etc/cinder/test-shares.conf'
     TEST_TMP_FILE = '/tmp/tempfile'
     VOLUME_UUID = 'abcdefab-cdef-abcd-efab-cdefabcdefab'
-    VOLUME_NAME = 'volume-%s' % VOLUME_UUID
     SNAP_UUID = 'bacadaca-baca-daca-baca-dacadacadaca'
     SNAP_UUID_2 = 'bebedede-bebe-dede-bebe-dedebebedede'
 
@@ -102,6 +102,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                                       db=FakeDb())
         self._driver.shares = {}
         compute.API = mock.MagicMock()
+        self.context = context.get_admin_context()
 
     def assertRaisesAndMessageMatches(
             self, excClass, msg, callableObj, *args, **kwargs):
@@ -126,13 +127,12 @@ class GlusterFsDriverTestCase(test.TestCase):
                              self.TEST_MNT_POINT_BASE)
         drv = self._driver
 
-        volume = DumbVolume()
-        volume['id'] = self.VOLUME_UUID
-        volume['provider_location'] = self.TEST_EXPORT1
-        volume['name'] = 'volume-123'
+        volume = fake_volume.fake_volume_obj(
+            self.context,
+            provider_location=self.TEST_EXPORT1)
 
         self.assertEqual(
-            '/mnt/test/ab03ab34eaca46a5fb81878f7e9b91fc/volume-123',
+            '/mnt/test/ab03ab34eaca46a5fb81878f7e9b91fc/%s' % volume.name,
             drv.local_path(volume))
 
     def test_mount_glusterfs(self):
@@ -470,17 +470,20 @@ class GlusterFsDriverTestCase(test.TestCase):
                               drv._find_share,
                               self.TEST_SIZE_IN_GB)
 
-    def _simple_volume(self, id=None):
-        volume = DumbVolume()
-        volume['provider_location'] = self.TEST_EXPORT1
+    def _simple_volume(self, id=None, **updates):
         if id is None:
-            volume['id'] = self.VOLUME_UUID
-        else:
-            volume['id'] = id
-        # volume['name'] mirrors format from db/sqlalchemy/models.py
-        volume['name'] = 'volume-%s' % volume['id']
-        volume['size'] = 10
-        volume['status'] = 'available'
+            id = self.VOLUME_UUID
+        if 'id' not in updates:
+            updates['id'] = self.VOLUME_UUID
+        if 'name' not in updates:
+            updates['name'] = 'volume-%s' % id
+        if 'status' not in updates:
+            updates['status'] = 'available'
+        if 'provider_location' not in updates:
+            updates['provider_location'] = self.TEST_EXPORT1
+        if 'size' not in updates:
+            updates['size'] = 10
+        volume = fake_volume.fake_volume_obj(self.context, **updates)
 
         return volume
 
@@ -497,7 +500,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             drv._do_create_volume(volume)
 
             volume_path = drv.local_path(volume)
-            volume_size = volume['size']
+            volume_size = volume.size
             mock_create_qcow2_file.assert_called_once_with(volume_path,
                                                            volume_size)
             mock_set_rw_permissions_for_all.\
@@ -516,7 +519,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             drv._do_create_volume(volume)
 
             volume_path = drv.local_path(volume)
-            volume_size = volume['size']
+            volume_size = volume.size
             mock_fallocate.assert_called_once_with(volume_path,
                                                    volume_size)
             mock_set_rw_permissions_for_all.\
@@ -539,7 +542,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             drv._do_create_volume(volume)
 
             volume_path = drv.local_path(volume)
-            volume_size = volume['size']
+            volume_size = volume.size
             mock_fallocate.assert_called_once_with(volume_path,
                                                    volume_size)
             mock_create_regular_file.assert_called_once_with(volume_path,
@@ -556,9 +559,10 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_do_create_volume,\
                 mock.patch.object(drv, '_ensure_shares_mounted') as \
                 mock_ensure_shares_mounted:
-            volume = DumbVolume()
-            volume['size'] = self.TEST_SIZE_IN_GB
-            volume['id'] = self.VOLUME_UUID
+            volume = fake_volume.fake_volume_obj(self.context,
+                                                 size=self.TEST_SIZE_IN_GB,
+                                                 id=self.VOLUME_UUID)
+            mock_find_share.return_value = self.TEST_EXPORT2
             drv.create_volume(volume)
             self.assertTrue(mock_ensure_shares_mounted.called)
             self.assertTrue(mock_do_create_volume.called)
@@ -575,9 +579,9 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_ensure_shares_mounted:
             mock_find_share.return_value = self.TEST_EXPORT1
 
-            volume = DumbVolume()
-            volume['size'] = self.TEST_SIZE_IN_GB
-            volume['id'] = self.VOLUME_UUID
+            volume = fake_volume.fake_volume_obj(self.context,
+                                                 size=self.TEST_SIZE_IN_GB,
+                                                 id=self.VOLUME_UUID)
             result = drv.create_volume(volume)
             self.assertEqual(self.TEST_EXPORT1, result['provider_location'])
             self.assertTrue(mock_ensure_shares_mounted.called)
@@ -610,7 +614,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             self._driver.delete_volume(volume)
 
             mock_ensure_share_mounted.assert_called_once_with(
-                volume['provider_location'])
+                volume.provider_location)
             mock_local_volume_dir.assert_called_once_with(volume)
             mock_active_image_from_info.assert_called_once_with(volume)
             mock_execute.assert_called_once_with('rm', '-f', volume_path,
@@ -827,10 +831,12 @@ class GlusterFsDriverTestCase(test.TestCase):
         with mock.patch.object(drv, '_execute') as mock_execute,\
                 mock.patch.object(drv, '_ensure_share_mounted') as \
                 mock_ensure_share_mounted:
-            volume = DumbVolume()
-            volume['id'] = self.VOLUME_UUID
-            volume['name'] = 'volume-123'
-            volume['provider_location'] = self.TEST_EXPORT1
+
+            volume = fake_volume.fake_volume_obj(
+                self.context,
+                id=self.VOLUME_UUID,
+                display_name='volume-123',
+                provider_location=self.TEST_EXPORT1)
 
             drv.delete_volume(volume)
 
@@ -845,10 +851,10 @@ class GlusterFsDriverTestCase(test.TestCase):
         with mock.patch.object(drv, '_execute') as mock_execute,\
             mock.patch.object(drv, '_ensure_share_mounted') as \
                 mock_ensure_share_mounted:
-            volume = DumbVolume()
-            volume['id'] = self.VOLUME_UUID
-            volume['name'] = 'volume-123'
-            volume['provider_location'] = None
+            volume = fake_volume.fake_volume_obj(self.context,
+                                                 id=self.VOLUME_UUID,
+                                                 name='volume-123',
+                                                 provider_location=None)
 
             drv.delete_volume(volume)
 
@@ -867,10 +873,6 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             mock_read_file.return_value = '{"%(id)s": "volume-%(id)s"}' %\
                 {'id': self.VOLUME_UUID}
-
-            volume = DumbVolume()
-            volume['id'] = self.VOLUME_UUID
-            volume['name'] = 'volume-%s' % self.VOLUME_UUID
 
             info = drv._read_info_file(info_path)
 
@@ -897,7 +899,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_qemu_img_info,\
                 mock.patch.object(image_utils, 'resize_image') as \
                 mock_resize_image:
-            mock_get_active_image_from_info.return_value = volume['name']
+            mock_get_active_image_from_info.return_value = volume.name
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
             mock_qemu_img_info.return_value = img_info
 
@@ -940,9 +942,6 @@ class GlusterFsDriverTestCase(test.TestCase):
     def test_create_snapshot_online(self):
         drv = self._driver
 
-        volume = self._simple_volume()
-        volume['status'] = 'in-use'
-
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
         volume_file = 'volume-%s' % self.VOLUME_UUID
         volume_path = '%s/%s/%s' % (self.TEST_MNT_POINT_BASE,
@@ -951,13 +950,14 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         ctxt = context.RequestContext('fake_user', 'fake_project')
 
-        snap_ref = {'name': 'test snap (online)',
-                    'volume_id': self.VOLUME_UUID,
-                    'volume': volume,
-                    'id': self.SNAP_UUID,
-                    'context': ctxt,
-                    'status': fields.SnapshotStatus.CREATING,
-                    'progress': 'asdf'}
+        snap_ref = fake_snapshot.fake_snapshot_obj(
+            ctxt,
+            display_name='test snap (online)',
+            volume_id=self.VOLUME_UUID,
+            id=self.SNAP_UUID,
+            status='creating',
+            progress='asdf')
+        snap_ref.context = ctxt
 
         snap_path = '%s.%s' % (volume_path, self.SNAP_UUID)
         snap_file = '%s.%s' % (volume_file, self.SNAP_UUID)
@@ -967,26 +967,13 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(db, 'snapshot_get') as mock_snapshot_get,\
                 mock.patch.object(drv, '_nova') as mock_nova,\
                 mock.patch.object(time, 'sleep') as mock_sleep:
-            create_info = {'snapshot_id': snap_ref['id'],
+            create_info = {'snapshot_id': snap_ref.id,
                            'type': 'qcow2',
                            'new_file': snap_file}
 
-            snap_ref_progress = snap_ref.copy()
-            snap_ref_progress['status'] = fields.SnapshotStatus.CREATING
-
-            snap_ref_progress_0p = snap_ref_progress.copy()
-            snap_ref_progress_0p['progress'] = '0%'
-
-            snap_ref_progress_50p = snap_ref_progress.copy()
-            snap_ref_progress_50p['progress'] = '50%'
-
-            snap_ref_progress_90p = snap_ref_progress.copy()
-            snap_ref_progress_90p['progress'] = '90%'
-
-            mock_snapshot_get.side_effect = [
-                snap_ref_progress_0p, snap_ref_progress_50p,
-                snap_ref_progress_90p
-            ]
+            mock_snapshot_get.side_effect = SideEffectList(
+                snap_ref,
+                progress = ['0%', '50%', '90%'])
 
             drv._create_snapshot_online(snap_ref, snap_file, snap_path)
             mock_do_create_snapshot.\
@@ -999,7 +986,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = self._simple_volume()
-        volume['status'] = 'in-use'
+        volume.status = 'in-use'
 
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
         volume_file = 'volume-%s' % self.VOLUME_UUID
@@ -1009,11 +996,12 @@ class GlusterFsDriverTestCase(test.TestCase):
 
         ctxt = context.RequestContext('fake_user', 'fake_project')
 
-        snap_ref = {'name': 'test snap (online)',
-                    'volume_id': self.VOLUME_UUID,
-                    'volume': volume,
-                    'id': self.SNAP_UUID,
-                    'context': ctxt}
+        snap_ref = fake_snapshot.fake_snapshot_obj(
+            ctxt,
+            display_name='test snap (online)',
+            volume_id=self.VOLUME_UUID,
+            id=self.SNAP_UUID)
+        snap_ref.context = ctxt
 
         snap_path = '%s.%s' % (volume_path, self.SNAP_UUID)
         snap_file = '%s.%s' % (volume_file, self.SNAP_UUID)
@@ -1022,23 +1010,11 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(db, 'snapshot_get') as mock_snapshot_get,\
                 mock.patch.object(drv, '_nova') as mock_nova,\
                 mock.patch.object(time, 'sleep') as mock_sleep:
-            snap_ref_progress = snap_ref.copy()
-            snap_ref_progress['status'] = fields.SnapshotStatus.CREATING
 
-            snap_ref_progress_0p = snap_ref_progress.copy()
-            snap_ref_progress_0p['progress'] = '0%'
-
-            snap_ref_progress_50p = snap_ref_progress.copy()
-            snap_ref_progress_50p['progress'] = '50%'
-
-            snap_ref_progress_99p = snap_ref_progress.copy()
-            snap_ref_progress_99p['progress'] = '99%'
-            snap_ref_progress_99p['status'] = fields.SnapshotStatus.ERROR
-
-            mock_snapshot_get.side_effect = [
-                snap_ref_progress_0p, snap_ref_progress_50p,
-                snap_ref_progress_99p
-            ]
+            mock_snapshot_get.side_effect = SideEffectList(
+                snap_ref,
+                progress = ['0%', '50%', '99%'],
+                status = ["creating", "creating", "error"])
 
             self.assertRaisesAndMessageMatches(
                 exception.RemoteFSException,
@@ -1054,15 +1030,19 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = self._simple_volume()
-        volume['status'] = 'in-use'
+        volume.status = 'in-use'
 
         ctxt = context.RequestContext('fake_user', 'fake_project')
 
-        snap_ref = {'name': 'test snap to delete (online)',
-                    'volume_id': self.VOLUME_UUID,
-                    'volume': volume,
-                    'id': self.SNAP_UUID,
-                    'context': ctxt}
+        snap_ref = fake_snapshot.fake_snapshot_obj(
+            ctxt,
+            display_name='test snap to delete (online)',
+            volume_id=self.VOLUME_UUID,
+            status="deleting",
+            id=self.SNAP_UUID)
+        snap_ref.context = ctxt
+
+        snap_ref.volume = volume
 
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
         volume_file = 'volume-%s' % self.VOLUME_UUID
@@ -1120,22 +1100,8 @@ class GlusterFsDriverTestCase(test.TestCase):
                 'volume_id': self.VOLUME_UUID
             }
 
-            snap_ref_progress = snap_ref.copy()
-            snap_ref_progress['status'] = 'deleting'
-
-            snap_ref_progress_0p = snap_ref_progress.copy()
-            snap_ref_progress_0p['progress'] = '0%'
-
-            snap_ref_progress_50p = snap_ref_progress.copy()
-            snap_ref_progress_50p['progress'] = '50%'
-
-            snap_ref_progress_90p = snap_ref_progress.copy()
-            snap_ref_progress_90p['progress'] = '90%'
-
-            mock_snapshot_get.side_effect = [
-                snap_ref_progress_0p, snap_ref_progress_50p,
-                snap_ref_progress_90p
-            ]
+            mock_snapshot_get.side_effect = SideEffectList(
+                snap_ref, progress = ['0%', '50%', '90%'])
 
             drv.delete_snapshot(snap_ref)
 
@@ -1156,15 +1122,18 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = self._simple_volume()
-        volume['status'] = 'in-use'
+        volume.status = 'in-use'
 
         ctxt = context.RequestContext('fake_user', 'fake_project')
 
-        snap_ref = {'name': 'test snap to delete (online)',
-                    'volume_id': self.VOLUME_UUID,
-                    'volume': volume,
-                    'id': self.SNAP_UUID,
-                    'context': ctxt}
+        snap_ref = fake_snapshot.fake_snapshot_obj(
+            ctxt,
+            display_name='test snap to delete (online)',
+            volume_id=self.VOLUME_UUID,
+            status='deleting',
+            id=self.SNAP_UUID)
+        snap_ref.volume = volume
+        snap_ref.context = ctxt
 
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
         volume_file = 'volume-%s' % self.VOLUME_UUID
@@ -1225,21 +1194,8 @@ class GlusterFsDriverTestCase(test.TestCase):
                            'file_to_merge': snap_file,
                            'volume_id': self.VOLUME_UUID}
 
-            snap_ref_progress = snap_ref.copy()
-            snap_ref_progress['status'] = 'deleting'
-
-            snap_ref_progress_0p = snap_ref_progress.copy()
-            snap_ref_progress_0p['progress'] = '0%'
-
-            snap_ref_progress_50p = snap_ref_progress.copy()
-            snap_ref_progress_50p['progress'] = '50%'
-
-            snap_ref_progress_90p = snap_ref_progress.copy()
-            snap_ref_progress_90p['progress'] = '90%'
-
-            mock_snapshot_get.side_effect = [
-                snap_ref_progress_0p, snap_ref_progress_50p,
-                snap_ref_progress_90p]
+            mock_snapshot_get.side_effect = SideEffectList(
+                snap_ref, progress = ['0%', '50%', '90%'])
 
             drv.delete_snapshot(snap_ref)
 
@@ -1260,15 +1216,17 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = self._simple_volume()
-        volume['status'] = 'in-use'
+        volume.status = 'in-use'
 
         ctxt = context.RequestContext('fake_user', 'fake_project')
 
-        snap_ref = {'name': 'test snap to delete (online)',
-                    'volume_id': self.VOLUME_UUID,
-                    'volume': volume,
-                    'id': self.SNAP_UUID,
-                    'context': ctxt}
+        snap_ref = fake_snapshot.fake_snapshot_obj(
+            ctxt,
+            display_name='test snap to delete (online)',
+            volume_id=self.VOLUME_UUID,
+            id=self.SNAP_UUID)
+        snap_ref.volume = volume
+        snap_ref.context = ctxt
 
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
         volume_file = 'volume-%s' % self.VOLUME_UUID
@@ -1320,23 +1278,10 @@ class GlusterFsDriverTestCase(test.TestCase):
                 return paths[args[0]]
 
             mock_qemu_img_info.side_effect = img_info_side_effect
-
-            snap_ref_progress = snap_ref.copy()
-            snap_ref_progress['status'] = 'deleting'
-
-            snap_ref_progress_0p = snap_ref_progress.copy()
-            snap_ref_progress_0p['progress'] = '0%'
-
-            snap_ref_progress_50p = snap_ref_progress.copy()
-            snap_ref_progress_50p['progress'] = '50%'
-
-            snap_ref_progress_90p = snap_ref_progress.copy()
-            snap_ref_progress_90p['status'] = 'error_deleting'
-            snap_ref_progress_90p['progress'] = '90%'
-
-            mock_snapshot_get.side_effect = [
-                snap_ref_progress_0p, snap_ref_progress_50p,
-                snap_ref_progress_90p]
+            mock_snapshot_get.side_effect = SideEffectList(
+                snap_ref,
+                progress = ['0%', '50%', '99%'],
+                status = ['deleting', 'deleting', 'error'])
             self.assertRaisesAndMessageMatches(exception.RemoteFSException,
                                                'Unable to delete snapshot',
                                                drv.delete_snapshot,
@@ -1355,9 +1300,9 @@ class GlusterFsDriverTestCase(test.TestCase):
                              self.TEST_MNT_POINT_BASE)
 
         volume = self._simple_volume()
-        vol_filename = volume['name']
-        vol_filename_2 = volume['name'] + '.abcd'
-        vol_filename_3 = volume['name'] + '.efef'
+        vol_filename = volume.name
+        vol_filename_2 = volume.name + '.abcd'
+        vol_filename_3 = volume.name + '.efef'
         hashed = drv._get_hash_str(self.TEST_EXPORT1)
         vol_dir = '%s/%s' % (self.TEST_MNT_POINT_BASE, hashed)
         vol_path = '%s/%s' % (vol_dir, vol_filename)
@@ -1432,25 +1377,29 @@ class GlusterFsDriverTestCase(test.TestCase):
 
             vol_dir = os.path.join(self.TEST_MNT_POINT_BASE,
                                    drv._get_hash_str(self.TEST_EXPORT1))
-            src_vol_path = os.path.join(vol_dir, src_volume['name'])
-            dest_vol_path = os.path.join(vol_dir, dest_volume['name'])
-            snapshot = {'volume_name': src_volume['name'],
-                        'name': 'clone-snap-%s' % src_volume['id'],
-                        'size': src_volume['size'],
-                        'volume_size': src_volume['size'],
-                        'volume_id': src_volume['id'],
-                        'id': 'tmp-snap-%s' % src_volume['id'],
-                        'volume': src_volume}
-            snap_file = dest_volume['name'] + '.' + snapshot['id']
-            size = dest_volume['size']
+            src_vol_path = os.path.join(vol_dir, src_volume.name)
+            dest_vol_path = os.path.join(vol_dir, dest_volume.name)
+
+            snapshot = fake_snapshot.fake_snapshot_obj(
+                self.context,
+                volume_name=src_volume.name,
+                display_name='clone-snap-%s' % src_volume.id,
+                size=src_volume.size,
+                volume_size=src_volume.size,
+                volume_id=src_volume.id,
+                id=self.SNAP_UUID)
+            snapshot.volume = src_volume
+
+            snap_file = dest_volume.name + '.' + snapshot.id
+            size = dest_volume.size
             mock_read_info_file.return_value = {'active': snap_file,
-                                                snapshot['id']: snap_file}
+                                                snapshot.id: snap_file}
             qemu_img_output = """image: %s
             file format: raw
             virtual size: 1.0G (1073741824 bytes)
             disk size: 173K
             backing file: %s
-            """ % (snap_file, src_volume['name'])
+            """ % (snap_file, src_volume.name)
             img_info = imageutils.QemuImgInfo(qemu_img_output)
             mock_qemu_img_info.return_value = img_info
 
@@ -1464,18 +1413,20 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         src_volume = self._simple_volume()
-        snap_ref = {'volume_name': src_volume['name'],
-                    'name': 'clone-snap-%s' % src_volume['id'],
-                    'size': src_volume['size'],
-                    'volume_size': src_volume['size'],
-                    'volume_id': src_volume['id'],
-                    'id': 'tmp-snap-%s' % src_volume['id'],
-                    'volume': src_volume,
-                    'status': 'available'}
+        snap_ref = fake_snapshot.fake_snapshot_obj(
+            self.context,
+            volume_name=src_volume.name,
+            display_name='clone-snap-%s' % src_volume.id,
+            size=src_volume.size,
+            volume_size=src_volume.size,
+            volume_id=src_volume.id,
+            id=self.SNAP_UUID,
+            status='available')
+        snap_ref.volume = src_volume
 
-        new_volume = DumbVolume()
-        new_volume['id'] = self.VOLUME_UUID
-        new_volume['size'] = snap_ref['size']
+        new_volume = fake_volume.fake_volume_obj(self.context,
+                                                 id=self.VOLUME_UUID,
+                                                 size=snap_ref.volume.size)
 
         with mock.patch.object(drv, '_ensure_shares_mounted') as \
                 mock_ensure_shares_mounted,\
@@ -1492,7 +1443,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             mock_do_create_volume.assert_called_once_with(new_volume)
             mock_copy_volume.assert_called_once_with(snap_ref,
                                                      new_volume,
-                                                     new_volume['size'])
+                                                     new_volume.size)
 
     def test_initialize_connection(self):
         drv = self._driver
@@ -1502,14 +1453,14 @@ class GlusterFsDriverTestCase(test.TestCase):
         file format: raw
         virtual size: 1.0G (1073741824 bytes)
         disk size: 173K
-        """ % volume['name']
+        """ % volume.name
         img_info = imageutils.QemuImgInfo(qemu_img_output)
 
         with mock.patch.object(drv, 'get_active_image_from_info') as \
                 mock_get_active_image_from_info,\
                 mock.patch.object(image_utils, 'qemu_img_info') as \
                 mock_qemu_img_info:
-            mock_get_active_image_from_info.return_value = volume['name']
+            mock_get_active_image_from_info.return_value = volume.name
             mock_qemu_img_info.return_value = img_info
 
             conn_info = drv.initialize_connection(volume, None)
@@ -1539,7 +1490,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_backup_volume:
             ctxt = context.RequestContext('fake_user', 'fake_project')
             volume = self._simple_volume()
-            backup = {'volume_id': volume['id']}
+            backup = {'volume_id': volume.id}
             mock_volume_get.return_value = volume
             mock_get_active_image_from_info.return_value = '/some/path'
 
@@ -1566,7 +1517,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_backup_volume:
             ctxt = context.RequestContext('fake_user', 'fake_project')
             volume = self._simple_volume()
-            backup = {'volume_id': volume['id']}
+            backup = {'volume_id': volume.id}
             mock_volume_get.return_value = volume
             mock_get_active_image_from_info.return_value = '/some/file2'
 
@@ -1586,7 +1537,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_snapshot_get_all_for_volume:
             ctxt = context.RequestContext('fake_user', 'fake_project')
             volume = self._simple_volume()
-            backup = {'volume_id': volume['id']}
+            backup = {'volume_id': volume.id}
             mock_snapshot_get_all_for_volume.return_value = [
                 {'snap1': 'a'},
                 {'snap2': 'b'}
@@ -1606,7 +1557,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_qemu_img_info:
             ctxt = context.RequestContext('fake_user', 'fake_project')
             volume = self._simple_volume()
-            backup = {'volume_id': volume['id']}
+            backup = {'volume_id': volume.id}
             mock_volume_get.return_value = volume
             mock_get_active_image_from_info.return_value = '/some/path/file2'
 
@@ -1629,7 +1580,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock.patch.object(drv, '_qemu_img_info') as mock_qemu_img_info:
             ctxt = context.RequestContext('fake_user', 'fake_project')
             volume = self._simple_volume()
-            backup = {'volume_id': volume['id']}
+            backup = {'volume_id': volume.id}
             mock_volume_get.return_value = volume
             mock_get_active_image_from_info.return_value = '/some/path'
 
@@ -1651,7 +1602,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = self._simple_volume()
-        volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume['name'])
+        volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume.name)
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
         with mock.patch.object(drv, 'get_active_image_from_info') as \
@@ -1664,7 +1615,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_upload_volume, \
                 mock.patch.object(image_utils, 'create_temporary_file') as \
                 mock_create_temporary_file:
-            mock_get_active_image_from_info.return_value = volume['name']
+            mock_get_active_image_from_info.return_value = volume.name
 
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
 
@@ -1674,7 +1625,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             file format: raw
             virtual size: 1.0G (1073741824 bytes)
             disk size: 173K
-            """ % volume['name']
+            """ % volume.name
             img_info = imageutils.QemuImgInfo(qemu_img_output)
             mock_qemu_img_info.return_value = img_info
 
@@ -1694,7 +1645,7 @@ class GlusterFsDriverTestCase(test.TestCase):
         drv = self._driver
 
         volume = self._simple_volume()
-        volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume['name'])
+        volume_path = '%s/%s' % (self.TEST_MNT_POINT, volume.name)
         image_meta = {'id': '10958016-e196-42e3-9e7f-5d8927ae3099'}
 
         with mock.patch.object(drv, 'get_active_image_from_info') as \
@@ -1709,7 +1660,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_upload_volume, \
                 mock.patch.object(image_utils, 'create_temporary_file') as \
                 mock_create_temporary_file:
-            mock_get_active_image_from_info.return_value = volume['name']
+            mock_get_active_image_from_info.return_value = volume.name
 
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
 
@@ -1719,7 +1670,7 @@ class GlusterFsDriverTestCase(test.TestCase):
             file format: qcow2
             virtual size: 1.0G (1073741824 bytes)
             disk size: 173K
-            """ % volume['name']
+            """ % volume.name
             img_info = imageutils.QemuImgInfo(qemu_img_output)
             mock_qemu_img_info.return_value = img_info
 
@@ -1757,7 +1708,7 @@ class GlusterFsDriverTestCase(test.TestCase):
                 mock_upload_volume, \
                 mock.patch.object(image_utils, 'create_temporary_file') as \
                 mock_create_temporary_file:
-            mock_get_active_image_from_info.return_value = volume['name']
+            mock_get_active_image_from_info.return_value = volume.name
 
             mock_local_volume_dir.return_value = self.TEST_MNT_POINT
 

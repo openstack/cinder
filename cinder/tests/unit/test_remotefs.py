@@ -12,15 +12,19 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import collections
 import copy
 import os
 
 import ddt
 import mock
 
+from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume.drivers import remotefs
 
@@ -28,25 +32,7 @@ from cinder.volume.drivers import remotefs
 @ddt.ddt
 class RemoteFsSnapDriverTestCase(test.TestCase):
 
-    _FAKE_CONTEXT = 'fake_context'
-    _FAKE_VOLUME_ID = '4f711859-4928-4cb7-801a-a50c37ceaccc'
-    _FAKE_VOLUME_NAME = 'volume-%s' % _FAKE_VOLUME_ID
-    _FAKE_VOLUME = {'id': _FAKE_VOLUME_ID,
-                    'size': 1,
-                    'provider_location': 'fake_share',
-                    'name': _FAKE_VOLUME_NAME,
-                    'status': 'available'}
     _FAKE_MNT_POINT = '/mnt/fake_hash'
-    _FAKE_VOLUME_PATH = os.path.join(_FAKE_MNT_POINT,
-                                     _FAKE_VOLUME_NAME)
-    _FAKE_SNAPSHOT_ID = '5g811859-4928-4cb7-801a-a50c37ceacba'
-    _FAKE_SNAPSHOT = {'context': _FAKE_CONTEXT,
-                      'id': _FAKE_SNAPSHOT_ID,
-                      'volume': _FAKE_VOLUME,
-                      'volume_id': _FAKE_VOLUME_ID,
-                      'status': 'available',
-                      'volume_size': 1}
-    _FAKE_SNAPSHOT_PATH = (_FAKE_VOLUME_PATH + '.' + _FAKE_SNAPSHOT_ID)
 
     def setUp(self):
         super(RemoteFsSnapDriverTestCase, self).setUp()
@@ -55,21 +41,32 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._driver._execute = mock.Mock()
         self._driver._delete = mock.Mock()
 
+        self.context = context.get_admin_context()
+
+        self._fake_volume = fake_volume.fake_volume_obj(
+            self.context, provider_location='fake_share')
+        self._fake_volume_path = os.path.join(self._FAKE_MNT_POINT,
+                                              self._fake_volume.name)
+        self._fake_snapshot = fake_snapshot.fake_snapshot_obj(self.context)
+        self._fake_snapshot_path = (self._fake_volume_path + '.' +
+                                    self._fake_snapshot.id)
+        self._fake_snapshot.volume = self._fake_volume
+
     def _test_delete_snapshot(self, volume_in_use=False,
                               stale_snapshot=False,
                               is_active_image=True):
         # If the snapshot is not the active image, it is guaranteed that
         # another snapshot exists having it as backing file.
 
-        fake_snapshot_name = os.path.basename(self._FAKE_SNAPSHOT_PATH)
+        fake_snapshot_name = os.path.basename(self._fake_snapshot_path)
         fake_info = {'active': fake_snapshot_name,
-                     self._FAKE_SNAPSHOT['id']: fake_snapshot_name}
+                     self._fake_snapshot.id: fake_snapshot_name}
         fake_snap_img_info = mock.Mock()
         fake_base_img_info = mock.Mock()
         if stale_snapshot:
             fake_snap_img_info.backing_file = None
         else:
-            fake_snap_img_info.backing_file = self._FAKE_VOLUME_NAME
+            fake_snap_img_info.backing_file = self._fake_volume.name
         fake_snap_img_info.file_format = 'qcow2'
         fake_base_img_info.backing_file = None
         fake_base_img_info.file_format = 'raw'
@@ -91,72 +88,71 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
         expected_info = {
             'active': fake_snapshot_name,
-            self._FAKE_SNAPSHOT_ID: fake_snapshot_name
+            self._fake_snapshot.id: fake_snapshot_name
         }
 
         if volume_in_use:
-            fake_snapshot = copy.deepcopy(self._FAKE_SNAPSHOT)
-            fake_snapshot['volume']['status'] = 'in-use'
+            self._fake_snapshot.volume.status = 'in-use'
 
             self._driver._read_info_file.return_value = fake_info
 
-            self._driver._delete_snapshot(fake_snapshot)
+            self._driver._delete_snapshot(self._fake_snapshot)
             if stale_snapshot:
                 self._driver._delete_stale_snapshot.assert_called_once_with(
-                    fake_snapshot)
+                    self._fake_snapshot)
             else:
                 expected_online_delete_info = {
                     'active_file': fake_snapshot_name,
                     'snapshot_file': fake_snapshot_name,
-                    'base_file': self._FAKE_VOLUME_NAME,
+                    'base_file': self._fake_volume.name,
                     'base_id': None,
                     'new_base_file': None
                 }
                 self._driver._delete_snapshot_online.assert_called_once_with(
-                    self._FAKE_CONTEXT, fake_snapshot,
+                    self.context, self._fake_snapshot,
                     expected_online_delete_info)
 
         elif is_active_image:
             self._driver._read_info_file.return_value = fake_info
 
-            self._driver._delete_snapshot(self._FAKE_SNAPSHOT)
+            self._driver._delete_snapshot(self._fake_snapshot)
 
             self._driver._img_commit.assert_called_once_with(
-                self._FAKE_SNAPSHOT_PATH)
-            self.assertNotIn(self._FAKE_SNAPSHOT_ID, fake_info)
+                self._fake_snapshot_path)
+            self.assertNotIn(self._fake_snapshot.id, fake_info)
             self._driver._write_info_file.assert_called_once_with(
                 mock.sentinel.fake_info_path, fake_info)
         else:
             fake_upper_snap_id = 'fake_upper_snap_id'
             fake_upper_snap_path = (
-                self._FAKE_VOLUME_PATH + '-snapshot' + fake_upper_snap_id)
+                self._fake_volume_path + '-snapshot' + fake_upper_snap_id)
             fake_upper_snap_name = os.path.basename(fake_upper_snap_path)
 
             fake_backing_chain = [
                 {'filename': fake_upper_snap_name,
                  'backing-filename': fake_snapshot_name},
                 {'filename': fake_snapshot_name,
-                 'backing-filename': self._FAKE_VOLUME_NAME},
-                {'filename': self._FAKE_VOLUME_NAME,
+                 'backing-filename': self._fake_volume.name},
+                {'filename': self._fake_volume.name,
                  'backing-filename': None}]
 
             fake_info[fake_upper_snap_id] = fake_upper_snap_name
-            fake_info[self._FAKE_SNAPSHOT_ID] = fake_snapshot_name
+            fake_info[self._fake_snapshot.id] = fake_snapshot_name
             fake_info['active'] = fake_upper_snap_name
 
             expected_info = copy.deepcopy(fake_info)
-            del expected_info[self._FAKE_SNAPSHOT_ID]
+            del expected_info[self._fake_snapshot.id]
 
             self._driver._read_info_file.return_value = fake_info
             self._driver._get_backing_chain_for_path = mock.Mock(
                 return_value=fake_backing_chain)
 
-            self._driver._delete_snapshot(self._FAKE_SNAPSHOT)
+            self._driver._delete_snapshot(self._fake_snapshot)
 
             self._driver._img_commit.assert_called_once_with(
-                self._FAKE_SNAPSHOT_PATH)
+                self._fake_snapshot_path)
             self._driver._rebase_img.assert_called_once_with(
-                fake_upper_snap_path, self._FAKE_VOLUME_NAME,
+                fake_upper_snap_path, self._fake_volume.name,
                 fake_base_img_info.file_format)
             self._driver._write_info_file.assert_called_once_with(
                 mock.sentinel.fake_info_path, expected_info)
@@ -175,12 +171,12 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._test_delete_snapshot(is_active_image=False)
 
     def test_delete_stale_snapshot(self):
-        fake_snapshot_name = os.path.basename(self._FAKE_SNAPSHOT_PATH)
+        fake_snapshot_name = os.path.basename(self._fake_snapshot_path)
         fake_snap_info = {
-            'active': self._FAKE_VOLUME_NAME,
-            self._FAKE_SNAPSHOT_ID: fake_snapshot_name
+            'active': self._fake_volume.name,
+            self._fake_snapshot.id: fake_snapshot_name
         }
-        expected_info = {'active': self._FAKE_VOLUME_NAME}
+        expected_info = {'active': self._fake_volume.name}
 
         self._driver._local_path_volume_info = mock.Mock(
             return_value=mock.sentinel.fake_info_path)
@@ -190,42 +186,41 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             return_value=self._FAKE_MNT_POINT)
         self._driver._write_info_file = mock.Mock()
 
-        self._driver._delete_stale_snapshot(self._FAKE_SNAPSHOT)
+        self._driver._delete_stale_snapshot(self._fake_snapshot)
 
-        self._driver._delete.assert_called_once_with(self._FAKE_SNAPSHOT_PATH)
+        self._driver._delete.assert_called_once_with(self._fake_snapshot_path)
         self._driver._write_info_file.assert_called_once_with(
             mock.sentinel.fake_info_path, expected_info)
 
     def test_do_create_snapshot(self):
         self._driver._local_volume_dir = mock.Mock(
-            return_value=self._FAKE_VOLUME_PATH)
+            return_value=self._fake_volume_path)
         fake_backing_path = os.path.join(
             self._driver._local_volume_dir(),
-            self._FAKE_VOLUME_NAME)
+            self._fake_volume.name)
 
         self._driver._execute = mock.Mock()
         self._driver._set_rw_permissions = mock.Mock()
         self._driver._qemu_img_info = mock.Mock(
             return_value=mock.Mock(file_format=mock.sentinel.backing_fmt))
 
-        self._driver._do_create_snapshot(self._FAKE_SNAPSHOT,
-                                         self._FAKE_VOLUME_NAME,
-                                         self._FAKE_SNAPSHOT_PATH)
+        self._driver._do_create_snapshot(self._fake_snapshot,
+                                         self._fake_volume.name,
+                                         self._fake_snapshot_path)
         command1 = ['qemu-img', 'create', '-f', 'qcow2', '-o',
                     'backing_file=%s' % fake_backing_path,
-                    self._FAKE_SNAPSHOT_PATH]
+                    self._fake_snapshot_path]
         command2 = ['qemu-img', 'rebase', '-u',
-                    '-b', self._FAKE_VOLUME_NAME,
+                    '-b', self._fake_volume.name,
                     '-F', mock.sentinel.backing_fmt,
-                    self._FAKE_SNAPSHOT_PATH]
+                    self._fake_snapshot_path]
 
         self._driver._execute.assert_any_call(*command1, run_as_root=True)
         self._driver._execute.assert_any_call(*command2, run_as_root=True)
 
     def _test_create_snapshot(self, volume_in_use=False):
-        fake_snapshot = copy.deepcopy(self._FAKE_SNAPSHOT)
         fake_snapshot_info = {}
-        fake_snapshot_file_name = os.path.basename(self._FAKE_SNAPSHOT_PATH)
+        fake_snapshot_file_name = os.path.basename(self._fake_snapshot_path)
 
         self._driver._local_path_volume_info = mock.Mock(
             return_value=mock.sentinel.fake_info_path)
@@ -235,28 +230,28 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._driver._create_snapshot_online = mock.Mock()
         self._driver._write_info_file = mock.Mock()
         self._driver.get_active_image_from_info = mock.Mock(
-            return_value=self._FAKE_VOLUME_NAME)
+            return_value=self._fake_volume.name)
         self._driver._get_new_snap_path = mock.Mock(
-            return_value=self._FAKE_SNAPSHOT_PATH)
+            return_value=self._fake_snapshot_path)
 
         expected_snapshot_info = {
             'active': fake_snapshot_file_name,
-            self._FAKE_SNAPSHOT_ID: fake_snapshot_file_name
+            self._fake_snapshot.id: fake_snapshot_file_name
         }
 
         if volume_in_use:
-            fake_snapshot['volume']['status'] = 'in-use'
+            self._fake_snapshot.volume.status = 'in-use'
             expected_method_called = '_create_snapshot_online'
         else:
-            fake_snapshot['volume']['status'] = 'available'
+            self._fake_snapshot.volume.status = 'available'
             expected_method_called = '_do_create_snapshot'
 
-        self._driver._create_snapshot(fake_snapshot)
+        self._driver._create_snapshot(self._fake_snapshot)
 
         fake_method = getattr(self._driver, expected_method_called)
         fake_method.assert_called_with(
-            fake_snapshot, self._FAKE_VOLUME_NAME,
-            self._FAKE_SNAPSHOT_PATH)
+            self._fake_snapshot, self._fake_volume.name,
+            self._fake_snapshot_path)
         self._driver._write_info_file.assert_called_with(
             mock.sentinel.fake_info_path,
             expected_snapshot_info)
@@ -268,12 +263,10 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._test_create_snapshot(volume_in_use=True)
 
     def test_create_snapshot_invalid_volume(self):
-        fake_snapshot = copy.deepcopy(self._FAKE_SNAPSHOT)
-        fake_snapshot['volume']['status'] = 'error'
-
+        self._fake_snapshot.volume.status = 'error'
         self.assertRaises(exception.InvalidVolume,
                           self._driver._create_snapshot,
-                          fake_snapshot)
+                          self._fake_snapshot)
 
     @mock.patch('cinder.db.snapshot_get')
     @mock.patch('time.sleep')
@@ -294,18 +287,18 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 mock_do_create_snapshot:
             self.assertRaises(exception.RemoteFSConcurrentRequest,
                               self._driver._create_snapshot_online,
-                              self._FAKE_SNAPSHOT,
-                              self._FAKE_VOLUME_NAME,
-                              self._FAKE_SNAPSHOT_PATH)
+                              self._fake_snapshot,
+                              self._fake_volume.name,
+                              self._fake_snapshot_path)
 
         mock_do_create_snapshot.assert_called_once_with(
-            self._FAKE_SNAPSHOT, self._FAKE_VOLUME_NAME,
-            self._FAKE_SNAPSHOT_PATH)
+            self._fake_snapshot, self._fake_volume.name,
+            self._fake_snapshot_path)
         self.assertEqual([mock.call(1), mock.call(1)],
                          mock_sleep.call_args_list)
         self.assertEqual(3, mock_snapshot_get.call_count)
-        mock_snapshot_get.assert_called_with(self._FAKE_SNAPSHOT['context'],
-                                             self._FAKE_SNAPSHOT['id'])
+        mock_snapshot_get.assert_called_with(self._fake_snapshot._context,
+                                             self._fake_snapshot.id)
 
     @mock.patch.object(utils, 'synchronized')
     def _locked_volume_operation_test_helper(self, mock_synchronized, func,
@@ -318,7 +311,7 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
 
         mock_synchronized.side_effect = mock_decorator
         expected_lock = '%s-%s' % (self._driver.driver_prefix,
-                                   self._FAKE_VOLUME_ID)
+                                   self._fake_volume.id)
 
         if expected_exception:
             self.assertRaises(expected_exception, func,
@@ -332,7 +325,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
             self.assertEqual(mock.sentinel.ret_val, ret_val)
 
     def test_locked_volume_id_operation(self):
-        mock_volume = {'id': self._FAKE_VOLUME_ID}
+        mock_volume = mock.Mock()
+        mock_volume.id = self._fake_volume.id
 
         @remotefs.locked_volume_id_operation
         def synchronized_func(inst, volume):
@@ -342,7 +336,8 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                                                   volume=mock_volume)
 
     def test_locked_volume_id_snapshot_operation(self):
-        mock_snapshot = {'volume': {'id': self._FAKE_VOLUME_ID}}
+        mock_snapshot = mock.Mock()
+        mock_snapshot.volume.id = self._fake_volume.id
 
         @remotefs.locked_volume_id_operation
         def synchronized_func(inst, snapshot):
@@ -432,22 +427,36 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
                 mock.patch.object(drv, '_copy_volume_from_snapshot') as \
                 mock_copy_volume_from_snapshot:
 
-            volume = self._FAKE_VOLUME.copy()
-            src_vref = self._FAKE_VOLUME.copy()
-            src_vref['id'] = '375e32b2-804a-49f2-b282-85d1d5a5b9e1'
-            src_vref['name'] = 'volume-%s' % src_vref['id']
-            volume_ref = {'id': volume['id'],
-                          'name': volume['name'],
-                          'status': volume['status'],
-                          'provider_location': volume['provider_location'],
-                          'size': volume['size']}
-            snap_ref = {'volume_name': volume['name'],
-                        'name': 'clone-snap-%s' % src_vref['id'],
-                        'size': src_vref['size'],
-                        'volume_size': src_vref['size'],
-                        'volume_id': src_vref['id'],
-                        'id': 'tmp-snap-%s' % src_vref['id'],
-                        'volume': src_vref}
+            volume = fake_volume.fake_volume_obj(self.context)
+            src_vref_id = '375e32b2-804a-49f2-b282-85d1d5a5b9e1'
+            src_vref = fake_volume.fake_volume_obj(
+                self.context,
+                id=src_vref_id,
+                name='volume-%s' % src_vref_id)
+
+            vol_attrs = ['provider_location', 'size', 'id', 'name', 'status',
+                         'volume_type', 'metadata']
+            Volume = collections.namedtuple('Volume', vol_attrs)
+
+            snap_attrs = ['volume_name', 'volume_size', 'name',
+                          'volume_id', 'id', 'volume']
+            Snapshot = collections.namedtuple('Snapshot', snap_attrs)
+
+            volume_ref = Volume(id=volume.id,
+                                name=volume.name,
+                                status=volume.status,
+                                provider_location=volume.provider_location,
+                                size=volume.size,
+                                volume_type=volume.volume_type,
+                                metadata=volume.metadata)
+
+            snap_ref = Snapshot(volume_name=volume.name,
+                                name='clone-snap-%s' % src_vref.id,
+                                volume_size=src_vref.size,
+                                volume_id=src_vref.id,
+                                id='tmp-snap-%s' % src_vref.id,
+                                volume=src_vref)
+
             drv.create_cloned_volume(volume, src_vref)
 
             mock_create_snapshot.assert_called_once_with(snap_ref)

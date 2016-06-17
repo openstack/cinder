@@ -91,7 +91,7 @@ def update_allocation_data(delete=False):
         if delete:
             allocated_size_gb = None
         else:
-            allocated_size_gb = requested_size or volume['size']
+            allocated_size_gb = requested_size or volume.size
 
         inst.update_disk_allocation_data(volume, allocated_size_gb)
         return ret_val
@@ -151,11 +151,11 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         active_file = self.get_active_image_from_info(volume)
         fmt = self.get_volume_format(volume)
 
-        data = {'export': volume['provider_location'],
+        data = {'export': volume.provider_location,
                 'format': fmt,
                 'name': active_file}
-        if volume['provider_location'] in self.shares:
-            data['options'] = self.shares[volume['provider_location']]
+        if volume.provider_location in self.shares:
+            data['options'] = self.shares[volume.provider_location]
         return {
             'driver_volume_type': self.driver_volume_type,
             'data': data,
@@ -208,8 +208,8 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
                 self._allocation_data = json.load(f)
 
     def update_disk_allocation_data(self, volume, virtual_size_gb=None):
-        volume_name = volume['name']
-        smbfs_share = volume['provider_location']
+        volume_name = volume.name
+        smbfs_share = volume.provider_location
         if smbfs_share:
             share_hash = self._get_hash_str(smbfs_share)
         else:
@@ -259,7 +259,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
     def _get_local_volume_path_template(self, volume):
         local_dir = self._local_volume_dir(volume)
-        local_path_template = os.path.join(local_dir, volume['name'])
+        local_path_template = os.path.join(local_dir, volume.name)
         return local_path_template
 
     def _lookup_local_volume_path(self, volume_path_template):
@@ -273,9 +273,9 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return '%s%s' % (self.local_path(volume), '.info')
 
     def _get_new_snap_path(self, snapshot):
-        vol_path = self.local_path(snapshot['volume'])
+        vol_path = self.local_path(snapshot.volume)
         snap_path, ext = os.path.splitext(vol_path)
-        snap_path += '.' + snapshot['id'] + ext
+        snap_path += '.' + snapshot.id + ext
         return snap_path
 
     def get_volume_format(self, volume, qemu_format=False):
@@ -287,7 +287,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             if ext in self._SUPPORTED_IMAGE_FORMATS:
                 volume_format = ext
             else:
-                info = self._qemu_img_info(volume_path, volume['name'])
+                info = self._qemu_img_info(volume_path, volume.name)
                 volume_format = info.file_format
         else:
             volume_format = (
@@ -305,12 +305,12 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     @update_allocation_data(delete=True)
     def delete_volume(self, volume):
         """Deletes a logical volume."""
-        if not volume['provider_location']:
+        if not volume.provider_location:
             LOG.warning(_LW('Volume %s does not have provider_location '
-                            'specified, skipping.'), volume['name'])
+                            'specified, skipping.'), volume.name)
             return
 
-        self._ensure_share_mounted(volume['provider_location'])
+        self._ensure_share_mounted(volume.provider_location)
         volume_dir = self._local_volume_dir(volume)
         mounted_path = os.path.join(volume_dir,
                                     self.get_active_image_from_info(volume))
@@ -345,7 +345,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         """
         volume_format = self.get_volume_format(volume)
         volume_path = self.local_path(volume)
-        volume_size = volume['size']
+        volume_size = volume.size
 
         LOG.debug("Creating new volume at %s.", volume_path)
 
@@ -472,7 +472,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             snapshot, backing_filename, new_snap_path)
 
     def _check_snapshot_support(self, snapshot):
-        volume_format = self.get_volume_format(snapshot['volume'])
+        volume_format = self.get_volume_format(snapshot.volume)
         # qemu-img does not yet support differencing vhd/vhdx
         if volume_format in (self._DISK_FORMAT_VHD, self._DISK_FORMAT_VHDX):
             err_msg = _("Snapshots are not supported for this volume "
@@ -482,7 +482,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     @remotefs_drv.locked_volume_id_operation
     @update_allocation_data()
     def extend_volume(self, volume, size_gb):
-        LOG.info(_LI('Extending volume %s.'), volume['id'])
+        LOG.info(_LI('Extending volume %s.'), volume.id)
         self._extend_volume(volume, size_gb)
 
     def _extend_volume(self, volume, size_gb):
@@ -491,7 +491,7 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         self._check_extend_volume_support(volume, size_gb)
         LOG.info(_LI('Resizing file to %sG...'), size_gb)
 
-        self._do_extend_volume(volume_path, size_gb, volume['name'])
+        self._do_extend_volume(volume_path, size_gb, volume.name)
 
     def _do_extend_volume(self, volume_path, size_gb, volume_name):
         info = self._qemu_img_info(volume_path, volume_name)
@@ -525,12 +525,12 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
                     'driver when no snapshots exist.')
             raise exception.InvalidVolume(msg)
 
-        extend_by = int(size_gb) - volume['size']
-        if not self._is_share_eligible(volume['provider_location'],
+        extend_by = int(size_gb) - volume.size
+        if not self._is_share_eligible(volume.provider_location,
                                        extend_by):
             raise exception.ExtendVolumeError(reason='Insufficient space to '
                                               'extend volume %s to %sG.'
-                                              % (volume['id'], size_gb))
+                                              % (volume.id, size_gb))
 
     @remotefs_drv.locked_volume_id_operation
     @update_allocation_data()
@@ -546,22 +546,22 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
 
         LOG.debug("Snapshot: %(snap)s, volume: %(vol)s, "
                   "volume_size: %(size)s",
-                  {'snap': snapshot['id'],
-                   'vol': volume['id'],
+                  {'snap': snapshot.id,
+                   'vol': volume.id,
                    'size': volume_size})
 
-        info_path = self._local_path_volume_info(snapshot['volume'])
+        info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
-        vol_dir = self._local_volume_dir(snapshot['volume'])
+        vol_dir = self._local_volume_dir(snapshot.volume)
         out_format = self.get_volume_format(volume, qemu_format=True)
 
-        forward_file = snap_info[snapshot['id']]
+        forward_file = snap_info[snapshot.id]
         forward_path = os.path.join(vol_dir, forward_file)
 
         # Find the file which backs this file, which represents the point
         # when this snapshot was created.
         img_info = self._qemu_img_info(forward_path,
-                                       snapshot['volume']['name'])
+                                       snapshot.volume.name)
         path_to_snap_img = os.path.join(vol_dir, img_info.backing_file)
 
         LOG.debug("Will copy from snapshot at %s", path_to_snap_img)
@@ -583,15 +583,15 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
             self.configuration.volume_dd_blocksize)
 
         self._do_extend_volume(self.local_path(volume),
-                               volume['size'],
-                               volume['name'])
+                               volume.size,
+                               volume.name)
 
         data = image_utils.qemu_img_info(self.local_path(volume))
         virt_size = data.virtual_size / units.Gi
-        if virt_size != volume['size']:
+        if virt_size != volume.size:
             raise exception.ImageUnacceptable(
                 image_id=image_id,
-                reason=(_("Expected volume size was %d") % volume['size'])
+                reason=(_("Expected volume size was %d") % volume.size)
                 + (_(" but size is now %d.") % virt_size))
 
     @remotefs_drv.locked_volume_id_operation
@@ -641,38 +641,15 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
         return flags.strip(',')
 
     def _get_volume_format_spec(self, volume):
-        # This method needs to be able to parse metadata/volume type
-        # specs for volume SQLAlchemy objects and versioned objects,
-        # as the transition to versioned objects is not complete and the
-        # driver may receive either of them.
-        #
-        # TODO(lpetrut): once the transition to oslo.versionedobjects is
-        # complete, we can skip some of those checks.
-        volume_metadata_specs = {}
-        volume_type_specs = {}
+        vol_type = volume.volume_type
+        extra_specs = {}
+        if vol_type and vol_type.extra_specs:
+            extra_specs = vol_type.extra_specs
 
-        if volume.get('metadata') and isinstance(volume.metadata, dict):
-            volume_metadata_specs.update(volume.metadata)
-        elif volume.get('volume_metadata'):
-            volume_metadata_specs.update(
-                {spec.key: spec.value for spec in volume.volume_metadata})
+        extra_specs.update(volume.metadata or {})
 
-        vol_type = volume.get('volume_type')
-        if vol_type:
-            specs = vol_type.get('extra_specs') or {}
-            if isinstance(specs, dict):
-                volume_type_specs.update(specs)
-            else:
-                volume_type_specs.update(
-                    {spec.key: spec.value for spec in specs})
-
-        # In this case, we want the volume metadata specs to take
-        # precedence over the volume type specs.
-        for specs in [volume_metadata_specs, volume_type_specs]:
-            for key, val in specs.items():
-                if 'volume_format' in key:
-                    return val
-        return None
+        return (extra_specs.get('volume_format') or
+                self.configuration.smbfs_default_volume_format)
 
     def _is_file_size_equal(self, path, size):
         """Checks if file size at path is equal to size."""

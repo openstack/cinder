@@ -148,7 +148,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
         pass
 
     def _local_volume_dir(self, volume):
-        hashed = self._get_hash_str(volume['provider_location'])
+        hashed = self._get_hash_str(volume.provider_location)
         path = '%s/%s' % (self.configuration.glusterfs_mount_point_base,
                           hashed)
         return path
@@ -187,13 +187,13 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
 
         self._ensure_shares_mounted()
 
-        volume['provider_location'] = self._find_share(volume['size'])
+        volume.provider_location = self._find_share(volume.size)
 
-        LOG.info(_LI('casted to %s'), volume['provider_location'])
+        LOG.info(_LI('casted to %s'), volume.provider_location)
 
         self._do_create_volume(volume)
 
-        return {'provider_location': volume['provider_location']}
+        return {'provider_location': volume.provider_location}
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume.
@@ -204,20 +204,20 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
 
         LOG.debug("snapshot: %(snap)s, volume: %(vol)s, "
                   "volume_size: %(size)s",
-                  {'snap': snapshot['id'],
-                   'vol': volume['id'],
+                  {'snap': snapshot.id,
+                   'vol': volume.id,
                    'size': volume_size})
 
-        info_path = self._local_path_volume_info(snapshot['volume'])
+        info_path = self._local_path_volume_info(snapshot.volume)
         snap_info = self._read_info_file(info_path)
-        vol_path = self._local_volume_dir(snapshot['volume'])
-        forward_file = snap_info[snapshot['id']]
+        vol_path = self._local_volume_dir(snapshot.volume)
+        forward_file = snap_info[snapshot.id]
         forward_path = os.path.join(vol_path, forward_file)
 
         # Find the file which backs this file, which represents the point
         # when this snapshot was created.
         img_info = self._qemu_img_info(forward_path,
-                                       snapshot['volume']['name'])
+                                       snapshot.volume.name)
         path_to_snap_img = os.path.join(vol_path, img_info.backing_file)
 
         path_to_new_vol = self._local_path_volume(volume)
@@ -239,13 +239,13 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
     def delete_volume(self, volume):
         """Deletes a logical volume."""
 
-        if not volume['provider_location']:
+        if not volume.provider_location:
             LOG.warning(_LW('Volume %s does not have '
                             'provider_location specified, '
-                            'skipping'), volume['name'])
+                            'skipping'), volume.name)
             return
 
-        self._ensure_share_mounted(volume['provider_location'])
+        self._ensure_share_mounted(volume.provider_location)
 
         mounted_path = self._active_volume_path(volume)
 
@@ -266,7 +266,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
     def ensure_export(self, ctx, volume):
         """Synchronously recreates an export for a logical volume."""
 
-        self._ensure_share_mounted(volume['provider_location'])
+        self._ensure_share_mounted(volume.provider_location)
 
     def create_export(self, ctx, volume, connector):
         """Exports the volume."""
@@ -287,16 +287,16 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
         # Find active qcow2 file
         active_file = self.get_active_image_from_info(volume)
         path = '%s/%s/%s' % (self.configuration.glusterfs_mount_point_base,
-                             self._get_hash_str(volume['provider_location']),
+                             self._get_hash_str(volume.provider_location),
                              active_file)
 
-        data = {'export': volume['provider_location'],
+        data = {'export': volume.provider_location,
                 'name': active_file}
-        if volume['provider_location'] in self.shares:
-            data['options'] = self.shares[volume['provider_location']]
+        if volume.provider_location in self.shares:
+            data['options'] = self.shares[volume.provider_location]
 
         # Test file for raw vs. qcow2 format
-        info = self._qemu_img_info(path, volume['name'])
+        info = self._qemu_img_info(path, volume.name)
         data['format'] = info.file_format
         if data['format'] not in ['raw', 'qcow2']:
             msg = _('%s must be a valid raw or qcow2 image.') % path
@@ -316,7 +316,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
     def extend_volume(self, volume, size_gb):
         volume_path = self._active_volume_path(volume)
 
-        info = self._qemu_img_info(volume_path, volume['name'])
+        info = self._qemu_img_info(volume_path, volume.name)
         backing_fmt = info.file_format
 
         if backing_fmt not in ['raw', 'qcow2']:
@@ -333,7 +333,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
         """
 
         volume_path = self.local_path(volume)
-        volume_size = volume['size']
+        volume_size = volume.size
 
         LOG.debug("creating new volume at %s", volume_path)
 
@@ -454,7 +454,7 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriver,
 
         active_file_path = self._active_volume_path(volume)
 
-        info = self._qemu_img_info(active_file_path, volume['name'])
+        info = self._qemu_img_info(active_file_path, volume.name)
 
         if info.backing_file is not None:
             LOG.error(_LE('No snapshots found in database, but %(path)s has '

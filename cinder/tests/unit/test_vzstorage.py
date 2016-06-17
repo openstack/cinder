@@ -21,9 +21,12 @@ import mock
 from os_brick.remotefs import remotefs
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder.volume.drivers import vzstorage
 
 
@@ -37,24 +40,16 @@ class VZStorageTestCase(test.TestCase):
     _FAKE_MNT_POINT = os.path.join(_FAKE_MNT_BASE, 'fake_hash')
     _FAKE_VOLUME_NAME = 'volume-4f711859-4928-4cb7-801a-a50c37ceaccc'
     _FAKE_VOLUME_PATH = os.path.join(_FAKE_MNT_POINT, _FAKE_VOLUME_NAME)
-    _FAKE_VOLUME = {'id': '4f711859-4928-4cb7-801a-a50c37ceaccc',
-                    'size': 1,
-                    'provider_location': _FAKE_SHARE,
-                    'name': _FAKE_VOLUME_NAME,
-                    'status': 'available'}
-    _FAKE_SNAPSHOT_ID = '5g811859-4928-4cb7-801a-a50c37ceacba'
+    _FAKE_SNAPSHOT_ID = '50811859-4928-4cb7-801a-a50c37ceacba'
     _FAKE_SNAPSHOT_PATH = (
         _FAKE_VOLUME_PATH + '-snapshot' + _FAKE_SNAPSHOT_ID)
-    _FAKE_SNAPSHOT = {'id': _FAKE_SNAPSHOT_ID,
-                      'volume': _FAKE_VOLUME,
-                      'status': 'available',
-                      'volume_size': 1}
 
     _FAKE_VZ_CONFIG = mock.MagicMock()
     _FAKE_VZ_CONFIG.vzstorage_shares_config = '/fake/config/path'
     _FAKE_VZ_CONFIG.vzstorage_sparsed_volumes = False
     _FAKE_VZ_CONFIG.vzstorage_used_ratio = 0.7
     _FAKE_VZ_CONFIG.vzstorage_mount_point_base = _FAKE_MNT_BASE
+    _FAKE_VZ_CONFIG.vzstorage_default_volume_format = 'raw'
     _FAKE_VZ_CONFIG.nas_secure_file_operations = 'auto'
     _FAKE_VZ_CONFIG.nas_secure_file_permissions = 'auto'
 
@@ -71,6 +66,26 @@ class VZStorageTestCase(test.TestCase):
             return_value=self._FAKE_MNT_POINT)
         self._vz_driver._execute = mock.Mock()
         self._vz_driver.base = self._FAKE_MNT_BASE
+
+        self.context = context.get_admin_context()
+        vol_type = fake_volume.fake_volume_type_obj(self.context)
+        vol_type.extra_specs = {}
+        _FAKE_VOLUME = {'id': '4f711859-4928-4cb7-801a-a50c37ceaccc',
+                        'size': 1,
+                        'provider_location': self._FAKE_SHARE,
+                        'name': self._FAKE_VOLUME_NAME,
+                        'status': 'available'}
+        self.vol = fake_volume.fake_volume_obj(self.context,
+                                               volume_type_id=vol_type.id,
+                                               **_FAKE_VOLUME)
+        self.vol.volume_type = vol_type
+
+        _FAKE_SNAPSHOT = {'id': self._FAKE_SNAPSHOT_ID,
+                          'status': 'available',
+                          'volume_size': 1}
+        self.snap = fake_snapshot.fake_snapshot_obj(self.context,
+                                                    **_FAKE_SNAPSHOT)
+        self.snap.volume = self.vol
 
     def _path_exists(self, path):
         if path.startswith(self._FAKE_VZ_CONFIG.vzstorage_shares_config):
@@ -135,9 +150,13 @@ class VZStorageTestCase(test.TestCase):
         file_format = 'raw'
         info = mock.Mock()
         info.file_format = file_format
+        snap_info = """{"volume_format": "raw",
+                        "active": "%s"}""" % self.vol.id
         with mock.patch.object(drv, '_qemu_img_info', return_value=info):
-            ret = drv.initialize_connection(self._FAKE_VOLUME, None)
-        name = drv.get_active_image_from_info(self._FAKE_VOLUME)
+            with mock.patch.object(drv, '_read_file',
+                                   return_value=snap_info):
+                ret = drv.initialize_connection(self.vol, None)
+        name = drv.get_active_image_from_info(self.vol)
         expected = {'driver_volume_type': 'vzstorage',
                     'data': {'export': self._FAKE_SHARE,
                              'format': file_format,
@@ -197,9 +216,13 @@ class VZStorageTestCase(test.TestCase):
         drv._check_extend_volume_support = mock.Mock(return_value=True)
         drv._is_file_size_equal = mock.Mock(return_value=True)
 
+        snap_info = """{"volume_format": "raw",
+                        "active": "%s"}""" % self.vol.id
         with mock.patch.object(drv, 'local_path',
                                return_value=self._FAKE_VOLUME_PATH):
-            drv.extend_volume(self._FAKE_VOLUME, 10)
+            with mock.patch.object(drv, '_read_file',
+                                   return_value=snap_info):
+                drv.extend_volume(self.vol, 10)
 
         mock_resize_image.assert_called_once_with(self._FAKE_VOLUME_PATH, 10)
 
@@ -218,13 +241,13 @@ class VZStorageTestCase(test.TestCase):
         if has_snapshots:
             self.assertRaises(exception.InvalidVolume,
                               drv._check_extend_volume_support,
-                              self._FAKE_VOLUME, 2)
+                              self.vol, 2)
         elif not is_eligible:
             self.assertRaises(exception.ExtendVolumeError,
                               drv._check_extend_volume_support,
-                              self._FAKE_VOLUME, 2)
+                              self.vol, 2)
         else:
-            drv._check_extend_volume_support(self._FAKE_VOLUME, 2)
+            drv._check_extend_volume_support(self.vol, 2)
             drv._is_share_eligible.assert_called_once_with(self._FAKE_SHARE, 1)
 
     def test_check_extend_support(self):
@@ -258,10 +281,10 @@ class VZStorageTestCase(test.TestCase):
         drv._extend_volume = mock.Mock()
 
         drv._copy_volume_from_snapshot(
-            self._FAKE_SNAPSHOT, self._FAKE_VOLUME,
-            self._FAKE_VOLUME['size'])
+            self.snap, self.vol,
+            self.vol['size'])
         drv._extend_volume.assert_called_once_with(
-            self._FAKE_VOLUME, self._FAKE_VOLUME['size'])
+            self.vol, self.vol['size'])
         mock_convert_image.assert_called_once_with(
             self._FAKE_VOLUME_PATH, self._FAKE_VOLUME_PATH[:-1], 'raw')
 
@@ -281,7 +304,7 @@ class VZStorageTestCase(test.TestCase):
             return_value=fake_vol_info)
 
         with mock.patch('os.path.exists', lambda x: True):
-            drv.delete_volume(self._FAKE_VOLUME)
+            drv.delete_volume(self.vol)
 
             fake_ensure_mounted.assert_called_once_with(self._FAKE_SHARE)
             drv._delete.assert_any_call(
