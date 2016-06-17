@@ -421,3 +421,36 @@ class RemoteFsSnapDriverTestCase(test.TestCase):
         self._test_qemu_img_info(backing_file=backing_file,
                                  basedir=basedir,
                                  valid_backing_file=False)
+
+    def test_create_cloned_volume(self):
+        drv = self._driver
+
+        with mock.patch.object(drv, '_create_snapshot') as \
+                mock_create_snapshot,\
+                mock.patch.object(drv, '_delete_snapshot') as \
+                mock_delete_snapshot,\
+                mock.patch.object(drv, '_copy_volume_from_snapshot') as \
+                mock_copy_volume_from_snapshot:
+
+            volume = self._FAKE_VOLUME.copy()
+            src_vref = self._FAKE_VOLUME.copy()
+            src_vref['id'] = '375e32b2-804a-49f2-b282-85d1d5a5b9e1'
+            src_vref['name'] = 'volume-%s' % src_vref['id']
+            volume_ref = {'id': volume['id'],
+                          'name': volume['name'],
+                          'status': volume['status'],
+                          'provider_location': volume['provider_location'],
+                          'size': volume['size']}
+            snap_ref = {'volume_name': volume['name'],
+                        'name': 'clone-snap-%s' % src_vref['id'],
+                        'size': src_vref['size'],
+                        'volume_size': src_vref['size'],
+                        'volume_id': src_vref['id'],
+                        'id': 'tmp-snap-%s' % src_vref['id'],
+                        'volume': src_vref}
+            drv.create_cloned_volume(volume, src_vref)
+
+            mock_create_snapshot.assert_called_once_with(snap_ref)
+            mock_copy_volume_from_snapshot.assert_called_once_with(
+                snap_ref, volume_ref, volume['size'])
+            self.assertTrue(mock_delete_snapshot.called)
