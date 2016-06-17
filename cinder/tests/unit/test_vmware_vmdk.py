@@ -401,12 +401,14 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_create_virtual_disk_from_sparse_image')
     @mock.patch.object(VMDK_DRIVER,
                        '_create_virtual_disk_from_preallocated_image')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
     def _test_create_volume_from_non_stream_optimized_image(
             self,
             delete_tmp_backing,
             select_ds_for_volume,
+            get_storage_profile_id,
             create_disk_from_preallocated_image,
             create_disk_from_sparse_image,
             vops,
@@ -441,9 +443,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         vops.get_host.return_value = host
         vops.get_dc.return_value = dc_ref
 
-        vmdk_path = mock.Mock()
+        vmdk_path = mock.Mock(spec=volumeops.FlatExtentVirtualDiskPath)
         create_disk_from_sparse_image.return_value = vmdk_path
         create_disk_from_preallocated_image.return_value = vmdk_path
+
+        profile_id = mock.sentinel.profile_id
+        get_storage_profile_id.return_value = profile_id
 
         if disk_conversion:
             rp = mock.sentinel.rp
@@ -485,9 +490,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 context, image_service, image_id, image_size_in_bytes,
                 dc_ref, ds_name, folder_path, disk_name, adapter_type)
 
+        get_storage_profile_id.assert_called_once_with(volume)
         vops.attach_disk_to_backing.assert_called_once_with(
             backing, image_size_in_bytes / units.Ki, disk_type,
-            adapter_type, vmdk_path.get_descriptor_ds_file_path())
+            adapter_type, profile_id, vmdk_path.get_descriptor_ds_file_path())
 
         if disk_conversion:
             select_ds_for_volume.assert_called_once_with(volume)
@@ -2598,11 +2604,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_create_backing')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_ds_name_folder_path')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile_id')
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_disk_type')
     def test_manage_existing(
-            self, get_disk_type, get_ds_name_folder_path, vops,
-            create_backing, get_existing):
+            self, get_disk_type, get_storage_profile_id,
+            get_ds_name_folder_path, vops, create_backing, get_existing):
 
         vm = mock.sentinel.vm
         src_path = mock.sentinel.src_path
@@ -2622,6 +2629,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         folder_path = "%s/" % volume['name']
         get_ds_name_folder_path.return_value = (ds_name, folder_path)
 
+        profile_id = mock.sentinel.profile_id
+        get_storage_profile_id.return_value = profile_id
+
         disk_type = mock.sentinel.disk_type
         get_disk_type.return_value = disk_type
 
@@ -2635,9 +2645,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         dest_path = "[%s] %s%s.vmdk" % (ds_name, folder_path, volume['name'])
         vops.move_vmdk_file.assert_called_once_with(
             src_dc, src_path, dest_path, dest_dc_ref=dest_dc)
+        get_storage_profile_id.assert_called_once_with(volume)
         vops.attach_disk_to_backing.assert_called_once_with(
             backing, disk_device.capacityInKB, disk_type, 'lsiLogic',
-            dest_path)
+            profile_id, dest_path)
         vops.update_backing_disk_uuid.assert_called_once_with(backing,
                                                               volume['id'])
 

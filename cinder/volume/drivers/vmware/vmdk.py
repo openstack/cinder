@@ -944,9 +944,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                       {'path': vmdk_path.get_descriptor_ds_file_path(),
                        'backing': backing})
 
+            profile_id = self._get_storage_profile_id(volume)
             self.volumeops.attach_disk_to_backing(
-                backing, image_size_in_bytes / units.Ki, disk_type,
-                adapter_type, vmdk_path.get_descriptor_ds_file_path())
+                backing,
+                image_size_in_bytes / units.Ki, disk_type,
+                adapter_type,
+                profile_id,
+                vmdk_path.get_descriptor_ds_file_path())
             attached = True
 
             if disk_conversion:
@@ -1743,11 +1747,13 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                       dest_dc_ref=dest_dc)
 
         # Attach the disk to be managed to volume backing.
+        profile_id = self._get_storage_profile_id(volume)
         self.volumeops.attach_disk_to_backing(
             backing,
             disk.capacityInKB,
             VMwareVcVmdkDriver._get_disk_type(volume),
             'lsiLogic',
+            profile_id,
             dest_path.get_descriptor_ds_file_path())
         self.volumeops.update_backing_disk_uuid(backing, volume['id'])
 
