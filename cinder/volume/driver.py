@@ -1896,6 +1896,10 @@ class ManageableSnapshotsVD(object):
         If the existing_ref doesn't make sense, or doesn't refer to an existing
         backend storage object, raise a ManageExistingInvalidReference
         exception.
+
+        :param snapshot:     Cinder volume snapshot to manage
+        :param existing_ref: Driver-specific information used to identify a
+                             volume snapshot
         """
         return
 
@@ -1904,6 +1908,11 @@ class ManageableSnapshotsVD(object):
         """Return size of snapshot to be managed by manage_existing.
 
         When calculating the size, round up to the next GB.
+
+        :param snapshot:     Cinder volume snapshot to manage
+        :param existing_ref: Driver-specific information used to identify a
+                             volume snapshot
+        :returns size:       Volume snapshot size in GiB (integer)
         """
         return
 
@@ -1951,6 +1960,8 @@ class ManageableSnapshotsVD(object):
         drivers might use this call as an opportunity to clean up any
         Cinder-specific configuration that they have associated with the
         backend storage object.
+
+        :param snapshot: Cinder volume snapshot to unmanage
         """
         pass
 
