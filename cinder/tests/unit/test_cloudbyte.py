@@ -27,6 +27,7 @@ from testtools import matchers
 
 from cinder import context
 from cinder import exception
+from cinder import test
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.cloudbyte import cloudbyte
 from cinder.volume import qos_specs
@@ -648,7 +649,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['listiSCSIAuthGroup'] = (
     json.loads(FAKE_LIST_ISCSI_AUTH_GROUP_RESPONSE))
 
 
-class CloudByteISCSIDriverTestCase(testtools.TestCase):
+class CloudByteISCSIDriverTestCase(test.TestCase):
 
     def setUp(self):
         super(CloudByteISCSIDriverTestCase, self).setUp()
