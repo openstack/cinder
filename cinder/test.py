@@ -233,6 +233,8 @@ class TestCase(testtools.TestCase):
         # clear out the cache.
         sqla_api._GET_METHODS = {}
 
+        self.override_config('backend_url', 'file://' + lock_path,
+                             group='coordination')
         coordination.COORDINATOR.start()
         self.addCleanup(coordination.COORDINATOR.stop)
 
