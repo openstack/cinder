@@ -157,7 +157,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '2.1'
+    RPC_API_VERSION = '2.2'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -2219,7 +2219,13 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Retype volume completed successfully."),
                  resource=volume)
 
-    def manage_existing(self, ctxt, volume_id, ref=None):
+    def manage_existing(self, ctxt, volume_id, ref=None, volume=None):
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         try:
             flow_engine = manage_existing.get_flow(
                 ctxt,
@@ -2227,7 +2233,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.driver,
                 self.host,
                 volume_id,
-                ref)
+                ref,
+                volume,
+            )
         except Exception:
             msg = _("Failed to create manage_existing flow.")
             LOG.exception(msg, resource={'type': 'volume', 'id': volume_id})

@@ -43,7 +43,7 @@ class FakeSchedulerRpcAPI(object):
         self.test_inst.assertEqual(self.expected_spec, request_spec)
 
     def manage_existing(self, context, volume_topic, volume_id,
-                        request_spec=None):
+                        request_spec=None, volume=None):
         self.test_inst.assertEqual(self.expected_spec, request_spec)
 
 

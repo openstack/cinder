@@ -40,7 +40,7 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
         self.driver = driver
 
     def execute(self, context, volume_ref, manage_existing_ref):
-        volume_id = volume_ref['id']
+        volume_id = volume_ref.id
         if not self.driver.initialized:
             driver_name = self.driver.__class__.__name__
             LOG.error(_LE("Unable to manage existing volume. "
@@ -55,11 +55,11 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
                                                     manage_existing_ref)
 
         return {'size': size,
-                'volume_type_id': volume_ref['volume_type_id'],
+                'volume_type_id': volume_ref.volume_type_id,
                 'volume_properties': volume_ref,
-                'volume_spec': {'status': volume_ref['status'],
-                                'volume_name': volume_ref['name'],
-                                'volume_id': volume_ref['id']}}
+                'volume_spec': {'status': volume_ref.status,
+                                'volume_name': volume_ref.name,
+                                'volume_id': volume_ref.id}}
 
 
 class ManageExistingTask(flow_utils.CinderTask):
@@ -91,7 +91,7 @@ class ManageExistingTask(flow_utils.CinderTask):
         return {'volume': volume_ref}
 
 
-def get_flow(context, db, driver, host, volume_id, ref):
+def get_flow(context, db, driver, host, volume, ref):
     """Constructs and returns the manager entrypoint flow."""
 
     flow_name = ACTION.replace(":", "_") + "_manager"
@@ -102,13 +102,12 @@ def get_flow(context, db, driver, host, volume_id, ref):
     # determined.
     create_what = {
         'context': context,
-        'volume_id': volume_id,
+        'volume_ref': volume,
         'manage_existing_ref': ref,
         'optional_args': {'is_quota_committed': False}
     }
 
-    volume_flow.add(create_mgr.ExtractVolumeRefTask(db, host),
-                    create_mgr.NotifyVolumeActionTask(db,
+    volume_flow.add(create_mgr.NotifyVolumeActionTask(db,
                                                       "manage_existing.start"),
                     PrepareForQuotaReservationTask(db, driver),
                     create_api.QuotaReserveTask(),

@@ -52,16 +52,17 @@ class SchedulerAPI(rpc.RPCAPI):
         set to 1.11.
 
         2.0 - Remove 1.x compatibility
+        2.1 - Adds support for sending objects over RPC in manage_existing()
     """
 
-    RPC_API_VERSION = '2.0'
+    RPC_API_VERSION = '2.1'
     TOPIC = CONF.scheduler_topic
     BINARY = 'cinder-scheduler'
 
     def create_consistencygroup(self, ctxt, topic, group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
-        version = '2.0'
+        version = '2.1'
         cctxt = self.client.prepare(version=version)
         request_spec_p_list = []
         for request_spec in request_spec_list:
@@ -113,15 +114,20 @@ class SchedulerAPI(rpc.RPCAPI):
         return cctxt.cast(ctxt, 'retype', **msg_args)
 
     def manage_existing(self, ctxt, topic, volume_id,
-                        request_spec=None, filter_properties=None):
-        version = '2.0'
-        cctxt = self.client.prepare(version=version)
+                        request_spec=None, filter_properties=None,
+                        volume=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        return cctxt.cast(ctxt, 'manage_existing',
-                          topic=topic,
-                          volume_id=volume_id,
-                          request_spec=request_spec_p,
-                          filter_properties=filter_properties)
+        msg_args = {
+            'topic': topic, 'volume_id': volume_id,
+            'request_spec': request_spec_p,
+            'filter_properties': filter_properties, 'volume': volume,
+        }
+        version = '2.1'
+        if not self.client.can_send_version('2.1'):
+            version = '2.0'
+            msg_args.pop('volume')
+        cctxt = self.client.prepare(version=version)
+        return cctxt.cast(ctxt, 'manage_existing', **msg_args)
 
     def get_pools(self, ctxt, filters=None):
         version = '2.0'

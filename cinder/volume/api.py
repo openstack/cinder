@@ -1508,7 +1508,7 @@ class API(base.Base):
         service = self._get_service_by_host(context, host)
 
         if availability_zone is None:
-            availability_zone = service.get('availability_zone')
+            availability_zone = service.availability_zone
 
         manage_what = {
             'context': context,
