@@ -1832,7 +1832,7 @@ class SolidFireDriver(san.SanISCSIDriver):
                   'limit': 1}
         vols = self._issue_api_request(
             'ListActiveVolumes', params)['result']['volumes']
-        return int(vols[0]['totalSize']) / int(units.Gi)
+        return int(math.ceil(float(vols[0]['totalSize']) / units.Gi))
 
     def unmanage(self, volume):
         """Mark SolidFire Volume as unmanaged (export from Cinder)."""
