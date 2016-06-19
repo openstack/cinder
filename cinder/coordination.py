@@ -230,8 +230,6 @@ class Lock(locking.Lock):
 
         The behavior of releasing a lock which was not acquired in the first
         place is undefined.
-        :return: returns true if released (false if not)
-        :rtype: bool
         """
         self.lock.release()
 
