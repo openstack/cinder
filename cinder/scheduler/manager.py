@@ -56,6 +56,10 @@ LOG = logging.getLogger(__name__)
 class SchedulerManager(manager.Manager):
     """Chooses a host to create volumes."""
 
+    # FIXME(caosf): Remove unused argument 'topic' from functions
+    # create_consistencygroup(), create_volume(), migrate_volume_to_host(),
+    # retype() and manage_existing() in v3.0 of RPC API.
+
     RPC_API_VERSION = '2.1'
 
     target = messaging.Target(version=RPC_API_VERSION)
