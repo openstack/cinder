@@ -484,8 +484,10 @@ class VolumeRetypeActionsTest(test.TestCase):
             self.retype_mocks[name] = patcher.start()
             self.addCleanup(patcher.stop)
 
-    def _retype_volume_exec(self, expected_status, new_type='foo',
-                            vol_id=None):
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    def _retype_volume_exec(self, expected_status,
+                            new_type=fake.VOLUME_TYPE2_ID, vol_id=None,
+                            exists_mock=None):
         vol_id = vol_id or fake.VOLUME_ID
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
                                   (fake.PROJECT_ID, vol_id))
