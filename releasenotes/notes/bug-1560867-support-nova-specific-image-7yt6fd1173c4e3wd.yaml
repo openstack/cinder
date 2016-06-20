@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fix the bug that Cinder can't support creating volume
+    from Nova specific image which only includes ``snapshot-id``
+    metadata (Bug #1560867).
