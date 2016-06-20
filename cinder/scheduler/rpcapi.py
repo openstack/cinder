@@ -59,6 +59,10 @@ class SchedulerAPI(rpc.RPCAPI):
     TOPIC = CONF.scheduler_topic
     BINARY = 'cinder-scheduler'
 
+    # FIXME(caosf): Remove unused argument 'topic' from functions
+    # create_consistencygroup(), create_volume(), migrate_volume_to_host(),
+    # retype() and manage_existing() in v3.0 of RPC API.
+
     def create_consistencygroup(self, ctxt, topic, group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
