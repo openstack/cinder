@@ -597,10 +597,33 @@ class ClusterCommands(BaseCommand):
             return 2
 
 
+class ConsistencyGroupCommands(object):
+    """Methods for managing consistency groups."""
+
+    @args('--currenthost', required=True, help='Existing CG host name')
+    @args('--newhost', required=True, help='New CG host name')
+    def update_cg_host(self, currenthost, newhost):
+        """Modify the host name associated with a Consistency Group.
+
+        Particularly to recover from cases where one has moved
+        a host from single backend to multi-backend, or changed the host
+        configuration option, or modified the backend_name in a multi-backend
+        config.
+        """
+
+        ctxt = context.get_admin_context()
+        groups = objects.ConsistencyGroupList.get_all(
+            ctxt, {'host': currenthost})
+        for gr in groups:
+            gr.host = newhost
+            gr.save()
+
+
 CATEGORIES = {
     'backup': BackupCommands,
     'config': ConfigCommands,
     'cluster': ClusterCommands,
+    'cg': ConsistencyGroupCommands,
     'db': DbCommands,
     'host': HostCommands,
     'logs': GetLogCommands,
