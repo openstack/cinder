@@ -48,8 +48,7 @@ def define_tables(meta):
         Column('availability_zone', String(255)),
         Column('disabled_reason', String(255)),
         Column('modified_at', DateTime(timezone=False)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     consistencygroups = Table(
@@ -69,7 +68,7 @@ def define_tables(meta):
         Column('status', String(255)),
         Column('cgsnapshot_id', String(36)),
         mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_charset='utf8',
     )
 
     cgsnapshots = Table(
@@ -88,7 +87,7 @@ def define_tables(meta):
         Column('description', String(255)),
         Column('status', String(255)),
         mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_charset='utf8',
     )
 
     volumes = Table(
@@ -128,8 +127,7 @@ def define_tables(meta):
                ForeignKey('consistencygroups.id')),
         Column('provider_id', String(255)),
         Column('multiattach', Boolean),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     volume_attachment = Table(
@@ -148,8 +146,7 @@ def define_tables(meta):
         Column('detach_time', DateTime),
         Column('attach_mode', String(36)),
         Column('attach_status', String(255)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     snapshots = Table(
@@ -176,8 +173,7 @@ def define_tables(meta):
         Column('cgsnapshot_id', String(36),
                ForeignKey('cgsnapshots.id')),
         Column('provider_id', String(255)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     snapshot_metadata = Table(
@@ -191,8 +187,7 @@ def define_tables(meta):
                nullable=False),
         Column('key', String(255)),
         Column('value', String(255)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     quality_of_service_specs = Table(
@@ -222,8 +217,7 @@ def define_tables(meta):
                ForeignKey('quality_of_service_specs.id')),
         Column('is_public', Boolean),
         Column('description', String(255)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     volume_type_projects = Table(
@@ -238,7 +232,6 @@ def define_tables(meta):
         Column('deleted', Boolean(create_constraint=True, name=None)),
         UniqueConstraint('volume_type_id', 'project_id', 'deleted'),
         mysql_engine='InnoDB',
-        mysql_charset='utf8'
     )
 
     volume_metadata = Table(
@@ -252,8 +245,7 @@ def define_tables(meta):
                nullable=False),
         Column('key', String(255)),
         Column('value', String(255)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     volume_type_extra_specs = Table(
@@ -269,8 +261,7 @@ def define_tables(meta):
                nullable=False),
         Column('key', String(255)),
         Column('value', String(255)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     quotas = Table(
@@ -283,8 +274,7 @@ def define_tables(meta):
         Column('project_id', String(255)),
         Column('resource', String(255), nullable=False),
         Column('hard_limit', Integer),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     iscsi_targets = Table(
@@ -298,8 +288,7 @@ def define_tables(meta):
         Column('host', String(255)),
         Column('volume_id', String(36), ForeignKey('volumes.id'),
                nullable=True),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     quota_classes = Table(
@@ -370,8 +359,7 @@ def define_tables(meta):
                ForeignKey('snapshots.id')),
         Column('key', String(255)),
         Column('value', Text),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     backups = Table(
@@ -396,8 +384,7 @@ def define_tables(meta):
         Column('size', Integer()),
         Column('object_count', Integer()),
         Column('parent_id', String(36)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     transfers = Table(
