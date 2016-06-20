@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import os
 import shutil
 import tempfile
@@ -4472,6 +4473,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         shutil.rmtree(self.tempdir)
 
 
+@ddt.ddt
 class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
     def setUp(self):
 
@@ -4900,23 +4902,24 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         self.driver.delete_cgsnapshot(
             self.data.test_ctxt, self.data.test_CG_snapshot, [])
 
-    def test_manage_existing_get_size(self):
+    @ddt.data((2, 2), (1.75, 2))
+    @ddt.unpack
+    def test_manage_existing_get_size(self, gb_size, exp_size):
         volume = {}
         metadata = {'key': 'array',
                     'value': '12345'}
         volume['volume_metadata'] = [metadata]
         external_ref = {'source-name': '0123'}
         utils = self.driver.common.utils
-        gbSize = 2
         utils.get_volume_size = mock.Mock(
-            return_value=gbSize * units.Gi)
+            return_value=int(gb_size * units.Gi))
         volumeInstanceName = {'CreationClassName': "Symm_StorageVolume",
                               'DeviceID': "0123",
                               'SystemName': "12345"}
         utils.find_volume_by_device_id_on_array = mock.Mock(
             return_value=volumeInstanceName)
         size = self.driver.manage_existing_get_size(volume, external_ref)
-        self.assertEqual(gbSize, size)
+        self.assertEqual(exp_size, size)
 
     def test_manage_existing_no_fast_success(self):
         volume = {}

@@ -14,6 +14,7 @@
 #    under the License.
 
 import ast
+import math
 import os.path
 
 from oslo_config import cfg
@@ -4123,7 +4124,7 @@ class EMCVMAXCommon(object):
                                                          arrayName, deviceId))
         volumeInstance = self.conn.GetInstance(volumeInstanceName)
         byteSize = self.utils.get_volume_size(self.conn, volumeInstance)
-        gbSize = int(byteSize) / units.Gi
+        gbSize = int(math.ceil(float(byteSize) / units.Gi))
         LOG.debug(
             "Size of volume %(deviceID)s is %(volumeSize)s GB.",
             {'deviceID': deviceId,
