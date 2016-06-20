@@ -18,7 +18,7 @@ Tests for volume backup to IBM Tivoli Storage Manager (TSM).
 """
 
 import json
-import os
+import mock
 import posix
 
 from oslo_concurrency import processutils as putils
@@ -31,7 +31,6 @@ from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
-from cinder import utils
 
 SIM = None
 VOLUME_PATH = '/dev/null'
@@ -232,6 +231,7 @@ def fake_stat_illegal(path):
                               1375881199, 1375881197, 1375881197))
 
 
+@mock.patch('cinder.utils.execute', fake_exec)
 class BackupTSMTestCase(test.TestCase):
     def setUp(self):
         super(BackupTSMTestCase, self).setUp()
@@ -240,8 +240,6 @@ class BackupTSMTestCase(test.TestCase):
         self.sim = SIM
         self.ctxt = context.get_admin_context()
         self.driver = tsm.TSMBackupDriver(self.ctxt)
-        self.stubs.Set(utils, 'execute', fake_exec)
-        self.stubs.Set(os, 'stat', fake_stat_image)
 
     def _create_volume_db_entry(self, volume_id):
         vol = {'id': volume_id,
@@ -266,6 +264,7 @@ class BackupTSMTestCase(test.TestCase):
                   }
         return db.backup_create(self.ctxt, backup)['id']
 
+    @mock.patch.object(tsm.os, 'stat', fake_stat_image)
     def test_backup_image(self):
         volume_id = fake.VOLUME_ID
         mode = 'image'
@@ -299,10 +298,10 @@ class BackupTSMTestCase(test.TestCase):
             self.driver.delete(backup2)
             self.driver.delete(backup1)
 
+    @mock.patch.object(tsm.os, 'stat', fake_stat_file)
     def test_backup_file(self):
         volume_id = fake.VOLUME_ID
         mode = 'file'
-        self.stubs.Set(os, 'stat', fake_stat_file)
         self._create_volume_db_entry(volume_id)
 
         self._create_backup_db_entry(fake.BACKUP_ID, mode)
@@ -330,10 +329,10 @@ class BackupTSMTestCase(test.TestCase):
             self.driver.delete(backup1)
             self.driver.delete(backup2)
 
+    @mock.patch.object(tsm.os, 'stat', fake_stat_illegal)
     def test_backup_invalid_mode(self):
         volume_id = fake.VOLUME_ID
         mode = 'illegal'
-        self.stubs.Set(os, 'stat', fake_stat_illegal)
         self._create_volume_db_entry(volume_id)
 
         self._create_backup_db_entry(fake.BACKUP_ID, mode)
