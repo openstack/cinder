@@ -34,8 +34,7 @@ def upgrade(migrate_engine):
         Column('deleted_at', DateTime(timezone=False)),
         Column('deleted', Boolean),
         Column('expires_at', DateTime(timezone=False)),
-        mysql_engine='InnoDB',
-        mysql_charset='utf8'
+        mysql_engine='InnoDB'
     )
 
     messages.create()
