@@ -247,6 +247,11 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
             LOG.error(err_msg)
             raise exception.InvalidInput(reason=err_msg)
 
+        # Lookup the zfssa_target_portal DNS name to an IP address
+        host, port = lcfg.zfssa_target_portal.split(':')
+        host_ip_addr = utils.resolve_hostname(host)
+        self.zfssa_target_portal = host_ip_addr + ':' + port
+
     def check_for_setup_error(self):
         """Check that driver can login.
 
@@ -292,7 +297,7 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         if self.tgtiqn is None:
             self.tgtiqn = self.zfssa.get_target(self._get_target_alias())
 
-        loc = "%s %s %s" % (lcfg.zfssa_target_portal, self.tgtiqn,
+        loc = "%s %s %s" % (self.zfssa_target_portal, self.tgtiqn,
                             lun['number'])
         LOG.debug('_get_provider_info: provider_location: %s', loc)
         provider = {'provider_location': loc}
