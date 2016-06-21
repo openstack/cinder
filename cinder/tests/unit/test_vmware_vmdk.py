@@ -918,9 +918,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    @mock.patch.object(VMDK_DRIVER, '_select_datastore')
     def test_retype_with_diff_profile_and_ds_compliance(
-            self, ds_sel, get_extra_spec_storage_profile, get_storage_profile,
-            get_extra_spec_disk_type, get_disk_type, vops, in_use):
+            self, select_datastore, ds_sel, get_extra_spec_storage_profile,
+            get_storage_profile, get_extra_spec_disk_type, get_disk_type,
+            vops, in_use):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
@@ -951,7 +953,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                             host))
         ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
                                                               new_profile)
-        self.assertFalse(ds_sel.select_datastore.called)
+        select_datastore.assert_not_called()
         vops.change_backing_profile.assert_called_once_with(backing,
                                                             new_profile_id)
 
@@ -964,9 +966,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    @mock.patch.object(VMDK_DRIVER, '_select_datastore')
     def test_retype_with_diff_profile_and_ds_sel_no_candidate(
-            self, ds_sel, get_extra_spec_storage_profile, get_storage_profile,
-            get_extra_spec_disk_type, get_disk_type, vops, in_use):
+            self, select_datastore, ds_sel, get_extra_spec_storage_profile,
+            get_storage_profile, get_extra_spec_disk_type, get_disk_type,
+            vops, in_use):
         backing = mock.sentinel.backing
         vops.get_backing.return_value = backing
 
@@ -986,7 +990,8 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         get_extra_spec_storage_profile.return_value = new_profile
 
         ds_sel.is_datastore_compliant.return_value = False
-        ds_sel.select_datastore.return_value = ()
+        select_datastore.side_effect = (
+            vmdk_exceptions.NoValidDatastoreException)
 
         context = mock.sentinel.context
         volume = self._create_volume_dict(status='retyping')
@@ -997,7 +1002,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                              host))
         ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
                                                               new_profile)
-        ds_sel.select_datastore.assert_called_once_with(
+        select_datastore.assert_called_once_with(
             {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
              hub.DatastoreSelector.PROFILE_NAME: new_profile})
 
@@ -1010,10 +1015,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    @mock.patch.object(VMDK_DRIVER, '_select_datastore')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     def test_retype_with_diff_extra_spec_and_vol_snapshot(
             self,
             get_volume_group_folder,
+            select_datastore,
             ds_sel, get_extra_spec_storage_profile,
             get_storage_profile,
             get_extra_spec_disk_type,
@@ -1043,7 +1050,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         rp = mock.sentinel.rp
         new_datastore = mock.Mock(value='ds2')
         summary = mock.Mock(datastore=new_datastore)
-        ds_sel.select_datastore.return_value = (host, rp, summary)
+        select_datastore.return_value = (host, rp, summary)
 
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
@@ -1060,7 +1067,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                             host))
         ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
                                                               new_profile)
-        ds_sel.select_datastore.assert_called_once_with(
+        select_datastore.assert_called_once_with(
             {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
              hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: ['ds1'],
              hub.DatastoreSelector.PROFILE_NAME: new_profile})
@@ -1079,6 +1086,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    @mock.patch.object(VMDK_DRIVER, '_select_datastore')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
@@ -1087,7 +1095,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             delete_temp_backing,
             generate_uuid,
             get_volume_group_folder,
-            ds_sel, get_extra_spec_storage_profile,
+            select_datastore,
+            ds_sel,
+            get_extra_spec_storage_profile,
             get_storage_profile,
             get_extra_spec_disk_type,
             get_disk_type,
@@ -1116,7 +1126,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         host = mock.sentinel.host
         rp = mock.sentinel.rp
         summary = mock.Mock(datastore=datastore)
-        ds_sel.select_datastore.return_value = (host, rp, summary)
+        select_datastore.return_value = (host, rp, summary)
 
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
@@ -1146,7 +1156,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                 diff, host))
         ds_sel.is_datastore_compliant.assert_called_once_with(datastore,
                                                               new_profile)
-        ds_sel.select_datastore.assert_called_once_with(
+        select_datastore.assert_called_once_with(
             {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
              hub.DatastoreSelector.PROFILE_NAME: new_profile})
         vops.clone_backing.assert_called_once_with(
