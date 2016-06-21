@@ -65,11 +65,11 @@ class EntryCreateTask(flow_utils.CinderTask):
             'host': kwargs.pop('host'),
             'availability_zone': kwargs.pop('availability_zone'),
             'volume_type_id': volume_type_id,
-            'metadata': kwargs.pop('metadata'),
+            'metadata': kwargs.pop('metadata') or {},
             'bootable': kwargs.pop('bootable'),
         }
 
-        volume = objects.Volume(context, volume_properties)
+        volume = objects.Volume(context=context, **volume_properties)
         volume.create()
 
         return {

@@ -2226,21 +2226,46 @@ class VolumeManager(manager.SchedulerDependentManager):
         if volume is None:
             # For older clients, mimic the old behavior and look up the volume
             # by its volume_id.
-            volume = objects.Volume.get_by_id(context, volume_id)
+            volume = objects.Volume.get_by_id(ctxt, volume_id)
 
+        vol_ref = self._run_manage_existing_flow_engine(
+            ctxt, volume, ref)
+
+        self._update_stats_for_managed(vol_ref)
+
+        LOG.info(_LI("Manage existing volume completed successfully."),
+                 resource=vol_ref)
+        return vol_ref.id
+
+    def _update_stats_for_managed(self, volume_reference):
+        # Update volume stats
+        pool = vol_utils.extract_host(volume_reference.host, 'pool')
+        if pool is None:
+            # Legacy volume, put them into default pool
+            pool = self.driver.configuration.safe_get(
+                'volume_backend_name') or vol_utils.extract_host(
+                    volume_reference.host, 'pool', True)
+
+        try:
+            self.stats['pools'][pool]['allocated_capacity_gb'] \
+                += volume_reference.size
+        except KeyError:
+            self.stats['pools'][pool] = dict(
+                allocated_capacity_gb=volume_reference.size)
+
+    def _run_manage_existing_flow_engine(self, ctxt, volume, ref):
         try:
             flow_engine = manage_existing.get_flow(
                 ctxt,
                 self.db,
                 self.driver,
                 self.host,
-                volume_id,
-                ref,
                 volume,
+                ref,
             )
         except Exception:
             msg = _("Failed to create manage_existing flow.")
-            LOG.exception(msg, resource={'type': 'volume', 'id': volume_id})
+            LOG.exception(msg, resource={'type': 'volume', 'id': volume.id})
             raise exception.CinderException(msg)
 
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
@@ -2248,24 +2273,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Fetch created volume from storage
         vol_ref = flow_engine.storage.fetch('volume')
-        # Update volume stats
-        pool = vol_utils.extract_host(vol_ref['host'], 'pool')
-        if pool is None:
-            # Legacy volume, put them into default pool
-            pool = self.driver.configuration.safe_get(
-                'volume_backend_name') or vol_utils.extract_host(
-                    vol_ref['host'], 'pool', True)
 
-        try:
-            self.stats['pools'][pool]['allocated_capacity_gb'] \
-                += vol_ref['size']
-        except KeyError:
-            self.stats['pools'][pool] = dict(
-                allocated_capacity_gb=vol_ref['size'])
-
-        LOG.info(_LI("Manage existing volume completed successfully."),
-                 resource=vol_ref)
-        return vol_ref['id']
+        return vol_ref
 
     def get_manageable_volumes(self, ctxt, marker, limit, offset, sort_keys,
                                sort_dirs):
