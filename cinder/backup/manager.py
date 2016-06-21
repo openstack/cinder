@@ -125,7 +125,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
         if 'default' not in self.volume_managers:
             # For multi-backend we just pick the top of the list.
-            return self.volume_managers.keys()[0]
+            return next(iter(self.volume_managers))
 
         return 'default'
 
