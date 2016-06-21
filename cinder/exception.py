@@ -1309,3 +1309,12 @@ class SynoAuthError(VolumeDriverException):
 
 class SynoLUNNotExist(VolumeDriverException):
     message = _("LUN not found by UUID: %(uuid)s.")
+
+
+# Reduxio driver
+class RdxAPICommandException(VolumeDriverException):
+    message = _("Reduxio API Command Exception")
+
+
+class RdxAPIConnectionException(VolumeDriverException):
+    message = _("Reduxio API Connection Exception")
