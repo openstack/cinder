@@ -23,6 +23,7 @@ from cinder import context
 from cinder.db.sqlalchemy import api
 from cinder.scheduler import weights
 from cinder import test
+from cinder.tests.unit import fake_constants
 from cinder.tests.unit.scheduler import fakes
 from cinder.volume import utils
 
@@ -46,9 +47,16 @@ def fake_volume_data_get_for_host(context, host, count_only=False):
 
 
 class VolumeNumberWeigherTestCase(test.TestCase):
+
     def setUp(self):
         super(VolumeNumberWeigherTestCase, self).setUp()
-        self.context = context.get_admin_context()
+        uid = fake_constants.USER_ID
+        pid = fake_constants.PROJECT_ID
+        self.context = context.RequestContext(user_id=uid,
+                                              project_id=pid,
+                                              is_admin=False,
+                                              read_deleted="no",
+                                              overwrite=False)
         self.host_manager = fakes.FakeHostManager()
         self.weight_handler = weights.HostWeightHandler(
             'cinder.scheduler.weights')
