@@ -35,6 +35,9 @@ class FakeISCSIDriver(lvm.LVMVolumeDriver):
         """No setup necessary in fake mode."""
         pass
 
+    def create_volume(self, volume):
+        pass
+
     def initialize_connection(self, volume, connector):
         volume_metadata = {}
 
@@ -50,8 +53,28 @@ class FakeISCSIDriver(lvm.LVMVolumeDriver):
         return {'driver_volume_type': 'iscsi',
                 'data': {'access_mode': access_mode}}
 
+    def initialize_connection_snapshot(self, snapshot, connector):
+        return {
+            'driver_volume_type': 'iscsi',
+        }
+
     def terminate_connection(self, volume, connector, **kwargs):
         pass
+
+    def _update_pools_and_stats(self, data):
+        fake_pool = {}
+        fake_pool.update(dict(
+            pool_name=data["volume_backend_name"],
+            total_capacity_gb='infinite',
+            free_capacity_gb='infinite',
+            provisioned_capacity_gb=0,
+            reserved_percentage=100,
+            QoS_support=False,
+            filter_function=self.get_filter_function(),
+            goodness_function=self.get_goodness_function()
+        ))
+        data["pools"].append(fake_pool)
+        self._stats = data
 
     @staticmethod
     def fake_execute(cmd, *_args, **_kwargs):
@@ -60,7 +83,6 @@ class FakeISCSIDriver(lvm.LVMVolumeDriver):
 
 
 class FakeISERDriver(FakeISCSIDriver):
-    """Logs calls instead of executing."""
     def __init__(self, *args, **kwargs):
         super(FakeISERDriver, self).__init__(execute=self.fake_execute,
                                              *args, **kwargs)
@@ -70,11 +92,6 @@ class FakeISERDriver(FakeISCSIDriver):
             'driver_volume_type': 'iser',
             'data': {}
         }
-
-    @staticmethod
-    def fake_execute(cmd, *_args, **_kwargs):
-        """Execute that simply logs the command."""
-        return (None, None)
 
 
 class FakeFibreChannelDriver(driver.FibreChannelDriver):

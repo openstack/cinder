@@ -2670,109 +2670,6 @@ class ISCSIDriver(VolumeDriver):
         self._update_pools_and_stats(data)
 
 
-class FakeISCSIDriver(ISCSIDriver):
-    """Logs calls instead of executing."""
-    def __init__(self, *args, **kwargs):
-        super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,
-                                              *args, **kwargs)
-
-    def _update_pools_and_stats(self, data):
-        fake_pool = {}
-        fake_pool.update(dict(
-            pool_name=data["volume_backend_name"],
-            total_capacity_gb='infinite',
-            free_capacity_gb='infinite',
-            provisioned_capacity_gb=0,
-            reserved_percentage=100,
-            QoS_support=False,
-            filter_function=self.get_filter_function(),
-            goodness_function=self.get_goodness_function()
-        ))
-        data["pools"].append(fake_pool)
-        self._stats = data
-
-    def create_volume(self, volume):
-        pass
-
-    def check_for_setup_error(self):
-        """No setup necessary in fake mode."""
-        pass
-
-    def initialize_connection(self, volume, connector):
-        return {
-            'driver_volume_type': 'iscsi',
-            'discard': False,
-        }
-
-    def initialize_connection_snapshot(self, snapshot, connector):
-        return {
-            'driver_volume_type': 'iscsi',
-        }
-
-    def terminate_connection(self, volume, connector, **kwargs):
-        pass
-
-    def terminate_connection_snapshot(self, snapshot, connector, **kwargs):
-        pass
-
-    @staticmethod
-    def fake_execute(cmd, *_args, **_kwargs):
-        """Execute that simply logs the command."""
-        LOG.debug("FAKE ISCSI: %s", cmd)
-        return (None, None)
-
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Creates a volume from a snapshot."""
-        pass
-
-    def create_cloned_volume(self, volume, src_vref):
-        """Creates a clone of the specified volume."""
-        pass
-
-    def delete_volume(self, volume):
-        """Deletes a volume."""
-        pass
-
-    def create_snapshot(self, snapshot):
-        """Creates a snapshot."""
-        pass
-
-    def delete_snapshot(self, snapshot):
-        """Deletes a snapshot."""
-        pass
-
-    def local_path(self, volume):
-        return '/tmp/volume-%s' % volume.id
-
-    def ensure_export(self, context, volume):
-        """Synchronously recreates an export for a volume."""
-        pass
-
-    def create_export(self, context, volume, connector):
-        """Exports the volume.
-
-        Can optionally return a Dictionary of changes to the volume object to
-        be persisted.
-        """
-        pass
-
-    def create_export_snapshot(self, context, snapshot, connector):
-        """Exports the snapshot.
-
-        Can optionally return a Dictionary of changes to the snapshot object to
-        be persisted.
-        """
-        pass
-
-    def remove_export(self, context, volume):
-        """Removes an export for a volume."""
-        pass
-
-    def remove_export_snapshot(self, context, snapshot):
-        """Removes an export for a snapshot."""
-        pass
-
-
 class ISERDriver(ISCSIDriver):
     """Executes commands relating to ISER volumes.
 
@@ -2839,25 +2736,6 @@ class ISERDriver(ISCSIDriver):
         data["pools"] = []
 
         self._update_pools_and_stats(data)
-
-
-class FakeISERDriver(FakeISCSIDriver):
-    """Logs calls instead of executing."""
-    def __init__(self, *args, **kwargs):
-        super(FakeISERDriver, self).__init__(execute=self.fake_execute,
-                                             *args, **kwargs)
-
-    def initialize_connection(self, volume, connector):
-        return {
-            'driver_volume_type': 'iser',
-            'data': {}
-        }
-
-    @staticmethod
-    def fake_execute(cmd, *_args, **_kwargs):
-        """Execute that simply logs the command."""
-        LOG.debug("FAKE ISER: %s", cmd)
-        return (None, None)
 
 
 class FibreChannelDriver(VolumeDriver):
