@@ -91,7 +91,8 @@ def main():
                 launcher.launch_service(server)
                 service_started = True
     else:
-        server = service.Service.create(binary='cinder-volume')
+        server = service.Service.create(binary='cinder-volume',
+                                        coordination=True)
         launcher.launch_service(server)
         service_started = True
 
