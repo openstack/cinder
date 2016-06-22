@@ -4567,6 +4567,16 @@ class VolumeTestCase(BaseVolumeTestCase):
                               self.context,
                               snap)
 
+    def test_init_host_clears_deleting_snapshots(self):
+        """Test that init_host will delete a snapshot stuck in deleting."""
+        volume = tests_utils.create_volume(self.context, status='deleting',
+                                           size=1, host=CONF.host)
+        snapshot = tests_utils.create_snapshot(self.context,
+                                               volume.id, status='deleting')
+        self.volume.init_host()
+        self.assertRaises(exception.VolumeNotFound, volume.refresh)
+        self.assertRaises(exception.SnapshotNotFound, snapshot.refresh)
+
 
 @ddt.ddt
 class VolumeMigrationTestCase(BaseVolumeTestCase):
