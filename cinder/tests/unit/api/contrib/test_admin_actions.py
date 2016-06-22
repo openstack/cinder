@@ -569,8 +569,8 @@ class AdminActionsTest(BaseAdminTest):
         expected_status = 400
         host = 'test2'
         volume = self._migrate_volume_prep()
-        model_update = {'migration_status': 'migrating'}
-        volume = db.volume_update(self.ctx, volume['id'], model_update)
+        volume.migration_status = 'migrating'
+        volume.save()
         self._migrate_volume_exec(self.ctx, volume, host, expected_status)
 
     def test_migrate_volume_with_snap(self):
@@ -1050,8 +1050,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         volume = self._create_volume(self.ctx, {'provider_location': '',
                                                 'size': 1})
 
-        values = {'status': 'attaching',
-                  'instance_uuid': fake.INSTANCE_ID}
+        values = {'status': 'attaching'}
         db.volume_update(self.ctx, volume['id'], values)
         db.volume_admin_metadata_update(self.ctx, volume['id'],
                                         {"attached_mode": 'rw'}, False)
@@ -1060,7 +1059,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
                           self.volume_api.attach,
                           self.ctx,
                           volume,
-                          values['instance_uuid'],
+                          fake.INSTANCE_ID,
                           None,
                           mountpoint,
                           'ro')

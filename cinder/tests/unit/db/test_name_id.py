@@ -43,18 +43,16 @@ class NameIDsTestCase(test.TestCase):
 
     def test_name_id_diff(self):
         """Change name ID to mimic volume after migration."""
-        vol_ref = testutils.create_volume(self.ctxt, size=1)
-        db.volume_update(self.ctxt, vol_ref['id'],
-                         {'name_id': fake.VOLUME2_ID})
+        vol_ref = testutils.create_volume(self.ctxt, size=1,
+                                          _name_id=fake.VOLUME2_ID)
         vol_ref = db.volume_get(self.ctxt, vol_ref['id'])
         expected_name = CONF.volume_name_template % fake.VOLUME2_ID
         self.assertEqual(expected_name, vol_ref['name'])
 
     def test_name_id_snapshot_volume_name(self):
         """Make sure snapshot['volume_name'] is updated."""
-        vol_ref = testutils.create_volume(self.ctxt, size=1)
-        db.volume_update(self.ctxt, vol_ref['id'],
-                         {'name_id': fake.VOLUME2_ID})
+        vol_ref = testutils.create_volume(self.ctxt, size=1,
+                                          _name_id=fake.VOLUME2_ID)
         snap_ref = testutils.create_snapshot(self.ctxt, vol_ref['id'])
         expected_name = CONF.volume_name_template % fake.VOLUME2_ID
         self.assertEqual(expected_name, snap_ref['volume_name'])
