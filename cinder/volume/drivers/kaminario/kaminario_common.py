@@ -80,6 +80,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         super(KaminarioCinderDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(san.san_opts)
         self.configuration.append_config_values(kaminario2_opts)
+        self._protocol = None
 
     def check_for_setup_error(self):
         if self.krest is None:
