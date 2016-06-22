@@ -2333,13 +2333,11 @@ def volumes_update(context, values_list):
 
 @require_context
 def volume_attachment_update(context, attachment_id, values):
-    session = get_session()
-    with session.begin():
-        volume_attachment_ref = _attachment_get(context, attachment_id,
-                                                session=session)
-        volume_attachment_ref.update(values)
-        volume_attachment_ref.save(session=session)
-        return volume_attachment_ref
+    query = model_query(context, models.VolumeAttachment)
+    result = query.filter_by(id=attachment_id).update(values)
+    if not result:
+        raise exception.VolumeAttachmentNotFound(
+            filter='attachment_id = ' + attachment_id)
 
 
 def volume_update_status_based_on_attachment(context, volume_id):
@@ -2988,11 +2986,11 @@ def snapshot_get_all_active_by_window(context, begin, end=None,
 @handle_db_data_error
 @require_context
 def snapshot_update(context, snapshot_id, values):
-    session = get_session()
-    with session.begin():
-        snapshot_ref = _snapshot_get(context, snapshot_id, session=session)
-        snapshot_ref.update(values)
-        return snapshot_ref
+    query = model_query(context, models.Snapshot, project_only=True)
+    result = query.filter_by(id=snapshot_id).update(values)
+    if not result:
+        raise exception.SnapshotNotFound(snapshot_id=snapshot_id)
+
 
 ####################
 
@@ -3287,60 +3285,16 @@ def _process_group_types_filters(query, filters):
 
 @handle_db_data_error
 @require_admin_context
-def volume_type_update(context, volume_type_id, values):
+def _type_update(context, type_id, values, is_group):
+    if is_group:
+        model = models.GroupTypes
+        exists_exc = exception.GroupTypeExists
+    else:
+        model = models.VolumeTypes
+        exists_exc = exception.VolumeTypeExists
+
     session = get_session()
     with session.begin():
-        # Check it exists
-        volume_type_ref = _volume_type_ref_get(context,
-                                               volume_type_id,
-                                               session)
-        if not volume_type_ref:
-            raise exception.VolumeTypeNotFound(type_id=volume_type_id)
-
-        # No description change
-        if values['description'] is None:
-            del values['description']
-
-        # No is_public change
-        if values['is_public'] is None:
-            del values['is_public']
-
-        # No name change
-        if values['name'] is None:
-            del values['name']
-        else:
-            # Volume type name is unique. If change to a name that belongs to
-            # a different volume_type , it should be prevented.
-            check_vol_type = None
-            try:
-                check_vol_type = \
-                    _volume_type_get_by_name(context,
-                                             values['name'],
-                                             session=session)
-            except exception.VolumeTypeNotFoundByName:
-                pass
-            else:
-                if check_vol_type.get('id') != volume_type_id:
-                    raise exception.VolumeTypeExists(id=values['name'])
-
-        volume_type_ref.update(values)
-        volume_type_ref.save(session=session)
-
-        return volume_type_ref
-
-
-@handle_db_data_error
-@require_admin_context
-def group_type_update(context, group_type_id, values):
-    session = get_session()
-    with session.begin():
-        # Check it exists
-        group_type_ref = _group_type_ref_get(context,
-                                             group_type_id,
-                                             session)
-        if not group_type_ref:
-            raise exception.GroupTypeNotFound(type_id=group_type_id)
-
         # No description change
         if values['description'] is None:
             del values['description']
@@ -3354,23 +3308,28 @@ def group_type_update(context, group_type_id, values):
             del values['name']
         else:
             # Group type name is unique. If change to a name that belongs to
-            # a different group_type , it should be prevented.
-            check_grp_type = None
-            try:
-                check_grp_type = \
-                    _group_type_get_by_name(context,
-                                            values['name'],
-                                            session=session)
-            except exception.GroupTypeNotFoundByName:
-                pass
+            # a different group_type, it should be prevented.
+            conditions = and_(model.name == values['name'],
+                              model.id != type_id, ~model.deleted)
+            query = session.query(sql.exists().where(conditions))
+            if query.scalar():
+                raise exists_exc(id=values['name'])
+
+        query = model_query(context, model, project_only=True, session=session)
+        result = query.filter_by(id=type_id).update(values)
+        if not result:
+            if is_group:
+                raise exception.GroupTypeNotFound(group_type_id=type_id)
             else:
-                if check_grp_type.get('id') != group_type_id:
-                    raise exception.GroupTypeExists(id=values['name'])
+                raise exception.VolumeTypeNotFound(volume_type_id=type_id)
 
-        group_type_ref.update(values)
-        group_type_ref.save(session=session)
 
-        return group_type_ref
+def volume_type_update(context, volume_type_id, values):
+    _type_update(context, volume_type_id, values, is_group=False)
+
+
+def group_type_update(context, group_type_id, values):
+    _type_update(context, group_type_id, values, is_group=True)
 
 
 @require_context
@@ -4446,7 +4405,10 @@ def qos_specs_update(context, qos_specs_id, updates):
     session = get_session()
     with session.begin():
         # make sure qos specs exists
-        _qos_specs_get_all_ref(context, qos_specs_id, session)
+        exists = resource_exists(context, models.QualityOfServiceSpecs,
+                                 qos_specs_id, session)
+        if not exists:
+            raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
         specs = updates.get('specs', {})
 
         if 'consumer' in updates:
@@ -4522,18 +4484,10 @@ def volume_type_encryption_create(context, volume_type_id, values):
 @handle_db_data_error
 @require_admin_context
 def volume_type_encryption_update(context, volume_type_id, values):
-    session = get_session()
-    with session.begin():
-        encryption = volume_type_encryption_get(context, volume_type_id,
-                                                session)
-
-        if not encryption:
-            raise exception.VolumeTypeEncryptionNotFound(
-                type_id=volume_type_id)
-
-        encryption.update(values)
-
-        return encryption
+    query = model_query(context, models.Encryption)
+    result = query.filter_by(volume_type_id=volume_type_id).update(values)
+    if not result:
+        raise exception.VolumeTypeEncryptionNotFound(type_id=volume_type_id)
 
 
 def volume_type_encryption_volume_get(context, volume_type_id, session=None):
@@ -4919,19 +4873,13 @@ def backup_create(context, values):
 @handle_db_data_error
 @require_context
 def backup_update(context, backup_id, values):
-    session = get_session()
-    with session.begin():
-        backup = model_query(context, models.Backup,
-                             session=session, read_deleted="yes").\
-            filter_by(id=backup_id).first()
-
-        if not backup:
-            raise exception.BackupNotFound(
-                _("No backup with id %s") % backup_id)
-
-        backup.update(values)
-
-    return backup
+    if 'fail_reason' in values:
+        values = values.copy()
+        values['fail_reason'] = (values['fail_reason'] or '')[:255]
+    query = model_query(context, models.Backup, read_deleted="yes")
+    result = query.filter_by(id=backup_id).update(values)
+    if not result:
+        raise exception.BackupNotFound(backup_id=backup_id)
 
 
 @require_admin_context
@@ -5262,21 +5210,11 @@ def consistencygroup_create(context, values, cg_snap_id=None, cg_id=None):
 @handle_db_data_error
 @require_context
 def consistencygroup_update(context, consistencygroup_id, values):
-    session = get_session()
-    with session.begin():
-        result = model_query(context, models.ConsistencyGroup,
-                             project_only=True).\
-            filter_by(id=consistencygroup_id).\
-            first()
-
-        if not result:
-            raise exception.ConsistencyGroupNotFound(
-                _("No consistency group with id %s") % consistencygroup_id)
-
-        result.update(values)
-        result.save(session=session)
-
-    return result
+    query = model_query(context, models.ConsistencyGroup, project_only=True)
+    result = query.filter_by(id=consistencygroup_id).update(values)
+    if not result:
+        raise exception.ConsistencyGroupNotFound(
+            consistencygroup_id=consistencygroup_id)
 
 
 @require_admin_context
@@ -5629,20 +5567,10 @@ def group_volume_type_mapping_create(context, group_id, volume_type_id):
 @handle_db_data_error
 @require_context
 def group_update(context, group_id, values):
-    session = get_session()
-    with session.begin():
-        result = (model_query(context, models.Group,
-                              project_only=True).
-                  filter_by(id=group_id).
-                  first())
-
-        if not result:
-            raise exception.GroupNotFound(
-                _("No group with id %s") % group_id)
-
-        result.update(values)
-        result.save(session=session)
-    return result
+    query = model_query(context, models.Group, project_only=True)
+    result = query.filter_by(id=group_id).update(values)
+    if not result:
+        raise exception.GroupNotFound(group_id=group_id)
 
 
 @require_admin_context
@@ -5965,19 +5893,10 @@ def cgsnapshot_create(context, values):
 @require_context
 @handle_db_data_error
 def cgsnapshot_update(context, cgsnapshot_id, values):
-    session = get_session()
-    with session.begin():
-        result = model_query(context, models.Cgsnapshot, project_only=True).\
-            filter_by(id=cgsnapshot_id).\
-            first()
-
-        if not result:
-            raise exception.CgSnapshotNotFound(
-                _("No cgsnapshot with id %s") % cgsnapshot_id)
-
-        result.update(values)
-        result.save(session=session)
-    return result
+    query = model_query(context, models.Cgsnapshot, project_only=True)
+    result = query.filter_by(id=cgsnapshot_id).update(values)
+    if not result:
+        raise exception.CgSnapshotNotFound(cgsnapshot_id=cgsnapshot_id)
 
 
 @require_admin_context
@@ -6593,13 +6512,14 @@ def worker_destroy(context, **filters):
 
 
 @require_context
-def resource_exists(context, model, resource_id):
+def resource_exists(context, model, resource_id, session=None):
     # Match non deleted resources by the id
     conditions = [model.id == resource_id, ~model.deleted]
     # If the context is not admin we limit it to the context's project
     if is_user_context(context) and hasattr(model, 'project_id'):
         conditions.append(model.project_id == context.project_id)
-    query = get_session().query(sql.exists().where(and_(*conditions)))
+    session = session or get_session()
+    query = session.query(sql.exists().where(and_(*conditions)))
     return query.scalar()
 
 

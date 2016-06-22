@@ -70,11 +70,9 @@ def update(context, id, name, description, is_public=None):
     elevated = context if context.is_admin else context.elevated()
     old_volume_type = get_volume_type(elevated, id)
     try:
-        type_updated = db.volume_type_update(elevated,
-                                             id,
-                                             dict(name=name,
-                                                  description=description,
-                                                  is_public=is_public))
+        db.volume_type_update(elevated, id,
+                              dict(name=name, description=description,
+                                   is_public=is_public))
         # Rename resource in quota if volume type name is changed.
         if name:
             old_type_name = old_volume_type.get('name')
@@ -85,7 +83,6 @@ def update(context, id, name, description, is_public=None):
     except db_exc.DBError:
         LOG.exception(_LE('DB error:'))
         raise exception.VolumeTypeUpdateFailed(id=id)
-    return type_updated
 
 
 def destroy(context, id):

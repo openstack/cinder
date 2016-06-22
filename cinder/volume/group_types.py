@@ -60,15 +60,12 @@ def update(context, id, name, description, is_public=None):
         raise exception.InvalidGroupType(reason=msg)
     elevated = context if context.is_admin else context.elevated()
     try:
-        type_updated = db.group_type_update(elevated,
-                                            id,
-                                            dict(name=name,
-                                                 description=description,
-                                                 is_public=is_public))
+        db.group_type_update(elevated, id,
+                             dict(name=name, description=description,
+                                  is_public=is_public))
     except db_exc.DBError:
         LOG.exception(_LE('DB error:'))
         raise exception.GroupTypeUpdateFailed(id=id)
-    return type_updated
 
 
 def destroy(context, id):
