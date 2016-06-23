@@ -13,6 +13,7 @@
 #   under the License.
 
 from oslo_log import log as logging
+from oslo_utils import excutils
 import taskflow.engines
 from taskflow.patterns import linear_flow
 
@@ -40,16 +41,24 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
         self.driver = driver
 
     def execute(self, context, volume, manage_existing_ref):
+        driver_name = self.driver.__class__.__name__
         if not self.driver.initialized:
-            driver_name = self.driver.__class__.__name__
             LOG.error(_LE("Unable to manage existing volume. "
                           "Volume driver %s not initialized.") % driver_name)
             flow_common.error_out(volume, _("Volume driver %s not "
-                                            "initialized.") % driver_name)
+                                            "initialized.") % driver_name,
+                                  status='error_managing')
             raise exception.DriverNotInitialized()
 
-        size = self.driver.manage_existing_get_size(volume,
-                                                    manage_existing_ref)
+        size = 0
+        try:
+            size = self.driver.manage_existing_get_size(volume,
+                                                        manage_existing_ref)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                reason = _("Volume driver %s get exception.") % driver_name
+                flow_common.error_out(volume, reason,
+                                      status='error_managing')
 
         return {'size': size,
                 'volume_type_id': volume.volume_type_id,
@@ -60,7 +69,8 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
 
     def revert(self, context, result, flow_failures, volume, **kwargs):
         reason = _('Volume manage failed.')
-        flow_common.error_out(volume, reason=reason)
+        flow_common.error_out(volume, reason=reason,
+                              status='error_managing')
         LOG.error(_LE("Volume %s: manage failed."), volume.id)
 
 

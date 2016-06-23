@@ -1379,6 +1379,20 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.show(req, fake.VOLUME_ID)
         self.assertEqual(False, res_dict['volume']['encrypted'])
 
+    def test_volume_show_with_error_managing_deleting(self):
+        def stub_volume_get(self, context, volume_id, **kwargs):
+            vol = stubs.stub_volume(volume_id,
+                                    status='error_managing_deleting')
+            return fake_volume.fake_volume_obj(context, **vol)
+
+        self.stubs.Set(volume_api.API, 'get', stub_volume_get)
+        self.stubs.Set(db.sqlalchemy.api, '_volume_type_get_full',
+                       stubs.stub_volume_type_get)
+
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        res_dict = self.controller.show(req, fake.VOLUME_ID)
+        self.assertEqual('deleting', res_dict['volume']['status'])
+
     def test_volume_delete(self):
         self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_get)
 

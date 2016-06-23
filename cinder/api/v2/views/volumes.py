@@ -49,12 +49,25 @@ class ViewBuilder(common.ViewBuilder):
             },
         }
 
+    def _get_volume_status(self, volume):
+        # NOTE(wanghao): for fixing bug 1504007, we introduce 'managing',
+        # 'error_managing' and 'error_managing_deleting' status into managing
+        # process, but still expose 'creating' and 'error' and 'deleting'
+        # status to user for API compatibility.
+        status_map = {
+            'managing': 'creating',
+            'error_managing': 'error',
+            'error_managing_deleting': 'deleting',
+        }
+        vol_status = volume.get('status')
+        return status_map.get(vol_status, vol_status)
+
     def detail(self, request, volume):
         """Detailed view of a single volume."""
         volume_ref = {
             'volume': {
                 'id': volume.get('id'),
-                'status': volume.get('status'),
+                'status': self._get_volume_status(volume),
                 'size': volume.get('size'),
                 'availability_zone': volume.get('availability_zone'),
                 'created_at': volume.get('created_at'),

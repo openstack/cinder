@@ -96,7 +96,9 @@ class ManageVolumeFlowTestCase(test.TestCase):
         task = manager.PrepareForQuotaReservationTask(mock_db, mock_driver)
 
         task.revert(self.ctxt, mock_result, mock_flow_failures, volume_ref)
-        mock_error_out.assert_called_once_with(volume_ref, reason=mock.ANY)
+        mock_error_out.assert_called_once_with(volume_ref,
+                                               reason='Volume manage failed.',
+                                               status='error_managing')
 
     def test_get_flow(self):
         mock_volume_flow = mock.Mock()
