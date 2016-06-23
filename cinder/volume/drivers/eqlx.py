@@ -16,6 +16,7 @@
 """Volume driver for Dell EqualLogic Storage."""
 
 import functools
+import math
 import random
 
 import eventlet
@@ -155,10 +156,11 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         1.0   - Initial driver
         1.1.0 - Misc fixes
         1.2.0 - Deprecated eqlx_cli_timeout infavor of ssh_conn_timeout
+        1.3.0 - Added support for manage/unmanage volume
 
     """
 
-    VERSION = "1.2.0"
+    VERSION = "1.3.0"
 
     def __init__(self, *args, **kwargs):
         super(DellEQLSanISCSIDriver, self).__init__(*args, **kwargs)
@@ -302,6 +304,9 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
     def _get_volume_data(self, lines):
         prefix = 'iSCSI target name is '
         target_name = self._get_prefixed_value(lines, prefix)[:-1]
+        return self._get_model_update(target_name)
+
+    def _get_model_update(self, target_name):
         lun_id = "%s:%s,1 %s 0" % (self._group_ip, '3260', target_name)
         model_update = {}
         model_update['provider_location'] = lun_id
@@ -320,7 +325,7 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         elif val.endswith('TB'):
             scale = 1.0 * 1024
             part = 'TB'
-        return scale * float(val.partition(part)[0])
+        return math.ceil(scale * float(val.partition(part)[0]))
 
     def _update_volume_stats(self):
         """Retrieve stats info from eqlx group."""
@@ -370,6 +375,25 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         data['thick_provisioning_support'] = not thin_enabled
 
         self._stats = data
+
+    def _get_volume_info(self, volume_name):
+        """Get the volume details on the array"""
+        command = ['volume', 'select', volume_name, 'show']
+        try:
+            data = {}
+            for line in self._eql_execute(*command):
+                if line.startswith('Size:'):
+                    out_tup = line.rstrip().partition(' ')
+                    data['size'] = self._get_space_in_gb(out_tup[-1])
+                elif line.startswith('iSCSI Name:'):
+                    out_tup = line.rstrip().partition(': ')
+                    data['iSCSI_Name'] = out_tup[-1]
+            return data
+        except processutils.ProcessExecutionError:
+            msg = (_("Volume does not exists %s.") % volume_name)
+            LOG.error(msg)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=volume_name, reason=msg)
 
     def _check_volume(self, volume):
         """Check if the volume exists on the Array."""
@@ -451,6 +475,18 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to add multihost-access '
+                              'for volume "%s".'),
+                          volume['name'])
+
+    def _set_volume_description(self, volume, description):
+        """Set the description of the volume"""
+        try:
+            cmd = ['volume', 'select',
+                   volume['name'], 'description', description]
+            self._eql_execute(*cmd)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Failed to set description '
                               'for volume "%s".'),
                           volume['name'])
 
@@ -623,6 +659,70 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
                           {'name': volume['name'],
                            'current_size': volume['size'],
                            'new_size': new_size})
+
+    def _get_existing_volume_ref_name(self, ref):
+        existing_volume_name = None
+        if 'source-name' in ref:
+            existing_volume_name = ref['source-name']
+        elif 'source-id' in ref:
+            existing_volume_name = ref['source-id']
+        else:
+            msg = _('Reference must contain source-id or source-name.')
+            LOG.error(msg)
+            raise exception.InvalidInput(reason=msg)
+
+        return existing_volume_name
+
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing volume on the backend storage."""
+        existing_volume_name = self._get_existing_volume_ref_name(existing_ref)
+        try:
+            cmd = ['volume', 'rename',
+                   existing_volume_name, volume['name']]
+            self._eql_execute(*cmd)
+            self._set_volume_description(volume, '"OpenStack Managed"')
+            self.add_multihost_access(volume)
+            data = self._get_volume_info(volume['name'])
+            updates = self._get_model_update(data['iSCSI_Name'])
+            LOG.info(_LI("Backend volume %(back_vol)s renamed to "
+                     "%(vol)s and is now managed by cinder."),
+                     {'back_vol': existing_volume_name,
+                      'vol': volume['name']})
+            return updates
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Failed to manage volume "%s".'), volume['name'])
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of volume to be managed by manage_existing.
+
+        When calculating the size, round up to the next GB.
+
+        :param volume:       Cinder volume to manage
+        :param existing_ref: Driver-specific information used to identify a
+        volume
+        """
+        existing_volume_name = self._get_existing_volume_ref_name(existing_ref)
+        data = self._get_volume_info(existing_volume_name)
+        return data['size']
+
+    def unmanage(self, volume):
+        """Removes the specified volume from Cinder management.
+
+        Does not delete the underlying backend storage object.
+
+        :param volume: Cinder volume to unmanage
+        """
+        try:
+            self._set_volume_description(volume, '"OpenStack UnManaged"')
+            LOG.info(_LI("Virtual volume %(disp)s '%(vol)s' is no "
+                     "longer managed."),
+                     {'disp': volume['display_name'],
+                      'vol': volume['name']})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Failed to unmanage volume "%s".'),
+                          volume['name'])
 
     def local_path(self, volume):
         raise NotImplementedError()
