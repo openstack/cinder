@@ -1036,3 +1036,15 @@ def validate_integer(value, name, min_value=None, max_value=None):
                          {'value_name': name, 'max_value': max_value}))
 
     return value
+
+
+def validate_extra_specs(specs):
+    """Validating key and value of extra specs."""
+    for key, value in specs.items():
+        if key is not None:
+            check_string_length(key, 'Key "%s"' % key,
+                                min_length=1, max_length=255)
+
+        if value is not None:
+            check_string_length(value, 'Value for key "%s"' % key,
+                                min_length=0, max_length=255)

@@ -24,6 +24,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import rpc
+from cinder import utils
 from cinder.volume import volume_types
 
 authorize = extensions.extension_authorizer('volume', 'types_extra_specs')
@@ -52,17 +53,6 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         return self._get_extra_specs(context, type_id)
 
-    def _validate_extra_specs(self, specs):
-        """Validating key and value of extra specs."""
-        for key, value in specs.items():
-            if key is not None:
-                self.validate_string_length(key, 'Key "%s"' % key,
-                                            min_length=1, max_length=255)
-
-            if value is not None:
-                self.validate_string_length(value, 'Value for key "%s"' % key,
-                                            min_length=0, max_length=255)
-
     def create(self, req, type_id, body=None):
         context = req.environ['cinder.context']
         authorize(context)
@@ -72,7 +62,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         specs = body['extra_specs']
         self._check_key_names(specs.keys())
-        self._validate_extra_specs(specs)
+        utils.validate_extra_specs(specs)
 
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
@@ -97,7 +87,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         self._check_key_names(body.keys())
-        self._validate_extra_specs(body)
+        utils.validate_extra_specs(body)
 
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
