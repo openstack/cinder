@@ -754,7 +754,7 @@ class API(base.Base):
                     context, e,
                     resource='snapshots',
                     size=volume.size)
-        self._check_metadata_properties(metadata)
+        utils.check_metadata_properties(metadata)
 
         snapshot = None
         try:
@@ -960,24 +960,6 @@ class API(base.Base):
         LOG.info(_LI("Delete volume metadata completed successfully."),
                  resource=volume)
 
-    def _check_metadata_properties(self, metadata=None):
-        if not metadata:
-            metadata = {}
-
-        for k, v in metadata.items():
-            if len(k) == 0:
-                msg = _("Metadata property key blank.")
-                LOG.warning(msg)
-                raise exception.InvalidVolumeMetadata(reason=msg)
-            if len(k) > 255:
-                msg = _("Metadata property key greater than 255 characters.")
-                LOG.warning(msg)
-                raise exception.InvalidVolumeMetadataSize(reason=msg)
-            if len(v) > 255:
-                msg = _("Metadata property value greater than 255 characters.")
-                LOG.warning(msg)
-                raise exception.InvalidVolumeMetadataSize(reason=msg)
-
     @wrap_check_policy
     def update_volume_metadata(self, context, volume,
                                metadata, delete=False,
@@ -993,7 +975,7 @@ class API(base.Base):
                     '%s status.') % volume['status']
             LOG.info(msg, resource=volume)
             raise exception.InvalidVolume(reason=msg)
-        self._check_metadata_properties(metadata)
+        utils.check_metadata_properties(metadata)
         db_meta = self.db.volume_metadata_update(context, volume['id'],
                                                  metadata,
                                                  delete,
@@ -1022,7 +1004,7 @@ class API(base.Base):
         `metadata` argument will be deleted.
 
         """
-        self._check_metadata_properties(metadata)
+        utils.check_metadata_properties(metadata)
         db_meta = self.db.volume_admin_metadata_update(context, volume['id'],
                                                        metadata, delete, add,
                                                        update)
@@ -1066,7 +1048,7 @@ class API(base.Base):
             _metadata = orig_meta.copy()
             _metadata.update(metadata)
 
-        self._check_metadata_properties(_metadata)
+        utils.check_metadata_properties(_metadata)
 
         snapshot.metadata = _metadata
         snapshot.save()

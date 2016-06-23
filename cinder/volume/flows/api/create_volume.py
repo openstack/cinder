@@ -268,29 +268,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                        'volume_type': volume_type})
             return volume_type
 
-    @staticmethod
-    def _check_metadata_properties(metadata=None):
-        """Checks that the volume metadata properties are valid."""
-
-        if not metadata:
-            metadata = {}
-
-        for (k, v) in metadata.items():
-            if len(k) == 0:
-                msg = _("Metadata property key blank")
-                LOG.warning(msg)
-                raise exception.InvalidVolumeMetadata(reason=msg)
-            if len(k) > 255:
-                msg = _("Metadata property key %s greater than 255 "
-                        "characters") % k
-                LOG.warning(msg)
-                raise exception.InvalidVolumeMetadataSize(reason=msg)
-            if len(v) > 255:
-                msg = _("Metadata property key %s value greater than"
-                        " 255 characters") % k
-                LOG.warning(msg)
-                raise exception.InvalidVolumeMetadataSize(reason=msg)
-
     def _extract_availability_zone(self, availability_zone, snapshot,
                                    source_volume):
         """Extracts and returns a validated availability zone.
@@ -464,7 +441,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             # to make sure we don't pass empty dict
             specs = None
 
-        self._check_metadata_properties(metadata)
+        utils.check_metadata_properties(metadata)
 
         return {
             'size': size,
