@@ -586,7 +586,7 @@ class LVMVolumeDriver(driver.VolumeDriver):
         lv_name = existing_ref['source-name']
         self.vg.get_volume(lv_name)
 
-        if volutils.check_already_managed_volume(self.db, lv_name):
+        if volutils.check_already_managed_volume(lv_name):
             raise exception.ManageExistingAlreadyManaged(volume_ref=lv_name)
 
         # Attempt to rename the LV to match the OpenStack internal name.

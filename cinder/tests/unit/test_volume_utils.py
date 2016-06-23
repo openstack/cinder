@@ -25,6 +25,7 @@ from oslo_concurrency import processutils
 from oslo_config import cfg
 
 from cinder import context
+from cinder.db.sqlalchemy import models
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
@@ -757,56 +758,51 @@ class VolumeUtilsTestCase(test.TestCase):
         host_2 = 'fake_host2@backend1'
         self.assertFalse(volume_utils.hosts_are_equivalent(host_1, host_2))
 
-    def test_check_managed_volume_already_managed(self):
-        mock_db = mock.Mock()
-
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1')
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    def test_check_managed_volume_already_managed(self, exists_mock):
+        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_id = 'volume-' + id_
+        result = volume_utils.check_already_managed_volume(vol_id)
         self.assertTrue(result)
+        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_check_already_managed_with_vol_id_vol_pattern(self, conf_mock):
-        mock_db = mock.Mock()
-        conf_mock.volume_name_template = 'volume-%s-volume'
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    def test_check_already_managed_with_vol_id_vol_pattern(self, exists_mock):
+        template = 'volume-%s-volume'
+        self.override_config('volume_name_template', template)
+        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_id = template % id_
 
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1-volume')
+        result = volume_utils.check_already_managed_volume(vol_id)
         self.assertTrue(result)
+        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
-    @mock.patch('cinder.volume.utils.CONF')
-    def test_check_already_managed_with_id_vol_pattern(self, conf_mock):
-        mock_db = mock.Mock()
-        conf_mock.volume_name_template = '%s-volume'
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=True)
+    def test_check_already_managed_with_id_vol_pattern(self, exists_mock):
+        template = '%s-volume'
+        self.override_config('volume_name_template', template)
+        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_id = template % id_
 
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1-volume')
+        result = volume_utils.check_already_managed_volume(vol_id)
         self.assertTrue(result)
+        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
-    def test_check_managed_volume_not_managed_cinder_like_name(self):
-        mock_db = mock.Mock()
-        mock_db.volume_get = mock.Mock(
-            side_effect=exception.VolumeNotFound(
-                'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'))
-
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1feb-2dcc-404d-9b15-b86fe3bec0a1')
-
+    @mock.patch('cinder.db.sqlalchemy.api.resource_exists', return_value=False)
+    def test_check_managed_volume_not_managed_cinder_like_name(self,
+                                                               exists_mock):
+        id_ = 'd8cd1feb-2dcc-404d-9b15-b86fe3bec0a1'
+        vol_id = 'volume-' + id_
+        result = volume_utils.check_already_managed_volume(vol_id)
         self.assertFalse(result)
+        exists_mock.assert_called_once_with(mock.ANY, models.Volume, id_)
 
     def test_check_managed_volume_not_managed(self):
-        mock_db = mock.Mock()
-
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'test-volume')
-
+        result = volume_utils.check_already_managed_volume('test-volume')
         self.assertFalse(result)
 
     def test_check_managed_volume_not_managed_id_like_uuid(self):
-        mock_db = mock.Mock()
-
-        result = volume_utils.check_already_managed_volume(
-            mock_db, 'volume-d8cd1fe')
-
+        result = volume_utils.check_already_managed_volume('volume-d8cd1fe')
         self.assertFalse(result)
 
     def test_convert_config_string_to_dict(self):

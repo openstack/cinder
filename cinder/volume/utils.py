@@ -38,6 +38,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI, _LW, _LE
+from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder.volume import throttling
@@ -670,22 +671,19 @@ def _extract_id(vol_name):
     return match.group('uuid') if match else None
 
 
-def check_already_managed_volume(db, vol_name):
+def check_already_managed_volume(vol_name):
     """Check cinder db for already managed volume.
 
-    :param db: database api parameter
     :param vol_name: volume name parameter
     :returns: bool -- return True, if db entry with specified
                       volume name exist, otherwise return False
     """
     vol_id = _extract_id(vol_name)
     try:
-        if vol_id and uuid.UUID(vol_id, version=4):
-            db.volume_get(context.get_admin_context(), vol_id)
-            return True
-    except (exception.VolumeNotFound, ValueError):
+        return (vol_id and uuid.UUID(vol_id, version=4) and
+                objects.Volume.exists(context.get_admin_context(), vol_id))
+    except ValueError:
         return False
-    return False
 
 
 def convert_config_string_to_dict(config_string):

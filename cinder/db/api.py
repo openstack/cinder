@@ -1204,6 +1204,10 @@ def message_destroy(context, message_id):
 ###################
 
 
+def resource_exists(context, model, resource_id):
+    return IMPL.resource_exists(context, model, resource_id)
+
+
 def get_model_for_versioned_object(versioned_object):
     return IMPL.get_model_for_versioned_object(versioned_object)
 
