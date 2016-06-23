@@ -469,8 +469,6 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             # to make sure we don't pass empty dict
             specs = None
 
-        utils.check_metadata_properties(metadata)
-
         return {
             'size': size,
             'snapshot_id': snapshot_id,
