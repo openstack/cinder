@@ -345,7 +345,8 @@ class TestCinderVolumeCmd(test.TestCase):
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         get_launcher.assert_called_once_with()
-        service_create.assert_called_once_with(binary='cinder-volume')
+        service_create.assert_called_once_with(binary='cinder-volume',
+                                               coordination=True)
         launcher.launch_service.assert_called_once_with(server)
         launcher.wait.assert_called_once_with()
 
@@ -357,6 +358,7 @@ class TestCinderVolumeCmd(test.TestCase):
                                 get_launcher):
         backends = ['backend1', 'backend2']
         CONF.set_override('enabled_backends', backends)
+        CONF.set_override('host', 'host')
         launcher = get_launcher.return_value
 
         cinder_volume.main()
@@ -366,7 +368,11 @@ class TestCinderVolumeCmd(test.TestCase):
         log_setup.assert_called_once_with(CONF, "cinder")
         monkey_patch.assert_called_once_with()
         get_launcher.assert_called_once_with()
-        self.assertEqual(len(backends), service_create.call_count)
+        c1 = mock.call(binary='cinder-volume', host='host@backend1',
+                       service_name='backend1', coordination=True)
+        c2 = mock.call(binary='cinder-volume', host='host@backend2',
+                       service_name='backend2', coordination=True)
+        service_create.assert_has_calls([c1, c2])
         self.assertEqual(len(backends), launcher.launch_service.call_count)
         launcher.wait.assert_called_once_with()
 
