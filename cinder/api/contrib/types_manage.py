@@ -58,6 +58,7 @@ class VolumeTypesManageController(wsgi.Controller):
         name = vol_type.get('name', None)
         description = vol_type.get('description')
         specs = vol_type.get('extra_specs', {})
+        utils.validate_extra_specs(specs)
         is_public = vol_type.get('os-volume-type-access:is_public', True)
 
         if name is None or len(name.strip()) == 0:
