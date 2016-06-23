@@ -26,8 +26,8 @@ from cinder.volume.drivers.kaminario import kaminario_iscsi
 from cinder.volume import utils as vol_utils
 
 
-CONNECTOR = {'initiator': 'iqn.1993-08.org.debian:01:84cd7e88bb5a',
-             'ip': '192.168.6.5', 'platform': 'x86_64', 'host': 'il-ksm1-055',
+CONNECTOR = {'initiator': 'iqn.1993-08.org.debian:01:12aa12aa12aa',
+             'ip': '192.168.2.5', 'platform': 'x86_64', 'host': 'test-k2',
              'os_type': 'linux2', 'multipath': False}
 
 
@@ -113,7 +113,6 @@ class TestKaminarioISCSI(test.TestCase):
                        KaminarioISCSIDriver(configuration=self.conf))
         device = mock.Mock(return_value={'device': {'path': '/dev'}})
         self.driver._connect_device = device
-        self.driver._protocol = False
         self.driver.client = FakeKrest()
 
     def test_create_volume(self):
@@ -233,3 +232,32 @@ class TestKaminarioISCSI(test.TestCase):
         """Test terminate_connection."""
         result = self.driver.terminate_connection(self.vol, CONNECTOR)
         self.assertIsNone(result)
+
+    def test_get_lun_number(self):
+        """Test _get_lun_number."""
+        host, host_rs, host_name = self.driver._get_host_object(CONNECTOR)
+        result = self.driver._get_lun_number(self.vol, host)
+        self.assertEqual(548, result)
+
+    def test_get_volume_object(self):
+        """Test _get_volume_object."""
+        result = self.driver._get_volume_object(self.vol)
+        self.assertEqual(548, result.id)
+
+    def test_get_host_object(self):
+        """Test _get_host_object."""
+        host, host_rs, host_name = self.driver._get_host_object(CONNECTOR)
+        self.assertEqual(548, host.id)
+        self.assertEqual(1, host_rs.total)
+        self.assertEqual('test-k2', host_name)
+
+    def test_get_target_info(self):
+        """Test get_target_info."""
+        iscsi_portal, target_iqn = self.driver.get_target_info()
+        self.assertEqual('10.0.0.1:3260', iscsi_portal)
+        self.assertEqual('xyztlnxyz', target_iqn)
+
+    def test_k2_initialize_connection(self):
+        """Test k2_initialize_connection."""
+        result = self.driver.k2_initialize_connection(self.vol, CONNECTOR)
+        self.assertEqual(548, result)

@@ -25,7 +25,7 @@ from oslo_utils import versionutils
 
 import cinder
 from cinder import exception
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LW
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
@@ -408,7 +408,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         return "cview-{0}".format(vid)
 
     @kaminario_logger
-    def delete_host_by_name(self, name):
+    def _delete_host_by_name(self, name):
         """Deleting host by name."""
         host_rs = self.client.search("hosts", name=name)
         if hasattr(host_rs, "hits") and host_rs.total != 0:
@@ -427,8 +427,87 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
+    @kaminario_logger
+    def _get_volume_object(self, volume):
+        vol_name = self.get_volume_name(volume.id)
+        LOG.debug("Searching volume : %s in K2.", vol_name)
+        vol_rs = self.client.search("volumes", name=vol_name)
+        if not hasattr(vol_rs, 'hits') or vol_rs.total == 0:
+            msg = _("Unable to find volume: %s from K2.") % vol_name
+            LOG.error(msg)
+            raise exception.KaminarioCinderDriverException(reason=msg)
+        return vol_rs.hits[0]
+
+    @kaminario_logger
+    def _get_lun_number(self, vol, host):
+        volsnap = None
+        LOG.debug("Searching volsnaps in K2.")
+        volsnap_rs = self.client.search("volsnaps", snapshot=vol)
+        if hasattr(volsnap_rs, 'hits') and volsnap_rs.total != 0:
+            volsnap = volsnap_rs.hits[0]
+
+        LOG.debug("Searching mapping of volsnap in K2.")
+        map_rs = self.client.search("mappings", volume=volsnap, host=host)
+        return map_rs.hits[0].lun
+
     def initialize_connection(self, volume, connector):
         pass
 
+    @kaminario_logger
     def terminate_connection(self, volume, connector, **kwargs):
+        """Terminate connection of volume from host."""
+        # Get volume object
+        if type(volume).__name__ != 'RestObject':
+            vol_name = self.get_volume_name(volume.id)
+            LOG.debug("Searching volume: %s in K2.", vol_name)
+            volume_rs = self.client.search("volumes", name=vol_name)
+            if hasattr(volume_rs, "hits") and volume_rs.total != 0:
+                volume = volume_rs.hits[0]
+        else:
+            vol_name = volume.name
+
+        # Get host object.
+        host_name = self.get_initiator_host_name(connector)
+        host_rs = self.client.search("hosts", name=host_name)
+        if hasattr(host_rs, "hits") and host_rs.total != 0 and volume:
+            host = host_rs.hits[0]
+            LOG.debug("Searching and deleting mapping of volume: %(name)s to "
+                      "host: %(host)s", {'host': host_name, 'name': vol_name})
+            map_rs = self.client.search("mappings", volume=volume, host=host)
+            if hasattr(map_rs, "hits") and map_rs.total != 0:
+                map_rs.hits[0].delete()
+            if self.client.search("mappings", host=host).total == 0:
+                LOG.debug("Deleting initiator hostname: %s in K2.", host_name)
+                host.delete()
+        else:
+            LOG.warning(_LW("Host: %s not found on K2."), host_name)
+
+    def k2_initialize_connection(self, volume, connector):
+        # Get volume object.
+        if type(volume).__name__ != 'RestObject':
+            vol = self._get_volume_object(volume)
+        else:
+            vol = volume
+        # Get host object.
+        host, host_rs, host_name = self._get_host_object(connector)
+        try:
+            # Map volume object to host object.
+            LOG.debug("Mapping volume: %(vol)s to host: %(host)s",
+                      {'host': host_name, 'vol': vol.name})
+            mapping = self.client.new("mappings", volume=vol, host=host).save()
+        except Exception as ex:
+            if host_rs.total == 0:
+                self._delete_host_by_name(host_name)
+            LOG.exception(_LE("Unable to map volume: %(vol)s to host: "
+                              "%(host)s"), {'host': host_name,
+                          'vol': vol.name})
+            raise exception.KaminarioCinderDriverException(
+                reason=six.text_type(ex.message))
+        # Get lun number.
+        if type(volume).__name__ == 'RestObject':
+            return self._get_lun_number(vol, host)
+        else:
+            return mapping.lun
+
+    def _get_host_object(self, connector):
         pass
