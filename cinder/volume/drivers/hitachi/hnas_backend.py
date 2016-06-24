@@ -813,3 +813,62 @@ class HNASSSHBackend(object):
         self._get_targets(_evs_id, refresh=True)
         LOG.debug("create_target: alias: %(alias)s  fs_label: %(fs_label)s",
                   {'alias': tgt_alias, 'fs_label': fs_label})
+
+    def _get_file_handler(self, volume_path, _evs_id, fs_label):
+        out, err = self._run_cmd("console-context", "--evs", _evs_id,
+                                 'file-clone-stat', '-f', fs_label,
+                                 volume_path)
+
+        if "File is not a clone" in out:
+            msg = (_("%s is not a clone!"), volume_path)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=volume_path, reason=msg)
+
+        lines = out.split('\n')
+        filehandle_list = []
+
+        for line in lines:
+            if "SnapshotFile:" in line and "FileHandle" in line:
+                item = line.split(':')
+                handler = item[1][:-1].replace(' FileHandle[', "")
+                filehandle_list.append(handler)
+                LOG.debug("Volume handler found: %(fh)s. Adding to list...",
+                          {'fh': handler})
+
+        return filehandle_list
+
+    def check_snapshot_parent(self, volume_path, snap_name, fs_label):
+        _evs_id = self.get_evs(fs_label)
+
+        file_handler_list = self._get_file_handler(volume_path, _evs_id,
+                                                   fs_label)
+
+        for file_handler in file_handler_list:
+            out, err = self._run_cmd("console-context", "--evs", _evs_id,
+                                     'file-clone-stat-snapshot-file',
+                                     '-f', fs_label, file_handler)
+
+            lines = out.split('\n')
+
+            for line in lines:
+                if snap_name in line:
+                    LOG.debug("Snapshot %(snap)s found in children list from "
+                              "%(vol)s!", {'snap': snap_name,
+                                           'vol': volume_path})
+                    return True
+
+        LOG.debug("Snapshot %(snap)s was not found in children list from "
+                  "%(vol)s, probably it is not the parent!",
+                  {'snap': snap_name, 'vol': volume_path})
+        return False
+
+    def get_export_path(self, export, fs_label):
+        evs_id = self.get_evs(fs_label)
+        out, err = self._run_cmd("console-context", "--evs", evs_id,
+                                 'nfs-export', 'list', export)
+
+        lines = out.split('\n')
+
+        for line in lines:
+            if 'Export path:' in line:
+                return line.split('Export path:')[1].strip()
