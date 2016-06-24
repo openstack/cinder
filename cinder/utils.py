@@ -160,6 +160,29 @@ def check_ssh_injection(cmd_list):
                     raise exception.SSHInjectionThreat(command=cmd_list)
 
 
+def check_metadata_properties(metadata=None):
+    """Checks that the volume metadata properties are valid."""
+
+    if not metadata:
+        metadata = {}
+
+    for k, v in metadata.items():
+        if len(k) == 0:
+            msg = _("Metadata property key blank.")
+            LOG.warning(msg)
+            raise exception.InvalidVolumeMetadata(reason=msg)
+        if len(k) > 255:
+            msg = _("Metadata property key %s greater than 255 "
+                    "characters.") % k
+            LOG.warning(msg)
+            raise exception.InvalidVolumeMetadataSize(reason=msg)
+        if len(v) > 255:
+            msg = _("Metadata property key %s value greater than "
+                    "255 characters.") % k
+            LOG.warning(msg)
+            raise exception.InvalidVolumeMetadataSize(reason=msg)
+
+
 def last_completed_audit_period(unit=None):
     """This method gives you the most recently *completed* audit period.
 
