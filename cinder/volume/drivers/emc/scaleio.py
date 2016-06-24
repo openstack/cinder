@@ -153,6 +153,12 @@ class ScaleIODriver(driver.VolumeDriver):
                  "Protection domain id: %(domain_id)s."),
                  {'domain_id': self.protection_domain_id})
 
+        self.provisioning_type = (
+            'thin' if self.configuration.san_thin_provision else 'thick')
+        LOG.info(_LI(
+                 "Default provisioning type: %(provisioning_type)s."),
+                 {'provisioning_type': self.provisioning_type})
+
         self.connector = connector.InitiatorConnector.factory(
             connector.SCALEIO, utils.get_root_helper(),
             device_scan_attempts=
@@ -235,7 +241,8 @@ class ScaleIODriver(driver.VolumeDriver):
                                 self.protection_domain_name)
 
     def _find_provisioning_type(self, storage_type):
-        return storage_type.get(PROVISIONING_KEY)
+        return storage_type.get(PROVISIONING_KEY,
+                                self.provisioning_type)
 
     def _find_limit(self, storage_type, qos_key, extraspecs_key):
         qos_limit = (storage_type.get(qos_key)
