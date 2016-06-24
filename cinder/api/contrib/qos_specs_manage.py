@@ -16,7 +16,6 @@
 """The QoS specs extension"""
 
 from oslo_log import log as logging
-from oslo_utils import strutils
 import six
 import webob
 
@@ -170,10 +169,8 @@ class QoSSpecsController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        force = req.params.get('force', None)
-
         # Convert string to bool type in strict manner
-        force = strutils.bool_from_string(force)
+        force = utils.get_bool_param('force', req.params)
         LOG.debug("Delete qos_spec: %(id)s, force: %(force)s",
                   {'id': id, 'force': force})
 

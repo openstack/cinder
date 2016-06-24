@@ -323,6 +323,16 @@ class QoSSpecManageApiTest(test.TestCase):
                               req, fake.IN_USE_ID)
             self.assertEqual(1, notifier.get_notification_count())
 
+    def test_qos_specs_delete_with_invalid_force(self):
+        invalid_force = "invalid_bool"
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/qos-specs/%s/delete_keys?force=%s' %
+            (fake.PROJECT_ID, fake.QOS_SPEC_ID, invalid_force))
+
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.controller.delete,
+                          req, fake.QOS_SPEC_ID)
+
     @mock.patch('cinder.volume.qos_specs.delete_keys',
                 side_effect=return_qos_specs_delete_keys)
     def test_qos_specs_delete_keys(self, mock_qos_delete_keys):
