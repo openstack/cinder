@@ -54,7 +54,7 @@ class FCZoneHelper(object):
             views = self.client.get_views_by_portg(portg)
             if not views:
                 LOG.debug("PortGroup %s doesn't belong to any view.", portg)
-                break
+                continue
 
             LOG.debug("PortGroup %(portg)s belongs to view %(views)s.",
                       {"portg": portg, "views": views[0]})
@@ -95,6 +95,8 @@ class FCZoneHelper(object):
         return weighted_ports
 
     def _get_weighted_ports(self, contr_port_map, ports_info, contrs):
+        LOG.debug("_get_weighted_ports, we only select ports from "
+                  "controllers: %s", contrs)
         weighted_ports = []
         for contr in contrs:
             if contr in contr_port_map:
@@ -130,19 +132,50 @@ class FCZoneHelper(object):
                    'initiators': fabric_connected_initiators})
         return fabric_connected_ports, fabric_connected_initiators
 
-    def build_ini_targ_map(self, wwns, host_id, lun_id):
+    def _get_lun_engine_contrs(self, engines, lun_id):
+        contrs = []
+        engine_id = None
         lun_info = self.client.get_lun_info(lun_id)
         lun_contr_id = lun_info['OWNINGCONTROLLER']
-        engines = self.client.get_all_engines()
-        LOG.debug("Get array engines: %s", engines)
-
         for engine in engines:
             contrs = json.loads(engine['NODELIST'])
             engine_id = engine['ID']
             if lun_contr_id in contrs:
-                LOG.debug("LUN %(lun_id)s belongs to engine %(engine_id)s.",
-                          {"lun_id": lun_id, "engine_id": engine_id})
                 break
+
+        LOG.debug("LUN %(lun_id)s belongs to engine %(engine_id)s. Engine "
+                  "%(engine_id)s has controllers: %(contrs)s.",
+                  {"lun_id": lun_id, "engine_id": engine_id, "contrs": contrs})
+        return contrs, engine_id
+
+    def _build_contr_port_map(self, fabric_connected_ports, ports_info):
+        contr_port_map = {}
+        for port in fabric_connected_ports:
+            contr = ports_info[port]['contr']
+            if not contr_port_map.get(contr):
+                contr_port_map[contr] = []
+            contr_port_map[contr].append(port)
+        LOG.debug("Controller port map: %s.", contr_port_map)
+        return contr_port_map
+
+    def _create_new_portg(self, portg_name, engine_id):
+        portg_id = self.client.get_tgt_port_group(portg_name)
+        if portg_id:
+            LOG.debug("Found port group %s not belonged to any view, "
+                      "deleting it.", portg_name)
+            ports = self.client.get_fc_ports_by_portgroup(portg_id)
+            for port_id in ports.values():
+                self.client.remove_port_from_portgroup(portg_id, port_id)
+            self.client.delete_portgroup(portg_id)
+        description = constants.PORTGROUP_DESCRIP_PREFIX + engine_id
+        new_portg_id = self.client.create_portg(portg_name, description)
+        return new_portg_id
+
+    def build_ini_targ_map(self, wwns, host_id, lun_id):
+        engines = self.client.get_all_engines()
+        LOG.debug("Get array engines: %s", engines)
+
+        contrs, engine_id = self._get_lun_engine_contrs(engines, lun_id)
 
         # Check if there is already a port group in the view.
         # If yes and have already considered the engine,
@@ -171,17 +204,15 @@ class FCZoneHelper(object):
             self._filter_by_fabric(wwns, ports_info.keys()))
 
         # Build a controller->ports map for convenience.
-        contr_port_map = {}
-        for port in fabric_connected_ports:
-            contr = ports_info[port]['contr']
-            if not contr_port_map.get(contr):
-                contr_port_map[contr] = []
-            contr_port_map[contr].append(port)
-        LOG.debug("Controller port map: %s.", contr_port_map)
-
+        contr_port_map = self._build_contr_port_map(fabric_connected_ports,
+                                                    ports_info)
         # Get the 'best' ports for the given controllers.
         weighted_ports = self._get_weighted_ports(contr_port_map, ports_info,
                                                   contrs)
+        if not weighted_ports:
+            msg = _("No FC port can be used for LUN %s.") % lun_id
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
 
         # Handle port group.
         port_list = [ports_info[port]['id'] for port in weighted_ports]
@@ -193,16 +224,7 @@ class FCZoneHelper(object):
             # port group.
             weighted_ports.extend(list(ports.keys()))
         else:
-            portg_id = self.client.get_tgt_port_group(portg_name)
-            if portg_id:
-                LOG.debug("Found port group %s not belonged to any view, "
-                          "deleting it.", portg_name)
-                ports = self.client.get_fc_ports_by_portgroup(portg_id)
-                for port_id in ports.values():
-                    self.client.remove_port_from_portgroup(portg_id, port_id)
-                self.client.delete_portgroup(portg_id)
-            description = constants.PORTGROUP_DESCRIP_PREFIX + engine_id
-            portg_id = self.client.create_portg(portg_name, description)
+            portg_id = self._create_new_portg(portg_name, engine_id)
 
         for port in port_list:
             self.client.add_port_to_portg(portg_id, port)
