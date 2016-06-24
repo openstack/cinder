@@ -17,7 +17,6 @@
 from lxml import etree
 
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 
 
 VOLUME_ID = 'f10d1a84-9b7b-427e-8fec-63c48b509a56'
@@ -224,38 +223,17 @@ SNAPSHOT = {
 
 VOLUME_REF = {'name': 'fake_vref_name', 'size': 42}
 
-FAKE_CMODE_POOLS = [
-    {
-        'QoS_support': True,
-        'consistencygroup_support': True,
-        'free_capacity_gb': 3.72,
-        'netapp_compression': u'true',
-        'netapp_dedup': u'true',
-        'netapp_disk_type': 'SSD',
-        'netapp_mirrored': u'true',
-        'netapp_nocompression': u'false',
-        'netapp_nodedup': u'false',
-        'netapp_raid_type': 'raiddp',
-        'netapp_thick_provisioned': u'false',
-        'netapp_thin_provisioned': u'true',
-        'netapp_unmirrored': u'false',
+FAKE_CMODE_VOLUMES = ['open123', 'mixed', 'open321']
+FAKE_CMODE_POOL_MAP = {
+    'open123': {
         'pool_name': 'open123',
-        'reserved_percentage': 0,
-        'total_capacity_gb': 4.65,
-        'thin_provisioning_support': True,
-        'thick_provisioning_support': False,
-        'provisioned_capacity_gb': 0.93,
-        'max_over_subscription_ratio': 20.0,
-        'utilization': 30.0,
-        'filter_function': 'filter',
-        'goodness_function': 'goodness',
-    }
-]
-
-FAKE_CMODE_VOLUME = {
-    'all': [ssc_cmode.NetAppVolume(name='open123', vserver='vs'),
-            ssc_cmode.NetAppVolume(name='mixed', vserver='vs'),
-            ssc_cmode.NetAppVolume(name='open321', vserver='vs')],
+    },
+    'mixed': {
+        'pool_name': 'mixed',
+    },
+    'open321': {
+        'pool_name': 'open321',
+    },
 }
 
 FAKE_7MODE_VOLUME = {
@@ -273,31 +251,6 @@ FAKE_7MODE_VOLUME = {
             <name>open1234</name>
             </volume-info>"""))
     ],
-}
-
-
-FAKE_CMODE_VOL1 = ssc_cmode.NetAppVolume(name='open123', vserver='openstack')
-FAKE_CMODE_VOL1.state['vserver_root'] = False
-FAKE_CMODE_VOL1.state['status'] = 'online'
-FAKE_CMODE_VOL1.state['junction_active'] = True
-FAKE_CMODE_VOL1.space['space-guarantee-enabled'] = False
-FAKE_CMODE_VOL1.space['space-guarantee'] = 'file'
-FAKE_CMODE_VOL1.space['thin_provisioned'] = True
-FAKE_CMODE_VOL1.mirror['mirrored'] = True
-FAKE_CMODE_VOL1.qos['qos_policy_group'] = None
-FAKE_CMODE_VOL1.aggr['name'] = 'aggr1'
-FAKE_CMODE_VOL1.aggr['junction'] = '/vola'
-FAKE_CMODE_VOL1.sis['dedup'] = True
-FAKE_CMODE_VOL1.sis['compression'] = True
-FAKE_CMODE_VOL1.aggr['raid_type'] = 'raiddp'
-FAKE_CMODE_VOL1.aggr['ha_policy'] = 'cfo'
-FAKE_CMODE_VOL1.aggr['disk_type'] = 'SSD'
-ssc_map = {
-    'mirrored': [FAKE_CMODE_VOL1],
-    'dedup': [FAKE_CMODE_VOL1],
-    'compression': [FAKE_CMODE_VOL1],
-    'thin': [FAKE_CMODE_VOL1],
-    'all': [FAKE_CMODE_VOL1],
 }
 
 FILE_LIST = ['file1', 'file2', 'file3']

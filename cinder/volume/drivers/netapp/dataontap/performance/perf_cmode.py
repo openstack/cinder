@@ -96,9 +96,8 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
 
         # Update pool utilization map atomically
         pool_utilization = {}
-        for pool in ssc_pools:
-            pool_name = pool.id['name']
-            aggr_name = pool.aggr['name']
+        for pool_name, pool_info in ssc_pools.items():
+            aggr_name = pool_info.get('aggregate', 'unknown')
             node_name = aggr_node_map.get(aggr_name)
             if node_name:
                 pool_utilization[pool_name] = node_utilization.get(
@@ -118,8 +117,8 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
         """Get the set of aggregates that contain the specified pools."""
 
         aggr_names = set()
-        for pool in ssc_pools:
-            aggr_names.add(pool.aggr['name'])
+        for pool_name, pool_info in ssc_pools.items():
+            aggr_names.add(pool_info.get('aggregate'))
         return aggr_names
 
     def _get_nodes_for_aggregates(self, aggr_names):

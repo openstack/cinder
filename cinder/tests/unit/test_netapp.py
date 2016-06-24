@@ -33,7 +33,6 @@ from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_7mode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
-from cinder.volume.drivers.netapp.dataontap import ssc_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp import options
 from cinder.volume.drivers.netapp import utils
@@ -540,36 +539,12 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
                 'id': 'lun1', 'provider_auth': None, 'project_id': 'project',
                 'display_name': None, 'display_description': 'lun1',
                 'volume_type_id': None, 'host': 'hostname@backend#vol1'}
-    vol1 = ssc_cmode.NetAppVolume('lun1', 'openstack')
-    vol1.state['vserver_root'] = False
-    vol1.state['status'] = 'online'
-    vol1.state['junction_active'] = True
-    vol1.space['size_avl_bytes'] = '4000000000'
-    vol1.space['size_total_bytes'] = '5000000000'
-    vol1.space['space-guarantee-enabled'] = False
-    vol1.space['space-guarantee'] = 'file'
-    vol1.space['thin_provisioned'] = True
-    vol1.mirror['mirrored'] = True
-    vol1.qos['qos_policy_group'] = None
-    vol1.aggr['name'] = 'aggr1'
-    vol1.aggr['junction'] = '/vola'
-    vol1.sis['dedup'] = True
-    vol1.sis['compression'] = True
-    vol1.aggr['raid_type'] = 'raiddp'
-    vol1.aggr['ha_policy'] = 'cfo'
-    vol1.aggr['disk_type'] = 'SSD'
-    ssc_map = {'mirrored': set([vol1]), 'dedup': set([vol1]),
-               'compression': set([vol1]),
-               'thin': set([vol1]), 'all': set([vol1])}
 
     def setUp(self):
         super(NetAppDirectCmodeISCSIDriverTestCase, self).setUp()
         self._custom_setup()
 
     def _custom_setup(self):
-        self.stubs.Set(
-            ssc_cmode, 'refresh_cluster_ssc',
-            lambda a, b, c, synchronous: None)
         self.mock_object(utils, 'OpenStackInfo')
         self.mock_object(perf_7mode, 'Performance7modeLibrary')
         self.mock_object(capabilities, 'CapabilitiesLibrary')
@@ -582,7 +557,6 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         driver.do_setup(context='')
         self.driver = driver
         self.mock_object(self.driver.library.zapi_client, '_init_ssh_client')
-        self.driver.ssc_vols = self.ssc_map
 
     def _set_config(self, configuration):
         configuration.netapp_storage_protocol = 'iscsi'
@@ -599,8 +573,8 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.driver.library.zapi_client.get_ontapi_version.return_value = \
             (1, 20)
         self.mock_object(block_cmode.NetAppBlockStorageCmodeLibrary,
-                         '_get_filtered_pools',
-                         mock.Mock(return_value=fakes.FAKE_CMODE_POOLS))
+                         '_get_flexvol_to_pool_map',
+                         mock.Mock(return_value=fakes.FAKE_CMODE_POOL_MAP))
         self.driver.check_for_setup_error()
 
     def test_do_setup_all_default(self):
@@ -696,7 +670,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.mock_object(common.na_utils, 'get_iscsi_connection_properties',
                          mock.Mock(return_value=FAKE_CONN_PROPERTIES))
         self.mock_object(client_cmode.Client,
-                         'get_operational_network_interface_addresses',
+                         'get_operational_lif_addresses',
                          mock.Mock(return_value=[]))
         self.driver.create_volume(self.volume)
         updates = self.driver.create_export(None, self.volume, {})
@@ -728,7 +702,7 @@ class NetAppDirectCmodeISCSIDriverTestCase(test.TestCase):
         self.mock_object(client_cmode.Client, 'get_igroup_by_initiators',
                          mock.Mock(return_value=[FAKE_IGROUP_INFO]))
         self.mock_object(client_cmode.Client,
-                         'get_operational_network_interface_addresses',
+                         'get_operational_lif_addresses',
                          mock.Mock(return_value=[]))
         self.mock_object(client_cmode.Client, 'get_iscsi_target_details')
         self.mock_object(client_cmode.Client, 'get_iscsi_service_details')

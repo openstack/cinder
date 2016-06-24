@@ -118,7 +118,13 @@ INVALID_GET_ITER_RESPONSE_NO_RECORDS = etree.XML("""
   </results>
 """)
 
-GET_OPERATIONAL_NETWORK_INTERFACE_ADDRESSES_RESPONSE = etree.XML("""
+INVALID_RESPONSE = etree.XML("""
+  <results status="passed">
+    <num-records>1</num-records>
+  </results>
+""")
+
+GET_OPERATIONAL_LIF_ADDRESSES_RESPONSE = etree.XML("""
     <results status="passed">
         <num-records>2</num-records>
         <attributes-list>
@@ -616,9 +622,39 @@ AGGR_GET_NODE_RESPONSE = etree.XML("""
     'node': NODE_NAME,
 })
 
+AGGR_RAID_TYPE = 'raid_dp'
+AGGR_GET_ITER_SSC_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <aggr-attributes>
+        <aggr-raid-attributes>
+          <plexes>
+            <plex-attributes>
+              <plex-name>/%(aggr)s/plex0</plex-name>
+              <raidgroups>
+                <raidgroup-attributes>
+                  <raidgroup-name>/%(aggr)s/plex0/rg0</raidgroup-name>
+                </raidgroup-attributes>
+              </raidgroups>
+            </plex-attributes>
+          </plexes>
+          <raid-type>%(raid)s</raid-type>
+        </aggr-raid-attributes>
+        <aggregate-name>%(aggr)s</aggregate-name>
+      </aggr-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {'aggr': VOLUME_AGGREGATE_NAME, 'raid': AGGR_RAID_TYPE})
+
+AGGR_INFO_SSC = {
+    'name': VOLUME_AGGREGATE_NAME,
+    'raid-type': AGGR_RAID_TYPE,
+}
+
 VOLUME_SIZE_TOTAL = 19922944
 VOLUME_SIZE_AVAILABLE = 19791872
-VOLUME_GET_ITER_RESPONSE = etree.XML("""
+VOLUME_GET_ITER_CAPACITY_RESPONSE = etree.XML("""
     <results status="passed">
         <num-records>1</num-records>
         <attributes-list>
@@ -634,6 +670,112 @@ VOLUME_GET_ITER_RESPONSE = etree.XML("""
     'available_size': VOLUME_SIZE_AVAILABLE,
     'total_size': VOLUME_SIZE_TOTAL,
 })
+
+VOLUME_VSERVER_NAME = 'fake_vserver'
+VOLUME_NAMES = ('volume1', 'volume2')
+
+VOLUME_GET_ITER_LIST_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(volume1)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+      <volume-attributes>
+        <volume-id-attributes>
+          <name>%(volume2)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>2</num-records>
+  </results>
+""" % {
+    'volume1': VOLUME_NAMES[0],
+    'volume2': VOLUME_NAMES[1],
+    'vserver': VOLUME_VSERVER_NAME,
+})
+
+VOLUME_GET_ITER_SSC_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <volume-attributes>
+        <volume-id-attributes>
+          <containing-aggregate-name>%(aggr)s</containing-aggregate-name>
+          <junction-path>/%(volume)s</junction-path>
+          <name>%(volume)s</name>
+          <owning-vserver-name>%(vserver)s</owning-vserver-name>
+        </volume-id-attributes>
+        <volume-mirror-attributes>
+          <is-data-protection-mirror>false</is-data-protection-mirror>
+          <is-replica-volume>false</is-replica-volume>
+        </volume-mirror-attributes>
+        <volume-qos-attributes>
+          <policy-group-name>fake_qos_policy_group_name</policy-group-name>
+        </volume-qos-attributes>
+        <volume-space-attributes>
+          <is-space-guarantee-enabled>true</is-space-guarantee-enabled>
+          <space-guarantee>none</space-guarantee>
+        </volume-space-attributes>
+      </volume-attributes>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'aggr': VOLUME_AGGREGATE_NAMES[0],
+    'volume': VOLUME_NAMES[0],
+    'vserver': VOLUME_VSERVER_NAME,
+})
+
+VOLUME_INFO_SSC = {
+    'name': VOLUME_NAMES[0],
+    'vserver': VOLUME_VSERVER_NAME,
+    'junction-path': '/%s' % VOLUME_NAMES[0],
+    'aggregate': VOLUME_AGGREGATE_NAMES[0],
+    'space-guarantee-enabled': True,
+    'space-guarantee': 'none',
+    'qos-policy-group': 'fake_qos_policy_group_name',
+}
+
+SIS_GET_ITER_SSC_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <sis-status-info>
+        <is-compression-enabled>false</is-compression-enabled>
+        <state>enabled</state>
+      </sis-status-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""")
+
+VOLUME_DEDUPE_INFO_SSC = {
+    'compression': False,
+    'dedupe': True,
+}
+
+SNAPMIRROR_GET_ITER_RESPONSE = etree.XML("""
+  <results status="passed">
+    <attributes-list>
+      <snapmirror-info>
+        <destination-location>%(vserver)s:%(volume2)s</destination-location>
+        <destination-volume>%(volume2)s</destination-volume>
+        <destination-vserver>%(vserver)s</destination-vserver>
+        <source-location>%(vserver)s:%(volume1)s</source-location>
+        <source-volume>%(volume1)s</source-volume>
+        <source-vserver>%(vserver)s</source-vserver>
+      </snapmirror-info>
+    </attributes-list>
+    <num-records>1</num-records>
+  </results>
+""" % {
+    'volume1': VOLUME_NAMES[0],
+    'volume2': VOLUME_NAMES[1],
+    'vserver': VOLUME_VSERVER_NAME,
+})
+
 
 STORAGE_DISK_GET_ITER_RESPONSE_PAGE_1 = etree.XML("""
   <results status="passed">
@@ -745,7 +887,7 @@ STORAGE_DISK_GET_ITER_RESPONSE_PAGE_3 = etree.XML("""
   </results>
 """)
 
-AGGREGATE_DISK_TYPE = 'FCAL'
+AGGR_DISK_TYPE = 'FCAL'
 STORAGE_DISK_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -758,7 +900,7 @@ STORAGE_DISK_GET_ITER_RESPONSE = etree.XML("""
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % AGGREGATE_DISK_TYPE)
+""" % AGGR_DISK_TYPE)
 
 SYSTEM_USER_CAPABILITY_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
