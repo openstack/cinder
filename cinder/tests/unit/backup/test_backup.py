@@ -348,6 +348,13 @@ class BackupTestCase(BaseBackupTest):
     def test_is_working(self):
         self.assertTrue(self.backup_mgr.is_working())
 
+    def test_get_volume_backend(self):
+        backup_mgr = manager.BackupManager()
+        backup_mgr.volume_managers = {'backend1': 'backend1',
+                                      'backend2': 'backend2'}
+        backend = backup_mgr._get_volume_backend(allow_null_host=True)
+        self.assertIn(backend, backup_mgr.volume_managers)
+
     def test_cleanup_incomplete_backup_operations_with_exceptions(self):
         """Test cleanup resilience in the face of exceptions."""
 
