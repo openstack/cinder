@@ -159,7 +159,7 @@ class QuotaSetsController(wsgi.Controller):
         target_project_id = id
 
         if not hasattr(params, '__call__') and 'usage' in params:
-            usage = strutils.bool_from_string(params['usage'])
+            usage = utils.get_bool_param('usage', params)
         else:
             usage = False
 
