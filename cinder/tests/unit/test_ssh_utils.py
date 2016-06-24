@@ -78,16 +78,14 @@ class FakeSSHClient(object):
 
 class SSHPoolTestCase(test.TestCase):
     """Unit test for SSH Connection Pool."""
-    @mock.patch('cinder.ssh_utils.CONF')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
-    def test_sshpool_remove(self, mock_isfile, mock_sshclient, mock_open,
-                            mock_conf):
+    def test_sshpool_remove(self, mock_isfile, mock_sshclient, mock_open):
         ssh_to_remove = mock.MagicMock()
         mock_sshclient.side_effect = [mock.MagicMock(),
                                       ssh_to_remove, mock.MagicMock()]
-        mock_conf.ssh_hosts_key_file.return_value = 'dummy'
+        self.override_config('ssh_hosts_key_file', 'dummy')
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
                                     "test",
                                     password="test",
@@ -97,17 +95,16 @@ class SSHPoolTestCase(test.TestCase):
         sshpool.remove(ssh_to_remove)
         self.assertNotIn(ssh_to_remove, list(sshpool.free_items))
 
-    @mock.patch('cinder.ssh_utils.CONF')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
     def test_sshpool_remove_object_not_in_pool(self, mock_isfile,
-                                               mock_sshclient, mock_open,
-                                               mock_conf):
+                                               mock_sshclient, mock_open):
         # create an SSH Client that is not a part of sshpool.
         ssh_to_remove = mock.MagicMock()
         mock_sshclient.side_effect = [mock.MagicMock(), mock.MagicMock()]
-        mock_conf.ssh_hosts_key_file.return_value = 'dummy'
+
+        self.override_config('ssh_hosts_key_file', 'dummy')
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
                                     "test",
                                     password="test",
@@ -118,15 +115,15 @@ class SSHPoolTestCase(test.TestCase):
         sshpool.remove(ssh_to_remove)
         self.assertEqual(listBefore, list(sshpool.free_items))
 
-    @mock.patch('cinder.ssh_utils.CONF')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
     def test_ssh_default_hosts_key_file(self, mock_isfile, mock_sshclient,
-                                        mock_open, mock_conf):
+                                        mock_open):
         mock_ssh = mock.MagicMock()
         mock_sshclient.return_value = mock_ssh
-        mock_conf.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
+        self.override_config('ssh_hosts_key_file',
+                             '/var/lib/cinder/ssh_known_hosts')
 
         # create with customized setting
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
@@ -142,15 +139,15 @@ class SSHPoolTestCase(test.TestCase):
         mock_ssh.load_host_keys.assert_called_once_with(
             '/var/lib/cinder/ssh_known_hosts')
 
-    @mock.patch('cinder.ssh_utils.CONF')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
     def test_ssh_host_key_file_kwargs(self, mock_isfile, mock_sshclient,
-                                      mock_open, mock_conf):
+                                      mock_open):
         mock_ssh = mock.MagicMock()
         mock_sshclient.return_value = mock_ssh
-        mock_conf.ssh_hosts_key_file = '/var/lib/cinder/ssh_known_hosts'
+        self.override_config('ssh_hosts_key_file',
+                             '/var/lib/cinder/ssh_known_hosts')
 
         # create with customized setting
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
@@ -238,14 +235,11 @@ class SSHPoolTestCase(test.TestCase):
 
         self.assertNotEqual(first_id, third_id)
 
-    @mock.patch('cinder.ssh_utils.CONF')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
-    def test_missing_ssh_hosts_key_config(self, mock_sshclient, mock_open,
-                                          mock_conf):
+    def test_missing_ssh_hosts_key_config(self, mock_sshclient, mock_open):
         mock_sshclient.return_value = FakeSSHClient()
-
-        mock_conf.ssh_hosts_key_file = None
+        self.override_config('ssh_hosts_key_file', None)
         # create with password
         self.assertRaises(exception.ParameterNotFound,
                           ssh_utils.SSHPool,
@@ -294,15 +288,15 @@ class SSHPoolTestCase(test.TestCase):
                           min_size=1,
                           max_size=1)
 
-    @mock.patch.multiple('cinder.ssh_utils.CONF',
-                         strict_ssh_host_key_policy=True,
-                         ssh_hosts_key_file='/var/lib/cinder/ssh_known_hosts')
     @mock.patch('six.moves.builtins.open')
     @mock.patch('paramiko.SSHClient')
     @mock.patch('os.path.isfile', return_value=True)
     def test_ssh_strict_host_key_policy(self, mock_isfile, mock_sshclient,
                                         mock_open):
         mock_sshclient.return_value = FakeSSHClient()
+
+        self.flags(strict_ssh_host_key_policy=True,
+                   ssh_hosts_key_file='/var/lib/cinder/ssh_known_hosts')
 
         # create with customized setting
         sshpool = ssh_utils.SSHPool("127.0.0.1", 22, 10,
