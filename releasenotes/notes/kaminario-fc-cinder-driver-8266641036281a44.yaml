@@ -1,0 +1,4 @@
+---
+features:
+  - Add FC cinder volume driver for Kaminario K2 all-flash arrays.
+
