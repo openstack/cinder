@@ -21,6 +21,7 @@ from xml.dom import minidom
 
 from oslo_log import log as logging
 from oslo_service import loopingcall
+from oslo_utils import units
 import six
 
 from cinder import context
@@ -744,7 +745,7 @@ class EMCVMAXUtils(object):
         :param strGB: string -- The size in GB
         :returns: string -- The size in bytes
         """
-        strBitsSize = six.text_type(int(strGbSize) * 1024 * 1024 * 1024)
+        strBitsSize = six.text_type(int(strGbSize) * units.Gi)
 
         LOG.debug("Converted %(strGbSize)s GBs to %(strBitsSize)s Bits.",
                   {'strGbSize': strGbSize, 'strBitsSize': strBitsSize})
