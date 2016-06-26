@@ -73,9 +73,6 @@ class Client(object):
         minor = res.get_child_content('minor-version')
         return major, minor
 
-    def get_connection(self):
-        return self.connection
-
     def check_is_naelement(self, elem):
         """Checks if object is instance of NaElement."""
         if not isinstance(elem, netapp_api.NaElement):

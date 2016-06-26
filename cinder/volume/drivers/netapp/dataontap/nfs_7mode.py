@@ -61,7 +61,6 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
             port=self.configuration.netapp_server_port,
             vfiler=self.configuration.netapp_vfiler)
 
-        self.ssc_enabled = False
         self.perf_library = perf_7mode.Performance7modeLibrary(
             self.zapi_client)
 

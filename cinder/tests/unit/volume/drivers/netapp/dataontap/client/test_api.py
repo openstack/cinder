@@ -457,61 +457,6 @@ class NetAppApiElementTransTests(test.TestCase):
 
 
 @ddt.ddt
-class NetAppApiInvokeTests(test.TestCase):
-    """Test Cases for api request creation and invocation"""
-
-    def setUp(self):
-        super(NetAppApiInvokeTests, self).setUp()
-
-    @ddt.data(None, zapi_fakes.FAKE_XML_STR)
-    def test_invoke_api_invalid_input(self, na_server):
-        """Tests Zapi Invocation Type Error"""
-        na_server = None
-        api_name = zapi_fakes.FAKE_API_NAME
-        invoke_generator = netapp_api.invoke_api(na_server, api_name)
-
-        self.assertRaises(exception.InvalidInput, next, invoke_generator)
-
-    @ddt.data({'params': {'na_server': zapi_fakes.FAKE_NA_SERVER,
-                          'api_name': zapi_fakes.FAKE_API_NAME}},
-              {'params': {'na_server': zapi_fakes.FAKE_NA_SERVER,
-                          'api_name': zapi_fakes.FAKE_API_NAME,
-                          'api_family': 'cm',
-                          'query': zapi_fakes.FAKE_QUERY,
-                          'des_result': zapi_fakes.FAKE_DES_ATTR,
-                          'additional_elems': None,
-                          'is_iter': True}})
-    @ddt.unpack
-    def test_invoke_api_valid(self, params):
-        """Test invoke_api with valid naserver"""
-        self.mock_object(netapp_api, 'create_api_request', mock.Mock(
-            return_value='success'))
-        self.mock_object(netapp_api.NaServer, 'invoke_successfully',
-                         mock.Mock(
-                             return_value=netapp_api.NaElement('success')))
-
-        invoke_generator = netapp_api.invoke_api(**params)
-
-        self.assertEqual(netapp_api.NaElement('success').to_string(),
-                         next(invoke_generator).to_string())
-
-    def test_create_api_request(self):
-        """"Tests creating api request"""
-        self.mock_object(netapp_api.NaElement, 'translate_struct')
-        self.mock_object(netapp_api.NaElement, 'add_child_elem')
-
-        params = {'api_name': zapi_fakes.FAKE_API_NAME,
-                  'query': zapi_fakes.FAKE_QUERY,
-                  'des_result': zapi_fakes.FAKE_DES_ATTR,
-                  'additional_elems': zapi_fakes.FAKE_XML_STR,
-                  'is_iter': True,
-                  'tag': 'tag'}
-
-        self.assertEqual(zapi_fakes.FAKE_API_NAME_ELEMENT.to_string(),
-                         netapp_api.create_api_request(**params).to_string())
-
-
-@ddt.ddt
 class SSHUtilTests(test.TestCase):
     """Test Cases for SSH API invocation."""
 
