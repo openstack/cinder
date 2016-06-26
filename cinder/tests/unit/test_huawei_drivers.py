@@ -2542,21 +2542,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
             self.assertIsNotNone(re.search('please check the source-name '
                                            'or source-id', ex.msg))
 
-    def test_manage_existing_get_size_improper_lunsize(self):
-        # LUN size is not multiple of 1 GB.
-        external_ref = {'source-id': 'ID1'}
-        with mock.patch.object(rest_client.RestClient, 'get_lun_info',
-                               return_value={'CAPACITY': 2097150}):
-            ex = self.assertRaises(exception.VolumeBackendAPIException,
-                                   self.driver.manage_existing_get_size,
-                                   test_volume, external_ref)
-            self.assertIsNotNone(
-                re.search('Volume size must be multiple of 1 GB', ex.msg))
-
     @ddt.data({'source-id': 'ID1'}, {'source-name': 'LUN1'},
               {'source-name': 'LUN1', 'source-id': 'ID1'})
     @mock.patch.object(rest_client.RestClient, 'get_lun_info',
-                       return_value={'CAPACITY': 2097152})
+                       return_value={'CAPACITY': 3097152})
     @mock.patch.object(rest_client.RestClient, 'get_lun_id_by_name',
                        return_value='ID1')
     def test_manage_existing_get_size_success(self, mock_get_lun_id_by_name,
@@ -2564,7 +2553,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                                               external_ref):
         size = self.driver.manage_existing_get_size(test_volume,
                                                     external_ref)
-        self.assertEqual(1, size)
+        self.assertEqual(2, size)
 
     @mock.patch.object(rest_client.RestClient, 'get_lun_info',
                        return_value={'CAPACITY': 2097152,
