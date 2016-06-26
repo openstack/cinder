@@ -19,6 +19,7 @@ import mock
 from oslo_config import cfg
 from oslo_utils import units
 
+from cinder import context
 from cinder import exception
 from cinder.objects import volume as obj_volume
 from cinder import test
@@ -180,7 +181,7 @@ class NimbleDriverBaseTestCase(test.TestCase):
                     configuration=configuration)
                 self.mock_client_service.service.login.return_value = \
                     FAKE_POSITIVE_LOGIN_RESPONSE_1
-                self.driver.do_setup(None)
+                self.driver.do_setup(context.get_admin_context())
                 func(self, *args, **kwargs)
             return inner_client_mock
         return client_mock_wrapper
@@ -195,7 +196,7 @@ class NimbleDriverLoginTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -217,7 +218,7 @@ class NimbleDriverLoginTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -253,7 +254,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
@@ -290,7 +291,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
@@ -333,7 +334,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
@@ -376,7 +377,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
@@ -419,7 +420,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -437,7 +438,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -455,7 +456,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -473,7 +474,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -496,7 +497,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -516,7 +517,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
@@ -569,7 +570,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -605,7 +606,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -622,7 +623,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -650,7 +651,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -665,7 +666,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -680,7 +681,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -706,7 +707,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -721,7 +722,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -736,7 +737,7 @@ class NimbleDriverVolumeTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -763,7 +764,7 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -785,7 +786,7 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -810,7 +811,7 @@ class NimbleDriverSnapshotTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
                        mock.Mock(type_id=FAKE_TYPE_ID, return_value={
@@ -869,7 +870,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -910,7 +911,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -954,7 +955,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
@@ -981,7 +982,7 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
-    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+    @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
         'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))

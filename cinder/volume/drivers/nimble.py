@@ -161,19 +161,17 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
     def _update_existing_vols_agent_type(self, context):
         LOG.debug("Updating existing volumes to have "
                   "agent_type = 'OPENSTACK'")
-        backend_name = self.configuration.safe_get('volume_backend_name')
-        all_vols = volume.VolumeList.get_all(
-            context, None, None, None, None, {'status': 'available'})
+        all_vols = volume.VolumeList.get_all_by_host(
+            context, self.host, {'status': 'available'})
         for vol in all_vols:
-            if backend_name in vol.host:
-                try:
-                    self.APIExecutor.edit_vol(
-                        vol.name,
-                        UNMANAGE_EDIT_MASK,
-                        {'agent-type': AGENT_TYPE_OPENSTACK})
-                except NimbleAPIException:
-                    LOG.warning(_LW('Error updating agent-type for '
-                                    'volume %s.'), vol.name)
+            try:
+                self.APIExecutor.edit_vol(
+                    vol.name,
+                    UNMANAGE_EDIT_MASK,
+                    {'agent-type': AGENT_TYPE_OPENSTACK})
+            except NimbleAPIException:
+                LOG.warning(_LW('Error updating agent-type for '
+                                'volume %s.'), vol.name)
 
     def do_setup(self, context):
         """Setup the Nimble Cinder volume driver."""
