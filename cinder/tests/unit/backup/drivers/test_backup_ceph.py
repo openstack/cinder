@@ -667,8 +667,12 @@ class BackupCephTestCase(test.TestCase):
             self.assertEqual(2, image.write.call_count)
             self.assertEqual(2, image.flush.call_count)
             self.assertFalse(image.discard.called)
+            zeroes = '\0' * self.service.chunk_size
+            image.write.assert_has_calls([mock.call(zeroes, 0),
+                                         mock.call(zeroes, self.chunk_size)])
 
         image.reset_mock()
+        image.write.reset_mock()
 
         # Now test with a remainder.
         with mock.patch.object(self.service, '_file_is_rbd') as \
@@ -681,6 +685,12 @@ class BackupCephTestCase(test.TestCase):
             self.assertEqual(3, image.write.call_count)
             self.assertEqual(3, image.flush.call_count)
             self.assertFalse(image.discard.called)
+            image.write.assert_has_calls([mock.call(zeroes,
+                                                    self.chunk_size * 2),
+                                          mock.call(zeroes,
+                                                    self.chunk_size * 3),
+                                          mock.call('\0',
+                                                    self.chunk_size * 4)])
 
     @common_mocks
     def test_delete_backup_snapshot(self):
