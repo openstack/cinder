@@ -1188,7 +1188,8 @@ class API(base.Base):
 
         result = volume.conditional_update(value, expected)
         if not result:
-            msg = _('Volume %(vol_id)s status must be available to extend.')
+            msg = _('Volume %(vol_id)s status must be available '
+                    'to extend.') % {'vol_id': volume.id}
             raise exception.InvalidVolume(reason=msg)
 
         rollback = True
