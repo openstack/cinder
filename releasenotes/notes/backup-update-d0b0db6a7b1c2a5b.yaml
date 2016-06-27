@@ -1,0 +1,3 @@
+---
+features:
+  - Added REST API to update backup name and description.

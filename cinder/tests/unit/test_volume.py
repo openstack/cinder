@@ -5935,9 +5935,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         vol = tests_utils.create_volume(self.context)
         self.context.user_id = fake.USER_ID
         self.context.project_id = fake.PROJECT_ID
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        backup_obj = tests_utils.create_backup(self.context,
+                                               vol['id'])
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
         backup_service = mock.Mock()
@@ -5995,9 +5994,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         temp_vol = tests_utils.create_volume(self.context)
         self.context.user_id = fake.USER_ID
         self.context.project_id = fake.PROJECT_ID
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        backup_obj = tests_utils.create_backup(self.context,
+                                               vol['id'])
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
         backup_service = mock.Mock()
@@ -6088,16 +6086,15 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         vol = tests_utils.create_volume(self.context)
         self.context.user_id = fake.USER_ID
         self.context.project_id = fake.PROJECT_ID
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        backup_obj = tests_utils.create_backup(self.context,
+                                               vol['id'])
         (backup_device, is_snapshot) = self.volume.driver.get_backup_device(
             self.context, backup_obj)
         volume = objects.Volume.get_by_id(self.context, vol.id)
         self.assertEqual(volume, backup_device)
         self.assertFalse(is_snapshot)
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
-        self.assertIsNone(backup.temp_volume_id)
+        backup_obj.refresh()
+        self.assertIsNone(backup_obj.temp_volume_id)
 
     def test_get_backup_device_in_use(self):
         vol = tests_utils.create_volume(self.context,
@@ -6106,9 +6103,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         temp_vol = tests_utils.create_volume(self.context)
         self.context.user_id = fake.USER_ID
         self.context.project_id = fake.PROJECT_ID
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        backup_obj = tests_utils.create_backup(self.context,
+                                               vol['id'])
         with mock.patch.object(
                 self.volume.driver,
                 '_create_temp_cloned_volume') as mock_create_temp:
@@ -6118,7 +6114,7 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                                                      backup_obj))
             self.assertEqual(temp_vol, backup_device)
             self.assertFalse(is_snapshot)
-            backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+            backup_obj.refresh()
             self.assertEqual(temp_vol.id, backup_obj.temp_volume_id)
 
     def test__create_temp_volume_from_snapshot(self):

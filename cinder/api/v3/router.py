@@ -26,6 +26,7 @@ from cinder.api.v2 import snapshot_metadata
 from cinder.api.v2 import snapshots
 from cinder.api.v2 import types
 from cinder.api.v2 import volume_metadata
+from cinder.api.v3 import backups
 from cinder.api.v3 import clusters
 from cinder.api.v3 import consistencygroups
 from cinder.api.v3 import messages
@@ -124,4 +125,10 @@ class APIRouter(cinder.api.openstack.APIRouter):
             snapshot_manage.create_resource()
         mapper.resource("manageable_snapshot", "manageable_snapshots",
                         controller=self.resources['manageable_snapshots'],
+                        collection={'detail': 'GET'})
+
+        self.resources['backups'] = (
+            backups.create_resource())
+        mapper.resource("backup", "backups",
+                        controller=self.resources['backups'],
                         collection={'detail': 'GET'})
