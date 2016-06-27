@@ -17,6 +17,10 @@ from oslo_config import cfg
 
 
 NEXENTA_EDGE_OPTS = [
+    cfg.StrOpt('nexenta_nbd_symlinks_dir',
+               default='/dev/disk/by-path',
+               help='NexentaEdge logical path of directory to store symbolic '
+                    'links to NBDs'),
     cfg.StrOpt('nexenta_rest_address',
                default='',
                help='IP address of NexentaEdge management REST API endpoint'),

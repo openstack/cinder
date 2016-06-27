@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import base64
 import json
 import requests
 import socket
@@ -73,22 +74,27 @@ class NexentaEdgeJSONProxy(object):
         if len(args) > 1:
             data = json.dumps(args[1])
 
-        auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
+        auth = base64.b64encode(
+            ('%s:%s' % (self.user, self.password)).encode('utf-8'))
         headers = {
             'Content-Type': 'application/json',
             'Authorization': 'Basic %s' % auth
         }
 
-        LOG.debug('Sending JSON data: %s, data: %s', self.url, data)
+        LOG.debug('Sending JSON data: %s, method: %s, data: %s', self.url,
+                  self.method, data)
 
         if self.method == 'get':
             req = requests.get(self.url, headers=headers)
-        if self.method == 'post':
+        elif self.method == 'post':
             req = requests.post(self.url, data=data, headers=headers)
-        if self.method == 'put':
+        elif self.method == 'put':
             req = requests.put(self.url, data=data, headers=headers)
-        if self.method == 'delete':
+        elif self.method == 'delete':
             req = requests.delete(self.url, data=data, headers=headers)
+        else:
+            raise exception.VolumeDriverException(
+                message=_('Unsupported method: %s') % self.method)
 
         rsp = req.json()
         req.close()
@@ -96,5 +102,5 @@ class NexentaEdgeJSONProxy(object):
         LOG.debug('Got response: %s', rsp)
         if rsp.get('response') is None:
             raise exception.VolumeBackendAPIException(
-                _('Error response: %s') % rsp)
+                data=_('Error response: %s') % rsp)
         return rsp.get('response')
