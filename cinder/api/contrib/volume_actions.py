@@ -25,6 +25,7 @@ from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder import exception
 from cinder.i18n import _
+from cinder.image import image_utils
 from cinder import utils
 from cinder import volume
 
@@ -237,10 +238,21 @@ class VolumeActionsController(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         authorize(context, "upload_image")
-        image_metadata = {"container_format": params.get("container_format",
-                                                         "bare"),
-                          "disk_format": params.get("disk_format", "raw"),
-                          "name": params["image_name"]}
+        # check for valid disk-format
+        disk_format = params.get("disk_format", "raw")
+        if not image_utils.validate_disk_format(disk_format):
+            msg = _("Invalid disk-format '%(disk_format)s' is specified. "
+                    "Allowed disk-formats are %(allowed_disk_formats)s.") % {
+                "disk_format": disk_format,
+                "allowed_disk_formats": ", ".join(
+                    image_utils.VALID_DISK_FORMATS)
+            }
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        image_metadata = {"container_format": params.get(
+            "container_format", "bare"),
+            "disk_format": disk_format,
+            "name": params["image_name"]}
 
         if req_version >= api_version_request.APIVersionRequest('3.1'):
 
