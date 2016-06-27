@@ -1500,7 +1500,7 @@ class PureBaseVolumeDriver(san.SanDriver):
 @interface.volumedriver
 class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 
-    VERSION = "4.0.0"
+    VERSION = "5.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
@@ -1682,7 +1682,7 @@ class PureISCSIDriver(PureBaseVolumeDriver, san.SanISCSIDriver):
 @interface.volumedriver
 class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
 
-    VERSION = "2.0.0"
+    VERSION = "3.0.0"
 
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
