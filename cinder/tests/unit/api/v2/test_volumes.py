@@ -137,7 +137,8 @@ class VolumeApiTest(test.TestCase):
                              consistencygroup_id=None,
                              volume_type=None,
                              image_ref=None,
-                             image_id=None):
+                             image_id=None,
+                             multiattach=False):
         vol = {"size": size,
                "name": name,
                "description": description,
@@ -147,6 +148,7 @@ class VolumeApiTest(test.TestCase):
                "source_replica": source_replica,
                "consistencygroup_id": consistencygroup_id,
                "volume_type": volume_type,
+               "multiattach": multiattach,
                }
 
         if image_id is not None:
@@ -169,7 +171,8 @@ class VolumeApiTest(test.TestCase):
             attachments=None,
             volume_type=stubs.DEFAULT_VOL_TYPE,
             status=stubs.DEFAULT_VOL_STATUS,
-            with_migration_status=False):
+            with_migration_status=False,
+            multiattach=False):
         metadata = metadata or {}
         attachments = attachments or []
         volume = {'volume':
@@ -193,7 +196,7 @@ class VolumeApiTest(test.TestCase):
                    'metadata': metadata,
                    'name': name,
                    'replication_status': 'disabled',
-                   'multiattach': False,
+                   'multiattach': multiattach,
                    'size': size,
                    'snapshot_id': snapshot_id,
                    'source_volid': source_volid,
@@ -562,6 +565,37 @@ class VolumeApiTest(test.TestCase):
                           self.controller.create,
                           req,
                           body)
+
+    def test_volume_create_with_invalid_multiattach(self):
+        vol = self._vol_in_request_body(multiattach="InvalidBool")
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.controller.create,
+                          req,
+                          body)
+
+    @mock.patch.object(volume_api.API, 'create', autospec=True)
+    @mock.patch.object(volume_api.API, 'get', autospec=True)
+    @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
+                       autospec=True)
+    def test_volume_create_with_valid_multiattach(self,
+                                                  volume_type_get,
+                                                  get, create):
+        create.side_effect = stubs.stub_volume_api_create
+        get.side_effect = stubs.stub_volume_get
+        volume_type_get.side_effect = stubs.stub_volume_type_get
+
+        vol = self._vol_in_request_body(multiattach=True)
+        body = {"volume": vol}
+
+        ex = self._expected_vol_from_controller(multiattach=True)
+
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+        res_dict = self.controller.create(req, body)
+
+        self.assertEqual(ex, res_dict)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
