@@ -17,6 +17,8 @@ import mock
 import six
 import webob
 
+import ddt
+
 from cinder.api.contrib import types_manage
 from cinder import context
 from cinder import exception
@@ -134,6 +136,7 @@ def return_volume_types_get_default_not_found():
     return {}
 
 
+@ddt.ddt
 class VolumeTypesManageApiTest(test.TestCase):
     def setUp(self):
         super(VolumeTypesManageApiTest, self).setUp()
@@ -338,6 +341,18 @@ class VolumeTypesManageApiTest(test.TestCase):
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.controller._create,
                           req, body)
+
+    @ddt.data({'a' * 256: 'a'},
+              {'a': 'a' * 256},
+              {'': 'a'})
+    def test_create_type_with_invalid_extra_specs(self, value):
+        body = {"volume_type": {"name": "vol_type_1",
+                                "os-volume-type-access:is_public": False,
+                                "description": "test description"}}
+        body['volume_type']['extra_specs'] = value
+        req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID)
+        self.assertRaises(exception.InvalidInput,
+                          self.controller._create, req, body)
 
     @mock.patch('cinder.volume.volume_types.update')
     @mock.patch('cinder.volume.volume_types.get_volume_type')
