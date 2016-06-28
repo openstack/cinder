@@ -540,16 +540,6 @@ class GPFSDriverTestCase(test.TestCase):
         self.flags(volume_driver=self.driver_name,
                    gpfs_mount_point_base=org_value)
 
-        # fail configuration.gpfs_images_share_mode not in
-        # ['copy_on_write', 'copy']
-        org_value = self.driver.configuration.gpfs_images_share_mode
-        self.flags(volume_driver=self.driver_name,
-                   gpfs_images_share_mode='copy_on_read')
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.check_for_setup_error)
-        self.flags(volume_driver=self.driver_name,
-                   gpfs_images_share_mode=org_value)
-
         # fail configuration.gpfs_images_share_mode and
         # configuration.gpfs_images_dir is None
         org_value_share_mode = self.driver.configuration.gpfs_images_share_mode
@@ -1195,7 +1185,7 @@ class GPFSDriverTestCase(test.TestCase):
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_gpfs_path')
     def test_is_cloneable_ok(self, mock_is_gpfs_path):
         self.flags(volume_driver=self.driver_name,
-                   gpfs_images_share_mode='test')
+                   gpfs_images_share_mode='copy')
         CONF.gpfs_images_dir = self.images_dir
         mock_is_gpfs_path.return_value = None
         self.assertEqual((True, None, os.path.join(CONF.gpfs_images_dir,
@@ -1203,18 +1193,9 @@ class GPFSDriverTestCase(test.TestCase):
                          self.driver._is_cloneable('12345'))
 
     @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_gpfs_path')
-    def test_is_cloneable_fail_config(self, mock_is_gpfs_path):
-        self.flags(volume_driver=self.driver_name, gpfs_images_share_mode='')
-        CONF.gpfs_images_dir = ''
-        mock_is_gpfs_path.return_value = None
-        self.assertNotEqual((True, None, os.path.join(CONF.gpfs_images_dir,
-                                                      '12345')),
-                            self.driver._is_cloneable('12345'))
-
-    @mock.patch('cinder.volume.drivers.ibm.gpfs.GPFSDriver._is_gpfs_path')
     def test_is_cloneable_fail_path(self, mock_is_gpfs_path):
         self.flags(volume_driver=self.driver_name,
-                   gpfs_images_share_mode='test')
+                   gpfs_images_share_mode='copy')
         CONF.gpfs_images_dir = self.images_dir
         mock_is_gpfs_path.side_effect = (
             processutils.ProcessExecutionError(stdout='test', stderr='test'))
