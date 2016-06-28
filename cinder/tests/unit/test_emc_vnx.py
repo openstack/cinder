@@ -5913,7 +5913,7 @@ class EMCVNXCLIToggleSPTestCase(test.TestCase):
             mock_utils.assert_has_calls(expected)
         time_mock.assert_not_called()
 
-    def test_toggle_sp_with_server_unavailabe(self, time_mock):
+    def test_toggle_sp_with_server_unavailable(self, time_mock):
         self.cli_client.active_storage_ip = '10.10.10.10'
         FAKE_ERROR_MSG = """\
 Error occurred during HTTP request/response from the target: '10.244.213.142'.
@@ -5940,7 +5940,7 @@ Message : HTTP/1.1 503 Service Unavailable"""
             mock_utils.assert_has_calls(expected)
         time_mock.assert_has_calls([mock.call(30)])
 
-    def test_toggle_sp_with_server_unavailabe_max_retry(self, time_mock):
+    def test_toggle_sp_with_server_unavailable_max_retry(self, time_mock):
         self.cli_client.active_storage_ip = '10.10.10.10'
         FAKE_ERROR_MSG = ("Error occurred during HTTP request/response "
                           "from the target: '10.244.213.142'.\n"
