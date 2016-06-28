@@ -64,7 +64,7 @@ class TestVolumeDriver(test.TestCase):
                     as mock_safe_get:
                 mock_safe_get.return_value = 'fabric'
                 self.driver.no_zone_initialize_connection(None, None)
-                assert not add_zone_mock.called
+                add_zone_mock.assert_not_called()
 
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     @mock.patch.object(utils, 'require_driver_initialized')
@@ -87,4 +87,4 @@ class TestVolumeDriver(test.TestCase):
                     as mock_safe_get:
                 mock_safe_get.return_value = 'fabric'
                 self.driver.no_zone_terminate_connection(None, None)
-                assert not remove_zone_mock.called
+                remove_zone_mock.assert_not_called()

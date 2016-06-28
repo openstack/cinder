@@ -594,4 +594,4 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                          mock_init):
         stats = self.driver.get_volume_stats(False)
         self.assertEqual('FC', stats['storage_protocol'])
-        assert mock_get_storage_usage.called is False
+        mock_get_storage_usage.assert_not_called()

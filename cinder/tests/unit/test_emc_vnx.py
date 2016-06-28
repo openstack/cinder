@@ -3544,7 +3544,7 @@ Time Remaining:  0 second(s)
             self.testData.test_volume_with_type,
             self.testData.test_existing_ref)
         expected = [mock.call(*get_lun_cmd, poll=True)]
-        assert get_size == test_size
+        self.assertEqual(test_size, get_size)
         fake_cli.assert_has_calls(expected)
         # Test the function with invalid reference.
         invaild_ref = {'fake': 'fake_ref'}
