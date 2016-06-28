@@ -1013,7 +1013,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
             dummy_disk_size,
             disk_type,
             summary.name,
-            profileId=profile_id,
+            profile_id=profile_id,
             adapter_type=adapter_type,
             extra_config=extra_config)
         # convert vm_create_spec to vm_import_spec
