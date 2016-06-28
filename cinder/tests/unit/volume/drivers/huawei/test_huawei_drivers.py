@@ -3114,7 +3114,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                                        ex.msg))
 
     @mock.patch.object(rest_client.RestClient, 'get_snapshot_info',
-                       return_value={'USERCAPACITY': 2097152})
+                       return_value={'USERCAPACITY': 3097152})
     @mock.patch.object(rest_client.RestClient, 'get_snapshot_id_by_name',
                        return_value='ID1')
     def test_manage_existing_snapshot_get_size_success(self,
@@ -3124,17 +3124,17 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                         'source-id': 'ID1'}
         size = self.driver.manage_existing_snapshot_get_size(self.snapshot,
                                                              external_ref)
-        self.assertEqual(1, size)
+        self.assertEqual(2, size)
 
         external_ref = {'source-name': 'test1'}
         size = self.driver.manage_existing_snapshot_get_size(self.snapshot,
                                                              external_ref)
-        self.assertEqual(1, size)
+        self.assertEqual(2, size)
 
         external_ref = {'source-id': 'ID1'}
         size = self.driver.manage_existing_snapshot_get_size(self.snapshot,
                                                              external_ref)
-        self.assertEqual(1, size)
+        self.assertEqual(2, size)
 
     @mock.patch.object(rest_client.RestClient, 'rename_snapshot')
     def test_unmanage_snapshot(self, mock_rename):

@@ -1498,14 +1498,9 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         """Get the size of the existing snapshot."""
         snapshot_info = self._get_snapshot_info_by_ref(existing_ref)
-        size = (float(snapshot_info.get('USERCAPACITY'))
-                // constants.CAPACITY_UNIT)
-        remainder = (float(snapshot_info.get('USERCAPACITY'))
-                     % constants.CAPACITY_UNIT)
-        if int(remainder) > 0:
-            msg = _("Snapshot size must be multiple of 1 GB.")
-            raise exception.VolumeBackendAPIException(data=msg)
-        return int(size)
+        size = int(math.ceil(snapshot_info.get('USERCAPACITY') /
+                             constants.CAPACITY_UNIT))
+        return size
 
     def unmanage_snapshot(self, snapshot):
         """Unmanage the specified snapshot from Cinder management."""
