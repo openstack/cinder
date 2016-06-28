@@ -15,11 +15,12 @@
 """Volume driver for Kaminario K2 all-flash arrays."""
 import six
 
+from oslo_log import log as logging
+
 from cinder import exception
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LE
 from cinder import interface
 from cinder.volume.drivers.kaminario import kaminario_common as common
-from oslo_log import log as logging
 
 ISCSI_TCP_PORT = "3260"
 LOG = logging.getLogger(__name__)
@@ -37,20 +38,21 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
 
     @kaminario_logger
     def initialize_connection(self, volume, connector):
-        """Get volume object and map to initiator host."""
-        if type(volume).__name__ != 'RestObject':
-            vol_name = self.get_volume_name(volume.id)
-            LOG.debug("Searching volume : %s in K2.", vol_name)
-            vol_rs = self.client.search("volumes", name=vol_name)
-            if not hasattr(vol_rs, 'hits') or vol_rs.total == 0:
-                msg = _("Unable to find volume: %s from K2.") % vol_name
-                LOG.error(msg)
-                raise exception.KaminarioCinderDriverException(reason=msg)
-            vol = vol_rs.hits[0]
-        else:
-            vol = volume
-        """Get target_portal"""
-        LOG.debug("Searching first iscsi port ip  without wan in K2.")
+        """Attach K2 volume to host."""
+        # Get target_portal and target iqn.
+        iscsi_portal, target_iqn = self.get_target_info()
+        # Map volume.
+        lun = self.k2_initialize_connection(volume, connector)
+        # Return target volume information.
+        return {"driver_volume_type": "iscsi",
+                "data": {"target_iqn": target_iqn,
+                         "target_portal": iscsi_portal,
+                         "target_lun": lun,
+                         "target_discovered": True}}
+
+    @kaminario_logger
+    def get_target_info(self):
+        LOG.debug("Searching first iscsi port ip without wan in K2.")
         iscsi_ip_rs = self.client.search("system/net_ips", wan_port="")
         iscsi_ip = target_iqn = None
         if hasattr(iscsi_ip_rs, 'hits') and iscsi_ip_rs.total != 0:
@@ -70,6 +72,10 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
             msg = _("Unable to get target iqn from K2.")
             LOG.error(msg)
             raise exception.KaminarioCinderDriverException(reason=msg)
+        return iscsi_portal, target_iqn
+
+    @kaminario_logger
+    def _get_host_object(self, connector):
         host_name = self.get_initiator_host_name(connector)
         LOG.debug("Searching initiator hostname: %s in K2.", host_name)
         host_rs = self.client.search("hosts", name=host_name)
@@ -85,69 +91,12 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
                                       host=host)
                 iqn.save()
             except Exception as ex:
-                LOG.debug("Unable to create host : %s in K2.", host_name)
-                self.delete_host_by_name(host_name)
+                self._delete_host_by_name(host_name)
+                LOG.exception(_LE("Unable to create host: %s in K2."),
+                              host_name)
                 raise exception.KaminarioCinderDriverException(
                     reason=six.text_type(ex.message))
         else:
             LOG.debug("Use existing initiator hostname: %s in K2.", host_name)
             host = host_rs.hits[0]
-        try:
-            LOG.debug("Mapping volume: %(vol)s to host: %(host)s",
-                      {'host': host_name, 'vol': vol.name})
-            mapping = self.client.new("mappings", volume=vol, host=host).save()
-        except Exception as ex:
-            if host_rs.total == 0:
-                LOG.debug("Unable to mapping volume:%(vol)s to host: %(host)s",
-                          {'host': host_name, 'vol': vol.name})
-                self.delete_host_by_name(host_name)
-            raise exception.KaminarioCinderDriverException(
-                reason=six.text_type(ex.message))
-        if type(volume).__name__ == 'RestObject':
-            volsnap = None
-            LOG.debug("Searching volsnaps in K2.")
-            volsnaps = self.client.search("volsnaps")
-            for v in volsnaps.hits:
-                if v.snapshot.id == vol.id:
-                    volsnap = v
-                    break
-            LOG.debug("Searching mapping of volsnap in K2.")
-            rv = self.client.search("mappings", volume=volsnap)
-            lun = rv.hits[0].lun
-
-        else:
-            lun = mapping.lun
-        return {"driver_volume_type": "iscsi",
-                "data": {"target_iqn": target_iqn,
-                         "target_portal": iscsi_portal,
-                         "target_lun": lun,
-                         "target_discovered": True}}
-
-    @kaminario_logger
-    def terminate_connection(self, volume, connector, **kwargs):
-        """Terminate connection of volume from host."""
-        # Get volume object
-        if type(volume).__name__ != 'RestObject':
-            vol_name = self.get_volume_name(volume.id)
-            LOG.debug("Searching volume: %s in K2.", vol_name)
-            volume_rs = self.client.search("volumes", name=vol_name)
-            if hasattr(volume_rs, "hits") and volume_rs.total != 0:
-                volume = volume_rs.hits[0]
-        else:
-            vol_name = volume.name
-
-        # Get host object.
-        host_name = self.get_initiator_host_name(connector)
-        host_rs = self.client.search("hosts", name=host_name)
-        if hasattr(host_rs, "hits") and host_rs.total != 0 and volume:
-            host = host_rs.hits[0]
-            LOG.debug("Searching and deleting mapping of volume: %(name)s to "
-                      "host: %(host)s", {'host': host_name, 'name': vol_name})
-            map_rs = self.client.search("mappings", volume=volume, host=host)
-            if hasattr(map_rs, "hits") and map_rs.total != 0:
-                map_rs.hits[0].delete()
-            if self.client.search("mappings", host=host).total == 0:
-                LOG.debug("Deleting initiator hostname: %s in K2.", host_name)
-                host.delete()
-        else:
-            LOG.warning(_LW("Host: %s not found on K2."), host_name)
+        return host, host_rs, host_name
