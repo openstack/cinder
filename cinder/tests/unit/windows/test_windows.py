@@ -37,8 +37,8 @@ class TestWindowsDriver(test.TestCase):
         super(TestWindowsDriver, self).setUp()
         configuration = conf.Configuration(None)
         configuration.append_config_values(windows.windows_opts)
-        self.flags(windows_iscsi_lun_path=mock.sentinel.iscsi_lun_path)
-        self.flags(image_conversion_dir=mock.sentinel.image_conversion_dir)
+        self.flags(windows_iscsi_lun_path='fake_iscsi_lun_path')
+        self.flags(image_conversion_dir='fake_image_conversion_dir')
 
         self._driver = windows.WindowsDriver(configuration=configuration)
 
@@ -47,8 +47,8 @@ class TestWindowsDriver(test.TestCase):
         self._driver.do_setup(mock.sentinel.context)
 
         mock_ensure_tree.assert_has_calls(
-            [mock.call(mock.sentinel.iscsi_lun_path),
-             mock.call(mock.sentinel.image_conversion_dir)])
+            [mock.call('fake_iscsi_lun_path'),
+             mock.call('fake_image_conversion_dir')])
 
     def test_check_for_setup_error(self):
         self._driver.check_for_setup_error()
@@ -389,8 +389,7 @@ class TestWindowsDriver(test.TestCase):
 
         self._driver._hostutils.get_volume_info.assert_called_once_with(
             mock.sentinel.drive)
-        mock_splitdrive.assert_called_once_with(
-            mock.sentinel.iscsi_lun_path)
+        mock_splitdrive.assert_called_once_with('fake_iscsi_lun_path')
 
     @mock.patch.object(windows.WindowsDriver, '_get_capacity_info')
     def test_update_volume_stats(self, mock_get_capacity_info):
@@ -399,7 +398,7 @@ class TestWindowsDriver(test.TestCase):
             mock.sentinel.free_space_gb)
 
         self.flags(volume_backend_name=mock.sentinel.backend_name)
-        self.flags(reserved_percentage=mock.sentinel.reserved_percentage)
+        self.flags(reserved_percentage=10)
 
         expected_volume_stats = dict(
             volume_backend_name=mock.sentinel.backend_name,
@@ -408,7 +407,7 @@ class TestWindowsDriver(test.TestCase):
             storage_protocol='iSCSI',
             total_capacity_gb=mock.sentinel.size_gb,
             free_capacity_gb=mock.sentinel.free_space_gb,
-            reserved_percentage=mock.sentinel.reserved_percentage,
+            reserved_percentage=10,
             QoS_support=False)
 
         self._driver._update_volume_stats()
