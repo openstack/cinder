@@ -23,7 +23,6 @@ from oslo_utils import units
 from oslo_vmware import exceptions
 from oslo_vmware import pbm
 from oslo_vmware import vim_util
-import six
 from six.moves import urllib
 
 from cinder.i18n import _, _LE, _LI
@@ -688,7 +687,7 @@ class VMwareVolumeOps(object):
         cf = self._session.vim.client.factory
         option_values = []
 
-        for key, value in six.iteritems(extra_config):
+        for key, value in extra_config.items():
             opt = cf.create('ns0:OptionValue')
             opt.key = key
             opt.value = value
