@@ -13,6 +13,7 @@
 import datetime
 import sys
 
+import ddt
 import mock
 from oslo_config import cfg
 import six
@@ -380,6 +381,7 @@ class TestCinderVolumeCmd(test.TestCase):
         launcher.wait.assert_called_once_with()
 
 
+@ddt.ddt
 class TestCinderManageCmd(test.TestCase):
 
     def setUp(self):
@@ -776,14 +778,28 @@ class TestCinderManageCmd(test.TestCase):
             service['binary'] = 'cinder-%s' % binary
             self._test_service_commands_list(service)
 
-    def test_get_arg_string(self):
-        args1 = "foobar"
-        args2 = "-foo bar"
-        args3 = "--foo bar"
+    @ddt.data(('foobar', 'foobar'), ('-foo bar', 'foo bar'),
+              ('--foo bar', 'foo bar'), ('--foo-bar', 'foo_bar'),
+              ('---foo-bar', '_foo_bar'))
+    @ddt.unpack
+    def test_get_arg_string(self, arg, expected):
+        self.assertEqual(expected, cinder_manage.get_arg_string(arg))
 
-        self.assertEqual("foobar", cinder_manage.get_arg_string(args1))
-        self.assertEqual("foo bar", cinder_manage.get_arg_string(args2))
-        self.assertEqual("foo bar", cinder_manage.get_arg_string(args3))
+    def test_fetch_func_args(self):
+        @cinder_manage.args('--full-rename')
+        @cinder_manage.args('--different-dest', dest='my_dest')
+        @cinder_manage.args('current')
+        def my_func():
+            pass
+
+        expected = {'full_rename': mock.sentinel.full_rename,
+                    'my_dest': mock.sentinel.my_dest,
+                    'current': mock.sentinel.current}
+
+        with mock.patch.object(cinder_manage, 'CONF') as mock_conf:
+            mock_conf.category = mock.Mock(**expected)
+            self.assertDictEqual(expected,
+                                 cinder_manage.fetch_func_args(my_func))
 
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_argv_lt_2(self, register_cli_opt):
