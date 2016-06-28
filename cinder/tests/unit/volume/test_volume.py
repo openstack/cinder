@@ -2682,10 +2682,6 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             self.context)
         self.assertEqual(expected_result, result)
 
-    def test_backup_use_temp_snapshot_config(self):
-        local_conf = self.volume.driver.configuration.local_conf
-        self.assertFalse(local_conf.backup_use_temp_snapshot)
-
     @mock.patch('cinder.tests.fake_driver.FakeLoggingVolumeDriver.'
                 'SUPPORTS_ACTIVE_ACTIVE', True)
     def test_set_resource_host_different(self):
