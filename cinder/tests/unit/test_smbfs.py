@@ -101,8 +101,6 @@ class SmbFsTestCase(test.TestCase):
             volume_size=1)
         self.snapshot.volume = self.volume
 
-        self.addCleanup(mock.patch.stopall)
-
     def _get_fake_allocation_data(self):
         return {self._FAKE_SHARE_HASH: {
                 'total_allocated': self._FAKE_TOTAL_ALLOCATED}}
@@ -252,16 +250,17 @@ class SmbFsTestCase(test.TestCase):
         self._test_setup(config=fake_config)
 
     @mock.patch('os.path.exists')
+    @mock.patch.multiple(smbfs.SmbfsDriver,
+                         _create_windows_image=mock.DEFAULT,
+                         _create_regular_file=mock.DEFAULT,
+                         _create_qcow2_file=mock.DEFAULT,
+                         _create_sparsed_file=mock.DEFAULT,
+                         get_volume_format=mock.DEFAULT,
+                         local_path=mock.DEFAULT,
+                         _set_rw_permissions_for_all=mock.DEFAULT)
     def _test_create_volume(self, mock_exists, volume_exists=False,
-                            volume_format=None, use_sparsed_file=False):
-        mock.patch.multiple(smbfs.SmbfsDriver,
-                            _create_windows_image=mock.DEFAULT,
-                            _create_regular_file=mock.DEFAULT,
-                            _create_qcow2_file=mock.DEFAULT,
-                            _create_sparsed_file=mock.DEFAULT,
-                            get_volume_format=mock.DEFAULT,
-                            local_path=mock.DEFAULT,
-                            _set_rw_permissions_for_all=mock.DEFAULT).start()
+                            volume_format=None, use_sparsed_file=False,
+                            **mocks):
         self._smbfs_driver.configuration = copy.copy(self._FAKE_SMBFS_CONFIG)
         self._smbfs_driver.configuration.smbfs_sparsed_volumes = (
             use_sparsed_file)
