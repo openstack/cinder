@@ -787,7 +787,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         select_ds_for_volume.assert_called_once_with(volume)
         vops.get_create_spec.assert_called_once_with(
-            volume['name'], 0, disk_type, summary.name, profileId=profile_id,
+            volume['name'], 0, disk_type, summary.name, profile_id=profile_id,
             adapter_type=adapter_type, extra_config=extra_config)
         self.assertEqual(vm_create_spec, import_spec.configSpec)
         download_image.assert_called_with(
