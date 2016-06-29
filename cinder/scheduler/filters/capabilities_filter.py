@@ -14,7 +14,6 @@
 #    under the License.
 
 from oslo_log import log as logging
-import six
 
 from cinder.scheduler import filters
 from cinder.scheduler.filters import extra_specs_ops
@@ -35,7 +34,7 @@ class CapabilitiesFilter(filters.BaseHostFilter):
         if not extra_specs:
             return True
 
-        for key, req in six.iteritems(extra_specs):
+        for key, req in extra_specs.items():
 
             # Either not scoped format, or in capabilities scope
             scope = key.split(':')

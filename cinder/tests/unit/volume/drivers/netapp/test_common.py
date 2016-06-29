@@ -13,7 +13,6 @@
 #    under the License.
 
 import mock
-import six
 
 from cinder import exception
 from cinder import test
@@ -91,7 +90,7 @@ class NetAppDriverFactoryTestCase(test.TestCase):
 
         registry = na_common.NETAPP_UNIFIED_DRIVER_REGISTRY
 
-        for family in six.iterkeys(registry):
+        for family in registry:
             for protocol, full_class_name in registry[family].items():
                 driver = na_common.NetAppDriver.create_driver(
                     family, protocol, **kwargs)
