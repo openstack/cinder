@@ -252,6 +252,50 @@ class HuaweiConf(object):
 
         setattr(self.conf, 'iscsi_info', iscsi_info)
 
+    def _parse_rmt_iscsi_info(self, iscsi_info):
+        if not (iscsi_info and iscsi_info.strip()):
+            return []
+
+        # Consider iscsi_info value:
+        # ' {Name:xxx ;;TargetPortGroup: xxx};\n'
+        # '{Name:\t\rxxx;CHAPinfo: mm-usr#mm-pwd} '
+
+        # Step 1, ignore whitespace characters, convert to:
+        # '{Name:xxx;;TargetPortGroup:xxx};{Name:xxx;CHAPinfo:mm-usr#mm-pwd}'
+        iscsi_info = ''.join(iscsi_info.split())
+
+        # Step 2, make initiators configure list, convert to:
+        # ['Name:xxx;;TargetPortGroup:xxx', 'Name:xxx;CHAPinfo:mm-usr#mm-pwd']
+        initiator_infos = iscsi_info[1:-1].split('};{')
+
+        # Step 3, get initiator configure pairs, convert to:
+        # [['Name:xxx', '', 'TargetPortGroup:xxx'],
+        #  ['Name:xxx', 'CHAPinfo:mm-usr#mm-pwd']]
+        initiator_infos = map(lambda x: x.split(';'), initiator_infos)
+
+        # Step 4, remove invalid configure pairs, convert to:
+        # [['Name:xxx', 'TargetPortGroup:xxx'],
+        # ['Name:xxx', 'CHAPinfo:mm-usr#mm-pwd']]
+        initiator_infos = map(lambda x: filter(lambda y: y, x),
+                              initiator_infos)
+
+        # Step 5, make initiators configure dict, convert to:
+        # [{'TargetPortGroup': 'xxx', 'Name': 'xxx'},
+        #  {'Name': 'xxx', 'CHAPinfo': 'mm-usr#mm-pwd'}]
+        get_opts = lambda x: x.split(':', 1)
+        initiator_infos = map(lambda x: dict(map(get_opts, x)),
+                              initiator_infos)
+        # Convert generator to list for py3 compatibility.
+        initiator_infos = list(initiator_infos)
+
+        # Step 6, replace CHAPinfo 'user#pwd' to 'user;pwd'
+        key = 'CHAPinfo'
+        for info in initiator_infos:
+            if key in info:
+                info[key] = info[key].replace('#', ';', 1)
+
+        return initiator_infos
+
     def get_replication_devices(self):
         devs = self.conf.safe_get('replication_device')
         if not devs:
@@ -265,7 +309,8 @@ class HuaweiConf(object):
             dev_config['san_user'] = dev['san_user']
             dev_config['san_password'] = dev['san_password']
             dev_config['storage_pool'] = dev['storage_pool'].split(';')
-            dev_config['iscsi_info'] = []
+            dev_config['iscsi_info'] = self._parse_rmt_iscsi_info(
+                dev.get('iscsi_info'))
             dev_config['iscsi_default_target_ip'] = (
                 dev['iscsi_default_target_ip'].split(';')
                 if 'iscsi_default_target_ip' in dev
