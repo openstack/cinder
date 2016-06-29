@@ -1893,7 +1893,9 @@ class SolidFireDriver(san.SanISCSIDriver):
                           "request, however replication is NOT "
                           "enabled, or there are no available "
                           "targets to fail-over to."))
-            raise exception.UnableToFailOver
+            raise exception.UnableToFailOver(reason=_("Failover requested "
+                                                      "on non replicated "
+                                                      "backend."))
 
         remote_vols = self._map_sf_volumes(volumes,
                                            endpoint=remote['endpoint'])
