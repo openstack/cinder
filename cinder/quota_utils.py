@@ -38,12 +38,14 @@ class GenericProjectInfo(object):
     def __init__(self, project_id, project_keystone_api_version,
                  project_parent_id=None,
                  project_subtree=None,
-                 project_parent_tree=None):
+                 project_parent_tree=None,
+                 is_admin_project=False):
         self.id = project_id
         self.keystone_api_version = project_keystone_api_version
         self.parent_id = project_parent_id
         self.subtree = project_subtree
         self.parents = project_parent_tree
+        self.is_admin_project = is_admin_project
 
 
 def get_volume_type_reservation(ctxt, volume, type_id,
@@ -90,7 +92,7 @@ def _filter_domain_id_from_parents(domain_id, tree):
 
 
 def get_project_hierarchy(context, project_id, subtree_as_ids=False,
-                          parents_as_ids=False):
+                          parents_as_ids=False, is_admin_project=False):
     """A Helper method to get the project hierarchy.
 
     Along with hierarchical multitenancy in keystone API v3, projects can be
@@ -118,6 +120,8 @@ def get_project_hierarchy(context, project_id, subtree_as_ids=False,
             if parents_as_ids:
                 generic_project.parents = _filter_domain_id_from_parents(
                     project.domain_id, project.parents)
+
+            generic_project.is_admin_project = is_admin_project
     except exceptions.NotFound:
         msg = (_("Tenant ID: %s does not exist.") % project_id)
         raise webob.exc.HTTPNotFound(explanation=msg)
