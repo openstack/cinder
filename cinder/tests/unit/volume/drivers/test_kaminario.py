@@ -22,12 +22,14 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume import configuration
+from cinder.volume.drivers.kaminario import kaminario_fc
 from cinder.volume.drivers.kaminario import kaminario_iscsi
 from cinder.volume import utils as vol_utils
 
-
 CONNECTOR = {'initiator': 'iqn.1993-08.org.debian:01:12aa12aa12aa',
              'ip': '192.168.2.5', 'platform': 'x86_64', 'host': 'test-k2',
+             'wwpns': ['12341a2a00001234', '12341a2a00001235'],
+             'wwnns': ['12351a2a00001234', '12361a2a00001234'],
              'os_type': 'linux2', 'multipath': False}
 
 
@@ -43,6 +45,7 @@ class FakeSaveObject(FakeK2Obj):
         self.iscsi_qualified_target_name = "xyztlnxyz"
         self.snapshot = FakeK2Obj()
         self.name = 'test'
+        self.pwwn = '50024f4053300300'
 
     def save(self):
         return FakeSaveObject()
@@ -261,3 +264,30 @@ class TestKaminarioISCSI(test.TestCase):
         """Test k2_initialize_connection."""
         result = self.driver.k2_initialize_connection(self.vol, CONNECTOR)
         self.assertEqual(548, result)
+
+
+class TestKaminarioFC(TestKaminarioISCSI):
+
+    def _setup_driver(self):
+        self.driver = (kaminario_fc.
+                       KaminarioFCDriver(configuration=self.conf))
+        device = mock.Mock(return_value={'device': {'path': '/dev'}})
+        self.driver._connect_device = device
+        self.driver.client = FakeKrest()
+        self.driver._lookup_service = mock.Mock()
+
+    def test_initialize_connection(self):
+        """Test initialize_connection."""
+        conn_info = self.driver.initialize_connection(self.vol, CONNECTOR)
+        self.assertIn('data', conn_info)
+        self.assertIn('target_wwn', conn_info['data'])
+
+    def test_get_target_info(self):
+        """Test get_target_info."""
+        target_wwpn = self.driver.get_target_info()
+        self.assertEqual(['50024f4053300300'], target_wwpn)
+
+    def test_terminate_connection(self):
+        """Test terminate_connection."""
+        result = self.driver.terminate_connection(self.vol, CONNECTOR)
+        self.assertIn('data', result)
