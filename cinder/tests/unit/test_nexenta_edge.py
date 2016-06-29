@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import json
 import mock
 
 from cinder import context
@@ -56,8 +57,14 @@ ISCSI_TARGET_STATUS = 'Target 1: ' + ISCSI_TARGET_NAME
 class TestNexentaEdgeISCSIDriver(test.TestCase):
 
     def setUp(self):
+        def _safe_get(opt):
+            return getattr(self.cfg, opt)
         super(TestNexentaEdgeISCSIDriver, self).setUp()
+        self.context = context.get_admin_context()
         self.cfg = mock.Mock(spec=conf.Configuration)
+        self.cfg.safe_get = mock.Mock(side_effect=_safe_get)
+        self.cfg.trace_flags = 'fake_trace_flags'
+        self.cfg.driver_data_namespace = 'fake_driver_data_namespace'
         self.cfg.nexenta_client_address = '0.0.0.0'
         self.cfg.nexenta_rest_address = '0.0.0.0'
         self.cfg.nexenta_rest_port = 8080
@@ -82,12 +89,81 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
         self.mock_api.return_value = {
             'data': {'value': ISCSI_TARGET_STATUS}
         }
-        self.driver.do_setup(context.get_admin_context())
+        self.driver.do_setup(self.context)
 
         self.addCleanup(self.api_patcher.stop)
 
     def test_check_do_setup(self):
         self.assertEqual(ISCSI_TARGET_NAME, self.driver.target_name)
+
+    def test_check_do_setup__vip(self):
+        first_vip = '/'.join((self.cfg.nexenta_client_address, '32'))
+        vips = [
+            [{'ip': first_vip}],
+            [{'ip': '0.0.0.1/32'}]
+        ]
+
+        def my_side_effect(*args, **kwargs):
+            if args[0] == 'service/isc/iscsi/status':
+                return {'data': {'value': ISCSI_TARGET_STATUS}}
+            else:
+                return {'data': {'X-VIPS': json.dumps(vips)}}
+
+        self.mock_api.side_effect = my_side_effect
+        self.driver.do_setup(self.context)
+        self.assertEqual(self.driver.ha_vip, first_vip)
+
+    def test_check_do_setup__vip_not_in_xvips(self):
+        first_vip = '1.2.3.4/32'
+        vips = [
+            [{'ip': first_vip}],
+            [{'ip': '0.0.0.1/32'}]
+        ]
+
+        def my_side_effect(*args, **kwargs):
+            if args[0] == 'service/isc/iscsi/status':
+                return {'data': {'value': ISCSI_TARGET_STATUS}}
+            else:
+                return {'data': {'X-VIPS': json.dumps(vips)}}
+
+        self.mock_api.side_effect = my_side_effect
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.do_setup, self.context)
+
+    def test_check_do_setup__vip_no_client_address(self):
+        self.cfg.nexenta_client_address = None
+        first_vip = '1.2.3.4/32'
+        vips = [
+            [{'ip': first_vip}]
+        ]
+
+        def my_side_effect(*args, **kwargs):
+            if args[0] == 'service/isc/iscsi/status':
+                return {'data': {'value': ISCSI_TARGET_STATUS}}
+            else:
+                return {'data': {'X-VIPS': json.dumps(vips)}}
+
+        self.mock_api.side_effect = my_side_effect
+        self.driver.do_setup(self.context)
+        self.assertEqual(self.driver.ha_vip, first_vip)
+
+    def test_check_do_setup__vip_no_client_address_2_xvips(self):
+        self.cfg.nexenta_client_address = None
+        first_vip = '1.2.3.4/32'
+        vips = [
+            [{'ip': first_vip}],
+            [{'ip': '0.0.0.1/32'}]
+        ]
+
+        def my_side_effect(*args, **kwargs):
+            if args[0] == 'service/isc/iscsi/status':
+                return {'data': {'value': ISCSI_TARGET_STATUS}}
+            else:
+                return {'data': {'X-VIPS': json.dumps(vips)}}
+
+        self.mock_api.side_effect = my_side_effect
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.do_setup, self.context)
 
     def test_create_volume(self):
         self.driver.create_volume(MOCK_VOL)
@@ -96,6 +172,17 @@ class TestNexentaEdgeISCSIDriver(test.TestCase):
             'volSizeMB': MOCK_VOL['size'] * 1024,
             'blockSize': NEDGE_BLOCKSIZE,
             'chunkSize': NEDGE_CHUNKSIZE
+        })
+
+    def test_create_volume__vip(self):
+        self.driver.ha_vip = self.cfg.nexenta_client_address + '/32'
+        self.driver.create_volume(MOCK_VOL)
+        self.mock_api.assert_called_with(NEDGE_URL, {
+            'objectPath': NEDGE_BUCKET + '/' + MOCK_VOL['id'],
+            'volSizeMB': MOCK_VOL['size'] * 1024,
+            'blockSize': NEDGE_BLOCKSIZE,
+            'chunkSize': NEDGE_CHUNKSIZE,
+            'vip': self.cfg.nexenta_client_address + '/32'
         })
 
     def test_create_volume_fail(self):
