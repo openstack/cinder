@@ -135,6 +135,9 @@ class BackupsController(wsgi.Controller):
             msg = _("Incorrect request body format")
             raise exc.HTTPBadRequest(explanation=msg)
         container = backup.get('container', None)
+        if container:
+            utils.check_string_length(container, 'Backup container',
+                                      min_length=0, max_length=255)
         self.validate_name_and_description(backup)
         name = backup.get('name', None)
         description = backup.get('description', None)

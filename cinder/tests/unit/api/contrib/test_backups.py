@@ -23,6 +23,7 @@ from oslo_serialization import jsonutils
 from oslo_utils import timeutils
 import webob
 
+from cinder.api.contrib import backups
 # needed for stubs to work
 import cinder.backup
 from cinder.backup import api as backup_api
@@ -55,6 +56,7 @@ class BackupsAPITestCase(test.TestCase):
         self.context.user_id = fake.USER_ID
         self.user_context = context.RequestContext(
             fake.USER_ID, fake.PROJECT_ID, auth_token=True)
+        self.controller = backups.BackupsController()
 
     @staticmethod
     def _create_backup(volume_id=fake.VOLUME_ID,
@@ -102,7 +104,7 @@ class BackupsAPITestCase(test.TestCase):
     @ddt.data(False, True)
     def test_show_backup(self, backup_from_snapshot):
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='creating')['id']
+                                        status='creating').id
         snapshot = None
         snapshot_id = None
         if backup_from_snapshot:
@@ -469,7 +471,7 @@ class BackupsAPITestCase(test.TestCase):
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
 
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
@@ -502,7 +504,7 @@ class BackupsAPITestCase(test.TestCase):
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='in-use')['id']
+                                        status='in-use').id
 
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
@@ -533,7 +535,7 @@ class BackupsAPITestCase(test.TestCase):
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='in-use')['id']
+                                        status='in-use').id
         backup_id = self._create_backup(volume_id,
                                         status=fields.BackupStatus.AVAILABLE)
         body = {"backup": {"display_name": "nightly001",
@@ -570,7 +572,7 @@ class BackupsAPITestCase(test.TestCase):
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='available')['id']
+                                        status='available').id
 
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
@@ -596,9 +598,9 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_create_backup_snapshot_with_inconsistent_volume(self):
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='available')['id']
+                                        status='available').id
         volume_id2 = utils.create_volume(self.context, size=5,
-                                         status='available')['id']
+                                         status='available').id
         snapshot_id = utils.create_snapshot(self.context,
                                             volume_id,
                                             status='available')['id']
@@ -633,7 +635,7 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_create_backup_with_invalid_snapshot(self):
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='available')['id']
+                                        status='available').id
         snapshot_id = utils.create_snapshot(self.context, volume_id,
                                             status='error')['id']
         body = {"backup": {"display_name": "nightly001",
@@ -663,7 +665,7 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_create_backup_with_non_existent_snapshot(self):
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='restoring')['id']
+                                        status='restoring').id
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
                            "Nightly Backup 03-Sep-2012",
@@ -686,6 +688,23 @@ class BackupsAPITestCase(test.TestCase):
         self.assertEqual(404, res_dict['itemNotFound']['code'])
         self.assertIsNotNone(res_dict['itemNotFound']['message'])
 
+    def test_create_backup_with_invalid_container(self):
+        volume_id = utils.create_volume(self.context, size=5,
+                                        status='available').id
+        body = {"backup": {"display_name": "nightly001",
+                           "display_description": "Nightly Backup 03-Sep-2012",
+                           "volume_id": volume_id,
+                           "container": "a" * 256
+                           }
+                }
+        req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.environ['cinder.context'] = self.context
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.create,
+                          req,
+                          body)
+
     @mock.patch('cinder.db.service_get_all_by_topic')
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -697,7 +716,7 @@ class BackupsAPITestCase(test.TestCase):
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
         snapshot = None
         snapshot_id = None
         if backup_from_snapshot:
@@ -742,7 +761,7 @@ class BackupsAPITestCase(test.TestCase):
             {'availability_zone': 'fake_az', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
 
         backup_id = self._create_backup(volume_id)
         body = {"backup": {"display_name": "nightly001",
@@ -831,7 +850,7 @@ class BackupsAPITestCase(test.TestCase):
     def test_create_backup_with_InvalidVolume(self):
         # need to create the volume referenced below first
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='restoring')['id']
+                                        status='restoring').id
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
                            "Nightly Backup 03-Sep-2012",
@@ -857,7 +876,7 @@ class BackupsAPITestCase(test.TestCase):
         # need an enabled backup service available
         _mock_service_get_all_by_topic.return_value = []
 
-        volume_id = utils.create_volume(self.context, size=2)['id']
+        volume_id = utils.create_volume(self.context, size=2).id
         req = webob.Request.blank('/v2/%s/backups' % fake.PROJECT_ID)
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
@@ -890,7 +909,7 @@ class BackupsAPITestCase(test.TestCase):
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
 
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='available')['id']
+                                        status='available').id
 
         body = {"backup": {"display_name": "nightly001",
                            "display_description":
@@ -949,7 +968,7 @@ class BackupsAPITestCase(test.TestCase):
                                                       multi_services]
 
         volume_id = utils.create_volume(self.context, size=2,
-                                        host=testhost)['id']
+                                        host=testhost).id
         volume = self.volume_api.get(context.get_admin_context(), volume_id)
 
         # test empty service
@@ -1128,7 +1147,7 @@ class BackupsAPITestCase(test.TestCase):
         _mock_service_get_all_by_topic.return_value = [
             {'availability_zone': 'az1', 'host': 'testhost',
              'disabled': 0, 'updated_at': timeutils.utcnow()}]
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
         backup_id = self._create_backup(volume_id,
                                         status=fields.BackupStatus.AVAILABLE)
         delta_backup_id = self._create_backup(
@@ -1178,7 +1197,7 @@ class BackupsAPITestCase(test.TestCase):
         volume_name = 'test1'
         volume_id = utils.create_volume(self.context,
                                         size=5,
-                                        display_name = volume_name)['id']
+                                        display_name = volume_name).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1245,7 +1264,7 @@ class BackupsAPITestCase(test.TestCase):
         # intercept volume creation to ensure created volume
         # has status of available
         def fake_volume_api_create(context, size, name, description):
-            volume_id = utils.create_volume(self.context, size=size)['id']
+            volume_id = utils.create_volume(self.context, size=size).id
             return db.volume_get(context, volume_id)
 
         _mock_service_get_all_by_topic.return_value = [
@@ -1278,7 +1297,7 @@ class BackupsAPITestCase(test.TestCase):
         # has status of available
         def fake_volume_api_create(context, size, name, description):
             volume_id = utils.create_volume(self.context, size=size,
-                                            display_name=name)['id']
+                                            display_name=name).id
             return db.volume_get(context, volume_id)
 
         _mock_volume_api_create.side_effect = fake_volume_api_create
@@ -1318,7 +1337,7 @@ class BackupsAPITestCase(test.TestCase):
                                         status=fields.BackupStatus.AVAILABLE)
         orig_vol_name = "vol-00"
         volume_id = utils.create_volume(self.context, size=5,
-                                        display_name=orig_vol_name)['id']
+                                        display_name=orig_vol_name).id
         body = {"restore": {'name': 'vol-01', 'volume_id': volume_id}}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup_id))
@@ -1347,7 +1366,7 @@ class BackupsAPITestCase(test.TestCase):
 
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
         # need to create the volume referenced below first
-        volume_id = utils.create_volume(self.context, size=0)['id']
+        volume_id = utils.create_volume(self.context, size=0).id
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
                                   fake.PROJECT_ID, backup_id))
@@ -1368,7 +1387,7 @@ class BackupsAPITestCase(test.TestCase):
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
         # need to create the volume referenced below first
         volume_id = utils.create_volume(self.context, size=5,
-                                        status='attaching')['id']
+                                        status='attaching').id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1392,7 +1411,7 @@ class BackupsAPITestCase(test.TestCase):
     def test_restore_backup_with_InvalidBackup(self):
         backup_id = self._create_backup(status=fields.BackupStatus.RESTORING)
         # need to create the volume referenced below first
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1414,7 +1433,7 @@ class BackupsAPITestCase(test.TestCase):
 
     def test_restore_backup_with_BackupNotFound(self):
         # need to create the volume referenced below first
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' %
@@ -1467,7 +1486,7 @@ class BackupsAPITestCase(test.TestCase):
 
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
         # need to create the volume referenced below first
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1496,7 +1515,7 @@ class BackupsAPITestCase(test.TestCase):
 
         backup_id = self._create_backup(status=fields.BackupStatus.AVAILABLE)
         # need to create the volume referenced below first
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1520,7 +1539,7 @@ class BackupsAPITestCase(test.TestCase):
                                         size=backup_size)
         # need to create the volume referenced below first
         volume_size = 5
-        volume_id = utils.create_volume(self.context, size=volume_size)['id']
+        volume_id = utils.create_volume(self.context, size=volume_size).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1551,7 +1570,7 @@ class BackupsAPITestCase(test.TestCase):
         volume_name = 'test1'
         volume_id = utils.create_volume(self.context,
                                         size=15,
-                                        display_name = volume_name)['id']
+                                        display_name = volume_name).id
 
         body = {"restore": {"volume_id": volume_id, }}
         req = webob.Request.blank('/v2/%s/backups/%s/restore' % (
@@ -1580,7 +1599,7 @@ class BackupsAPITestCase(test.TestCase):
                                         size=10, host='HostA')
         volume_id = utils.create_volume(self.context, size=10,
                                         host='HostB@BackendB#PoolB',
-                                        display_name=volume_name)['id']
+                                        display_name=volume_name).id
 
         _mock_get_backup_host.return_value = 'testhost'
         body = {"restore": {"volume_id": volume_id, }}
@@ -1998,7 +2017,7 @@ class BackupsAPITestCase(test.TestCase):
 
     @ddt.data(False, True)
     def test_show_incremental_backup(self, backup_from_snapshot):
-        volume_id = utils.create_volume(self.context, size=5)['id']
+        volume_id = utils.create_volume(self.context, size=5).id
         parent_backup_id = self._create_backup(
             volume_id, status=fields.BackupStatus.AVAILABLE,
             num_dependent_backups=1)
