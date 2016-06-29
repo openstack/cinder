@@ -98,6 +98,10 @@ class QuotaSetsController(wsgi.Controller):
         :param parent_id: The parent id of the project in which the user
                           want to perform an update or delete operation.
         """
+        if context_project.is_admin_project:
+            # The calling project has admin privileges and should be able
+            # to operate on all quotas.
+            return
         if context_project.parent_id and parent_id != context_project.id:
             msg = _("Update and delete quota operations can only be made "
                     "by an admin of immediate parent or by the CLOUD admin.")
@@ -118,15 +122,20 @@ class QuotaSetsController(wsgi.Controller):
     def _authorize_show(self, context_project, target_project):
         """Checks if show is allowed in the current hierarchy.
 
-        With hierarchical projects, are allowed to perform quota show operation
-        users with admin role in, at least, one of the following projects: the
-        current project; the immediate parent project; or the root project.
+        With hierarchical projects, users are allowed to perform a quota show
+        operation if they have the cloud admin role or if they belong to at
+        least one of the following projects: the target project, its immediate
+        parent project, or the root project of its hierarchy.
 
         :param context_project: The project in which the user
                                 is scoped to.
         :param target_project: The project in which the user wants
                                to perform a show operation.
         """
+        if context_project.is_admin_project:
+            # The calling project has admin privileges and should be able
+            # to view all quotas.
+            return
         if target_project.parent_id:
             if target_project.id != context_project.id:
                 if not self._is_descendant(target_project.id,
@@ -184,7 +193,8 @@ class QuotaSetsController(wsgi.Controller):
             target_project = quota_utils.get_project_hierarchy(
                 context, target_project_id)
             context_project = quota_utils.get_project_hierarchy(
-                context, context.project_id, subtree_as_ids=True)
+                context, context.project_id, subtree_as_ids=True,
+                is_admin_project=context.is_admin)
 
             self._authorize_show(context_project, target_project)
 
@@ -253,7 +263,8 @@ class QuotaSetsController(wsgi.Controller):
                 # Get the children of the project which the token is scoped to
                 # in order to know if the target_project is in its hierarchy.
                 context_project = quota_utils.get_project_hierarchy(
-                    context, context.project_id, subtree_as_ids=True)
+                    context, context.project_id, subtree_as_ids=True,
+                    is_admin_project=context.is_admin)
                 self._authorize_update_or_delete(context_project,
                                                  target_project.id,
                                                  parent_id)
