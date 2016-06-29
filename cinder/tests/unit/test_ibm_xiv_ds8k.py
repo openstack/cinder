@@ -21,7 +21,7 @@
 
 import copy
 
-from mox3 import mox
+import mock
 
 from cinder import context
 from cinder import exception
@@ -291,7 +291,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         """Initialize IBM XIV and DS8K Driver."""
         super(XIVDS8KVolumeDriverTest, self).setUp()
 
-        configuration = mox.MockObject(conf.Configuration)
+        configuration = mock.Mock(conf.Configuration)
         configuration.san_is_local = False
         configuration.xiv_ds8k_proxy = \
             'cinder.tests.unit.test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver'
@@ -302,7 +302,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         configuration.san_login = FAKE
         configuration.san_clustername = FAKE
         configuration.san_password = FAKE
-        configuration.append_config_values(mox.IgnoreArg())
+        configuration.append_config_values(mock.ANY)
 
         self.driver = xiv_ds8k.XIVDS8KDriver(
             configuration=configuration)
