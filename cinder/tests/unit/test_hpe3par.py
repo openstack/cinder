@@ -78,6 +78,8 @@ HPE3PAR_CPG_MAP = 'OpenStackCPG:DestOpenStackCPG fakepool:destfakepool'
 SYNC_MODE = 1
 PERIODIC_MODE = 2
 SYNC_PERIOD = 900
+# EXISTENT_PATH error code returned from hpe3parclient
+EXISTENT_PATH = 73
 
 
 class Comment(object):
@@ -5279,6 +5281,67 @@ class TestHPE3PARFCDriver(HPE3PARBaseDriver, test.TestCase):
             mock_client.assert_has_calls(expected)
 
             self.assertEqual('fakehost.foo', host['name'])
+
+    def test_concurrent_create_host(self):
+        # tests concurrent requests to create host
+        # setup_mock_client driver with default configuration
+        # and return the mock HTTP 3PAR client
+        mock_client = self.setup_driver()
+        mock_client.getVolume.return_value = {'userCPG': HPE3PAR_CPG}
+        mock_client.getCPG.return_value = {}
+        mock_client.queryHost.side_effect = [
+            None,
+            {'members': [{'name': self.FAKE_HOST}]
+             }]
+        mock_client.createHost.side_effect = [
+            hpeexceptions.HTTPConflict(
+                {'code': EXISTENT_PATH,
+                 'desc': 'host WWN/iSCSI name already used by another host'})]
+        mock_client.getHost.side_effect = [
+            hpeexceptions.HTTPNotFound('fake'),
+            {'name': self.FAKE_HOST,
+                'FCPaths': [{'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'portPos': {'cardPort': 1, 'node': 1,
+                                         'slot': 2},
+                             'vendor': None,
+                             'wwn': self.wwn[0]},
+                            {'driverVersion': None,
+                             'firmwareVersion': None,
+                             'hostSpeed': 0,
+                             'model': None,
+                             'portPos': {'cardPort': 1, 'node': 0,
+                                         'slot': 2},
+                             'vendor': None,
+                             'wwn': self.wwn[1]}]}]
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            common = self.driver._login()
+            host = self.driver._create_host(
+                common,
+                self.volume,
+                self.connector)
+            expected = [
+                mock.call.getVolume('osv-0DM4qZEVSKON-DXN-NwVpw'),
+                mock.call.getCPG(HPE3PAR_CPG),
+                mock.call.getHost(self.FAKE_HOST),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
+                mock.call.createHost(
+                    self.FAKE_HOST,
+                    FCWwns=['123456789012345', '123456789054321'],
+                    optional={'domain': None, 'persona': 2}),
+                mock.call.queryHost(wwns=['123456789012345',
+                                          '123456789054321']),
+                mock.call.getHost(self.FAKE_HOST)]
+
+            mock_client.assert_has_calls(expected)
+
+            self.assertEqual(self.FAKE_HOST, host['name'])
 
     def test_create_modify_host(self):
         # setup_mock_client drive with default configuration
