@@ -78,8 +78,10 @@ class HTTPConflict(ClientException):
     message = "Conflict"
 
     def __init__(self, error=None):
-        if error and 'message' in error:
-            self._error_desc = error['message']
+        if error:
+            super(HTTPConflict, self).__init__(error)
+            if 'message' in error:
+                self._error_desc = error['message']
 
     def get_description(self):
         return self._error_desc
