@@ -44,7 +44,7 @@ except ImportError:
 
 LOG = logging.getLogger(__name__)
 
-rbd_opts = [
+RBD_OPTS = [
     cfg.StrOpt('rbd_cluster_name',
                default='ceph',
                help='The name of ceph cluster'),
@@ -90,7 +90,7 @@ rbd_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(rbd_opts)
+CONF.register_opts(RBD_OPTS)
 
 
 class RBDImageMetadata(object):
@@ -272,7 +272,7 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
     def __init__(self, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
-        self.configuration.append_config_values(rbd_opts)
+        self.configuration.append_config_values(RBD_OPTS)
         self._stats = {}
         # allow overrides for testing
         self.rados = kwargs.get('rados', rados)

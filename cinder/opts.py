@@ -293,7 +293,7 @@ def list_opts():
                 cinder_volume_drivers_infortrend_eonstor_ds_cli_commoncli.
                 infortrend_esds_extra_opts,
                 cinder_volume_drivers_hitachi_hnasiscsi.iSCSI_OPTS,
-                cinder_volume_drivers_rbd.rbd_opts,
+                cinder_volume_drivers_rbd.RBD_OPTS,
                 cinder_volume_drivers_tintri.tintri_opts,
                 cinder_backup_api.backup_api_opts,
                 cinder_volume_drivers_hitachi_hbsdhorcm.volume_opts,
