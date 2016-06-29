@@ -323,8 +323,8 @@ class BackupManager(manager.SchedulerDependentManager):
                 ctxt, backup.temp_snapshot_id)
             volume = objects.Volume.get_by_id(
                 ctxt, backup.volume_id)
-            # The temp snapshot should be deleted directly thru the
-            # volume driver, not thru the volume manager.
+            # The temp snapshot should be deleted directly through the
+            # volume driver, not through the volume manager.
             self.volume_rpcapi.delete_snapshot(ctxt, temp_snapshot,
                                                volume.host)
         except exception.SnapshotNotFound:

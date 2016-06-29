@@ -256,7 +256,7 @@ class GlanceImageService(object):
 
         # NOTE(geguileo): We set is_public default value for v1 because we want
         # to retrieve all images by default.  We don't need to send v2
-        # equivalent - "visible" - because its default value when omited is
+        # equivalent - "visible" - because its default value when omitted is
         # "public, private, shared", which will return all.
         if CONF.glance_api_version <= 1:
             # ensure filters is a dict

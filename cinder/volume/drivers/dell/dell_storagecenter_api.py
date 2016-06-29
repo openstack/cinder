@@ -172,7 +172,7 @@ class HttpClient(object):
             except Exception:
                 methodname = asyncTask.get('methodName')
                 objectTypeName = asyncTask.get('objectTypeName')
-                msg = (_('Async error: Unable to retreive %(obj)s '
+                msg = (_('Async error: Unable to retrieve %(obj)s '
                          'method %(method)s result')
                        % {'obj': objectTypeName, 'method': methodname})
                 raise exception.VolumeBackendAPIException(message=msg)
@@ -2459,7 +2459,7 @@ class StorageCenterApi(object):
 
          This checks a few things. The volume has to exist.  There can
          only be one volume by that name.  Since cinder manages volumes
-         by the GB it has to be defined on a GB boundry.
+         by the GB it has to be defined on a GB boundary.
 
          This renames existing to newname.  newname is the guid from
          the cinder volume['id'].  The volume is moved to the defined

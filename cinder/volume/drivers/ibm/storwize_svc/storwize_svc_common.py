@@ -2288,12 +2288,12 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                                   opts, True, pool=pool)
 
         # The source volume size is equal to target volume size
-        # in most of the cases. But in some scenario, the target
+        # in most of the cases. But in some scenarios, the target
         # volume size may be bigger than the source volume size.
         # SVC does not support flashcopy between two volumes
-        # with two different size. So use source volume size to
+        # with two different sizes. So use source volume size to
         # create target volume first and then extend target
-        # volume to orginal size.
+        # volume to original size.
         if tgt_volume['size'] > src_volume['size']:
             # extend the new created target volume to expected size.
             self._extend_volume_op(tgt_volume, tgt_volume['size'],

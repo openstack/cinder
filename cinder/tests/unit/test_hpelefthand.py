@@ -2906,7 +2906,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
         # set up driver with default config
         self.setup_driver()
 
-        # Ensure creating a replication client works without specifiying
+        # Ensure creating a replication client works without specifying
         # ssh_conn_timeout or san_private_key.
         remote_array = {
             'hpelefthand_api_url': 'https://1.1.1.1:8080/lhos',

@@ -58,7 +58,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
         if hasattr(iscsi_ip_rs, 'hits') and iscsi_ip_rs.total != 0:
             iscsi_ip = iscsi_ip_rs.hits[0].ip_address
         if not iscsi_ip:
-            msg = _("Unable to get ISCSI IP addres from K2.")
+            msg = _("Unable to get ISCSI IP address from K2.")
             LOG.error(msg)
             raise exception.KaminarioCinderDriverException(reason=msg)
         iscsi_portal = "{0}:{1}".format(iscsi_ip, ISCSI_TCP_PORT)
