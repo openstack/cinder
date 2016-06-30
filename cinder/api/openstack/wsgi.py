@@ -1058,21 +1058,32 @@ class ControllerMetaclass(type):
         # Find all actions
         actions = {}
         extensions = []
-        versioned_methods = None
+        # NOTE(geguileo): We'll keep a list of versioned methods that have been
+        # added by the new metaclass (dictionary in attribute VER_METHOD_ATTR
+        # on Controller class) and all the versioned methods from the different
+        # base classes so we can consolidate them.
+        versioned_methods = []
+
+        # NOTE(cyeoh): This resets the VER_METHOD_ATTR attribute
+        # between API controller class creations. This allows us
+        # to use a class decorator on the API methods that doesn't
+        # require naming explicitly what method is being versioned as
+        # it can be implicit based on the method decorated. It is a bit
+        # ugly.
+        if bases != (object,) and VER_METHOD_ATTR in vars(Controller):
+            # Get the versioned methods that this metaclass creation has added
+            # to the Controller class
+            versioned_methods.append(getattr(Controller, VER_METHOD_ATTR))
+            # Remove them so next metaclass has a clean start
+            delattr(Controller, VER_METHOD_ATTR)
+
         # start with wsgi actions from base classes
         for base in bases:
             actions.update(getattr(base, 'wsgi_actions', {}))
 
-            if base.__name__ == "Controller":
-                # NOTE(cyeoh): This resets the VER_METHOD_ATTR attribute
-                # between API controller class creations. This allows us
-                # to use a class decorator on the API methods that doesn't
-                # require naming explicitly what method is being versioned as
-                # it can be implicit based on the method decorated. It is a bit
-                # ugly.
-                if VER_METHOD_ATTR in base.__dict__:
-                    versioned_methods = getattr(base, VER_METHOD_ATTR)
-                    delattr(base, VER_METHOD_ATTR)
+            # Get the versioned methods that this base has
+            if VER_METHOD_ATTR in vars(base):
+                versioned_methods.append(getattr(base, VER_METHOD_ATTR))
 
         for key, value in cls_dict.items():
             if not callable(value):
@@ -1086,10 +1097,23 @@ class ControllerMetaclass(type):
         cls_dict['wsgi_actions'] = actions
         cls_dict['wsgi_extensions'] = extensions
         if versioned_methods:
-            cls_dict[VER_METHOD_ATTR] = versioned_methods
+            cls_dict[VER_METHOD_ATTR] = mcs.consolidate_vers(versioned_methods)
 
         return super(ControllerMetaclass, mcs).__new__(mcs, name, bases,
                                                        cls_dict)
+
+    @staticmethod
+    def consolidate_vers(versioned_methods):
+        """Consolidates a list of versioned methods dictionaries."""
+        if not versioned_methods:
+            return {}
+        result = versioned_methods.pop(0)
+        for base_methods in versioned_methods:
+            for name, methods in base_methods.items():
+                method_list = result.setdefault(name, [])
+                method_list.extend(methods)
+                method_list.sort(reverse=True)
+        return result
 
 
 @six.add_metaclass(ControllerMetaclass)
