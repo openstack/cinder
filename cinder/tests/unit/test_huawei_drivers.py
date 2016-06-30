@@ -22,6 +22,7 @@ import tempfile
 import time
 from xml.dom import minidom
 
+from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import utils
@@ -35,6 +36,7 @@ from cinder.volume.drivers.huawei import hypermetro
 from cinder.volume.drivers.huawei import replication
 from cinder.volume.drivers.huawei import rest_client
 from cinder.volume.drivers.huawei import smartx
+from cinder.volume import volume_types
 
 
 hypermetro_devices = """{
@@ -109,6 +111,9 @@ async_replica_specs = {'replication_enabled': '<is> True',
                        'replication_type': '<in> async'}
 
 TEST_PAIR_ID = "3400a30d844d0004"
+replica_hypermetro_specs = {'hypermetro': '<is> True',
+                            'replication_enabled': '<is> True'}
+
 replication_volume = {
     'name': 'volume-21ec7341-9256-497b-97d9-ef48edcf0635',
     'size': 2,
@@ -141,9 +146,15 @@ test_snap = {
     'volume_type_id': None,
     'provider_location': '11',
     'volume': {'provider_location': '12',
+               'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
                'admin_metadata': {
                    'huawei_lun_wwn': '6643e8c1004c5f6723e9f454003'}},
 }
+
+test_cgsnapshot = {'id': '21ec7341-9256-497b-97d9-ef48edcf0635',
+                   'consistencygroup_id': '21ec7341-9256-497b-'
+                   '97d9-ef48edcf0635',
+                   'status': 'available'}
 
 test_host = {'host': 'ubuntu001@backend001#OpenStack_Pool',
              'capabilities': {'smartcache': True,
@@ -205,6 +216,21 @@ test_new_replication_type = {
     'description': None,
 }
 
+test_hypermetro_type = {
+    'name': u'new_type',
+    'qos_specs_id': None,
+    'deleted': False,
+    'created_at': None,
+    'updated_at': None,
+    'extra_specs': {
+        'hypermetro': '<is> True'
+    },
+    'is_public': True,
+    'deleted_at': None,
+    'id': u'550c089b-bfdd-4f7f-86e1-3ba88125555c',
+    'description': None,
+}
+
 hypermetro_devices = """
 {
     "remote_device": {
@@ -215,6 +241,9 @@ hypermetro_devices = """
         "domain_name":"hypermetro_test"}
 }
 """
+
+CONSISTGROUP = {'id': "21ec7341-9256-497b-97d9-ef48edcf0635",
+                'status': "available", }
 
 FAKE_FIND_POOL_RESPONSE = {'CAPACITY': '985661440',
                            'ID': '0',
@@ -1003,12 +1032,13 @@ FAKE_HYPERMETRODOMAIN_RESPONSE = """
     "error":{
         "code": 0
     },
-    "data":{
+    "data":[{
         "PRODUCTVERSION": "V100R001C10",
         "ID": "11",
         "NAME": "hypermetro_test",
-        "RUNNINGSTATUS": "42"
-    }
+        "RUNNINGSTATUS": "1",
+        "HEALTHSTATUS": "0"
+    }]
 }
 """
 
@@ -1072,7 +1102,7 @@ FAKE_SMARTCACHEPARTITION_RESPONSE = """
 }
 """
 
-FAKE_CONNECT_FC_RESPONCE = {
+FAKE_CONNECT_FC_RESPONSE = {
     "driver_volume_type": 'fibre_channel',
     "data": {
         "target_wwn": ["10000090fa0d6754"],
@@ -1081,7 +1111,15 @@ FAKE_CONNECT_FC_RESPONCE = {
     }
 }
 
-FAKE_METRO_INFO_RESPONCE = {
+FAKE_METRO_INFO_RESPONSE = {
+    "PRODUCTVERSION": "V100R001C10",
+    "ID": "11",
+    "NAME": "hypermetro_test",
+    "RUNNINGSTATUS": "42",
+    "HEALTHSTATUS": "0"
+}
+
+FAKE_METRO_INFO_NEW_RESPONSE = """{
     "error": {
         "code": 0
     },
@@ -1089,9 +1127,85 @@ FAKE_METRO_INFO_RESPONCE = {
         "PRODUCTVERSION": "V100R001C10",
         "ID": "11",
         "NAME": "hypermetro_test",
-        "RUNNINGSTATUS": "42"
+        "RUNNINGSTATUS": "1",
+        "HEALTHSTATUS": "1"
     }
 }
+"""
+
+FAKE_CREATE_METROROUP_RESPONSE = """
+{
+    "data": {
+        "DESCRIPTION": "",
+        "DOMAINID": "643e8c4c5f670100",
+        "DOMAINNAME": "hypermetro-domain",
+        "HEALTHSTATUS": "1",
+        "ID": "3400a30d844d8002",
+        "ISEMPTY": "true",
+        "NAME": "6F7kdHZcQJ2zbzxHmBl4FQ",
+        "PRIORITYSTATIONTYPE": "0",
+        "RECOVERYPOLICY": "1",
+        "RESOURCETYPE": "11",
+        "RUNNINGSTATUS": "41",
+        "SPEED": "2",
+        "SYNCDIRECTION": "1",
+        "TYPE": 15364
+    },
+    "error": {
+        "code": 0,
+        "description": "0"
+    }
+}
+"""
+
+FAKE_GET_METROROUP_RESPONSE = {
+    "data": [{
+        "DESCRIPTION": "",
+        "DOMAINID": "643e8c4c5f670100",
+        "DOMAINNAME": "hypermetro-domain",
+        "HEALTHSTATUS": "1",
+        "ID": "11",
+        "ISEMPTY": "true",
+        "NAME": huawei_utils.encode_name(test_volume['id']),
+        "PRIORITYSTATIONTYPE": "0",
+        "RECOVERYPOLICY": "1",
+        "RESOURCETYPE": "11",
+        "RUNNINGSTATUS": "41",
+        "SPEED": "2",
+        "SYNCDIRECTION": "1",
+        "TYPE": 15364
+    }],
+    "error": {
+        "code": 0,
+        "description": "0"
+    },
+}
+
+
+FAKE_GET_METROROUP_ID_RESPONSE = """
+{
+    "data": {
+        "DESCRIPTION": "",
+        "DOMAINID": "643e8c4c5f670100",
+        "DOMAINNAME": "hypermetro-domain",
+        "HEALTHSTATUS": "1",
+        "ID": "11",
+        "ISEMPTY": "false",
+        "NAME": "IexzQZJWSXuX2e9I7c8GNQ",
+        "PRIORITYSTATIONTYPE": "0",
+        "RECOVERYPOLICY": "1",
+        "RESOURCETYPE": "11",
+        "RUNNINGSTATUS": "1",
+        "SPEED": "2",
+        "SYNCDIRECTION": "1",
+        "TYPE": 15364
+    },
+    "error": {
+        "code": 0,
+        "description": "0"
+    }
+}
+"""
 
 # mock login info map
 MAP_COMMAND_TO_FAKE_RESPONSE = {}
@@ -1453,12 +1567,18 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroDomain?range=[0-32]/GET'] = (
     FAKE_HYPERMETRODOMAIN_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/POST'] = (
-    FAKE_HYPERMETRODOMAIN_RESPONSE)
+    FAKE_HYPERMETRO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/11/GET'] = (
-    FAKE_HYPERMETRODOMAIN_RESPONSE)
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/3400a30d844d0007/GET'] = (
+    FAKE_METRO_INFO_NEW_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/disable_hcpair/PUT'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/hyperMetro/associate/pair/POST'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/hyperMetro/associate/pair/DELETE'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/11/DELETE'] = (
@@ -1467,10 +1587,13 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/11/DELETE'] = (
 MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/1/GET'] = (
     FAKE_HYPERMETRO_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair?range=[0-65535]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair?range=[0-4095]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
-MAP_COMMAND_TO_FAKE_RESPONSE['/splitmirror?range=[0-512]/GET'] = (
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetroPair/synchronize_hcpair/PUT'] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE['/splitmirror?range=[0-8191]/GET'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 FAKE_GET_PORTG_BY_VIEW = """
@@ -1659,8 +1782,25 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/fc_port/associate?TYPE=213&ASSOCIATEOBJTYPE='
                              '257&ASSOCIATEOBJID=0/GET'] = (
     FAKE_PORTS_IN_PG_RESPONSE)
 
+MAP_COMMAND_TO_FAKE_RESPONSE['/HyperMetro_ConsistentGroup/POST'] = (
+    FAKE_CREATE_METROROUP_RESPONSE)
 
-# Replication response
+MAP_COMMAND_TO_FAKE_RESPONSE["/HyperMetro_ConsistentGroup?type"
+                             "='15364'/GET"] = (
+    json.dumps(FAKE_GET_METROROUP_RESPONSE))
+
+MAP_COMMAND_TO_FAKE_RESPONSE["/HyperMetro_ConsistentGroup/11/GET"] = (
+    FAKE_GET_METROROUP_ID_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE["/HyperMetro_ConsistentGroup/11/DELETE"] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE["/HyperMetro_ConsistentGroup/stop/PUT"] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
+MAP_COMMAND_TO_FAKE_RESPONSE["/HyperMetro_ConsistentGroup/sync/PUT"] = (
+    FAKE_COMMON_SUCCESS_RESPONSE)
+
 FAKE_GET_REMOTEDEV_RESPONSE = """
 {
     "data":[{
@@ -1677,6 +1817,7 @@ FAKE_GET_REMOTEDEV_RESPONSE = """
     }
 }
 """
+
 MAP_COMMAND_TO_FAKE_RESPONSE['/remote_device/GET'] = (
     FAKE_GET_REMOTEDEV_RESPONSE)
 
@@ -2291,7 +2432,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
 
     def test_get_volume_status(self):
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.6', data['driver_version'])
+        self.assertEqual('2.0.7', data['driver_version'])
 
     @mock.patch.object(rest_client.RestClient, 'get_lun_info',
                        return_value={"CAPACITY": 6291456})
@@ -2657,7 +2798,7 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
     @mock.patch.object(rest_client.RestClient, 'check_hypermetro_exist',
                        return_value=True)
     @mock.patch.object(rest_client.RestClient, 'get_hypermetro_by_id',
-                       return_value=FAKE_METRO_INFO_RESPONCE)
+                       return_value=FAKE_METRO_INFO_RESPONSE)
     @mock.patch.object(rest_client.RestClient, 'delete_hypermetro')
     @mock.patch.object(rest_client.RestClient, 'delete_lun',
                        return_value=None)
@@ -3567,6 +3708,50 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
         self.assertIsNone(iqn)
 
+    def test_create_cgsnapshot(self):
+        test_snapshots = [test_snap]
+        ctxt = context.get_admin_context()
+        model, snapshots = self.driver.create_cgsnapshot(ctxt,
+                                                         test_cgsnapshot,
+                                                         test_snapshots)
+        snapshots_model_update = [{'id': '21ec7341-9256-497b-97d9'
+                                   '-ef48edcf0635',
+                                   'status': 'available',
+                                   'provider_location': 11}]
+        self.assertEqual(snapshots_model_update, snapshots)
+        self.assertEqual('available', model['status'])
+
+    def test_create_cgsnapshot_create_snapshot_fail(self):
+        test_snapshots = [test_snap]
+        ctxt = context.get_admin_context()
+        self.mock_object(rest_client.RestClient, 'create_snapshot',
+                         mock.Mock(side_effect=(
+                             exception.VolumeBackendAPIException(data='err'))))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cgsnapshot,
+                          ctxt,
+                          test_cgsnapshot,
+                          test_snapshots)
+
+    def test_create_cgsnapshot_active_snapshot_fail(self):
+        test_snapshots = [test_snap]
+        ctxt = context.get_admin_context()
+        self.mock_object(rest_client.RestClient, 'activate_snapshot',
+                         mock.Mock(side_effect=(
+                             exception.VolumeBackendAPIException(data='err'))))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_cgsnapshot,
+                          ctxt,
+                          test_cgsnapshot,
+                          test_snapshots)
+
+    def test_delete_cgsnapshot(self):
+        test_snapshots = [test_snap]
+        ctxt = context.get_admin_context()
+        self.driver.delete_cgsnapshot(ctxt,
+                                      test_cgsnapshot,
+                                      test_snapshots)
+
 
 class FCSanLookupService(object):
 
@@ -3685,7 +3870,7 @@ class HuaweiFCDriverTestCase(test.TestCase):
             'get_remote_device_by_wwn',
             mock.Mock(return_value=remote_device_info))
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.5', data['driver_version'])
+        self.assertEqual('2.0.7', data['driver_version'])
         self.assertTrue(data['pools'][0]['replication_enabled'])
         self.assertListEqual(['sync', 'async'],
                              data['pools'][0]['replication_type'])
@@ -3702,7 +3887,7 @@ class HuaweiFCDriverTestCase(test.TestCase):
             'try_get_remote_wwn',
             mock.Mock(return_value={}))
         data = self.driver.get_volume_stats()
-        self.assertEqual('2.0.5', data['driver_version'])
+        self.assertEqual('2.0.7', data['driver_version'])
         self.assertNotIn('replication_enabled', data['pools'][0])
 
     def test_extend_volume(self):
@@ -4091,6 +4276,96 @@ class HuaweiFCDriverTestCase(test.TestCase):
         lun_info = self.driver.create_volume(hyper_volume)
         self.assertEqual(metadata, lun_info['metadata'])
 
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
+                       return_value=fake_hypermetro_opts)
+    @mock.patch.object(rest_client.RestClient, 'get_all_pools',
+                       return_value=FAKE_STORAGE_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'get_pool_info',
+                       return_value=FAKE_FIND_POOL_RESPONSE)
+    @mock.patch.object(rest_client.RestClient, 'get_hyper_domain_id',
+                       return_value='11')
+    @mock.patch.object(hypermetro.HuaweiHyperMetro, '_wait_volume_ready',
+                       return_value=True)
+    @mock.patch.object(rest_client.RestClient, 'create_hypermetro')
+    def test_create_hypermetro_fail(self,
+                                    mock_pair_info,
+                                    mock_hypermetro_opts,
+                                    mock_all_pool_info,
+                                    mock_pool_info,
+                                    mock_hyper_domain,
+                                    mock_volume_ready,
+                                    ):
+        mock_pair_info.side_effect = (
+            exception.VolumeBackendAPIException(data='Error occurred.'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.metro.create_hypermetro, "11", {})
+
+    @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
+                       return_value={'hypermetro_id': '3400a30d844d0007',
+                                     'remote_lun_id': '1'})
+    @mock.patch.object(rest_client.RestClient, 'do_mapping',
+                       return_value={'lun_id': '1',
+                                     'view_id': '1',
+                                     'aval_luns': '[1]'})
+    def test_hypermetro_connection_success_2(self, mock_map, mock_metadata):
+        fc_properties = self.driver.metro.connect_volume_fc(test_volume,
+                                                            FakeConnector)
+        self.assertEqual(1, fc_properties['data']['target_lun'])
+
+    @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
+                       return_value={'hypermetro_id': '3400a30d844d0007',
+                                     'remote_lun_id': '1'})
+    def test_terminate_hypermetro_connection_success(self, mock_metradata):
+        self.driver.metro.disconnect_volume_fc(test_volume, FakeConnector)
+
+    @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
+                       return_value={'hypermetro_id': '3400a30d844d0007',
+                                     'remote_lun_id': None})
+    @mock.patch.object(rest_client.RestClient, 'get_lun_id_by_name',
+                       return_value=None)
+    def test_hypermetroid_none_fail(self, mock_metadata, moke_metro_name):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.metro.connect_volume_fc,
+                          test_volume,
+                          FakeConnector)
+
+    def test_wait_volume_ready_success(self):
+        flag = self.driver.metro._wait_volume_ready("11")
+        self.assertIsNone(flag)
+
+    @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
+                       return_value={'hypermetro_id': '3400a30d844d0007',
+                                     'remote_lun_id': '1'})
+    @mock.patch.object(rest_client.RestClient, 'get_online_free_wwns',
+                       return_value=[])
+    @mock.patch.object(rest_client.RestClient, 'get_host_iscsi_initiators',
+                       return_value=[])
+    def test_hypermetro_connection_fail(self, mock_metadata,
+                                        mock_fc_initiator,
+                                        mock_host_initiators):
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.metro.connect_volume_fc,
+                          test_volume,
+                          FakeConnector)
+
+    def test_create_snapshot_fail_hypermetro(self):
+        self.mock_object(
+            huawei_driver.HuaweiBaseDriver,
+            '_get_volume_type',
+            mock.Mock(return_value={'extra_specs': replica_hypermetro_specs}))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          test_volume, test_snap)
+
+    def test_create_snapshot_fail_no_snapshot_id(self):
+        temp_snap = copy.deepcopy(test_snap)
+        temp_snap.pop('provider_location')
+        self.mock_object(rest_client.RestClient, 'get_snapshot_id_by_name',
+                         mock.Mock(return_value=None))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          test_volume, temp_snap)
+
     @mock.patch.object(rest_client.RestClient, 'call',
                        return_value={"data": [{"RUNNINGSTATUS": "27",
                                                "ID": '1'},
@@ -4129,6 +4404,97 @@ class HuaweiFCDriverTestCase(test.TestCase):
     def test_is_host_associated_to_hostgroup_false(self, mock_call):
         res = self.driver.client.is_host_associated_to_hostgroup('1')
         self.assertFalse(res)
+
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                       '_get_consistencygroup_type',
+                       return_value={"hypermetro": "true"})
+    def test_create_hypermetro_consistencygroup_success(self, mock_grouptype):
+        """Test that create_consistencygroup return successfully."""
+        ctxt = context.get_admin_context()
+        # Create consistency group
+        model_update = self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+
+        self.assertEqual('available',
+                         model_update['status'],
+                         "Consistency Group created failed")
+
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                       '_get_consistencygroup_type',
+                       return_value={"hypermetro": "false"})
+    def test_create_normal_consistencygroup_success(self,
+                                                    mock_grouptype):
+        """Test that create_consistencygroup return successfully."""
+        ctxt = context.get_admin_context()
+        # Create consistency group
+        model_update = self.driver.create_consistencygroup(ctxt, CONSISTGROUP)
+
+        self.assertEqual('available',
+                         model_update['status'],
+                         "Consistency Group created failed")
+
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                       '_get_consistencygroup_type',
+                       return_value={"hypermetro": "true"})
+    def test_delete_hypermetro_consistencygroup_success(self, mock_grouptype):
+        """Test that create_consistencygroup return successfully."""
+        test_volumes = [test_volume]
+        ctxt = context.get_admin_context()
+        # Create consistency group
+        model, volumes = self.driver.delete_consistencygroup(ctxt,
+                                                             CONSISTGROUP,
+                                                             test_volumes)
+        self.assertEqual('available',
+                         model['status'],
+                         "Consistency Group created failed")
+
+    def test_delete_normal_consistencygroup_success(self):
+        ctxt = context.get_admin_context()
+        test_volumes = [test_volume]
+        self.mock_object(huawei_driver.HuaweiBaseDriver,
+                         '_get_consistencygroup_type',
+                         mock.Mock(return_value={"hypermetro": "false"}))
+
+        model, volumes = self.driver.delete_consistencygroup(ctxt,
+                                                             CONSISTGROUP,
+                                                             test_volumes)
+        self.assertEqual('available',
+                         model['status'],
+                         "Consistency Group created failed")
+
+    @mock.patch.object(huawei_driver.HuaweiBaseDriver,
+                       '_get_consistencygroup_type',
+                       return_value={"hypermetro": "true"})
+    @mock.patch.object(huawei_driver.huawei_utils, 'get_volume_metadata',
+                       return_value={'hypermetro_id': '3400a30d844d0007',
+                                     'remote_lun_id': '59'})
+    def test_update_consistencygroup_success(self,
+                                             mock_grouptype,
+                                             mock_metadata):
+        """Test that create_consistencygroup return successfully."""
+        ctxt = context.get_admin_context()
+        add_volumes = [test_volume]
+        remove_volumes = [test_volume]
+        # Create consistency group
+        model_update = self.driver.update_consistencygroup(ctxt,
+                                                           CONSISTGROUP,
+                                                           add_volumes,
+                                                           remove_volumes)
+        self.assertEqual('available',
+                         model_update[0]['status'],
+                         "Consistency Group update failed")
+
+    def test_create_hypermetro_consistencygroup_success_2(self):
+        ctxt = context.get_admin_context()
+        # Create consistency group
+        temp_cg = copy.deepcopy(CONSISTGROUP)
+        temp_cg['volume_type_id'] = '550c089b-bfdd-4f7f-86e1-3ba88125555c,'
+        self.mock_object(volume_types, 'get_volume_type',
+                         mock.Mock(return_value=test_hypermetro_type))
+        model_update = self.driver.create_consistencygroup(ctxt, temp_cg)
+
+        self.assertEqual('available',
+                         model_update['status'],
+                         "Consistency Group created failed")
 
 
 class HuaweiConfTestCase(test.TestCase):

@@ -79,17 +79,10 @@ class HuaweiHyperMetro(object):
         remote_lun_id = metadata['remote_lun_id']
 
         if metro_id:
-            exst_flag = self.client.check_hypermetro_exist(metro_id)
-            if exst_flag:
-                metro_info = self.client.get_hypermetro_by_id(metro_id)
-                metro_status = int(metro_info['data']['RUNNINGSTATUS'])
+            self.check_metro_need_to_stop(volume)
 
-                LOG.debug("Hypermetro status is: %s.", metro_status)
-                if constants.HYPERMETRO_RUNNSTATUS_STOP != metro_status:
-                    self.client.stop_hypermetro(metro_id)
-
-                # Delete hypermetro
-                self.client.delete_hypermetro(metro_id)
+            # Delete hypermetro
+            self.client.delete_hypermetro(metro_id)
 
         # Delete remote lun.
         if remote_lun_id and self.rmt_client.check_lun_exist(remote_lun_id):
@@ -274,3 +267,100 @@ class HuaweiHyperMetro(object):
 
     def get_hypermetro_stats(self, hypermetro_id):
         pass
+
+    def create_consistencygroup(self, group):
+        LOG.info(_LI("Create Consistency Group: %(group)s."),
+                 {'group': group['id']})
+        group_name = huawei_utils.encode_name(group['id'])
+        domain_name = self.configuration.metro_domain_name
+        domain_id = self.client.get_hyper_domain_id(domain_name)
+        if not domain_name or not domain_id:
+            msg = _("The domain_name config in cinder.conf is wrong.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+        self.client.create_metrogroup(group_name, group['id'], domain_id)
+
+    def delete_consistencygroup(self, context, group, volumes):
+        LOG.info(_LI("Delete Consistency Group: %(group)s."),
+                 {'group': group['id']})
+        model_update = {}
+        volumes_model_update = []
+        model_update['status'] = group['status']
+        metrogroup_id = self.check_consistencygroup_need_to_stop(group)
+        if metrogroup_id:
+            self.client.delete_metrogroup(metrogroup_id)
+
+        # Deal with the return volumes info
+        for volume_ref in volumes:
+            volume_update = {'id': volume_ref['id']}
+            volume_update['status'] = 'deleted'
+            volumes_model_update.append(volume_update)
+
+        return model_update, volumes_model_update
+
+    def update_consistencygroup(self, context, group,
+                                add_volumes, remove_volumes):
+        LOG.info(_LI("Update Consistency Group: %(group)s. "
+                     "This adds or removes volumes from a CG."),
+                 {'group': group['id']})
+        model_update = {}
+        model_update['status'] = group['status']
+        metrogroup_id = self.check_consistencygroup_need_to_stop(group)
+        if metrogroup_id:
+            # Deal with add volumes to CG
+            for volume in add_volumes:
+                metro_id = self.check_metro_need_to_stop(volume)
+                self.client.add_metro_to_metrogroup(metrogroup_id,
+                                                    metro_id)
+
+            # Deal with remove volumes from CG
+            for volume in remove_volumes:
+                metro_id = self.check_metro_need_to_stop(volume)
+                self.client.remove_metro_from_metrogroup(metrogroup_id,
+                                                         metro_id)
+                self.client.sync_hypermetro(metro_id)
+
+            new_group_info = self.client.get_metrogroup_by_id(metrogroup_id)
+            is_empty = new_group_info["ISEMPTY"]
+            if is_empty == 'false':
+                self.client.sync_metrogroup(metrogroup_id)
+
+        # if CG not exist on array
+        else:
+            msg = _("The CG does not exist on array.")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+
+    def check_metro_need_to_stop(self, volume):
+        metadata = huawei_utils.get_volume_metadata(volume)
+        metro_id = metadata['hypermetro_id']
+        metro_existed = self.client.check_hypermetro_exist(metro_id)
+
+        if metro_existed:
+            metro_info = self.client.get_hypermetro_by_id(metro_id)
+            metro_health_status = metro_info['HEALTHSTATUS']
+            metro_running_status = metro_info['RUNNINGSTATUS']
+
+            if (metro_health_status == constants.HEALTH_NORMAL and
+                (metro_running_status == constants.RUNNING_NORMAL or
+                    metro_running_status == constants.RUNNING_SYNC)):
+                self.client.stop_hypermetro(metro_id)
+
+        return metro_id
+
+    def check_consistencygroup_need_to_stop(self, group):
+        group_name = huawei_utils.encode_name(group['id'])
+        metrogroup_id = self.client.get_metrogroup_by_name(group_name)
+
+        if metrogroup_id:
+            metrogroup_info = self.client.get_metrogroup_by_id(metrogroup_id)
+            health_status = metrogroup_info['HEALTHSTATUS']
+            running_status = metrogroup_info['RUNNINGSTATUS']
+
+            if (health_status == constants.HEALTH_NORMAL
+                and (running_status == constants.RUNNING_NORMAL
+                     or running_status == constants.RUNNING_SYNC)):
+                self.client.stop_metrogroup(metrogroup_id)
+
+        return metrogroup_id
