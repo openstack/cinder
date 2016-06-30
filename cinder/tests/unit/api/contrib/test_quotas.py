@@ -188,6 +188,17 @@ class QuotaSetsControllerTest(QuotaSetsControllerTestBase):
         self.controller._get_quotas.assert_called_with(
             self.req.environ['cinder.context'], fake.PROJECT_ID, False)
 
+    def test_show_with_invalid_usage_param(self):
+        self.req.params = {'usage': 'InvalidBool'}
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.controller.show,
+                          self.req, fake.PROJECT2_ID)
+
+    def test_show_with_valid_usage_param(self):
+        self.req.params = {'usage': 'false'}
+        result = self.controller.show(self.req, fake.PROJECT_ID)
+        self.assertDictMatch(make_body(), result)
+
     def test_update(self):
         body = make_body(gigabytes=2000, snapshots=15,
                          volumes=5, backups=5, tenant_id=None)
