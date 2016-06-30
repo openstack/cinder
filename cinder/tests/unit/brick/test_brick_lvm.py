@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 import mock
-from mox3 import mox
 from oslo_concurrency import processutils
 
 from cinder.brick.local_dev import lvm as brick
@@ -22,21 +21,13 @@ from cinder import test
 from cinder.volume import configuration as conf
 
 
-def create_configuration():
-    configuration = mox.MockObject(conf.Configuration)
-    configuration.append_config_values(mox.IgnoreArg())
-    return configuration
-
-
 class BrickLvmTestCase(test.TestCase):
     def setUp(self):
-        self.configuration = mox.MockObject(conf.Configuration)
+        self.configuration = mock.Mock(conf.Configuration)
         self.configuration.volume_group_name = 'fake-vg'
         super(BrickLvmTestCase, self).setUp()
 
-        # Stub processutils.execute for static methods
-        self.stubs.Set(processutils, 'execute',
-                       self.fake_execute)
+        self.mock_object(processutils, 'execute', self.fake_execute)
         self.vg = brick.LVM(self.configuration.volume_group_name,
                             'sudo',
                             False, None,
@@ -155,15 +146,13 @@ class BrickLvmTestCase(test.TestCase):
     def test_create_lv_snapshot(self):
         self.assertIsNone(self.vg.create_lv_snapshot('snapshot-1', 'fake-1'))
 
-        self.mox.StubOutWithMock(self.vg, 'get_volume')
-        self.vg.get_volume('fake-non-existent').AndReturn(None)
-        self.mox.ReplayAll()
-        try:
-            self.vg.create_lv_snapshot('snapshot-1', 'fake-non-existent')
-        except exception.VolumeDeviceNotFound as e:
-            self.assertEqual('fake-non-existent', e.kwargs['device'])
-        else:
-            self.fail("Exception not raised")
+        with mock.patch.object(self.vg, 'get_volume', return_value=None):
+            try:
+                self.vg.create_lv_snapshot('snapshot-1', 'fake-non-existent')
+            except exception.VolumeDeviceNotFound as e:
+                self.assertEqual('fake-non-existent', e.kwargs['device'])
+            else:
+                self.fail("Exception not raised")
 
     def test_vg_exists(self):
         self.assertTrue(self.vg._vg_exists())
@@ -233,28 +222,28 @@ class BrickLvmTestCase(test.TestCase):
         # use the self._executor fake we pass in on init
         # so we need to stub processutils.execute appropriately
 
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
 
-        self.stubs.Set(processutils, 'execute', self.fake_pretend_lvm_version)
-        self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_pretend_lvm_version):
+            self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
 
-        self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
-        self.assertFalse(self.vg.supports_thin_provisioning('sudo'))
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_old_lvm_version):
+            self.assertFalse(self.vg.supports_thin_provisioning('sudo'))
 
-        self.stubs.Set(processutils,
-                       'execute',
-                       self.fake_customised_lvm_version)
-        self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_customised_lvm_version):
+            self.assertTrue(self.vg.supports_thin_provisioning('sudo'))
 
     def test_snapshot_lv_activate_support(self):
         self.vg._supports_snapshot_lv_activation = None
-        self.stubs.Set(processutils, 'execute', self.fake_execute)
         self.assertTrue(self.vg.supports_snapshot_lv_activation)
 
         self.vg._supports_snapshot_lv_activation = None
-        self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
-        self.assertFalse(self.vg.supports_snapshot_lv_activation)
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_old_lvm_version):
+            self.assertFalse(self.vg.supports_snapshot_lv_activation)
 
         self.vg._supports_snapshot_lv_activation = None
 
@@ -262,12 +251,14 @@ class BrickLvmTestCase(test.TestCase):
         """Tests if lvchange -K is available via a lvm2 version check."""
 
         self.vg._supports_lvchange_ignoreskipactivation = None
-        self.stubs.Set(processutils, 'execute', self.fake_pretend_lvm_version)
-        self.assertTrue(self.vg.supports_lvchange_ignoreskipactivation)
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_pretend_lvm_version):
+            self.assertTrue(self.vg.supports_lvchange_ignoreskipactivation)
 
         self.vg._supports_lvchange_ignoreskipactivation = None
-        self.stubs.Set(processutils, 'execute', self.fake_old_lvm_version)
-        self.assertFalse(self.vg.supports_lvchange_ignoreskipactivation)
+        with mock.patch.object(processutils, 'execute',
+                               self.fake_old_lvm_version):
+            self.assertFalse(self.vg.supports_lvchange_ignoreskipactivation)
 
         self.vg._supports_lvchange_ignoreskipactivation = None
 
@@ -332,18 +323,14 @@ class BrickLvmTestCase(test.TestCase):
         self.assertFalse(self.vg.lv_has_snapshot('test-volumes'))
 
     def test_activate_lv(self):
-        self.mox.StubOutWithMock(self.vg, '_execute')
-        self.vg._supports_lvchange_ignoreskipactivation = True
+        with mock.patch.object(self.vg, '_execute'):
+            self.vg._supports_lvchange_ignoreskipactivation = True
 
-        self.vg._execute('lvchange', '-a', 'y', '--yes', '-K',
-                         'fake-vg/my-lv',
-                         root_helper='sudo', run_as_root=True)
+            self.vg._execute('lvchange', '-a', 'y', '--yes', '-K',
+                             'fake-vg/my-lv',
+                             root_helper='sudo', run_as_root=True)
 
-        self.mox.ReplayAll()
-
-        self.vg.activate_lv('my-lv')
-
-        self.mox.VerifyAll()
+            self.vg.activate_lv('my-lv')
 
     def test_get_mirrored_available_capacity(self):
         self.assertEqual(2.0, self.vg.vg_mirror_free_space(1))
