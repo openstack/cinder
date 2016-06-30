@@ -13,6 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import copy
 import time
 
 import mock
@@ -36,7 +37,7 @@ typ2id = {'volumes': 'vol-id',
           'consistency-group-volumes': 'cg-vol-id',
           }
 
-xms_data = {'xms': {1: {'version': '4.0.0'}},
+xms_init = {'xms': {1: {'version': '4.0.0'}},
             'clusters': {1: {'name': 'brick1',
                              'sys-sw-version': "4.0.0-devel_ba23ee5381eeab73",
                              'ud-ssd-space': '8146708710',
@@ -77,6 +78,8 @@ xms_data = {'xms': {1: {'version': '4.0.0'}},
             'consistency-group-volumes': {},
             }
 
+xms_data = None
+
 xms_filters = {
     'eq': lambda x, y: x == y,
     'ne': lambda x, y: x != y,
@@ -95,12 +98,8 @@ def get_xms_obj_by_name(typ, name):
 
 
 def clean_xms_data():
-    xms_data['volumes'] = {}
-    xms_data['initiator-groups'] = {}
-    xms_data['initiators'] = {}
-    xms_data['lun-maps'] = {}
-    xms_data['consistency-group-volumes'] = {}
-    xms_data['consistency-groups'] = {}
+    global xms_data
+    xms_data = copy.deepcopy(xms_init)
 
 
 def fix_data(data, object_type):
@@ -313,39 +312,58 @@ class CommonData(object):
     cgsnapshot.__getitem__ = cgsnap_getitem
 
 
-@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
-class EMCXIODriverISCSITestCase(test.TestCase):
-    def setUp(self):
-        super(EMCXIODriverISCSITestCase, self).setUp()
-        clean_xms_data()
-
-        config = mock.Mock()
-        config.san_login = ''
-        config.san_password = ''
-        config.san_ip = ''
-        config.xtremio_cluster_name = 'brick1'
-        config.xtremio_provisioning_factor = 20.0
-        config.max_over_subscription_ratio = 20.0
-        config.xtremio_volumes_per_glance_cache = 100
+class BaseEMCXIODriverTestCase(test.TestCase):
+    def __init__(self, *args, **kwargs):
+        super(BaseEMCXIODriverTestCase, self).__init__(*args, **kwargs)
+        self.config = mock.Mock(san_login = '',
+                                san_password = '',
+                                san_ip = '',
+                                xtremio_cluster_name = 'brick1',
+                                xtremio_provisioning_factor = 20.0,
+                                max_over_subscription_ratio = 20.0,
+                                xtremio_volumes_per_glance_cache = 100,
+                                driver_ssl_cert_verify = True,
+                                driver_ssl_cert_path =
+                                '/test/path/root_ca.crt')
 
         def safe_get(key):
-            return getattr(config, key)
+            return getattr(self.config, key)
+        self.config.safe_get = safe_get
 
-        config.safe_get = safe_get
-        self.driver = xtremio.XtremIOISCSIDriver(configuration=config)
-        self.driver.client = xtremio.XtremIOClient4(config,
-                                                    config
+    def setUp(self):
+        super(BaseEMCXIODriverTestCase, self).setUp()
+        clean_xms_data()
+
+        self.driver = xtremio.XtremIOISCSIDriver(configuration=self.config)
+        self.driver.client = xtremio.XtremIOClient4(self.config,
+                                                    self.config
                                                     .xtremio_cluster_name)
         self.data = CommonData()
 
+
+@mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
+class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
+    # ##### SetUp Check #####
     def test_check_for_setup_error(self, req):
+        req.side_effect = xms_request
+        self.driver.check_for_setup_error()
+
+    def test_fail_check_for_setup_error(self, req):
         req.side_effect = xms_request
         clusters = xms_data['clusters']
         del xms_data['clusters']
         self.assertRaises(exception.VolumeDriverException,
                           self.driver.check_for_setup_error)
         xms_data['clusters'] = clusters
-        self.driver.check_for_setup_error()
+
+    def test_fail_check_for_array_version(self, req):
+        req.side_effect = xms_request
+        cluster = xms_data['clusters'][1]
+        ver = cluster['sys-sw-version']
+        cluster['sys-sw-version'] = '2.0.0-test'
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.check_for_setup_error)
+        cluster['sys-sw-version'] = ver
 
     def test_client4_uses_v2(self, req):
         def base_req(*args, **kwargs):
@@ -353,11 +371,45 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         req.side_effect = base_req
         self.driver.client.req('volumes')
 
-    def test_create_extend_delete_volume(self, req):
+    def test_get_stats(self, req):
+        req.side_effect = xms_request
+        stats = self.driver.get_volume_stats(True)
+        self.assertEqual(self.driver.backend_name,
+                         stats['volume_backend_name'])
+
+# ##### Volumes #####
+    def test_create_volume_with_cg(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+
+    def test_extend_volume(self, req):
         req.side_effect = xms_request
         self.driver.create_volume(self.data.test_volume)
         self.driver.extend_volume(self.data.test_volume, 5)
+
+    def test_fail_extend_volume(self, req):
+        req.side_effect = xms_request
+        self.assertRaises(exception.VolumeDriverException,
+                          self.driver.extend_volume, self.data.test_volume, 5)
+
+    def test_delete_volume(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
         self.driver.delete_volume(self.data.test_volume)
+
+    def test_duplicate_volume(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume, self.data.test_volume)
+
+# ##### Snapshots #####
+    def test_create_snapshot(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_snapshot(self.data.test_snapshot)
+        self.assertEqual(self.data.test_snapshot['id'],
+                         xms_data['volumes'][2]['name'])
 
     def test_create_delete_snapshot(self, req):
         req.side_effect = xms_request
@@ -366,7 +418,6 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.assertEqual(self.data.test_snapshot['id'],
                          xms_data['volumes'][2]['name'])
         self.driver.delete_snapshot(self.data.test_snapshot)
-        self.driver.delete_volume(self.data.test_volume)
 
     def test_failed_rename_snapshot(self, req):
         req.side_effect = xms_failed_rename_snapshot_request
@@ -382,38 +433,46 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.driver.create_snapshot(self.data.test_snapshot)
         self.driver.create_volume_from_snapshot(self.data.test_volume2,
                                                 self.data.test_snapshot)
-        self.driver.delete_volume(self.data.test_volume2)
-        self.driver.delete_volume(self.data.test_snapshot)
-        self.driver.delete_volume(self.data.test_volume)
 
+# ##### Clone Volume #####
     def test_clone_volume(self, req):
         req.side_effect = xms_request
         self.driver.db = mock.Mock()
         (self.driver.db.
          image_volume_cache_get_by_volume_id.return_value) = mock.MagicMock()
         self.driver.create_volume(self.data.test_volume)
-        vol = xms_data['volumes'][1]
-        vol['num-of-dest-snaps'] = 200
-        self.assertRaises(exception.CinderException,
-                          self.driver.create_cloned_volume,
-                          self.data.test_clone,
-                          self.data.test_volume)
-
-        vol['num-of-dest-snaps'] = 50
+        xms_data['volumes'][1]['num-of-dest-snaps'] = 50
         self.driver.create_cloned_volume(self.data.test_clone,
                                          self.data.test_volume)
-        self.driver.delete_volume(self.data.test_clone)
-        self.driver.delete_volume(self.data.test_volume)
 
-        mock.patch.object(self.driver.client,
-                          'create_snapshot',
-                          mock.Mock(side_effect=
-                                    exception.XtremIOSnapshotsLimitExceeded()))
+    def test_clone_volume_exceed_conf_limit(self, req):
+        req.side_effect = xms_request
+        self.driver.db = mock.Mock()
+        (self.driver.db.
+         image_volume_cache_get_by_volume_id.return_value) = mock.MagicMock()
+        self.driver.create_volume(self.data.test_volume)
+        xms_data['volumes'][1]['num-of-dest-snaps'] = 200
         self.assertRaises(exception.CinderException,
                           self.driver.create_cloned_volume,
                           self.data.test_clone,
                           self.data.test_volume)
 
+    @mock.patch.object(xtremio.XtremIOClient4, 'create_snapshot')
+    def test_clone_volume_exceed_array_limit(self, create_snap, req):
+        create_snap.side_effect = exception.XtremIOSnapshotsLimitExceeded()
+        req.side_effect = xms_request
+        self.driver.db = mock.Mock()
+        (self.driver.db.
+         image_volume_cache_get_by_volume_id.return_value) = mock.MagicMock()
+        self.driver.create_volume(self.data.test_volume)
+        xms_data['volumes'][1]['num-of-dest-snaps'] = 50
+        self.assertRaises(exception.CinderException,
+                          self.driver.create_cloned_volume,
+                          self.data.test_clone,
+                          self.data.test_volume)
+
+    def test_clone_volume_too_many_snaps(self, req):
+        req.side_effect = xms_request
         response = mock.MagicMock()
         response.status_code = 400
         response.json.return_value = {
@@ -423,6 +482,11 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.assertRaises(exception.XtremIOSnapshotsLimitExceeded,
                           self.driver.client.handle_errors,
                           response, '', '')
+
+    def test_clone_volume_too_many_objs(self, req):
+        req.side_effect = xms_request
+        response = mock.MagicMock()
+        response.status_code = 400
         response.json.return_value = {
             "message": "too_many_objs",
             "error_code": 400
@@ -431,13 +495,7 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                           self.driver.client.handle_errors,
                           response, '', '')
 
-    def test_duplicate_volume(self, req):
-        req.side_effect = xms_request
-        self.driver.create_volume(self.data.test_volume)
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.create_volume, self.data.test_volume)
-        self.driver.delete_volume(self.data.test_volume)
-
+# ##### Connection #####
     def test_no_portals_configured(self, req):
         req.side_effect = xms_request
         portals = xms_data['iscsi-portals'].copy()
@@ -447,19 +505,33 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                           self.driver._get_iscsi_properties, lunmap)
         xms_data['iscsi-portals'] = portals
 
-    def test_initialize_terminate_connection(self, req):
+    def test_initialize_connection(self, req):
         req.side_effect = xms_request
         self.driver.create_volume(self.data.test_volume)
         self.driver.create_volume(self.data.test_volume2)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
         self.assertEqual(1, map_data['data']['target_lun'])
+
+    def test_initialize_connection_existing_ig(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume2)
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
         i1 = xms_data['initiators'][1]
         i1['ig-id'] = ['', i1['ig-id'], 1]
         i1['chap-authentication-initiator-password'] = 'chap_password1'
         i1['chap-discovery-initiator-password'] = 'chap_password2'
-        map_data = self.driver.initialize_connection(self.data.test_volume2,
-                                                     self.data.connector)
+        self.driver.initialize_connection(self.data.test_volume2,
+                                          self.data.connector)
+
+    def test_terminate_connection(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume2)
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
 
@@ -486,9 +558,8 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                                              self.data.connector)
             get_idx.assert_called_once_with(self.data.connector)
 
-    def test_initialize_chap_connection(self, req):
+    def test_initialize_connection_after_enabling_chap(self, req):
         req.side_effect = xms_request
-        clean_xms_data()
         self.driver.create_volume(self.data.test_volume)
         self.driver.create_volume(self.data.test_volume2)
         map_data = self.driver.initialize_connection(self.data.test_volume,
@@ -507,12 +578,26 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.assertEqual('chap_password2',
                          map_data['data']['discovery_auth_password'])
 
-        self.driver.terminate_connection(self.data.test_volume2,
-                                         self.data.connector)
+    def test_initialize_connection_after_disabling_chap(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.create_volume(self.data.test_volume2)
+        c1 = xms_data['clusters'][1]
+        c1['chap-authentication-mode'] = 'initiator'
+        c1['chap-discovery-mode'] = 'initiator'
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
+        i1 = xms_data['initiators'][1]
+        i1['ig-id'] = ['', i1['ig-id'], 1]
+        i1['chap-authentication-initiator-password'] = 'chap_password1'
+        i1['chap-discovery-initiator-password'] = 'chap_password2'
         i1['chap-authentication-initiator-password'] = None
         i1['chap-discovery-initiator-password'] = None
-        map_data = self.driver.initialize_connection(self.data.test_volume2,
-                                                     self.data.connector)
+        self.driver.initialize_connection(self.data.test_volume2,
+                                          self.data.connector)
+
+    def test_add_auth(self, req):
+        req.side_effect = xms_request
         data = {}
         self.driver._add_auth(data, True, True)
         self.assertIn('initiator-discovery-user-name', data,
@@ -528,13 +613,8 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                           self.data.connector)
         self.driver.delete_volume(self.data.test_volume)
 
-    def test_get_stats(self, req):
-        req.side_effect = xms_request
-        stats = self.driver.get_volume_stats(True)
-        self.assertEqual(self.driver.backend_name,
-                         stats['volume_backend_name'])
-
-    def test_manage_unmanage(self, req):
+# ##### Manage Volumes #####
+    def test_manage_volume(self, req):
         req.side_effect = xms_request
         xms_data['volumes'] = {1: {'name': 'unmanaged1',
                                    'index': 1,
@@ -542,21 +622,60 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                                    },
                                }
         ref_vol = {"source-name": "unmanaged1"}
+        self.driver.manage_existing(self.data.test_volume, ref_vol)
+
+    def test_failed_manage_volume(self, req):
+        req.side_effect = xms_request
+        xms_data['volumes'] = {1: {'name': 'unmanaged1',
+                                   'index': 1,
+                                   'vol-size': '3',
+                                   },
+                               }
+        invalid_ref = {"source-name": "invalid"}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing,
+                          self.data.test_volume, invalid_ref)
+
+    def test_get_manage_volume_size(self, req):
+        req.side_effect = xms_request
+        xms_data['volumes'] = {1: {'name': 'unmanaged1',
+                                   'index': 1,
+                                   'vol-size': '3',
+                                   },
+                               }
+        ref_vol = {"source-name": "unmanaged1"}
+        self.driver.manage_existing_get_size(self.data.test_volume, ref_vol)
+
+    def test_manage_volume_size_invalid_input(self, req):
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          self.data.test_volume, {})
+
+    def test_failed_manage_volume_size(self, req):
+        req.side_effect = xms_request
+        xms_data['volumes'] = {1: {'name': 'unmanaged1',
+                                   'index': 1,
+                                   'vol-size': '3',
+                                   },
+                               }
         invalid_ref = {"source-name": "invalid"}
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size,
                           self.data.test_volume, invalid_ref)
-        self.driver.manage_existing_get_size(self.data.test_volume, ref_vol)
-        self.assertRaises(exception.ManageExistingInvalidReference,
-                          self.driver.manage_existing,
-                          self.data.test_volume, invalid_ref)
-        self.driver.manage_existing(self.data.test_volume, ref_vol)
-        self.assertRaises(exception.VolumeNotFound, self.driver.unmanage,
-                          self.data.test_volume2)
+
+    def test_unmanage_volume(self, req):
+        req.side_effect = xms_request
+        self.driver.create_volume(self.data.test_volume)
         self.driver.unmanage(self.data.test_volume)
 
+    def test_failed_unmanage_volume(self, req):
+        req.side_effect = xms_request
+        self.assertRaises(exception.VolumeNotFound, self.driver.unmanage,
+                          self.data.test_volume2)
+
+# ##### Consistancy Groups #####
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_cg_operations(self, get_all_for_cgsnapshot, req):
+    def test_cg_create(self, get_all_for_cgsnapshot, req):
         req.side_effect = xms_request
         d = self.data
         snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
@@ -565,6 +684,16 @@ class EMCXIODriverISCSITestCase(test.TestCase):
 
         self.driver.create_consistencygroup(d.context, d.group)
         self.assertEqual(1, len(xms_data['consistency-groups']))
+
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_cg_update(self, get_all_for_cgsnapshot, req):
+        req.side_effect = xms_request
+        d = self.data
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
+
+        self.driver.create_consistencygroup(d.context, d.group)
         self.driver.update_consistencygroup(d.context, d.group,
                                             add_volumes=[d.test_volume,
                                                          d.test_volume2])
@@ -572,10 +701,35 @@ class EMCXIODriverISCSITestCase(test.TestCase):
         self.driver.update_consistencygroup(d.context, d.group,
                                             remove_volumes=[d.test_volume2])
         self.assertEqual(1, len(xms_data['consistency-group-volumes']))
+
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_cg_delete(self, get_all_for_cgsnapshot, req):
+        req.side_effect = xms_request
+        d = self.data
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
+        self.driver.create_consistencygroup(d.context, d.group)
+        self.driver.update_consistencygroup(d.context, d.group,
+                                            add_volumes=[d.test_volume,
+                                                         d.test_volume2])
         self.driver.db = mock.Mock()
         (self.driver.db.
          volume_get_all_by_group.return_value) = [mock.MagicMock()]
         self.driver.create_cgsnapshot(d.context, d.cgsnapshot, [])
+        self.driver.delete_consistencygroup(d.context, d.group, [])
+
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_cg_snapshot(self, get_all_for_cgsnapshot, req):
+        req.side_effect = xms_request
+        d = self.data
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
+        self.driver.create_consistencygroup(d.context, d.group)
+        self.driver.update_consistencygroup(d.context, d.group,
+                                            add_volumes=[d.test_volume,
+                                                         d.test_volume2])
         snapset_name = self.driver._get_cgsnap_name(d.cgsnapshot)
         self.assertEqual(snapset_name,
                          '192eb39b6c2f420cbae33cfd117f0345192eb39b6c2f420cbae'
@@ -586,17 +740,11 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                     'index': 1}
         xms_data['snapshot-sets'] = {snapset_name: snapset1, 1: snapset1}
         self.driver.delete_cgsnapshot(d.context, d.cgsnapshot, [])
-        self.driver.delete_consistencygroup(d.context, d.group, [])
-        xms_data['snapshot-sets'] = {}
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
-    def test_cg_from_src(self, get_all_for_cgsnapshot, req):
+    def test_cg_from_src_snapshot(self, get_all_for_cgsnapshot, req):
         req.side_effect = xms_request
         d = self.data
-
-        self.assertRaises(exception.InvalidInput,
-                          self.driver.create_consistencygroup_from_src,
-                          d.context, d.group, [], None, None, None, None)
 
         snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
         snapshot_obj.consistencygroup_id = d.group['id']
@@ -623,6 +771,29 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                                                      [new_vol1],
                                                      d.cgsnapshot, [snapshot1])
 
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_cg_from_src_cg(self, get_all_for_cgsnapshot, req):
+        req.side_effect = xms_request
+        d = self.data
+
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        snapshot_obj.volume_id = d.test_volume['id']
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
+
+        self.driver.create_consistencygroup(d.context, d.group)
+        self.driver.create_volume(d.test_volume)
+        self.driver.create_cgsnapshot(d.context, d.cgsnapshot, [])
+        xms_data['volumes'][2]['ancestor-vol-id'] = (xms_data['volumes'][1]
+                                                     ['vol-id'])
+        snapset_name = self.driver._get_cgsnap_name(d.cgsnapshot)
+
+        snapset1 = {'vol-list': [xms_data['volumes'][2]['vol-id']],
+                    'name': snapset_name,
+                    'index': 1}
+        xms_data['snapshot-sets'] = {snapset_name: snapset1, 1: snapset1}
+        cg_obj = fake_cg.fake_consistencyobject_obj(d.context)
+        new_vol1 = fake_volume.fake_volume_obj(d.context)
         new_cg_obj = fake_cg.fake_consistencyobject_obj(
             d.context, id=fake.CONSISTENCY_GROUP2_ID)
         snapset2_name = new_cg_obj.id
@@ -638,28 +809,19 @@ class EMCXIODriverISCSITestCase(test.TestCase):
                                                      None, None,
                                                      cg_obj, [new_vol1])
 
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_invalid_cg_from_src_input(self, get_all_for_cgsnapshot, req):
+        req.side_effect = xms_request
+        d = self.data
+
+        self.assertRaises(exception.InvalidInput,
+                          self.driver.create_consistencygroup_from_src,
+                          d.context, d.group, [], None, None, None, None)
+
 
 @mock.patch('requests.request')
-class EMCXIODriverTestCase(test.TestCase):
-    def setUp(self):
-        super(EMCXIODriverTestCase, self).setUp()
-
-        configuration = mock.Mock()
-        configuration.san_login = ''
-        configuration.san_password = ''
-        configuration.san_ip = ''
-        configuration.xtremio_cluster_name = ''
-        configuration.driver_ssl_cert_verify = True
-        configuration.driver_ssl_cert_path = '/test/path/root_ca.crt'
-
-        def safe_get(key):
-            return getattr(configuration, key)
-
-        configuration.safe_get = safe_get
-        self.driver = xtremio.XtremIOISCSIDriver(configuration=configuration)
-
-        self.data = CommonData()
-
+class EMCXIODriverTestCase(BaseEMCXIODriverTestCase):
+    # ##### XMS Client #####
     @mock.patch.object(time, 'sleep', mock.Mock(return_value=0))
     def test_retry_request(self, req):
         busy_response = mock.MagicMock()
@@ -695,40 +857,34 @@ class EMCXIODriverTestCase(test.TestCase):
 
 
 @mock.patch('cinder.volume.drivers.emc.xtremio.XtremIOClient.req')
-class EMCXIODriverFibreChannelTestCase(test.TestCase):
+class EMCXIODriverFibreChannelTestCase(BaseEMCXIODriverTestCase):
     def setUp(self):
         super(EMCXIODriverFibreChannelTestCase, self).setUp()
-        clean_xms_data()
-
-        self.config = mock.Mock(san_login='',
-                                san_password='',
-                                san_ip='',
-                                xtremio_cluster_name='',
-                                xtremio_provisioning_factor=20.0)
         self.driver = xtremio.XtremIOFibreChannelDriver(
             configuration=self.config)
-        self.data = CommonData()
 
-    def test_initialize_terminate_connection(self, req):
+# ##### Connection FC#####
+    def test_initialize_connection(self, req):
         req.side_effect = xms_request
-        self.driver.client = xtremio.XtremIOClient4(
-            self.config, self.config.xtremio_cluster_name)
 
         self.driver.create_volume(self.data.test_volume)
         map_data = self.driver.initialize_connection(self.data.test_volume,
                                                      self.data.connector)
         self.assertEqual(1, map_data['data']['target_lun'])
+
+    def test_terminate_connection(self, req):
+        req.side_effect = xms_request
+
+        self.driver.create_volume(self.data.test_volume)
+        self.driver.initialize_connection(self.data.test_volume,
+                                          self.data.connector)
         for i1 in xms_data['initiators'].values():
             i1['ig-id'] = ['', i1['ig-id'], 1]
         self.driver.terminate_connection(self.data.test_volume,
                                          self.data.connector)
-        self.driver.delete_volume(self.data.test_volume)
 
-    def test_initialize_existing_ig_terminate_connection(self, req):
+    def test_initialize_existing_ig_connection(self, req):
         req.side_effect = xms_request
-        self.driver.client = xtremio.XtremIOClient4(
-            self.config, self.config.xtremio_cluster_name)
-
         self.driver.create_volume(self.data.test_volume)
 
         pre_existing = 'pre_existing_host'
@@ -747,9 +903,14 @@ class EMCXIODriverFibreChannelTestCase(test.TestCase):
                                                          self.data.connector)
         self.assertEqual(1, map_data['data']['target_lun'])
         self.assertEqual(1, len(xms_data['initiator-groups']))
-        self.driver.terminate_connection(self.data.test_volume,
-                                         self.data.connector)
-        self.driver.delete_volume(self.data.test_volume)
+
+    def test_get_free_lun(self, req):
+        def lm_response(*args, **kwargs):
+            return {'lun-maps': [{'lun': 1}]}
+        req.side_effect = lm_response
+
+        ig_names = ['test1', 'test2']
+        self.driver._get_free_lun(ig_names)
 
     def test_race_on_terminate_connection(self, req):
         """Test for race conditions on num_of_mapped_volumes.
