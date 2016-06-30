@@ -25,7 +25,7 @@ from cinder.i18n import _
 
 def _operatorOperands(tokenList):
     it = iter(tokenList)
-    while 1:
+    while True:
         try:
             op1 = next(it)
             op2 = next(it)
