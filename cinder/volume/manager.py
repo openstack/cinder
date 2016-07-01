@@ -1428,7 +1428,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception as err:
             err_msg = (_('Terminate volume connection failed: %(err)s')
                        % {'err': six.text_type(err)})
-            LOG.error(err_msg, resource=volume_ref)
+            LOG.exception(err_msg, resource=volume_ref)
             raise exception.VolumeBackendAPIException(data=err_msg)
         LOG.info(_LI("Terminate volume connection completed successfully."),
                  resource=volume_ref)
