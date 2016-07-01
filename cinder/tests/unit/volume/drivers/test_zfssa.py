@@ -14,6 +14,7 @@
 """Unit tests for Oracle's ZFSSA Cinder volume driver."""
 
 from datetime import date
+import errno
 import json
 import math
 
@@ -889,6 +890,7 @@ class TestZFSSANFSDriver(test.TestCase):
         self.drv._execute = fake_utils.fake_execute
         self.drv.do_setup({})
         self.drv.mount_path = 'fake_mount_path'
+        self.context = context.get_admin_context()
 
     def _create_fake_config(self):
         self.configuration = mock.Mock(spec=conf.Configuration)
@@ -910,6 +912,22 @@ class TestZFSSANFSDriver(test.TestCase):
         self.configuration.zfssa_cache_directory = zfssa_cache_dir
         self.configuration.nfs_sparsed_volumes = 'true'
         self.configuration.zfssa_manage_policy = 'strict'
+
+    def test_setup_nfs_client(self):
+        mock_execute = self.mock_object(self.drv, '_execute',
+                                        side_effect= OSError(errno.ENOENT,
+                                                             'No such file or '
+                                                             'directory.'))
+
+        self.assertRaises(exception.NfsException, self.drv.do_setup,
+                          self.context)
+        mock_execute.assert_has_calls(
+            [mock.call('mount.nfs',
+                       check_exit_code=False,
+                       run_as_root=True),
+             mock.call('/usr/sbin/mount',
+                       check_exit_code=False,
+                       run_as_root=True)])
 
     def test_migrate_volume(self):
         self.drv.zfssa.get_asn.return_value = (
