@@ -57,5 +57,5 @@ Cinder is transitioning to use mock, rather than mox, and so new tests should
 use mock only.
 
 For more information on creating unit tests and utilizing the testing
-infrastructure in OpenStack Cinder, please read the Cinder testing
-`README.rst <https://github.com/openstack/cinder/blob/master/cinder/testing/README.rst>`_.
+infrastructure in OpenStack Cinder, please see
+http://docs.openstack.org/developer/cinder/devref/testing.html
