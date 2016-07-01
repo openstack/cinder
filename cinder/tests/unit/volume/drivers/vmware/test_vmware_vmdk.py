@@ -872,8 +872,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             vmdk_file_path=vmdk_file_path,
             vmdk_size=volume['size'] * units.Gi,
             image_name=image_meta['name'],
-            image_version=1,
-            is_public=image_meta['is_public'])
+            image_version=1)
 
     def test_copy_volume_to_image(self):
         self._test_copy_volume_to_image()

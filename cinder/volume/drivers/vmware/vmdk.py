@@ -1199,8 +1199,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                                     vmdk_file_path=vmdk_file_path,
                                     vmdk_size=volume['size'] * units.Gi,
                                     image_name=image_meta['name'],
-                                    image_version=1,
-                                    is_public=image_meta['is_public'])
+                                    image_version=1)
         LOG.info(_LI("Done copying volume %(vol)s to a new image %(img)s"),
                  {'vol': volume['name'], 'img': image_meta['name']})
 
