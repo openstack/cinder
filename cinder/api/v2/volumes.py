@@ -341,6 +341,10 @@ class VolumeController(wsgi.Controller):
             self.volume_api.update(context, volume, update_dict)
         except exception.VolumeNotFound as error:
             raise exc.HTTPNotFound(explanation=error.msg)
+        except exception.InvalidVolumeMetadata as error:
+            raise webob.exc.HTTPBadRequest(explanation=error.msg)
+        except exception.InvalidVolumeMetadataSize as error:
+            raise webob.exc.HTTPRequestEntityTooLarge(explanation=error.msg)
 
         volume.update(update_dict)
 

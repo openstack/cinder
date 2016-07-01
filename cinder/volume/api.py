@@ -449,6 +449,8 @@ class API(base.Base):
             msg = _("The volume cannot be updated during maintenance.")
             raise exception.InvalidVolume(reason=msg)
 
+        utils.check_metadata_properties(fields.get('metadata', None))
+
         volume.update(fields)
         volume.save()
         LOG.info(_LI("Volume updated successfully."), resource=volume)
