@@ -1062,7 +1062,7 @@ class Client(client_base.Client):
             if e.code == netapp_api.EAPINOTFOUND:
                 return None
             else:
-                raise e
+                raise
 
         if len(aggrs) < 1:
             return None
