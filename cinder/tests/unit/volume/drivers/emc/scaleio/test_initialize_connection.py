@@ -15,6 +15,7 @@
 import mock
 
 from cinder import context
+from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.emc import scaleio
 
@@ -27,7 +28,8 @@ class TestInitializeConnection(scaleio.TestScaleIODriver):
         self.connector = {}
         self.ctx = (
             context.RequestContext('fake', 'fake', True, auth_token=True))
-        self.volume = fake_volume.fake_volume_obj(self.ctx)
+        self.volume = fake_volume.fake_volume_obj(
+            self.ctx, **{'provider_id': fake.PROVIDER_ID})
 
     def test_only_qos(self):
         qos = {'maxIOPS': 1000, 'maxBWS': 2048}
@@ -98,6 +100,13 @@ class TestInitializeConnection(scaleio.TestScaleIODriver):
         connection_properties = (
             self._initialize_connection(qos, extraspecs)['data'])
         self.assertEqual(2048, int(connection_properties['bandwidthLimit']))
+
+    def test_vol_id(self):
+        extraspecs = qos = {}
+        connection_properties = (
+            self._initialize_connection(extraspecs, qos)['data'])
+        self.assertEqual(fake.PROVIDER_ID,
+                         connection_properties['scaleIO_volume_id'])
 
     def _initialize_connection(self, qos, extraspecs):
         self.driver._get_volumetype_qos = mock.MagicMock()
