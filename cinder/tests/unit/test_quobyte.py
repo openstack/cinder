@@ -587,8 +587,8 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv.delete_volume(volume)
 
-        assert not drv._ensure_share_mounted.called
-        assert not drv._execute.called
+        drv._ensure_share_mounted.assert_not_called()
+        drv._execute.assert_not_called()
 
     def test_extend_volume(self):
         drv = self._driver
