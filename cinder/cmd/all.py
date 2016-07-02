@@ -43,7 +43,7 @@ i18n.enable_lazy()
 from cinder.cmd import volume as volume_cmd
 from cinder.common import config   # noqa
 from cinder.db import api as session
-from cinder.i18n import _LE, _
+from cinder.i18n import _LE, _, _LW
 from cinder import objects
 from cinder import rpc
 from cinder import service
@@ -104,6 +104,10 @@ def main():
                 session.dispose_engine()
                 launcher.launch_service(server)
         else:
+            LOG.warning(_LW('Configuration for cinder-volume does not specify '
+                            '"enabled_backends", using DEFAULT as backend. '
+                            'Support for DEFAULT section to configure drivers '
+                            'will be removed in the next release.'))
             server = service.Service.create(binary='cinder-volume',
                                             coordination=True)
             launcher.launch_service(server)
