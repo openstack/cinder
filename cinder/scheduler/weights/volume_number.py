@@ -50,6 +50,7 @@ class VolumeNumberWeigher(weights.BaseHostWeigher):
         We want spreading to be the default.
         """
         context = weight_properties['context']
+        context = context.elevated()
         volume_number = db.volume_data_get_for_host(context=context,
                                                     host=host_state.host,
                                                     count_only=True)
