@@ -236,12 +236,21 @@ class SCSTAdm(iscsi.ISCSITarget):
         return "%s:%s,%s %s %s" % (ip, self.configuration.iscsi_port,
                                    target, iqn, lun)
 
+    def _get_iscsi_name(self, volume):
+        if self.target_name is None:
+            return "%s%s" % (self.configuration.iscsi_target_prefix,
+                             volume['name'])
+        else:
+            return self.target_name
+
     def _get_iscsi_target(self, context, vol_id):
         # FIXME(jdg): Need to implement abc method
         pass
 
-    def _get_target_chap_auth(self, context, iscsi_name):
+    def _get_target_chap_auth(self, context, volume):
         # FIXME(jdg): Need to implement abc method
+
+        iscsi_name = self._get_iscsi_name(volume)
 
         if self._get_target(iscsi_name) is None:
             return None
@@ -262,16 +271,12 @@ class SCSTAdm(iscsi.ISCSITarget):
 
     def ensure_export(self, context, volume, volume_path):
         iscsi_target, lun = self._get_target_and_lun(context, volume)
-        if self.target_name is None:
-            iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                                   volume['name'])
-        else:
-            iscsi_name = self.target_name
+        iscsi_name = self._get_iscsi_name(volume)
 
         if self.chap_username and self.chap_password:
             chap_auth = (self.chap_username, self.chap_password)
         else:
-            chap_auth = self._get_target_chap_auth(context, iscsi_name)
+            chap_auth = self._get_target_chap_auth(context, volume)
 
         self.create_iscsi_target(iscsi_name, volume['id'], iscsi_target,
                                  lun, volume_path, chap_auth)
@@ -279,16 +284,12 @@ class SCSTAdm(iscsi.ISCSITarget):
     def create_export(self, context, volume, volume_path):
         """Creates an export for a logical volume."""
         iscsi_target, lun = self._get_target_and_lun(context, volume)
-        if self.target_name is None:
-            iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
-                                   volume['name'])
-        else:
-            iscsi_name = self.target_name
+        iscsi_name = self._get_iscsi_name(volume)
 
         if self.chap_username and self.chap_password:
             chap_auth = (self.chap_username, self.chap_password)
         else:
-            chap_auth = self._get_target_chap_auth(context, iscsi_name)
+            chap_auth = self._get_target_chap_auth(context, volume)
             if not chap_auth:
                 chap_auth = (vutils.generate_username(),
                              vutils.generate_password())
