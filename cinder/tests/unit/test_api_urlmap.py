@@ -17,6 +17,8 @@
 Tests for cinder.api.urlmap.py
 """
 
+import mock
+
 from cinder.api import urlmap
 from cinder import test
 
@@ -94,48 +96,53 @@ class TestUrlMapFactory(test.TestCase):
         super(TestUrlMapFactory, self).setUp()
         self.global_conf = {'not_found_app': 'app_global',
                             'domain hoobar.com port 10 /': 'some_app_global'}
-        self.loader = self.mox.CreateMockAnything()
+        self.loader = mock.Mock()
 
     def test_not_found_app_in_local_conf(self):
         local_conf = {'not_found_app': 'app_local',
                       'domain foobar.com port 20 /': 'some_app_local'}
-        self.loader.get_app('app_local', global_conf=self.global_conf).\
-            AndReturn('app_local_loader')
-        self.loader.get_app('some_app_local', global_conf=self.global_conf).\
-            AndReturn('some_app_loader')
-        self.mox.ReplayAll()
+
+        self.loader.get_app.side_effect = ['app_local_loader',
+                                           'some_app_loader']
+        calls = [mock.call('app_local', global_conf=self.global_conf),
+                 mock.call('some_app_local', global_conf=self.global_conf)]
+
         expected_urlmap = urlmap.URLMap(not_found_app='app_local_loader')
         expected_urlmap['http://foobar.com:20'] = 'some_app_loader'
         self.assertEqual(expected_urlmap,
                          urlmap.urlmap_factory(self.loader, self.global_conf,
                                                **local_conf))
+        self.loader.get_app.assert_has_calls(calls)
 
     def test_not_found_app_not_in_local_conf(self):
         local_conf = {'domain foobar.com port 20 /': 'some_app_local'}
-        self.loader.get_app('app_global', global_conf=self.global_conf).\
-            AndReturn('app_global_loader')
-        self.loader.get_app('some_app_local', global_conf=self.global_conf).\
-            AndReturn('some_app_returned_by_loader')
-        self.mox.ReplayAll()
+
+        self.loader.get_app.side_effect = ['app_global_loader',
+                                           'some_app_returned_by_loader']
+        calls = [mock.call('app_global', global_conf=self.global_conf),
+                 mock.call('some_app_local', global_conf=self.global_conf)]
+
         expected_urlmap = urlmap.URLMap(not_found_app='app_global_loader')
         expected_urlmap['http://foobar.com:20'] = 'some_app_returned'\
                                                   '_by_loader'
         self.assertEqual(expected_urlmap,
                          urlmap.urlmap_factory(self.loader, self.global_conf,
                                                **local_conf))
+        self.loader.get_app.assert_has_calls(calls)
 
     def test_not_found_app_is_none(self):
         local_conf = {'not_found_app': None,
                       'domain foobar.com port 20 /': 'some_app_local'}
-        self.loader.get_app('some_app_local', global_conf=self.global_conf).\
-            AndReturn('some_app_returned_by_loader')
-        self.mox.ReplayAll()
+        self.loader.get_app.return_value = 'some_app_returned_by_loader'
+
         expected_urlmap = urlmap.URLMap(not_found_app=None)
         expected_urlmap['http://foobar.com:20'] = 'some_app_returned'\
                                                   '_by_loader'
         self.assertEqual(expected_urlmap,
                          urlmap.urlmap_factory(self.loader, self.global_conf,
                                                **local_conf))
+        self.loader.get_app.assert_called_once_with(
+            'some_app_local', global_conf=self.global_conf)
 
 
 class TestURLMap(test.TestCase):
@@ -175,11 +182,11 @@ class TestURLMap(test.TestCase):
 
     def test_path_strategy_wrong_mime_type(self):
         self.urlmap[('http://10.20.30.40:50', '/path/elsepath/')] = 'app'
-        self.mox.StubOutWithMock(self.urlmap, '_munge_path')
-        self.urlmap._munge_path('app', '/path/elsepath/resource.abc',
-                                '/path/elsepath').AndReturn('value')
-        self.mox.ReplayAll()
-        self.assertEqual(
-            (None, 'value', '/path/elsepath'),
-            self.urlmap._path_strategy('http://10.20.30.40', '50',
-                                       '/path/elsepath/resource.abc'))
+        with mock.patch.object(self.urlmap, '_munge_path') as mock_munge_path:
+            mock_munge_path.return_value = 'value'
+            self.assertEqual(
+                (None, 'value', '/path/elsepath'),
+                self.urlmap._path_strategy('http://10.20.30.40', '50',
+                                           '/path/elsepath/resource.abc'))
+            mock_munge_path.assert_called_once_with(
+                'app', '/path/elsepath/resource.abc', '/path/elsepath')
