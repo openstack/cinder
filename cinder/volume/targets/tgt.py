@@ -45,9 +45,6 @@ class TgtAdm(iscsi.ISCSITarget):
                 </target>
                   """)
 
-    def __init__(self, *args, **kwargs):
-        super(TgtAdm, self).__init__(*args, **kwargs)
-
     def _get_target(self, iqn):
         (out, err) = utils.execute('tgt-admin', '--show', run_as_root=True)
         lines = out.split('\n')

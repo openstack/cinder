@@ -16,9 +16,6 @@ from cinder.volume.targets import iscsi
 class FakeTarget(iscsi.ISCSITarget):
     VERSION = '0.1'
 
-    def __init__(self, *args, **kwargs):
-        super(FakeTarget, self).__init__(*args, **kwargs)
-
     def _get_target_and_lun(self, context, volume):
         return(0, 0)
 

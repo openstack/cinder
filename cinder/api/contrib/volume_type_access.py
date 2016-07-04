@@ -41,9 +41,6 @@ def _marshall_volume_type_access(vol_type):
 class VolumeTypeAccessController(object):
     """The volume type access API controller for the OpenStack API."""
 
-    def __init__(self):
-        super(VolumeTypeAccessController, self).__init__()
-
     def index(self, req, type_id):
         context = req.environ['cinder.context']
         authorize(context)
