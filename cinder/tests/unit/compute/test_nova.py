@@ -40,14 +40,15 @@ class NovaClientTestCase(test.TestCase):
 
     @mock.patch('novaclient.api_versions.APIVersion')
     @mock.patch('novaclient.client.Client')
-    @mock.patch('keystoneauth1.loading.get_plugin_loader')
+    @mock.patch('keystoneauth1.identity.Password')
     @mock.patch('keystoneauth1.session.Session')
-    def test_nova_client_regular(self, p_session, p_plugin_loader, p_client,
+    def test_nova_client_regular(self, p_session, p_password_plugin, p_client,
                                  p_api_version):
         nova.novaclient(self.ctx)
-        p_plugin_loader.return_value.load_from_options.assert_called_once_with(
+        p_password_plugin.assert_called_once_with(
             auth_url='http://novahost:8774/v2/e3f0833dc08b4cea',
-            password='token', project_name=None, username='regularuser'
+            password='token', project_name=None, username='regularuser',
+            project_domain_id=None, user_domain_id=None
         )
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
@@ -57,14 +58,15 @@ class NovaClientTestCase(test.TestCase):
 
     @mock.patch('novaclient.api_versions.APIVersion')
     @mock.patch('novaclient.client.Client')
-    @mock.patch('keystoneauth1.loading.get_plugin_loader')
+    @mock.patch('keystoneauth1.identity.Password')
     @mock.patch('keystoneauth1.session.Session')
-    def test_nova_client_admin_endpoint(self, p_session, p_plugin_loader,
+    def test_nova_client_admin_endpoint(self, p_session, p_password_plugin,
                                         p_client, p_api_version):
         nova.novaclient(self.ctx, admin_endpoint=True)
-        p_plugin_loader.return_value.load_from_options.assert_called_once_with(
+        p_password_plugin.assert_called_once_with(
             auth_url='http://novaadmhost:4778/v2/e3f0833dc08b4cea',
-            password='token', project_name=None, username='regularuser'
+            password='token', project_name=None, username='regularuser',
+            project_domain_id=None, user_domain_id=None
         )
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
@@ -74,14 +76,15 @@ class NovaClientTestCase(test.TestCase):
 
     @mock.patch('novaclient.api_versions.APIVersion')
     @mock.patch('novaclient.client.Client')
-    @mock.patch('keystoneauth1.loading.get_plugin_loader')
+    @mock.patch('keystoneauth1.identity.Password')
     @mock.patch('keystoneauth1.session.Session')
-    def test_nova_client_privileged_user(self, p_session, p_plugin_loader,
+    def test_nova_client_privileged_user(self, p_session, p_password_plugin,
                                          p_client, p_api_version):
         nova.novaclient(self.ctx, privileged_user=True)
-        p_plugin_loader.return_value.load_from_options.assert_called_once_with(
+        p_password_plugin.assert_called_once_with(
             auth_url='http://keystonehost:5000/v2.0',
-            password='strongpassword', project_name=None, username='adminuser'
+            password='strongpassword', project_name=None, username='adminuser',
+            project_domain_id=None, user_domain_id=None
         )
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
@@ -91,18 +94,19 @@ class NovaClientTestCase(test.TestCase):
 
     @mock.patch('novaclient.api_versions.APIVersion')
     @mock.patch('novaclient.client.Client')
-    @mock.patch('keystoneauth1.loading.get_plugin_loader')
+    @mock.patch('keystoneauth1.identity.Password')
     @mock.patch('keystoneauth1.session.Session')
     def test_nova_client_privileged_user_custom_auth_url(self, p_session,
-                                                         p_plugin_loader,
+                                                         p_password_plugin,
                                                          p_client,
                                                          p_api_version):
         self.override_config('os_privileged_user_auth_url',
                              'http://privatekeystonehost:5000/v2.0')
         nova.novaclient(self.ctx, privileged_user=True)
-        p_plugin_loader.return_value.load_from_options.assert_called_once_with(
+        p_password_plugin.assert_called_once_with(
             auth_url='http://privatekeystonehost:5000/v2.0',
-            password='strongpassword', project_name=None, username='adminuser'
+            password='strongpassword', project_name=None, username='adminuser',
+            project_domain_id=None, user_domain_id=None
         )
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
@@ -112,15 +116,16 @@ class NovaClientTestCase(test.TestCase):
 
     @mock.patch('novaclient.api_versions.APIVersion')
     @mock.patch('novaclient.client.Client')
-    @mock.patch('keystoneauth1.loading.get_plugin_loader')
+    @mock.patch('keystoneauth1.identity.Password')
     @mock.patch('keystoneauth1.session.Session')
-    def test_nova_client_custom_region(self, p_session, p_plugin_loader,
+    def test_nova_client_custom_region(self, p_session, p_password_plugin,
                                        p_client, p_api_version):
         self.override_config('os_region_name', 'farfaraway')
         nova.novaclient(self.ctx)
-        p_plugin_loader.return_value.load_from_options.assert_called_once_with(
+        p_password_plugin.assert_called_once_with(
             auth_url='http://novahost:8774/v2/e3f0833dc08b4cea',
-            password='token', project_name=None, username='regularuser'
+            password='token', project_name=None, username='regularuser',
+            project_domain_id=None, user_domain_id=None
         )
         p_client.assert_called_once_with(
             p_api_version(nova.NOVA_API_VERSION),
