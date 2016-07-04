@@ -1056,7 +1056,7 @@ class BackupTestCase(BaseBackupTest):
 
         export = self.backup_mgr.export_record(self.ctxt, backup)
         self.assertEqual(CONF.backup_driver, export['backup_service'])
-        self.assertTrue('backup_url' in export)
+        self.assertIn('backup_url', export)
 
     def test_import_record_with_verify_not_implemented(self):
         """Test normal backup record import.

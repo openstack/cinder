@@ -294,7 +294,7 @@ class HostManagerTestCase(test.TestCase):
                                                           disabled=False)
 
         self.assertEqual(expected, _mock_service_is_up.call_args_list)
-        self.assertTrue(_mock_warning.call_count > 0)
+        self.assertGreater(_mock_warning.call_count, 0)
 
         # Get host_state_map and make sure we have the first 2 hosts (host3 is
         # down, host4 is missing capabilities)

@@ -534,7 +534,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             self.assertEqual('iscsi', result['driver_volume_type'])
             self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
-            self.assertTrue('auth_method' not in result['data'])
+            self.assertNotIn('auth_method', result['data'])
 
             expected = self.driver_startup_call_stack + [
                 mock.call.getServerByName('fakehost'),
@@ -587,7 +587,7 @@ class TestHPELeftHandISCSIDriver(HPELeftHandBaseDriver, test.TestCase):
             self.assertEqual('iscsi', result['driver_volume_type'])
             self.assertFalse(result['data']['target_discovered'])
             self.assertEqual(self.volume_id, result['data']['volume_id'])
-            self.assertTrue('auth_method' not in result['data'])
+            self.assertNotIn('auth_method', result['data'])
 
             expected = self.driver_startup_call_stack + [
                 mock.call.getServerByName('fakehost'),

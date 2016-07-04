@@ -131,7 +131,7 @@ class DBAPIServiceTestCase(BaseTest):
 
     def test_service_create(self):
         service = self._create_service({})
-        self.assertFalse(service['id'] is None)
+        self.assertIsNotNone(service['id'])
         for key, value in self._get_base_values().items():
             self.assertEqual(value, service[key])
 

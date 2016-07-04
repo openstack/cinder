@@ -34,7 +34,7 @@ class TestFibreChannelZoneManagerDrivers(test.TestCase):
         returns at least one registered driver, else the compliance test will
         never even run.
         """
-        self.assertTrue(len(FCZM_DRIVERS) > 0)
+        self.assertGreater(len(FCZM_DRIVERS), 0)
 
     @ddt.data(*FCZM_DRIVERS)
     def test_fczm_driver_compliance(self, driver):

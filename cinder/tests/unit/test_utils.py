@@ -616,26 +616,23 @@ class MonkeyPatchTestCase(test.TestCase):
 
         self.assertEqual(8, ret_b)
         package_a = self.example_package + 'example_a.'
-        self.assertTrue(
-            package_a + 'example_function_a'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'example_function_a',
+                      cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
 
-        self.assertTrue(
-            package_a + 'ExampleClassA.example_method'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
-        self.assertTrue(
-            package_a + 'ExampleClassA.example_method_add'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'ExampleClassA.example_method',
+                      cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertIn(package_a + 'ExampleClassA.example_method_add',
+                      cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
         package_b = self.example_package + 'example_b.'
-        self.assertFalse(
-            package_b + 'example_function_b'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
-        self.assertFalse(
-            package_b + 'ExampleClassB.example_method'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
-        self.assertFalse(
-            package_b + 'ExampleClassB.example_method_add'
-            in cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(
+            package_b + 'example_function_b',
+            cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(
+            package_b + 'ExampleClassB.example_method',
+            cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
+        self.assertNotIn(
+            package_b + 'ExampleClassB.example_method_add',
+            cinder.tests.unit.monkey_patch_example.CALLED_FUNCTION)
 
 
 class AuditPeriodTest(test.TestCase):
@@ -1183,8 +1180,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual(2, mock_log.debug.call_count)
         # Ensure the correct function name was logged
         for call in mock_log.debug.call_args_list:
-            self.assertTrue('_trace_test_method' in str(call))
-            self.assertFalse('blah' in str(call))
+            self.assertIn('_trace_test_method', str(call))
+            self.assertNotIn('blah', str(call))
 
     def test_utils_trace_method_outer_decorator(self):
         mock_logging = self.mock_object(utils, 'logging')
@@ -1210,8 +1207,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual(2, mock_log.debug.call_count)
         # Ensure the incorrect function name was logged
         for call in mock_log.debug.call_args_list:
-            self.assertFalse('_trace_test_method' in str(call))
-            self.assertTrue('blah' in str(call))
+            self.assertNotIn('_trace_test_method', str(call))
+            self.assertIn('blah', str(call))
 
     def test_utils_trace_method_outer_decorator_with_functools(self):
         mock_log = mock.Mock()
@@ -1238,8 +1235,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual(2, mock_log.debug.call_count)
         # Ensure the incorrect function name was logged
         for call in mock_log.debug.call_args_list:
-            self.assertTrue('_trace_test_method' in str(call))
-            self.assertFalse('wraps' in str(call))
+            self.assertIn('_trace_test_method', str(call))
+            self.assertNotIn('wraps', str(call))
 
     def test_utils_trace_method_with_exception(self):
         self.LOG = self.mock_object(utils, 'LOG')
@@ -1253,8 +1250,8 @@ class LogTracingTestCase(test.TestCase):
         self.assertRaises(exception.APITimeout, _trace_test_method)
 
         exception_log = self.LOG.debug.call_args_list[1]
-        self.assertTrue('exception' in str(exception_log))
-        self.assertTrue('test message' in str(exception_log))
+        self.assertIn('exception', str(exception_log))
+        self.assertIn('test message', str(exception_log))
 
     def test_utils_trace_method_with_time(self):
         mock_logging = self.mock_object(utils, 'logging')
@@ -1275,7 +1272,7 @@ class LogTracingTestCase(test.TestCase):
 
         self.assertEqual('OK', result)
         return_log = mock_log.debug.call_args_list[1]
-        self.assertTrue('2900' in str(return_log))
+        self.assertIn('2900', str(return_log))
 
     def test_utils_trace_wrapper_class(self):
         mock_logging = self.mock_object(utils, 'logging')

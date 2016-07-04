@@ -1931,17 +1931,14 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         self.driverSetup(commands, results)
         stats = self.driver.get_volume_stats(True)
 
-        self.assertTrue(stats['driver_version'] == VERSION,
-                        "driver_version is incorrect")
-        self.assertTrue(
-            stats['storage_protocol'] == 'iSCSI',
-            "storage_protocol is incorrect")
-        self.assertTrue(
-            stats['vendor_name'] == "EMC",
-            "vendor name is incorrect")
-        self.assertTrue(
-            stats['volume_backend_name'] == "namedbackend",
-            "volume backend name is incorrect")
+        self.assertEqual(VERSION, stats['driver_version'],
+                         "driver_version is incorrect")
+        self.assertEqual('iSCSI', stats['storage_protocol'],
+                         "storage_protocol is incorrect")
+        self.assertEqual("EMC", stats['vendor_name'],
+                         "vendor name is incorrect")
+        self.assertEqual("namedbackend", stats['volume_backend_name'],
+                         "volume backend name is incorrect")
 
         pool_stats = stats['pools'][0]
 
@@ -2002,9 +1999,8 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         self.driver.cli.check_max_pool_luns_threshold = True
         stats = self.driver.get_volume_stats(True)
         pool_stats = stats['pools'][0]
-        self.assertTrue(
-            pool_stats['free_capacity_gb'] == 0,
-            "free_capacity_gb is incorrect")
+        self.assertEqual(0, pool_stats['free_capacity_gb'],
+                         "free_capacity_gb is incorrect")
         expect_cmd = [
             mock.call(*self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD(),
                       poll=False)]
@@ -2013,11 +2009,10 @@ class EMCVNXCLIDriverISCSITestCase(DriverTestCaseBase):
         self.driver.cli.check_max_pool_luns_threshold = False
         stats = self.driver.get_volume_stats(True)
         pool_stats = stats['pools'][0]
-        self.assertTrue(stats['driver_version'] is not None,
-                        "driver_version is not returned")
-        self.assertTrue(
-            pool_stats['free_capacity_gb'] == 3105.303,
-            "free_capacity_gb is incorrect")
+        self.assertIsNotNone(stats['driver_version'],
+                             "driver_version is not returned")
+        self.assertEqual(3105.303, pool_stats['free_capacity_gb'],
+                         "free_capacity_gb is incorrect")
 
     @mock.patch("cinder.volume.drivers.emc.emc_vnx_cli."
                 "CommandLineHelper.create_lun_by_cmd",
@@ -2611,8 +2606,8 @@ Time Remaining:  0 second(s)
             self.testData.test_volume,
             self.testData.connector
         )
-        self.assertTrue(iscsi_data['data']['target_lun'] == 2,
-                        "iSCSI initialize connection returned wrong HLU")
+        self.assertEqual(2, iscsi_data['data']['target_lun'],
+                         "iSCSI initialize connection returned wrong HLU")
         expected = [mock.call(*self.testData.STORAGEGROUP_LIST_CMD('fakehost'),
                               poll=False),
                     mock.call('storagegroup', '-addhlu', '-hlu', 2, '-alu', 3,
@@ -2722,8 +2717,8 @@ Time Remaining:  0 second(s)
         iscsi_data = self.driver.initialize_connection(
             self.testData.test_volume,
             self.testData.connector)
-        self.assertTrue(iscsi_data['data']['target_lun'] == 2,
-                        "iSCSI initialize connection returned wrong HLU")
+        self.assertEqual(2, iscsi_data['data']['target_lun'],
+                         "iSCSI initialize connection returned wrong HLU")
         expected = [mock.call(*self.testData.STORAGEGROUP_LIST_CMD('fakehost'),
                               poll=False),
                     mock.call(*self.testData.STORAGEGROUP_LIST_CMD('fakehost'),
@@ -4184,7 +4179,7 @@ Time Remaining:  0 second(s)
                                  new_type_data,
                                  diff_data,
                                  host_test_data)
-        self.assertTrue(type(ret) == tuple)
+        self.assertEqual(tuple, type(ret))
         self.assertTrue(ret[0])
         self.assertIn('type^lun', ret[1]['provider_location'])
         expect_cmd = [
@@ -4693,10 +4688,10 @@ Time Remaining:  0 second(s)
                                                   snap2_in_src_cgsnap],
                 source_cg=None, source_vols=None))
         self.assertEqual(2, len(volumes_model_update))
-        self.assertTrue('id^%s' % 6231 in
-                        volumes_model_update[0]['provider_location'])
-        self.assertTrue('id^%s' % 6232 in
-                        volumes_model_update[1]['provider_location'])
+        self.assertIn('id^%s' % 6231,
+                      volumes_model_update[0]['provider_location'])
+        self.assertIn('id^%s' % 6232,
+                      volumes_model_update[1]['provider_location'])
 
         expect_cmd = [
             mock.call(*td.SNAP_COPY_CMD(src_cgsnap['id'], copied_snap_name)),
@@ -4939,10 +4934,10 @@ Time Remaining:  0 second(s)
                 source_cg=src_cg, source_vols=[vol1_in_src_cg,
                                                vol2_in_src_cg]))
         self.assertEqual(2, len(volumes_model_update))
-        self.assertTrue('id^%s' % 6231 in
-                        volumes_model_update[0]['provider_location'])
-        self.assertTrue('id^%s' % 6232 in
-                        volumes_model_update[1]['provider_location'])
+        self.assertIn('id^%s' % 6231,
+                      volumes_model_update[0]['provider_location'])
+        self.assertIn('id^%s' % 6232,
+                      volumes_model_update[1]['provider_location'])
 
         delete_temp_snap_cmd = [
             mock.call(*td.DELETE_CG_SNAPSHOT(temp_snap_name))]
@@ -5067,8 +5062,8 @@ Time Remaining:  0 second(s)
             'fakehost',
             {('A', 2, 0), ('B', 1, 0)},
             all_targets)
-        self.assertTrue(port_a2 in targets)
-        self.assertTrue(port_b1 in targets)
+        self.assertIn(port_a2, targets)
+        self.assertIn(port_b1, targets)
 
     @mock.patch.object(emc_vnx_cli.CommandLineHelper,
                        'ping_node')
@@ -5098,9 +5093,9 @@ Time Remaining:  0 second(s)
             'fakehost',
             {('A', 2, 0), ('A', 1, 0), ('B', 1, 0)},
             all_targets)
-        self.assertTrue(port_a1 in targets)
-        self.assertTrue(port_a2 in targets)
-        self.assertTrue(port_b1 in targets)
+        self.assertIn(port_a1, targets)
+        self.assertIn(port_a2, targets)
+        self.assertIn(port_b1, targets)
 
     @mock.patch('cinder.volume.drivers.emc.emc_vnx_cli.'
                 'EMCVnxCliBase.get_lun_owner',
@@ -5170,17 +5165,14 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         self.driverSetup(commands, results)
         stats = self.driver.get_volume_stats(True)
 
-        self.assertTrue(stats['driver_version'] == VERSION,
-                        "driver_version is incorrect")
-        self.assertTrue(
-            stats['storage_protocol'] == 'iSCSI',
-            "storage_protocol is not correct")
-        self.assertTrue(
-            stats['vendor_name'] == "EMC",
-            "vendor name is not correct")
-        self.assertTrue(
-            stats['volume_backend_name'] == "namedbackend",
-            "volume backend name is not correct")
+        self.assertEqual(VERSION, stats['driver_version'],
+                         "driver_version is incorrect")
+        self.assertEqual('iSCSI', stats['storage_protocol'],
+                         "storage_protocol is not correct")
+        self.assertEqual("EMC", stats['vendor_name'],
+                         "vendor name is not correct")
+        self.assertEqual("namedbackend", stats['volume_backend_name'],
+                         "volume backend name is not correct")
 
         self.assertEqual(2, len(stats['pools']))
         pool_stats1 = stats['pools'][0]
@@ -5281,21 +5273,16 @@ class EMCVNXCLIDArrayBasedDriverTestCase(DriverTestCaseBase):
         self.driverSetup(commands, results)
 
         stats = self.driver.get_volume_stats(True)
-        self.assertTrue(
-            stats['pools'][0]['free_capacity_gb'] == 0,
-            "free_capacity_gb is incorrect")
-        self.assertTrue(
-            stats['pools'][1]['free_capacity_gb'] != 0,
-            "free_capacity_gb is incorrect")
-        self.assertTrue(
-            stats['pools'][2]['free_capacity_gb'] != 0,
-            "free_capacity_gb is incorrect")
-        self.assertTrue(
-            stats['pools'][3]['free_capacity_gb'] == 0,
-            "free_capacity_gb is incorrect")
-        self.assertTrue(
-            stats['pools'][4]['free_capacity_gb'] == 0,
-            "free_capacity_gb is incorrect")
+        self.assertEqual(0, stats['pools'][0]['free_capacity_gb'],
+                         "free_capacity_gb is incorrect")
+        self.assertNotEqual(0, stats['pools'][1]['free_capacity_gb'],
+                            "free_capacity_gb is incorrect")
+        self.assertNotEqual(0, stats['pools'][2]['free_capacity_gb'],
+                            "free_capacity_gb is incorrect")
+        self.assertEqual(0, stats['pools'][3]['free_capacity_gb'],
+                         "free_capacity_gb is incorrect")
+        self.assertEqual(0, stats['pools'][4]['free_capacity_gb'],
+                         "free_capacity_gb is incorrect")
 
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
@@ -5759,8 +5746,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         connection_info = self.driver.terminate_connection(
             self.testData.test_volume,
             self.testData.connector)
-        self.assertTrue('initiator_target_map' in connection_info['data'],
-                        'initiator_target_map should be populated.')
+        self.assertIn('initiator_target_map', connection_info['data'],
+                      'initiator_target_map should be populated.')
         self.assertEqual(EMCVNXCLIDriverTestData.i_t_map,
                          connection_info['data']['initiator_target_map'])
 
@@ -5772,17 +5759,14 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         self.driverSetup(commands, results)
         stats = self.driver.get_volume_stats(True)
 
-        self.assertTrue(stats['driver_version'] == VERSION,
-                        "driver_version is incorrect")
-        self.assertTrue(
-            stats['storage_protocol'] == 'FC',
-            "storage_protocol is incorrect")
-        self.assertTrue(
-            stats['vendor_name'] == "EMC",
-            "vendor name is incorrect")
-        self.assertTrue(
-            stats['volume_backend_name'] == "namedbackend",
-            "volume backend name is incorrect")
+        self.assertEqual(VERSION, stats['driver_version'],
+                         "driver_version is incorrect")
+        self.assertEqual('FC', stats['storage_protocol'],
+                         "storage_protocol is incorrect")
+        self.assertEqual("EMC", stats['vendor_name'],
+                         "vendor name is incorrect")
+        self.assertEqual("namedbackend", stats['volume_backend_name'],
+                         "volume backend name is incorrect")
 
         pool_stats = stats['pools'][0]
 
@@ -5817,9 +5801,8 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         self.driver.cli.check_max_pool_luns_threshold = True
         stats = self.driver.get_volume_stats(True)
         pool_stats = stats['pools'][0]
-        self.assertTrue(
-            pool_stats['free_capacity_gb'] == 0,
-            "free_capacity_gb is incorrect")
+        self.assertEqual(0, pool_stats['free_capacity_gb'],
+                         "free_capacity_gb is incorrect")
         expect_cmd = [
             mock.call(*self.testData.POOL_FEATURE_INFO_POOL_LUNS_CMD(),
                       poll=False)]
@@ -5828,11 +5811,10 @@ class EMCVNXCLIDriverFCTestCase(DriverTestCaseBase):
         self.driver.cli.check_max_pool_luns_threshold = False
         stats = self.driver.get_volume_stats(True)
         pool_stats = stats['pools'][0]
-        self.assertTrue(stats['driver_version'] is not None,
-                        "driver_version is incorrect")
-        self.assertTrue(
-            pool_stats['free_capacity_gb'] == 3105.303,
-            "free_capacity_gb is incorrect")
+        self.assertIsNotNone(stats['driver_version'],
+                             "driver_version is incorrect")
+        self.assertEqual(3105.303, pool_stats['free_capacity_gb'],
+                         "free_capacity_gb is incorrect")
 
     def test_deregister_initiator(self):
         fake_cli = self.driverSetup()
@@ -6221,9 +6203,9 @@ class EMCVNXCLIDriverReplicationV2TestCase(DriverTestCaseBase):
                 'create_lun_with_advance_feature',
                 mock.Mock(return_value={'lun_id': 5})):
             model_update = self.driver.create_volume(rep_volume)
-            self.assertTrue(model_update['replication_status'] == 'enabled')
-            self.assertTrue(model_update['replication_driver_data'] ==
-                            build_replication_data(self.configuration))
+            self.assertEqual('enabled', model_update['replication_status'])
+            self.assertEqual(build_replication_data(self.configuration),
+                             model_update['replication_driver_data'])
             self.assertDictMatch({'system': self.backend_id,
                                   'snapcopy': 'False'},
                                  model_update['metadata'])
@@ -6253,9 +6235,9 @@ class EMCVNXCLIDriverReplicationV2TestCase(DriverTestCaseBase):
                 'create_lun_with_advance_feature',
                 mock.Mock(return_value={'lun_id': 5})):
             model_update = self.driver.create_volume(rep_volume)
-            self.assertTrue(model_update['replication_status'] == 'enabled')
-            self.assertTrue(model_update['replication_driver_data'] ==
-                            build_replication_data(self.configuration))
+            self.assertEqual('enabled', model_update['replication_status'])
+            self.assertEqual(build_replication_data(self.configuration),
+                             model_update['replication_driver_data'])
         fake_cli.assert_has_calls(
             [mock.call(*self.testData.MIRROR_CREATE_CMD(mirror_name, 5),
                        poll=True),

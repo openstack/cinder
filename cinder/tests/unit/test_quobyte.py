@@ -896,10 +896,9 @@ class QuobyteDriverTestCase(test.TestCase):
 
     def test_set_nas_security_options_default(self):
         drv = self._driver
-        self.assertTrue(drv.configuration.nas_secure_file_operations ==
-                        "true")
-        self.assertTrue(drv.configuration.nas_secure_file_permissions ==
-                        "true")
+        self.assertEqual("true", drv.configuration.nas_secure_file_operations)
+        self.assertEqual("true",
+                         drv.configuration.nas_secure_file_permissions)
         self.assertFalse(drv._execute_as_root)
 
     def test_set_nas_security_options_insecure(self):
@@ -909,10 +908,10 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv.set_nas_security_options(is_new_cinder_install=True)
 
-        self.assertTrue(drv.configuration.nas_secure_file_operations ==
-                        "false")
-        self.assertTrue(drv.configuration.nas_secure_file_permissions ==
-                        "false")
+        self.assertEqual("false",
+                         drv.configuration.nas_secure_file_operations)
+        self.assertEqual("false",
+                         drv.configuration.nas_secure_file_permissions)
         self.assertTrue(drv._execute_as_root)
 
     def test_set_nas_security_options_explicitly_secure(self):
@@ -922,8 +921,8 @@ class QuobyteDriverTestCase(test.TestCase):
 
         drv.set_nas_security_options(is_new_cinder_install=True)
 
-        self.assertTrue(drv.configuration.nas_secure_file_operations ==
-                        "true")
-        self.assertTrue(drv.configuration.nas_secure_file_permissions ==
-                        "true")
+        self.assertEqual("true",
+                         drv.configuration.nas_secure_file_operations)
+        self.assertEqual("true",
+                         drv.configuration.nas_secure_file_permissions)
         self.assertFalse(drv._execute_as_root)

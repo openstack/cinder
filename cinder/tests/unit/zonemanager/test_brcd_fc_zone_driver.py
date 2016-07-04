@@ -138,7 +138,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         GlobalVars._active_cfg = _active_cfg_before_add
         get_southbound_client_mock.return_value = self.get_client("HTTPS")
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
-        self.assertTrue(_zone_name in GlobalVars._zone_state)
+        self.assertIn(_zone_name, GlobalVars._zone_state)
 
     @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
     def test_delete_connection(self, get_southbound_client_mock):
@@ -147,7 +147,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         GlobalVars._active_cfg = _active_cfg_before_delete
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
-        self.assertFalse(_zone_name in GlobalVars._zone_state)
+        self.assertNotIn(_zone_name, GlobalVars._zone_state)
 
     @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
     def test_add_connection_for_initiator_mode(self, get_southbound_client_mk):
@@ -157,7 +157,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         GlobalVars._active_cfg = _active_cfg_before_add
         self.setup_driver(self.setup_config(True, 2))
         self.driver.add_connection('BRCD_FAB_1', _initiator_target_map)
-        self.assertTrue(_zone_name in GlobalVars._zone_state)
+        self.assertIn(_zone_name, GlobalVars._zone_state)
 
     @mock.patch.object(driver.BrcdFCZoneDriver, '_get_southbound_client')
     def test_delete_connection_for_initiator_mode(self,
@@ -168,7 +168,7 @@ class TestBrcdFcZoneDriver(BrcdFcZoneDriverBaseTest, test.TestCase):
         self.setup_driver(self.setup_config(True, 2))
         self.driver.delete_connection(
             'BRCD_FAB_1', _initiator_target_map)
-        self.assertFalse(_zone_name in GlobalVars._zone_state)
+        self.assertNotIn(_zone_name, GlobalVars._zone_state)
 
     def test_add_connection_for_invalid_fabric(self):
         """Test abnormal flows."""

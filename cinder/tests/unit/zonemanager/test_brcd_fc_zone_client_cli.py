@@ -145,7 +145,7 @@ class TestBrcdFCZoneClientCLI(client_cli.BrcdFCZoneClientCLI, test.TestCase):
         call_args = apply_zone_change_mock.call_args[0][0]
         self.assertEqual(0, get_active_zs_mock.call_count)
         self.assertEqual(2, apply_zone_change_mock.call_count)
-        self.assertTrue(zone_constant.CFG_ADD.strip() in call_args)
+        self.assertIn(zone_constant.CFG_ADD.strip(), call_args)
 
     @mock.patch.object(client_cli.BrcdFCZoneClientCLI, '_ssh_execute')
     def test_activate_zoneset(self, ssh_execute_mock):

@@ -708,9 +708,9 @@ class TestCinderDictObject(test_objects.BaseObjectsTestCase):
         self.assertEqual(42, obj.get('foo'))
         self.assertEqual(42, obj.get('foo', None))
 
-        self.assertTrue('foo' in obj)
-        self.assertTrue('abc' in obj)
-        self.assertFalse('def' in obj)
+        self.assertIn('foo', obj)
+        self.assertIn('abc', obj)
+        self.assertNotIn('def', obj)
 
 
 @mock.patch('cinder.objects.base.OBJ_VERSIONS', fake_objects.MyHistory())

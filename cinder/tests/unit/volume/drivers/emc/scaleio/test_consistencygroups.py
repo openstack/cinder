@@ -136,8 +136,8 @@ class TestConsistencyGroups(scaleio.TestScaleIODriver):
                                                 self.volumes))
         self.assertTrue(any(volume['status'] == 'error_deleting' for volume in
                             result_volumes_update))
-        self.assertTrue(result_model_update['status'] in ['error_deleting',
-                                                          'error'])
+        self.assertIn(result_model_update['status'],
+                      ['error_deleting', 'error'])
 
     def test_create_consistencygroup_from_cg(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Valid)

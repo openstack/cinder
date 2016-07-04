@@ -34,7 +34,7 @@ class TestBackupDrivers(test.TestCase):
         returns at least one registered driver, else the compliance test will
         never even run.
         """
-        self.assertTrue(len(BACKUP_DRIVERS) > 0)
+        self.assertGreater(len(BACKUP_DRIVERS), 0)
 
     @ddt.data(*BACKUP_DRIVERS)
     def test_backup_driver_compliance(self, driver):

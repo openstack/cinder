@@ -350,7 +350,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.driver.delete_volume(vol)
         # should not be deletable twice
         prov_loc = self.backend.getVolumebyProvider(vol['provider_location'])
-        self.assertTrue(prov_loc is None)
+        self.assertIsNone(prov_loc)
 
     def test_extend_volume(self):
         vol = self._create_volume()
@@ -414,7 +414,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         lun = svol['provider_location']
         m_id_to_vol.return_value = svol
         self.driver.delete_snapshot(svol)
-        self.assertTrue(self.backend.getVolumebyProvider(lun) is None)
+        self.assertIsNone(self.backend.getVolumebyProvider(lun))
 
     def test_create_volume_from_snapshot(self):
         svol = self._create_volume()
@@ -433,8 +433,8 @@ class HNASiSCSIDriverTest(test.TestCase):
         connector['host'] = 'dut_1.lab.hds.com'
         vol = self._create_volume()
         conn = self.driver.initialize_connection(vol, connector)
-        self.assertTrue('3260' in conn['data']['target_portal'])
-        self.assertTrue(type(conn['data']['target_lun']) is int)
+        self.assertIn('3260', conn['data']['target_portal'])
+        self.assertIs(type(conn['data']['target_lun']), int)
 
         self.backend.add_iscsi_conn = mock.MagicMock()
         self.backend.add_iscsi_conn.side_effect = putils.ProcessExecutionError

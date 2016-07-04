@@ -1998,7 +1998,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         portGroupNames = ['pg1', 'pg2', 'pg3', 'pg4']
         portGroupName = (
             self.driver.common.utils._get_random_pg_from_list(portGroupNames))
-        self.assertTrue('pg' in portGroupName)
+        self.assertIn('pg', portGroupName)
 
         portGroupNames = ['pg1']
         portGroupName = (
@@ -2017,7 +2017,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                 "</EMC>")
         dom = minidom.parseString(data)
         portgroup = self.driver.common.utils._get_random_portgroup(dom)
-        self.assertTrue('OS-PG' in portgroup)
+        self.assertIn('OS-PG', portgroup)
 
         # Duplicate portgroups
         data = ("<?xml version='1.0' encoding='UTF-8'?>\n<EMC>\n"
@@ -2030,7 +2030,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                 "</EMC>")
         dom = minidom.parseString(data)
         portgroup = self.driver.common.utils._get_random_portgroup(dom)
-        self.assertTrue('OS-PG' in portgroup)
+        self.assertIn('OS-PG', portgroup)
 
     def test_get_random_portgroup_exception(self):
         # Missing PortGroup values
@@ -2789,7 +2789,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                 conn, self.data.initiatorNames, self.data.storage_system))
         # The hardware id list has not been found as it has been removed
         # externally.
-        self.assertTrue(len(foundHardwareIdInstanceNames2) == 0)
+        self.assertEqual(0, len(foundHardwareIdInstanceNames2))
 
     # Bug 1393555 - controller has been deleted by another process.
     def test_find_lunmasking_scsi_protocol_controller(self):
@@ -2910,8 +2910,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             'FC_SLVR1', arrayInfo[0]['PoolName'])
         self.assertEqual(
             'SILVER1', arrayInfo[0]['FastPolicy'])
-        self.assertTrue(
-            'OS-PORTGROUP' in arrayInfo[0]['PortGroup'])
+        self.assertIn('OS-PORTGROUP', arrayInfo[0]['PortGroup'])
         bExists = os.path.exists(file_name)
         if bExists:
             os.remove(file_name)
@@ -6644,12 +6643,11 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
 
         arrayInfo = self.driver.utils.parse_file_to_get_array_map(
             self.config_file_path)
-        self.assertTrue(len(arrayInfo) == 2)
+        self.assertEqual(2, len(arrayInfo))
         for arrayInfoRec in arrayInfo:
             self.assertEqual(
                 '1234567891011', arrayInfoRec['SerialNumber'])
-            self.assertTrue(
-                self.data.port_group in arrayInfoRec['PortGroup'])
+            self.assertIn(self.data.port_group, arrayInfoRec['PortGroup'])
             self.assertTrue(
                 self.data.poolname in arrayInfoRec['PoolName'] or
                 'SATA_BRONZE1' in arrayInfoRec['PoolName'])
@@ -6932,13 +6930,12 @@ class EMCV3MultiSloDriverTestCase(test.TestCase):
 
         arrayInfo = self.driver.utils.parse_file_to_get_array_map(
             self.config_file_path)
-        self.assertTrue(len(arrayInfo) == 2)
+        self.assertEqual(2, len(arrayInfo))
         for arrayInfoRec in arrayInfo:
             self.assertEqual(
                 '1234567891011', arrayInfoRec['SerialNumber'])
-            self.assertTrue(
-                self.data.port_group in arrayInfoRec['PortGroup'])
-            self.assertTrue('SRP_1' in arrayInfoRec['PoolName'])
+            self.assertIn(self.data.port_group, arrayInfoRec['PortGroup'])
+            self.assertIn('SRP_1', arrayInfoRec['PoolName'])
             self.assertTrue(
                 'Bronze' in arrayInfoRec['SLO'] or
                 'Silver' in arrayInfoRec['SLO'])
@@ -7263,7 +7260,7 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
         pool = 'gold+1234567891011'
         arrayInfo = self.driver.utils.parse_file_to_get_array_map(
             self.config_file_path)
-        self.assertTrue(len(arrayInfo) == 4)
+        self.assertEqual(4, len(arrayInfo))
         poolRec = self.driver.utils.extract_record(arrayInfo, pool)
 
         self.assertEqual('1234567891011', poolRec['SerialNumber'])
@@ -7279,7 +7276,7 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
 
         arrayInfo = self.driver.utils.parse_file_to_get_array_map(
             self.config_file_path)
-        self.assertTrue(len(arrayInfo) == 4)
+        self.assertEqual(4, len(arrayInfo))
         poolRec = self.driver.utils.extract_record(arrayInfo, pool)
 
         self.assertEqual('1234567891011', poolRec['SerialNumber'])
@@ -7393,8 +7390,7 @@ class EMCVMAXProvisionV3Test(test.TestCase):
             conn, poolInstanceName)
         storagepoolsetting = provisionv3.get_storage_pool_setting(
             conn, storagePoolCapability, slo, workload)
-        self.assertTrue(
-            'Bronze:DSS' in storagepoolsetting['InstanceID'])
+        self.assertIn('Bronze:DSS', storagepoolsetting['InstanceID'])
 
     def test_get_storage_pool_setting_exception(self):
         provisionv3 = self.driver.common.provisionv3
@@ -7685,7 +7681,7 @@ class EMCVMAXFCTest(test.TestCase):
 
         mvInstances = self.driver._get_common_masking_views(
             portGroupInstanceName, initiatorGroupInstanceName)
-        self.assertTrue(len(mvInstances) == 2)
+        self.assertEqual(2, len(mvInstances))
 
     def test_get_common_masking_views_one_overlap(self):
         common = self.driver.common
@@ -7714,7 +7710,7 @@ class EMCVMAXFCTest(test.TestCase):
 
         mvInstances = self.driver._get_common_masking_views(
             portGroupInstanceName, initiatorGroupInstanceName)
-        self.assertTrue(len(mvInstances) == 1)
+        self.assertEqual(1, len(mvInstances))
 
     def test_get_common_masking_views_no_overlap(self):
         common = self.driver.common
@@ -7741,7 +7737,7 @@ class EMCVMAXFCTest(test.TestCase):
 
         mvInstances = self.driver._get_common_masking_views(
             portGroupInstanceName, initiatorGroupInstanceName)
-        self.assertTrue(len(mvInstances) == 0)
+        self.assertEqual(0, len(mvInstances))
 
 
 class EMCVMAXUtilsTest(test.TestCase):

@@ -310,7 +310,7 @@ class SchedulerManagerTestCase(test.TestCase):
                               self.context,
                               'volume',
                               consistencygroup_obj)
-            self.assertTrue(LOG.exception.call_count > 0)
+            self.assertGreater(LOG.exception.call_count, 0)
             db.consistencygroup_update.assert_called_once_with(
                 self.context, group_id, {'status': (
                     fields.ConsistencyGroupStatus.ERROR)})
@@ -323,7 +323,7 @@ class SchedulerManagerTestCase(test.TestCase):
                 reason="No weighed hosts available")
             self.manager.create_consistencygroup(
                 self.context, 'volume', consistencygroup_obj)
-            self.assertTrue(LOG.error.call_count > 0)
+            self.assertGreater(LOG.error.call_count, 0)
             db.consistencygroup_update.assert_called_once_with(
                 self.context, group_id, {'status': (
                     fields.ConsistencyGroupStatus.ERROR)})

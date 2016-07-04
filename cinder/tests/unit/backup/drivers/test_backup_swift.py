@@ -811,7 +811,7 @@ class BackupSwiftTestCase(test.TestCase):
         result = service._prepare_output_data(fake_data)
 
         self.assertEqual('zlib', result[0])
-        self.assertTrue(len(result) < len(fake_data))
+        self.assertGreater(len(fake_data), len(result))
 
     def test_prepare_output_data_no_compresssion(self):
         self.flags(backup_compression_algorithm='none')

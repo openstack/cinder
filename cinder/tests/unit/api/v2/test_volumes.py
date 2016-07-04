@@ -974,7 +974,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual('/v2/%s/volumes/detail' % fake.PROJECT_ID,
                          href_parts.path)
         params = urllib.parse.parse_qs(href_parts.query)
-        self.assertTrue('marker' in params)
+        self.assertIn('marker', params)
         self.assertEqual('1', params['limit'][0])
 
     def test_volume_detail_limit_negative(self):
@@ -1125,7 +1125,7 @@ class VolumeApiTest(test.TestCase):
                                            viewable_admin_meta=False,
                                            offset=0):
             self.assertTrue(filters['no_migration_targets'])
-            self.assertFalse('all_tenants' in filters)
+            self.assertNotIn('all_tenants', filters)
             return [stubs.stub_volume(fake.VOLUME_ID, display_name='vol1')]
 
         def stub_volume_get_all(context, marker, limit,
@@ -1151,7 +1151,7 @@ class VolumeApiTest(test.TestCase):
                                             filters=None,
                                             viewable_admin_meta=False,
                                             offset=0):
-            self.assertFalse('no_migration_targets' in filters)
+            self.assertNotIn('no_migration_targets', filters)
             return [stubs.stub_volume(fake.VOLUME_ID, display_name='vol2')]
 
         def stub_volume_get_all2(context, marker, limit,
@@ -1181,8 +1181,8 @@ class VolumeApiTest(test.TestCase):
                                  sort_keys=None, sort_dirs=None,
                                  filters=None,
                                  viewable_admin_meta=False, offset=0):
-            self.assertFalse('no_migration_targets' in filters)
-            self.assertFalse('all_tenants' in filters)
+            self.assertNotIn('no_migration_targets', filters)
+            self.assertNotIn('all_tenants', filters)
             return [stubs.stub_volume(fake.VOLUME3_ID, display_name='vol3')]
         self.stubs.Set(db, 'volume_get_all_by_project',
                        stub_volume_get_all_by_project3)

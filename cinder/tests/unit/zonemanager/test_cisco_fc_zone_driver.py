@@ -117,7 +117,7 @@ class TestCiscoFcZoneDriver(CiscoFcZoneDriverBaseTest, test.TestCase):
         GlobalVars._active_cfg = _active_cfg_before_delete
         self.driver.delete_connection(
             'CISCO_FAB_1', _initiator_target_map)
-        self.assertFalse(_zone_name in GlobalVars._zone_state)
+        self.assertNotIn(_zone_name, GlobalVars._zone_state)
 
     def test_delete_connection_for_initiator_mode(self):
         GlobalVars._is_normal_test = True
@@ -125,7 +125,7 @@ class TestCiscoFcZoneDriver(CiscoFcZoneDriverBaseTest, test.TestCase):
         self.setup_driver(self.setup_config(True, 2))
         self.driver.delete_connection(
             'CISCO_FAB_1', _initiator_target_map)
-        self.assertFalse(_zone_name in GlobalVars._zone_state)
+        self.assertNotIn(_zone_name, GlobalVars._zone_state)
 
     def test_add_connection_for_invalid_fabric(self):
         """Test abnormal flows."""

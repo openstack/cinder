@@ -456,7 +456,7 @@ class DrbdManageIscsiTestCase(test.TestCase):
         self.assertEqual("list_volumes", dmd.odm.calls[0][0])
         self.assertEqual("list_assignments", dmd.odm.calls[1][0])
         self.assertEqual("create_snapshot", dmd.odm.calls[2][0])
-        self.assertTrue('node' in dmd.odm.calls[2][3])
+        self.assertIn('node', dmd.odm.calls[2][3])
 
     def test_delete_snapshot(self):
         testsnap = {'id': 'ca253fd0-8068-11e4-98c0-5254008ea111'}

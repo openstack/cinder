@@ -1143,7 +1143,7 @@ class VolumeMetadataBackupTestCase(test.TestCase):
 
         def mock_read(*args):
             called.append('read')
-            self.assertTrue(len(obj_data) == 1)
+            self.assertEqual(1, len(obj_data))
             return obj_data[0]
 
         def _mock_write(data):

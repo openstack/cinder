@@ -1262,10 +1262,10 @@ class BasicFiltersTestCase(HostFiltersTestCase):
 
     def test_all_filters(self):
         # Double check at least a couple of known filters exist
-        self.assertTrue('JsonFilter' in self.class_map)
-        self.assertTrue('CapabilitiesFilter' in self.class_map)
-        self.assertTrue('AvailabilityZoneFilter' in self.class_map)
-        self.assertTrue('IgnoreAttemptedHostsFilter' in self.class_map)
+        self.assertIn('JsonFilter', self.class_map)
+        self.assertIn('CapabilitiesFilter', self.class_map)
+        self.assertIn('AvailabilityZoneFilter', self.class_map)
+        self.assertIn('IgnoreAttemptedHostsFilter', self.class_map)
 
     def _do_test_type_filter_extra_specs(self, ecaps, especs, passes):
         filt_cls = self.class_map['CapabilitiesFilter']()

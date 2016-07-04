@@ -34,7 +34,7 @@ class TestVolumeDrivers(test.TestCase):
         returns at least one registered driver, else the compliance test will
         never even run.
         """
-        self.assertTrue(len(VOLUME_DRIVERS) > 0)
+        self.assertGreater(len(VOLUME_DRIVERS), 0)
 
     @ddt.data(*VOLUME_DRIVERS)
     def test_volume_driver_compliance(self, driver):

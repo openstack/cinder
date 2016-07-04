@@ -64,7 +64,7 @@ class NetAppApiServerTests(test.TestCase):
 
         expected_call_args = zapi_fakes.FAKE_CALL_ARGS_LIST
 
-        self.assertTrue(mock_invoke.call_args in expected_call_args)
+        self.assertIn(mock_invoke.call_args, expected_call_args)
 
     @ddt.data('stor', 'STORE', '')
     def test_set_server_type_value_error(self, server_type):
@@ -545,7 +545,7 @@ class SSHUtilTests(test.TestCase):
                                        mock.Mock(return_value=False))
         self.sshutil._wait_on_stdout(stdout, 1)
         exit_status.assert_any_call()
-        self.assertTrue(exit_status.call_count > 2)
+        self.assertGreater(exit_status.call_count, 2)
 
     def _mock_ssh_channel_files(self, channel):
         stdin = mock.Mock()

@@ -3367,10 +3367,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         old_replica = driver.replica
         secondary_id, volumes_update = driver.failover_host(
             None, [test_volume], 'default')
-        self.assertTrue(driver.active_backend_id in ('', None))
-        self.assertTrue(old_client == driver.client)
-        self.assertTrue(old_replica_client == driver.replica_client)
-        self.assertTrue(old_replica == driver.replica)
+        self.assertIn(driver.active_backend_id, ('', None))
+        self.assertEqual(old_client, driver.client)
+        self.assertEqual(old_replica_client, driver.replica_client)
+        self.assertEqual(old_replica, driver.replica)
         self.assertEqual('default', secondary_id)
         self.assertEqual(0, len(volumes_update))
 
@@ -3383,9 +3383,9 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         secondary_id, volumes_update = driver.failover_host(
             None, [test_volume], REPLICA_BACKEND_ID)
         self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
-        self.assertTrue(old_client == driver.replica_client)
-        self.assertTrue(old_replica_client == driver.client)
-        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual(old_client, driver.replica_client)
+        self.assertEqual(old_replica_client, driver.client)
+        self.assertNotEqual(old_replica, driver.replica)
         self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
         self.assertEqual(1, len(volumes_update))
         v_id = volumes_update[0]['volume_id']
@@ -3405,9 +3405,9 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         secondary_id, volumes_update = driver.failover_host(
             None, [test_volume], REPLICA_BACKEND_ID)
         self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
-        self.assertTrue(old_client == driver.client)
-        self.assertTrue(old_replica_client == driver.replica_client)
-        self.assertTrue(old_replica == driver.replica)
+        self.assertEqual(old_client, driver.client)
+        self.assertEqual(old_replica_client, driver.replica_client)
+        self.assertEqual(old_replica, driver.replica)
         self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
         self.assertEqual(0, len(volumes_update))
 
@@ -3424,17 +3424,17 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         old_replica = driver.replica
         secondary_id, volumes_update = driver.failover_host(
             None, [volume], 'default')
-        self.assertTrue(driver.active_backend_id in ('', None))
-        self.assertTrue(old_client == driver.replica_client)
-        self.assertTrue(old_replica_client == driver.client)
-        self.assertFalse(old_replica == driver.replica)
+        self.assertIn(driver.active_backend_id, ('', None))
+        self.assertEqual(old_client, driver.replica_client)
+        self.assertEqual(old_replica_client, driver.client)
+        self.assertNotEqual(old_replica, driver.replica)
         self.assertEqual('default', secondary_id)
         self.assertEqual(1, len(volumes_update))
         v_id = volumes_update[0]['volume_id']
         v_update = volumes_update[0]['updates']
         self.assertEqual(volume['id'], v_id)
         self.assertEqual('available', v_update['status'])
-        self.assertFalse('old_status' in v_update['metadata'])
+        self.assertNotIn('old_status', v_update['metadata'])
 
     def test_failover_replica_volumes(self):
         driver = FakeISCSIStorage(configuration=self.configuration)
@@ -3449,9 +3449,9 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         secondary_id, volumes_update = driver.failover_host(
             None, [replication_volume], REPLICA_BACKEND_ID)
         self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
-        self.assertTrue(old_client == driver.replica_client)
-        self.assertTrue(old_replica_client == driver.client)
-        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual(old_client, driver.replica_client)
+        self.assertEqual(old_replica_client, driver.client)
+        self.assertNotEqual(old_replica, driver.replica)
         self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
         self.assertEqual(1, len(volumes_update))
         v_id = volumes_update[0]['volume_id']
@@ -3479,10 +3479,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
                              return_value={'replication_enabled': 'true'}))
         secondary_id, volumes_update = driver.failover_host(
             None, [volume], REPLICA_BACKEND_ID)
-        self.assertTrue(driver.active_backend_id == REPLICA_BACKEND_ID)
-        self.assertTrue(old_client == driver.replica_client)
-        self.assertTrue(old_replica_client == driver.client)
-        self.assertFalse(old_replica == driver.replica)
+        self.assertEqual(driver.active_backend_id, REPLICA_BACKEND_ID)
+        self.assertEqual(old_client, driver.replica_client)
+        self.assertEqual(old_replica_client, driver.client)
+        self.assertNotEqual(old_replica, driver.replica)
         self.assertEqual(REPLICA_BACKEND_ID, secondary_id)
         self.assertEqual(1, len(volumes_update))
         v_id = volumes_update[0]['volume_id']
@@ -3508,10 +3508,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         old_replica = driver.replica
         secondary_id, volumes_update = driver.failover_host(
             None, [volume], 'default')
-        self.assertTrue(driver.active_backend_id in ('', None))
-        self.assertTrue(old_client == driver.replica_client)
-        self.assertTrue(old_replica_client == driver.client)
-        self.assertFalse(old_replica == driver.replica)
+        self.assertIn(driver.active_backend_id, ('', None))
+        self.assertEqual(old_client, driver.replica_client)
+        self.assertEqual(old_replica_client, driver.client)
+        self.assertNotEqual(old_replica, driver.replica)
         self.assertEqual('default', secondary_id)
         self.assertEqual(1, len(volumes_update))
         v_id = volumes_update[0]['volume_id']
@@ -3542,10 +3542,10 @@ class HuaweiISCSIDriverTestCase(test.TestCase):
         old_replica = driver.replica
         secondary_id, volumes_update = driver.failover_host(
             None, [volume], 'default')
-        self.assertTrue(driver.active_backend_id in ('', None))
-        self.assertTrue(old_client == driver.replica_client)
-        self.assertTrue(old_replica_client == driver.client)
-        self.assertFalse(old_replica == driver.replica)
+        self.assertIn(driver.active_backend_id, ('', None))
+        self.assertEqual(old_client, driver.replica_client)
+        self.assertEqual(old_replica_client, driver.client)
+        self.assertNotEqual(old_replica, driver.replica)
         self.assertEqual('default', secondary_id)
         self.assertEqual(1, len(volumes_update))
         v_id = volumes_update[0]['volume_id']

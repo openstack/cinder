@@ -572,9 +572,9 @@ class V7000CommonTestCase(test.TestCase):
         test_snap_id = "12345678-abcd-1234-cdef-0123456789ab"
         expected = "12345678abcd1234cdef0123456789ab"
 
-        self.assertTrue(len(expected) == 32)
+        self.assertEqual(32, len(expected))
         result = self.driver._compress_snapshot_id(test_snap_id)
-        self.assertTrue(result == expected)
+        self.assertEqual(expected, result)
 
     def test_ensure_snapshot_resource_area(self):
         result_dict = {'success': True, 'res': 'Successful'}

@@ -595,7 +595,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(
             fake.ISCSI_CONNECTION_PROPERTIES['data']['auth_password'],
             target_info['data']['auth_password'])
-        self.assertTrue('auth_password' in target_info['data'])
+        self.assertIn('auth_password', target_info['data'])
 
         self.assertEqual(
             fake.ISCSI_CONNECTION_PROPERTIES['data']['discovery_auth_method'],
@@ -604,7 +604,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             fake.ISCSI_CONNECTION_PROPERTIES['data']
             ['discovery_auth_password'],
             target_info['data']['discovery_auth_password'])
-        self.assertTrue('auth_password' in target_info['data'])
+        self.assertIn('auth_password', target_info['data'])
         self.assertEqual(
             fake.ISCSI_CONNECTION_PROPERTIES['data']
             ['discovery_auth_username'],

@@ -1604,7 +1604,7 @@ class InfortrendiSCSICommonTestCase(InfortrendTestCass):
         rc, model_update = self.driver.migrate_volume(test_volume, fake_host)
 
         self.assertFalse(rc)
-        self.assertTrue(model_update is None)
+        self.assertIsNone(model_update)
         self.assertEqual(1, log_warning.call_count)
 
     def test_migrate_volume_with_get_part_id_fail(self):
