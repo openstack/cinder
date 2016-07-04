@@ -137,12 +137,16 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         consistencygroup.destroy()
 
-    def test_list_consistencygroups_json(self):
+    @ddt.data(2, 3)
+    def test_list_consistencygroups_json(self, version):
         consistencygroup1 = self._create_consistencygroup()
         consistencygroup2 = self._create_consistencygroup()
         consistencygroup3 = self._create_consistencygroup()
 
-        req = webob.Request.blank('/v2/%s/consistencygroups' % fake.PROJECT_ID)
+        req = webob.Request.blank('/v%(version)s/%(project_id)s/'
+                                  'consistencygroups'
+                                  % {'version': version,
+                                     'project_id': fake.PROJECT_ID})
         req.method = 'GET'
         req.headers['Content-Type'] = 'application/json'
         res = req.get_response(fakes.wsgi_app(

@@ -104,4 +104,5 @@ class APIRouter(cinder.api.openstack.APIRouter):
             consistencygroups.create_resource())
         mapper.resource("consistencygroup", "consistencygroups",
                         controller=self.resources['consistencygroups'],
-                        member={'update': 'PUT'})
+                        collection={'detail': 'GET'},
+                        member={'action': 'POST'})
