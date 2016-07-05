@@ -1363,7 +1363,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         except Exception as err:
             err_msg = (_("Driver initialize connection failed "
                          "(error: %(err)s).") % {'err': six.text_type(err)})
-            LOG.error(err_msg, resource=volume)
+            LOG.exception(err_msg, resource=volume)
 
             self.driver.remove_export(context.elevated(), volume)
 
