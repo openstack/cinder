@@ -387,7 +387,7 @@ class SheepdogIOWrapper(io.RawIOBase):
 
     def seek(self, offset, whence=0):
         if not self._valid:
-            msg = _('An error occured while seeking for volume "%s".'
+            msg = _('An error occurred while seeking for volume "%s".'
                     ) % self._vdiname
             raise exception.VolumeDriverException(message=msg)
 
