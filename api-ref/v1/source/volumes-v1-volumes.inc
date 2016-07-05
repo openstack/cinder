@@ -91,7 +91,7 @@ Request
    - consistencygroup_id: consistencygroup_id
    - volume_type: volume_type
    - snapshot_id: snapshot_id
-   - scheduler_hints: scheduler_hints
+   - OS-SCH-HNT:scheduler_hints: OS-SCH-HNT:scheduler_hints
    - source_replica: source_replica
    - metadata: metadata
    - tenant_id: tenant_id

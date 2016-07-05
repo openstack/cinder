@@ -481,7 +481,7 @@ reserved_1:
   in: body
   required: true
   type: integer
-scheduler_hints:
+OS-SCH-HNT:scheduler_hints:
   description: |
     The dictionary of data to send to the scheduler.
   in: body
