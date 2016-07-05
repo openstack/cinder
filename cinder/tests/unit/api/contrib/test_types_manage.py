@@ -344,7 +344,9 @@ class VolumeTypesManageApiTest(test.TestCase):
 
     @ddt.data({'a' * 256: 'a'},
               {'a': 'a' * 256},
-              {'': 'a'})
+              {'': 'a'},
+              'foo',
+              None)
     def test_create_type_with_invalid_extra_specs(self, value):
         body = {"volume_type": {"name": "vol_type_1",
                                 "os-volume-type-access:is_public": False,

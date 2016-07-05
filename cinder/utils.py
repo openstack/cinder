@@ -1063,6 +1063,10 @@ def validate_integer(value, name, min_value=None, max_value=None):
 
 def validate_extra_specs(specs):
     """Validating key and value of extra specs."""
+    if not isinstance(specs, dict):
+        msg = _('extra_specs must be a dictionary.')
+        raise exception.InvalidInput(reason=msg)
+
     for key, value in specs.items():
         if key is not None:
             check_string_length(key, 'Key "%s"' % key,
