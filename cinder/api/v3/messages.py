@@ -14,7 +14,6 @@
 
 
 from oslo_config import cfg
-from oslo_log import log as logging
 import webob
 from webob import exc
 
@@ -28,7 +27,6 @@ import cinder.policy
 
 CONF = cfg.CONF
 
-LOG = logging.getLogger(__name__)
 MESSAGES_BASE_MICRO_VERSION = '3.3'
 
 
