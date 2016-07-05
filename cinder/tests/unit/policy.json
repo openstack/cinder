@@ -14,6 +14,7 @@
     "volume:get_volume_admin_metadata": "rule:admin_api",
     "volume:update_volume_admin_metadata": "rule:admin_api",
     "volume:delete": "",
+    "volume:force_delete": "rule:admin_api",
     "volume:update": "",
     "volume:attach": "",
     "volume:detach": "",

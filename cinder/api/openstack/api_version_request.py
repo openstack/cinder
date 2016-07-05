@@ -72,6 +72,7 @@ REST_API_VERSION_HISTORY = """
              volume group.
     * 3.21 - Show provider_id in detailed view of a volume for admin.
     * 3.22 - Add filtering based on metadata for snapshot listing.
+    * 3.23 - Allow passing force parameter to volume delete.
 """
 
 # The minimum and maximum versions of the API supported
@@ -79,7 +80,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.22"
+_MAX_API_VERSION = "3.23"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 
