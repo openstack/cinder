@@ -294,7 +294,12 @@ class DatastoreSelector(object):
             return True
 
         profile_id = self.get_profile_id(profile_name)
-        is_compliant = bool(self._filter_by_profile([datastore], profile_id))
+        # _filter_by_profile expects a map of datastore references to its
+        # properties. It only uses the properties to construct a map of
+        # filtered datastores to its properties. Here we don't care about
+        # the datastore property, so pass it as None.
+        is_compliant = bool(self._filter_by_profile({datastore: None},
+                                                    profile_id))
         LOG.debug("Compliance is %(is_compliant)s for datastore: "
                   "%(datastore)s against profile: %(profile)s.",
                   {'is_compliant': is_compliant,
