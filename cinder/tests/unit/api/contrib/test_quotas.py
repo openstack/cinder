@@ -537,7 +537,7 @@ class QuotaSetControllerValidateNestedQuotaSetup(QuotaSetsControllerTestBase):
         # Get B's subtree up to date with this change
         self.B.subtree[self.D.id] = self.D.subtree
 
-        # Quota heirarchy now is
+        # Quota hierarchy now is
         #   / B - D - E - F
         # A
         #   \ C

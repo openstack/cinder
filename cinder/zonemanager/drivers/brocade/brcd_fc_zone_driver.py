@@ -71,7 +71,7 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
         1.2 - Added support for friendly zone name
         1.3 - Added HTTP connector support
         1.4 - Adds support to zone in Virtual Fabrics
-        1.5 - Initiator zoning updates thru zoneadd/zoneremove
+        1.5 - Initiator zoning updates through zoneadd/zoneremove
     """
 
     VERSION = "1.5"

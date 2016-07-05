@@ -359,7 +359,7 @@ class CohoDriverTest(test.TestCase):
              mock.call().connect((ADDR, RPC_PORT))])
 
     def test_rpc_client_error_in_receive_fragment(self):
-        """Ensure exception is raised when malformed packet is recieved."""
+        """Ensure exception is raised when malformed packet is received."""
         mock_sendrcd = self.mock_object(coho.Client, '_sendrecord')
         mock_socket = self.mock_object(socket, 'socket')
         mock_socket.return_value.recv.return_value = INVALID_HEADER_BIN
