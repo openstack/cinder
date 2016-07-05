@@ -482,7 +482,7 @@ class ServiceCommands(object):
             print(_("Host not found. Failed to remove %(service)s"
                     " on %(host)s.") %
                   {'service': binary, 'host': host_name})
-            print (u"%s" % e.args)
+            print(u"%s" % e.args)
             return 2
         print(_("Service %(service)s on host %(host)s removed.") %
               {'service': binary, 'host': host_name})
