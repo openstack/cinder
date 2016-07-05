@@ -17,8 +17,7 @@
 Release notes
 =============
 
-The release notes for a patch should be included in the patch. If not, the
-release notes should be in a follow-on review.
+The release notes for a patch should be included in the patch.
 
 If the following applies to the patch, a release note is required:
 
