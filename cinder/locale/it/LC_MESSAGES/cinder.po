@@ -431,20 +431,20 @@ msgstr ""
 "VersionedMethod."
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "Si è verificato un errore in SheepdogDriver. (Motivo: %(reason)s) "
 
 msgid "An error has occurred during backup operation"
 msgstr "Si è verificato un errore durante l'operazione di backup"
 
 #, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
+msgid "An error occurred while attempting to modifySnapshot '%s'."
 msgstr ""
 "Si è verificato un errore durante il tentativo di modificare l'istantanea "
 "\"%s\". "
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "Si è verificato un errore durante la ricerca del volume \"%s\". "
 
 #, python-format

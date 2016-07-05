@@ -349,7 +349,7 @@ msgstr ""
 "yapılandırmanızı kontrol edin. Mevcut olmayan havuzlar: %s"
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "SheepdogDriver'da bir sorun oluştu.(Reason: %(reason)s)"
 
 msgid "An error has occurred during backup operation"

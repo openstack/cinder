@@ -431,18 +431,18 @@ msgstr ""
 "ます。"
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "SheepdogDriver でエラーが発生しました。(理由: %(reason)s)"
 
 msgid "An error has occurred during backup operation"
 msgstr "バックアップ操作中にエラーが発生しました"
 
 #, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
+msgid "An error occurred while attempting to modifySnapshot '%s'."
 msgstr "スナップショット '%s' を変更しようとしたときにエラーが発生しました。"
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "ボリューム \"%s\" の検出中にエラーが発生しました。"
 
 #, python-format

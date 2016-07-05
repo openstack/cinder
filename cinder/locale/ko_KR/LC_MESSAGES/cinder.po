@@ -425,18 +425,18 @@ msgid "An API version request must be compared to a VersionedMethod object."
 msgstr "API 버전 요청은 VersionedMethod 오브젝트와 비교해야 합니다."
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "SheepdogDriver에서 오류가 발생했습니다(이유: %(reason)s). "
 
 msgid "An error has occurred during backup operation"
 msgstr "백업 조작 중에 오류가 발생함 "
 
 #, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
+msgid "An error occurred while attempting to modifySnapshot '%s'."
 msgstr "스냅샷 '%s'을(를) 수정하려는 중에 오류가 발생했습니다."
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "볼륨 \"%s\"을(를) 검색하는 중에 오류가 발생했습니다. "
 
 #, python-format

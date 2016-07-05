@@ -435,20 +435,20 @@ msgstr ""
 "Une demande de version d'API doit être comparée à un objet VersionedMethod."
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "Une erreur s'est produite dans SheepdogDriver. (Motif : %(reason)s)"
 
 msgid "An error has occurred during backup operation"
 msgstr "Une erreur est survenue lors de la sauvegarde"
 
 #, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
+msgid "An error occurred while attempting to modifySnapshot '%s'."
 msgstr ""
 "Une erreur s'est produite lors de la tentative de modification de "
 "l'instantané '%s'."
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "Une erreur s'est produite lors de la recherche du volume \"%s\"."
 
 #, python-format

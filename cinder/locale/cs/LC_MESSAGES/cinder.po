@@ -395,14 +395,14 @@ msgstr ""
 "Prosím zkontrolujte své nastavení. Neexistující zásoby: %s"
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "V ovladači SheepDog nastala chyba. (Důvod: %(reason)s)"
 
 msgid "An error has occurred during backup operation"
 msgstr "Během operace zálohování nastala chyba"
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "Při hledání svazku \"%s\" nastal problém."
 
 #, python-format

@@ -1256,7 +1256,7 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
             # Update the existing snapshot with the new name.
             client.modifySnapshot(snapshot_info['id'], new_vals)
         except hpeexceptions.HTTPServerError:
-            err = (_("An error occured while attempting to modify"
+            err = (_("An error occurred while attempting to modify"
                      "Snapshot '%s'.") % snapshot_info['id'])
             LOG.error(err)
 
