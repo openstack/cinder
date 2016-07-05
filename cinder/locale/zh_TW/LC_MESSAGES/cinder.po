@@ -401,18 +401,18 @@ msgid "An API version request must be compared to a VersionedMethod object."
 msgstr "API 版本要求必須與 VersionedMethod 物件進行比較。"
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "SheepdogDriver 發生錯誤。（原因：%(reason)s）"
 
 msgid "An error has occurred during backup operation"
 msgstr "執行備份作業期間發生錯誤"
 
 #, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
+msgid "An error occurred while attempting to modifySnapshot '%s'."
 msgstr "嘗試修改 Snapshot '%s' 時發生錯誤。"
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "探查磁區 \"%s\" 時發生錯誤。"
 
 #, python-format

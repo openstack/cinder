@@ -427,18 +427,18 @@ msgid "An API version request must be compared to a VersionedMethod object."
 msgstr "Запрос версии API должен сравниваться с объектом VersionedMethod."
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "Обнаружена ошибка в SheepdogDriver. (Причина: %(reason)s)"
 
 msgid "An error has occurred during backup operation"
 msgstr "Ошибка операции резервного копирования"
 
 #, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
+msgid "An error occurred while attempting to modifySnapshot '%s'."
 msgstr "Ошибка при попытке изменения моментальной копии '%s'."
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "Возникла ошибка при поиске тома \"%s\"."
 
 #, python-format

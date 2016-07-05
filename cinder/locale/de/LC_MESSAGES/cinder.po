@@ -439,20 +439,20 @@ msgstr ""
 "verglichen werden."
 
 #, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
 msgstr "In SheepdogDriver ist ein Fehler aufgetreten. (Ursache: %(reason)s)"
 
 msgid "An error has occurred during backup operation"
 msgstr "Während des Datensicherungsvorgangs ist ein Fehler aufgetreten."
 
 #, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
+msgid "An error occurred while attempting to modifySnapshot '%s'."
 msgstr ""
 "Bei dem Versuch, die Schattenkopie '%s' zu ändern, ist ein Fehler "
 "aufgetreten."
 
 #, python-format
-msgid "An error occured while seeking for volume \"%s\"."
+msgid "An error occurred while seeking for volume \"%s\"."
 msgstr "Beim Suchen nach Datenträger \"%s\" ist ein Fehler aufgetreten."
 
 #, python-format
