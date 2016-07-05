@@ -37,29 +37,29 @@ LOG = logging.getLogger(__name__)
 
 blockbridge_opts = [
     cfg.StrOpt("blockbridge_api_host",
-               help=_("IP address/hostname of Blockbridge API.")),
+               help="IP address/hostname of Blockbridge API."),
     cfg.IntOpt("blockbridge_api_port",
-               help=_("Override HTTPS port to connect to Blockbridge "
-                      "API server.")),
+               help="Override HTTPS port to connect to Blockbridge "
+                    "API server."),
     cfg.StrOpt("blockbridge_auth_scheme",
                default='token',
                choices=['token', 'password'],
-               help=_("Blockbridge API authentication scheme (token "
-                      "or password)")),
+               help="Blockbridge API authentication scheme (token "
+                    "or password)"),
     cfg.StrOpt("blockbridge_auth_token",
-               help=_("Blockbridge API token (for auth scheme 'token')"),
+               help="Blockbridge API token (for auth scheme 'token')",
                secret=True),
     cfg.StrOpt("blockbridge_auth_user",
-               help=_("Blockbridge API user (for auth scheme 'password')")),
+               help="Blockbridge API user (for auth scheme 'password')"),
     cfg.StrOpt("blockbridge_auth_password",
-               help=_("Blockbridge API password (for auth scheme 'password')"),
+               help="Blockbridge API password (for auth scheme 'password')",
                secret=True),
     cfg.DictOpt("blockbridge_pools",
                 default={'OpenStack': '+openstack'},
-                help=_("Defines the set of exposed pools and their associated "
-                       "backend query strings")),
+                help="Defines the set of exposed pools and their associated "
+                     "backend query strings"),
     cfg.StrOpt("blockbridge_default_pool",
-               help=_("Default pool name if unspecified.")),
+               help="Default pool name if unspecified."),
 ]
 
 CONF = cfg.CONF

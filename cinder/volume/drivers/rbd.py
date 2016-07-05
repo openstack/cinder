@@ -75,18 +75,18 @@ rbd_opts = [
                     'taken before a flatten occurs. Set to 0 to disable '
                     'cloning.'),
     cfg.IntOpt('rbd_store_chunk_size', default=4,
-               help=_('Volumes will be chunked into objects of this size '
-                      '(in megabytes).')),
+               help='Volumes will be chunked into objects of this size '
+                    '(in megabytes).'),
     cfg.IntOpt('rados_connect_timeout', default=-1,
-               help=_('Timeout value (in seconds) used when connecting to '
-                      'ceph cluster. If value < 0, no timeout is set and '
-                      'default librados value is used.')),
+               help='Timeout value (in seconds) used when connecting to '
+                    'ceph cluster. If value < 0, no timeout is set and '
+                    'default librados value is used.'),
     cfg.IntOpt('rados_connection_retries', default=3,
-               help=_('Number of retries if connection to ceph cluster '
-                      'failed.')),
+               help='Number of retries if connection to ceph cluster '
+                    'failed.'),
     cfg.IntOpt('rados_connection_interval', default=5,
-               help=_('Interval value (in seconds) between connection '
-                      'retries to ceph cluster.'))
+               help='Interval value (in seconds) between connection '
+                    'retries to ceph cluster.')
 ]
 
 CONF = cfg.CONF
