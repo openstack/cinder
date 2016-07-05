@@ -428,6 +428,9 @@ class CinderComparableObject(base.ComparableVersionedObject):
             return self.obj_to_primitive() == obj.obj_to_primitive()
         return False
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 
 class ObjectListBase(base.ObjectListBase):
     def obj_make_compatible(self, primitive, target_version):

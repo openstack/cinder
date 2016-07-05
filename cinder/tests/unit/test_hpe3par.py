@@ -87,6 +87,9 @@ class Comment(object):
     def __eq__(self, actual):
         return (dict(ast.literal_eval(actual)) == self.expected)
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 
 class HPE3PARBaseDriver(object):
 
