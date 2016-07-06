@@ -102,6 +102,92 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
                                      "description": "",
                                      "add_volumes": None,
                                      "remove_volumes": None, }}
-        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.update,
-                          req, consistencygroup.id, body)
+        self.assertRaisesRegexp(webob.exc.HTTPBadRequest,
+                                "Name, description, add_volumes, "
+                                "and remove_volumes can not be all "
+                                "empty in the request body.",
+                                self.controller.update,
+                                req, consistencygroup.id, body)
+        consistencygroup.destroy()
+
+    def test_update_consistencygroup_all_empty_parameters_version_36(self):
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
+        req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
+                                      (fake.PROJECT_ID, consistencygroup.id))
+        req.environ['cinder.context'].is_admin = True
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.6'
+        req.api_version_request = api_version.APIVersionRequest('3.6')
+        body = {"consistencygroup": {"name": None,
+                                     "description": None,
+                                     "add_volumes": None,
+                                     "remove_volumes": None, }}
+        self.assertRaisesRegexp(webob.exc.HTTPBadRequest, "Must specify "
+                                "one or more of the following keys to "
+                                "update: name, description, add_volumes, "
+                                "remove_volumes.", self.controller.update,
+                                req, consistencygroup.id, body)
+        consistencygroup.destroy()
+
+    def test_update_consistencygroup_all_empty_parameters_not_version_36(self):
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
+        req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
+                                      (fake.PROJECT_ID, consistencygroup.id))
+        req.environ['cinder.context'].is_admin = True
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.5'
+        req.api_version_request = api_version.APIVersionRequest('3.5')
+        body = {"consistencygroup": {"name": None,
+                                     "description": None,
+                                     "add_volumes": None,
+                                     "remove_volumes": None, }}
+        self.assertRaisesRegexp(webob.exc.HTTPBadRequest, "Name, description, "
+                                "add_volumes, and remove_volumes can not be "
+                                "all empty in the request body.",
+                                self.controller.update,
+                                req, consistencygroup.id, body)
+        consistencygroup.destroy()
+
+    def test_update_consistencygroup_no_body(self):
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
+        req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
+                                      (fake.PROJECT_ID, consistencygroup.id))
+        req.environ['cinder.context'].is_admin = True
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.5'
+        req.api_version_request = api_version.APIVersionRequest('3.5')
+        body = None
+        self.assertRaisesRegexp(webob.exc.HTTPBadRequest,
+                                "Missing request body",
+                                self.controller.update,
+                                req, consistencygroup.id, body)
+        consistencygroup.destroy()
+
+    def test_update_consistencygroups_no_empty_parameters(self):
+        consistencygroup = self._create_consistencygroup(
+            ctxt=self.ctxt,
+            status=fields.ConsistencyGroupStatus.AVAILABLE)
+        req = fakes.HTTPRequest.blank('/v3/%s/consistencygroups/%s/update' %
+                                      (fake.PROJECT_ID, consistencygroup.id))
+        req.environ['cinder.context'].is_admin = True
+        req.headers['Content-Type'] = 'application/json'
+        req.headers['OpenStack-API-Version'] = 'volume 3.5'
+        req.api_version_request = api_version.APIVersionRequest('3.5')
+        body = {"consistencygroup": {"name": "my_fake_cg",
+                                     "description": "fake consistency group",
+                                     "add_volumes": "volume-uuid-1",
+                                     "remove_volumes":
+                                     "volume-uuid-2, volume uuid-3", }}
+        allow_empty = self.controller._check_update_parameters_v3(
+            req, body['consistencygroup']['name'],
+            body['consistencygroup']['description'],
+            body['consistencygroup']['add_volumes'],
+            body['consistencygroup']['remove_volumes'])
+        self.assertEqual(False, allow_empty)
         consistencygroup.destroy()
