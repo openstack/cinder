@@ -110,7 +110,6 @@ class InfortrendCLITestData(object):
     test_snapshot = {
         'id': 'ffa9bc5e-1172-4021-acaf-cdcd78a9584d',
         'volume_id': test_volume['id'],
-        'size': 2,
         'volume_name': test_volume['name'],
         'volume_size': 2,
         'project_id': 'project',
