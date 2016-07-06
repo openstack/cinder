@@ -4457,7 +4457,7 @@ def purge_deleted_rows(context, age_in_days):
 
     # Reorder the list so the volumes and volume_types tables are last
     # to avoid FK constraints
-    for table in ("volume_types", "volumes"):
+    for table in ("volume_types", "snapshots", "volumes"):
         tables.remove(table)
         tables.append(table)
 
