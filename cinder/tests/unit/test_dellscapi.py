@@ -7043,3 +7043,204 @@ class DellHttpClientTestCase(test.TestCase):
         mock_get.assert_called_once_with('https://localhost:3033/api/rest/url',
                                          headers=expected_headers,
                                          verify=False)
+
+
+class DellStorageCenterApiHelperTestCase(test.TestCase):
+
+    """DellStorageCenterApiHelper test case
+
+    Class to test the Storage Center API helper using Mock.
+    """
+
+    def setUp(self):
+        super(DellStorageCenterApiHelperTestCase, self).setUp()
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'open_connection')
+    def test_setup_connection(self,
+                              mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, None,
+                                                               'FC')
+        ret = helper._setup_connection()
+        self.assertEqual(12345, ret.primaryssn)
+        self.assertEqual(12345, ret.ssn)
+        self.assertEqual('FibreChannel', ret.protocol)
+        mock_open_connection.assert_called_once_with()
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'open_connection')
+    def test_setup_connection_iscsi(self,
+                                    mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, None,
+                                                               'iSCSI')
+        ret = helper._setup_connection()
+        self.assertEqual(12345, ret.primaryssn)
+        self.assertEqual(12345, ret.ssn)
+        self.assertEqual('Iscsi', ret.protocol)
+        mock_open_connection.assert_called_once_with()
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'open_connection')
+    def test_setup_connection_failover(self,
+                                       mock_open_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.dell_sc_volume_folder = 'a'
+        config.dell_sc_server_folder = 'a'
+        config.dell_sc_verify_cert = False
+        config.san_port = 3033
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, '67890',
+                                                               'iSCSI')
+        ret = helper._setup_connection()
+        self.assertEqual(12345, ret.primaryssn)
+        self.assertEqual(67890, ret.ssn)
+        self.assertEqual('Iscsi', ret.protocol)
+        mock_open_connection.assert_called_once_with()
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApiHelper,
+                       '_setup_connection')
+    def test_open_connection(self,
+                             mock_setup_connection):
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.san_port = 3033
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, None,
+                                                               'FC')
+        mock_connection = mock.MagicMock()
+        mock_connection.apiversion = '3.1'
+        mock_setup_connection.return_value = mock_connection
+        ret = helper.open_connection()
+        self.assertEqual('3.1', ret.apiversion)
+        self.assertEqual('192.168.0.101', helper.san_ip)
+        self.assertEqual('username', helper.san_login)
+        self.assertEqual('password', helper.san_password)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApiHelper,
+                       '_setup_connection')
+    def test_open_connection_fail_no_secondary(self,
+                                               mock_setup_connection):
+
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.san_port = 3033
+        config.secondary_san_ip = ''
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, None,
+                                                               'FC')
+        mock_setup_connection.side_effect = (
+            exception.VolumeBackendAPIException('abc'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          helper.open_connection)
+        mock_setup_connection.assert_called_once_with()
+        self.assertEqual('192.168.0.101', helper.san_ip)
+        self.assertEqual('username', helper.san_login)
+        self.assertEqual('password', helper.san_password)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApiHelper,
+                       '_setup_connection')
+    def test_open_connection_secondary(self,
+                                       mock_setup_connection):
+
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.san_port = 3033
+        config.secondary_san_ip = '192.168.0.102'
+        config.secondary_san_login = 'username2'
+        config.secondary_san_password = 'password2'
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, None,
+                                                               'FC')
+        mock_connection = mock.MagicMock()
+        mock_connection.apiversion = '3.1'
+        mock_setup_connection.side_effect = [
+            (exception.VolumeBackendAPIException('abc')), mock_connection]
+        ret = helper.open_connection()
+        self.assertEqual('3.1', ret.apiversion)
+        self.assertEqual(2, mock_setup_connection.call_count)
+        self.assertEqual('192.168.0.102', helper.san_ip)
+        self.assertEqual('username2', helper.san_login)
+        self.assertEqual('password2', helper.san_password)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApiHelper,
+                       '_setup_connection')
+    def test_open_connection_fail_partial_secondary_config(
+            self, mock_setup_connection):
+
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.san_port = 3033
+        config.secondary_san_ip = '192.168.0.102'
+        config.secondary_san_login = 'username2'
+        config.secondary_san_password = ''
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, None,
+                                                               'FC')
+        mock_setup_connection.side_effect = (
+            exception.VolumeBackendAPIException('abc'))
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          helper.open_connection)
+        mock_setup_connection.assert_called_once_with()
+        self.assertEqual('192.168.0.101', helper.san_ip)
+        self.assertEqual('username', helper.san_login)
+        self.assertEqual('password', helper.san_password)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApiHelper,
+                       '_setup_connection')
+    def test_open_connection_to_secondary_and_back(self,
+                                                   mock_setup_connection):
+
+        config = mock.MagicMock()
+        config.dell_sc_ssn = 12345
+        config.san_ip = '192.168.0.101'
+        config.san_login = 'username'
+        config.san_password = 'password'
+        config.san_port = 3033
+        config.secondary_san_ip = '192.168.0.102'
+        config.secondary_san_login = 'username2'
+        config.secondary_san_password = 'password2'
+        helper = dell_storagecenter_api.StorageCenterApiHelper(config, None,
+                                                               'FC')
+        mock_connection = mock.MagicMock()
+        mock_connection.apiversion = '3.1'
+        mock_setup_connection.side_effect = [
+            (exception.VolumeBackendAPIException('abc')), mock_connection,
+            (exception.VolumeBackendAPIException('abc')), mock_connection]
+        helper.open_connection()
+        self.assertEqual('192.168.0.102', helper.san_ip)
+        self.assertEqual('username2', helper.san_login)
+        self.assertEqual('password2', helper.san_password)
+        self.assertEqual(2, mock_setup_connection.call_count)
+        helper.open_connection()
+        self.assertEqual('192.168.0.101', helper.san_ip)
+        self.assertEqual('username', helper.san_login)
+        self.assertEqual('password', helper.san_password)
