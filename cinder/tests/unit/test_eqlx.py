@@ -186,7 +186,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             with mock.patch.object(self.driver,
                                    'extend_volume') as mock_extend_volume:
                 mock_eql_execute.configure_mock(**mock_attrs)
-                mock_eql_execute.return_value = volume
+                mock_eql_execute.return_value = self.fake_iqn_return
                 mock_extend_volume.return_value = self.fake_iqn_return
                 model_update = self.driver.create_volume_from_snapshot(
                     volume, snapshot)
