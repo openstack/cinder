@@ -885,7 +885,7 @@ class StorwizeHelpers(object):
             LOG.warning(_LW('unmap_vol_from_host: No mapping of volume '
                             '%(vol_name)s to any host found.'),
                         {'vol_name': volume_name})
-            return
+            return host_name
         if host_name is None:
             if len(resp) > 1:
                 LOG.warning(_LW('unmap_vol_from_host: Multiple mappings of '
@@ -903,6 +903,7 @@ class StorwizeHelpers(object):
                 LOG.warning(_LW('unmap_vol_from_host: No mapping of volume '
                                 '%(vol_name)s to host %(host)s found.'),
                             {'vol_name': volume_name, 'host': host_name})
+                return host_name
         # We now know that the mapping exists
         self.ssh.rmvdiskhostmap(host_name, volume_name)
 
