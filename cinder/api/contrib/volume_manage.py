@@ -137,7 +137,7 @@ class VolumeManageController(wsgi.Controller):
         kwargs['description'] = volume.get('description', None)
         kwargs['metadata'] = volume.get('metadata', None)
         kwargs['availability_zone'] = volume.get('availability_zone', None)
-        kwargs['bootable'] = volume.get('bootable', False)
+        kwargs['bootable'] = utils.get_bool_param('bootable', volume)
         try:
             new_volume = self.volume_api.manage_existing(context,
                                                          volume['host'],
