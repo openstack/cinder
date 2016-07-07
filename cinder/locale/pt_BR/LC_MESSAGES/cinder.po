@@ -10,9 +10,9 @@
 # Carlos Marques <marquesc@br.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev26\n"
+"Project-Id-Version: cinder 8.0.1.dev85\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-05-01 21:05+0000\n"
+"POT-Creation-Date: 2016-07-06 20:14+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6869,10 +6869,6 @@ msgstr ""
 "O comando SSH falhou após '%(total_attempts)r' tentativas: '%(command)s'"
 
 #, python-format
-msgid "SSH Command failed with error: '%(err)s', Command: '%(command)s'"
-msgstr "O comando SSH falhou com o erro: '%(err)s', Comando: '%(command)s'"
-
-#, python-format
 msgid "SSH command injection detected: %(command)s"
 msgstr "Injeção de comando SSH detectada: %(command)s"
 
@@ -6939,9 +6935,6 @@ msgstr "O serviço é muito antigo para preencher essa solicitação."
 
 msgid "Service is unavailable at this time."
 msgstr "O serviço está indisponível neste momento."
-
-msgid "Service not found."
-msgstr "Serviço não localizado."
 
 msgid "Set pair secondary access error."
 msgstr "Erro de configuração de acesso secundário do par."

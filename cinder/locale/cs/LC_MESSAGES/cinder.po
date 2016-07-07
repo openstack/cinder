@@ -10,9 +10,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev24\n"
+"Project-Id-Version: cinder 8.0.1.dev85\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-21 16:43+0000\n"
+"POT-Creation-Date: 2016-07-06 20:14+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -5725,10 +5725,6 @@ msgid "SSH Command failed after '%(total_attempts)r' attempts : '%(command)s'"
 msgstr "Příkaz SSH selhal po '%(total_attempts)r' pokusech : '%(command)s'"
 
 #, python-format
-msgid "SSH Command failed with error: '%(err)s', Command: '%(command)s'"
-msgstr "Příkaz SSH selhal s chybou: '%(err)s', příkaz: '%(command)s'"
-
-#, python-format
 msgid "SSH command injection detected: %(command)s"
 msgstr "Zjištěno vložení příkazů SSH: %(command)s"
 
@@ -5778,9 +5774,6 @@ msgstr "Služba %s nenalezena."
 
 msgid "Service is unavailable at this time."
 msgstr "Služba je v tuto chvíli nedostupná."
-
-msgid "Service not found."
-msgstr "Služba nenalezena."
 
 msgid "Sets thin provisioning."
 msgstr "Nastaví mělké poskytování."

@@ -12,9 +12,9 @@
 # Sungjin Kang <gang.sungjin@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev26\n"
+"Project-Id-Version: cinder 8.0.1.dev85\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-05-01 21:05+0000\n"
+"POT-Creation-Date: 2016-07-06 20:14+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6597,10 +6597,6 @@ msgstr ""
 "다. "
 
 #, python-format
-msgid "SSH Command failed with error: '%(err)s', Command: '%(command)s'"
-msgstr "SSH 명령이 실패하여 오류 발생: '%(err)s', 명령: '%(command)s'"
-
-#, python-format
 msgid "SSH command injection detected: %(command)s"
 msgstr "SSH 명령 인젝션이 발견되었습니다: %(command)s"
 
@@ -6663,9 +6659,6 @@ msgstr "서비스가 너무 오래되어 해당 요청을 수행할 수 없습�
 
 msgid "Service is unavailable at this time."
 msgstr "서비스가 현재 사용 불가능합니다. "
-
-msgid "Service not found."
-msgstr "서비스를 찾을 수 없습니다."
 
 msgid "Set pair secondary access error."
 msgstr "쌍 보조 액세스 설정 오류."
