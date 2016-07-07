@@ -20,6 +20,7 @@ import time
 
 from lxml import etree
 from oslo_log import log as logging
+from oslo_utils import units
 import requests
 import six
 
@@ -161,7 +162,7 @@ class DotHillClient(object):
             return False
 
     def _get_size(self, size):
-        return int(math.ceil(float(size) * 512 / (10 ** 9)))
+        return int(math.ceil(float(size) * 512 / (units.G)))
 
     def backend_stats(self, backend_name, backend_type):
         stats = {'free_capacity_gb': 0,
