@@ -673,6 +673,65 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
         self.assertRaises(exception.VolumeNotFound, self.driver.unmanage,
                           self.data.test_volume2)
 
+    def test_manage_snapshot(self, req):
+        req.side_effect = xms_request
+        vol_uid = self.data.test_snapshot.volume_id
+        xms_data['volumes'] = {1: {'name': vol_uid,
+                                   'index': 1,
+                                   'vol-size': '3',
+                                   },
+                               2: {'name': 'unmanaged',
+                                   'index': 2,
+                                   'ancestor-vol-id': ['', vol_uid, 1],
+                                   'vol-size': '3'}
+                               }
+        ref_vol = {"source-name": "unmanaged"}
+        self.driver.manage_existing_snapshot(self.data.test_snapshot, ref_vol)
+
+    def test_get_manage_snapshot_size(self, req):
+        req.side_effect = xms_request
+        vol_uid = self.data.test_snapshot.volume_id
+        xms_data['volumes'] = {1: {'name': vol_uid,
+                                   'index': 1,
+                                   'vol-size': '3',
+                                   },
+                               2: {'name': 'unmanaged',
+                                   'index': 2,
+                                   'ancestor-vol-id': ['', vol_uid, 1],
+                                   'vol-size': '3'}
+                               }
+        ref_vol = {"source-name": "unmanaged"}
+        self.driver.manage_existing_snapshot_get_size(self.data.test_snapshot,
+                                                      ref_vol)
+
+    def test_manage_snapshot_invalid_snapshot(self, req):
+        req.side_effect = xms_request
+        xms_data['volumes'] = {1: {'name': 'unmanaged1',
+                                   'index': 1,
+                                   'vol-size': '3',
+                                   'ancestor-vol-id': []}
+                               }
+        ref_vol = {"source-name": "unmanaged1"}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot,
+                          self.data.test_snapshot, ref_vol)
+
+    def test_unmanage_snapshot(self, req):
+        req.side_effect = xms_request
+        vol_uid = self.data.test_snapshot.volume_id
+        xms_data['volumes'] = {1: {'name': vol_uid,
+                                   'index': 1,
+                                   'vol-size': '3',
+                                   },
+                               2: {'name': 'unmanaged',
+                                   'index': 2,
+                                   'ancestor-vol-id': ['', vol_uid, 1],
+                                   'vol-size': '3'}
+                               }
+        ref_vol = {"source-name": "unmanaged"}
+        self.driver.manage_existing_snapshot(self.data.test_snapshot, ref_vol)
+        self.driver.unmanage_snapshot(self.data.test_snapshot)
+
 # ##### Consistancy Groups #####
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
     def test_cg_create(self, get_all_for_cgsnapshot, req):
