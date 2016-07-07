@@ -1812,7 +1812,7 @@ class GPFSDriverTestCase(test.TestCase):
         snapshot = {}
         snapshot['id'] = fake.SNAPSHOT_ID
         snapshot['display_name'] = 'test-snap'
-        snapshot['size'] = 1000
+        snapshot['volume_size'] = 1000
         snapshot['volume_id'] = fake.VOLUME_ID
         snapshot['status'] = 'available'
         snapshot['snapshot_metadata'] = []
@@ -1906,7 +1906,7 @@ class GPFSNFSDriverTestCase(test.TestCase):
         snapshot = {}
         snapshot['id'] = '12345'
         snapshot['name'] = 'test-snap'
-        snapshot['size'] = 1000
+        snapshot['volume_size'] = 1000
         snapshot['volume_id'] = '123456'
         snapshot['status'] = 'available'
         return snapshot
