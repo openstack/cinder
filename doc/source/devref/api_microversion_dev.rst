@@ -186,7 +186,7 @@ In the controller class::
     def my_api_method(self, req, id):
         .... method_1 ...
 
-    @wsgi.Controller.api_version("3.4")  # noqa
+    @my_api_method.api_version("3.4")
     def my_api_method(self, req, id):
         .... method_2 ...
 
@@ -194,10 +194,15 @@ If a caller specified ``3.1``, ``3.2`` or ``3.3`` (or received the
 default of ``3.1``) they would see the result from ``method_1``,
 ``3.4`` or later ``method_2``.
 
-It is vital that the two methods have the same name, so the second of
-them will need ``# noqa`` to avoid failing flake8's ``F811`` rule. The
-two methods may be different in any kind of semantics (schema
-validation, return values, response codes, etc)
+We could use ``wsgi.Controller.api_version`` decorator on the second
+``my_api_method`` as well, but then we would have to add ``# no qa`` to that
+line to avoid failing flake8's ``F811`` rule.  So the recommended approach is
+to use the ``api_version`` decorator from the first method that is defined, as
+illustrated by the example above, and then use ``my_api_method`` decorator for
+subsequent api versions of the same method.
+
+The two methods may be different in any kind of semantics (schema validation,
+return values, response codes, etc.).
 
 A method with only small changes between versions
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

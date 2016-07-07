@@ -1220,6 +1220,12 @@ class Controller(object):
             # ranges of valid versions as that is ambiguous
             func_list.sort(reverse=True)
 
+            # NOTE(geguileo): To avoid PEP8 errors when defining multiple
+            # microversions of the same method in the same class we add the
+            # api_version decorator to the function so it can be used instead,
+            # thus preventing method redefinition errors.
+            f.api_version = cls.api_version
+
             return f
 
         return decorator

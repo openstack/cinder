@@ -100,7 +100,7 @@ class VersionsController(wsgi.Controller):
         known_versions.pop('v3.0')
         return builder.build_versions(known_versions)
 
-    @wsgi.Controller.api_version('2.0')  # noqa
+    @index.api_version('2.0')
     def index(self, req):  # pylint: disable=E0102
         """Return versions supported prior to the microversions epoch."""
         builder = views_versions.get_view_builder(req)
@@ -109,7 +109,7 @@ class VersionsController(wsgi.Controller):
         known_versions.pop('v3.0')
         return builder.build_versions(known_versions)
 
-    @wsgi.Controller.api_version('3.0')  # noqa
+    @index.api_version('3.0')
     def index(self, req):  # pylint: disable=E0102
         """Return versions supported after the start of microversions."""
         builder = views_versions.get_view_builder(req)
