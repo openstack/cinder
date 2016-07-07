@@ -14,7 +14,6 @@
 # limitations under the License.
 
 import mock
-from oslotest import moxstubout
 
 from cinder.scheduler import base_filter
 from cinder.scheduler import host_manager
@@ -26,23 +25,19 @@ class TestBaseFilter(test.TestCase):
 
     def setUp(self):
         super(TestBaseFilter, self).setUp()
-        self.mox = self.useFixture(moxstubout.MoxStubout()).mox
         self.filter = base_filter.BaseFilter()
 
     def test_filter_one_is_called(self):
         filters = [1, 2, 3, 4]
         filter_properties = {'x': 'y'}
-        self.mox.StubOutWithMock(self.filter, '_filter_one')
 
-        self.filter._filter_one(1, filter_properties).AndReturn(False)
-        self.filter._filter_one(2, filter_properties).AndReturn(True)
-        self.filter._filter_one(3, filter_properties).AndReturn(True)
-        self.filter._filter_one(4, filter_properties).AndReturn(False)
-
-        self.mox.ReplayAll()
+        self.filter._filter_one = mock.Mock()
+        self.filter._filter_one.side_effect = [False, True, True, False]
+        calls = [mock.call(i, filter_properties) for i in filters]
 
         result = list(self.filter.filter_all(filters, filter_properties))
         self.assertEqual([2, 3], result)
+        self.filter._filter_one.assert_has_calls(calls)
 
 
 class FakeExtension(object):
@@ -122,9 +117,8 @@ class TestBaseFilterHandler(test.TestCase):
 
     def setUp(self):
         super(TestBaseFilterHandler, self).setUp()
-        self.stubs = self.useFixture(moxstubout.MoxStubout()).stubs
-        self.stubs.Set(base_filter.base_handler.extension, 'ExtensionManager',
-                       FakeExtensionManager)
+        self.mock_object(base_filter.base_handler.extension,
+                         'ExtensionManager', FakeExtensionManager)
         self.handler = base_filter.BaseFilterHandler(BaseFakeFilter,
                                                      'fake_filters')
 
