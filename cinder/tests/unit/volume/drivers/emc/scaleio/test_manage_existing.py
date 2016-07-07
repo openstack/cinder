@@ -48,7 +48,7 @@ class TestManageExisting(scaleio.TestScaleIODriver):
                 'instances/Volume::' + self.volume['provider_id']:
                     mocks.MockHTTPSResponse({
                         'id': fake.PROVIDER_ID,
-                        'sizeInKb': 8388608,
+                        'sizeInKb': 8000000,
                         'mappedSdcInfo': None
                     }, 200)
             },

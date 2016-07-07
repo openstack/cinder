@@ -58,7 +58,7 @@ class TestManageExistingSnapshot(scaleio.TestScaleIODriver):
                 'instances/Volume::' + self.snapshot['provider_id']:
                     mocks.MockHTTPSResponse({
                         'id': fake.PROVIDER2_ID,
-                        'sizeInKb': 8388608,
+                        'sizeInKb': 8000000,
                         'mappedSdcInfo': None,
                         'ancestorVolumeId': fake.PROVIDER_ID
                     }, 200),

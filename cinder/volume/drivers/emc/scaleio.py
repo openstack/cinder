@@ -19,6 +19,7 @@ Driver for EMC ScaleIO based on ScaleIO remote CLI.
 import base64
 import binascii
 import json
+import math
 
 from os_brick.initiator import connector
 from oslo_config import cfg
@@ -1132,7 +1133,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
     def _get_volume_size(self, volume, existing_ref):
         response = self._query_scaleio_volume(volume, existing_ref)
-        return int(response['sizeInKb'] / units.Mi)
+        return int(math.ceil(float(response['sizeInKb']) / units.Mi))
 
     def _execute_scaleio_get_request(self, request):
         r = requests.get(
