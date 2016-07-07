@@ -74,8 +74,8 @@ def get_volume_size(volume):
     calculates volume size with sectors, which is 512 bytes.
     """
     volume_size = units.Gi / 512  # 1G
-    if int(volume['size']) != 0:
-        volume_size = int(volume['size']) * units.Gi / 512
+    if int(volume.size) != 0:
+        volume_size = int(volume.size) * units.Gi / 512
 
     return volume_size
 
@@ -94,13 +94,13 @@ def get_volume_metadata(volume):
 def get_admin_metadata(volume):
     admin_metadata = {}
     if 'admin_metadata' in volume:
-        admin_metadata = volume['admin_metadata']
+        admin_metadata = volume.admin_metadata
     elif 'volume_admin_metadata' in volume:
         metadata = volume.get('volume_admin_metadata', [])
         admin_metadata = {item['key']: item['value'] for item in metadata}
 
     LOG.debug("Volume ID: %(id)s, admin_metadata: %(admin_metadata)s.",
-              {"id": volume['id'], "admin_metadata": admin_metadata})
+              {"id": volume.id, "admin_metadata": admin_metadata})
     return admin_metadata
 
 
@@ -109,7 +109,7 @@ def get_snapshot_metadata_value(snapshot):
         return snapshot.metadata
 
     if 'snapshot_metadata' in snapshot:
-        metadata = snapshot.get('snapshot_metadata')
+        metadata = snapshot.snapshot_metadata
         return {item['key']: item['value'] for item in metadata}
 
     return {}

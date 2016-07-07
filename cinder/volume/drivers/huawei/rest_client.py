@@ -308,12 +308,12 @@ class RestClient(object):
         return result['data']
 
     def get_lun_id(self, volume, volume_name):
-        lun_id = (volume.get('provider_location') or
+        lun_id = (volume.provider_location or
                   self.get_lun_id_by_name(volume_name))
         if not lun_id:
             msg = (_("Can't find lun info on the array. "
                      "volume: %(id)s, lun name: %(name)s.") %
-                   {'id': volume['id'], 'name': volume_name})
+                   {'id': volume.id, 'name': volume_name})
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
         return lun_id

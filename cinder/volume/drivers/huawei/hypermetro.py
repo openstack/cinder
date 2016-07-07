@@ -103,7 +103,7 @@ class HuaweiHyperMetro(object):
     def connect_volume_fc(self, volume, connector):
         """Create map between a volume and a host for FC."""
         wwns = connector['wwpns']
-        volume_name = huawei_utils.encode_name(volume['id'])
+        volume_name = huawei_utils.encode_name(volume.id)
 
         LOG.info(_LI(
             'initialize_connection_fc, initiator: %(wwpns)s,'
@@ -172,7 +172,7 @@ class HuaweiHyperMetro(object):
                    'data': {'target_lun': int(host_lun_id),
                             'target_discovered': True,
                             'target_wwn': tgt_port_wwns,
-                            'volume_id': volume['id'],
+                            'volume_id': volume.id,
                             'initiator_target_map': init_targ_map,
                             'map_info': map_info},
                    }
@@ -184,7 +184,7 @@ class HuaweiHyperMetro(object):
     def disconnect_volume_fc(self, volume, connector):
         """Delete map between a volume and a host for FC."""
         wwns = connector['wwpns']
-        volume_name = huawei_utils.encode_name(volume['id'])
+        volume_name = huawei_utils.encode_name(volume.id)
         metadata = huawei_utils.get_volume_metadata(volume)
         lun_id = metadata['remote_lun_id']
         host_name = connector['host']
@@ -270,8 +270,8 @@ class HuaweiHyperMetro(object):
 
     def create_consistencygroup(self, group):
         LOG.info(_LI("Create Consistency Group: %(group)s."),
-                 {'group': group['id']})
-        group_name = huawei_utils.encode_name(group['id'])
+                 {'group': group.id})
+        group_name = huawei_utils.encode_name(group.id)
         domain_name = self.configuration.metro_domain_name
         domain_id = self.client.get_hyper_domain_id(domain_name)
         if not domain_name or not domain_id:
@@ -279,21 +279,21 @@ class HuaweiHyperMetro(object):
             LOG.error(msg)
             raise exception.VolumeBackendAPIException(data=msg)
 
-        self.client.create_metrogroup(group_name, group['id'], domain_id)
+        self.client.create_metrogroup(group_name, group.id, domain_id)
 
     def delete_consistencygroup(self, context, group, volumes):
         LOG.info(_LI("Delete Consistency Group: %(group)s."),
-                 {'group': group['id']})
+                 {'group': group.id})
         model_update = {}
         volumes_model_update = []
-        model_update['status'] = group['status']
+        model_update['status'] = group.status
         metrogroup_id = self.check_consistencygroup_need_to_stop(group)
         if metrogroup_id:
             self.client.delete_metrogroup(metrogroup_id)
 
         # Deal with the return volumes info
         for volume_ref in volumes:
-            volume_update = {'id': volume_ref['id']}
+            volume_update = {'id': volume_ref.id}
             volume_update['status'] = 'deleted'
             volumes_model_update.append(volume_update)
 
@@ -303,9 +303,9 @@ class HuaweiHyperMetro(object):
                                 add_volumes, remove_volumes):
         LOG.info(_LI("Update Consistency Group: %(group)s. "
                      "This adds or removes volumes from a CG."),
-                 {'group': group['id']})
+                 {'group': group.id})
         model_update = {}
-        model_update['status'] = group['status']
+        model_update['status'] = group.status
         metrogroup_id = self.check_consistencygroup_need_to_stop(group)
         if metrogroup_id:
             # Deal with add volumes to CG
@@ -350,7 +350,7 @@ class HuaweiHyperMetro(object):
         return metro_id
 
     def check_consistencygroup_need_to_stop(self, group):
-        group_name = huawei_utils.encode_name(group['id'])
+        group_name = huawei_utils.encode_name(group.id)
         metrogroup_id = self.client.get_metrogroup_by_name(group_name)
 
         if metrogroup_id:
