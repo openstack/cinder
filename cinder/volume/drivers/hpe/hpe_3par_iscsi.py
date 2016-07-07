@@ -40,6 +40,7 @@ from oslo_log import log as logging
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
 from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
 from cinder.volume.drivers.san import san
@@ -117,10 +118,11 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         3.0.10 - Remove metadata that tracks the instance ID. bug #1572665
         3.0.11 - _create_3par_iscsi_host() now accepts iscsi_iqn as list only.
                  Bug #1590180
+        3.0.12 - Added entry point tracing
 
     """
 
-    VERSION = "3.0.11"
+    VERSION = "3.0.12"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
@@ -164,6 +166,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
                           'san_password']
         common.check_flags(self.configuration, required_flags)
 
+    @utils.trace
     def get_volume_stats(self, refresh=False):
         common = self._login()
         try:
@@ -257,6 +260,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         """Setup errors are already checked for in do_setup so return pass."""
         pass
 
+    @utils.trace
     def create_volume(self, volume):
         common = self._login()
         try:
@@ -264,6 +268,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Clone an existing volume."""
         common = self._login()
@@ -272,6 +277,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_volume(self, volume):
         common = self._login()
         try:
@@ -279,6 +285,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Creates a volume from a snapshot.
 
@@ -290,6 +297,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -297,6 +305,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -304,6 +313,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def initialize_connection(self, volume, connector):
         """Assigns the volume to a server.
 
@@ -460,6 +470,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to unattach a volume from an instance."""
         common = self._login()
@@ -665,6 +676,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
         return model_update
 
+    @utils.trace
     def create_export(self, context, volume, connector):
         common = self._login()
         try:
@@ -672,6 +684,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def ensure_export(self, context, volume):
         """Ensure the volume still exists on the 3PAR.
 
@@ -779,6 +792,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
         return current_least_used_nsp
 
+    @utils.trace
     def extend_volume(self, volume, new_size):
         common = self._login()
         try:
@@ -786,6 +800,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_consistencygroup(self, context, group):
         common = self._login()
         try:
@@ -793,6 +808,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_consistencygroup_from_src(self, context, group, volumes,
                                          cgsnapshot=None, snapshots=None,
                                          source_cg=None, source_vols=None):
@@ -804,6 +820,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_consistencygroup(self, context, group, volumes):
         common = self._login()
         try:
@@ -811,6 +828,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def update_consistencygroup(self, context, group,
                                 add_volumes=None, remove_volumes=None):
         common = self._login()
@@ -820,6 +838,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
@@ -827,6 +846,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         common = self._login()
         try:
@@ -834,6 +854,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing(self, volume, existing_ref):
         common = self._login()
         try:
@@ -841,6 +862,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_snapshot(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -848,6 +870,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         common = self._login()
         try:
@@ -855,6 +878,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
         common = self._login()
         try:
@@ -863,6 +887,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def unmanage(self, volume):
         common = self._login()
         try:
@@ -870,6 +895,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def unmanage_snapshot(self, snapshot):
         common = self._login()
         try:
@@ -877,6 +903,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def retype(self, context, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
         common = self._login()
@@ -885,6 +912,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def migrate_volume(self, context, volume, host):
         if volume['status'] == 'in-use':
             protocol = host['capabilities']['storage_protocol']
@@ -899,6 +927,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def update_migrated_volume(self, context, volume, new_volume,
                                original_volume_status):
         """Update the name of the migrated volume to it's new ID."""
@@ -909,6 +938,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def get_pool(self, volume):
         common = self._login()
         try:
@@ -920,6 +950,7 @@ class HPE3PARISCSIDriver(driver.TransferVD,
         finally:
             self._logout(common)
 
+    @utils.trace
     def failover_host(self, context, volumes, secondary_id=None):
         """Force failover to a secondary replication target."""
         common = self._login(timeout=30)
