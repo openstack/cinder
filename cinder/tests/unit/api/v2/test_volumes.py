@@ -23,6 +23,7 @@ import six
 from six.moves import range
 from six.moves import urllib
 import webob
+from webob import exc
 
 from cinder.api import common
 from cinder.api import extensions
@@ -658,6 +659,48 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
         self.assertTrue(mock_validate.called)
+
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update_metadata_value_too_long(self, mock_validate):
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_api_get)
+
+        updates = {
+            "metadata": {"key1": ("a" * 260)}
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        self.assertEqual(0, len(self.notifier.notifications))
+        self.assertRaises(exc.HTTPRequestEntityTooLarge,
+                          self.controller.update, req, fake.VOLUME_ID, body)
+
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update_metadata_key_too_long(self, mock_validate):
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_api_get)
+
+        updates = {
+            "metadata": {("a" * 260): "value1"}
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        self.assertEqual(0, len(self.notifier.notifications))
+        self.assertRaises(exc.HTTPRequestEntityTooLarge,
+                          self.controller.update, req, fake.VOLUME_ID, body)
+
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_volume_update_metadata_empty_key(self, mock_validate):
+        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_api_get)
+
+        updates = {
+            "metadata": {"": "value1"}
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+        self.assertEqual(0, len(self.notifier.notifications))
+        self.assertRaises(exc.HTTPBadRequest,
+                          self.controller.update, req, fake.VOLUME_ID, body)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
