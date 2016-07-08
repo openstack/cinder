@@ -1594,8 +1594,18 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
     def test_is_vol_replicated_has_repl_extra_specs(self, mock_get_vol_type):
         mock_get_vol_type.return_value = REPLICATED_VOL_TYPE
         volume = fake_volume.fake_volume_obj(mock.MagicMock())
+        volume.volume_type_id = REPLICATED_VOL_TYPE['id']
         actual = self.driver._is_volume_replicated_type(volume)
         self.assertTrue(actual)
+
+    @mock.patch('cinder.volume.volume_types.get_volume_type')
+    def test_is_vol_replicated_none_type(self, mock_get_vol_type):
+        mock_get_vol_type.side_effect = exception.InvalidVolumeType(reason='')
+        volume = fake_volume.fake_volume_obj(mock.MagicMock())
+        volume.volume_type = None
+        volume.volume_type_id = None
+        actual = self.driver._is_volume_replicated_type(volume)
+        self.assertFalse(actual)
 
     @mock.patch('cinder.volume.volume_types.get_volume_type')
     def test_is_vol_replicated_has_other_extra_specs(self, mock_get_vol_type):
