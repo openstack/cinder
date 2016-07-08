@@ -437,24 +437,33 @@ class ClearVolumeTestCase(test.TestCase):
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
     def test_clear_volume_shred(self, mock_conf, mock_exec):
+        # 'shred' now uses 'dd'.  Remove this test when
+        # support for 'volume_clear=shred' is removed.
         mock_conf.volume_clear = 'shred'
         mock_conf.volume_clear_size = 1
         mock_conf.volume_clear_ionice = None
+        mock_conf.volume_dd_blocksize = '1M'
         output = volume_utils.clear_volume(1024, 'volume_path')
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with(
-            'shred', '-n3', '-s1MiB', "volume_path", run_as_root=True)
+        mock_exec.assert_called_with(
+            'dd', 'if=/dev/zero', 'of=volume_path', 'count=1', 'bs=1M',
+            'oflag=direct', run_as_root=True)
 
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
     def test_clear_volume_shred_not_clear_size(self, mock_conf, mock_exec):
+        # 'shred' now uses 'dd'.  Remove this test when
+        # support for 'volume_clear=shred' is removed.
         mock_conf.volume_clear = 'shred'
         mock_conf.volume_clear_size = None
         mock_conf.volume_clear_ionice = None
+        mock_conf.volume_dd_blocksize = '1M'
+        mock_conf.volume_clear_size = 1
         output = volume_utils.clear_volume(1024, 'volume_path')
         self.assertIsNone(output)
-        mock_exec.assert_called_once_with(
-            'shred', '-n3', "volume_path", run_as_root=True)
+        mock_exec.assert_called_with(
+            'dd', 'if=/dev/zero', 'of=volume_path', 'count=1', 'bs=1M',
+            'oflag=direct', run_as_root=True)
 
     @mock.patch('cinder.volume.utils.CONF')
     def test_clear_volume_invalid_opt(self, mock_conf):

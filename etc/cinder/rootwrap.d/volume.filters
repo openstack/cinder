@@ -65,10 +65,6 @@ lvconvert: CommandFilter, lvconvert, root
 # cinder/volume/driver.py: 'iscsiadm', '-m', 'node', '-T', ...
 iscsiadm: CommandFilter, iscsiadm, root
 
-# cinder/volume/drivers/lvm.py: 'shred', '-n3'
-# cinder/volume/drivers/lvm.py: 'shred', '-n0', '-z', '-s%dMiB'
-shred: CommandFilter, shred, root
-
 # cinder/volume/utils.py: utils.temporary_chown(path, 0)
 chown: CommandFilter, chown, root
 
