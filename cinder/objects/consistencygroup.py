@@ -20,8 +20,6 @@ from cinder.objects import base
 from cinder.objects import fields as c_fields
 from oslo_versionedobjects import fields
 
-OPTIONAL_FIELDS = ['cgsnapshots', 'volumes']
-
 
 @base.CinderObjectRegistry.register
 class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
@@ -30,6 +28,8 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
     # Version 1.1: Added cgsnapshots and volumes relationships
     # Version 1.2: Changed 'status' field to use ConsistencyGroupStatusField
     VERSION = '1.2'
+
+    OPTIONAL_FIELDS = ['cgsnapshots', 'volumes']
 
     fields = {
         'id': fields.UUIDField(),
@@ -47,13 +47,13 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         'volumes': fields.ObjectField('VolumeList', nullable=True),
     }
 
-    @staticmethod
-    def _from_db_object(context, consistencygroup, db_consistencygroup,
+    @classmethod
+    def _from_db_object(cls, context, consistencygroup, db_consistencygroup,
                         expected_attrs=None):
         if expected_attrs is None:
             expected_attrs = []
         for name, field in consistencygroup.fields.items():
-            if name in OPTIONAL_FIELDS:
+            if name in cls.OPTIONAL_FIELDS:
                 continue
             value = db_consistencygroup.get(name)
             setattr(consistencygroup, name, value)
@@ -103,7 +103,7 @@ class ConsistencyGroup(base.CinderPersistentObject, base.CinderObject,
         self._from_db_object(self._context, self, db_consistencygroups)
 
     def obj_load_attr(self, attrname):
-        if attrname not in OPTIONAL_FIELDS:
+        if attrname not in self.OPTIONAL_FIELDS:
             raise exception.ObjectActionError(
                 action='obj_load_attr',
                 reason=_('attribute %s not lazy-loadable') % attrname)
