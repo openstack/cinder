@@ -846,6 +846,11 @@ class ReplicationError(CinderException):
                 "error: %(reason)s")
 
 
+class ReplicationGroupError(CinderException):
+    message = _("Group %(group_id)s replication "
+                "error: %(reason)s.")
+
+
 class ReplicationNotFound(NotFound):
     message = _("Volume replication for %(volume_id)s "
                 "could not be found.")

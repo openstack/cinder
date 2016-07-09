@@ -3057,3 +3057,58 @@ class DBAPIBackendTestCase(BaseTest):
             cluster += '#poolname'
         self.assertEqual(frozen,
                          db.is_backend_frozen(self.ctxt, host, cluster))
+
+
+class DBAPIGroupTestCase(BaseTest):
+    def test_group_get_all_by_host(self):
+        grp_type = db.group_type_create(self.ctxt, {'name': 'my_group_type'})
+        groups = []
+        backend = 'host1@lvm'
+        for i in range(3):
+            groups.append([db.group_create(
+                self.ctxt,
+                {'host': '%(b)s%(n)d' % {'b': backend, 'n': i},
+                 'group_type_id': grp_type['id']})
+                for j in range(3)])
+
+        for i in range(3):
+            host = '%(b)s%(n)d' % {'b': backend, 'n': i}
+            filters = {'host': host, 'backend_match_level': 'backend'}
+            grps = db.group_get_all(
+                self.ctxt, filters=filters)
+            self._assertEqualListsOfObjects(groups[i], grps)
+            for grp in grps:
+                db.group_destroy(self.ctxt, grp['id'])
+
+        db.group_type_destroy(self.ctxt, grp_type['id'])
+
+    def test_group_get_all_by_host_with_pools(self):
+        grp_type = db.group_type_create(self.ctxt, {'name': 'my_group_type'})
+        groups = []
+        backend = 'host1@lvm'
+        pool = '%s#pool1' % backend
+        grp_on_host_wo_pool = [db.group_create(
+            self.ctxt,
+            {'host': backend,
+             'group_type_id': grp_type['id']})
+            for j in range(3)]
+        grp_on_host_w_pool = [db.group_create(
+            self.ctxt,
+            {'host': pool,
+             'group_type_id': grp_type['id']})]
+        groups.append(grp_on_host_wo_pool + grp_on_host_w_pool)
+        # insert an additional record that doesn't belongs to the same
+        # host as 'foo' and test if it is included in the result
+        grp_foobar = db.group_create(self.ctxt,
+                                     {'host': '%sfoo' % backend,
+                                      'group_type_id': grp_type['id']})
+
+        filters = {'host': backend, 'backend_match_level': 'backend'}
+        grps = db.group_get_all(self.ctxt, filters=filters)
+        self._assertEqualListsOfObjects(groups[0], grps)
+        for grp in grps:
+            db.group_destroy(self.ctxt, grp['id'])
+
+        db.group_destroy(self.ctxt, grp_foobar['id'])
+
+        db.group_type_destroy(self.ctxt, grp_type['id'])

@@ -29,7 +29,8 @@ class Group(base.CinderPersistentObject, base.CinderObject,
     # Version 1.0: Initial version
     # Version 1.1: Added group_snapshots, group_snapshot_id, and
     #              source_group_id
-    VERSION = '1.1'
+    # Version 1.2: Added replication_status
+    VERSION = '1.2'
 
     OPTIONAL_FIELDS = ['volumes', 'volume_types', 'group_snapshots']
 
@@ -47,6 +48,7 @@ class Group(base.CinderPersistentObject, base.CinderObject,
         'status': c_fields.GroupStatusField(nullable=True),
         'group_snapshot_id': fields.UUIDField(nullable=True),
         'source_group_id': fields.UUIDField(nullable=True),
+        'replication_status': c_fields.ReplicationStatusField(nullable=True),
         'volumes': fields.ObjectField('VolumeList', nullable=True),
         'volume_types': fields.ObjectField('VolumeTypeList',
                                            nullable=True),
@@ -62,6 +64,8 @@ class Group(base.CinderPersistentObject, base.CinderObject,
             for key in ('group_snapshot_id', 'source_group_id',
                         'group_snapshots'):
                 primitive.pop(key, None)
+        if target_version < (1, 2):
+            primitive.pop('replication_status', None)
 
     @staticmethod
     def _from_db_object(context, group, db_group,

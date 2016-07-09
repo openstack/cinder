@@ -629,3 +629,29 @@ class VolumeRPCAPITestCase(test.RPCAPITestCase):
                            expected_kwargs_diff={
                                'snapshot_id': self.fake_snapshot.id},
                            version='3.13')
+
+    def test_enable_replication(self):
+        self._test_rpc_api('enable_replication', rpc_method='cast',
+                           server=self.fake_group.host,
+                           group=self.fake_group,
+                           version='3.14')
+
+    def test_disable_replication(self):
+        self._test_rpc_api('disable_replication', rpc_method='cast',
+                           server=self.fake_group.host,
+                           group=self.fake_group,
+                           version='3.14')
+
+    def test_failover_replication(self):
+        self._test_rpc_api('failover_replication', rpc_method='cast',
+                           server=self.fake_group.host,
+                           group=self.fake_group,
+                           allow_attached_volume=False,
+                           secondary_backend_id=None,
+                           version='3.14')
+
+    def test_list_replication_targets(self):
+        self._test_rpc_api('list_replication_targets', rpc_method='call',
+                           server=self.fake_group.host,
+                           group=self.fake_group,
+                           version='3.14')

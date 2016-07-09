@@ -136,6 +136,10 @@
     "group:get_all_group_snapshots": "",
     "group:reset_group_snapshot_status":"",
     "group:reset_status":"",
+    "group:enable_replication": "",
+    "group:disable_replication": "",
+    "group:failover_replication": "",
+    "group:list_replication_targets": "",
 
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
 

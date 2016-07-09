@@ -21,6 +21,7 @@ from cinder.tests.unit.brick import fake_lvm
 from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers import lvm
+from cinder.volume import utils as vol_utils
 from cinder.zonemanager import utils as fczm_utils
 
 
@@ -44,7 +45,20 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
 
     @utils.trace_method
     def create_volume(self, volume):
-        pass
+        """Creates a volume."""
+        super(FakeLoggingVolumeDriver, self).create_volume(volume)
+        model_update = {}
+        try:
+            if (volume.volume_type and volume.volume_type.extra_specs and
+                    vol_utils.is_replicated_spec(
+                        volume.volume_type.extra_specs)):
+                # Sets the new volume's replication_status to disabled
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.DISABLED)
+        except exception.VolumeTypeNotFound:
+            pass
+        if model_update:
+            return model_update
 
     @utils.trace_method
     def delete_volume(self, volume):
@@ -122,6 +136,68 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
+    # Replication Group (Tiramisu)
+    @utils.trace_method
+    def enable_replication(self, context, group, volumes):
+        """Enables replication for a group and volumes in the group."""
+        model_update = {
+            'replication_status': fields.ReplicationStatus.ENABLED}
+        volume_model_updates = []
+        for volume_ref in volumes:
+            volume_model_update = {'id': volume_ref.id}
+            volume_model_update['replication_status'] = (
+                fields.ReplicationStatus.ENABLED)
+            volume_model_updates.append(volume_model_update)
+
+        return model_update, volume_model_updates
+
+    # Replication Group (Tiramisu)
+    @utils.trace_method
+    def disable_replication(self, context, group, volumes):
+        """Disables replication for a group and volumes in the group."""
+        model_update = {
+            'replication_status': fields.ReplicationStatus.DISABLED}
+        volume_model_updates = []
+        for volume_ref in volumes:
+            volume_model_update = {'id': volume_ref.id}
+            volume_model_update['replication_status'] = (
+                fields.ReplicationStatus.DISABLED)
+            volume_model_updates.append(volume_model_update)
+
+        return model_update, volume_model_updates
+
+    # Replication Group (Tiramisu)
+    @utils.trace_method
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id=None):
+        """Fails over replication for a group and volumes in the group."""
+        model_update = {
+            'replication_status': fields.ReplicationStatus.FAILED_OVER}
+        volume_model_updates = []
+        for volume_ref in volumes:
+            volume_model_update = {'id': volume_ref.id}
+            volume_model_update['replication_status'] = (
+                fields.ReplicationStatus.FAILED_OVER)
+            volume_model_updates.append(volume_model_update)
+
+        return model_update, volume_model_updates
+
+    # Replication Group (Tiramisu)
+    @utils.trace_method
+    def create_group(self, context, group):
+        """Creates a group."""
+        model_update = super(FakeLoggingVolumeDriver, self).create_group(
+            context, group)
+        try:
+            if vol_utils.is_group_a_replication_group_type(group):
+                # Sets the new group's replication_status to disabled
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.DISABLED)
+        except exception.GroupTypeNotFound:
+            pass
+
+        return model_update
+
     def _update_volume_stats(self):
         data = {'volume_backend_name': self.backend_name,
                 'vendor_name': 'Open Source',
@@ -138,7 +214,8 @@ class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
                      'filter_function': self.get_filter_function(),
                      'goodness_function': self.get_goodness_function(),
                      'consistencygroup_support': False,
-                     'replication_enabled': False}
+                     'replication_enabled': True,
+                     'group_replication_enabled': True, }
 
         data['pools'].append(fake_pool)
         self._stats = data
@@ -218,7 +295,6 @@ class FakeGateDriver(lvm.LVMVolumeDriver):
     def _update_volume_stats(self):
         super(FakeGateDriver, self)._update_volume_stats()
         self._stats["pools"][0]["consistencygroup_support"] = True
-        self._stats["pools"][0]["replication_enabled"] = True
 
     # NOTE(xyang): Consistency Group functions implemented below
     # are for testing purpose only. Data consistency cannot be

@@ -1505,6 +1505,55 @@ class BaseVD(object):
         method = getattr(cls, method_name)
         return method.__module__ == getattr(BaseVD, method_name).__module__
 
+    # Replication Group (Tiramisu)
+    def enable_replication(self, context, group, volumes):
+        """Enables replication for a group and volumes in the group.
+
+        :param group: group object
+        :param volumes: list of volume objects in the group
+        :returns: model_update - dict of group updates
+        :returns: volume_model_updates - list of dicts of volume updates
+        """
+        raise NotImplementedError()
+
+    # Replication Group (Tiramisu)
+    def disable_replication(self, context, group, volumes):
+        """Disables replication for a group and volumes in the group.
+
+        :param group: group object
+        :param volumes: list of volume objects in the group
+        :returns: model_update - dict of group updates
+        :returns: volume_model_updates - list of dicts of volume updates
+        """
+        raise NotImplementedError()
+
+    # Replication Group (Tiramisu)
+    def failover_replication(self, context, group, volumes,
+                             secondary_backend_id=None):
+        """Fails over replication for a group and volumes in the group.
+
+        :param group: group object
+        :param volumes: list of volume objects in the group
+        :param secondary_backend_id: backend_id of the secondary site
+        :returns: model_update - dict of group updates
+        :returns: volume_model_updates - list of dicts of volume updates
+        """
+        raise NotImplementedError()
+
+    def get_replication_error_status(self, context, groups):
+        """Returns error info for replicated groups and its volumes.
+
+        :returns: group_model_updates - list of dicts of group updates
+        if error happens. For example, a dict of a group can be as follows:
+        {'group_id': xxxx,
+         'replication_status': fields.ReplicationStatus.ERROR}
+        :returns: volume_model_updates - list of dicts of volume updates
+        if error happens. For example, a dict of a volume can be as follows:
+        {'volume_id': xxxx,
+         'replication_status': fields.ReplicationStatus.ERROR}
+        """
+        return [], []
+
     @classmethod
     def supports_replication_feature(cls, feature):
         """Check if driver class supports replication features.

@@ -132,6 +132,11 @@
     "group:reset_group_snapshot_status":"rule:admin_api",
     "group:reset_status":"rule:admin_api",
 
+    "group:enable_replication": "rule:admin_or_owner",
+    "group:disable_replication": "rule:admin_or_owner",
+    "group:failover_replication": "rule:admin_or_owner",
+    "group:list_replication_targets": "rule:admin_or_owner",
+
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
     "message:delete": "rule:admin_or_owner",
     "message:get": "rule:admin_or_owner",

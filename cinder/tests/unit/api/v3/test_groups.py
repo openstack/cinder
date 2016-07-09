@@ -38,6 +38,8 @@ from cinder.volume import api as volume_api
 
 GROUP_MICRO_VERSION = '3.13'
 GROUP_FROM_SRC_MICRO_VERSION = '3.14'
+GROUP_REPLICATION_MICRO_VERSION = '3.38'
+INVALID_GROUP_REPLICATION_MICRO_VERSION = '3.37'
 
 
 @ddt.ddt
@@ -75,6 +77,7 @@ class GroupsAPITestCase(test.TestCase):
             availability_zone='az1',
             host='fakehost',
             status=fields.GroupStatus.CREATING,
+            replication_status=fields.ReplicationStatus.DISABLED,
             **kwargs):
         """Create a group object."""
         ctxt = ctxt or self.ctxt
@@ -88,6 +91,7 @@ class GroupsAPITestCase(test.TestCase):
         group.volume_type_ids = volume_type_ids
         group.host = host
         group.status = status
+        group.replication_status = replication_status
         group.update(kwargs)
         group.create()
         return group
@@ -1049,3 +1053,244 @@ class GroupsAPITestCase(test.TestCase):
         grp.destroy()
         volume.destroy()
         source_grp.destroy()
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=True)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    def test_enable_replication(self, mock_rep_grp_type, mock_rep_vol_type):
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group3.id),
+                                      version=GROUP_REPLICATION_MICRO_VERSION)
+        self.group3.status = fields.GroupStatus.AVAILABLE
+        self.group3.save()
+        body = {"enable_replication": {}}
+        response = self.controller.enable_replication(req,
+                                                      self.group3.id, body)
+
+        group = objects.Group.get_by_id(self.ctxt, self.group3.id)
+        self.assertEqual(202, response.status_int)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, group.status)
+        self.assertEqual(fields.ReplicationStatus.ENABLING,
+                         group.replication_status)
+
+    @ddt.data((True, False), (False, True), (False, False))
+    @ddt.unpack
+    @mock.patch('cinder.volume.utils.is_replicated_spec')
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type')
+    def test_enable_replication_wrong_type(self, is_grp_rep_type,
+                                           is_vol_rep_type,
+                                           mock_rep_grp_type,
+                                           mock_rep_vol_type):
+        mock_rep_grp_type.return_value = is_grp_rep_type
+        mock_rep_vol_type.return_value = is_vol_rep_type
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group3.id),
+                                      version=GROUP_REPLICATION_MICRO_VERSION)
+        self.group3.status = fields.GroupStatus.AVAILABLE
+        self.group3.save()
+        body = {"enable_replication": {}}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.enable_replication,
+                          req, self.group3.id, body)
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=False)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    def test_enable_replication_wrong_group_type(self, mock_rep_grp_type,
+                                                 mock_rep_vol_type):
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group3.id),
+                                      version=GROUP_REPLICATION_MICRO_VERSION)
+        self.group3.status = fields.GroupStatus.AVAILABLE
+        self.group3.save()
+        body = {"enable_replication": {}}
+        self.assertRaises(webob.exc.HTTPBadRequest,
+                          self.controller.enable_replication,
+                          req, self.group3.id, body)
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=True)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    @ddt.data((GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.CREATING,
+               webob.exc.HTTPBadRequest),
+              (GROUP_REPLICATION_MICRO_VERSION, False,
+               fields.GroupStatus.AVAILABLE,
+               exception.GroupNotFound),
+              (INVALID_GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.AVAILABLE,
+               exception.VersionNotFoundForAPIMethod),
+              )
+    @ddt.unpack
+    def test_enable_replication_negative(self, version, not_fake,
+                                         status, exceptions,
+                                         mock_rep_grp_type, mock_rep_vol_type):
+        if not_fake:
+            group_id = self.group3.id
+        else:
+            group_id = fake.GROUP_ID
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, group_id),
+                                      version=version)
+        if not_fake:
+            self.group3.status = status
+            self.group3.save()
+        body = {"enable_replication": {}}
+        self.assertRaises(exceptions,
+                          self.controller.enable_replication,
+                          req, group_id, body)
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=True)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    def test_disable_replication(self, mock_rep_grp_type, mock_rep_vol_type):
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group3.id),
+                                      version=GROUP_REPLICATION_MICRO_VERSION)
+        self.group3.status = fields.GroupStatus.AVAILABLE
+        self.group3.replication_status = fields.ReplicationStatus.ENABLED
+        self.group3.save()
+        body = {"disable_replication": {}}
+        response = self.controller.disable_replication(req,
+                                                       self.group3.id, body)
+
+        group = objects.Group.get_by_id(self.ctxt, self.group3.id)
+        self.assertEqual(202, response.status_int)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, group.status)
+        self.assertEqual(fields.ReplicationStatus.DISABLING,
+                         group.replication_status)
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=True)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    @ddt.data((GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.CREATING,
+               fields.ReplicationStatus.ENABLED,
+               webob.exc.HTTPBadRequest),
+              (GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.AVAILABLE,
+               fields.ReplicationStatus.DISABLED,
+               webob.exc.HTTPBadRequest),
+              (GROUP_REPLICATION_MICRO_VERSION, False,
+               fields.GroupStatus.AVAILABLE,
+               fields.ReplicationStatus.DISABLED,
+               exception.GroupNotFound),
+              (INVALID_GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.AVAILABLE,
+               fields.ReplicationStatus.ENABLED,
+               exception.VersionNotFoundForAPIMethod),
+              )
+    @ddt.unpack
+    def test_disable_replication_negative(self, version, not_fake,
+                                          status, rep_status, exceptions,
+                                          mock_rep_grp_type,
+                                          mock_rep_vol_type):
+        if not_fake:
+            group_id = self.group3.id
+        else:
+            group_id = fake.GROUP_ID
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, group_id),
+                                      version=version)
+        if not_fake:
+            self.group3.status = status
+            self.group3.replication_status = rep_status
+            self.group3.save()
+        body = {"disable_replication": {}}
+        self.assertRaises(exceptions,
+                          self.controller.disable_replication,
+                          req, group_id, body)
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=True)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    def test_failover_replication(self, mock_rep_grp_type, mock_rep_vol_type):
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group3.id),
+                                      version=GROUP_REPLICATION_MICRO_VERSION)
+        self.group3.status = fields.GroupStatus.AVAILABLE
+        self.group3.replication_status = fields.ReplicationStatus.ENABLED
+        self.group3.save()
+        body = {"failover_replication": {}}
+        response = self.controller.failover_replication(req,
+                                                        self.group3.id, body)
+
+        group = objects.Group.get_by_id(self.ctxt, self.group3.id)
+        self.assertEqual(202, response.status_int)
+        self.assertEqual(fields.GroupStatus.AVAILABLE, group.status)
+        self.assertEqual(fields.ReplicationStatus.FAILING_OVER,
+                         group.replication_status)
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=True)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    @ddt.data((GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.CREATING,
+               fields.ReplicationStatus.ENABLED,
+               webob.exc.HTTPBadRequest),
+              (GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.AVAILABLE,
+               fields.ReplicationStatus.DISABLED,
+               webob.exc.HTTPBadRequest),
+              (GROUP_REPLICATION_MICRO_VERSION, False,
+               fields.GroupStatus.AVAILABLE,
+               fields.ReplicationStatus.DISABLED,
+               exception.GroupNotFound),
+              (INVALID_GROUP_REPLICATION_MICRO_VERSION, True,
+               fields.GroupStatus.AVAILABLE,
+               fields.ReplicationStatus.ENABLED,
+               exception.VersionNotFoundForAPIMethod),
+              )
+    @ddt.unpack
+    def test_failover_replication_negative(self, version, not_fake,
+                                           status, rep_status, exceptions,
+                                           mock_rep_grp_type,
+                                           mock_rep_vol_type):
+        if not_fake:
+            group_id = self.group3.id
+        else:
+            group_id = fake.GROUP_ID
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, group_id),
+                                      version=version)
+        if not_fake:
+            self.group3.status = status
+            self.group3.replication_status = rep_status
+            self.group3.save()
+        body = {"failover_replication": {}}
+        self.assertRaises(exceptions,
+                          self.controller.failover_replication,
+                          req, group_id, body)
+
+    @mock.patch('cinder.volume.utils.is_replicated_spec',
+                return_value=True)
+    @mock.patch('cinder.volume.utils.is_group_a_replication_group_type',
+                return_value=True)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.list_replication_targets')
+    def test_list_replication_targets(self, mock_list_rep_targets,
+                                      mock_rep_grp_type, mock_rep_vol_type):
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/%s/action' %
+                                      (fake.PROJECT_ID, self.group3.id),
+                                      version=GROUP_REPLICATION_MICRO_VERSION)
+        targets = {
+            'replication_targets': [
+                {'backend_id': 'lvm_backend_1'}
+            ]
+        }
+        mock_list_rep_targets.return_value = targets
+        self.group3.status = fields.GroupStatus.AVAILABLE
+        self.group3.save()
+        body = {"list_replication_targets": {}}
+        response = self.controller.list_replication_targets(
+            req, self.group3.id, body)
+
+        self.assertIn('replication_targets', response)
+        self.assertEqual('lvm_backend_1',
+                         response['replication_targets'][0]['backend_id'])

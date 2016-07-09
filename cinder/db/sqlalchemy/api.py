@@ -5563,6 +5563,16 @@ def _group_snapshot_get_query(context, session=None, project_only=False):
 @apply_like_filters(model=models.Group)
 def _process_groups_filters(query, filters):
     if filters:
+        # NOTE(xyang): backend_match_level needs to be handled before
+        # is_valid_model_filters is called as it is not a column name
+        # in the db.
+        backend_match_level = filters.pop('backend_match_level', 'backend')
+        # host is a valid filter. Filter the query by host and
+        # backend_match_level first.
+        host = filters.pop('host', None)
+        if host:
+            query = query.filter(_filter_host(models.Group.host, host,
+                                              match_level=backend_match_level))
         # Ensure that filters' keys exist on the model
         if not is_valid_model_filters(models.Group, filters):
             return
@@ -5582,10 +5592,9 @@ def _process_group_snapshot_filters(query, filters):
 
 def _group_get_all(context, filters=None, marker=None, limit=None,
                    offset=None, sort_keys=None, sort_dirs=None):
-    if filters and not is_valid_model_filters(models.Group,
-                                              filters):
-        return []
-
+    # No need to call is_valid_model_filters here. It is called
+    # in _process_group_filters when _generate_paginate_query
+    # is called below.
     session = get_session()
     with session.begin():
         # Generate the paginate query

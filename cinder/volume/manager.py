@@ -2172,6 +2172,49 @@ class VolumeManager(manager.CleanableManager,
             if self.extra_capabilities:
                 volume_stats.update(self.extra_capabilities)
             if volume_stats:
+
+                # NOTE(xyang): If driver reports replication_status to be
+                # 'error' in volume_stats, get model updates from driver
+                # and update db
+                if volume_stats.get('replication_status') == (
+                        fields.ReplicationStatus.ERROR):
+                    backend = vol_utils.extract_host(self.host, 'backend')
+                    groups = vol_utils.get_replication_groups_by_host(
+                        context, backend)
+                    group_model_updates, volume_model_updates = (
+                        self.driver.get_replication_error_status(context,
+                                                                 groups))
+                    for grp_update in group_model_updates:
+                        try:
+                            grp_obj = objects.Group.get_by_id(
+                                context, grp_update['group_id'])
+                            grp_obj.update(grp_update)
+                            grp_obj.save()
+                        except exception.GroupNotFound:
+                            # Group may be deleted already. Log a warning
+                            # and continue.
+                            LOG.warning("Group %(grp)s not found while "
+                                        "updating driver status.",
+                                        {'grp': grp_update['group_id']},
+                                        resource={
+                                            'type': 'group',
+                                            'id': grp_update['group_id']})
+                    for vol_update in volume_model_updates:
+                        try:
+                            vol_obj = objects.Volume.get_by_id(
+                                context, vol_update['volume_id'])
+                            vol_obj.update(vol_update)
+                            vol_obj.save()
+                        except exception.VolumeNotFound:
+                            # Volume may be deleted already. Log a warning
+                            # and continue.
+                            LOG.warning("Volume %(vol)s not found while "
+                                        "updating driver status.",
+                                        {'vol': vol_update['volume_id']},
+                                        resource={
+                                            'type': 'volume',
+                                            'id': vol_update['volume_id']})
+
                 # Append volume stats with 'allocated_capacity_gb'
                 self._append_volume_stats(volume_stats)
 
@@ -4182,3 +4225,332 @@ class VolumeManager(manager.CleanableManager,
                                                  'attached_mode')
         self._notify_about_volume_usage(context, vref, "detach.end")
         return has_shared_connection
+
+    # Replication group API (Tiramisu)
+    def enable_replication(self, ctxt, group):
+        """Enable replication."""
+        group.refresh()
+        if group.replication_status != fields.ReplicationStatus.ENABLING:
+            msg = _("Replication status in group %s is not "
+                    "enabling. Cannot enable replication.") % group.id
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        volumes = group.volumes
+        for vol in volumes:
+            vol.refresh()
+            if vol.replication_status != fields.ReplicationStatus.ENABLING:
+                msg = _("Replication status in volume %s is not "
+                        "enabling. Cannot enable replication.") % vol.id
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+
+        self._notify_about_group_usage(
+            ctxt, group, "enable_replication.start")
+
+        volumes_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            model_update, volumes_model_update = (
+                self.driver.enable_replication(ctxt, group, volumes))
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    vol_obj = objects.Volume.get_by_id(ctxt, update['id'])
+                    vol_obj.update(update)
+                    vol_obj.save()
+                    # If we failed to enable a volume, make sure the status
+                    # for the group is set to error as well
+                    if (update.get('replication_status') ==
+                            fields.ReplicationStatus.ERROR and
+                            model_update.get('replication_status') !=
+                            fields.ReplicationStatus.ERROR):
+                        model_update['replication_status'] = update.get(
+                            'replication_status')
+
+            if model_update:
+                if (model_update.get('replication_status') ==
+                        fields.ReplicationStatus.ERROR):
+                    msg = _('Enable replication failed.')
+                    LOG.error(msg,
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group.update(model_update)
+                    group.save()
+
+        except exception.CinderException as ex:
+            group.status = fields.GroupStatus.ERROR
+            group.replication_status = fields.ReplicationStatus.ERROR
+            group.save()
+            # Update volume status to 'error' if driver returns
+            # None for volumes_model_update.
+            if not volumes_model_update:
+                for vol in volumes:
+                    vol.status = 'error'
+                    vol.replication_status = fields.ReplicationStatus.ERROR
+                    vol.save()
+            err_msg = _("Enable replication group failed: "
+                        "%s.") % six.text_type(ex)
+            raise exception.ReplicationGroupError(reason=err_msg,
+                                                  group_id=group.id)
+
+        for vol in volumes:
+            vol.replication_status = fields.ReplicationStatus.ENABLED
+            vol.save()
+        group.replication_status = fields.ReplicationStatus.ENABLED
+        group.save()
+
+        self._notify_about_group_usage(
+            ctxt, group, "enable_replication.end", volumes)
+        LOG.info("Enable replication completed successfully.",
+                 resource={'type': 'group',
+                           'id': group.id})
+
+    # Replication group API (Tiramisu)
+    def disable_replication(self, ctxt, group):
+        """Disable replication."""
+        group.refresh()
+        if group.replication_status != fields.ReplicationStatus.DISABLING:
+            msg = _("Replication status in group %s is not "
+                    "disabling. Cannot disable replication.") % group.id
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        volumes = group.volumes
+        for vol in volumes:
+            vol.refresh()
+            if (vol.replication_status !=
+                    fields.ReplicationStatus.DISABLING):
+                msg = _("Replication status in volume %s is not "
+                        "disabling. Cannot disable replication.") % vol.id
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+
+        self._notify_about_group_usage(
+            ctxt, group, "disable_replication.start")
+
+        volumes_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            model_update, volumes_model_update = (
+                self.driver.disable_replication(ctxt, group, volumes))
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    vol_obj = objects.Volume.get_by_id(ctxt, update['id'])
+                    vol_obj.update(update)
+                    vol_obj.save()
+                    # If we failed to enable a volume, make sure the status
+                    # for the group is set to error as well
+                    if (update.get('replication_status') ==
+                            fields.ReplicationStatus.ERROR and
+                            model_update.get('replication_status') !=
+                            fields.ReplicationStatus.ERROR):
+                        model_update['replication_status'] = update.get(
+                            'replication_status')
+
+            if model_update:
+                if (model_update.get('replication_status') ==
+                        fields.ReplicationStatus.ERROR):
+                    msg = _('Disable replication failed.')
+                    LOG.error(msg,
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group.update(model_update)
+                    group.save()
+
+        except exception.CinderException as ex:
+            group.status = fields.GroupStatus.ERROR
+            group.replication_status = fields.ReplicationStatus.ERROR
+            group.save()
+            # Update volume status to 'error' if driver returns
+            # None for volumes_model_update.
+            if not volumes_model_update:
+                for vol in volumes:
+                    vol.status = 'error'
+                    vol.replication_status = fields.ReplicationStatus.ERROR
+                    vol.save()
+            err_msg = _("Disable replication group failed: "
+                        "%s.") % six.text_type(ex)
+            raise exception.ReplicationGroupError(reason=err_msg,
+                                                  group_id=group.id)
+
+        for vol in volumes:
+            vol.replication_status = fields.ReplicationStatus.DISABLED
+            vol.save()
+        group.replication_status = fields.ReplicationStatus.DISABLED
+        group.save()
+
+        self._notify_about_group_usage(
+            ctxt, group, "disable_replication.end", volumes)
+        LOG.info("Disable replication completed successfully.",
+                 resource={'type': 'group',
+                           'id': group.id})
+
+    # Replication group API (Tiramisu)
+    def failover_replication(self, ctxt, group, allow_attached_volume=False,
+                             secondary_backend_id=None):
+        """Failover replication."""
+        group.refresh()
+        if group.replication_status != fields.ReplicationStatus.FAILING_OVER:
+            msg = _("Replication status in group %s is not "
+                    "failing-over. Cannot failover replication.") % group.id
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        volumes = group.volumes
+        for vol in volumes:
+            vol.refresh()
+            if vol.status == 'in-use' and not allow_attached_volume:
+                msg = _("Volume %s is attached but allow_attached_volume flag "
+                        "is False. Cannot failover replication.") % vol.id
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+            if (vol.replication_status !=
+                    fields.ReplicationStatus.FAILING_OVER):
+                msg = _("Replication status in volume %s is not "
+                        "failing-over. Cannot failover replication.") % vol.id
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
+
+        self._notify_about_group_usage(
+            ctxt, group, "failover_replication.start")
+
+        volumes_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            model_update, volumes_model_update = (
+                self.driver.failover_replication(
+                    ctxt, group, volumes, secondary_backend_id))
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    vol_obj = objects.Volume.get_by_id(ctxt, update['id'])
+                    vol_obj.update(update)
+                    vol_obj.save()
+                    # If we failed to enable a volume, make sure the status
+                    # for the group is set to error as well
+                    if (update.get('replication_status') ==
+                            fields.ReplicationStatus.ERROR and
+                            model_update.get('replication_status') !=
+                            fields.ReplicationStatus.ERROR):
+                        model_update['replication_status'] = update.get(
+                            'replication_status')
+
+            if model_update:
+                if (model_update.get('replication_status') ==
+                        fields.ReplicationStatus.ERROR):
+                    msg = _('Failover replication failed.')
+                    LOG.error(msg,
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group.update(model_update)
+                    group.save()
+
+        except exception.CinderException as ex:
+            group.status = fields.GroupStatus.ERROR
+            group.replication_status = fields.ReplicationStatus.ERROR
+            group.save()
+            # Update volume status to 'error' if driver returns
+            # None for volumes_model_update.
+            if not volumes_model_update:
+                for vol in volumes:
+                    vol.status = 'error'
+                    vol.replication_status = fields.ReplicationStatus.ERROR
+                    vol.save()
+            err_msg = _("Failover replication group failed: "
+                        "%s.") % six.text_type(ex)
+            raise exception.ReplicationGroupError(reason=err_msg,
+                                                  group_id=group.id)
+
+        for vol in volumes:
+            if secondary_backend_id == "default":
+                vol.replication_status = fields.ReplicationStatus.ENABLED
+            else:
+                vol.replication_status = (
+                    fields.ReplicationStatus.FAILED_OVER)
+            vol.save()
+        if secondary_backend_id == "default":
+            group.replication_status = fields.ReplicationStatus.ENABLED
+        else:
+            group.replication_status = fields.ReplicationStatus.FAILED_OVER
+        group.save()
+
+        self._notify_about_group_usage(
+            ctxt, group, "failover_replication.end", volumes)
+        LOG.info("Failover replication completed successfully.",
+                 resource={'type': 'group',
+                           'id': group.id})
+
+    def list_replication_targets(self, ctxt, group):
+        """Provide a means to obtain replication targets for a group.
+
+        This method is used to find the replication_device config
+        info. 'backend_id' is a required key in 'replication_device'.
+
+        Response Example for admin:
+        {
+            'replication_targets': [
+                {
+                    'backend_id': 'vendor-id-1',
+                    'unique_key': 'val1',
+                    ......
+                },
+                {
+                    'backend_id': 'vendor-id-2',
+                    'unique_key': 'val2',
+                    ......
+                }
+             ]
+        }
+
+        Response example for non-admin:
+        {
+            'replication_targets': [
+                {
+                    'backend_id': 'vendor-id-1'
+                },
+                {
+                    'backend_id': 'vendor-id-2'
+                }
+             ]
+        }
+
+        """
+
+        replication_targets = []
+        try:
+            group = objects.Group.get_by_id(ctxt, group.id)
+            if self.configuration.replication_device:
+                if ctxt.is_admin:
+                    for rep_dev in self.configuration.replication_device:
+                        keys = rep_dev.keys()
+                        dev = {}
+                        for k in keys:
+                            dev[k] = rep_dev[k]
+                        replication_targets.append(dev)
+                else:
+                    for rep_dev in self.configuration.replication_device:
+                        dev = rep_dev.get('backend_id')
+                        if dev:
+                            replication_targets.append({'backend_id': dev})
+
+        except exception.GroupNotFound:
+            err_msg = (_("Get replication targets failed. Group %s not "
+                         "found.") % group.id)
+            LOG.exception(err_msg)
+            raise exception.VolumeBackendAPIException(data=err_msg)
+
+        return {'replication_targets': replication_targets}
