@@ -34,7 +34,8 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
         self.target = fake.FakeTarget(root_helper=utils.get_root_helper(),
                                       configuration=self.configuration)
         self.target.db = mock.MagicMock(
-            volume_get=lambda x, y: {'provider_auth': 'CHAP otzL 234Z'})
+            volume_get=mock.MagicMock(return_value={'provider_auth':
+                                                    'CHAP otzL 234Z'}))
 
     def test_abc_methods_not_present_fails(self):
         configuration = conf.Configuration(cfg.StrOpt('iscsi_target_prefix',
@@ -161,4 +162,6 @@ class TestBaseISCSITargetDriver(tf.TargetDriverFixture):
         ctxt = context.get_admin_context()
         self.assertEqual(('otzL', '234Z'),
                          self.target._get_target_chap_auth(ctxt,
-                                                           self.test_vol))
+                                                           self.testvol))
+        self.target.db.volume_get.assert_called_once_with(
+            ctxt, self.testvol['id'])
