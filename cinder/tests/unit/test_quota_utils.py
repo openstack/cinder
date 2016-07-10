@@ -21,7 +21,6 @@ from cinder import quota_utils
 from cinder import test
 
 from keystoneclient import exceptions
-from keystonemiddleware import auth_token
 
 from oslo_config import cfg
 from oslo_config import fixture as config_fixture
@@ -43,7 +42,7 @@ class QuotaUtilsTest(test.TestCase):
 
         self.auth_url = 'http://localhost:5000'
         self.context = context.RequestContext('fake_user', 'fake_proj_id')
-        self.fixture = self.useFixture(config_fixture.Config(auth_token.CONF))
+        self.fixture = self.useFixture(config_fixture.Config(CONF))
         self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
 
     @mock.patch('keystoneclient.client.Client')
