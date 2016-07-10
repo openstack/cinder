@@ -40,7 +40,7 @@ class VolumeTransferAPITestCase(test.TestCase):
         self.volume_transfer_api = cinder.transfer.API()
         self.controller = volume_transfer.VolumeTransferController()
         self.user_ctxt = context.RequestContext(
-            fake.USER_ID, fake.PROJECT_ID, auth_token=True, admin=True)
+            fake.USER_ID, fake.PROJECT_ID, auth_token=True, is_admin=True)
 
     def _create_transfer(self, volume_id=fake.VOLUME_ID,
                          display_name='test_transfer'):
