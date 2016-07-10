@@ -37,8 +37,6 @@ from cinder import test
 import cinder.tests.unit.image.fake
 from cinder import volume
 
-from keystonemiddleware import auth_token
-
 
 CONF = cfg.CONF
 
@@ -1407,7 +1405,7 @@ class NestedDbQuotaDriverBaseTestCase(DbQuotaDriverBaseTestCase):
         keystone_patcher.start()
         self.addCleanup(keystone_patcher.stop)
 
-        self.fixture = self.useFixture(config_fixture.Config(auth_token.CONF))
+        self.fixture = self.useFixture(config_fixture.Config(CONF))
         self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
         self.driver = quota.NestedDbQuotaDriver()
 
