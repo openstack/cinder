@@ -101,8 +101,10 @@ def attach_volume(ctxt, volume_id, instance_uuid, attached_host,
     values['attach_time'] = now
 
     attachment = db.volume_attach(ctxt, values)
-    return db.volume_attached(ctxt, attachment['id'], instance_uuid,
-                              attached_host, mountpoint, mode)
+    volume, updated_values = db.volume_attached(
+        ctxt, attachment['id'], instance_uuid,
+        attached_host, mountpoint, mode)
+    return volume
 
 
 def create_snapshot(ctxt,

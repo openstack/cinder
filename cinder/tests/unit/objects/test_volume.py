@@ -21,6 +21,7 @@ import six
 from cinder import context
 from cinder import exception
 from cinder import objects
+from cinder.objects import fields
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
@@ -410,6 +411,29 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         serialized_volume = serializer.serialize_entity(self.context, volume)
         volume = serializer.deserialize_entity(self.context, serialized_volume)
         self.assertDictEqual({}, volume.obj_get_changes())
+
+    @mock.patch('cinder.db.volume_admin_metadata_update')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_attach')
+    def test_begin_attach(self, volume_attach, metadata_update):
+        volume = fake_volume.fake_volume_obj(self.context)
+        db_attachment = fake_volume.fake_db_volume_attachment(
+            volume_id=volume.id,
+            attach_status=fields.VolumeAttachStatus.ATTACHING)
+        volume_attach.return_value = db_attachment
+        metadata_update.return_value = {'attached_mode': 'rw'}
+
+        with mock.patch.object(self.context, 'elevated') as mock_elevated:
+            mock_elevated.return_value = context.get_admin_context()
+            attachment = volume.begin_attach("rw")
+            self.assertIsInstance(attachment, objects.VolumeAttachment)
+            self.assertEqual(volume.id, attachment.volume_id)
+            self.assertEqual(fields.VolumeAttachStatus.ATTACHING,
+                             attachment.attach_status)
+            metadata_update.assert_called_once_with(self.context.elevated(),
+                                                    volume.id,
+                                                    {'attached_mode': u'rw'},
+                                                    True)
+            self.assertEqual('rw', volume.admin_metadata['attached_mode'])
 
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):

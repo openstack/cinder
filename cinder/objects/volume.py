@@ -374,7 +374,9 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
             if updates.get('status') == 'downloading':
                 self.set_worker()
 
-            db.volume_update(self._context, self.id, updates)
+            # updates are changed after popping out metadata.
+            if updates:
+                db.volume_update(self._context, self.id, updates)
             self.obj_reset_changes()
 
     def destroy(self):
@@ -503,6 +505,17 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
         if obj_version and obj_version < 1.6:
             return False
         return status in ('creating', 'deleting', 'uploading', 'downloading')
+
+    def begin_attach(self, attach_mode):
+        attachment = objects.VolumeAttachment(
+            context=self._context,
+            attach_status=c_fields.VolumeAttachStatus.ATTACHING,
+            volume_id=self.id)
+        attachment.create()
+        with self.obj_as_admin():
+            self.admin_metadata['attached_mode'] = attach_mode
+            self.save()
+        return attachment
 
 
 @base.CinderObjectRegistry.register

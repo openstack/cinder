@@ -1401,22 +1401,23 @@ def volume_attached(context, attachment_id, instance_uuid, host_name,
         volume_attachment_ref = volume_attachment_get(context, attachment_id,
                                                       session=session)
 
-        volume_attachment_ref['mountpoint'] = mountpoint
-        volume_attachment_ref['attach_status'] = (fields.VolumeAttachStatus.
-                                                  ATTACHED)
-        volume_attachment_ref['instance_uuid'] = instance_uuid
-        volume_attachment_ref['attached_host'] = host_name
-        volume_attachment_ref['attach_time'] = timeutils.utcnow()
-        volume_attachment_ref['attach_mode'] = attach_mode
+        updated_values = {'mountpoint': mountpoint,
+                          'attach_status': fields.VolumeAttachStatus.ATTACHED,
+                          'instance_uuid': instance_uuid,
+                          'attached_host': host_name,
+                          'attach_time': timeutils.utcnow(),
+                          'attach_mode': attach_mode,
+                          'updated_at': literal_column('updated_at')}
+        volume_attachment_ref.update(updated_values)
+        volume_attachment_ref.save(session=session)
+        del updated_values['updated_at']
 
         volume_ref = _volume_get(context, volume_attachment_ref['volume_id'],
                                  session=session)
-        volume_attachment_ref.save(session=session)
-
         volume_ref['status'] = 'in-use'
         volume_ref['attach_status'] = fields.VolumeAttachStatus.ATTACHED
         volume_ref.save(session=session)
-        return volume_ref
+        return (volume_ref, updated_values)
 
 
 @handle_db_data_error

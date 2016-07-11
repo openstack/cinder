@@ -15,6 +15,8 @@
 from oslo_versionedobjects import fields
 
 from cinder import db
+from cinder import exception
+from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder.objects import fields as c_fields
@@ -58,6 +60,28 @@ class VolumeAttachment(base.CinderPersistentObject, base.CinderObject,
         if updates:
             db.volume_attachment_update(self._context, self.id, updates)
             self.obj_reset_changes()
+
+    def finish_attach(self, instance_uuid, host_name,
+                      mount_point, attach_mode='rw'):
+        with self.obj_as_admin():
+            db_volume, updated_values = db.volume_attached(
+                self._context, self.id,
+                instance_uuid, host_name,
+                mount_point, attach_mode)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
+        return objects.Volume._from_db_object(self._context,
+                                              objects.Volume(),
+                                              db_volume)
+
+    def create(self):
+        if self.obj_attr_is_set('id'):
+            raise exception.ObjectActionError(action='create',
+                                              reason=_('already created'))
+        updates = self.cinder_obj_get_changes()
+        with self.obj_as_admin():
+            db_attachment = db.volume_attach(self._context, updates)
+        self._from_db_object(self._context, self, db_attachment)
 
 
 @base.CinderObjectRegistry.register

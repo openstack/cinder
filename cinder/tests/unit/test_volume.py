@@ -213,6 +213,8 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.patch('cinder.volume.utils.clear_volume', autospec=True)
         self.expected_status = 'available'
         self.service_id = 1
+        self.user_context = context.RequestContext(user_id=fake.USER_ID,
+                                                   project_id=fake.PROJECT_ID)
 
     @mock.patch('cinder.manager.CleanableManager.init_host')
     def test_init_host_count_allocated_capacity(self, init_host_mock):
@@ -2074,27 +2076,34 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           self.volume.initialize_connection,
                           self.context, volume, connector)
 
-    def test_run_attach_detach_volume_for_instance(self):
+    @ddt.data(False, True)
+    def test_run_attach_detach_volume_for_instance(self, volume_object):
         """Make sure volume can be attached and detached from instance."""
         mountpoint = "/dev/sdf"
         # attach volume to the instance then to detach
         instance_uuid = '12345678-1234-5678-1234-567812345678'
-        volume = tests_utils.create_volume(self.context,
-                                           admin_metadata={'readonly': 'True'},
+        volume = tests_utils.create_volume(self.user_context,
                                            **self.volume_params)
+        with volume.obj_as_admin():
+            volume.admin_metadata['readonly'] = True
+            volume.save()
         volume_id = volume['id']
-        self.volume.create_volume(self.context, volume)
-        attachment = self.volume.attach_volume(self.context, volume_id,
+        self.volume.create_volume(self.user_context,
+                                  volume=volume)
+        volume_passed = volume if volume_object else None
+        attachment = self.volume.attach_volume(self.user_context,
+                                               volume_id,
                                                instance_uuid, None,
-                                               mountpoint, 'ro')
-        vol = db.volume_get(context.get_admin_context(), volume_id)
-        self.assertEqual("in-use", vol['status'])
+                                               mountpoint, 'ro',
+                                               volume=volume_passed)
+        vol = objects.Volume.get_by_id(self.context, volume_id)
+        self.assertEqual("in-use", vol.status)
         self.assertEqual(fields.VolumeAttachStatus.ATTACHED,
-                         attachment['attach_status'])
-        self.assertEqual(mountpoint, attachment['mountpoint'])
-        self.assertEqual(instance_uuid, attachment['instance_uuid'])
-        self.assertIsNone(attachment['attached_host'])
-        admin_metadata = vol['volume_admin_metadata']
+                         attachment.attach_status)
+        self.assertEqual(mountpoint, attachment.mountpoint)
+        self.assertEqual(instance_uuid, attachment.instance_uuid)
+        self.assertIsNone(attachment.attached_host)
+        admin_metadata = vol.volume_admin_metadata
         self.assertEqual(2, len(admin_metadata))
         expected = dict(readonly='True', attached_mode='ro')
         ret = {}
@@ -2103,6 +2112,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertDictMatch(expected, ret)
 
         connector = {'initiator': 'iqn.2012-07.org.fake:01'}
+        volume = volume if volume_object else vol
         conn_info = self.volume.initialize_connection(self.context,
                                                       volume, connector)
         self.assertEqual('ro', conn_info['data']['access_mode'])
@@ -2827,8 +2837,11 @@ class VolumeTestCase(base.BaseVolumeTestCase):
             self.context.project_id, resource_type=resource_types.VOLUME,
             resource_uuid=volume['id'])
 
+        attachment = objects.VolumeAttachmentList.get_all_by_volume_id(
+            context.get_admin_context(), volume_id)[0]
+        self.assertEqual(fields.VolumeAttachStatus.ERROR_ATTACHING,
+                         attachment.attach_status)
         vol = db.volume_get(context.get_admin_context(), volume_id)
-        self.assertEqual('error_attaching', vol['status'])
         self.assertEqual(fields.VolumeAttachStatus.DETACHED,
                          vol['attach_status'])
         admin_metadata = vol['volume_admin_metadata']
@@ -2848,8 +2861,11 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           'fake_host',
                           mountpoint,
                           'rw')
+        attachment = objects.VolumeAttachmentList.get_all_by_volume_id(
+            context.get_admin_context(), volume_id)[0]
+        self.assertEqual(fields.VolumeAttachStatus.ERROR_ATTACHING,
+                         attachment.attach_status)
         vol = db.volume_get(context.get_admin_context(), volume_id)
-        self.assertEqual('error_attaching', vol['status'])
         self.assertEqual(fields.VolumeAttachStatus.DETACHED,
                          vol['attach_status'])
         admin_metadata = vol['volume_admin_metadata']

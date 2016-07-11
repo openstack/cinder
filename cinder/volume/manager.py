@@ -925,70 +925,67 @@ class VolumeManager(manager.CleanableManager,
 
     @coordination.synchronized('{volume_id}')
     def attach_volume(self, context, volume_id, instance_uuid, host_name,
-                      mountpoint, mode):
+                      mountpoint, mode, volume=None):
         """Updates db to show volume is attached."""
+        # FIXME(lixiaoy1): Remove this in v4.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look
+            # up the volume by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+        # Get admin_metadata. This needs admin context.
+        with volume.obj_as_admin():
+            volume_metadata = volume.admin_metadata
         # check the volume status before attaching
-        volume = self.db.volume_get(context, volume_id)
-        volume_metadata = self.db.volume_admin_metadata_get(
-            context.elevated(), volume_id)
-        if volume['status'] == 'attaching':
+        if volume.status == 'attaching':
             if (volume_metadata.get('attached_mode') and
                volume_metadata.get('attached_mode') != mode):
                 raise exception.InvalidVolume(
                     reason=_("being attached by different mode"))
 
-        if (volume['status'] == 'in-use' and not volume['multiattach']
-           and not volume['migration_status']):
+        if (volume.status == 'in-use' and not volume.multiattach
+           and not volume.migration_status):
             raise exception.InvalidVolume(
                 reason=_("volume is already attached"))
 
         host_name_sanitized = utils.sanitize_hostname(
             host_name) if host_name else None
         if instance_uuid:
-            attachments = \
-                self.db.volume_attachment_get_all_by_instance_uuid(
-                    context, instance_uuid)
+            attachments = (
+                objects.VolumeAttachmentList.get_all_by_instance_uuid(
+                    context, instance_uuid))
         else:
             attachments = (
-                self.db.volume_attachment_get_all_by_host(
-                    context,
-                    host_name_sanitized))
+                objects.VolumeAttachmentList.get_all_by_host(
+                    context, host_name_sanitized))
         if attachments:
             # check if volume<->instance mapping is already tracked in DB
             for attachment in attachments:
                 if attachment['volume_id'] == volume_id:
-                    self.db.volume_update(context, volume_id,
-                                          {'status': 'in-use'})
+                    volume.status = 'in-use'
+                    volume.save()
                     return attachment
 
         self._notify_about_volume_usage(context, volume,
                                         "attach.start")
-        values = {'volume_id': volume_id,
-                  'attach_status': 'attaching', }
 
-        attachment = self.db.volume_attach(context.elevated(), values)
-        volume_metadata = self.db.volume_admin_metadata_update(
-            context.elevated(), volume_id,
-            {"attached_mode": mode}, False)
+        attachment = volume.begin_attach(mode)
 
-        attachment_id = attachment['id']
         if instance_uuid and not uuidutils.is_uuid_like(instance_uuid):
-            self.db.volume_attachment_update(context, attachment_id,
-                                             {'attach_status':
-                                              'error_attaching'})
+            attachment.attach_status = (
+                fields.VolumeAttachStatus.ERROR_ATTACHING)
+            attachment.save()
             raise exception.InvalidUUID(uuid=instance_uuid)
 
-        volume = self.db.volume_get(context, volume_id)
-
         if volume_metadata.get('readonly') == 'True' and mode != 'ro':
-            self.db.volume_update(context, volume_id,
-                                  {'status': 'error_attaching'})
+            attachment.attach_status = (
+                fields.VolumeAttachStatus.ERROR_ATTACHING)
+            attachment.save()
             self.message_api.create(
                 context, defined_messages.ATTACH_READONLY_VOLUME,
                 context.project_id, resource_type=resource_types.VOLUME,
-                resource_uuid=volume_id)
+                resource_uuid=volume.id)
             raise exception.InvalidVolumeAttachMode(mode=mode,
-                                                    volume_id=volume_id)
+                                                    volume_id=volume.id)
 
         try:
             # NOTE(flaper87): Verify the driver is enabled
@@ -999,7 +996,7 @@ class VolumeManager(manager.CleanableManager,
             LOG.debug('Attaching volume %(volume_id)s to instance '
                       '%(instance)s at mountpoint %(mount)s on host '
                       '%(host)s.',
-                      {'volume_id': volume_id, 'instance': instance_uuid,
+                      {'volume_id': volume.id, 'instance': instance_uuid,
                        'mount': mountpoint, 'host': host_name_sanitized},
                       resource=volume)
             self.driver.attach_volume(context,
@@ -1009,20 +1006,20 @@ class VolumeManager(manager.CleanableManager,
                                       mountpoint)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.volume_attachment_update(
-                    context, attachment_id,
-                    {'attach_status': 'error_attaching'})
+                attachment.attach_status = (
+                    fields.VolumeAttachStatus.ERROR_ATTACHING)
+                attachment.save()
 
-        volume = self.db.volume_attached(context.elevated(),
-                                         attachment_id,
-                                         instance_uuid,
-                                         host_name_sanitized,
-                                         mountpoint,
-                                         mode)
+        volume = attachment.finish_attach(
+            instance_uuid,
+            host_name_sanitized,
+            mountpoint,
+            mode)
+
         self._notify_about_volume_usage(context, volume, "attach.end")
         LOG.info(_LI("Attach volume completed successfully."),
                  resource=volume)
-        return self.db.volume_attachment_get(context, attachment_id)
+        return attachment
 
     @coordination.synchronized('{volume_id}-{f_name}')
     def detach_volume(self, context, volume_id, attachment_id=None):
