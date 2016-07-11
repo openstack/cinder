@@ -64,7 +64,9 @@ def enforce(context, action, target):
     """
     init()
 
-    return _ENFORCER.enforce(action, target, context.to_dict(),
+    return _ENFORCER.enforce(action,
+                             target,
+                             context.to_policy_values(),
                              do_raise=True,
                              exc=exception.PolicyNotAuthorized,
                              action=action)
