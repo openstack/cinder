@@ -214,6 +214,39 @@ class CgsnapshotsAPITestCase(test.TestCase):
             context.get_admin_context(), res_dict['cgsnapshot']['id'])
         cgsnapshot.destroy()
 
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_cgsnapshot_when_volume_in_error_status(self,
+                                                           mock_validate):
+        consistencygroup = utils.create_consistencygroup(self.context)
+        utils.create_volume(
+            self.context,
+            status='error',
+            consistencygroup_id=consistencygroup.id
+        )
+        body = {"cgsnapshot": {"name": "cg1",
+                               "description":
+                               "CG Snapshot 1",
+                               "consistencygroup_id": consistencygroup.id}}
+        req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
+        req.method = 'POST'
+        req.headers['Content-Type'] = 'application/json'
+        req.body = jsonutils.dump_as_bytes(body)
+        res = req.get_response(fakes.wsgi_app(
+            fake_auth_context=self.user_ctxt))
+        res_dict = jsonutils.loads(res.body)
+
+        self.assertEqual(400, res.status_int)
+        self.assertEqual(400, res_dict['badRequest']['code'])
+        self.assertEqual(
+            "Invalid volume: The snapshot cannot be created when the volume "
+            "is in error status.",
+            res_dict['badRequest']['message']
+        )
+        self.assertTrue(mock_validate.called)
+
+        consistencygroup.destroy()
+
     def test_create_cgsnapshot_with_no_body(self):
         # omit body from the request
         req = webob.Request.blank('/v2/%s/cgsnapshots' % fake.PROJECT_ID)
