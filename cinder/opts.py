@@ -87,6 +87,8 @@ from cinder.volume.drivers.emc import xtremio as \
 from cinder.volume.drivers import eqlx as cinder_volume_drivers_eqlx
 from cinder.volume.drivers.fujitsu import eternus_dx_common as \
     cinder_volume_drivers_fujitsu_eternusdxcommon
+from cinder.volume.drivers.fusionstorage import dsware as \
+    cinder_volume_drivers_fusionstorage_dsware
 from cinder.volume.drivers import glusterfs as cinder_volume_drivers_glusterfs
 from cinder.volume.drivers import hgst as cinder_volume_drivers_hgst
 from cinder.volume.drivers.hitachi import hbsd_common as \
@@ -313,6 +315,7 @@ def list_opts():
                 [cinder_scheduler_scheduleroptions.
                     scheduler_json_config_location_opt],
                 cinder_volume_drivers_zfssa_zfssanfs.ZFSSA_OPTS,
+                cinder_volume_drivers_fusionstorage_dsware.volume_opts,
                 cinder_volume_drivers_kaminario_kaminariocommon.
                 kaminario1_opts,
                 cinder_volume_drivers_disco_disco.disco_opts,
