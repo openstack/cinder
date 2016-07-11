@@ -502,6 +502,51 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
 
         return (host_ref, resource_pool, folder, summary)
 
+    def _get_connection_info(self, volume, backing, connector):
+        connection_info = {'driver_volume_type': 'vmdk'}
+        connection_info['data'] = {
+            'volume': backing.value,
+            'volume_id': volume.id,
+            'name': volume.name,
+        }
+
+        # vmdk connector in os-brick needs additional connection info.
+        if 'platform' in connector and 'os_type' in connector:
+            connection_info['data']['vmdk_size'] = volume['size'] * units.Gi
+
+            vmdk_path = self.volumeops.get_vmdk_path(backing)
+            connection_info['data']['vmdk_path'] = vmdk_path
+
+            datastore = self.volumeops.get_datastore(backing)
+            connection_info['data']['datastore'] = datastore.value
+
+            datacenter = self.volumeops.get_dc(backing)
+            connection_info['data']['datacenter'] = datacenter.value
+
+            config = self.configuration
+            vmdk_connector_config = {
+                'vmware_host_ip': config.vmware_host_ip,
+                'vmware_host_port': config.vmware_host_port,
+                'vmware_host_username': config.vmware_host_username,
+                'vmware_host_password': config.vmware_host_password,
+                'vmware_api_retry_count': config.vmware_api_retry_count,
+                'vmware_task_poll_interval': config.vmware_task_poll_interval,
+                'vmware_ca_file': config.vmware_ca_file,
+                'vmware_insecure': config.vmware_insecure,
+                'vmware_tmp_dir': config.vmware_tmp_dir,
+                'vmware_image_transfer_timeout_secs':
+                    config.vmware_image_transfer_timeout_secs,
+            }
+            connection_info['data']['config'] = vmdk_connector_config
+
+        LOG.debug("Returning connection_info (volume: '%(volume)s', volume_id:"
+                  " '%(volume_id)s') for connector: %(connector)s.",
+                  {'volume': connection_info['data']['volume'],
+                   'volume_id': volume.id,
+                   'connector': connector})
+
+        return connection_info
+
     def _initialize_connection(self, volume, connector):
         """Get information of volume's backing.
 
@@ -511,8 +556,6 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         :param connector: Connector information
         :return: Return connection information
         """
-        connection_info = {'driver_volume_type': 'vmdk'}
-
         backing = self.volumeops.get_backing(volume.name)
         if 'instance' in connector:
             # The instance exists
@@ -543,18 +586,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 # Create backing
                 backing = self._create_backing(volume)
 
-        # Set volume ID and backing moref value and name.
-        connection_info['data'] = {'volume': backing.value,
-                                   'volume_id': volume.id,
-                                   'name': volume.name}
-
-        LOG.info(_LI("Returning connection_info: %(info)s for volume: "
-                     "%(volume)s with connector: %(connector)s."),
-                 {'info': connection_info,
-                  'volume': volume.name,
-                  'connector': connector})
-
-        return connection_info
+        return self._get_connection_info(volume, backing, connector)
 
     def initialize_connection(self, volume, connector):
         """Allow connection to connector and return connection info.
