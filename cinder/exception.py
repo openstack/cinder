@@ -1043,6 +1043,35 @@ class ViolinBackendErrNotFound(CinderException):
     message = _("Backend reports: item not found")
 
 
+class BadHTTPResponseStatus(VolumeDriverException):
+    message = _("Bad HTTP response status %(status)s")
+
+
+# ZADARA STORAGE VPSA driver exception
+class ZadaraServerCreateFailure(VolumeDriverException):
+    message = _("Unable to create server object for initiator %(name)s")
+
+
+class ZadaraServerNotFound(NotFound):
+    message = _("Unable to find server object for initiator %(name)s")
+
+
+class ZadaraVPSANoActiveController(VolumeDriverException):
+    message = _("Unable to find any active VPSA controller")
+
+
+class ZadaraAttachmentsNotFound(NotFound):
+    message = _("Failed to retrieve attachments for volume %(name)s")
+
+
+class ZadaraInvalidAttachmentInfo(Invalid):
+    message = _("Invalid attachment info for volume %(name)s: %(reason)s")
+
+
+class ZadaraVolumeNotFound(VolumeDriverException):
+    message = _("%(reason)s")
+
+
 # ZFSSA NFS driver exception.
 class WebDAVClientError(CinderException):
     message = _("The WebDAV request failed. Reason: %(msg)s, "
