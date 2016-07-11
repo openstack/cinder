@@ -49,11 +49,10 @@ class RequestContext(context.RequestContext):
     Represents the user taking a given action within the system.
 
     """
-    def __init__(self, user_id, project_id, is_admin=None, read_deleted="no",
-                 roles=None, project_name=None, remote_address=None,
-                 timestamp=None, request_id=None, auth_token=None,
-                 overwrite=True, quota_class=None, service_catalog=None,
-                 domain=None, user_domain=None, project_domain=None):
+    def __init__(self, user_id=None, project_id=None, is_admin=None,
+                 read_deleted="no", project_name=None, remote_address=None,
+                 timestamp=None, quota_class=None, service_catalog=None,
+                 **kwargs):
         """Initialize RequestContext.
 
         :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
@@ -63,17 +62,14 @@ class RequestContext(context.RequestContext):
         :param overwrite: Set to False to ensure that the greenthread local
             copy of the index is not overwritten.
         """
+        # NOTE(jamielennox): oslo.context still uses some old variables names.
+        # These arguments are maintained instead of passed as kwargs to
+        # maintain the interface for tests.
+        kwargs.setdefault('user', user_id)
+        kwargs.setdefault('tenant', project_id)
 
-        super(RequestContext, self).__init__(auth_token=auth_token,
-                                             user=user_id,
-                                             tenant=project_id,
-                                             domain=domain,
-                                             user_domain=user_domain,
-                                             project_domain=project_domain,
-                                             is_admin=is_admin,
-                                             request_id=request_id,
-                                             overwrite=overwrite,
-                                             roles=roles)
+        super(RequestContext, self).__init__(is_admin=is_admin, **kwargs)
+
         self.project_name = project_name
         self.read_deleted = read_deleted
         self.remote_address = remote_address
