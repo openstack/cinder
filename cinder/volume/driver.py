@@ -1093,7 +1093,7 @@ class BaseVD(object):
         if snapshot:
             temp_vol_ref = self._create_temp_volume_from_snapshot(
                 context, volume, snapshot)
-            backup.temp_volume_id = temp_vol_ref['id']
+            backup.temp_volume_id = temp_vol_ref.id
             backup.save()
             device_to_backup = temp_vol_ref
 
@@ -1106,7 +1106,7 @@ class BaseVD(object):
             if previous_status == "in-use":
                 temp_vol_ref = self._create_temp_cloned_volume(
                     context, volume)
-                backup.temp_volume_id = temp_vol_ref['id']
+                backup.temp_volume_id = temp_vol_ref.id
                 backup.save()
                 device_to_backup = temp_vol_ref
 
@@ -1195,7 +1195,7 @@ class BaseVD(object):
         if snapshot:
             temp_vol_ref = self._create_temp_volume_from_snapshot(
                 context, volume, snapshot)
-            backup.temp_volume_id = temp_vol_ref['id']
+            backup.temp_volume_id = temp_vol_ref.id
             backup.save()
             device_to_backup = temp_vol_ref
 
@@ -1208,7 +1208,7 @@ class BaseVD(object):
             if previous_status == "in-use":
                 temp_vol_ref = self._create_temp_cloned_volume(
                     context, volume)
-                backup.temp_volume_id = temp_vol_ref['id']
+                backup.temp_volume_id = temp_vol_ref.id
                 backup.save()
                 device_to_backup = temp_vol_ref
 
@@ -1359,8 +1359,8 @@ class BaseVD(object):
         temp_snap_ref.save()
         return temp_snap_ref
 
-    def _create_temp_cloned_volume(self, context, volume):
-        temp_volume = {
+    def _create_temp_volume(self, context, volume):
+        kwargs = {
             'size': volume['size'],
             'display_name': 'backup-vol-%s' % volume['id'],
             'host': volume['host'],
@@ -1371,46 +1371,38 @@ class BaseVD(object):
             'availability_zone': volume.availability_zone,
             'volume_type_id': volume.volume_type_id,
         }
-        temp_vol_ref = self.db.volume_create(context, temp_volume)
+        temp_vol_ref = objects.Volume(context=context, **kwargs)
+        temp_vol_ref.create()
+        return temp_vol_ref
+
+    def _create_temp_cloned_volume(self, context, volume):
+        temp_vol_ref = self._create_temp_volume(context, volume)
         try:
-            # Some drivers return None, because they do not need to update the
-            # model for the volume. For those cases we set the model_update to
-            # an empty dictionary.
-            model_update = self.create_cloned_volume(temp_vol_ref,
-                                                     volume) or {}
+            model_update = self.create_cloned_volume(temp_vol_ref, volume)
+            if model_update:
+                temp_vol_ref.update(model_update)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.volume_destroy(context.elevated(),
-                                       temp_vol_ref['id'])
+                temp_vol_ref.destroy()
 
-        model_update['status'] = 'available'
-        self.db.volume_update(context, temp_vol_ref['id'], model_update)
-        return self.db.volume_get(context, temp_vol_ref['id'])
+        temp_vol_ref.status = 'available'
+        temp_vol_ref.save()
+        return temp_vol_ref
 
     def _create_temp_volume_from_snapshot(self, context, volume, snapshot):
-        temp_volume = {
-            'size': volume['size'],
-            'display_name': 'backup-vol-%s' % volume['id'],
-            'host': volume['host'],
-            'user_id': context.user_id,
-            'project_id': context.project_id,
-            'status': 'creating',
-            'attach_status': 'detached',
-            'availability_zone': volume.availability_zone,
-            'volume_type_id': volume.volume_type_id,
-        }
-        temp_vol_ref = self.db.volume_create(context, temp_volume)
+        temp_vol_ref = self._create_temp_volume(context, volume)
         try:
             model_update = self.create_volume_from_snapshot(temp_vol_ref,
-                                                            snapshot) or {}
+                                                            snapshot)
+            if model_update:
+                temp_vol_ref.update(model_update)
         except Exception:
             with excutils.save_and_reraise_exception():
-                self.db.volume_destroy(context.elevated(),
-                                       temp_vol_ref['id'])
+                temp_vol_ref.destroy()
 
-        model_update['status'] = 'available'
-        self.db.volume_update(context, temp_vol_ref['id'], model_update)
-        return self.db.volume_get(context, temp_vol_ref['id'])
+        temp_vol_ref.status = 'available'
+        temp_vol_ref.save()
+        return temp_vol_ref
 
     def _delete_temp_snapshot(self, context, snapshot):
         self.delete_snapshot(snapshot)
