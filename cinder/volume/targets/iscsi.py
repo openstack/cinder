@@ -249,12 +249,7 @@ class ISCSITarget(driver.Target):
         iscsi_name = "%s%s" % (self.configuration.iscsi_target_prefix,
                                volume['name'])
 
-        # Verify we haven't setup a CHAP creds file already
-        # if DNE no big deal, we'll just create it
         chap_auth = self._get_target_chap_auth(context, volume)
-        if not chap_auth:
-            LOG.info(_LI("Skipping ensure_export. No iscsi_target "
-                         "provision for volume: %s"), volume['id'])
 
         # Get portals ips and port
         portals_config = self._get_portals_config()
