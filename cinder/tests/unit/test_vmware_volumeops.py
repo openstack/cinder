@@ -740,9 +740,11 @@ class VolumeOpsTestCase(test.TestCase):
         size_kb = units.Ki
         controller_key = 200
         disk_type = 'thick'
+        profile_id = mock.sentinel.profile_id
         spec = self.vops._create_virtual_disk_config_spec(size_kb,
                                                           disk_type,
                                                           controller_key,
+                                                          profile_id,
                                                           None)
 
         cf.create.side_effect = None
@@ -756,6 +758,9 @@ class VolumeOpsTestCase(test.TestCase):
         backing = device.backing
         self.assertEqual('', backing.fileName)
         self.assertEqual('persistent', backing.diskMode)
+        disk_profiles = spec.profile
+        self.assertEqual(1, len(disk_profiles))
+        self.assertEqual(profile_id, disk_profiles[0].profileId)
 
     def test_create_specs_for_ide_disk_add(self):
         factory = self.session.vim.client.factory
@@ -764,8 +769,9 @@ class VolumeOpsTestCase(test.TestCase):
         size_kb = 1
         disk_type = 'thin'
         adapter_type = 'ide'
+        profile_id = mock.sentinel.profile_id
         ret = self.vops._create_specs_for_disk_add(size_kb, disk_type,
-                                                   adapter_type)
+                                                   adapter_type, profile_id)
 
         factory.create.side_effect = None
         self.assertEqual(1, len(ret))
@@ -783,8 +789,9 @@ class VolumeOpsTestCase(test.TestCase):
         size_kb = 2 * units.Ki
         disk_type = 'thin'
         adapter_type = 'lsiLogicsas'
+        profile_id = mock.sentinel.profile_id
         ret = self.vops._create_specs_for_disk_add(size_kb, disk_type,
-                                                   adapter_type)
+                                                   adapter_type, profile_id)
 
         factory.create.side_effect = None
         self.assertEqual(2, len(ret))
@@ -834,17 +841,17 @@ class VolumeOpsTestCase(test.TestCase):
         size_kb = 1024
         disk_type = 'thin'
         ds_name = 'nfs-1'
-        profileId = mock.sentinel.profile_id
+        profile_id = mock.sentinel.profile_id
         adapter_type = 'busLogic'
         extra_config = mock.sentinel.extra_config
 
         self.vops.get_create_spec(name, size_kb, disk_type, ds_name,
-                                  profileId, adapter_type, extra_config)
+                                  profile_id, adapter_type, extra_config)
 
         get_create_spec_disk_less.assert_called_once_with(
-            name, ds_name, profileId=profileId, extra_config=extra_config)
+            name, ds_name, profileId=profile_id, extra_config=extra_config)
         create_specs_for_disk_add.assert_called_once_with(
-            size_kb, disk_type, adapter_type)
+            size_kb, disk_type, adapter_type, profile_id)
 
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps.'
                 'get_create_spec')
@@ -871,7 +878,7 @@ class VolumeOpsTestCase(test.TestCase):
                                        profile_id, adapter_type, extra_config)
         self.assertEqual(mock.sentinel.result, ret)
         get_create_spec.assert_called_once_with(
-            name, size_kb, disk_type, ds_name, profileId=profile_id,
+            name, size_kb, disk_type, ds_name, profile_id=profile_id,
             adapter_type=adapter_type, extra_config=extra_config)
         self.session.invoke_api.assert_called_once_with(self.session.vim,
                                                         'CreateVM_Task',
@@ -1296,14 +1303,16 @@ class VolumeOpsTestCase(test.TestCase):
         size_in_kb = units.Ki
         disk_type = "thin"
         adapter_type = "ide"
-        vmdk_ds_file_path = mock.Mock()
+        profile_id = mock.sentinel.profile_id
+        vmdk_ds_file_path = mock.sentinel.vmdk_ds_file_path
         self.vops.attach_disk_to_backing(backing, size_in_kb, disk_type,
-                                         adapter_type, vmdk_ds_file_path)
+                                         adapter_type, profile_id,
+                                         vmdk_ds_file_path)
 
         self.assertEqual(disk_add_config_specs, reconfig_spec.deviceChange)
-        create_spec.assert_called_once_with(size_in_kb, disk_type,
-                                            adapter_type,
-                                            vmdk_ds_file_path)
+        create_spec.assert_called_once_with(
+            size_in_kb, disk_type, adapter_type, profile_id,
+            vmdk_ds_file_path=vmdk_ds_file_path)
         self.session.invoke_api.assert_called_once_with(self.session.vim,
                                                         "ReconfigVM_Task",
                                                         backing,
