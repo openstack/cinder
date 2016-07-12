@@ -384,7 +384,8 @@ class HNASiSCSIDriverTest(test.TestCase):
             'label': 'fs-cinder',
             'available_size': '228',
             'used_size': '21.4',
-            'id': '1025'
+            'id': '1025',
+            'provisioned_capacity': 0.0
         }
 
         self.mock_object(HNASSSHBackend, 'get_fs_info',

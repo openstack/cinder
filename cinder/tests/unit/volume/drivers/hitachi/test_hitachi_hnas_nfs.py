@@ -290,7 +290,7 @@ class HNASNFSDriverTest(test.TestCase):
 
         self.mock_object(self.driver, '_update_volume_stats')
         self.mock_object(self.driver, '_get_capacity_info',
-                         mock.Mock(return_value=(150, 50, 100)))
+                         return_value=(150, 50, 100))
 
         out = self.driver.get_volume_stats()
 
