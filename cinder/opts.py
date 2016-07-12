@@ -173,6 +173,7 @@ from cinder.volume.drivers.zfssa import zfssaiscsi as \
     cinder_volume_drivers_zfssa_zfssaiscsi
 from cinder.volume.drivers.zfssa import zfssanfs as \
     cinder_volume_drivers_zfssa_zfssanfs
+from cinder.volume.drivers.zte import zte_ks as cinder_volume_drivers_zte_zteks
 from cinder.volume import manager as cinder_volume_manager
 from cinder.wsgi import eventlet_server as cinder_wsgi_eventletserver
 from cinder.zonemanager.drivers.brocade import brcd_fabric_opts as \
@@ -231,6 +232,7 @@ def list_opts():
                 cinder_volume_drivers_fujitsu_eternusdxcommon.
                 FJ_ETERNUS_DX_OPT_opts,
                 cinder_volume_drivers_ibm_gpfs.gpfs_opts,
+                cinder_volume_drivers_zte_zteks.zte_opts,
                 cinder_volume_drivers_violin_v7000common.violin_opts,
                 cinder_volume_drivers_nexenta_options.NEXENTA_CONNECTION_OPTS,
                 cinder_volume_drivers_nexenta_options.NEXENTA_ISCSI_OPTS,
