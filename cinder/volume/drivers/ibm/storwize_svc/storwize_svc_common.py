@@ -1419,7 +1419,8 @@ class StorwizeHelpers(object):
             return None
         return resp[0]
 
-    def _check_vdisk_fc_mappings(self, name, allow_snaps=True):
+    def _check_vdisk_fc_mappings(self, name,
+                                 allow_snaps=True, allow_fctgt=False):
         """FlashCopy mapping check helper."""
         LOG.debug('Loopcall: _check_vdisk_fc_mappings(), vdisk %s.', name)
         mapping_ids = self._get_vdisk_fc_mappings(name)
@@ -1432,6 +1433,12 @@ class StorwizeHelpers(object):
             target = attrs['target_vdisk_name']
             copy_rate = attrs['copy_rate']
             status = attrs['status']
+
+            if allow_fctgt and target == name and status == 'copying':
+                self.ssh.stopfcmap(map_id)
+                attrs = self._get_flashcopy_mapping_attributes(map_id)
+                if attrs:
+                    status = attrs['status']
 
             if copy_rate == '0':
                 if source == name:
@@ -1463,18 +1470,20 @@ class StorwizeHelpers(object):
                 if status == 'prepared':
                     self.ssh.stopfcmap(map_id)
                     self.ssh.rmfcmap(map_id)
-                elif status == 'idle_or_copied':
-                    # Prepare failed
+                elif status in ['idle_or_copied', 'stopped']:
+                    # Prepare failed or stopped
                     self.ssh.rmfcmap(map_id)
                 else:
                     wait_for_copy = True
         if not wait_for_copy or not len(mapping_ids):
             raise loopingcall.LoopingCallDone(retvalue=True)
 
-    def ensure_vdisk_no_fc_mappings(self, name, allow_snaps=True):
+    def ensure_vdisk_no_fc_mappings(self, name, allow_snaps=True,
+                                    allow_fctgt=False):
         """Ensure vdisk has no flashcopy mappings."""
         timer = loopingcall.FixedIntervalLoopingCall(
-            self._check_vdisk_fc_mappings, name, allow_snaps)
+            self._check_vdisk_fc_mappings, name,
+            allow_snaps, allow_fctgt)
         # Create a timer greenthread. The default volume service heart
         # beat is every 10 seconds. The flashcopy usually takes hours
         # before it finishes. Don't set the sleep interval shorter
@@ -1558,7 +1567,8 @@ class StorwizeHelpers(object):
         if not self.is_vdisk_defined(vdisk):
             LOG.info(_LI('Tried to delete non-existent vdisk %s.'), vdisk)
             return
-        self.ensure_vdisk_no_fc_mappings(vdisk)
+        self.ensure_vdisk_no_fc_mappings(vdisk, allow_snaps=True,
+                                         allow_fctgt=True)
         self.ssh.rmvdisk(vdisk, force=force)
         LOG.debug('Leave: delete_vdisk: vdisk %s.', vdisk)
 
