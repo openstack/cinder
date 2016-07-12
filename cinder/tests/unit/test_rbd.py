@@ -21,6 +21,7 @@ import os
 import tempfile
 
 import mock
+from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import context
@@ -1223,13 +1224,18 @@ class ManagedRBDTestCase(test_volume.DriverTestCase):
 
     @mock.patch.object(cinder.image.glance, 'get_default_image_service')
     @mock.patch('cinder.image.image_utils.TemporaryImages.fetch')
-    def test_create_vol_from_non_raw_image_status_available(self, mock_fetch,
-                                                            mock_gdis):
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_vol_from_non_raw_image_status_available(
+            self, mock_qemu_info, mock_fetch, mock_gdis):
         """Clone non-raw image then verify volume is in available state."""
 
         def _mock_clone_image(context, volume, image_location,
                               image_meta, image_service):
             return {'provider_location': None}, False
+
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
 
         mock_fetch.return_value = mock.MagicMock(spec=utils.get_file_spec())
         with mock.patch.object(self.volume.driver, 'clone_image') as \

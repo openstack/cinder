@@ -23,6 +23,7 @@ from cinder import context
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.consistencygroup import fake_consistencygroup
+from cinder.tests.unit import fake_constants as fakes
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
@@ -632,8 +633,9 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
     @mock.patch('cinder.volume.flows.manager.create_volume.'
                 'CreateVolumeFromSpecTask.'
                 '_handle_bootable_volume_glance_meta')
-    def test_create_from_image_volume(self, handle_bootable, mock_fetch_img,
-                                      format='raw', owner=None,
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
+    def test_create_from_image_volume(self, mock_qemu_info, handle_bootable,
+                                      mock_fetch_img, format='raw', owner=None,
                                       location=True):
         self.flags(allowed_direct_url_schemes=['cinder'])
         mock_fetch_img.return_value = mock.MagicMock(
@@ -646,7 +648,11 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         volume = fake_volume.fake_volume_obj(self.ctxt)
         image_volume = fake_volume.fake_volume_obj(self.ctxt,
                                                    volume_metadata={})
-        image_id = '34e54c31-3bc8-5c1d-9fff-2225bcce4b59'
+        image_id = fakes.IMAGE_ID
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
+
         url = 'cinder://%s' % image_volume['id']
         image_location = None
         if location:
@@ -654,7 +660,9 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         image_meta = {'id': image_id,
                       'container_format': 'bare',
                       'disk_format': format,
-                      'owner': owner or self.ctxt.project_id}
+                      'owner': owner or self.ctxt.project_id,
+                      'virtual_size': None}
+
         fake_driver.clone_image.return_value = (None, False)
         fake_db.volume_get_all_by_host.return_value = [image_volume]
 
@@ -716,8 +724,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         volume = fake_volume.fake_volume_obj(self.ctxt)
 
         image_location = 'someImageLocationStr'
-        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
-        image_meta = mock.Mock()
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '1073741824'}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -749,20 +757,21 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta=image_meta
         )
 
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_from_image_cannot_use_cache(
-            self, mock_get_internal_context, mock_create_from_img_dl,
-            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+            self, mock_qemu_info, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
         mock_get_internal_context.return_value = None
         self.mock_driver.clone_image.return_value = (None, False)
         volume = fake_volume.fake_volume_obj(self.ctxt)
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
 
         image_location = 'someImageLocationStr'
-        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
-        image_meta = {
-            'properties': {
-                'virtual_size': '2147483648'
-            }
-        }
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '1073741824'}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -808,6 +817,33 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
             image_meta=image_meta
         )
 
+    def test_create_from_image_bigger_size(
+            self, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
+        volume = fake_volume.fake_volume_obj(self.ctxt)
+
+        image_location = 'someImageLocationStr'
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '2147483648'}
+
+        manager = create_volume_manager.CreateVolumeFromSpecTask(
+            self.mock_volume_manager,
+            self.mock_db,
+            self.mock_driver,
+            image_volume_cache=self.mock_cache
+        )
+
+        self.assertRaises(
+            exception.ImageUnacceptable,
+            manager._create_from_image,
+            self.ctxt,
+            volume,
+            image_location,
+            image_id,
+            image_meta,
+            self.mock_image_service)
+
     def test_create_from_image_cache_hit(
             self, mock_get_internal_context, mock_create_from_img_dl,
             mock_create_from_src, mock_handle_bootable, mock_fetch_img):
@@ -820,8 +856,8 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         volume = fake_volume.fake_volume_obj(self.ctxt)
 
         image_location = 'someImageLocationStr'
-        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
-        image_meta = mock.Mock()
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': None}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -876,7 +912,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         mock_volume_get.return_value = volume
 
         image_location = 'someImageLocationStr'
-        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_id = fakes.IMAGE_ID
         image_meta = mock.MagicMock()
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
@@ -944,7 +980,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         mock_create_from_img_dl.side_effect = exception.CinderException()
 
         image_location = 'someImageLocationStr'
-        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_id = fakes.IMAGE_ID
         image_meta = mock.MagicMock()
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
@@ -988,20 +1024,21 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.assertFalse(self.mock_cache.ensure_space.called)
         self.assertFalse(self.mock_cache.create_cache_entry.called)
 
+    @mock.patch('cinder.image.image_utils.qemu_img_info')
     def test_create_from_image_no_internal_context(
-            self, mock_get_internal_context, mock_create_from_img_dl,
-            mock_create_from_src, mock_handle_bootable, mock_fetch_img):
+            self, mock_qemu_info, mock_get_internal_context,
+            mock_create_from_img_dl, mock_create_from_src,
+            mock_handle_bootable, mock_fetch_img):
         self.mock_driver.clone_image.return_value = (None, False)
         mock_get_internal_context.return_value = None
         volume = fake_volume.fake_volume_obj(self.ctxt)
+        image_info = imageutils.QemuImgInfo()
+        image_info.virtual_size = '1073741824'
+        mock_qemu_info.return_value = image_info
 
         image_location = 'someImageLocationStr'
-        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
-        image_meta = {
-            'properties': {
-                'virtual_size': '2147483648'
-            }
-        }
+        image_id = fakes.IMAGE_ID
+        image_meta = {'virtual_size': '1073741824'}
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(
             self.mock_volume_manager,
@@ -1065,7 +1102,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
         self.mock_db.volume_create.return_value = image_volume
 
         image_location = 'someImageLocationStr'
-        image_id = 'c7a8b8d4-e519-46c7-a0df-ddf1b9b9fff2'
+        image_id = fakes.IMAGE_ID
         image_meta = mock.MagicMock()
 
         manager = create_volume_manager.CreateVolumeFromSpecTask(

@@ -10,14 +10,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import math
 import traceback
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import timeutils
-from oslo_utils import units
 import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
@@ -695,6 +693,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                   {'volume_id': volume_ref['id'],
                    'image_location': image_location, 'image_id': image_id})
 
+        virtual_size = image_meta.get('virtual_size')
+        if virtual_size:
+            virtual_size = image_utils.check_virtual_size(virtual_size,
+                                                          volume_ref.size,
+                                                          image_id)
+
         # Create the volume from an image.
         #
         # First see if the driver can clone the image directly.
@@ -741,21 +745,12 @@ class CreateVolumeFromSpecTask(flow_utils.CinderTask):
                         image_service, context, image_id) as tmp_image:
                     # Try to create the volume as the minimal size, then we can
                     # extend once the image has been downloaded.
+                    data = image_utils.qemu_img_info(tmp_image)
+
+                    virtual_size = image_utils.check_virtual_size(
+                        data.virtual_size, volume_ref.size, image_id)
+
                     if should_create_cache_entry:
-                        data = image_utils.qemu_img_info(tmp_image)
-
-                        virtual_size = int(
-                            math.ceil(float(data.virtual_size) / units.Gi))
-
-                        if virtual_size > volume_ref.size:
-                            params = {'image_size': virtual_size,
-                                      'volume_size': volume_ref.size}
-                            reason = _("Image virtual size is %(image_size)dGB"
-                                       " and doesn't fit in a volume of size"
-                                       " %(volume_size)dGB.") % params
-                            raise exception.ImageUnacceptable(
-                                image_id=image_id, reason=reason)
-
                         if virtual_size and virtual_size != original_size:
                             volume_ref.size = virtual_size
                             volume_ref.save()
