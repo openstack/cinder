@@ -1066,6 +1066,72 @@ class NfsDriverDoSetupTestCase(test.TestCase):
         mock_os_path_exists.assert_has_calls(
             [mock.call(self.configuration.nfs_shares_config)])
 
+    def test_setup_should_not_throw_error_if_host_and_share_set(self):
+        """do_setup shouldn't throw shares file error if host and share set."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        self.override_config('nas_host', 'nfs-host1')
+        self.override_config('nas_share_path', '/export')
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = False
+        mock_set_nas_sec_options = self.mock_object(nfs.NfsDriver,
+                                                    'set_nas_security_options')
+        mock_set_nas_sec_options.return_value = True
+        mock_execute = self.mock_object(drv, '_execute')
+        mock_execute.return_value = True
+
+        drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_not_called()
+
+    def test_setup_throw_error_if_shares_file_does_not_exist_no_host(self):
+        """do_setup should throw error if no shares file and no host set."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        self.override_config('nas_share_path', '/export')
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = False
+
+        with self.assertRaisesRegex(exception.NfsException,
+                                    "NFS config file.*doesn't exist"):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+
+    def test_setup_throw_error_if_shares_file_does_not_exist_no_share(self):
+        """do_setup should throw error if no shares file and no share set."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        self.override_config('nas_host', 'nfs-host1')
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = False
+
+        with self.assertRaisesRegex(exception.NfsException,
+                                    "NFS config file.*doesn't exist"):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+
+    def test_setup_throw_error_if_shares_file_doesnt_exist_no_share_host(self):
+        """do_setup should throw error if no shares file and no host/share."""
+
+        drv = nfs.NfsDriver(configuration=self.configuration)
+
+        mock_os_path_exists = self.mock_object(os.path, 'exists')
+        mock_os_path_exists.return_value = False
+
+        with self.assertRaisesRegex(exception.NfsException,
+                                    "NFS config file.*doesn't exist"):
+            drv.do_setup(self.context)
+
+        mock_os_path_exists.assert_has_calls(
+            [mock.call(self.configuration.nfs_shares_config)])
+
     def test_setup_should_throw_exception_if_nfs_client_is_not_installed(self):
         """do_setup should throw error if nfs client is not installed."""
 
