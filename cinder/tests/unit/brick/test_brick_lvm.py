@@ -372,3 +372,20 @@ class BrickLvmTestCase(test.TestCase):
         self.vg.vg_name = "test-volumes"
         self.vg.extend_volume("test", "2G")
         self.assertFalse(self.vg.deactivate_lv.called)
+
+    def test_lv_deactivate(self):
+        with mock.patch.object(self.vg, '_execute'):
+            is_active_mock = mock.Mock()
+            is_active_mock.return_value = False
+            self.vg._lv_is_active = is_active_mock
+            self.vg.create_volume('test', '1G')
+            self.vg.deactivate_lv('test')
+
+    def test_lv_deactivate_timeout(self):
+        with mock.patch.object(self.vg, '_execute'):
+            is_active_mock = mock.Mock()
+            is_active_mock.return_value = True
+            self.vg._lv_is_active = is_active_mock
+            self.vg.create_volume('test', '1G')
+            self.assertRaises(exception.VolumeNotDeactivated,
+                              self.vg.deactivate_lv, 'test')
