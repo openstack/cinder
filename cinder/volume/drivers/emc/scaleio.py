@@ -697,6 +697,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
         volname = self._id_to_base64(volume.id)
         connection_properties['scaleIO_volname'] = volname
+        connection_properties['scaleIO_volume_id'] = volume.provider_id
         extra_specs = self._get_volumetype_extraspecs(volume)
         qos_specs = self._get_volumetype_qos(volume)
         storage_type = extra_specs.copy()
