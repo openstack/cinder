@@ -1,0 +1,3 @@
+---
+features:
+  - Added HA support for NexentaEdge iSCSI driver
