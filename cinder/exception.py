@@ -1181,3 +1181,16 @@ class GCSOAuth2Failure(BackupDriverException):
 # Kaminario K2
 class KaminarioCinderDriverException(VolumeDriverException):
     message = _("KaminarioCinderDriver failure: %(reason)s")
+
+
+# Synology driver
+class SynoAPIHTTPError(CinderException):
+    message = _("HTTP exit code: [%(code)s]")
+
+
+class SynoAuthError(CinderException):
+    pass
+
+
+class SynoLUNNotExist(CinderException):
+    message = _("LUN not found by UUID: %(uuid)s.")
