@@ -202,6 +202,14 @@ class VolumeManageTest(test.TestCase):
         self.assertEqual(400, res.status_int)
         pass
 
+    def test_manage_volume_with_invalid_bootable(self):
+        """Test correct failure when invalid bool value is specified."""
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref',
+                           'bootable': 'InvalidBool'}}
+        res = self._get_resp_post(body)
+        self.assertEqual(400, res.status_int)
+
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -213,7 +221,8 @@ class VolumeManageTest(test.TestCase):
         """
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref',
-                           'volume_type': fake.VOLUME_TYPE_ID}}
+                           'volume_type': fake.VOLUME_TYPE_ID,
+                           'bootable': True}}
         res = self._get_resp_post(body)
         self.assertEqual(202, res.status_int, res)
         self.assertTrue(mock_validate.called)
