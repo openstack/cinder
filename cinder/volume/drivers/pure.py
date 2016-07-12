@@ -1423,14 +1423,16 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     def _is_volume_replicated_type(self, volume):
         ctxt = context.get_admin_context()
-        volume_type = volume_types.get_volume_type(ctxt,
-                                                   volume["volume_type_id"])
         replication_flag = False
-        specs = volume_type.get("extra_specs")
-        if specs and EXTRA_SPECS_REPL_ENABLED in specs:
-            replication_capability = specs[EXTRA_SPECS_REPL_ENABLED]
-            # Do not validate settings, ignore invalid.
-            replication_flag = (replication_capability == "<is> True")
+        if volume["volume_type_id"]:
+            volume_type = volume_types.get_volume_type(
+                ctxt, volume["volume_type_id"])
+
+            specs = volume_type.get("extra_specs")
+            if specs and EXTRA_SPECS_REPL_ENABLED in specs:
+                replication_capability = specs[EXTRA_SPECS_REPL_ENABLED]
+                # Do not validate settings, ignore invalid.
+                replication_flag = (replication_capability == "<is> True")
         return replication_flag
 
     def _find_failover_target(self, secondary):
