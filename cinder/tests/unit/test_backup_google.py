@@ -205,6 +205,20 @@ class GoogleBackupDriverTestCase(test.TestCase):
         self.assertEqual('gcscinderbucket', backup.container)
 
     @gcs_client
+    @mock.patch('httplib2.proxy_info_from_url')
+    def test_backup_proxy_configured(self, mock_proxy_info):
+        google_dr.CONF.set_override("backup_gcs_proxy_url",
+                                    "http://myproxy.example.com")
+        google_dr.GoogleBackupDriver(self.ctxt)
+        mock_proxy_info.assert_called_with("http://myproxy.example.com")
+
+    @gcs_client
+    @mock.patch('httplib2.proxy_info_from_environment')
+    def test_backup_proxy_environment(self, mock_proxy_env):
+        google_dr.GoogleBackupDriver(self.ctxt)
+        mock_proxy_env.assert_called_once_with()
+
+    @gcs_client
     @mock.patch('cinder.backup.drivers.google.GoogleBackupDriver.'
                 '_send_progress_end')
     @mock.patch('cinder.backup.drivers.google.GoogleBackupDriver.'
