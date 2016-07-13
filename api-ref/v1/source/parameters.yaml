@@ -430,6 +430,12 @@ name_2:
   in: body
   required: true
   type: string
+OS-SCH-HNT:scheduler_hints:
+  description: |
+    The dictionary of data to send to the scheduler.
+  in: body
+  required: false
+  type: object
 quota_set:
   description: |
     A ``quota_set`` object.
@@ -481,12 +487,6 @@ reserved_1:
   in: body
   required: true
   type: integer
-OS-SCH-HNT:scheduler_hints:
-  description: |
-    The dictionary of data to send to the scheduler.
-  in: body
-  required: false
-  type: object
 security_group_rules:
   description: |
     The number of rules that are allowed for each
