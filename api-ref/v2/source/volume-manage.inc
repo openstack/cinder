@@ -18,8 +18,8 @@ Creates a Block Storage volume by using existing storage rather than allocating 
 The caller must specify a reference to an existing storage volume
 in the ref parameter in the request. Although each storage driver
 might interpret this reference differently, the driver should
-accept a reference structure that contains either a source-volume-
-id or source-volume-name element, if possible.
+accept a reference structure that contains either a source-id
+or source-name element, if possible.
 
 The API chooses the size of the volume by rounding up the size of
 the existing storage volume to the next gibibyte (GiB).
