@@ -110,13 +110,12 @@ def api_manage(*args, **kwargs):
 
 def api_get_manageable_volumes(*args, **kwargs):
     """Replacement for cinder.volume.api.API.get_manageable_volumes."""
-    vol_id = 'ffffffff-0000-ffff-0000-ffffffffffff'
     vols = [
-        {'reference': {'source-name': 'volume-%s' % vol_id},
+        {'reference': {'source-name': 'volume-%s' % fake.VOLUME_ID},
          'size': 4,
          'extra_info': 'qos_setting:high',
          'safe_to_manage': False,
-         'cinder_id': vol_id,
+         'cinder_id': fake.VOLUME_ID,
          'reason_not_safe': 'volume in use'},
         {'reference': {'source-name': 'myvol'},
          'size': 5,
@@ -300,7 +299,7 @@ class VolumeManageTest(test.TestCase):
         exp = {'manageable-volumes':
                [{'reference':
                  {'source-name':
-                  'volume-ffffffff-0000-ffff-0000-ffffffffffff'},
+                  'volume-%s' % fake.VOLUME_ID},
                  'size': 4, 'safe_to_manage': False},
                 {'reference': {'source-name': 'myvol'},
                  'size': 5, 'safe_to_manage': True}]}
@@ -314,11 +313,10 @@ class VolumeManageTest(test.TestCase):
                 wraps=api_get_manageable_volumes)
     def test_get_manageable_volumes_detailed_ok(self, mock_api_manageable):
         res = self._get_resp_get('fakehost', True, False)
-        vol_id = 'ffffffff-0000-ffff-0000-ffffffffffff'
         exp = {'manageable-volumes':
-               [{'reference': {'source-name': 'volume-%s' % vol_id},
+               [{'reference': {'source-name': 'volume-%s' % fake.VOLUME_ID},
                  'size': 4, 'reason_not_safe': 'volume in use',
-                 'cinder_id': vol_id, 'safe_to_manage': False,
+                 'cinder_id': fake.VOLUME_ID, 'safe_to_manage': False,
                  'extra_info': 'qos_setting:high'},
                 {'reference': {'source-name': 'myvol'}, 'cinder_id': None,
                  'size': 5, 'reason_not_safe': None, 'safe_to_manage': True,
