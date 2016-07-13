@@ -1023,24 +1023,28 @@ class XIODriverException(VolumeDriverException):
 
 
 # Violin Memory drivers
-class ViolinInvalidBackendConfig(CinderException):
+class ViolinInvalidBackendConfig(VolumeDriverException):
     message = _("Volume backend config is invalid: %(reason)s")
 
 
-class ViolinRequestRetryTimeout(CinderException):
+class ViolinRequestRetryTimeout(VolumeDriverException):
     message = _("Backend service retry timeout hit: %(timeout)s sec")
 
 
-class ViolinBackendErr(CinderException):
+class ViolinBackendErr(VolumeBackendAPIException):
     message = _("Backend reports: %(message)s")
 
 
-class ViolinBackendErrExists(CinderException):
+class ViolinBackendErrExists(VolumeBackendAPIException):
     message = _("Backend reports: item already exists")
 
 
-class ViolinBackendErrNotFound(CinderException):
+class ViolinBackendErrNotFound(NotFound):
     message = _("Backend reports: item not found")
+
+
+class ViolinResourceNotFound(NotFound):
+    message = _("Backend reports: %(message)s")
 
 
 class BadHTTPResponseStatus(VolumeDriverException):

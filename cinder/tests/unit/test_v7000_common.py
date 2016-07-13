@@ -19,6 +19,7 @@ Tests for Violin Memory 7000 Series All-Flash Array Common Driver
 import ddt
 import math
 import mock
+import six
 
 from oslo_utils import units
 
@@ -60,6 +61,325 @@ SRC_VOL = {"name": "volume-" + SRC_VOL_ID,
            }
 INITIATOR_IQN = "iqn.1111-22.org.debian:11:222"
 CONNECTOR = {"initiator": INITIATOR_IQN}
+DEFAULT_DEDUP_POOL = {"storage_pool": 'PoolA',
+                      "storage_pool_id": 99,
+                      "dedup": True,
+                      "thin": True,
+                      }
+DEFAULT_THIN_POOL = {"storage_pool": 'PoolA',
+                     "storage_pool_id": 99,
+                     "dedup": False,
+                     "thin": True,
+                     }
+DEFAULT_THICK_POOL = {"storage_pool": 'PoolA',
+                      "storage_pool_id": 99,
+                      "dedup": False,
+                      "thin": False,
+                      }
+
+# Note:  select superfluous fields are removed for brevity
+STATS_STORAGE_POOL_RESPONSE = [({
+    'availsize_mb': 1572827,
+    'category': 'Virtual Device',
+    'name': 'dedup-pool',
+    'object_id': '487d1940-c53f-55c3-b1d5-073af43f80fc',
+    'size_mb': 2097124,
+    'storage_pool_id': 1,
+    'usedsize_mb': 524297},
+    {'category': 'Virtual Device',
+     'name': 'dedup-pool',
+     'object_id': '487d1940-c53f-55c3-b1d5-073af43f80fc',
+     'physicaldevices': [
+         {'availsize_mb': 524281,
+          'connection_type': 'fc',
+          'name': 'VIOLIN:CONCERTO ARRAY.003',
+          'object_id': '260f30b0-0300-59b5-b7b9-54aa55704a12',
+          'owner': 'lab-host1',
+          'size_mb': 524281,
+          'type': 'Direct-Access',
+          'usedsize_mb': 0},
+         {'availsize_mb': 524281,
+          'connection_type': 'fc',
+          'name': 'VIOLIN:CONCERTO ARRAY.004',
+          'object_id': '7b58eda2-69da-5aec-9e06-6607934efa93',
+          'owner': 'lab-host1',
+          'size_mb': 524281,
+          'type': 'Direct-Access',
+          'usedsize_mb': 0},
+         {'availsize_mb': 0,
+          'connection_type': 'fc',
+          'name': 'VIOLIN:CONCERTO ARRAY.001',
+          'object_id': '69adbea1-2349-5df5-a04a-abd7f14868b2',
+          'owner': 'lab-host1',
+          'size_mb': 524281,
+          'type': 'Direct-Access',
+          'usedsize_mb': 524281},
+         {'availsize_mb': 524265,
+          'connection_type': 'fc',
+          'name': 'VIOLIN:CONCERTO ARRAY.002',
+          'object_id': 'a14a0e36-8901-5987-95d8-aa574c6138a2',
+          'owner': 'lab-host1',
+          'size_mb': 524281,
+          'type': 'Direct-Access',
+          'usedsize_mb': 16}],
+     'size_mb': 2097124,
+     'storage_pool_id': 1,
+     'total_physicaldevices': 4,
+     'usedsize_mb': 524297}),
+    ({'availsize': 0,
+      'availsize_mb': 0,
+      'category': None,
+      'name': 'thick_pool_13531mgb',
+      'object_id': '20610abd-4c58-546c-8905-bf42fab9a11b',
+      'size': 0,
+      'size_mb': 0,
+      'storage_pool_id': 3,
+      'tag': '',
+      'total_physicaldevices': 0,
+      'usedsize': 0,
+      'usedsize_mb': 0},
+     {'category': None,
+      'name': 'thick_pool_13531mgb',
+      'object_id': '20610abd-4c58-546c-8905-bf42fab9a11b',
+      'resource_type': ['All'],
+      'size': 0,
+      'size_mb': 0,
+      'storage_pool_id': 3,
+      'tag': [''],
+      'total_physicaldevices': 0,
+      'usedsize': 0,
+      'usedsize_mb': 0}),
+    ({'availsize_mb': 627466,
+      'category': 'Virtual Device',
+      'name': 'StoragePool',
+      'object_id': '1af66d9a-f62e-5b69-807b-892b087fa0b4',
+      'size_mb': 21139267,
+      'storage_pool_id': 7,
+      'usedsize_mb': 20511801},
+     {'category': 'Virtual Device',
+      'name': 'StoragePool',
+      'object_id': '1af66d9a-f62e-5b69-807b-892b087fa0b4',
+      'physicaldevices': [
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN02.000',
+           'object_id': 'ecc775f1-1228-5131-8f68-4176001786ef',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN01.000',
+           'object_id': '5c60812b-34d2-5473-b7bf-21e30ec70311',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN08.001',
+           'object_id': 'eb6d06b7-8d6f-5d9d-b720-e86d8ad1beab',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN03.001',
+           'object_id': '063aced7-1f8f-5e15-b36e-e9d34a2826fa',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN07.001',
+           'object_id': 'ebf34594-2b92-51fe-a6a8-b6cf91f05b2b',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN0A.000',
+           'object_id': 'ff084188-b97f-5e30-9ff0-bc60e546ee06',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN06.001',
+           'object_id': 'f9cbeadf-5524-5697-a3a6-667820e37639',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 167887,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN15.000',
+           'object_id': 'aaacc124-26c9-519a-909a-a93d24f579a1',
+           'owner': 'lab-host2',
+           'size_mb': 167887,
+           'type': 'Direct-Access',
+           'usedsize_mb': 0},
+          {'availsize_mb': 229276,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN09.001',
+           'object_id': '30967a84-56a4-52a5-ac3f-b4f544257bbd',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 819293},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN04.001',
+           'object_id': 'd997eb42-55d4-5e4c-b797-c68b748e7e1f',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN05.001',
+           'object_id': '56ecf98c-f10b-5bb5-9d3b-5af6037dad73',
+           'owner': 'lab-host1',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN0B.000',
+           'object_id': 'cfb6f61c-508d-5394-8257-78b1f9bcad3b',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN0C.000',
+           'object_id': '7b0bcb51-5c7d-5752-9e18-392057e534f0',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN0D.000',
+           'object_id': 'b785a3b1-6316-50c3-b2e0-6bb0739499c6',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN0E.000',
+           'object_id': '76b9d038-b757-515a-b962-439a4fd85fd5',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN0F.000',
+           'object_id': '9591d24a-70c4-5e80-aead-4b788202c698',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN10.000',
+           'object_id': '2bb09a2b-9063-595b-9d7a-7e5fad5016db',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN11.000',
+           'object_id': 'b9ff58eb-5e6e-5c79-bf95-fae424492519',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN12.000',
+           'object_id': '6abd4fd6-9841-5978-bfcb-5d398d1715b4',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569},
+          {'availsize_mb': 230303,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN13.000',
+           'object_id': 'ffd5a4b7-0f50-5a71-bbba-57a348b96c68',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 818266},
+          {'availsize_mb': 0,
+           'connection_type': 'block',
+           'name': 'BKSC:OTHDISK-MFCN14.000',
+           'object_id': '52ffbbae-bdac-5194-ba6b-62ee17bfafce',
+           'owner': 'lab-host2',
+           'size_mb': 1048569,
+           'type': 'Direct-Access',
+           'usedsize_mb': 1048569}],
+      'size_mb': 21139267,
+      'storage_pool_id': 7,
+      'tag': [''],
+      'total_physicaldevices': 21,
+      'usedsize_mb': 20511801}),
+    ({'availsize_mb': 1048536,
+      'category': 'Virtual Device',
+      'name': 'thick-pool',
+      'object_id': 'c1e0becc-3497-5d74-977a-1e5a79769576',
+      'size_mb': 2097124,
+      'storage_pool_id': 9,
+      'usedsize_mb': 1048588},
+     {'category': 'Virtual Device',
+      'name': 'thick-pool',
+      'object_id': 'c1e0becc-3497-5d74-977a-1e5a79769576',
+      'physicaldevices': [
+          {'availsize_mb': 524255,
+           'connection_type': 'fc',
+           'name': 'VIOLIN:CONCERTO ARRAY.001',
+           'object_id': 'a90c4a11-33af-5530-80ca-2360fa477781',
+           'owner': 'lab-host1',
+           'size_mb': 524281,
+           'type': 'Direct-Access',
+           'usedsize_mb': 26},
+          {'availsize_mb': 0,
+           'connection_type': 'fc',
+           'name': 'VIOLIN:CONCERTO ARRAY.002',
+           'object_id': '0a625ec8-2e80-5086-9644-2ea8dd5c32ec',
+           'owner': 'lab-host1',
+           'size_mb': 524281,
+           'type': 'Direct-Access',
+           'usedsize_mb': 524281},
+          {'availsize_mb': 0,
+           'connection_type': 'fc',
+           'name': 'VIOLIN:CONCERTO ARRAY.004',
+           'object_id': '7018670b-3a79-5bdc-9d02-2d85602f361a',
+           'owner': 'lab-host1',
+           'size_mb': 524281,
+           'type': 'Direct-Access',
+           'usedsize_mb': 524281},
+          {'availsize_mb': 524281,
+           'connection_type': 'fc',
+           'name': 'VIOLIN:CONCERTO ARRAY.003',
+           'object_id': 'd859d47b-ca65-5d9d-a1c0-e288bbf39f48',
+           'owner': 'lab-host1',
+           'size_mb': 524281,
+           'type': 'Direct-Access',
+           'usedsize_mb': 0}],
+      'size_mb': 2097124,
+      'storage_pool_id': 9,
+      'total_physicaldevices': 4,
+      'usedsize_mb': 1048588})]
 
 
 @ddt.ddt
@@ -89,6 +409,9 @@ class V7000CommonTestCase(test.TestCase):
         config.use_igroups = False
         config.violin_request_timeout = 300
         config.container = 'myContainer'
+        config.violin_pool_allocation_method = 'random'
+        config.violin_dedup_only_pools = None
+        config.violin_dedup_capable_pools = None
         return config
 
     @mock.patch('vmemclient.open')
@@ -144,6 +467,8 @@ class V7000CommonTestCase(test.TestCase):
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._send_cmd = mock.Mock(return_value=response)
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
 
         result = self.driver._create_lun(VOLUME)
 
@@ -151,7 +476,7 @@ class V7000CommonTestCase(test.TestCase):
             self.driver.vmem_mg.lun.create_lun,
             'Create resource successfully.',
             VOLUME['id'], size_in_mb, False, False, size_in_mb,
-            storage_pool=None)
+            storage_pool_id=99)
         self.assertIsNone(result)
 
     def test_create_dedup_lun(self):
@@ -176,6 +501,8 @@ class V7000CommonTestCase(test.TestCase):
 
         self.driver._get_violin_extra_spec = mock.Mock(
             return_value=None)
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_DEDUP_POOL)
 
         result = self.driver._create_lun(vol)
 
@@ -183,25 +510,50 @@ class V7000CommonTestCase(test.TestCase):
             self.driver.vmem_mg.lun.create_lun,
             'Create resource successfully.',
             VOLUME['id'], size_in_mb / 10, True, True, full_size_mb,
-            storage_pool=None)
+            storage_pool_id=99)
         self.assertIsNone(result)
 
     def test_fail_extend_dedup_lun(self):
         """Volume extend fails when new size would shrink the volume."""
-        failure = exception.VolumeDriverException
         vol = VOLUME.copy()
         vol['volume_type_id'] = '1'
 
         size_in_mb = vol['size'] * units.Ki
-
         self.driver.vmem_mg = self.setup_mock_concerto()
+        type(self.driver.vmem_mg.utility).is_external_head = mock.PropertyMock(
+            return_value=False)
 
-        # simulate extra specs of {'thin': 'true', 'dedupe': 'true'}
         self.driver._get_volume_type_extra_spec = mock.Mock(
             return_value="True")
 
+        failure = exception.VolumeDriverException
         self.assertRaises(failure, self.driver._extend_lun,
                           vol, size_in_mb)
+
+    def test_extend_dedup_lun_external_head(self):
+        """Volume extend fails when new size would shrink the volume."""
+        vol = VOLUME.copy()
+        vol['volume_type_id'] = '1'
+        new_volume_size = 10
+
+        response = {'success': True, 'message': 'Expand resource successfully'}
+        conf = {
+            'lun.extend_lun.return_value': response,
+        }
+
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
+        type(self.driver.vmem_mg.utility).is_external_head = mock.PropertyMock(
+            return_value=False)
+
+        change_in_size_mb = (new_volume_size - VOLUME['size']) * units.Ki
+        self.driver._send_cmd = mock.Mock(return_value=response)
+
+        result = self.driver._extend_lun(VOLUME, new_volume_size)
+
+        self.driver._send_cmd.assert_called_with(
+            self.driver.vmem_mg.lun.extend_lun,
+            response['message'], VOLUME['id'], change_in_size_mb)
+        self.assertIsNone(result)
 
     def test_create_non_dedup_lun(self):
         """Lun is successfully created."""
@@ -226,24 +578,28 @@ class V7000CommonTestCase(test.TestCase):
         self.driver._get_violin_extra_spec = mock.Mock(
             return_value=None)
 
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
+
         result = self.driver._create_lun(vol)
 
         self.driver._send_cmd.assert_called_with(
             self.driver.vmem_mg.lun.create_lun,
             'Create resource successfully.',
             VOLUME['id'], size_in_mb, False, False, full_size_mb,
-            storage_pool=None)
+            storage_pool_id=99)
         self.assertIsNone(result)
 
     def test_create_lun_fails(self):
         """Array returns error that the lun already exists."""
         response = {'success': False,
                     'msg': 'Duplicate Virtual Device name. Error: 0x90010022'}
-
         conf = {
             'lun.create_lun.return_value': response,
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
         self.driver._send_cmd = mock.Mock(return_value=response)
 
         self.assertIsNone(self.driver._create_lun(VOLUME))
@@ -253,6 +609,7 @@ class V7000CommonTestCase(test.TestCase):
         vol = VOLUME.copy()
         vol['size'] = 100
         vol['volume_type_id'] = '1'
+
         response = {'success': True, 'msg': 'Create resource successfully.'}
         size_in_mb = vol['size'] * units.Ki
         full_size_mb = size_in_mb
@@ -268,6 +625,8 @@ class V7000CommonTestCase(test.TestCase):
         # simulates extra specs: {'storage_pool', 'StoragePool'}
         self.driver._get_violin_extra_spec = mock.Mock(
             return_value="StoragePool")
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
 
         result = self.driver._create_lun(vol)
 
@@ -275,7 +634,7 @@ class V7000CommonTestCase(test.TestCase):
             self.driver.vmem_mg.lun.create_lun,
             'Create resource successfully.',
             VOLUME['id'], size_in_mb, False, False, full_size_mb,
-            storage_pool="StoragePool")
+            storage_pool_id=99)
         self.assertIsNone(result)
 
     def test_delete_lun(self):
@@ -294,13 +653,13 @@ class V7000CommonTestCase(test.TestCase):
 
         self.driver._send_cmd.assert_called_with(
             self.driver.vmem_mg.lun.delete_lun,
-            success_msgs, VOLUME['id'], True)
+            success_msgs, VOLUME['id'])
         self.driver._delete_lun_snapshot_bookkeeping.assert_called_with(
             VOLUME['id'])
 
         self.assertIsNone(result)
 
-    # TODO(rlucio) More delete lun failure cases to be added after
+    # TODO(vthirumalai): More delete lun failure cases to be added after
     # collecting the possible responses from Concerto
 
     def test_extend_lun(self):
@@ -344,19 +703,22 @@ class V7000CommonTestCase(test.TestCase):
         """Create a new cinder volume from a given snapshot of a lun."""
         object_id = '12345'
         vdev_id = 11111
+        lun_info_response = {'subType': 'THICK',
+                             'virtualDeviceID': vdev_id}
         response = {'success': True,
                     'object_id': object_id,
                     'msg': 'Copy TimeMark successfully.'}
-        lun_info = {'virtualDeviceID': vdev_id}
         compressed_snap_id = 'abcdabcd1234abcd1234abcdeffedcbb'
 
         conf = {
+            'lun.get_lun_info.return_value': lun_info_response,
             'lun.copy_snapshot_to_new_lun.return_value': response,
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._compress_snapshot_id = mock.Mock(
             return_value=compressed_snap_id)
-        self.driver.vmem_mg.lun.get_lun_info = mock.Mock(return_value=lun_info)
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
         self.driver._wait_for_lun_or_snap_copy = mock.Mock()
 
         result = self.driver._create_volume_from_snapshot(SNAPSHOT, VOLUME)
@@ -364,9 +726,7 @@ class V7000CommonTestCase(test.TestCase):
         self.driver.vmem_mg.lun.copy_snapshot_to_new_lun.assert_called_with(
             source_lun=SNAPSHOT['volume_id'],
             source_snapshot_comment=compressed_snap_id,
-            destination=VOLUME['id'], storage_pool=None)
-        self.driver.vmem_mg.lun.get_lun_info.assert_called_with(
-            object_id=object_id)
+            destination=VOLUME['id'], storage_pool_id=99)
         self.driver._wait_for_lun_or_snap_copy.assert_called_with(
             SNAPSHOT['volume_id'], dest_vdev_id=vdev_id)
 
@@ -379,24 +739,27 @@ class V7000CommonTestCase(test.TestCase):
         dest_vol['volume_type_id'] = '1'
         object_id = '12345'
         vdev_id = 11111
+        lun_info_response = {'subType': 'THICK',
+                             'virtualDeviceID': vdev_id}
         response = {'success': True,
                     'object_id': object_id,
                     'msg': 'Copy TimeMark successfully.'}
-        lun_info = {'virtualDeviceID': vdev_id}
         compressed_snap_id = 'abcdabcd1234abcd1234abcdeffedcbb'
 
         conf = {
+            'lun.get_lun_info.return_value': lun_info_response,
             'lun.copy_snapshot_to_new_lun.return_value': response,
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._compress_snapshot_id = mock.Mock(
             return_value=compressed_snap_id)
-        self.driver.vmem_mg.lun.get_lun_info = mock.Mock(return_value=lun_info)
-        self.driver._wait_for_lun_or_snap_copy = mock.Mock()
-
-        # simulates extra specs: {'storage_pool', 'StoragePool'}
         self.driver._get_violin_extra_spec = mock.Mock(
             return_value="StoragePool")
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
+        self.driver._get_volume_type_extra_spec = mock.Mock(
+            return_value="False")
+        self.driver._wait_for_lun_or_snap_copy = mock.Mock()
 
         result = self.driver._create_volume_from_snapshot(SNAPSHOT, dest_vol)
 
@@ -404,18 +767,24 @@ class V7000CommonTestCase(test.TestCase):
 
     def test_create_volume_from_snapshot_fails(self):
         """Array returns error that the lun already exists."""
+        vdev_id = 11111
+        lun_info_response = {'subType': 'THICK',
+                             'virtualDeviceID': vdev_id}
         response = {'success': False,
                     'msg': 'Duplicate Virtual Device name. Error: 0x90010022'}
         compressed_snap_id = 'abcdabcd1234abcd1234abcdeffedcbb'
         failure = exception.ViolinBackendErrExists
 
         conf = {
+            'lun.get_lun_info.return_value': lun_info_response,
             'lun.copy_snapshot_to_new_lun.return_value': response,
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._send_cmd = mock.Mock(return_value=response)
         self.driver._compress_snapshot_id = mock.Mock(
             return_value=compressed_snap_id)
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
 
         self.driver._send_cmd = mock.Mock(side_effect=failure(message='fail'))
 
@@ -431,15 +800,19 @@ class V7000CommonTestCase(test.TestCase):
             dest_vol['size'] = size
             larger_size_flag = True
         object_id = fake.OBJECT_ID
-        response = {'success': True,
-                    'object_id': object_id,
-                    'msg': 'Copy Snapshot resource successfully'}
+        lun_info_response = {'subType': 'THICK'}
+        copy_response = {'success': True,
+                         'object_id': object_id,
+                         'msg': 'Copy Snapshot resource successfully'}
 
         conf = {
-            'lun.copy_lun_to_new_lun.return_value': response,
+            'lun.get_lun_info.return_value': lun_info_response,
+            'lun.copy_lun_to_new_lun.return_value': copy_response,
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._ensure_snapshot_resource_area = mock.Mock()
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
         self.driver._wait_for_lun_or_snap_copy = mock.Mock()
         self.driver._extend_lun = mock.Mock()
 
@@ -448,8 +821,7 @@ class V7000CommonTestCase(test.TestCase):
         self.driver._ensure_snapshot_resource_area.assert_called_with(
             SRC_VOL['id'])
         self.driver.vmem_mg.lun.copy_lun_to_new_lun.assert_called_with(
-            source=SRC_VOL['id'], destination=dest_vol['id'],
-            storage_pool=None)
+            source=SRC_VOL['id'], destination=VOLUME['id'], storage_pool_id=99)
         self.driver._wait_for_lun_or_snap_copy.assert_called_with(
             SRC_VOL['id'], dest_obj_id=object_id)
         if larger_size_flag:
@@ -470,12 +842,14 @@ class V7000CommonTestCase(test.TestCase):
             larger_size_flag = True
         dest_vol['volume_type_id'] = fake.VOLUME_TYPE_ID
         object_id = fake.OBJECT_ID
-        response = {'success': True,
-                    'object_id': object_id,
-                    'msg': 'Copy Snapshot resource successfully'}
+        lun_info_response = {'subType': 'THICK'}
+        copy_response = {'success': True,
+                         'object_id': object_id,
+                         'msg': 'Copy Snapshot resource successfully'}
 
         conf = {
-            'lun.copy_lun_to_new_lun.return_value': response,
+            'lun.get_lun_info.return_value': lun_info_response,
+            'lun.copy_lun_to_new_lun.return_value': copy_response,
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._ensure_snapshot_resource_area = mock.Mock()
@@ -485,6 +859,11 @@ class V7000CommonTestCase(test.TestCase):
         # simulates extra specs: {'storage_pool', 'StoragePool'}
         self.driver._get_violin_extra_spec = mock.Mock(
             return_value="StoragePool")
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THIN_POOL)
+
+        self.driver._get_volume_type_extra_spec = mock.Mock(
+            side_effect=["True", "False"])
 
         result = self.driver._create_lun_from_lun(SRC_VOL, dest_vol)
 
@@ -492,7 +871,7 @@ class V7000CommonTestCase(test.TestCase):
             SRC_VOL['id'])
         self.driver.vmem_mg.lun.copy_lun_to_new_lun.assert_called_with(
             source=SRC_VOL['id'], destination=dest_vol['id'],
-            storage_pool="StoragePool")
+            storage_pool_id=99)
         self.driver._wait_for_lun_or_snap_copy.assert_called_with(
             SRC_VOL['id'], dest_obj_id=object_id)
         if larger_size_flag:
@@ -504,18 +883,56 @@ class V7000CommonTestCase(test.TestCase):
         self.assertIsNone(result)
 
     def test_create_lun_from_lun_fails(self):
-        """lun full clone to new volume completes successfully."""
+        """lun full clone to new volume fails correctly."""
         failure = exception.ViolinBackendErr
-        response = {'success': False,
-                    'msg': 'Snapshot Resource is not created '
-                    'for this virtual device. Error: 0x0901008c'}
+        lun_info_response = {
+            'subType': 'THICK',
+        }
+        copy_response = {
+            'success': False,
+            'msg': 'Snapshot Resource is not created ' +
+            'for this virtual device. Error: 0x0901008c',
+        }
 
         conf = {
-            'lun.copy_lun_to_new_lun.return_value': response,
+            'lun.get_lun_info.return_value': lun_info_response,
+            'lun.copy_lun_to_new_lun.return_value': copy_response,
         }
         self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._ensure_snapshot_resource_area = mock.Mock()
         self.driver._send_cmd = mock.Mock(side_effect=failure(message='fail'))
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
+
+        self.assertRaises(failure, self.driver._create_lun_from_lun,
+                          SRC_VOL, VOLUME)
+
+    def test_create_lun_from_thin_lun_fails(self):
+        """lun full clone of thin lun is not supported."""
+        failure = exception.ViolinBackendErr
+        lun_info_response = {
+            'subType': 'THIN',
+        }
+
+        conf = {
+            'lun.get_lun_info.return_value': lun_info_response,
+        }
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
+
+        self.assertRaises(failure, self.driver._create_lun_from_lun,
+                          SRC_VOL, VOLUME)
+
+    def test_create_lun_from_dedup_lun_fails(self):
+        """lun full clone of dedup lun is not supported."""
+        failure = exception.ViolinBackendErr
+        lun_info_response = {
+            'subType': 'DEDUP',
+        }
+
+        conf = {
+            'lun.get_lun_info.return_value': lun_info_response,
+        }
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
 
         self.assertRaises(failure, self.driver._create_lun_from_lun,
                           SRC_VOL, VOLUME)
@@ -583,6 +1000,8 @@ class V7000CommonTestCase(test.TestCase):
         snap = self.driver.vmem_mg.snapshot
         snap.lun_has_a_snapshot_resource = mock.Mock(return_value=False)
         snap.create_snapshot_resource = mock.Mock(return_value=result_dict)
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
 
         with mock.patch('cinder.db.sqlalchemy.api.volume_get',
                         return_value=VOLUME):
@@ -604,7 +1023,7 @@ class V7000CommonTestCase(test.TestCase):
             expansion_max_size=
             v7000_common.CONCERTO_DEFAULT_SRA_EXPANSION_MAX_SIZE,
             enable_shrink=v7000_common.CONCERTO_DEFAULT_SRA_ENABLE_SHRINK,
-            storage_pool=None)
+            storage_pool_id=99)
 
     def test_ensure_snapshot_resource_area_with_storage_pool(self):
 
@@ -622,6 +1041,11 @@ class V7000CommonTestCase(test.TestCase):
         # simulates extra specs: {'storage_pool', 'StoragePool'}
         self.driver._get_violin_extra_spec = mock.Mock(
             return_value="StoragePool")
+        self.driver._get_storage_pool = mock.Mock(
+            return_value=DEFAULT_THICK_POOL)
+
+        self.driver._get_volume_type_extra_spec = mock.Mock(
+            side_effect=["True", "False"])
 
         with mock.patch('cinder.db.sqlalchemy.api.volume_get',
                         return_value=dest_vol):
@@ -643,7 +1067,7 @@ class V7000CommonTestCase(test.TestCase):
             expansion_max_size=
             v7000_common.CONCERTO_DEFAULT_SRA_EXPANSION_MAX_SIZE,
             enable_shrink=v7000_common.CONCERTO_DEFAULT_SRA_ENABLE_SHRINK,
-            storage_pool="StoragePool")
+            storage_pool_id=99)
 
     def test_ensure_snapshot_resource_policy(self):
         result_dict = {'success': True, 'res': 'Successful'}
@@ -715,19 +1139,43 @@ class V7000CommonTestCase(test.TestCase):
     def test_delete_lun_snapshot(self):
         response = {'success': True, 'msg': 'Delete TimeMark successfully'}
         compressed_snap_id = 'abcdabcd1234abcd1234abcdeffedcbb'
+        oid = 'abc123-abc123abc123-abc123'
 
-        self.driver.vmem_mg = self.setup_mock_concerto()
-        self.driver._send_cmd = mock.Mock(return_value=response)
+        conf = {
+            'snapshot.snapshot_comment_to_object_id.return_value': oid,
+            'snapshot.delete_lun_snapshot.return_value': response,
+        }
+
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
         self.driver._compress_snapshot_id = mock.Mock(
             return_value=compressed_snap_id)
 
-        self.assertIsNone(self.driver._delete_lun_snapshot(SNAPSHOT))
+        result = self.driver._delete_lun_snapshot(SNAPSHOT)
 
-        self.driver._send_cmd.assert_called_with(
-            self.driver.vmem_mg.snapshot.delete_lun_snapshot,
-            'Delete TimeMark successfully',
-            lun=VOLUME_ID,
-            comment=compressed_snap_id)
+        self.assertIsNone(result)
+
+    def test_delete_lun_snapshot_with_retry(self):
+        response = [
+            {'success': False, 'msg': 'Error 0x50f7564c'},
+            {'success': True, 'msg': 'Delete TimeMark successfully'}]
+        compressed_snap_id = 'abcdabcd1234abcd1234abcdeffedcbb'
+        oid = 'abc123-abc123abc123-abc123'
+
+        conf = {
+            'snapshot.snapshot_comment_to_object_id.return_value': oid,
+            'snapshot.delete_lun_snapshot.side_effect': response,
+        }
+
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
+        self.driver._compress_snapshot_id = mock.Mock(
+            return_value=compressed_snap_id)
+
+        result = self.driver._delete_lun_snapshot(SNAPSHOT)
+
+        self.assertIsNone(result)
+        self.assertEqual(
+            len(response),
+            self.driver.vmem_mg.snapshot.delete_lun_snapshot.call_count)
 
     def test_wait_for_lun_or_snap_copy_completes_for_snap(self):
         """waiting for a snapshot to copy succeeds."""
@@ -799,4 +1247,173 @@ class V7000CommonTestCase(test.TestCase):
 
         m_get_admin_context.assert_called_with()
         m_get_volume_type.assert_called_with(None, vol['volume_type_id'])
-        self.assertEqual('test_value', result)
+        self.assertEqual(result, 'test_value')
+
+    def test_process_extra_specs_dedup(self):
+        '''Process the given extra specs and fill the required dict.'''
+        vol = VOLUME.copy()
+        vol['volume_type_id'] = 1
+        spec_dict = {
+            'pool_type': 'dedup',
+            'size_mb': 205,
+            'thick': False,
+            'dedup': True,
+            'thin': True}
+
+        self.driver.vmem_mg = self.setup_mock_concerto()
+        self.driver._get_volume_type_extra_spec = mock.Mock(
+            return_value="True")
+
+        result = self.driver._process_extra_specs(vol)
+        self.assertEqual(spec_dict, result)
+
+    def test_process_extra_specs_no_specs(self):
+        '''Fill the required spec_dict in the absence of extra specs.'''
+        vol = VOLUME.copy()
+        spec_dict = {
+            'pool_type': 'thick',
+            'size_mb': 2048,
+            'thick': True,
+            'dedup': False,
+            'thin': False}
+
+        self.driver.vmem_mg = self.setup_mock_concerto()
+        self.driver._get_volume_type_extra_spec = mock.Mock(
+            return_value="False")
+
+        result = self.driver._process_extra_specs(vol)
+        self.assertEqual(spec_dict, result)
+
+    def test_process_extra_specs_no_specs_thin(self):
+        '''Fill the required spec_dict in the absence of extra specs.'''
+        vol = VOLUME.copy()
+        spec_dict = {
+            'pool_type': 'thin',
+            'size_mb': 205,
+            'thick': False,
+            'dedup': False,
+            'thin': True}
+
+        self.driver.vmem_mg = self.setup_mock_concerto()
+        self.driver._get_volume_type_extra_spec = mock.Mock(
+            return_value="False")
+
+        save_thin = self.conf.san_thin_provision
+        self.conf.san_thin_provision = True
+        result = self.driver._process_extra_specs(vol)
+        self.assertEqual(spec_dict, result)
+        self.conf.san_thin_provision = save_thin
+
+    def test_process_extra_specs_thin(self):
+        '''Fill the required spec_dict in the absence of extra specs.'''
+        vol = VOLUME.copy()
+        vol['volume_type_id'] = 1
+        spec_dict = {
+            'pool_type': 'thin',
+            'size_mb': 205,
+            'thick': False,
+            'dedup': False,
+            'thin': True}
+
+        self.driver.vmem_mg = self.setup_mock_concerto()
+        self.driver._get_volume_type_extra_spec = mock.Mock(
+            side_effect=["True", "False"])
+
+        result = self.driver._process_extra_specs(vol)
+        self.assertEqual(spec_dict, result)
+
+    def test_get_storage_pool_with_extra_specs(self):
+        '''Select a suitable pool based on specified extra specs.'''
+        vol = VOLUME.copy()
+        vol['volume_type_id'] = 1
+        pool_type = "thick"
+
+        selected_pool = {
+            'storage_pool': 'StoragePoolA',
+            'storage_pool_id': 99,
+            'dedup': False,
+            'thin': False}
+
+        conf = {
+            'pool.select_storage_pool.return_value': selected_pool,
+        }
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
+        self.driver._get_violin_extra_spec = mock.Mock(
+            return_value="StoragePoolA",
+        )
+
+        result = self.driver._get_storage_pool(
+            vol,
+            100,
+            pool_type,
+            "create_lun")
+
+        self.assertEqual(result, selected_pool)
+
+    def test_get_storage_pool_configured_pools(self):
+        '''Select a suitable pool based on configured pools.'''
+        vol = VOLUME.copy()
+        pool_type = "dedup"
+
+        self.conf.violin_dedup_only_pools = ['PoolA', 'PoolB']
+        self.conf.violin_dedup_capable_pools = ['PoolC', 'PoolD']
+
+        selected_pool = {
+            'dedup': True,
+            'storage_pool': 'PoolA',
+            'storage_pool_id': 123,
+            'thin': True,
+        }
+
+        conf = {
+            'pool.select_storage_pool.return_value': selected_pool,
+        }
+
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
+        self.driver._get_violin_extra_spec = mock.Mock(
+            return_value="StoragePoolA")
+
+        result = self.driver._get_storage_pool(
+            vol,
+            100,
+            pool_type,
+            "create_lun",
+        )
+
+        self.assertEqual(result, selected_pool)
+        self.driver.vmem_mg.pool.select_storage_pool.assert_called_with(
+            100,
+            pool_type,
+            None,
+            self.conf.violin_dedup_only_pools,
+            self.conf.violin_dedup_capable_pools,
+            "random",
+            "create_lun",
+        )
+
+    def test_get_volume_stats(self):
+        '''Getting stats works successfully.'''
+
+        self.conf.reserved_percentage = 0
+
+        expected_answers = {
+            'vendor_name': 'Violin Memory, Inc.',
+            'reserved_percentage': 0,
+            'QoS_support': False,
+            'free_capacity_gb': 2781,
+            'total_capacity_gb': 14333,
+            'consistencygroup_support': False,
+        }
+        owner = 'lab-host1'
+
+        def lookup(value):
+            return six.text_type(value) + '.vmem.com'
+        conf = {
+            'pool.get_storage_pools.return_value': STATS_STORAGE_POOL_RESPONSE,
+        }
+        self.driver.vmem_mg = self.setup_mock_concerto(m_conf=conf)
+
+        with mock.patch('socket.getfqdn', side_effect=lookup):
+            result = self.driver._get_volume_stats(owner)
+
+        self.assertDictEqual(expected_answers, result)
