@@ -3013,6 +3013,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                 try:
                     self.db.volume_glance_metadata_copy_to_snapshot(
                         context, snapshot_id, volume_id)
+                except exception.GlanceMetadataNotFound:
+                    # If volume is not created from image, No glance metadata
+                    # would be available for that volume in
+                    # volume glance metadata table
+                    pass
                 except exception.CinderException as ex:
                     LOG.error(_LE("Failed updating %(snapshot_id)s"
                                   " metadata using the provided volumes"

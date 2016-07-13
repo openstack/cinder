@@ -245,9 +245,9 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
             host=CONF.host,
             size=1)
         volume_id = volume['id']
-        cgsnapshot_returns = self._create_cgsnapshot(group.id, volume_id)
+        cgsnapshot_returns = self._create_cgsnapshot(group.id, [volume_id])
         cgsnapshot = cgsnapshot_returns[0]
-        snapshot_id = cgsnapshot_returns[1]['id']
+        snapshot_id = cgsnapshot_returns[1][0]['id']
 
         # Create CG from source CG snapshot.
         group2 = tests_utils.create_consistencygroup(
@@ -436,7 +436,7 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
                           self.volume._sort_source_vols,
                           volumes, [])
 
-    def _create_cgsnapshot(self, group_id, volume_id, size='0'):
+    def _create_cgsnapshot(self, group_id, volume_ids, size='0'):
         """Create a cgsnapshot object."""
         cgsnap = objects.CGSnapshot(self.context)
         cgsnap.user_id = fake.USER_ID
@@ -445,17 +445,20 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
         cgsnap.status = "creating"
         cgsnap.create()
 
-        # Create a snapshot object
-        snap = objects.Snapshot(context.get_admin_context())
-        snap.volume_size = size
-        snap.user_id = fake.USER_ID
-        snap.project_id = fake.PROJECT_ID
-        snap.volume_id = volume_id
-        snap.status = "available"
-        snap.cgsnapshot_id = cgsnap.id
-        snap.create()
+        # Create snapshot list
+        for volume_id in volume_ids:
+            snaps = []
+            snap = objects.Snapshot(context.get_admin_context())
+            snap.volume_size = size
+            snap.user_id = fake.USER_ID
+            snap.project_id = fake.PROJECT_ID
+            snap.volume_id = volume_id
+            snap.status = "available"
+            snap.cgsnapshot_id = cgsnap.id
+            snap.create()
+            snaps.append(snap)
 
-        return cgsnap, snap
+        return cgsnap, snaps
 
     @mock.patch('cinder.volume.driver.VolumeDriver.create_consistencygroup',
                 autospec=True,
@@ -491,7 +494,7 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
         self.assertEqual(2, len(self.notifier.notifications),
                          self.notifier.notifications)
 
-        cgsnapshot_returns = self._create_cgsnapshot(group.id, volume_id)
+        cgsnapshot_returns = self._create_cgsnapshot(group.id, [volume_id])
         cgsnapshot = cgsnapshot_returns[0]
         self.volume.create_cgsnapshot(self.context, cgsnapshot)
         self.assertEqual(cgsnapshot.id,
@@ -662,3 +665,39 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
                           self.context, 1, 'vol1', 'volume 1',
                           volume_type=fake_type,
                           consistencygroup=cg)
+
+    @mock.patch('cinder.volume.driver.VolumeDriver.create_cgsnapshot',
+                autospec=True,
+                return_value=({'status': 'available'}, []))
+    def test_create_cgsnapshot_with_bootable_volumes(self, mock_create_cgsnap):
+        """Test cgsnapshot can be created and deleted."""
+
+        group = tests_utils.create_consistencygroup(
+            self.context,
+            availability_zone=CONF.storage_availability_zone,
+            volume_type='type1,type2')
+        volume = tests_utils.create_volume(
+            self.context,
+            consistencygroup_id=group.id,
+            **self.volume_params)
+        volume_id = volume['id']
+        self.volume.create_volume(self.context, volume_id)
+        # Create a bootable volume
+        bootable_vol_params = {'status': 'creating', 'host': CONF.host,
+                               'size': 1, 'bootable': True}
+        bootable_vol = tests_utils.create_volume(self.context,
+                                                 consistencygroup_id=group.id,
+                                                 **bootable_vol_params)
+        # Create a common volume
+        bootable_vol_id = bootable_vol['id']
+        self.volume.create_volume(self.context, bootable_vol_id)
+
+        volume_ids = [volume_id, bootable_vol_id]
+        cgsnapshot_returns = self._create_cgsnapshot(group.id, volume_ids)
+        cgsnapshot = cgsnapshot_returns[0]
+        self.volume.create_cgsnapshot(self.context, cgsnapshot)
+        self.assertEqual(cgsnapshot.id,
+                         objects.CGSnapshot.get_by_id(
+                             context.get_admin_context(),
+                             cgsnapshot.id).id)
+        self.assertTrue(mock_create_cgsnap.called)
