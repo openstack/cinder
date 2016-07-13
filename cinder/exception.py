@@ -1285,7 +1285,7 @@ class SynoAPIHTTPError(CinderException):
 
 
 class SynoAuthError(CinderException):
-    pass
+    message = _("Synology driver authentication failed: %(reason)s.")
 
 
 class SynoLUNNotExist(CinderException):
