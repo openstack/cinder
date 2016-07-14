@@ -150,7 +150,7 @@ class EMCCoprHDDriverCommon(object):
 
         coprhd_utils.AUTH_TOKEN = None
 
-        # instantiate a few coprhd api objects for later use
+        # instantiate coprhd api objects for later use
         self.volume_obj = coprhd_vol.Volume(
             self.configuration.coprhd_hostname,
             self.configuration.coprhd_port)
@@ -233,7 +233,6 @@ class EMCCoprHDDriverCommon(object):
         self.vpool = vpool['CoprHD:VPOOL']
 
         try:
-            cgid = None
             coprhd_cgid = None
             try:
                 cgid = vol['consistencygroup_id']
@@ -270,14 +269,14 @@ class EMCCoprHDDriverCommon(object):
                 self.configuration.coprhd_project,
                 self.configuration.coprhd_tenant)
 
-            cgUri = self.consistencygroup_obj.consistencygroup_query(
+            cg_uri = self.consistencygroup_obj.consistencygroup_query(
                 name,
                 self.configuration.coprhd_project,
                 self.configuration.coprhd_tenant)
 
             self.set_tags_for_resource(
                 coprhd_cg.ConsistencyGroup.URI_CONSISTENCY_GROUP_TAGS,
-                cgUri, group)
+                cg_uri, group)
 
         except coprhd_utils.CoprHdError as e:
             coprhd_err_msg = (_("Consistency Group %(name)s:"
@@ -423,17 +422,17 @@ class EMCCoprHDDriverCommon(object):
                 if not rslt:
                     continue
 
-                volUri = rslt[0]
+                vol_uri = rslt[0]
 
                 snapshots_of_volume = self.snapshot_obj.snapshot_list_uri(
                     'block',
                     'volumes',
-                    volUri)
+                    vol_uri)
 
                 for snapUri in snapshots_of_volume:
                     snapshot_obj = self.snapshot_obj.snapshot_show_uri(
                         'block',
-                        volUri,
+                        vol_uri,
                         snapUri['id'])
 
                     if not coprhd_utils.get_node_value(snapshot_obj,
@@ -554,9 +553,9 @@ class EMCCoprHDDriverCommon(object):
                                          log_err_msg)
 
     @retry_wrapper
-    def set_volume_tags(self, vol, exemptTags=None, truncate_name=False):
-        if exemptTags is None:
-            exemptTags = []
+    def set_volume_tags(self, vol, exempt_tags=None, truncate_name=False):
+        if exempt_tags is None:
+            exempt_tags = []
 
         self.authenticate_user()
         name = self._get_resource_name(vol, truncate_name)
@@ -568,19 +567,19 @@ class EMCCoprHDDriverCommon(object):
                                                name)
 
         self.set_tags_for_resource(
-            coprhd_vol.Volume.URI_TAG_VOLUME, vol_uri, vol, exemptTags)
+            coprhd_vol.Volume.URI_TAG_VOLUME, vol_uri, vol, exempt_tags)
 
     @retry_wrapper
-    def set_tags_for_resource(self, uri, resourceId, resource,
-                              exemptTags=None):
-        if exemptTags is None:
-            exemptTags = []
+    def set_tags_for_resource(self, uri, resource_id, resource,
+                              exempt_tags=None):
+        if exempt_tags is None:
+            exempt_tags = []
 
         self.authenticate_user()
 
         # first, get the current tags that start with the OPENSTACK_TAG
         # eyecatcher
-        formattedUri = uri.format(resourceId)
+        formattedUri = uri.format(resource_id)
         remove_tags = []
         currentTags = self.tag_obj.list_tags(formattedUri)
         for cTag in currentTags:
@@ -590,7 +589,7 @@ class EMCCoprHDDriverCommon(object):
         try:
             if remove_tags:
                 self.tag_obj.tag_resource(uri,
-                                          resourceId,
+                                          resource_id,
                                           None,
                                           remove_tags)
         except coprhd_utils.CoprHdError as e:
@@ -604,7 +603,7 @@ class EMCCoprHDDriverCommon(object):
         try:
             for prop, value in vars(resource).items():
                 try:
-                    if prop in exemptTags:
+                    if prop in exempt_tags:
                         continue
 
                     if prop.startswith("_"):
@@ -627,7 +626,7 @@ class EMCCoprHDDriverCommon(object):
         try:
             self.tag_obj.tag_resource(
                 uri,
-                resourceId,
+                resource_id,
                 add_tags,
                 None)
         except coprhd_utils.CoprHdError as e:
@@ -653,12 +652,12 @@ class EMCCoprHDDriverCommon(object):
         except KeyError as e:
             pass
         try:
-            (storageresType,
-             storageresTypename) = self.volume_obj.get_storageAttributes(
+            (storageres_type,
+             storageres_typename) = self.volume_obj.get_storageAttributes(
                 srcname, None, None)
 
             resource_id = self.volume_obj.storage_resource_query(
-                storageresType,
+                storageres_type,
                 srcname,
                 None,
                 None,
@@ -683,7 +682,7 @@ class EMCCoprHDDriverCommon(object):
                 self.volume_obj.volume_clone_detach(
                     "", full_project_name, name, True)
 
-        except IndexError as e:
+        except IndexError:
             LOG.exception(_LE("Volume clone detach returned empty task list"))
 
         except coprhd_utils.CoprHdError as e:
@@ -761,12 +760,12 @@ class EMCCoprHDDriverCommon(object):
             src_snapshot_name = self._get_coprhd_snapshot_name(
                 snapshot, coprhd_vol_info['volume_uri'])
 
-            (storageresType,
-             storageresTypename) = self.volume_obj.get_storageAttributes(
+            (storageres_type,
+             storageres_typename) = self.volume_obj.get_storageAttributes(
                 coprhd_vol_info['volume_name'], None, src_snapshot_name)
 
             resource_id = self.volume_obj.storage_resource_query(
-                storageresType,
+                storageres_type,
                 coprhd_vol_info['volume_name'],
                 None,
                 src_snapshot_name,
@@ -861,10 +860,10 @@ class EMCCoprHDDriverCommon(object):
             volumename = self._get_coprhd_volume_name(vol)
             projectname = self.configuration.coprhd_project
             tenantname = self.configuration.coprhd_tenant
-            storageresType = 'block'
-            storageresTypename = 'volumes'
-            resourceUri = self.snapshot_obj.storage_resource_query(
-                storageresType,
+            storageres_type = 'block'
+            storageres_typename = 'volumes'
+            resource_uri = self.snapshot_obj.storage_resource_query(
+                storageres_type,
                 volume_name=volumename,
                 cg_name=None,
                 project=projectname,
@@ -872,22 +871,22 @@ class EMCCoprHDDriverCommon(object):
             inactive = False
             sync = True
             self.snapshot_obj.snapshot_create(
-                storageresType,
-                storageresTypename,
-                resourceUri,
+                storageres_type,
+                storageres_typename,
+                resource_uri,
                 snapshotname,
                 inactive,
                 sync)
 
-            snapshotUri = self.snapshot_obj.snapshot_query(
-                storageresType,
-                storageresTypename,
-                resourceUri,
+            snapshot_uri = self.snapshot_obj.snapshot_query(
+                storageres_type,
+                storageres_typename,
+                resource_uri,
                 snapshotname)
 
             self.set_tags_for_resource(
                 coprhd_snap.Snapshot.URI_BLOCK_SNAPSHOTS_TAG,
-                snapshotUri, snapshot, ['_volume'])
+                snapshot_uri, snapshot, ['_volume'])
 
         except coprhd_utils.CoprHdError as e:
             coprhd_err_msg = (_("Snapshot: %(snapshotname)s, create failed"
@@ -922,27 +921,27 @@ class EMCCoprHDDriverCommon(object):
             volumename = self._get_coprhd_volume_name(vol)
             projectname = self.configuration.coprhd_project
             tenantname = self.configuration.coprhd_tenant
-            storageresType = 'block'
-            storageresTypename = 'volumes'
-            resourceUri = self.snapshot_obj.storage_resource_query(
-                storageresType,
+            storageres_type = 'block'
+            storageres_typename = 'volumes'
+            resource_uri = self.snapshot_obj.storage_resource_query(
+                storageres_type,
                 volume_name=volumename,
                 cg_name=None,
                 project=projectname,
                 tenant=tenantname)
-            if resourceUri is None:
+            if resource_uri is None:
                 LOG.info(_LI(
                     "Snapshot %s"
                     " is not found; snapshot deletion"
                     " is considered successful."), snapshotname)
             else:
                 snapshotname = self._get_coprhd_snapshot_name(
-                    snapshot, resourceUri)
+                    snapshot, resource_uri)
 
                 self.snapshot_obj.snapshot_delete(
-                    storageresType,
-                    storageresTypename,
-                    resourceUri,
+                    storageres_type,
+                    storageres_typename,
+                    resource_uri,
                     snapshotname,
                     sync=True)
         except coprhd_utils.CoprHdError as e:
@@ -954,21 +953,21 @@ class EMCCoprHDDriverCommon(object):
                                          log_err_msg)
 
     @retry_wrapper
-    def initialize_connection(self, volume, protocol, initiatorPorts,
+    def initialize_connection(self, volume, protocol, initiator_ports,
                               hostname):
 
         try:
             self.authenticate_user()
             volumename = self._get_coprhd_volume_name(volume)
-            foundgroupname = self._find_exportgroup(initiatorPorts)
+            foundgroupname = self._find_exportgroup(initiator_ports)
             foundhostname = None
             if foundgroupname is None:
-                for i in range(len(initiatorPorts)):
+                for i in range(len(initiator_ports)):
                     # check if this initiator is contained in any CoprHD Host
                     # object
                     LOG.debug(
-                        "checking for initiator port: %s", initiatorPorts[i])
-                    foundhostname = self._find_host(initiatorPorts[i])
+                        "checking for initiator port: %s", initiator_ports[i])
+                    foundhostname = self._find_host(initiator_ports[i])
 
                     if foundhostname:
                         LOG.info(_LI("Found host %s"), foundhostname)
@@ -1006,7 +1005,7 @@ class EMCCoprHDDriverCommon(object):
                 None,
                 None)
 
-            return self._find_device_info(volume, initiatorPorts)
+            return self._find_device_info(volume, initiator_ports)
 
         except coprhd_utils.CoprHdError as e:
             raise coprhd_utils.CoprHdError(
@@ -1017,12 +1016,12 @@ class EMCCoprHDDriverCommon(object):
                  {'name': self._get_coprhd_volume_name(
                      volume),
                   'hostname': hostname,
-                  'initiatorport': initiatorPorts[0],
+                  'initiatorport': initiator_ports[0],
                   'err': six.text_type(e.msg)})
             )
 
     @retry_wrapper
-    def terminate_connection(self, volume, protocol, initiatorPorts,
+    def terminate_connection(self, volume, protocol, initiator_ports,
                              hostname):
         try:
             self.authenticate_user()
@@ -1038,7 +1037,7 @@ class EMCCoprHDDriverCommon(object):
             itls = exports['itl']
             for itl in itls:
                 itl_port = itl['initiator']['port']
-                if itl_port in initiatorPorts:
+                if itl_port in initiator_ports:
                     exportgroups.add(itl['export']['id'])
 
             for exportgroup in exportgroups:
@@ -1159,11 +1158,11 @@ class EMCCoprHDDriverCommon(object):
                 self.configuration.coprhd_port)
 
         if len(rslt) > 0:
-            rsltCg = self.consistencygroup_obj.show(
+            rslt_cg = self.consistencygroup_obj.show(
                 rslt[0],
                 self.configuration.coprhd_project,
                 self.configuration.coprhd_tenant)
-            return rsltCg['id']
+            return rslt_cg['id']
         else:
             raise coprhd_utils.CoprHdError(
                 coprhd_utils.CoprHdError.NOT_FOUND_ERR,
@@ -1193,11 +1192,11 @@ class EMCCoprHDDriverCommon(object):
         if rslt is None or len(rslt) == 0:
             return snapshot['name']
         else:
-            rsltSnap = self.snapshot_obj.snapshot_show_uri(
+            rslt_snap = self.snapshot_obj.snapshot_show_uri(
                 'block',
                 resUri,
                 rslt[0])
-            return rsltSnap['name']
+            return rslt_snap['name']
 
     def _get_coprhd_volume_name(self, vol, verbose=False):
         tagname = self.OPENSTACK_TAG + ":id:" + vol['id']
@@ -1217,12 +1216,12 @@ class EMCCoprHDDriverCommon(object):
                 self.configuration.coprhd_port)
 
         if len(rslt) > 0:
-            rsltVol = self.volume_obj.show_by_uri(rslt[0])
+            rslt_vol = self.volume_obj.show_by_uri(rslt[0])
 
             if verbose is True:
-                return {'volume_name': rsltVol['name'], 'volume_uri': rslt[0]}
+                return {'volume_name': rslt_vol['name'], 'volume_uri': rslt[0]}
             else:
-                return rsltVol['name']
+                return rslt_vol['name']
         else:
             raise coprhd_utils.CoprHdError(
                 coprhd_utils.CoprHdError.NOT_FOUND_ERR,
@@ -1336,22 +1335,6 @@ class EMCCoprHDDriverCommon(object):
                 break
 
         return foundhostname
-
-    @retry_wrapper
-    def _host_exists(self, host_name):
-        """Check if Host object with given hostname already exists in CoprHD.
-
-        """
-        hosts = self.host_obj.search_by_name(host_name)
-
-        if len(hosts) > 0:
-            for host in hosts:
-                hostname = host['match']
-                if host_name == hostname:
-                    return hostname
-            return hostname
-        LOG.debug("no host found for: %s", host_name)
-        return None
 
     @retry_wrapper
     def get_exports_count_by_initiators(self, initiator_ports):

@@ -24,7 +24,6 @@ class Host(common.CoprHDResource):
     URI_HOST_DETAILS = "/compute/hosts/{0}"
     URI_HOST_LIST_INITIATORS = "/compute/hosts/{0}/initiators"
     URI_COMPUTE_HOST = "/compute/hosts"
-    URI_HOSTS_SEARCH_BY_NAME = "/compute/hosts/search?name={0}"
 
     def query_by_name(self, host_name, tenant_name=None):
         """Search host matching host_name and tenant if tenant_name provided.
@@ -92,13 +91,3 @@ class Host(common.CoprHDResource):
         if inactive:
             return None
         return o
-
-    def search_by_name(self, host_name):
-        """Search host by its name."""
-        (s, h) = common.service_json_request(
-            self.ipaddr, self.port, "GET",
-            self.URI_HOSTS_SEARCH_BY_NAME.format(host_name), None)
-        o = common.json_decode(s)
-        if not o:
-            return []
-        return common.get_node_value(o, "resource")

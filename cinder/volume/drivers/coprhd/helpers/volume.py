@@ -275,8 +275,6 @@ class Volume(common.CoprHDResource):
                                  secs, an exception is thrown
         :returns: Created task details in JSON response payload
         """
-        from cinder.volume.drivers.coprhd.helpers import snapshot
-        snap_obj = snapshot.Snapshot(self.ipaddr, self.port)
         is_snapshot_clone = False
         clone_full_uri = None
 
@@ -311,10 +309,10 @@ class Volume(common.CoprHDResource):
 
             if is_snapshot_clone:
                 return (
-                    snap_obj.block_until_complete(
+                    common.block_until_complete(
                         "block",
                         task["resource"]["id"],
-                        task["id"])
+                        task["id"], self.ipaddr, self.port)
                 )
             else:
                 return self.check_for_sync(task, sync, synctimeout)

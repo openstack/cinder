@@ -23,7 +23,7 @@ from oslo_log import log as logging
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.coprhd import common as coprhd_common
-from cinder.zonemanager import utils
+from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ LOG = logging.getLogger(__name__)
 @interface.volumedriver
 class EMCCoprHDFCDriver(driver.FibreChannelDriver):
     """CoprHD FC Driver."""
+    VERSION = "3.0.0.0"
 
     def __init__(self, *args, **kwargs):
         super(EMCCoprHDFCDriver, self).__init__(*args, **kwargs)
@@ -92,8 +93,8 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
         """Creates a consistencygroup."""
         return self.common.create_consistencygroup(context, group)
 
-    def update_consistencygroup(self, context, group, add_volumes,
-                                remove_volumes):
+    def update_consistencygroup(self, context, group, add_volumes=None,
+                                remove_volumes=None):
         """Updates volumes in consistency group."""
         return self.common.update_consistencygroup(group, add_volumes,
                                                    remove_volumes)
@@ -114,7 +115,7 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
         """Make sure volume is exported."""
         pass
 
-    @utils.AddFCZone
+    @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Initializes the connection and returns connection info."""
 
@@ -150,10 +151,10 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
         LOG.debug('FC properties: %s', properties)
         return {
             'driver_volume_type': 'fibre_channel',
-            'data': properties
+            'data': properties,
         }
 
-    @utils.RemoveFCZone
+    @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Driver entry point to detach a volume from an instance."""
 

@@ -13,8 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import threading
-
 import oslo_serialization
 
 from cinder.i18n import _
@@ -43,7 +41,6 @@ class Snapshot(common.CoprHDResource):
     CG = 'consistency-groups'
     BLOCK = 'block'
 
-    is_timeout = False
     timeout = 300
 
     def snapshot_list_uri(self, otype, otypename, ouri):
@@ -107,60 +104,6 @@ class Snapshot(common.CoprHDResource):
             common.CoprHdError.SOS_FAILURE_ERR,
             (_("snapshot with the name: "
                "%s Not Found") % snapshot_name))
-
-    def snapshot_show_task_opid(self, otype, snap, taskid):
-        (s, h) = common.service_json_request(
-            self.ipaddr, self.port,
-            "GET",
-            Snapshot.URI_SNAPSHOT_TASKS_BY_OPID.format(taskid),
-            None)
-        if (not s):
-            return None
-        o = common.json_decode(s)
-        return o
-
-    # Blocks the operation until the task is complete/error out/timeout
-    def block_until_complete(self, storageres_type, resuri,
-                             task_id, synctimeout=0):
-        if synctimeout:
-            t = threading.Timer(synctimeout, common.timeout_handler)
-        else:
-            synctimeout = self.timeout
-            t = threading.Timer(synctimeout, common.timeout_handler)
-        t.start()
-        while True:
-            out = self.snapshot_show_task_opid(
-                storageres_type, resuri, task_id)
-
-            if out:
-                if out["state"] == "ready":
-                    # cancel the timer and return
-                    t.cancel()
-                    break
-                # if the status of the task is 'error' then cancel the timer
-                # and raise exception
-                if out["state"] == "error":
-                    # cancel the timer
-                    t.cancel()
-                    error_message = "Please see logs for more details"
-                    if("service_error" in out and
-                       "details" in out["service_error"]):
-                        error_message = out["service_error"]["details"]
-                    raise common.CoprHdError(
-                        common.CoprHdError.VALUE_ERR,
-                        (_("Task: %(task_id)s is failed with error: "
-                           "%(error_message)s") %
-                         {'task_id': task_id,
-                          'error_message': error_message}))
-
-            if self.is_timeout:
-                self.is_timeout = False
-                raise common.CoprHdError(common.CoprHdError.TIME_OUT,
-                                         (_("Task did not complete in %d secs."
-                                            " Operation timed out. Task in"
-                                            " CoprHD will continue") %
-                                          synctimeout))
-        return
 
     def storage_resource_query(self,
                                storageres_type,
@@ -248,10 +191,10 @@ class Snapshot(common.CoprHDResource):
 
         if sync:
             return (
-                self.block_until_complete(
+                common.block_until_complete(
                     otype,
                     task['resource']['id'],
-                    task["id"], synctimeout)
+                    task["id"], self.ipaddr, self.port, synctimeout)
             )
         else:
             return o
@@ -291,10 +234,10 @@ class Snapshot(common.CoprHDResource):
 
         if sync:
             return (
-                self.block_until_complete(
+                common.block_until_complete(
                     otype,
                     task['resource']['id'],
-                    task["id"], synctimeout)
+                    task["id"], self.ipaddr, self.port, synctimeout)
             )
         else:
             return o
