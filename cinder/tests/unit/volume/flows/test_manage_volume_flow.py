@@ -11,11 +11,16 @@
 #    under the License.
 """ Tests for manage_existing TaskFlow """
 
+import mock
+
 from cinder import context
 from cinder import test
+from cinder.tests.unit import fake_constants as fakes
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.flows import fake_volume_api
 from cinder.volume.flows.api import manage_existing
+from cinder.volume.flows import common as flow_common
+from cinder.volume.flows.manager import manage_existing as manager
 
 
 class ManageVolumeFlowTestCase(test.TestCase):
@@ -49,3 +54,46 @@ class ManageVolumeFlowTestCase(test.TestCase):
         create_what.update({'volume': volume})
         create_what.pop('volume_id')
         task.execute(self.ctxt, **create_what)
+
+    @staticmethod
+    def _stub_volume_object_get(self):
+        volume = {
+            'id': fakes.VOLUME_ID,
+            'volume_type_id': fakes.VOLUME_TYPE_ID,
+            'status': 'creating',
+            'name': fakes.VOLUME_NAME,
+        }
+        return fake_volume.fake_volume_obj(self.ctxt, **volume)
+
+    def test_prepare_for_quota_reserveration_task_execute(self):
+        mock_db = mock.MagicMock()
+        mock_driver = mock.MagicMock()
+        mock_manage_existing_ref = mock.MagicMock()
+        mock_get_size = self.mock_object(
+            mock_driver, 'manage_existing_get_size')
+        mock_get_size.return_value = '5'
+
+        volume_ref = self._stub_volume_object_get(self)
+        task = manager.PrepareForQuotaReservationTask(mock_db, mock_driver)
+
+        result = task.execute(self.ctxt, volume_ref, mock_manage_existing_ref)
+
+        self.assertEqual(volume_ref, result['volume_properties'])
+        self.assertEqual('5', result['size'])
+        self.assertEqual(volume_ref.id, result['volume_spec']['volume_id'])
+        mock_get_size.assert_called_once_with(
+            volume_ref, mock_manage_existing_ref)
+
+    def test_prepare_for_quota_reservation_task_revert(self):
+        mock_db = mock.MagicMock()
+        mock_driver = mock.MagicMock()
+        mock_result = mock.MagicMock()
+        mock_flow_failures = mock.MagicMock()
+        mock_error_out_volumes = self.mock_object(
+            flow_common, 'error_out_volume')
+        volume_ref = self._stub_volume_object_get(self)
+        task = manager.PrepareForQuotaReservationTask(mock_db, mock_driver)
+
+        task.revert(self.ctxt, mock_result, mock_flow_failures, volume_ref)
+        mock_error_out_volumes.assert_called_once_with(
+            self.ctxt, mock_db, volume_ref.id, reason=mock.ANY)
