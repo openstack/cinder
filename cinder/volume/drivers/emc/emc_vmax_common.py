@@ -1592,7 +1592,7 @@ class EMCVMAXCommon(object):
         :returns: list -- targetWwns, the target WWN list
         :raises: VolumeBackendAPIException
         """
-        targetWwns = []
+        targetWwns = set()
 
         storageHardwareService = self.utils.find_storage_hardwareid_service(
             self.conn, storageSystem)
@@ -1613,33 +1613,36 @@ class EMCVMAXCommon(object):
                 targetEndpoints = (
                     self.utils.get_target_endpoints(
                         self.conn, hardwareIdInstance))
+                if not targetEndpoints:
+                    LOG.warning(_LW(
+                        "Unable to get target endpoints for hardwareId "
+                        "%(instance)s."),
+                        {'instance': hardwareIdInstance})
+                    continue
             except Exception:
-                errorMessage = (_(
+                LOG.warning(_LW(
                     "Unable to get target endpoints for hardwareId "
-                    "%(hardwareIdInstance)s.")
-                    % {'hardwareIdInstance': hardwareIdInstance})
-                LOG.exception(errorMessage)
-                raise exception.VolumeBackendAPIException(data=errorMessage)
+                    "%(instance)s."),
+                    {'instance': hardwareIdInstance}, exc_info=True)
+                continue
 
-            if targetEndpoints:
+            LOG.debug("There are %(len)lu endpoints.",
+                      {'len': len(targetEndpoints)})
+            for targetendpoint in targetEndpoints:
+                wwn = targetendpoint['Name']
+                # Add target wwn to the list if it is not already there.
+                targetWwns.add(wwn)
+            break
 
-                LOG.debug("There are %(len)lu endpoints.",
-                          {'len': len(targetEndpoints)})
-                for targetendpoint in targetEndpoints:
-                    wwn = targetendpoint['Name']
-                    # Add target wwn to the list if it is not already there.
-                    if not any(d == wwn for d in targetWwns):
-                        targetWwns.append(wwn)
-            else:
-                LOG.error(_LE(
-                    "Target end points do not exist for hardware Id: "
-                    "%(hardwareIdInstance)s."),
-                    {'hardwareIdInstance': hardwareIdInstance})
+        if not targetWwns:
+            exception_message = (_(
+                "Unable to get target endpoints for any hardwareIds."))
+            raise exception.VolumeBackendAPIException(data=exception_message)
 
         LOG.debug("Target WWNs: %(targetWwns)s.",
                   {'targetWwns': targetWwns})
 
-        return targetWwns
+        return list(targetWwns)
 
     def _find_storage_hardwareids(
             self, connector, hardwareIdManagementService):
