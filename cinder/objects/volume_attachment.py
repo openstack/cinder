@@ -71,10 +71,6 @@ class VolumeAttachmentList(base.ObjectListBase, base.CinderObject):
         'objects': fields.ListOfObjectsField('VolumeAttachment'),
     }
 
-    child_versions = {
-        '1.0': '1.0',
-    }
-
     @base.remotable_classmethod
     def get_all_by_volume_id(cls, context, volume_id):
         attachments = db.volume_attachment_get_used_by_volume_id(context,

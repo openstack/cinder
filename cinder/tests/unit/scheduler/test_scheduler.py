@@ -23,6 +23,7 @@ from oslo_config import cfg
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder.objects import fields
 from cinder.scheduler import driver
 from cinder.scheduler import filter_scheduler
@@ -73,14 +74,15 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-volume': '1.3'})
-    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-volume': '1.5'})
+    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-volume': '1.3'})
     def test_reset(self, get_min_obj, get_min_rpc):
         mgr = self.manager_cls()
 
         volume_rpcapi = mgr.driver.volume_rpcapi
         self.assertEqual('1.3', volume_rpcapi.client.version_cap)
-        self.assertEqual('1.5',
+        self.assertEqual('1.3',
                          volume_rpcapi.client.serializer._base.version_cap)
+        get_min_obj.return_value = objects.base.OBJ_VERSIONS.get_current()
         mgr.reset()
 
         volume_rpcapi = mgr.driver.volume_rpcapi
@@ -88,6 +90,7 @@ class SchedulerManagerTestCase(test.TestCase):
                          volume_rpcapi.client.version_cap)
         self.assertEqual(get_min_obj.return_value,
                          volume_rpcapi.client.serializer._base.version_cap)
+        self.assertIsNone(volume_rpcapi.client.serializer._base.manifest)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.'
                 'update_service_capabilities')

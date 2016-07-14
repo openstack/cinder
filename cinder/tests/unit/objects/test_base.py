@@ -13,39 +13,22 @@
 #    under the License.
 
 import datetime
-import mock
 import uuid
 
 from iso8601 import iso8601
-from oslo_utils import versionutils
+import mock
 from oslo_versionedobjects import fields
 from sqlalchemy import sql
 
 from cinder import context
 from cinder import db
 from cinder.db.sqlalchemy import models
+from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_objects
 from cinder.tests.unit import objects as test_objects
-
-
-@objects.base.CinderObjectRegistry.register_if(False)
-class TestObject(objects.base.CinderObject):
-    VERSION = '1.1'
-
-    fields = {
-        'scheduled_at': objects.base.fields.DateTimeField(nullable=True),
-        'uuid': objects.base.fields.UUIDField(),
-        'text': objects.base.fields.StringField(nullable=True),
-    }
-
-    def obj_make_compatible(self, primitive, target_version):
-        super(TestObject, self).obj_make_compatible(primitive,
-                                                    target_version)
-        target_version = versionutils.convert_version_to_tuple(target_version)
-        if target_version < (1, 1):
-            primitive.pop('text', None)
 
 
 class TestCinderObject(test_objects.BaseObjectsTestCase):
@@ -53,7 +36,7 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
 
     def setUp(self):
         super(TestCinderObject, self).setUp()
-        self.obj = TestObject(
+        self.obj = fake_objects.ChildObject(
             scheduled_at=None,
             uuid=uuid.uuid4(),
             text='text')
@@ -609,21 +592,107 @@ class TestCinderDictObject(test_objects.BaseObjectsTestCase):
         self.assertFalse('def' in obj)
 
 
-@mock.patch('cinder.objects.base.OBJ_VERSIONS', {'1.0': {'TestObject': '1.0'},
-                                                 '1.1': {'TestObject': '1.1'},
-                                                 })
+@mock.patch('cinder.objects.base.OBJ_VERSIONS', fake_objects.MyHistory())
 class TestCinderObjectSerializer(test_objects.BaseObjectsTestCase):
     def setUp(self):
         super(TestCinderObjectSerializer, self).setUp()
-        self.obj = TestObject(scheduled_at=None, uuid=uuid.uuid4(),
-                              text='text')
+        self.obj = fake_objects.ChildObject(scheduled_at=None,
+                                            uuid=uuid.uuid4(),
+                                            text='text',
+                                            integer=1)
+        self.parent = fake_objects.ParentObject(uuid=uuid.uuid4(),
+                                                child=self.obj,
+                                                scheduled_at=None)
+        self.parent_list = fake_objects.ParentObjectList(objects=[self.parent])
 
-    def test_serialize_entity_backport(self):
-        serializer = objects.base.CinderObjectSerializer('1.0')
-        primitive = serializer.serialize_entity(self.context, self.obj)
-        self.assertEqual('1.0', primitive['versioned_object.version'])
+    def test_serialize_init_current_has_no_manifest(self):
+        """Test that pinned to current version we have no manifest."""
+        serializer = objects.base.CinderObjectSerializer('1.6')
+        # Serializer should not have a manifest
+        self.assertIsNone(serializer.manifest)
+
+    def test_serialize_init_no_cap_has_no_manifest(self):
+        """Test that without cap we have no manifest."""
+        serializer = objects.base.CinderObjectSerializer()
+        # Serializer should not have a manifest
+        self.assertIsNone(serializer.manifest)
+
+    def test_serialize_init_pinned_has_manifest(self):
+        """Test that pinned to older version we have manifest."""
+        objs_version = '1.5'
+        serializer = objects.base.CinderObjectSerializer(objs_version)
+        # Serializer should have the right manifest
+        self.assertDictEqual(fake_objects.MyHistory()[objs_version],
+                             serializer.manifest)
 
     def test_serialize_entity_unknown_version(self):
-        serializer = objects.base.CinderObjectSerializer('0.9')
+        """Test that bad cap version will prevent serializer creation."""
+        self.assertRaises(exception.CappedVersionUnknown,
+                          objects.base.CinderObjectSerializer, '0.9')
+
+    def test_serialize_entity_basic_no_backport(self):
+        """Test single element serializer with no backport."""
+        serializer = objects.base.CinderObjectSerializer('1.6')
+        primitive = serializer.serialize_entity(self.context, self.obj)
+        self.assertEqual('1.2', primitive['versioned_object.version'])
+        data = primitive['versioned_object.data']
+        self.assertEqual(1, data['integer'])
+        self.assertEqual('text', data['text'])
+
+    def test_serialize_entity_basic_backport(self):
+        """Test single element serializer with backport."""
+        serializer = objects.base.CinderObjectSerializer('1.5')
         primitive = serializer.serialize_entity(self.context, self.obj)
         self.assertEqual('1.1', primitive['versioned_object.version'])
+        data = primitive['versioned_object.data']
+        self.assertNotIn('integer', data)
+        self.assertEqual('text', data['text'])
+
+    def test_serialize_entity_full_no_backport(self):
+        """Test related elements serialization with no backport."""
+        serializer = objects.base.CinderObjectSerializer('1.6')
+        primitive = serializer.serialize_entity(self.context, self.parent_list)
+        self.assertEqual('1.1', primitive['versioned_object.version'])
+        parent = primitive['versioned_object.data']['objects'][0]
+        self.assertEqual('1.1', parent['versioned_object.version'])
+        child = parent['versioned_object.data']['child']
+        self.assertEqual('1.2', child['versioned_object.version'])
+
+    def test_serialize_entity_full_backport_last_children(self):
+        """Test related elements serialization with backport of the last child.
+
+        Test that using the manifest we properly backport a child object even
+        when all its parents have not changed their version.
+        """
+        serializer = objects.base.CinderObjectSerializer('1.5')
+        primitive = serializer.serialize_entity(self.context, self.parent_list)
+        self.assertEqual('1.1', primitive['versioned_object.version'])
+        parent = primitive['versioned_object.data']['objects'][0]
+        self.assertEqual('1.1', parent['versioned_object.version'])
+        # Only the child has been backported
+        child = parent['versioned_object.data']['child']
+        self.assertEqual('1.1', child['versioned_object.version'])
+        # Check that the backport has been properly done
+        data = child['versioned_object.data']
+        self.assertNotIn('integer', data)
+        self.assertEqual('text', data['text'])
+
+    def test_serialize_entity_full_backport(self):
+        """Test backport of the whole tree of related elements."""
+        serializer = objects.base.CinderObjectSerializer('1.3')
+        primitive = serializer.serialize_entity(self.context, self.parent_list)
+        # List has been backported
+        self.assertEqual('1.0', primitive['versioned_object.version'])
+        parent = primitive['versioned_object.data']['objects'][0]
+        # Parent has been backported as well
+        self.assertEqual('1.0', parent['versioned_object.version'])
+        # And the backport has been properly done
+        data = parent['versioned_object.data']
+        self.assertNotIn('scheduled_at', data)
+        # And child as well
+        child = parent['versioned_object.data']['child']
+        self.assertEqual('1.1', child['versioned_object.version'])
+        # Check that the backport has been properly done
+        data = child['versioned_object.data']
+        self.assertNotIn('integer', data)
+        self.assertEqual('text', data['text'])

@@ -401,6 +401,17 @@ class CinderObjectSerializer(base.VersionedObjectSerializer):
         super(CinderObjectSerializer, self).__init__()
         self.version_cap = version_cap
 
+        # NOTE(geguileo): During upgrades we will use a manifest to ensure that
+        # all objects are properly backported.  This allows us to properly
+        # backport child objects to the right version even if parent version
+        # has not been bumped.
+        if not version_cap or version_cap == OBJ_VERSIONS.get_current():
+            self.manifest = None
+        else:
+            if version_cap not in OBJ_VERSIONS:
+                raise exception.CappedVersionUnknown(version=version_cap)
+            self.manifest = OBJ_VERSIONS[version_cap]
+
     def _get_capped_obj_version(self, obj):
         objname = obj.obj_name()
         version_dict = OBJ_VERSIONS.get(self.version_cap, {})
@@ -426,5 +437,5 @@ class CinderObjectSerializer(base.VersionedObjectSerializer):
               callable(entity.obj_to_primitive)):
             # NOTE(dulek): Backport outgoing object to the capped version.
             backport_ver = self._get_capped_obj_version(entity)
-            entity = entity.obj_to_primitive(backport_ver)
+            entity = entity.obj_to_primitive(backport_ver, self.manifest)
         return entity

@@ -142,10 +142,6 @@ class ServiceList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('Service'),
     }
-    child_versions = {
-        '1.0': '1.0',
-        '1.1': '1.2',
-    }
 
     @base.remotable_classmethod
     def get_all(cls, context, filters=None):

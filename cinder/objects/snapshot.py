@@ -225,9 +225,6 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
     fields = {
         'objects': fields.ListOfObjectsField('Snapshot'),
     }
-    child_versions = {
-        '1.0': '1.0'
-    }
 
     @base.remotable_classmethod
     def get_all(cls, context, search_opts, marker=None, limit=None,
