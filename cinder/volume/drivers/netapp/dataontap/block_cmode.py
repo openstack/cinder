@@ -216,7 +216,12 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
         if not ssc:
             return pools
 
+        # Get up-to-date node utilization metrics just once
         self.perf_library.update_performance_cache(ssc)
+
+        # Get up-to-date aggregate capacities just once
+        aggregates = self.ssc_library.get_ssc_aggregates()
+        aggr_capacities = self.zapi_client.get_aggregate_capacities(aggregates)
 
         for ssc_vol_name, ssc_vol_info in ssc.items():
 
@@ -244,6 +249,11 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
 
             pool['provisioned_capacity_gb'] = round(
                 pool['total_capacity_gb'] - pool['free_capacity_gb'], 2)
+
+            aggregate_name = ssc_vol_info.get('aggregate')
+            aggr_capacity = aggr_capacities.get(aggregate_name, {})
+            pool['aggregate_used_percent'] = aggr_capacity.get(
+                'percent-used', 0)
 
             # Add utilization data
             utilization = self.perf_library.get_node_utilization_for_pool(

@@ -104,6 +104,12 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         self.assertEqual({}, result)
 
+    def test_get_ssc_aggregates(self):
+
+        result = self.ssc_library.get_ssc_aggregates()
+
+        self.assertEqual(list(fake.SSC_AGGREGATES), result)
+
     def test_update_ssc(self):
 
         mock_get_ssc_flexvol_info = self.mock_object(
