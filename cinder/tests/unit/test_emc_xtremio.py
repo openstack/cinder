@@ -640,11 +640,13 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
         req.side_effect = xms_request
         xms_data['volumes'] = {1: {'name': 'unmanaged1',
                                    'index': 1,
-                                   'vol-size': '3',
+                                   'vol-size': '1000000',
                                    },
                                }
         ref_vol = {"source-name": "unmanaged1"}
-        self.driver.manage_existing_get_size(self.data.test_volume, ref_vol)
+        size = self.driver.manage_existing_get_size(self.data.test_volume,
+                                                    ref_vol)
+        self.assertEqual(1, size)
 
     def test_manage_volume_size_invalid_input(self, req):
         self.assertRaises(exception.ManageExistingInvalidReference,

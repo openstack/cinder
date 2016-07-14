@@ -534,7 +534,7 @@ class XtremIOVolumeDriver(san.SanDriver):
             raise exception.ManageExistingInvalidReference(**kwargs)
         # LV size is returned in gigabytes.  Attempt to parse size as a float
         # and round up to the next integer.
-        lv_size = int(math.ceil(int(vol_obj['vol-size']) / units.Mi))
+        lv_size = int(math.ceil(float(vol_obj['vol-size']) / units.Mi))
 
         return lv_size
 
