@@ -797,6 +797,11 @@ class API(base.Base):
         snapshot_list = []
         for volume in volume_list:
             self._create_snapshot_in_db_validate(context, volume, force)
+            if volume['status'] == 'error':
+                msg = _("The snapshot cannot be created when the volume is "
+                        "in error status.")
+                LOG.error(msg)
+                raise exception.InvalidVolume(reason=msg)
 
         reservations = self._create_snapshots_in_db_reserve(
             context, volume_list)
