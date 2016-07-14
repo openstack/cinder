@@ -15,6 +15,7 @@
 from oslo_utils import versionutils
 from oslo_versionedobjects import fields
 
+from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import objects
@@ -22,7 +23,7 @@ from cinder.objects import base
 from cinder.volume import volume_types
 
 
-OPTIONAL_FIELDS = ['extra_specs', 'projects']
+OPTIONAL_FIELDS = ['extra_specs', 'projects', 'qos_specs']
 
 
 @base.CinderObjectRegistry.register
@@ -30,7 +31,8 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
                  base.CinderObjectDictCompat, base.CinderComparableObject):
     # Version 1.0: Initial version
     # Version 1.1: Changed extra_specs to DictOfNullableStringsField
-    VERSION = '1.1'
+    # Version 1.2: Added qos_specs
+    VERSION = '1.2'
 
     fields = {
         'id': fields.UUIDField(),
@@ -39,6 +41,8 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
         'is_public': fields.BooleanField(default=True, nullable=True),
         'projects': fields.ListOfStringsField(nullable=True),
         'extra_specs': fields.DictOfNullableStringsField(nullable=True),
+        'qos_specs': fields.ObjectField('QualityOfServiceSpecs',
+                                        nullable=True),
     }
 
     def obj_make_compatible(self, primitive, target_version):
@@ -82,7 +86,12 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
                 type.extra_specs = specs
         if 'projects' in expected_attrs:
             type.projects = db_type.get('projects', [])
-
+        if 'qos_specs' in expected_attrs:
+            qos_specs = objects.QualityOfServiceSpecs(context)
+            qos_specs._from_db_object(context,
+                                      qos_specs,
+                                      type['qos_specs'])
+            type.qos_specs = qos_specs
         type._context = context
         type.obj_reset_changes()
         return type
@@ -130,3 +139,9 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
         return base.obj_make_list(context, cls(context),
                                   objects.VolumeType, types.values(),
                                   expected_attrs=expected_attrs)
+
+    @classmethod
+    def get_all_types_for_qos(self, context, qos_id):
+        types = db.qos_specs_associations_get(context, qos_id)
+        return base.obj_make_list(context, self(context), objects.VolumeType,
+                                  types)

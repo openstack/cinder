@@ -30,6 +30,8 @@ object_data = {
     'CGSnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'ConsistencyGroup': '1.2-ff7638e03ae7a3bb7a43a6c5c4d0c94a',
     'ConsistencyGroupList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
+    'QualityOfServiceSpecs': '1.0-0b212e0a86ee99092229874e03207fe8',
+    'QualityOfServiceSpecsList': '1.0-1b54e51ad0fc1f3a8878f5010e7e16dc',
     'Service': '1.3-d7c1e133791c9d766596a0528fc9a12f',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Snapshot': '1.1-37966f7141646eb29e9ad5298ff2ca8a',
@@ -38,7 +40,7 @@ object_data = {
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'VolumeAttachment': '1.0-b30dacf62b2030dd83d8a1603f1064ff',
     'VolumeAttachmentList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'VolumeType': '1.1-6673dd9ce7c27e9c85279afb20833877',
+    'VolumeType': '1.2-02ecb0baac87528d041f4ddd95b95579',
     'VolumeTypeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
 }
 

@@ -2857,6 +2857,11 @@ def volume_types_get_by_name_or_id(context, volume_type_list):
 @require_admin_context
 def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
     read_deleted = "yes" if inactive else "no"
+    # Raise QoSSpecsNotFound if no specs found
+    if not resource_exists(context,
+                           models.QualityOfServiceSpecs,
+                           qos_specs_id):
+        raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
     return model_query(context, models.VolumeTypes,
                        read_deleted=read_deleted). \
         filter_by(qos_specs_id=qos_specs_id).all()
@@ -3117,15 +3122,14 @@ def qos_specs_create(context, values):
 
     :param values dictionary that contains specifications for QoS
           e.g. {'name': 'Name',
-                'qos_specs': {
-                    'consumer': 'front-end',
+                'consumer': 'front-end',
+                'specs': {
                     'total_iops_sec': 1000,
                     'total_bytes_sec': 1024000
                     }
                 }
     """
     specs_id = str(uuid.uuid4())
-
     session = get_session()
     with session.begin():
         try:
@@ -3145,8 +3149,18 @@ def qos_specs_create(context, values):
             specs_root.update(root)
             specs_root.save(session=session)
 
+            # Save 'consumer' value directly as it will not be in
+            # values['specs'] and so we avoid modifying/copying passed in dict
+            consumer = {'key': 'consumer',
+                        'value': values['consumer'],
+                        'specs_id': specs_id,
+                        'id': six.text_type(uuid.uuid4())}
+            cons_entry = models.QualityOfServiceSpecs()
+            cons_entry.update(consumer)
+            cons_entry.save(session=session)
+
             # Insert all specification entries for QoS specs
-            for k, v in values['qos_specs'].items():
+            for k, v in values.get('specs', {}).items():
                 item = dict(key=k, value=v, specs_id=specs_id)
                 item['id'] = str(uuid.uuid4())
                 spec_entry = models.QualityOfServiceSpecs()
@@ -3213,12 +3227,10 @@ def _dict_with_qos_specs(rows):
     result = []
     for row in rows:
         if row['key'] == 'QoS_Specs_Name':
-            member = {}
-            member['name'] = row['value']
-            member.update(dict(id=row['id']))
+            member = {'name': row['value'], 'id': row['id']}
             if row.specs:
                 spec_dict = _dict_with_children_specs(row.specs)
-                member.update(dict(consumer=spec_dict['consumer']))
+                member['consumer'] = spec_dict['consumer']
                 del spec_dict['consumer']
                 member.update(dict(specs=spec_dict))
             result.append(member)
@@ -3228,7 +3240,6 @@ def _dict_with_qos_specs(rows):
 @require_admin_context
 def qos_specs_get(context, qos_specs_id, inactive=False):
     rows = _qos_specs_get_ref(context, qos_specs_id, None, inactive)
-
     return _dict_with_qos_specs(rows)[0]
 
 
@@ -3321,8 +3332,6 @@ def qos_specs_associations_get(context, qos_specs_id):
     extend qos specs association to other entities, such as volumes,
     sometime in future.
     """
-    # Raise QoSSpecsNotFound if no specs found
-    _qos_specs_get_ref(context, qos_specs_id, None)
     return volume_type_qos_associations_get(context, qos_specs_id)
 
 
@@ -3355,7 +3364,6 @@ def qos_specs_disassociate_all(context, qos_specs_id):
 def qos_specs_item_delete(context, qos_specs_id, key):
     session = get_session()
     with session.begin():
-        _qos_specs_get_item(context, qos_specs_id, key)
         session.query(models.QualityOfServiceSpecs). \
             filter(models.QualityOfServiceSpecs.key == key). \
             filter(models.QualityOfServiceSpecs.specs_id == qos_specs_id). \
@@ -3396,7 +3404,7 @@ def _qos_specs_get_item(context, qos_specs_id, key, session=None):
 
 @handle_db_data_error
 @require_admin_context
-def qos_specs_update(context, qos_specs_id, specs):
+def qos_specs_update(context, qos_specs_id, updates):
     """Make updates to an existing qos specs.
 
     Perform add, update or delete key/values to a qos specs.
@@ -3406,6 +3414,13 @@ def qos_specs_update(context, qos_specs_id, specs):
     with session.begin():
         # make sure qos specs exists
         _qos_specs_get_ref(context, qos_specs_id, session)
+        specs = updates.get('specs', {})
+
+        if 'consumer' in updates:
+            # Massage consumer to the right place for DB and copy specs
+            # before updating so we don't modify dict for caller
+            specs = specs.copy()
+            specs['consumer'] = updates['consumer']
         spec_ref = None
         for key in specs.keys():
             try:
@@ -4745,6 +4760,7 @@ def _get_get_method(model):
     GET_EXCEPTIONS = {
         models.ConsistencyGroup: consistencygroup_get,
         models.VolumeTypes: _volume_type_get_full,
+        models.QualityOfServiceSpecs: qos_specs_get,
     }
 
     if model in GET_EXCEPTIONS:

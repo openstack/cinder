@@ -87,6 +87,8 @@ objects_ignore_messages = [
     "Module 'cinder.objects' has no 'CGSnapshotList' member",
     "Module 'cinder.objects' has no 'ConsistencyGroup' member",
     "Module 'cinder.objects' has no 'ConsistencyGroupList' member",
+    "Module 'cinder.objects' has no 'QualityOfServiceSpecs' member",
+    "Module 'cinder.objects' has no 'QualityOfServiceSpecsList' member",
     "Module 'cinder.objects' has no 'Service' member",
     "Module 'cinder.objects' has no 'ServiceList' member",
     "Module 'cinder.objects' has no 'Snapshot' member",

@@ -21,6 +21,7 @@ from cinder.api.contrib import qos_specs_manage
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -37,7 +38,7 @@ def stub_qos_specs(id):
              "key4": "value4",
              "key5": "value5"}
     res.update(dict(specs=specs))
-    return res
+    return objects.QualityOfServiceSpecs(**res)
 
 
 def stub_qos_associates(id):
@@ -97,14 +98,11 @@ def return_qos_specs_create(context, name, specs):
         raise exception.QoSSpecsCreateFailed(name=id, qos_specs=specs)
     elif name == 'qos_spec_%s' % fake.INVALID_ID:
         raise exception.InvalidQoSSpecs(reason=name)
-    pass
 
-
-def return_qos_specs_get_by_name(context, name):
-    if name == 'qos_spec_%s' % fake.WILL_NOT_BE_FOUND_ID:
-        raise exception.QoSSpecsNotFound(specs_id=name)
-
-    return stub_qos_specs(name.split("_")[2])
+    return objects.QualityOfServiceSpecs(name=name,
+                                         specs=specs,
+                                         consumer='back-end',
+                                         id=fake.QOS_SPEC_ID)
 
 
 def return_get_qos_associations(context, id):
@@ -149,8 +147,8 @@ class QoSSpecManageApiTest(test.TestCase):
             specs = dict(name=name, qos_specs=values)
         else:
             specs = {'name': name,
-                     'qos_specs': {
-                         'consumer': 'back-end',
+                     'consumer': 'back-end',
+                     'specs': {
                          'key1': 'value1',
                          'key2': 'value2'}}
         return db.qos_specs_create(self.ctxt, specs)['id']
@@ -389,11 +387,8 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
-    @mock.patch('cinder.volume.qos_specs.get_qos_specs_by_name',
-                side_effect=return_qos_specs_get_by_name)
     @mock.patch('cinder.api.openstack.wsgi.Controller.validate_string_length')
-    def test_create(self, mock_validate, mock_qos_get_specs,
-                    mock_qos_spec_create):
+    def test_create(self, mock_validate, mock_qos_spec_create):
 
         body = {"qos_specs": {"name": "qos_specs_%s" % fake.QOS_SPEC_ID,
                               "key1": "value1"}}
@@ -423,9 +418,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
-    @mock.patch('cinder.volume.qos_specs.get_qos_specs_by_name',
-                side_effect=return_qos_specs_get_by_name)
-    def test_create_conflict(self, mock_qos_get_specs, mock_qos_spec_create):
+    def test_create_conflict(self, mock_qos_spec_create):
         body = {"qos_specs": {"name": 'qos_spec_%s' % fake.ALREADY_EXISTS_ID,
                               "key1": "value1"}}
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID)
@@ -438,9 +431,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
-    @mock.patch('cinder.volume.qos_specs.get_qos_specs_by_name',
-                side_effect=return_qos_specs_get_by_name)
-    def test_create_failed(self, mock_qos_get_specs, mock_qos_spec_create):
+    def test_create_failed(self, mock_qos_spec_create):
         body = {"qos_specs": {"name": 'qos_spec_%s' % fake.ACTION_FAILED_ID,
                               "key1": "value1"}}
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID)

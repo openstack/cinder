@@ -104,3 +104,19 @@ class SnapshotStatus(Enum):
 
 class SnapshotStatusField(BaseEnumField):
     AUTO_TYPE = SnapshotStatus()
+
+
+class QoSConsumerValues(Enum):
+    BACK_END = 'back-end'
+    FRONT_END = 'front-end'
+    BOTH = 'both'
+
+    ALL = (BACK_END, FRONT_END, BOTH)
+
+    def __init__(self):
+        super(QoSConsumerValues, self).__init__(
+            valid_values=QoSConsumerValues.ALL)
+
+
+class QoSConsumerField(BaseEnumField):
+    AUTO_TYPE = QoSConsumerValues()

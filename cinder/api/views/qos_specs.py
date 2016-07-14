@@ -31,19 +31,20 @@ class ViewBuilder(common.ViewBuilder):
 
     def summary(self, request, qos_spec):
         """Generic, non-detailed view of a qos_specs."""
-        return {
-            'qos_specs': qos_spec,
-            'links': self._get_links(request,
-                                     qos_spec['id']),
-        }
+        return self.detail(request, qos_spec)
 
     def detail(self, request, qos_spec):
         """Detailed view of a single qos_spec."""
         # TODO(zhiteng) Add associations to detailed view
         return {
-            'qos_specs': qos_spec,
+            'qos_specs': {
+                'id': qos_spec.id,
+                'name': qos_spec.name,
+                'consumer': qos_spec.consumer,
+                'specs': qos_spec.specs
+            },
             'links': self._get_links(request,
-                                     qos_spec['id']),
+                                     qos_spec.id),
         }
 
     def associations(self, request, associates):
