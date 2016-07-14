@@ -31,31 +31,30 @@ encrypted with a key provided by this key manager actually share the same
 encryption key so *any* volume can be decrypted once the fixed key is known.
 """
 
-import array
 import binascii
 
+from castellan.common.objects import symmetric_key
+from castellan.key_manager import key_manager
 from oslo_config import cfg
 from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LW
-from cinder.keymgr import key
-from cinder.keymgr import key_mgr
 
 
 key_mgr_opts = [
     cfg.StrOpt('fixed_key',
-               help='Fixed key returned by key manager, specified in hex'),
+               help='Fixed key returned by key manager, specified in hex',
+               deprecated_group='keymgr'),
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(key_mgr_opts, group='keymgr')
-
+CONF.register_opts(key_mgr_opts, group='key_manager')
 
 LOG = logging.getLogger(__name__)
 
 
-class ConfKeyManager(key_mgr.KeyManager):
+class ConfKeyManager(key_manager.KeyManager):
     """Key Manager that supports one key defined by the fixed_key conf option.
 
     This key manager implementation supports all the methods specified by the
@@ -64,73 +63,79 @@ class ConfKeyManager(key_mgr.KeyManager):
     for each method are handled as specified by the key manager interface.
     """
 
-    def __init__(self):
-        super(ConfKeyManager, self).__init__()
+    def __init__(self, configuration):
+        LOG.warning(_LW('This key manager is insecure and is not recommended '
+                        'for production deployments'))
+        super(ConfKeyManager, self).__init__(configuration)
 
+        self.conf = configuration
+        self.conf.register_opts(key_mgr_opts, group='key_manager')
         self.key_id = '00000000-0000-0000-0000-000000000000'
 
-    def _generate_key(self, **kwargs):
-        _hex = self._generate_hex_key(**kwargs)
-        key_list = array.array('B', binascii.unhexlify(_hex)).tolist()
-        return key.SymmetricKey('AES', key_list)
+    def _get_key(self):
+        if self.conf.key_manager.fixed_key is None:
+            raise ValueError(_('config option key_manager.fixed_key is not '
+                               'defined'))
+        hex_key = self.conf.key_manager.fixed_key
+        key_bytes = bytes(binascii.unhexlify(hex_key))
+        return symmetric_key.SymmetricKey('AES',
+                                          len(key_bytes) * 8,
+                                          key_bytes)
 
-    def _generate_hex_key(self, **kwargs):
-        if CONF.keymgr.fixed_key is None:
-            LOG.warning(
-                _LW('config option keymgr.fixed_key has not been defined:'
-                    ' some operations may fail unexpectedly'))
-            raise ValueError(_('keymgr.fixed_key not defined'))
-        return CONF.keymgr.fixed_key
+    def create_key(self, context, **kwargs):
+        """Creates a symmetric key.
 
-    def create_key(self, ctxt, **kwargs):
-        """Creates a key.
-
-        This implementation returns a UUID for the created key. A
-        NotAuthorized exception is raised if the specified context is None.
+        This implementation returns a UUID for the key read from the
+        configuration file. A NotAuthorized exception is raised if the
+        specified context is None.
         """
-        if ctxt is None:
+        if context is None:
             raise exception.NotAuthorized()
 
         return self.key_id
 
-    def store_key(self, ctxt, key, **kwargs):
+    def create_key_pair(self, context, **kwargs):
+        raise NotImplementedError(
+            "ConfKeyManager does not support asymmetric keys")
+
+    def store(self, context, managed_object, **kwargs):
         """Stores (i.e., registers) a key with the key manager."""
-        if ctxt is None:
+        if context is None:
             raise exception.NotAuthorized()
 
-        if key != self._generate_key():
+        if managed_object != self._get_key():
             raise exception.KeyManagerError(
                 reason="cannot store arbitrary keys")
 
         return self.key_id
 
-    def copy_key(self, ctxt, key_id, **kwargs):
-        if ctxt is None:
-            raise exception.NotAuthorized()
-
-        return self.key_id
-
-    def get_key(self, ctxt, key_id, **kwargs):
+    def get(self, context, managed_object_id):
         """Retrieves the key identified by the specified id.
 
         This implementation returns the key that is associated with the
         specified UUID. A NotAuthorized exception is raised if the specified
         context is None; a KeyError is raised if the UUID is invalid.
         """
-        if ctxt is None:
+        if context is None:
             raise exception.NotAuthorized()
 
-        if key_id != self.key_id:
-            raise KeyError(key_id)
+        if managed_object_id != self.key_id:
+            raise KeyError(str(managed_object_id) + " != " + str(self.key_id))
 
-        return self._generate_key()
+        return self._get_key()
 
-    def delete_key(self, ctxt, key_id, **kwargs):
-        if ctxt is None:
+    def delete(self, context, managed_object_id):
+        """Represents deleting the key.
+
+        Because the ConfKeyManager has only one key, which is read from the
+        configuration file, the key is not actually deleted when this is
+        called.
+        """
+        if context is None:
             raise exception.NotAuthorized()
 
-        if key_id != self.key_id:
+        if managed_object_id != self.key_id:
             raise exception.KeyManagerError(
                 reason="cannot delete non-existent key")
 
-        LOG.warning(_LW("Not deleting key %s"), key_id)
+        LOG.warning(_LW("Not deleting key %s"), managed_object_id)

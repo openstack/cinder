@@ -17,6 +17,7 @@
 import ddt
 import mock
 
+from castellan.tests.unit.key_manager import mock_key_manager
 from oslo_utils import imageutils
 
 from cinder import context
@@ -27,7 +28,6 @@ from cinder.tests.unit import fake_constants as fakes
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.tests.unit.image import fake as fake_image
-from cinder.tests.unit.keymgr import mock_key_mgr
 from cinder.tests.unit import utils
 from cinder.tests.unit.volume.flows import fake_volume_api
 from cinder.volume.flows.api import create_volume
@@ -117,7 +117,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['status'] = 'active'
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -158,7 +158,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['status'] = 'active'
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
         volume_type = 'type1'
 
         task = create_volume.ExtractVolumeRequestTask(
@@ -212,7 +212,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['status'] = 'active'
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
         volume_type = 'type1'
 
         task = create_volume.ExtractVolumeRequestTask(
@@ -258,7 +258,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['status'] = 'active'
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
         volume_type = 'type1'
 
         task = create_volume.ExtractVolumeRequestTask(
@@ -313,7 +313,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['status'] = 'active'
         image_meta['size'] = 1
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
         volume_type = 'type1'
 
         task = create_volume.ExtractVolumeRequestTask(
@@ -376,7 +376,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['properties'] = {}
         image_meta['properties']['cinder_img_volume_type'] = image_volume_type
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -439,7 +439,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['properties'] = {}
         image_meta['properties']['cinder_img_volume_type'] = image_volume_type
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -504,7 +504,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['size'] = 1
         image_meta['properties'] = fake_img_properties
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,
@@ -562,7 +562,7 @@ class CreateVolumeFlowTestCase(test.TestCase):
         image_meta['id'] = image_id
         image_meta['status'] = 'inactive'
         fake_image_service.create(self.ctxt, image_meta)
-        fake_key_manager = mock_key_mgr.MockKeyManager()
+        fake_key_manager = mock_key_manager.MockKeyManager()
 
         task = create_volume.ExtractVolumeRequestTask(
             fake_image_service,

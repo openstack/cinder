@@ -47,7 +47,7 @@ from cinder import coordination
 from cinder import db
 from cinder import exception
 from cinder.image import image_utils
-from cinder import keymgr
+from cinder import keymgr as key_manager
 from cinder.message import defined_messages
 from cinder.message import resource_types
 from cinder import objects
@@ -1046,7 +1046,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                                    volume_type=db_vol_type)
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
 
-    @mock.patch.object(keymgr, 'API', fake_keymgr.fake_api)
+    @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_with_encrypted_volume_type_aes(self):
         ctxt = context.get_admin_context()
 
@@ -1076,9 +1076,9 @@ class VolumeTestCase(BaseVolumeTestCase):
                                    volume_type=db_vol_type)
 
         key_manager = volume_api.key_manager
-        key = key_manager.get_key(self.context, volume['encryption_key_id'])
-        self.assertEqual(key_size, len(key.key) * 8)
-        self.assertEqual('aes', key.alg)
+        key = key_manager.get(self.context, volume['encryption_key_id'])
+        self.assertEqual(key_size, len(key.get_encoded()) * 8)
+        self.assertEqual('aes', key.algorithm)
 
         metadata = db.volume_encryption_metadata_get(self.context, volume.id)
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
@@ -1086,7 +1086,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(key_size, metadata.get('key_size'))
         self.assertIsNotNone(volume['encryption_key_id'])
 
-    @mock.patch.object(keymgr, 'API', fake_keymgr.fake_api)
+    @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_with_encrypted_volume_type_blowfish(self):
         ctxt = context.get_admin_context()
 
@@ -1116,9 +1116,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                                    volume_type=db_vol_type)
 
         key_manager = volume_api.key_manager
-        key = key_manager.get_key(self.context, volume['encryption_key_id'])
-        self.assertEqual(key_size, len(key.key) * 8)
-        self.assertEqual('blowfish', key.alg)
+        key = key_manager.get(self.context, volume['encryption_key_id'])
+        self.assertEqual('blowfish', key.algorithm)
 
         metadata = db.volume_encryption_metadata_get(self.context, volume.id)
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
@@ -1136,13 +1135,16 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.create_volume(self.context, volume['id'])
         self.assertEqual(fake.PROVIDER_ID, volume['provider_id'])
 
-    @mock.patch.object(keymgr, 'API', new=fake_keymgr.fake_api)
+    @mock.patch.object(key_manager, 'API', new=fake_keymgr.fake_api)
     def test_create_delete_volume_with_encrypted_volume_type(self):
+        cipher = 'aes-xts-plain64'
+        key_size = 256
         db.volume_type_create(self.context,
                               {'id': fake.VOLUME_TYPE_ID, 'name': 'LUKS'})
         db.volume_type_encryption_create(
             self.context, fake.VOLUME_TYPE_ID,
-            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER,
+             'cipher': cipher, 'key_size': key_size})
 
         db_vol_type = db.volume_type_get_by_name(self.context, 'LUKS')
 
@@ -2013,10 +2015,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertRaises(exception.VolumeNotFound, db.volume_get,
                           self.context, src_vol_id)
 
-    @mock.patch.object(keymgr, 'API', fake_keymgr.fake_api)
+    @mock.patch.object(key_manager, 'API', fake_keymgr.fake_api)
     def test_create_volume_from_snapshot_with_encryption(self):
         """Test volume can be created from a snapshot of an encrypted volume"""
         ctxt = context.get_admin_context()
+        cipher = 'aes-xts-plain64'
+        key_size = 256
 
         db.volume_type_create(ctxt,
                               {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
@@ -2024,7 +2028,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_type_encryption_create(
             ctxt,
             '61298380-0c12-11e3-bfd6-4b48424183be',
-            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER,
+             'cipher': cipher, 'key_size': key_size})
 
         volume_api = cinder.volume.api.API()
 
@@ -2061,15 +2066,17 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertIsNotNone(volume_dst['encryption_key_id'])
 
         key_manager = volume_api.key_manager  # must use *same* key manager
-        volume_src_key = key_manager.get_key(self.context,
-                                             volume_src['encryption_key_id'])
-        volume_dst_key = key_manager.get_key(self.context,
-                                             volume_dst['encryption_key_id'])
+        volume_src_key = key_manager.get(self.context,
+                                         volume_src['encryption_key_id'])
+        volume_dst_key = key_manager.get(self.context,
+                                         volume_dst['encryption_key_id'])
         self.assertEqual(volume_src_key, volume_dst_key)
 
     def test_create_volume_from_encrypted_volume(self):
         """Test volume can be created from an encrypted volume."""
-        self.stubs.Set(keymgr, 'API', fake_keymgr.fake_api)
+        self.stubs.Set(key_manager, 'API', fake_keymgr.fake_api)
+        cipher = 'aes-xts-plain64'
+        key_size = 256
 
         volume_api = cinder.volume.api.API()
 
@@ -2081,7 +2088,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_type_encryption_create(
             ctxt,
             '61298380-0c12-11e3-bfd6-4b48424183be',
-            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER,
+             'cipher': cipher, 'key_size': key_size})
 
         db_vol_type = db.volume_type_get_by_name(context.get_admin_context(),
                                                  'LUKS')
@@ -2107,11 +2115,11 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertIsNotNone(volume_src['encryption_key_id'])
         self.assertIsNotNone(volume_dst['encryption_key_id'])
 
-        key_manager = volume_api.key_manager  # must use *same* key manager
-        volume_src_key = key_manager.get_key(self.context,
-                                             volume_src['encryption_key_id'])
-        volume_dst_key = key_manager.get_key(self.context,
-                                             volume_dst['encryption_key_id'])
+        km = volume_api.key_manager  # must use *same* key manager
+        volume_src_key = km.get(self.context,
+                                volume_src['encryption_key_id'])
+        volume_dst_key = km.get(self.context,
+                                volume_dst['encryption_key_id'])
         self.assertEqual(volume_src_key, volume_dst_key)
 
     def test_delete_encrypted_volume(self):
@@ -2121,7 +2129,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         vol_api = cinder.volume.api.API()
         with mock.patch.object(
                 vol_api.key_manager,
-                'delete_key',
+                'delete',
                 side_effect=Exception):
             self.assertRaises(exception.InvalidVolume,
                               vol_api.delete,
@@ -6409,7 +6417,7 @@ class ImageVolumeCacheTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, **volume_params)
 
         with mock.patch.object(
-                volume_api.key_manager, 'delete_key') as key_del_mock:
+                volume_api.key_manager, 'delete') as key_del_mock:
             key_del_mock.side_effect = Exception("Key not found")
             volume_api.delete(self.context, volume)
 

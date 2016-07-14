@@ -368,8 +368,8 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             # Clone the existing key and associate a separate -- but
             # identical -- key with each volume.
             if encryption_key_id is not None:
-                encryption_key_id = key_manager.copy_key(context,
-                                                         encryption_key_id)
+                encryption_key_id = key_manager.store(
+                    context, key_manager.get(context, encryption_key_id))
             else:
                 volume_type_encryption = (
                     volume_types.get_volume_type_encryption(context,
