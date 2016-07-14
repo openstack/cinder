@@ -36,9 +36,6 @@ import sys
 import tempfile
 import time
 import types
-from xml.dom import minidom
-from xml.parsers import expat
-from xml import sax
 from xml.sax import expatreader
 
 from os_brick.initiator import connector
@@ -298,22 +295,6 @@ class ProtectedExpatParser(expatreader.ExpatParser):
         if self.forbid_entities:
             self._parser.EntityDeclHandler = self.entity_decl
             self._parser.UnparsedEntityDeclHandler = self.unparsed_entity_decl
-
-
-def safe_minidom_parse_string(xml_string):
-    """Parse an XML string using minidom safely.
-
-    """
-    try:
-        if six.PY3 and isinstance(xml_string, bytes):
-            # On Python 3, minidom.parseString() requires Unicode when
-            # the parser parameter is used.
-            #
-            # Bet that XML used in Cinder is always encoded to UTF-8.
-            xml_string = xml_string.decode('utf-8')
-        return minidom.parseString(xml_string, parser=ProtectedExpatParser())
-    except sax.SAXParseException:
-        raise expat.ExpatError()
 
 
 def is_valid_boolstr(val):
