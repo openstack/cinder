@@ -14,6 +14,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 import webob
 
@@ -139,6 +140,7 @@ def return_disassociate_all(context, id):
                                                    type_id=None)
 
 
+@ddt.ddt
 class QoSSpecManageApiTest(test.TestCase):
 
     def _create_qos_specs(self, name, values=None):
@@ -387,7 +389,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @mock.patch('cinder.volume.qos_specs.create',
                 side_effect=return_qos_specs_create)
-    @mock.patch('cinder.api.openstack.wsgi.Controller.validate_string_length')
+    @mock.patch('cinder.utils.validate_dictionary_string_length')
     def test_create(self, mock_validate, mock_qos_spec_create):
 
         body = {"qos_specs": {"name": "qos_specs_%s" % fake.QOS_SPEC_ID,
@@ -462,6 +464,17 @@ class QoSSpecManageApiTest(test.TestCase):
     def test_create_malformed_entity(self):
         body = {'qos_specs': 'string'}
         self._create_qos_specs_bad_body(body=body)
+
+    @ddt.data({'name': 'fake_name', 'a' * 256: 'a'},
+              {'name': 'fake_name', 'a': 'a' * 256},
+              {'name': 'fake_name' * 256, 'a': 'a'})
+    def test_create_qos_with_invalid_specs(self, value):
+        body = {'qos_specs': value}
+        req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID,
+                                      use_admin_context=True)
+        req.method = 'POST'
+        self.assertRaises(exception.InvalidInput,
+                          self.controller.create, req, body)
 
     @mock.patch('cinder.volume.qos_specs.update',
                 side_effect=return_qos_specs_update)
