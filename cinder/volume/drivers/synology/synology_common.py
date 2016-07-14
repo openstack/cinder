@@ -1116,7 +1116,7 @@ class SynoCommon(object):
                                    'delete_snapshot',
                                    1,
                                    snapshot_uuid=ds_snapshot_uuid,
-                                   delete_by='Cinder')
+                                   deleted_by='Cinder')
 
             self.check_response(out, snapshot_id=snapshot['id'])
 

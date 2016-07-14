@@ -1426,7 +1426,7 @@ class SynoCommonTestCase(test.TestCase):
                                'delete_snapshot',
                                mock.ANY,
                                snapshot_uuid=DS_SNAPSHOT_UUID,
-                               delete_by='Cinder'))
+                               deleted_by='Cinder'))
         self.assertIsNone(result)
 
         result = self.common.delete_snapshot(SNAPSHOT)
