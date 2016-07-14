@@ -89,6 +89,8 @@ from cinder.volume.drivers.emc.vnx import common as \
 from cinder.volume.drivers.emc import xtremio as \
     cinder_volume_drivers_emc_xtremio
 from cinder.volume.drivers import eqlx as cinder_volume_drivers_eqlx
+from cinder.volume.drivers.falconstor import fss_common as \
+    cinder_volume_drivers_falconstor_fsscommon
 from cinder.volume.drivers.fujitsu import eternus_dx_common as \
     cinder_volume_drivers_fujitsu_eternusdxcommon
 from cinder.volume.drivers.fusionstorage import dsware as \
@@ -192,8 +194,8 @@ def list_opts():
     return [
         ('FC-ZONE-MANAGER',
             itertools.chain(
-                cinder_zonemanager_fczonemanager.zone_manager_opts,
                 cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
+                cinder_zonemanager_fczonemanager.zone_manager_opts,
                 cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
             )),
         ('KEYMGR',
@@ -281,6 +283,7 @@ def list_opts():
                 cinder_volume_drivers_xio.XIO_OPTS,
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvcfc.
                 storwize_svc_fc_opts,
+                cinder_volume_drivers_falconstor_fsscommon.FSS_OPTS,
                 cinder_volume_drivers_zfssa_zfssaiscsi.ZFSSA_OPTS,
                 cinder_volume_driver.volume_opts,
                 cinder_volume_driver.iser_opts,
