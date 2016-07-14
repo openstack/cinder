@@ -241,36 +241,6 @@ class GenericUtilsTestCase(test.TestCase):
         result = utils.service_is_up(service)
         self.assertFalse(result)
 
-    def test_safe_parse_xml(self):
-
-        normal_body = ('<?xml version="1.0" ?>'
-                       '<foo><bar><v1>hey</v1><v2>there</v2></bar></foo>')
-
-        def killer_body():
-            return (("""<!DOCTYPE x [
-                    <!ENTITY a "%(a)s">
-                    <!ENTITY b "%(b)s">
-                    <!ENTITY c "%(c)s">]>
-                <foo>
-                    <bar>
-                        <v1>%(d)s</v1>
-                    </bar>
-                </foo>""") % {
-                'a': 'A' * 10,
-                'b': '&a;' * 10,
-                'c': '&b;' * 10,
-                'd': '&c;' * 9999,
-            }).strip()
-
-        dom = utils.safe_minidom_parse_string(normal_body)
-        # Some versions of minidom inject extra newlines so we ignore them
-        result = str(dom.toxml()).replace('\n', '')
-        self.assertEqual(normal_body, result)
-
-        self.assertRaises(ValueError,
-                          utils.safe_minidom_parse_string,
-                          killer_body())
-
     def test_check_ssh_injection(self):
         cmd_list = ['ssh', '-D', 'my_name@name_of_remote_computer']
         self.assertIsNone(utils.check_ssh_injection(cmd_list))
