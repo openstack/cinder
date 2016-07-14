@@ -270,10 +270,6 @@ class CreateSnapshotOnFinishTask(NotifySnapshotActionTask):
     Reversion strategy: N/A
     """
 
-    def __init__(self, db, event_suffix, host):
-        super(CreateSnapshotOnFinishTask, self).__init__(db, event_suffix,
-                                                         host)
-
     def execute(self, context, snapshot, new_status):
         LOG.debug("Begin to call CreateSnapshotOnFinishTask execute.")
         snapshot_id = snapshot['id']

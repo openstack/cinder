@@ -1703,9 +1703,6 @@ class API(base.Base):
 
 
 class HostAPI(base.Base):
-    def __init__(self):
-        super(HostAPI, self).__init__()
-
     """Sub-set of the Volume Manager API for managing host operations."""
     def set_host_enabled(self, context, host, enabled):
         """Sets the specified host's ability to accept new volumes."""

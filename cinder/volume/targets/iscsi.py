@@ -358,9 +358,6 @@ class SanISCSITarget(ISCSITarget):
     and local block devices when we create and manage our own targets.
 
     """
-    def __init__(self, *args, **kwargs):
-        super(SanISCSITarget, self).__init__(*args, **kwargs)
-
     @abc.abstractmethod
     def create_export(self, context, volume, volume_path):
         pass
