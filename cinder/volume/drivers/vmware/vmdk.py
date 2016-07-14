@@ -1297,8 +1297,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 req[hub.DatastoreSelector.PROFILE_NAME] = new_profile
 
             # Select datastore satisfying the requirements.
-            best_candidate = self.ds_sel.select_datastore(req)
-            if not best_candidate:
+            try:
+                best_candidate = self._select_datastore(req)
+            except vmdk_exceptions.NoValidDatastoreException:
                 # No candidate datastores; can't retype.
                 LOG.warning(_LW("There are no datastores matching new "
                                 "requirements; can't retype volume: %s."),
