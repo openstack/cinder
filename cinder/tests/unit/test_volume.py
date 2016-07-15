@@ -5999,15 +5999,15 @@ class GenericVolumeDriverTestCase(DriverTestCase):
                                             status='backing-up')
             cloned_vol = self.volume.driver._create_temp_cloned_volume(
                 self.context, vol)
-            self.assertEqual('dummy', cloned_vol['provider_location'])
-            self.assertEqual('available', cloned_vol['status'])
+            self.assertEqual('dummy', cloned_vol.provider_location)
+            self.assertEqual('available', cloned_vol.status)
 
             mock_create_cloned_volume.return_value = None
             vol = tests_utils.create_volume(self.context,
                                             status='backing-up')
             cloned_vol = self.volume.driver._create_temp_cloned_volume(
                 self.context, vol)
-            self.assertEqual('available', cloned_vol['status'])
+            self.assertEqual('available', cloned_vol.status)
 
     @mock.patch.object(utils, 'temporary_chown')
     @mock.patch('six.moves.builtins.open')
@@ -6164,8 +6164,8 @@ class GenericVolumeDriverTestCase(DriverTestCase):
             temp_vol = self.volume.driver._create_temp_volume_from_snapshot(
                 self.context,
                 vol, snapshot)
-            self.assertEqual('detached', temp_vol['attach_status'])
-            self.assertEqual('fakezone', temp_vol['availability_zone'])
+            self.assertEqual('detached', temp_vol.attach_status)
+            self.assertEqual('fakezone', temp_vol.availability_zone)
 
     @mock.patch.object(utils, 'brick_get_connector_properties')
     @mock.patch.object(cinder.volume.manager.VolumeManager, '_attach_volume')
