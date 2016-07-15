@@ -2297,6 +2297,7 @@ class HPE3PARBaseDriver(object):
             self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
 
             ex = hpeexceptions.HTTPConflict("In use")
+            ex._error_code = 32
             mock_client.deleteVolume = mock.Mock(side_effect=ex)
 
             # Deleting the snapshot that a volume is dependent on should fail
