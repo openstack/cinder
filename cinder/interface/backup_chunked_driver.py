@@ -21,7 +21,7 @@ Backup driver with 'chunked' backup operations.
 from cinder.interface import backup_driver
 
 
-class BackupDriverWithVerify(backup_driver.BackupDriver):
+class BackupChunkedDriver(backup_driver.BackupDriver):
     """Backup driver that supports 'chunked' backups."""
 
     def put_container(self, container):
