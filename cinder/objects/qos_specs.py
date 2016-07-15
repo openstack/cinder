@@ -113,7 +113,10 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
                 self._context, self.id)
 
     @staticmethod
-    def _from_db_object(context, qos_spec, db_qos_spec):
+    def _from_db_object(context, qos_spec, db_qos_spec, expected_attrs=None):
+        if expected_attrs is None:
+            expected_attrs = []
+
         for name, field in qos_spec.fields.items():
             if name not in QualityOfServiceSpecs.OPTIONAL_FIELDS:
                 value = db_qos_spec.get(name)
@@ -122,6 +125,11 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
                 if not value and isinstance(field, fields.DictOfStringsField):
                     value = {}
                 setattr(qos_spec, name, value)
+
+        if 'volume_types' in expected_attrs:
+            volume_types = objects.VolumeTypeList.get_all_types_for_qos(
+                context, db_qos_spec['id'])
+            qos_spec.volume_types = volume_types
 
         qos_spec._context = context
         qos_spec.obj_reset_changes()

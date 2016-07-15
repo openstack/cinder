@@ -135,8 +135,8 @@ def delete_keys(context, qos_specs_id, keys):
 def get_associations(context, qos_specs_id):
     """Get all associations of given qos specs."""
     try:
-        qos_spec = objects.QualityOfServiceSpecs.get_by_id(
-            context, qos_specs_id)
+        types = objects.VolumeTypeList.get_all_types_for_qos(context,
+                                                             qos_specs_id)
     except db_exc.DBError:
         LOG.exception(_LE('DB error:'))
         msg = _('Failed to get all associations of '
@@ -145,7 +145,7 @@ def get_associations(context, qos_specs_id):
         raise exception.CinderException(message=msg)
 
     result = []
-    for vol_type in qos_spec.volume_types:
+    for vol_type in types:
         result.append({
             'association_type': 'volume_type',
             'name': vol_type.name,

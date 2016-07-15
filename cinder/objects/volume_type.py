@@ -88,9 +88,7 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
             type.projects = db_type.get('projects', [])
         if 'qos_specs' in expected_attrs:
             qos_specs = objects.QualityOfServiceSpecs(context)
-            qos_specs._from_db_object(context,
-                                      qos_specs,
-                                      type['qos_specs'])
+            qos_specs._from_db_object(context, qos_specs, db_type['qos_specs'])
             type.qos_specs = qos_specs
         type._context = context
         type.obj_reset_changes()
@@ -143,7 +141,7 @@ class VolumeTypeList(base.ObjectListBase, base.CinderObject):
                                   expected_attrs=expected_attrs)
 
     @classmethod
-    def get_all_types_for_qos(self, context, qos_id):
+    def get_all_types_for_qos(cls, context, qos_id):
         types = db.qos_specs_associations_get(context, qos_id)
-        return base.obj_make_list(context, self(context), objects.VolumeType,
+        return base.obj_make_list(context, cls(context), objects.VolumeType,
                                   types)
