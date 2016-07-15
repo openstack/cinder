@@ -20,3 +20,6 @@ features:
     status (`is_up`) as URL parameters.  Also added their respective policies."
   - "HA A-A: Attach and detach operations are now cluster aware and make full
     use of clustered cinder-volume services."
+  - "HA A-A: Delete volume, delete snapshot, delete consistency group, and
+    delete consistency group snapshot operations are now cluster aware and make
+    full use of clustered cinder-volume services."

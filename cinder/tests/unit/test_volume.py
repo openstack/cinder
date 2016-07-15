@@ -574,6 +574,18 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
+    def test_delete_volume_another_cluster_fails(self):
+        """Test delete of volume from another cluster fails."""
+        self.volume.cluster = 'mycluster'
+        volume = tests_utils.create_volume(self.context, status='available',
+                                           size=1, host=CONF.host + 'fake',
+                                           cluster_name=self.volume.cluster)
+        self.volume.delete_volume(self.context, volume)
+        self.assertRaises(exception.NotFound,
+                          db.volume_get,
+                          self.context,
+                          volume.id)
+
     @mock.patch('cinder.db.volume_metadata_update')
     def test_create_volume_metadata(self, metadata_update):
         metadata = {'fake_key': 'fake_value'}
@@ -3056,6 +3068,20 @@ class VolumeTestCase(base.BaseVolumeTestCase):
                           db.snapshot_get,
                           self.context,
                           snapshot_id)
+
+    def test_delete_snapshot_another_cluster_fails(self):
+        """Test delete of snapshot from another cluster fails."""
+        self.volume.cluster = 'mycluster'
+        volume = tests_utils.create_volume(self.context, status='available',
+                                           size=1, host=CONF.host + 'fake',
+                                           cluster_name=self.volume.cluster)
+        snapshot = create_snapshot(volume.id, size=volume.size)
+
+        self.volume.delete_snapshot(self.context, snapshot)
+        self.assertRaises(exception.NotFound,
+                          db.snapshot_get,
+                          self.context,
+                          snapshot.id)
 
     @mock.patch.object(db, 'snapshot_create',
                        side_effect=exception.InvalidSnapshot(

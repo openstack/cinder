@@ -132,7 +132,7 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'create_consistencygroup', group=group)
 
     def delete_consistencygroup(self, ctxt, group):
-        cctxt = self._get_cctxt(group.host)
+        cctxt = self._get_cctxt(group.service_topic_queue)
         cctxt.cast(ctxt, 'delete_consistencygroup', group=group)
 
     def update_consistencygroup(self, ctxt, group, add_volumes=None,
@@ -156,7 +156,7 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'create_cgsnapshot', cgsnapshot=cgsnapshot)
 
     def delete_cgsnapshot(self, ctxt, cgsnapshot):
-        cctxt = self._get_cctxt(cgsnapshot.consistencygroup.host)
+        cctxt = self._get_cctxt(cgsnapshot.service_topic_queue)
         cctxt.cast(ctxt, 'delete_cgsnapshot', cgsnapshot=cgsnapshot)
 
     def create_volume(self, ctxt, volume, host, request_spec,
@@ -170,7 +170,7 @@ class VolumeAPI(rpc.RPCAPI):
 
     def delete_volume(self, ctxt, volume, unmanage_only=False, cascade=False):
         volume.create_worker()
-        cctxt = self._get_cctxt(volume.host)
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         msg_args = {
             'volume': volume, 'unmanage_only': unmanage_only,
             'cascade': cascade,
@@ -183,8 +183,8 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(volume['host'])
         cctxt.cast(ctxt, 'create_snapshot', snapshot=snapshot)
 
-    def delete_snapshot(self, ctxt, snapshot, host, unmanage_only=False):
-        cctxt = self._get_cctxt(host)
+    def delete_snapshot(self, ctxt, snapshot, unmanage_only=False):
+        cctxt = self._get_cctxt(snapshot.service_topic_queue)
         cctxt.cast(ctxt, 'delete_snapshot', snapshot=snapshot,
                    unmanage_only=unmanage_only)
 
@@ -300,8 +300,8 @@ class VolumeAPI(rpc.RPCAPI):
                    snapshot=snapshot,
                    ref=ref)
 
-    def get_capabilities(self, ctxt, host, discover):
-        cctxt = self._get_cctxt(host)
+    def get_capabilities(self, ctxt, backend_id, discover):
+        cctxt = self._get_cctxt(backend_id)
         return cctxt.call(ctxt, 'get_capabilities', discover=discover)
 
     def get_backup_device(self, ctxt, backup, volume):
@@ -339,7 +339,7 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt.cast(ctxt, 'create_group', group=group)
 
     def delete_group(self, ctxt, group):
-        cctxt = self._get_cctxt(group.host)
+        cctxt = self._get_cctxt(group.service_topic_queue)
         cctxt.cast(ctxt, 'delete_group', group=group)
 
     def update_group(self, ctxt, group, add_volumes=None, remove_volumes=None):
@@ -359,6 +359,6 @@ class VolumeAPI(rpc.RPCAPI):
                    group_snapshot=group_snapshot)
 
     def delete_group_snapshot(self, ctxt, group_snapshot):
-        cctxt = self._get_cctxt(group_snapshot.group.host)
+        cctxt = self._get_cctxt(group_snapshot.service_topic_queue)
         cctxt.cast(ctxt, 'delete_group_snapshot',
                    group_snapshot=group_snapshot)

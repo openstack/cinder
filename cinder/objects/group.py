@@ -23,7 +23,7 @@ from oslo_versionedobjects import fields
 
 @base.CinderObjectRegistry.register
 class Group(base.CinderPersistentObject, base.CinderObject,
-            base.CinderObjectDictCompat):
+            base.CinderObjectDictCompat, base.ClusteredObject):
     # Version 1.0: Initial version
     # Version 1.1: Added group_snapshots, group_snapshot_id, and
     #              source_group_id
