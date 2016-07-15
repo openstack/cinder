@@ -180,13 +180,13 @@ class VolumeManageTest(test.TestCase):
         body = {'volume': {'host': 'host_ok',
                            'ref': 'fake_ref'}}
         res = self._get_resp_post(body)
-        self.assertEqual(202, res.status_int, res)
+        self.assertEqual(202, res.status_int)
 
         # Check that the manage API was called with the correct arguments.
         self.assertEqual(1, mock_api_manage.call_count)
         args = mock_api_manage.call_args[0]
-        self.assertEqual(args[1], body['volume']['host'])
-        self.assertEqual(args[2], body['volume']['ref'])
+        self.assertEqual(body['volume']['host'], args[1])
+        self.assertEqual(body['volume']['ref'], args[2])
         self.assertTrue(mock_validate.called)
 
     def test_manage_volume_missing_host(self):
@@ -200,7 +200,6 @@ class VolumeManageTest(test.TestCase):
         body = {'volume': {'host': 'host_ok'}}
         res = self._get_resp_post(body)
         self.assertEqual(400, res.status_int)
-        pass
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
     @mock.patch(
@@ -215,9 +214,8 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': fake.VOLUME_TYPE_ID}}
         res = self._get_resp_post(body)
-        self.assertEqual(202, res.status_int, res)
+        self.assertEqual(202, res.status_int)
         self.assertTrue(mock_validate.called)
-        pass
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
     @mock.patch(
@@ -232,9 +230,8 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': 'good_fakevt'}}
         res = self._get_resp_post(body)
-        self.assertEqual(202, res.status_int, res)
+        self.assertEqual(202, res.status_int)
         self.assertTrue(mock_validate.called)
-        pass
 
     def test_manage_volume_bad_volume_type_by_uuid(self):
         """Test failure on nonexistent volume type specified by ID."""
@@ -242,8 +239,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': fake.WILL_NOT_BE_FOUND_ID}}
         res = self._get_resp_post(body)
-        self.assertEqual(404, res.status_int, res)
-        pass
+        self.assertEqual(404, res.status_int)
 
     def test_manage_volume_bad_volume_type_by_name(self):
         """Test failure on nonexistent volume type specified by name."""
@@ -251,8 +247,7 @@ class VolumeManageTest(test.TestCase):
                            'ref': 'fake_ref',
                            'volume_type': 'bad_fakevt'}}
         res = self._get_resp_post(body)
-        self.assertEqual(404, res.status_int, res)
-        pass
+        self.assertEqual(404, res.status_int)
 
     def _get_resp_get(self, host, detailed, paging, admin=True):
         """Helper to execute a GET os-volume-manage API call."""
@@ -279,10 +274,10 @@ class VolumeManageTest(test.TestCase):
     def test_get_manageable_volumes_non_admin(self, mock_api_manageable):
         res = self._get_resp_get('fakehost', False, False, admin=False)
         self.assertEqual(403, res.status_int)
-        self.assertEqual(False, mock_api_manageable.called)
+        mock_api_manageable.assert_not_called()
         res = self._get_resp_get('fakehost', True, False, admin=False)
         self.assertEqual(403, res.status_int)
-        self.assertEqual(False, mock_api_manageable.called)
+        mock_api_manageable.assert_not_called()
 
     @mock.patch('cinder.volume.api.API.get_manageable_volumes',
                 wraps=api_get_manageable_volumes)
@@ -296,7 +291,7 @@ class VolumeManageTest(test.TestCase):
                 {'reference': {'source-name': 'myvol'},
                  'size': 5, 'safe_to_manage': True}]}
         self.assertEqual(200, res.status_int)
-        self.assertEqual(jsonutils.loads(res.body), exp)
+        self.assertEqual(exp, jsonutils.loads(res.body))
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', limit=10, marker='1234', offset=4,
             sort_dirs=['asc'], sort_keys=['reference'])
@@ -315,7 +310,7 @@ class VolumeManageTest(test.TestCase):
                  'size': 5, 'reason_not_safe': None, 'safe_to_manage': True,
                  'extra_info': 'qos_setting:low'}]}
         self.assertEqual(200, res.status_int)
-        self.assertEqual(jsonutils.loads(res.body), exp)
+        self.assertEqual(exp, jsonutils.loads(res.body))
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', limit=CONF.osapi_max_limit,
             marker=None, offset=0, sort_dirs=['desc'],
