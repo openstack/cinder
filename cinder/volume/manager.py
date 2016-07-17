@@ -101,7 +101,9 @@ VALID_ADD_VOL_TO_GROUP_STATUS = (
     'available',
     'in-use')
 VALID_CREATE_CG_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
+VALID_CREATE_GROUP_SRC_SNAP_STATUS = (fields.SnapshotStatus.AVAILABLE,)
 VALID_CREATE_CG_SRC_CG_STATUS = ('available',)
+VALID_CREATE_GROUP_SRC_GROUP_STATUS = ('available',)
 
 volume_manager_opts = [
     cfg.StrOpt('volume_driver',
@@ -2075,6 +2077,25 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context, snapshot, event_suffix,
                     extra_usage_info=extra_usage_info, host=self.host)
 
+    def _notify_about_group_snapshot_usage(self,
+                                           context,
+                                           group_snapshot,
+                                           event_suffix,
+                                           snapshots=None,
+                                           extra_usage_info=None):
+        vol_utils.notify_about_group_snapshot_usage(
+            context, group_snapshot, event_suffix,
+            extra_usage_info=extra_usage_info, host=self.host)
+
+        if not snapshots:
+            snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+                context, group_snapshot.id)
+        if snapshots:
+            for snapshot in snapshots:
+                vol_utils.notify_about_snapshot_usage(
+                    context, snapshot, event_suffix,
+                    extra_usage_info=extra_usage_info, host=self.host)
+
     def extend_volume(self, context, volume_id, new_size, reservations,
                       volume=None):
         # FIXME(dulek): Remove this in v3.0 of RPC API.
@@ -2663,6 +2684,181 @@ class VolumeManager(manager.SchedulerDependentManager):
                  resource={'type': 'consistency_group',
                            'id': group.id})
         return group
+
+    def create_group_from_src(self, context, group,
+                              group_snapshot=None, source_group=None):
+        """Creates the group from source.
+
+        The source can be a group snapshot or a source group.
+        """
+        source_name = None
+        snapshots = None
+        source_vols = None
+        try:
+            volumes = objects.VolumeList.get_all_by_generic_group(context,
+                                                                  group.id)
+            if group_snapshot:
+                try:
+                    # Check if group_snapshot still exists
+                    group_snapshot = objects.GroupSnapshot.get_by_id(
+                        context, group_snapshot.id)
+                except exception.GroupSnapshotNotFound:
+                    LOG.error(_LE("Create group "
+                                  "from snapshot-%(snap)s failed: "
+                                  "SnapshotNotFound."),
+                              {'snap': group_snapshot.id},
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise
+
+                source_name = _("snapshot-%s") % group_snapshot.id
+                snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+                    context, group_snapshot.id)
+                for snap in snapshots:
+                    if (snap.status not in
+                            VALID_CREATE_GROUP_SRC_SNAP_STATUS):
+                        msg = (_("Cannot create group "
+                                 "%(group)s because snapshot %(snap)s is "
+                                 "not in a valid state. Valid states are: "
+                                 "%(valid)s.") %
+                               {'group': group.id,
+                                'snap': snap['id'],
+                                'valid': VALID_CREATE_GROUP_SRC_SNAP_STATUS})
+                        raise exception.InvalidGroup(reason=msg)
+
+            if source_group:
+                try:
+                    source_group = objects.Group.get_by_id(
+                        context, source_group.id)
+                except exception.GroupNotFound:
+                    LOG.error(_LE("Create group "
+                                  "from source group-%(group)s failed: "
+                                  "GroupNotFound."),
+                              {'group': source_group.id},
+                              resource={'type': 'group',
+                                        'id': group.id})
+                    raise
+
+                source_name = _("group-%s") % source_group.id
+                source_vols = objects.VolumeList.get_all_by_generic_group(
+                    context, source_group.id)
+                for source_vol in source_vols:
+                    if (source_vol.status not in
+                            VALID_CREATE_GROUP_SRC_GROUP_STATUS):
+                        msg = (_("Cannot create group "
+                                 "%(group)s because source volume "
+                                 "%(source_vol)s is not in a valid "
+                                 "state. Valid states are: "
+                                 "%(valid)s.") %
+                               {'group': group.id,
+                                'source_vol': source_vol.id,
+                                'valid': VALID_CREATE_GROUP_SRC_GROUP_STATUS})
+                        raise exception.InvalidGroup(reason=msg)
+
+            # Sort source snapshots so that they are in the same order as their
+            # corresponding target volumes.
+            sorted_snapshots = None
+            if group_snapshot and snapshots:
+                sorted_snapshots = self._sort_snapshots(volumes, snapshots)
+
+            # Sort source volumes so that they are in the same order as their
+            # corresponding target volumes.
+            sorted_source_vols = None
+            if source_group and source_vols:
+                sorted_source_vols = self._sort_source_vols(volumes,
+                                                            source_vols)
+
+            self._notify_about_group_usage(
+                context, group, "create.start")
+
+            utils.require_driver_initialized(self.driver)
+
+            try:
+                model_update, volumes_model_update = (
+                    self.driver.create_group_from_src(
+                        context, group, volumes, group_snapshot,
+                        sorted_snapshots, source_group, sorted_source_vols))
+            except NotImplementedError:
+                model_update, volumes_model_update = (
+                    self._create_group_from_src_generic(
+                        context, group, volumes, group_snapshot,
+                        sorted_snapshots, source_group, sorted_source_vols))
+
+            if volumes_model_update:
+                for update in volumes_model_update:
+                    self.db.volume_update(context, update['id'], update)
+
+            if model_update:
+                group.update(model_update)
+                group.save()
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                group.status = 'error'
+                group.save()
+                LOG.error(_LE("Create group "
+                              "from source %(source)s failed."),
+                          {'source': source_name},
+                          resource={'type': 'group',
+                                    'id': group.id})
+                # Update volume status to 'error' as well.
+                for vol in volumes:
+                    vol.status = 'error'
+                    vol.save()
+
+        now = timeutils.utcnow()
+        status = 'available'
+        for vol in volumes:
+            update = {'status': status, 'created_at': now}
+            self._update_volume_from_src(context, vol, update, group=group)
+            self._update_allocated_capacity(vol)
+
+        group.status = status
+        group.created_at = now
+        group.save()
+
+        self._notify_about_group_usage(
+            context, group, "create.end")
+        LOG.info(_LI("Create group "
+                     "from source-%(source)s completed successfully."),
+                 {'source': source_name},
+                 resource={'type': 'group',
+                           'id': group.id})
+        return group
+
+    def _create_group_from_src_generic(self, context, group, volumes,
+                                       group_snapshot=None, snapshots=None,
+                                       source_group=None, source_vols=None):
+        """Creates a group from source.
+
+        :param context: the context of the caller.
+        :param group: the Group object to be created.
+        :param volumes: a list of volume objects in the group.
+        :param group_snapshot: the GroupSnapshot object as source.
+        :param snapshots: a list of snapshot objects in group_snapshot.
+        :param source_group: the Group object as source.
+        :param source_vols: a list of volume objects in the source_group.
+        :returns: model_update, volumes_model_update
+        """
+        for vol in volumes:
+            try:
+                if snapshots:
+                    for snapshot in snapshots:
+                        if vol.snapshot_id == snapshot.id:
+                            self.driver.create_volume_from_snapshot(
+                                vol, snapshot)
+                            break
+            except Exception:
+                raise
+            try:
+                if source_vols:
+                    for source_vol in source_vols:
+                        if vol.source_volid == source_vol.id:
+                            self.driver.create_cloned_volume(vol, source_vol)
+                            break
+            except Exception:
+                raise
+        return None, None
 
     def _sort_snapshots(self, volumes, snapshots):
         # Sort source snapshots so that they are in the same order as their
@@ -3460,6 +3656,152 @@ class VolumeManager(manager.SchedulerDependentManager):
             context, cgsnapshot, "create.end")
         return cgsnapshot
 
+    def create_group_snapshot(self, context, group_snapshot):
+        """Creates the group_snapshot."""
+        caller_context = context
+        context = context.elevated()
+
+        LOG.info(_LI("GroupSnapshot %s: creating."), group_snapshot.id)
+
+        snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+            context, group_snapshot.id)
+
+        self._notify_about_group_snapshot_usage(
+            context, group_snapshot, "create.start")
+
+        snapshots_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("Group snapshot %(grp_snap_id)s: creating.",
+                      {'grp_snap_id': group_snapshot.id})
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            group_snapshot.context = caller_context
+            for snapshot in snapshots:
+                snapshot.context = caller_context
+
+            try:
+                model_update, snapshots_model_update = (
+                    self.driver.create_group_snapshot(context, group_snapshot,
+                                                      snapshots))
+            except NotImplementedError:
+                model_update, snapshots_model_update = (
+                    self._create_group_snapshot_generic(
+                        context, group_snapshot, snapshots))
+
+            if snapshots_model_update:
+                for snap_model in snapshots_model_update:
+                    # Update db for snapshot.
+                    # NOTE(xyang): snapshots is a list of snapshot objects.
+                    # snapshots_model_update should be a list of dicts.
+                    snap_id = snap_model.pop('id')
+                    snap_obj = objects.Snapshot.get_by_id(context, snap_id)
+                    snap_obj.update(snap_model)
+                    snap_obj.save()
+                    if (snap_model['status'] in [
+                        fields.SnapshotStatus.ERROR_DELETING,
+                        fields.SnapshotStatus.ERROR] and
+                            model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = snap_model['status']
+
+            if model_update:
+                if model_update['status'] == 'error':
+                    msg = (_('Error occurred when creating group_snapshot '
+                             '%s.') % group_snapshot.id)
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+
+                group_snapshot.update(model_update)
+                group_snapshot.save()
+
+        except exception.CinderException:
+            with excutils.save_and_reraise_exception():
+                group_snapshot.status = 'error'
+                group_snapshot.save()
+                # Update snapshot status to 'error' if driver returns
+                # None for snapshots_model_update.
+                if not snapshots_model_update:
+                    for snapshot in snapshots:
+                        snapshot.status = fields.SnapshotStatus.ERROR
+                        snapshot.save()
+
+        for snapshot in snapshots:
+            volume_id = snapshot.volume_id
+            snapshot_id = snapshot.id
+            vol_obj = objects.Volume.get_by_id(context, volume_id)
+            if vol_obj.bootable:
+                try:
+                    self.db.volume_glance_metadata_copy_to_snapshot(
+                        context, snapshot_id, volume_id)
+                except exception.GlanceMetadataNotFound:
+                    # If volume is not created from image, No glance metadata
+                    # would be available for that volume in
+                    # volume glance metadata table
+                    pass
+                except exception.CinderException as ex:
+                    LOG.error(_LE("Failed updating %(snapshot_id)s"
+                                  " metadata using the provided volumes"
+                                  " %(volume_id)s metadata"),
+                              {'volume_id': volume_id,
+                               'snapshot_id': snapshot_id})
+                    snapshot.status = fields.SnapshotStatus.ERROR
+                    snapshot.save()
+                    raise exception.MetadataCopyFailure(
+                        reason=six.text_type(ex))
+
+            snapshot.status = fields.SnapshotStatus.AVAILABLE
+            snapshot.progress = '100%'
+            snapshot.save()
+
+        group_snapshot.status = 'available'
+        group_snapshot.save()
+
+        LOG.info(_LI("group_snapshot %s: created successfully"),
+                 group_snapshot.id)
+        self._notify_about_group_snapshot_usage(
+            context, group_snapshot, "create.end")
+        return group_snapshot
+
+    def _create_group_snapshot_generic(self, context, group_snapshot,
+                                       snapshots):
+        """Creates a group_snapshot."""
+        model_update = {'status': 'available'}
+        snapshot_model_updates = []
+        for snapshot in snapshots:
+            snapshot_model_update = {'id': snapshot.id}
+            try:
+                self.driver.create_snapshot(snapshot)
+                snapshot_model_update['status'] = 'available'
+            except Exception:
+                snapshot_model_update['status'] = 'error'
+                model_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_model_update)
+
+        return model_update, snapshot_model_updates
+
+    def _delete_group_snapshot_generic(self, context, group_snapshot,
+                                       snapshots):
+        """Deletes a group_snapshot."""
+        model_update = {'status': group_snapshot.status}
+        snapshot_model_updates = []
+        for snapshot in snapshots:
+            snapshot_model_update = {'id': snapshot.id}
+            try:
+                self.driver.delete_snapshot(snapshot)
+                snapshot_model_update['status'] = 'deleted'
+            except exception.SnapshotIsBusy:
+                snapshot_model_update['status'] = 'available'
+            except Exception:
+                snapshot_model_update['status'] = 'error'
+                model_update['status'] = 'error'
+            snapshot_model_updates.append(snapshot_model_update)
+
+        return model_update, snapshot_model_updates
+
     def delete_cgsnapshot(self, context, cgsnapshot):
         """Deletes cgsnapshot."""
         caller_context = context
@@ -3567,6 +3909,120 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("cgsnapshot %s: deleted successfully"), cgsnapshot.id)
         self._notify_about_cgsnapshot_usage(context, cgsnapshot, "delete.end",
                                             snapshots)
+
+    def delete_group_snapshot(self, context, group_snapshot):
+        """Deletes group_snapshot."""
+        caller_context = context
+        context = context.elevated()
+        project_id = group_snapshot.project_id
+
+        LOG.info(_LI("group_snapshot %s: deleting"), group_snapshot.id)
+
+        snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+            context, group_snapshot.id)
+
+        self._notify_about_group_snapshot_usage(
+            context, group_snapshot, "delete.start")
+
+        snapshots_model_update = None
+        model_update = None
+        try:
+            utils.require_driver_initialized(self.driver)
+
+            LOG.debug("group_snapshot %(grp_snap_id)s: deleting",
+                      {'grp_snap_id': group_snapshot.id})
+
+            # Pass context so that drivers that want to use it, can,
+            # but it is not a requirement for all drivers.
+            group_snapshot.context = caller_context
+            for snapshot in snapshots:
+                snapshot.context = caller_context
+
+            try:
+                model_update, snapshots_model_update = (
+                    self.driver.delete_group_snapshot(context, group_snapshot,
+                                                      snapshots))
+            except NotImplementedError:
+                model_update, snapshots_model_update = (
+                    self._delete_group_snapshot_generic(
+                        context, group_snapshot, snapshots))
+
+            if snapshots_model_update:
+                for snap_model in snapshots_model_update:
+                    # NOTE(xyang): snapshots is a list of snapshot objects.
+                    # snapshots_model_update should be a list of dicts.
+                    snap = next((item for item in snapshots if
+                                 item.id == snap_model['id']), None)
+                    if snap:
+                        snap_model.pop('id')
+                        snap.update(snap_model)
+                        snap.save()
+
+                    if (snap_model['status'] in
+                            [fields.SnapshotStatus.ERROR_DELETING,
+                             fields.SnapshotStatus.ERROR] and
+                            model_update['status'] not in
+                            ['error_deleting', 'error']):
+                        model_update['status'] = snap_model['status']
+
+            if model_update:
+                if model_update['status'] in ['error_deleting', 'error']:
+                    msg = (_('Error occurred when deleting group_snapshot '
+                             '%s.') % group_snapshot.id)
+                    LOG.error(msg)
+                    raise exception.VolumeDriverException(message=msg)
+                else:
+                    group_snapshot.update(model_update)
+                    group_snapshot.save()
+
+        except exception.CinderException:
+            with excutils.save_and_reraise_exception():
+                group_snapshot.status = 'error'
+                group_snapshot.save()
+                # Update snapshot status to 'error' if driver returns
+                # None for snapshots_model_update.
+                if not snapshots_model_update:
+                    for snapshot in snapshots:
+                        snapshot.status = fields.SnapshotStatus.ERROR
+                        snapshot.save()
+
+        for snapshot in snapshots:
+            # Get reservations
+            try:
+                if CONF.no_snapshot_gb_quota:
+                    reserve_opts = {'snapshots': -1}
+                else:
+                    reserve_opts = {
+                        'snapshots': -1,
+                        'gigabytes': -snapshot.volume_size,
+                    }
+                volume_ref = objects.Volume.get_by_id(context,
+                                                      snapshot.volume_id)
+                QUOTAS.add_volume_type_opts(context,
+                                            reserve_opts,
+                                            volume_ref.volume_type_id)
+                reservations = QUOTAS.reserve(context,
+                                              project_id=project_id,
+                                              **reserve_opts)
+
+            except Exception:
+                reservations = None
+                LOG.exception(_LE("Failed to update usages deleting snapshot"))
+
+            self.db.volume_glance_metadata_delete_by_snapshot(context,
+                                                              snapshot.id)
+            snapshot.destroy()
+
+            # Commit the reservations
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id)
+
+        group_snapshot.destroy()
+        LOG.info(_LI("group_snapshot %s: deleted successfully"),
+                 group_snapshot.id)
+        self._notify_about_group_snapshot_usage(context, group_snapshot,
+                                                "delete.end",
+                                                snapshots)
 
     def update_migrated_volume(self, ctxt, volume, new_volume, volume_status):
         """Finalize migration process on backend device."""

@@ -248,6 +248,7 @@ def _usage_from_group(group_ref, **kw):
                       user_id=group_ref.user_id,
                       availability_zone=group_ref.availability_zone,
                       group_id=group_ref.id,
+                      group_type=group_ref.group_type_id,
                       name=group_ref.name,
                       created_at=group_ref.created_at.isoformat(),
                       status=group_ref.status)
@@ -287,6 +288,21 @@ def _usage_from_cgsnapshot(cgsnapshot, **kw):
     return usage_info
 
 
+def _usage_from_group_snapshot(group_snapshot, **kw):
+    usage_info = dict(
+        tenant_id=group_snapshot.project_id,
+        user_id=group_snapshot.user_id,
+        group_snapshot_id=group_snapshot.id,
+        name=group_snapshot.name,
+        group_id=group_snapshot.group_id,
+        group_type=group_snapshot.group_type_id,
+        created_at=group_snapshot.created_at.isoformat(),
+        status=group_snapshot.status)
+
+    usage_info.update(kw)
+    return usage_info
+
+
 def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
                                   extra_usage_info=None, host=None):
     if not host:
@@ -301,6 +317,23 @@ def notify_about_cgsnapshot_usage(context, cgsnapshot, event_suffix,
     rpc.get_notifier("cgsnapshot", host).info(
         context,
         'cgsnapshot.%s' % event_suffix,
+        usage_info)
+
+
+def notify_about_group_snapshot_usage(context, group_snapshot, event_suffix,
+                                      extra_usage_info=None, host=None):
+    if not host:
+        host = CONF.host
+
+    if not extra_usage_info:
+        extra_usage_info = {}
+
+    usage_info = _usage_from_group_snapshot(group_snapshot,
+                                            **extra_usage_info)
+
+    rpc.get_notifier("group_snapshot", host).info(
+        context,
+        'group_snapshot.%s' % event_suffix,
         usage_info)
 
 
