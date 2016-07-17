@@ -80,11 +80,13 @@ class QuotaSetsControllerTestBase(test.TestCase):
 
     class FakeProject(object):
 
-        def __init__(self, id=fake.PROJECT_ID, parent_id=None):
+        def __init__(self, id=fake.PROJECT_ID, parent_id=None,
+                     is_admin_project=False):
             self.id = id
             self.parent_id = parent_id
             self.subtree = None
             self.parents = None
+            self.is_admin_project = is_admin_project
 
     def setUp(self):
         super(QuotaSetsControllerTestBase, self).setUp()
@@ -148,7 +150,7 @@ class QuotaSetsControllerTestBase(test.TestCase):
                               self.C.id: self.C, self.D.id: self.D}
 
     def _get_project(self, context, id, subtree_as_ids=False,
-                     parents_as_ids=False):
+                     parents_as_ids=False, is_admin_project=False):
         return self.project_by_id.get(id, self.FakeProject())
 
     def _create_fake_quota_usages(self, usage_map):
@@ -616,6 +618,15 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
         expected = make_subproject_body(tenant_id=self.D.id)
         self.assertDictMatch(expected, result)
 
+    def test_subproject_show_not_in_hierarchy_admin_context(self):
+        E = self.FakeProject(id=uuid.uuid4().hex, parent_id=None,
+                             is_admin_project=True)
+        self.project_by_id[E.id] = E
+        self.req.environ['cinder.context'].project_id = E.id
+        result = self.controller.show(self.req, self.B.id)
+        expected = make_subproject_body(tenant_id=self.B.id)
+        self.assertDictMatch(expected, result)
+
     def test_subproject_show_target_project_equals_to_context_project(
             self):
         self.req.environ['cinder.context'].project_id = self.B.id
@@ -652,6 +663,27 @@ class QuotaSetsControllerNestedQuotasTest(QuotaSetsControllerTestBase):
                          volumes=5, backups=5, tenant_id=None)
         self.assertRaises(webob.exc.HTTPForbidden,
                           self.controller.update, self.req, F.id, body)
+
+    def test_update_subproject_not_in_hierarchy_admin_context(self):
+        E = self.FakeProject(id=uuid.uuid4().hex, parent_id=None,
+                             is_admin_project=True)
+        self.project_by_id[E.id] = E
+        self.req.environ['cinder.context'].project_id = E.id
+        body = make_body(gigabytes=2000, snapshots=15,
+                         volumes=5, backups=5, tenant_id=None)
+        # Update the project A quota, not in the project hierarchy
+        # of E but it will be allowed because E is the cloud admin.
+        result = self.controller.update(self.req, self.A.id, body)
+        self.assertDictMatch(body, result)
+        # Update the quota of B to be equal to its parent A.
+        result = self.controller.update(self.req, self.B.id, body)
+        self.assertDictMatch(body, result)
+        # Remove the admin role from project E
+        E.is_admin_project = False
+        # Now updating the quota of B will fail, because it is not
+        # a member of E's hierarchy and E is no longer a cloud admin.
+        self.assertRaises(webob.exc.HTTPForbidden,
+                          self.controller.update, self.req, self.B.id, body)
 
     def test_update_subproject(self):
         # Update the project A quota.
