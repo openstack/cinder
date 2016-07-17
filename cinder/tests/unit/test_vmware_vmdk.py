@@ -1506,17 +1506,27 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             context, name, volume, tmp_file_path, file_size_bytes)
         delete_temp_backing.assert_called_once_with(backing)
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'session', new_callable=mock.PropertyMock)
-    def test_get_vc_version(self, session):
-        # test config overrides fetching from vCenter server
-        version = self._driver._get_vc_version()
-        self.assertEqual(ver.LooseVersion(self.DEFAULT_VC_VERSION), version)
-        # explicitly remove config entry
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    @mock.patch('oslo_vmware.vim_util.get_vc_version')
+    def test_get_vc_version(self, get_vc_version, session):
         self._driver.configuration.vmware_host_version = None
-        session.return_value.vim.service_content.about.version = '6.0.1'
+
+        version_str = '6.0.0'
+        get_vc_version.return_value = version_str
+
         version = self._driver._get_vc_version()
-        self.assertEqual(ver.LooseVersion('6.0.1'), version)
+
+        self.assertEqual(ver.LooseVersion(version_str), version)
+        get_vc_version.assert_called_once_with(session)
+
+    @mock.patch('oslo_vmware.vim_util.get_vc_version')
+    def test_get_vc_version_override(self, get_vc_version):
+        version = self._driver._get_vc_version()
+
+        self.assertEqual(
+            ver.LooseVersion(self._driver.configuration.vmware_host_version),
+            version)
+        get_vc_version.assert_not_called()
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.LOG')
     @ddt.data('5.1', '5.5')
@@ -1537,268 +1547,182 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           self._driver._validate_vcenter_version,
                           vc_version)
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_validate_vcenter_version')
+    @mock.patch.object(VMDK_DRIVER, '_validate_params')
+    @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
+    @mock.patch.object(VMDK_DRIVER, '_validate_vcenter_version')
+    @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
     @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps')
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_get_vc_version')
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'session', new_callable=mock.PropertyMock)
-    def test_do_setup_with_pbm_disabled(self, session, get_vc_version,
-                                        vops_cls, validate_vc_version):
-        session_obj = mock.Mock(name='session')
-        session.return_value = session_obj
-        vc_version = ver.LooseVersion('5.0')
+    @mock.patch('cinder.volume.drivers.vmware.datastore.DatastoreSelector')
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, 'session')
+    def _test_do_setup(
+            self, session, vops, ds_sel_cls, vops_cls, get_pbm_wsdl_loc,
+            validate_vc_version, get_vc_version, validate_params,
+            enable_pbm=True):
+        if enable_pbm:
+            ver_str = '5.5'
+            pbm_wsdl = mock.sentinel.pbm_wsdl
+            get_pbm_wsdl_loc.return_value = pbm_wsdl
+        else:
+            ver_str = '5.1'
+        vc_version = ver.LooseVersion(ver_str)
         get_vc_version.return_value = vc_version
 
-        cluster_refs = mock.Mock()
-        cluster_refs.values.return_value = mock.sentinel.cluster_refs
-        vops = mock.Mock()
+        cls_1 = mock.sentinel.cls_1
+        cls_2 = mock.sentinel.cls_2
+        cluster_refs = {'cls-1': cls_1, 'cls-2': cls_2}
         vops.get_cluster_refs.return_value = cluster_refs
-
-        def vops_side_effect(session, max_objects):
-            vops._session = session
-            vops._max_objects = max_objects
-            return vops
-
-        vops_cls.side_effect = vops_side_effect
 
         self._driver.do_setup(mock.ANY)
 
-        validate_vc_version.assert_called_once_with(vc_version)
-        self.assertFalse(self._driver._storage_policy_enabled)
+        validate_params.assert_called_once_with()
         get_vc_version.assert_called_once_with()
-        self.assertEqual(session_obj, self._driver.volumeops._session)
-        self.assertEqual(session_obj, self._driver.ds_sel._session)
-        self.assertEqual(mock.sentinel.cluster_refs, self._driver._clusters)
-        vops.get_cluster_refs.assert_called_once_with(self.CLUSTERS)
+        validate_vc_version.assert_called_once_with(vc_version)
+        if enable_pbm:
+            get_pbm_wsdl_loc.assert_called_once_with(ver_str)
+            self.assertEqual(pbm_wsdl, self._driver.pbm_wsdl)
+        self.assertEqual(enable_pbm, self._driver._storage_policy_enabled)
+        vops_cls.assert_called_once_with(
+            session, self._driver.configuration.vmware_max_objects_retrieval)
+        self.assertEqual(vops_cls.return_value, self._driver._volumeops)
+        ds_sel_cls.assert_called_once_with(
+            vops,
+            session,
+            self._driver.configuration.vmware_max_objects_retrieval)
+        self.assertEqual(ds_sel_cls.return_value, self._driver._ds_sel)
+        vops.get_cluster_refs.assert_called_once_with(
+            self._driver.configuration.vmware_cluster_name)
+        self.assertEqual(list(cluster_refs.values()),
+                         list(self._driver._clusters))
 
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_validate_vcenter_version')
+    def test_do_setup(self):
+        self._test_do_setup()
+
+    def test_do_setup_with_pbm_disabled(self):
+        self._test_do_setup(enable_pbm=False)
+
+    @mock.patch.object(VMDK_DRIVER, '_validate_params')
+    @mock.patch.object(VMDK_DRIVER, '_get_vc_version')
+    @mock.patch.object(VMDK_DRIVER, '_validate_vcenter_version')
     @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_get_vc_version')
-    def test_do_setup_with_invalid_pbm_wsdl(self, get_vc_version,
-                                            get_pbm_wsdl_location,
-                                            validate_vc_version):
-        vc_version = ver.LooseVersion('5.5')
+    def test_do_setup_with_invalid_pbm_wsdl(
+            self, get_pbm_wsdl_loc, validate_vc_version, get_vc_version,
+            validate_params):
+        ver_str = '5.5'
+        vc_version = ver.LooseVersion(ver_str)
         get_vc_version.return_value = vc_version
-        get_pbm_wsdl_location.return_value = None
+
+        get_pbm_wsdl_loc.return_value = None
 
         self.assertRaises(exceptions.VMwareDriverException,
                           self._driver.do_setup,
                           mock.ANY)
 
-        validate_vc_version.assert_called_once_with(vc_version)
-        self.assertFalse(self._driver._storage_policy_enabled)
+        validate_params.assert_called_once_with()
         get_vc_version.assert_called_once_with()
-        get_pbm_wsdl_location.assert_called_once_with(
-            six.text_type(vc_version))
-
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_validate_vcenter_version')
-    @mock.patch('cinder.volume.drivers.vmware.volumeops.VMwareVolumeOps')
-    @mock.patch('oslo_vmware.pbm.get_pbm_wsdl_location')
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                '_get_vc_version')
-    @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
-                'session', new_callable=mock.PropertyMock)
-    def test_do_setup(self, session, get_vc_version, get_pbm_wsdl_location,
-                      vops_cls, validate_vc_version):
-        session_obj = mock.Mock(name='session')
-        session.return_value = session_obj
-
-        vc_version = ver.LooseVersion('5.5')
-        get_vc_version.return_value = vc_version
-        get_pbm_wsdl_location.return_value = 'file:///pbm.wsdl'
-
-        cluster_refs = mock.Mock()
-        cluster_refs.values.return_value = mock.sentinel.cluster_refs
-        vops = mock.Mock()
-        vops.get_cluster_refs.return_value = cluster_refs
-
-        def vops_side_effect(session, max_objects):
-            vops._session = session
-            vops._max_objects = max_objects
-            return vops
-
-        vops_cls.side_effect = vops_side_effect
-
-        self._driver.do_setup(mock.ANY)
-
         validate_vc_version.assert_called_once_with(vc_version)
-        self.assertTrue(self._driver._storage_policy_enabled)
-        get_vc_version.assert_called_once_with()
-        get_pbm_wsdl_location.assert_called_once_with(
-            six.text_type(vc_version))
-        self.assertEqual(session_obj, self._driver.volumeops._session)
-        self.assertEqual(session_obj, self._driver.ds_sel._session)
-        self.assertEqual(mock.sentinel.cluster_refs, self._driver._clusters)
-        vops.get_cluster_refs.assert_called_once_with(self.CLUSTERS)
+        get_pbm_wsdl_loc.assert_called_once_with(ver_str)
 
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
-    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    @mock.patch.object(VMDK_DRIVER, '_select_datastore')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
-    def test_select_ds_for_volume(self, get_volume_group_folder, vops, ds_sel,
-                                  get_storage_profile):
+    @ddt.data(None, {vmdk.CREATE_PARAM_DISK_SIZE: 2 * VOL_SIZE})
+    def test_select_ds_for_volume(
+            self, create_params, get_volume_group_folder, vops,
+            select_datastore, get_storage_profile):
 
         profile = mock.sentinel.profile
         get_storage_profile.return_value = profile
 
-        host_ref = mock.sentinel.host_ref
+        host = mock.sentinel.host
         rp = mock.sentinel.rp
         summary = mock.sentinel.summary
-        ds_sel.select_datastore.return_value = (host_ref, rp, summary)
+        select_datastore.return_value = (host, rp, summary)
 
         dc = mock.sentinel.dc
         vops.get_dc.return_value = dc
+
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
 
-        host = mock.sentinel.host
-        project_id = '63c19a12292549818c09946a5e59ddaf'
-        vol = {'id': 'c1037b23-c5e9-4446-815f-3e097cbf5bb0', 'size': 1,
-               'name': 'vol-c1037b23-c5e9-4446-815f-3e097cbf5bb0',
-               'project_id': project_id}
-        ret = self._driver._select_ds_for_volume(vol, host)
+        vol = self._create_volume_dict()
+        ret = self._driver._select_ds_for_volume(
+            vol, host=host, create_params=create_params)
 
-        self.assertEqual((host_ref, rp, folder, summary), ret)
-        exp_req = {hub.DatastoreSelector.SIZE_BYTES: units.Gi,
+        self.assertEqual((host, rp, folder, summary), ret)
+        if create_params:
+            exp_size = create_params[vmdk.CREATE_PARAM_DISK_SIZE] * units.Gi
+        else:
+            exp_size = vol['size'] * units.Gi
+        exp_req = {hub.DatastoreSelector.SIZE_BYTES: exp_size,
                    hub.DatastoreSelector.PROFILE_NAME: profile}
-        ds_sel.select_datastore.assert_called_once_with(exp_req, hosts=[host])
+        select_datastore.assert_called_once_with(exp_req, host)
         vops.get_dc.assert_called_once_with(rp)
-        get_volume_group_folder.assert_called_once_with(dc, project_id)
-
-    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
-    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
-    def test_select_ds_for_volume_with_no_host(
-            self, get_volume_group_folder, vops, ds_sel, get_storage_profile):
-
-        profile = mock.sentinel.profile
-        get_storage_profile.return_value = profile
-
-        host_ref = mock.sentinel.host_ref
-        rp = mock.sentinel.rp
-        summary = mock.sentinel.summary
-        ds_sel.select_datastore.return_value = (host_ref, rp, summary)
-
-        dc = mock.sentinel.dc
-        vops.get_dc.return_value = dc
-        folder = mock.sentinel.folder
-        get_volume_group_folder.return_value = folder
-
-        project_id = '63c19a12292549818c09946a5e59ddaf'
-        vol = {'id': 'c1037b23-c5e9-4446-815f-3e097cbf5bb0', 'size': 1,
-               'name': 'vol-c1037b23-c5e9-4446-815f-3e097cbf5bb0',
-               'project_id': project_id}
-        ret = self._driver._select_ds_for_volume(vol)
-
-        self.assertEqual((host_ref, rp, folder, summary), ret)
-        exp_req = {hub.DatastoreSelector.SIZE_BYTES: units.Gi,
-                   hub.DatastoreSelector.PROFILE_NAME: profile}
-        ds_sel.select_datastore.assert_called_once_with(exp_req, hosts=None)
-        vops.get_dc.assert_called_once_with(rp)
-        get_volume_group_folder.assert_called_once_with(dc, project_id)
-
-    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
-    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
-    def test_select_ds_for_volume_with_no_best_candidate(
-            self, ds_sel, get_storage_profile):
-
-        profile = mock.sentinel.profile
-        get_storage_profile.return_value = profile
-
-        ds_sel.select_datastore.return_value = ()
-
-        vol = {'id': 'c1037b23-c5e9-4446-815f-3e097cbf5bb0', 'size': 1,
-               'name': 'vol-c1037b23-c5e9-4446-815f-3e097cbf5bb0'}
-        self.assertRaises(vmdk_exceptions.NoValidDatastoreException,
-                          self._driver._select_ds_for_volume, vol)
-
-        exp_req = {hub.DatastoreSelector.SIZE_BYTES: units.Gi,
-                   hub.DatastoreSelector.PROFILE_NAME: profile}
-        ds_sel.select_datastore.assert_called_once_with(exp_req, hosts=None)
+        get_volume_group_folder.assert_called_once_with(dc, vol['project_id'])
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    def test_initialize_connection_with_instance_and_backing(
-            self, relocate_backing, vops):
-
-        instance = mock.sentinel.instance
-        connector = {'instance': instance}
-
-        backing = mock.Mock(value=mock.sentinel.backing_value)
-        vops.get_backing.return_value = backing
-
-        host = mock.sentinel.host
-        vops.get_host.return_value = host
-
-        volume = {'name': 'vol-1', 'id': 1}
-        conn_info = self._driver.initialize_connection(volume, connector)
-
-        relocate_backing.assert_called_once_with(volume, backing, host)
-
-        self.assertEqual('vmdk', conn_info['driver_volume_type'])
-        self.assertEqual(backing.value, conn_info['data']['volume'])
-        self.assertEqual(volume['id'],
-                         conn_info['data']['volume_id'])
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
-    @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
+    @mock.patch('oslo_vmware.vim_util.get_moref')
     @mock.patch.object(VMDK_DRIVER, '_create_backing')
-    def test_initialize_connection_with_instance_and_no_backing(
-            self, create_backing, relocate_backing, vops):
-
-        instance = mock.sentinel.instance
-        connector = {'instance': instance}
-
-        vops.get_backing.return_value = None
-
-        host = mock.sentinel.host
-        vops.get_host.return_value = host
-
-        backing = mock.Mock(value=mock.sentinel.backing_value)
-        create_backing.return_value = backing
-
-        volume = {'name': 'vol-1', 'id': 1}
-        conn_info = self._driver.initialize_connection(volume, connector)
-
-        create_backing.assert_called_once_with(volume, host)
-        self.assertFalse(relocate_backing.called)
-
-        self.assertEqual('vmdk', conn_info['driver_volume_type'])
-        self.assertEqual(backing.value, conn_info['data']['volume'])
-        self.assertEqual(volume['id'],
-                         conn_info['data']['volume_id'])
-
-    @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_relocate_backing')
-    @mock.patch.object(VMDK_DRIVER, '_create_backing')
-    def test_initialize_connection_with_no_instance_and_no_backing(
-            self, create_backing, relocate_backing, vops):
+    def _test_initialize_connection(
+            self, relocate_backing, create_backing, get_moref, vops,
+            backing_exists=True, instance_exists=True):
 
-        vops.get_backing.return_value = None
+        backing_val = mock.sentinel.backing_val
+        backing = mock.Mock(value=backing_val)
+        if backing_exists:
+            vops.get_backing.return_value = backing
+        else:
+            vops.get_backing.return_value = None
+            create_backing.return_value = backing
 
-        host = mock.sentinel.host
-        vops.get_host.return_value = host
+        if instance_exists:
+            instance_val = mock.sentinel.instance_val
+            connector = {'instance': instance_val}
 
-        backing = mock.Mock(value=mock.sentinel.backing_value)
-        create_backing.return_value = backing
+            instance_moref = mock.sentinel.instance_moref
+            get_moref.return_value = instance_moref
 
-        connector = {}
-        volume = {'name': 'vol-1', 'id': 1}
+            host = mock.sentinel.host
+            vops.get_host.return_value = host
+        else:
+            connector = {}
+
+        volume = self._create_volume_dict()
         conn_info = self._driver.initialize_connection(volume, connector)
 
-        create_backing.assert_called_once_with(volume)
-        self.assertFalse(relocate_backing.called)
-
         self.assertEqual('vmdk', conn_info['driver_volume_type'])
-        self.assertEqual(backing.value, conn_info['data']['volume'])
-        self.assertEqual(volume['id'],
-                         conn_info['data']['volume_id'])
+        self.assertEqual(backing_val, conn_info['data']['volume'])
+        self.assertEqual(volume['id'], conn_info['data']['volume_id'])
+
+        if instance_exists:
+            vops.get_host.assert_called_once_with(instance_moref)
+            if backing_exists:
+                relocate_backing.assert_called_once_with(volume, backing, host)
+                create_backing.assert_not_called()
+            else:
+                create_backing.assert_called_once_with(volume, host)
+                relocate_backing.assert_not_called()
+        elif not backing_exists:
+            create_backing.assert_called_once_with(volume)
+            relocate_backing.assert_not_called()
+        else:
+            create_backing.assert_not_called()
+            relocate_backing.assert_not_called()
+
+    def test_initialize_connection_with_instance_and_backing(self):
+        self._test_initialize_connection()
+
+    def test_initialize_connection_with_instance_and_no_backing(self):
+        self._test_initialize_connection(backing_exists=False)
+
+    def test_initialize_connection_with_no_instance_and_no_backing(self):
+        self._test_initialize_connection(
+            backing_exists=False, instance_exists=False)
+
+    def test_initialize_connection_with_no_instance_and_backing(self):
+        self._test_initialize_connection(instance_exists=False)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     def test_get_volume_group_folder(self, vops):
