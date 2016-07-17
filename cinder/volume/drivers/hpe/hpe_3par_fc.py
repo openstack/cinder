@@ -35,9 +35,10 @@ except ImportError:
     hpeexceptions = None
 
 from oslo_log import log as logging
+from oslo_utils.excutils import save_and_reraise_exception
 
 from cinder import exception
-from cinder.i18n import _, _LI, _LW
+from cinder.i18n import _, _LI, _LW, _LE
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
@@ -45,6 +46,9 @@ from cinder.volume.drivers.san import san
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
+
+# EXISTENT_PATH error code returned from hpe3parclient
+EXISTENT_PATH = 73
 
 
 @interface.volumedriver
@@ -105,10 +109,12 @@ class HPE3PARFCDriver(driver.TransferVD,
         3.0.7 - Remove metadata that tracks the instance ID. bug #1572665
         3.0.8 - NSP feature, creating FC Vlun as match set instead of
                 host sees. bug #1577993
+        3.0.9 - Handling HTTP conflict 409, host WWN/iSCSI name already used
+                by another host, while creating 3PAR FC Host. bug #1597454
 
     """
 
-    VERSION = "3.0.8"
+    VERSION = "3.0.9"
 
     def __init__(self, *args, **kwargs):
         super(HPE3PARFCDriver, self).__init__(*args, **kwargs)
@@ -435,16 +441,41 @@ class HPE3PARFCDriver(driver.TransferVD,
             return host_found
         else:
             persona_id = int(persona_id)
-            common.client.createHost(hostname, FCWwns=wwns,
-                                     optional={'domain': domain,
-                                               'persona': persona_id})
+            try:
+                common.client.createHost(hostname, FCWwns=wwns,
+                                         optional={'domain': domain,
+                                                   'persona': persona_id})
+            except hpeexceptions.HTTPConflict as path_conflict:
+                msg = _LE("Create FC host caught HTTP conflict code: %s")
+                LOG.exception(msg, path_conflict.get_code())
+                with save_and_reraise_exception(reraise=False) as ctxt:
+                    if path_conflict.get_code() is EXISTENT_PATH:
+                        # Handle exception : EXISTENT_PATH - host WWN/iSCSI
+                        # name already used by another host
+                        hosts = common.client.queryHost(wwns=wwns)
+                        if hosts and hosts['members'] and (
+                                'name' in hosts['members'][0]):
+                            hostname = hosts['members'][0]['name']
+                        else:
+                            # re rasise last caught exception
+                            ctxt.reraise = True
+                    else:
+                        # re rasise last caught exception
+                        # for other HTTP conflict
+                        ctxt.reraise = True
             return hostname
 
     def _modify_3par_fibrechan_host(self, common, hostname, wwn):
         mod_request = {'pathOperation': common.client.HOST_EDIT_ADD,
                        'FCWWNs': wwn}
-
-        common.client.modifyHost(hostname, mod_request)
+        try:
+            common.client.modifyHost(hostname, mod_request)
+        except hpeexceptions.HTTPConflict as path_conflict:
+            msg = _LE("Modify FC Host %(hostname)s caught "
+                      "HTTP conflict code: %(code)s")
+            LOG.exception(msg,
+                          {'hostname': hostname,
+                           'code': path_conflict.get_code()})
 
     def _create_host(self, common, volume, connector):
         """Creates or modifies existing 3PAR host."""
@@ -464,8 +495,9 @@ class HPE3PARFCDriver(driver.TransferVD,
                                                         domain,
                                                         persona_id)
             host = common._get_3par_host(hostname)
-
-        return self._add_new_wwn_to_host(common, host, connector['wwpns'])
+            return host
+        else:
+            return self._add_new_wwn_to_host(common, host, connector['wwpns'])
 
     def _add_new_wwn_to_host(self, common, host, wwns):
         """Add wwns to a host if one or more don't exist.
