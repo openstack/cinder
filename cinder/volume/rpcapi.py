@@ -99,14 +99,16 @@ class VolumeAPI(rpc.RPCAPI):
 
         2.0  - Remove 1.x compatibility
         2.1  - Add get_manageable_volumes() and get_manageable_snapshots().
-        2.2 - Adds support for sending objects over RPC in manage_existing().
+        2.2  - Adds support for sending objects over RPC in manage_existing().
         2.3  - Adds support for sending objects over RPC in
                initialize_connection().
-        2.4 - Sends request_spec as object in create_volume().
+        2.4  - Sends request_spec as object in create_volume().
         2.5  - Adds create_group, delete_group, and update_group
+        2.6  - Adds create_group_snapshot, delete_group_snapshot, and
+               create_group_from_src().
     """
 
-    RPC_API_VERSION = '2.5'
+    RPC_API_VERSION = '2.6'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
 
@@ -359,3 +361,21 @@ class VolumeAPI(rpc.RPCAPI):
                    group=group,
                    add_volumes=add_volumes,
                    remove_volumes=remove_volumes)
+
+    def create_group_from_src(self, ctxt, group, group_snapshot=None,
+                              source_group=None):
+        cctxt = self._get_cctxt(group.host, '2.6')
+        cctxt.cast(ctxt, 'create_group_from_src',
+                   group=group,
+                   group_snapshot=group_snapshot,
+                   source_group=source_group)
+
+    def create_group_snapshot(self, ctxt, group_snapshot):
+        cctxt = self._get_cctxt(group_snapshot.group.host, '2.6')
+        cctxt.cast(ctxt, 'create_group_snapshot',
+                   group_snapshot=group_snapshot)
+
+    def delete_group_snapshot(self, ctxt, group_snapshot):
+        cctxt = self._get_cctxt(group_snapshot.group.host, '2.6')
+        cctxt.cast(ctxt, 'delete_group_snapshot',
+                   group_snapshot=group_snapshot)

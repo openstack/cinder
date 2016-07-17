@@ -125,6 +125,12 @@
     "group:get": "",
     "group:get_all": "",
 
+    "group:create_group_snapshot": "",
+    "group:delete_group_snapshot": "",
+    "group:update_group_snapshot": "",
+    "group:get_group_snapshot": "",
+    "group:get_all_group_snapshots": "",
+
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
 
     "message:delete": "rule:admin_or_owner",

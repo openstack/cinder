@@ -44,7 +44,7 @@ class ViewBuilder(common.ViewBuilder):
 
     def detail(self, request, group):
         """Detailed view of a single group."""
-        return {
+        group_ref = {
             'group': {
                 'id': group.id,
                 'status': group.status,
@@ -56,6 +56,15 @@ class ViewBuilder(common.ViewBuilder):
                 'volume_types': [v_type.id for v_type in group.volume_types],
             }
         }
+
+        req_version = request.api_version_request
+        # Add group_snapshot_id and source_group_id if min version is greater
+        # than or equal to 3.14.
+        if req_version.matches("3.14", None):
+            group_ref['group']['group_snapshot_id'] = group.group_snapshot_id
+            group_ref['group']['source_group_id'] = group.source_group_id
+
+        return group_ref
 
     def _list_view(self, func, request, groups):
         """Provide a view for a list of groups."""

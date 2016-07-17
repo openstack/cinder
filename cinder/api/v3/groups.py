@@ -29,6 +29,7 @@ from cinder.i18n import _, _LI
 LOG = logging.getLogger(__name__)
 
 GROUP_API_VERSION = '3.13'
+GROUP_CREATE_FROM_SRC_API_VERSION = '3.14'
 
 
 class GroupsController(wsgi.Controller):
@@ -159,6 +160,63 @@ class GroupsController(wsgi.Controller):
         except exception.NotFound:
             # Not found exception will be handled at the wsgi level
             raise
+
+        retval = self._view_builder.summary(req, new_group)
+        return retval
+
+    @wsgi.Controller.api_version(GROUP_CREATE_FROM_SRC_API_VERSION)
+    @wsgi.action("create-from-src")
+    @wsgi.response(202)
+    def create_from_src(self, req, body):
+        """Create a new group from a source.
+
+        The source can be a group snapshot or a group. Note that
+        this does not require group_type and volume_types as the
+        "create" API above.
+        """
+        LOG.debug('Creating new group %s.', body)
+        self.assert_valid_body(body, 'create-from-src')
+
+        context = req.environ['cinder.context']
+        group = body['create-from-src']
+        self.validate_name_and_description(group)
+        name = group.get('name', None)
+        description = group.get('description', None)
+        group_snapshot_id = group.get('group_snapshot_id', None)
+        source_group_id = group.get('source_group_id', None)
+        if not group_snapshot_id and not source_group_id:
+            msg = (_("Either 'group_snapshot_id' or 'source_group_id' must be "
+                     "provided to create group %(name)s from source.")
+                   % {'name': name})
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        if group_snapshot_id and source_group_id:
+            msg = _("Cannot provide both 'group_snapshot_id' and "
+                    "'source_group_id' to create group %(name)s from "
+                    "source.") % {'name': name}
+            raise exc.HTTPBadRequest(explanation=msg)
+
+        if group_snapshot_id:
+            LOG.info(_LI("Creating group %(name)s from group_snapshot "
+                         "%(snap)s."),
+                     {'name': name, 'snap': group_snapshot_id},
+                     context=context)
+        elif source_group_id:
+            LOG.info(_LI("Creating group %(name)s from "
+                         "source group %(source_group_id)s."),
+                     {'name': name, 'source_group_id': source_group_id},
+                     context=context)
+
+        try:
+            new_group = self.group_api.create_from_src(
+                context, name, description, group_snapshot_id, source_group_id)
+        except exception.InvalidGroup as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
+        except (exception.GroupNotFound, exception.GroupSnapshotNotFound):
+            # Not found exception will be handled at the wsgi level
+            raise
+        except exception.CinderException as error:
+            raise exc.HTTPBadRequest(explanation=error.msg)
 
         retval = self._view_builder.summary(req, new_group)
         return retval

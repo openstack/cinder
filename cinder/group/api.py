@@ -26,9 +26,10 @@ from oslo_utils import excutils
 from oslo_utils import timeutils
 
 from cinder.common import constants
+from cinder import db
 from cinder.db import base
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields as c_fields
@@ -179,6 +180,212 @@ class API(base.Base):
                                 filter_properties_list)
 
         return group
+
+    def create_from_src(self, context, name, description=None,
+                        group_snapshot_id=None, source_group_id=None):
+        check_policy(context, 'create')
+
+        kwargs = {
+            'user_id': context.user_id,
+            'project_id': context.project_id,
+            'status': c_fields.GroupStatus.CREATING,
+            'name': name,
+            'description': description,
+            'group_snapshot_id': group_snapshot_id,
+            'source_group_id': source_group_id,
+        }
+
+        group = None
+        try:
+            group = objects.Group(context=context, **kwargs)
+            group.create(group_snapshot_id=group_snapshot_id,
+                         source_group_id=source_group_id)
+        except exception.GroupNotFound:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Source Group %(source_group)s not found when "
+                              "creating group %(group)s from "
+                              "source."),
+                          {'group': name, 'source_group': source_group_id})
+        except exception.GroupSnapshotNotFound:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Group snapshot %(group_snap)s not found when "
+                              "creating group %(group)s from source."),
+                          {'group': name, 'group_snap': group_snapshot_id})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Error occurred when creating group"
+                              " %(group)s from group_snapshot %(grp_snap)s."),
+                          {'group': name, 'grp_snap': group_snapshot_id})
+
+        # Update quota for groups
+        self.update_quota(context, group, 1)
+
+        if not group.host:
+            msg = _("No host to create group %s.") % group.id
+            LOG.error(msg)
+            raise exception.InvalidGroup(reason=msg)
+
+        if group_snapshot_id:
+            self._create_group_from_group_snapshot(context, group,
+                                                   group_snapshot_id)
+        elif source_group_id:
+            self._create_group_from_source_group(context, group,
+                                                 source_group_id)
+
+        return group
+
+    def _create_group_from_group_snapshot(self, context, group,
+                                          group_snapshot_id):
+        try:
+            group_snapshot = objects.GroupSnapshot.get_by_id(
+                context, group_snapshot_id)
+            snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+                context, group_snapshot.id)
+
+            if not snapshots:
+                msg = _("Group snapshot is empty. No group will be created.")
+                raise exception.InvalidGroup(reason=msg)
+
+            for snapshot in snapshots:
+                kwargs = {}
+                kwargs['availability_zone'] = group.availability_zone
+                kwargs['group_snapshot'] = group_snapshot
+                kwargs['group'] = group
+                kwargs['snapshot'] = snapshot
+                volume_type_id = snapshot.volume_type_id
+                if volume_type_id:
+                    kwargs['volume_type'] = volume_types.get_volume_type(
+                        context, volume_type_id)
+                    # Create group volume_type mapping entries
+                    try:
+                        db.group_volume_type_mapping_create(context, group.id,
+                                                            volume_type_id)
+                    except exception.GroupVolumeTypeMappingExists:
+                        # Only need to create one group volume_type mapping
+                        # entry for the same combination, skipping.
+                        LOG.info(_LI("A mapping entry already exists for group"
+                                     " %(grp)s and volume type %(vol_type)s. "
+                                     "Do not need to create again."),
+                                 {'grp': group.id,
+                                  'vol_type': volume_type_id})
+                        pass
+
+                # Since group snapshot is passed in, the following call will
+                # create a db entry for the volume, but will not call the
+                # volume manager to create a real volume in the backend yet.
+                # If error happens, taskflow will handle rollback of quota
+                # and removal of volume entry in the db.
+                try:
+                    self.volume_api.create(context,
+                                           snapshot.volume_size,
+                                           None,
+                                           None,
+                                           **kwargs)
+                except exception.CinderException:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error(_LE("Error occurred when creating volume "
+                                      "entry from snapshot in the process of "
+                                      "creating group %(group)s "
+                                      "from group snapshot %(group_snap)s."),
+                                  {'group': group.id,
+                                   'group_snap': group_snapshot.id})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    group.destroy()
+                finally:
+                    LOG.error(_LE("Error occurred when creating group "
+                                  "%(group)s from group snapshot "
+                                  "%(group_snap)s."),
+                              {'group': group.id,
+                               'group_snap': group_snapshot.id})
+
+        volumes = objects.VolumeList.get_all_by_generic_group(context,
+                                                              group.id)
+        for vol in volumes:
+            # Update the host field for the volume.
+            vol.host = group.host
+            vol.save()
+
+        self.volume_rpcapi.create_group_from_src(
+            context, group, group_snapshot)
+
+    def _create_group_from_source_group(self, context, group,
+                                        source_group_id):
+        try:
+            source_group = objects.Group.get_by_id(context,
+                                                   source_group_id)
+            source_vols = objects.VolumeList.get_all_by_generic_group(
+                context, source_group.id)
+
+            if not source_vols:
+                msg = _("Source Group is empty. No group "
+                        "will be created.")
+                raise exception.InvalidGroup(reason=msg)
+
+            for source_vol in source_vols:
+                kwargs = {}
+                kwargs['availability_zone'] = group.availability_zone
+                kwargs['source_group'] = source_group
+                kwargs['group'] = group
+                kwargs['source_volume'] = source_vol
+                volume_type_id = source_vol.volume_type_id
+                if volume_type_id:
+                    kwargs['volume_type'] = volume_types.get_volume_type(
+                        context, volume_type_id)
+                    # Create group volume_type mapping entries
+                    try:
+                        db.group_volume_type_mapping_create(context, group.id,
+                                                            volume_type_id)
+                    except exception.GroupVolumeTypeMappingExists:
+                        # Only need to create one group volume_type mapping
+                        # entry for the same combination, skipping.
+                        LOG.info(_LI("A mapping entry already exists for group"
+                                     " %(grp)s and volume type %(vol_type)s. "
+                                     "Do not need to create again."),
+                                 {'grp': group.id,
+                                  'vol_type': volume_type_id})
+                        pass
+
+                # Since source_group is passed in, the following call will
+                # create a db entry for the volume, but will not call the
+                # volume manager to create a real volume in the backend yet.
+                # If error happens, taskflow will handle rollback of quota
+                # and removal of volume entry in the db.
+                try:
+                    self.volume_api.create(context,
+                                           source_vol.size,
+                                           None,
+                                           None,
+                                           **kwargs)
+                except exception.CinderException:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error(_LE("Error occurred when creating cloned "
+                                      "volume in the process of creating "
+                                      "group %(group)s from "
+                                      "source group %(source_group)s."),
+                                  {'group': group.id,
+                                   'source_group': source_group.id})
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    group.destroy()
+                finally:
+                    LOG.error(_LE("Error occurred when creating "
+                                  "group %(group)s from source group "
+                                  "%(source_group)s."),
+                              {'group': group.id,
+                               'source_group': source_group.id})
+
+        volumes = objects.VolumeList.get_all_by_generic_group(context,
+                                                              group.id)
+        for vol in volumes:
+            # Update the host field for the volume.
+            vol.host = group.host
+            vol.save()
+
+        self.volume_rpcapi.create_group_from_src(context, group,
+                                                 None, source_group)
 
     def _cast_create_group(self, context, group,
                            group_spec,
@@ -542,3 +749,90 @@ class API(base.Base):
                 limit=limit, offset=offset, sort_keys=sort_keys,
                 sort_dirs=sort_dirs)
         return groups
+
+    def create_group_snapshot(self, context, group, name, description):
+        options = {'group_id': group.id,
+                   'user_id': context.user_id,
+                   'project_id': context.project_id,
+                   'status': "creating",
+                   'name': name,
+                   'description': description}
+
+        group_snapshot = None
+        group_snapshot_id = None
+        try:
+            group_snapshot = objects.GroupSnapshot(context, **options)
+            group_snapshot.create()
+            group_snapshot_id = group_snapshot.id
+
+            snap_name = group_snapshot.name
+            snap_desc = group_snapshot.description
+            with group.obj_as_admin():
+                self.volume_api.create_snapshots_in_db(
+                    context, group.volumes, snap_name, snap_desc,
+                    None, group_snapshot_id)
+
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    # If the group_snapshot has been created
+                    if group_snapshot.obj_attr_is_set('id'):
+                        group_snapshot.destroy()
+                finally:
+                    LOG.error(_LE("Error occurred when creating group_snapshot"
+                                  " %s."), group_snapshot_id)
+
+        self.volume_rpcapi.create_group_snapshot(context, group_snapshot)
+
+        return group_snapshot
+
+    def delete_group_snapshot(self, context, group_snapshot, force=False):
+        check_policy(context, 'delete_group_snapshot')
+        values = {'status': 'deleting'}
+        expected = {'status': ('available', 'error')}
+        filters = [~db.group_creating_from_src(
+                   group_snapshot_id=group_snapshot.id)]
+        res = group_snapshot.conditional_update(values, expected, filters)
+
+        if not res:
+            msg = _('GroupSnapshot status must be available or error, and no '
+                    'Group can be currently using it as source for its '
+                    'creation.')
+            raise exception.InvalidGroupSnapshot(reason=msg)
+
+        snapshots = objects.SnapshotList.get_all_for_group_snapshot(
+            context, group_snapshot.id)
+
+        # TODO(xyang): Add a new db API to update all snapshots statuses
+        # in one db API call.
+        for snap in snapshots:
+            snap.status = c_fields.SnapshotStatus.DELETING
+            snap.save()
+
+        self.volume_rpcapi.delete_group_snapshot(context.elevated(),
+                                                 group_snapshot)
+
+    def update_group_snapshot(self, context, group_snapshot, fields):
+        check_policy(context, 'update_group_snapshot')
+        group_snapshot.update(fields)
+        group_snapshot.save()
+
+    def get_group_snapshot(self, context, group_snapshot_id):
+        check_policy(context, 'get_group_snapshot')
+        group_snapshots = objects.GroupSnapshot.get_by_id(context,
+                                                          group_snapshot_id)
+        return group_snapshots
+
+    def get_all_group_snapshots(self, context, search_opts=None):
+        check_policy(context, 'get_all_group_snapshots')
+        search_opts = search_opts or {}
+
+        if context.is_admin and 'all_tenants' in search_opts:
+            # Need to remove all_tenants to pass the filtering below.
+            del search_opts['all_tenants']
+            group_snapshots = objects.GroupSnapshotList.get_all(context,
+                                                                search_opts)
+        else:
+            group_snapshots = objects.GroupSnapshotList.get_all_by_project(
+                context.elevated(), context.project_id, search_opts)
+        return group_snapshots

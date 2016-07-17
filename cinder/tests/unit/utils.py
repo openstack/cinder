@@ -242,6 +242,53 @@ def create_cgsnapshot(ctxt,
     return objects.CGSnapshot.get_by_id(ctxt, cgsnap.id)
 
 
+def create_group_snapshot(ctxt,
+                          group_id,
+                          group_type_id=None,
+                          name='test_group_snapshot',
+                          description='this is a test group snapshot',
+                          status='creating',
+                          recursive_create_if_needed=True,
+                          return_vo=True,
+                          **kwargs):
+    """Create a group snapshot object in the DB."""
+    values = {
+        'user_id': ctxt.user_id or fake.USER_ID,
+        'project_id': ctxt.project_id or fake.PROJECT_ID,
+        'status': status,
+        'name': name,
+        'description': description,
+        'group_id': group_id}
+    values.update(kwargs)
+
+    if recursive_create_if_needed and group_id:
+        create_grp = False
+        try:
+            objects.Group.get_by_id(ctxt,
+                                    group_id)
+            create_vol = not db.volume_get_all_by_generic_group(
+                ctxt, group_id)
+        except exception.GroupNotFound:
+            create_grp = True
+            create_vol = True
+        if create_grp:
+            create_group(ctxt, id=group_id, group_type_id=group_type_id)
+        if create_vol:
+            create_volume(ctxt, group_id=group_id)
+
+    if not return_vo:
+        return db.group_snapshot_create(ctxt, values)
+    else:
+        group_snapshot = objects.GroupSnapshot(ctxt)
+        new_id = values.pop('id', None)
+        group_snapshot.update(values)
+        group_snapshot.create()
+        if new_id and new_id != group_snapshot.id:
+            db.group_snapshot_update(ctxt, group_snapshot.id, {'id': new_id})
+            group_snapshot = objects.GroupSnapshot.get_by_id(ctxt, new_id)
+        return group_snapshot
+
+
 def create_backup(ctxt,
                   volume_id=fake.VOLUME_ID,
                   display_name='test_backup',

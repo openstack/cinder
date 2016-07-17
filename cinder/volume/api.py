@@ -213,7 +213,7 @@ class API(base.Base):
                scheduler_hints=None,
                source_replica=None, consistencygroup=None,
                cgsnapshot=None, multiattach=False, source_cg=None,
-               group=None):
+               group=None, group_snapshot=None, source_group=None):
 
         check_policy(context, 'create')
 
@@ -245,7 +245,7 @@ class API(base.Base):
                         "group).") % volume_type
                 raise exception.InvalidInput(reason=msg)
 
-        if group:
+        if group and (not group_snapshot and not source_group):
             if not volume_type:
                 msg = _("volume_type must be provided when creating "
                         "a volume in a group.")
@@ -320,12 +320,18 @@ class API(base.Base):
             'cgsnapshot': cgsnapshot,
             'multiattach': multiattach,
             'group': group,
+            'group_snapshot': group_snapshot,
+            'source_group': source_group,
         }
         try:
-            sched_rpcapi = (self.scheduler_rpcapi if (not cgsnapshot and
-                            not source_cg) else None)
-            volume_rpcapi = (self.volume_rpcapi if (not cgsnapshot and
-                             not source_cg) else None)
+            sched_rpcapi = (self.scheduler_rpcapi if (
+                            not cgsnapshot and not source_cg and
+                            not group_snapshot and not source_group)
+                            else None)
+            volume_rpcapi = (self.volume_rpcapi if (
+                             not cgsnapshot and not source_cg and
+                             not group_snapshot and not source_group)
+                             else None)
             flow_engine = create_volume.get_flow(self.db,
                                                  self.image_service,
                                                  availability_zones,
@@ -417,7 +423,8 @@ class API(base.Base):
         if cascade:
             values = {'status': 'deleting'}
             expected = {'status': ('available', 'error', 'deleting'),
-                        'cgsnapshot_id': None}
+                        'cgsnapshot_id': None,
+                        'group_snapshot_id': None}
             snapshots = objects.snapshot.SnapshotList.get_all_for_volume(
                 context, volume.id)
             for s in snapshots:
@@ -739,10 +746,12 @@ class API(base.Base):
     def _create_snapshot(self, context,
                          volume, name, description,
                          force=False, metadata=None,
-                         cgsnapshot_id=None):
+                         cgsnapshot_id=None,
+                         group_snapshot_id=None):
         snapshot = self.create_snapshot_in_db(
             context, volume, name,
-            description, force, metadata, cgsnapshot_id)
+            description, force, metadata, cgsnapshot_id,
+            True, group_snapshot_id)
         self.volume_rpcapi.create_snapshot(context, volume, snapshot)
 
         return snapshot
@@ -751,7 +760,8 @@ class API(base.Base):
                               volume, name, description,
                               force, metadata,
                               cgsnapshot_id,
-                              commit_quota=True):
+                              commit_quota=True,
+                              group_snapshot_id=None):
         check_policy(context, 'create_snapshot', volume)
 
         if volume['status'] == 'maintenance':
@@ -800,6 +810,7 @@ class API(base.Base):
             kwargs = {
                 'volume_id': volume['id'],
                 'cgsnapshot_id': cgsnapshot_id,
+                'group_snapshot_id': group_snapshot_id,
                 'user_id': context.user_id,
                 'project_id': context.project_id,
                 'status': fields.SnapshotStatus.CREATING,
@@ -830,7 +841,8 @@ class API(base.Base):
     def create_snapshots_in_db(self, context,
                                volume_list,
                                name, description,
-                               cgsnapshot_id):
+                               cgsnapshot_id,
+                               group_snapshot_id=None):
         snapshot_list = []
         for volume in volume_list:
             self._create_snapshot_in_db_validate(context, volume, True)
@@ -846,7 +858,8 @@ class API(base.Base):
         options_list = []
         for volume in volume_list:
             options = self._create_snapshot_in_db_options(
-                context, volume, name, description, cgsnapshot_id)
+                context, volume, name, description, cgsnapshot_id,
+                group_snapshot_id)
             options_list.append(options)
 
         try:
@@ -919,9 +932,11 @@ class API(base.Base):
 
     def _create_snapshot_in_db_options(self, context, volume,
                                        name, description,
-                                       cgsnapshot_id):
+                                       cgsnapshot_id,
+                                       group_snapshot_id=None):
         options = {'volume_id': volume['id'],
                    'cgsnapshot_id': cgsnapshot_id,
+                   'group_snapshot_id': group_snapshot_id,
                    'user_id': context.user_id,
                    'project_id': context.project_id,
                    'status': fields.SnapshotStatus.CREATING,
@@ -935,9 +950,11 @@ class API(base.Base):
 
     def create_snapshot(self, context,
                         volume, name, description,
-                        metadata=None, cgsnapshot_id=None):
+                        metadata=None, cgsnapshot_id=None,
+                        group_snapshot_id=None):
         result = self._create_snapshot(context, volume, name, description,
-                                       False, metadata, cgsnapshot_id)
+                                       False, metadata, cgsnapshot_id,
+                                       group_snapshot_id)
         LOG.info(_LI("Snapshot create request issued successfully."),
                  resource=result)
         return result
@@ -955,7 +972,8 @@ class API(base.Base):
     def delete_snapshot(self, context, snapshot, force=False,
                         unmanage_only=False):
         # Build required conditions for conditional update
-        expected = {'cgsnapshot_id': None}
+        expected = {'cgsnapshot_id': None,
+                    'group_snapshot_id': None}
         # If not force deleting we have status conditions
         if not force:
             expected['status'] = (fields.SnapshotStatus.AVAILABLE,
@@ -966,7 +984,7 @@ class API(base.Base):
         if not result:
             status = utils.build_or_str(expected.get('status'),
                                         _('status must be %s and'))
-            msg = (_('Snapshot %s must not be part of a consistency group.') %
+            msg = (_('Snapshot %s must not be part of a group.') %
                    status)
             LOG.error(msg)
             raise exception.InvalidSnapshot(reason=msg)

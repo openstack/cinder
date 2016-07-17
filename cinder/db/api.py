@@ -428,9 +428,9 @@ def snapshot_get_all_for_cgsnapshot(context, project_id):
     return IMPL.snapshot_get_all_for_cgsnapshot(context, project_id)
 
 
-def snapshot_get_all_for_group_snapshot(context, project_id):
+def snapshot_get_all_for_group_snapshot(context, group_snapshot_id):
     """Get all snapshots belonging to a group snapshot."""
-    return IMPL.snapshot_get_all_for_group_snapshot(context, project_id)
+    return IMPL.snapshot_get_all_for_group_snapshot(context, group_snapshot_id)
 
 
 def snapshot_get_all_for_volume(context, volume_id):
