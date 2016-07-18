@@ -69,7 +69,7 @@ class TestExtendVolume(scaleio.TestScaleIODriver):
                 'instances/Volume::{}/action/setVolumeSize'.format(
                     self.volume.provider_id): mocks.MockHTTPSResponse(
                     {
-                        'errorCode': self.VOLUME_NOT_FOUND_ERROR,
+                        'errorCode': self.OLD_VOLUME_NOT_FOUND_ERROR,
                         'message': 'BadStatus Volume Test',
                     }, 400
                 ),

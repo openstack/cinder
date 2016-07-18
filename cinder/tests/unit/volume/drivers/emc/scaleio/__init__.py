@@ -79,7 +79,8 @@ class TestScaleIODriver(test.TestCase):
         }, 500
     )
 
-    VOLUME_NOT_FOUND_ERROR = 78
+    OLD_VOLUME_NOT_FOUND_ERROR = 78
+    VOLUME_NOT_FOUND_ERROR = 79
 
     HTTPS_MOCK_RESPONSES = {}
     __COMMON_HTTPS_MOCK_RESPONSES = {
