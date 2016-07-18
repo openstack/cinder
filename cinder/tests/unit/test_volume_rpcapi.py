@@ -341,10 +341,18 @@ class VolumeRpcAPITestCase(test.TestCase):
                                           'disk_format': 'fake_type'},
                               version='2.0')
 
-    def test_initialize_connection(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_initialize_connection(self, mock_can_send_version):
         self._test_volume_api('initialize_connection',
                               rpc_method='call',
-                              volume=self.fake_volume,
+                              volume=self.fake_volume_obj,
+                              connector='fake_connector',
+                              version='2.3')
+
+        mock_can_send_version.return_value = False
+        self._test_volume_api('initialize_connection',
+                              rpc_method='call',
+                              volume=self.fake_volume_obj,
                               connector='fake_connector',
                               version='2.0')
 

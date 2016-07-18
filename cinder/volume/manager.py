@@ -157,7 +157,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '2.2'
+    RPC_API_VERSION = '2.3'
 
     target = messaging.Target(version=RPC_API_VERSION)
 
@@ -1288,7 +1288,8 @@ class VolumeManager(manager.SchedulerDependentManager):
                         exc_info=True, resource={'type': 'image',
                                                  'id': image_id})
 
-    def initialize_connection(self, context, volume_id, connector):
+    def initialize_connection(self, context, volume_id, connector,
+                              volume=None):
         """Prepare volume for connection from host represented by connector.
 
         This method calls the driver initialize_connection and returns
@@ -1325,12 +1326,16 @@ class VolumeManager(manager.SchedulerDependentManager):
               json in various places, so it should not contain any non-json
               data types.
         """
+        # FIXME(bluex): Remove this in v3.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         # NOTE(flaper87): Verify the driver is enabled
         # before going forward. The exception will be caught
         # and the volume status updated.
         utils.require_driver_initialized(self.driver)
-        volume = self.db.volume_get(context, volume_id)
-        model_update = None
         try:
             self.driver.validate_connector(connector)
         except exception.InvalidConnectorException as err:
@@ -1351,9 +1356,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         try:
             if model_update:
-                volume = self.db.volume_update(context,
-                                               volume_id,
-                                               model_update)
+                volume.update(model_update)
+                volume.save()
         except exception.CinderException as ex:
             LOG.exception(_LE("Model update failed."), resource=volume)
             raise exception.ExportFailure(reason=six.text_type(ex))
@@ -1370,7 +1374,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             raise exception.VolumeBackendAPIException(data=err_msg)
 
         # Add qos_specs to connection info
-        typeid = volume['volume_type_id']
+        typeid = volume.volume_type_id
         specs = None
         if typeid:
             res = volume_types.get_volume_type_qos_specs(typeid)
@@ -1384,8 +1388,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         conn_info['data'].update(qos_spec)
 
         # Add access_mode to connection info
-        volume_metadata = self.db.volume_admin_metadata_get(context.elevated(),
-                                                            volume_id)
+        volume_metadata = volume.admin_metadata
         access_mode = volume_metadata.get('attached_mode')
         if access_mode is None:
             # NOTE(zhiyan): client didn't call 'os-attach' before
@@ -1396,7 +1399,7 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         # Add encrypted flag to connection_info if not set in the driver.
         if conn_info['data'].get('encrypted') is None:
-            encrypted = bool(volume.get('encryption_key_id'))
+            encrypted = bool(volume.encryption_key_id)
             conn_info['data']['encrypted'] = encrypted
 
         # Add discard flag to connection_info if not set in the driver and

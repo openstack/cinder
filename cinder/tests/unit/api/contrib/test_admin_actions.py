@@ -739,24 +739,22 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
-        volume = db.volume_get(self.ctx, volume['id'])
-        self.assertEqual('in-use', volume['status'])
+        volume = objects.Volume.get_by_id(self.ctx, volume.id)
+        self.assertEqual('in-use', volume.status)
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
-        admin_metadata = volume['volume_admin_metadata']
+        admin_metadata = volume.admin_metadata
         self.assertEqual(2, len(admin_metadata))
-        self.assertEqual('readonly', admin_metadata[0]['key'])
-        self.assertEqual('False', admin_metadata[0]['value'])
-        self.assertEqual('attached_mode', admin_metadata[1]['key'])
-        self.assertEqual('rw', admin_metadata[1]['value'])
+        self.assertEqual('False', admin_metadata['readonly'])
+        self.assertEqual('rw', admin_metadata['attached_mode'])
         conn_info = self.volume_api.initialize_connection(self.ctx,
                                                           volume,
                                                           connector)
         self.assertEqual('rw', conn_info['data']['access_mode'])
         # build request to force detach
         req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
-            fake.PROJECT_ID, volume['id']))
+            fake.PROJECT_ID, volume.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
@@ -769,17 +767,16 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         resp = req.get_response(app())
         # request is accepted
         self.assertEqual(202, resp.status_int)
-        volume = db.volume_get(self.ctx, volume['id'])
+        volume.refresh()
         self.assertRaises(exception.VolumeAttachmentNotFound,
                           db.volume_attachment_get,
                           self.ctx, attachment['id'])
 
         # status changed to 'available'
-        self.assertEqual('available', volume['status'])
-        admin_metadata = volume['volume_admin_metadata']
+        self.assertEqual('available', volume.status)
+        admin_metadata = volume.admin_metadata
         self.assertEqual(1, len(admin_metadata))
-        self.assertEqual('readonly', admin_metadata[0]['key'], 'readonly')
-        self.assertEqual('False', admin_metadata[0]['value'])
+        self.assertEqual('False', admin_metadata['readonly'])
 
     def test_force_detach_host_attached_volume(self):
         # current status is available
@@ -793,24 +790,22 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         attachment = self.volume_api.attach(self.ctx, volume, None, host_name,
                                             mountpoint, 'ro')
         # volume is attached
-        volume = db.volume_get(self.ctx, volume['id'])
-        self.assertEqual('in-use', volume['status'])
+        volume.refresh()
+        self.assertEqual('in-use', volume.status)
         self.assertIsNone(attachment['instance_uuid'])
         self.assertEqual(host_name, attachment['attached_host'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
-        admin_metadata = volume['volume_admin_metadata']
+        admin_metadata = volume.admin_metadata
         self.assertEqual(2, len(admin_metadata))
-        self.assertEqual('readonly', admin_metadata[0]['key'])
-        self.assertEqual('False', admin_metadata[0]['value'])
-        self.assertEqual('attached_mode', admin_metadata[1]['key'])
-        self.assertEqual('ro', admin_metadata[1]['value'])
+        self.assertEqual('False', admin_metadata['readonly'])
+        self.assertEqual('ro', admin_metadata['attached_mode'])
         conn_info = self.volume_api.initialize_connection(self.ctx,
                                                           volume, connector)
         self.assertEqual('ro', conn_info['data']['access_mode'])
         # build request to force detach
         req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
-            fake.PROJECT_ID, volume['id']))
+            fake.PROJECT_ID, volume.id))
         req.method = 'POST'
         req.headers['content-type'] = 'application/json'
         # request status of 'error'
@@ -823,16 +818,15 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         resp = req.get_response(app())
         # request is accepted
         self.assertEqual(202, resp.status_int)
-        volume = db.volume_get(self.ctx, volume['id'])
+        volume.refresh()
         self.assertRaises(exception.VolumeAttachmentNotFound,
                           db.volume_attachment_get,
                           self.ctx, attachment['id'])
         # status changed to 'available'
         self.assertEqual('available', volume['status'])
-        admin_metadata = volume['volume_admin_metadata']
+        admin_metadata = volume['admin_metadata']
         self.assertEqual(1, len(admin_metadata))
-        self.assertEqual('readonly', admin_metadata[0]['key'])
-        self.assertEqual('False', admin_metadata[0]['value'])
+        self.assertEqual('False', admin_metadata['readonly'])
 
     def test_volume_force_detach_raises_remote_error(self):
         # current status is available
@@ -845,17 +839,15 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
-        volume = db.volume_get(self.ctx, volume['id'])
-        self.assertEqual('in-use', volume['status'])
+        volume.refresh()
+        self.assertEqual('in-use', volume.status)
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
-        admin_metadata = volume['volume_admin_metadata']
+        admin_metadata = volume.admin_metadata
         self.assertEqual(2, len(admin_metadata))
-        self.assertEqual('readonly', admin_metadata[0]['key'])
-        self.assertEqual('False', admin_metadata[0]['value'])
-        self.assertEqual('attached_mode', admin_metadata[1]['key'])
-        self.assertEqual('rw', admin_metadata[1]['value'])
+        self.assertEqual('False', admin_metadata['readonly'])
+        self.assertEqual('rw', admin_metadata['attached_mode'])
         conn_info = self.volume_api.initialize_connection(self.ctx,
                                                           volume,
                                                           connector)
@@ -866,7 +858,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
             req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
-                fake.PROJECT_ID, volume['id']))
+                fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
             body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID}}
@@ -883,7 +875,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
             req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
-                fake.PROJECT_ID, volume['id']))
+                fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
             body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID}}
@@ -901,7 +893,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
             req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
-                fake.PROJECT_ID, volume['id']))
+                fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
             body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID,
@@ -927,17 +919,15 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         attachment = self.volume_api.attach(self.ctx, volume, fake.INSTANCE_ID,
                                             None, mountpoint, 'rw')
         # volume is attached
-        volume = db.volume_get(self.ctx, volume['id'])
-        self.assertEqual('in-use', volume['status'])
+        volume.refresh()
+        self.assertEqual('in-use', volume.status)
         self.assertEqual(fake.INSTANCE_ID, attachment['instance_uuid'])
         self.assertEqual(mountpoint, attachment['mountpoint'])
         self.assertEqual('attached', attachment['attach_status'])
-        admin_metadata = volume['volume_admin_metadata']
+        admin_metadata = volume.admin_metadata
         self.assertEqual(2, len(admin_metadata))
-        self.assertEqual('readonly', admin_metadata[0]['key'])
-        self.assertEqual('False', admin_metadata[0]['value'])
-        self.assertEqual('attached_mode', admin_metadata[1]['key'])
-        self.assertEqual('rw', admin_metadata[1]['value'])
+        self.assertEqual('False', admin_metadata['readonly'])
+        self.assertEqual('rw', admin_metadata['attached_mode'])
         conn_info = self.volume_api.initialize_connection(self.ctx,
                                                           volume,
                                                           connector)
@@ -947,7 +937,7 @@ class AdminActionsAttachDetachTest(BaseAdminTest):
         with mock.patch.object(volume_api.API, 'detach',
                                side_effect=volume_remote_error):
             req = webob.Request.blank('/v2/%s/volumes/%s/action' %
-                                      (fake.PROJECT_ID, volume['id']))
+                                      (fake.PROJECT_ID, volume.id))
             req.method = 'POST'
             req.headers['content-type'] = 'application/json'
             body = {'os-force_detach': {'attachment_id': fake.ATTACHMENT_ID,
