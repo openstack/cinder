@@ -79,8 +79,12 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         super(NetApp7modeNfsDriver, self).check_for_setup_error()
 
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
-                                       volume_id, share=None):
-        """Clone backing file for Cinder volume."""
+                                       volume_id, share=None,
+                                       is_snapshot=False):
+        """Clone backing file for Cinder volume.
+
+        :param: is_snapshot Not used, present for method signature consistency
+        """
 
         (_host_ip, export_path) = self._get_export_ip_path(volume_id, share)
         storage_path = self.zapi_client.get_actual_path_for_export(export_path)

@@ -291,7 +291,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.assertEqual(0, self.library.partner_zapi_client.
                          has_luns_mapped_to_initiators.call_count)
 
-    def test_clone_lun_zero_block_count(self):
+    @ddt.data(True, False)
+    def test_clone_lun_zero_block_count(self, is_snapshot):
         """Test for when clone lun is not passed a block count."""
         self.library._get_lun_attr = mock.Mock(return_value={
             'Volume': 'fakeLUN', 'Path': '/vol/fake/fakeLUN'})
@@ -299,7 +300,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.zapi_client.get_lun_by_args.return_value = [fake.FAKE_LUN]
         self.library._add_lun_to_table = mock.Mock()
 
-        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false')
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', 'false',
+                                is_snapshot=is_snapshot)
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             '/vol/fake/fakeLUN', '/vol/fake/newFakeLUN', 'fakeLUN',

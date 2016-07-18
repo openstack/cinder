@@ -213,7 +213,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         """Creates a snapshot."""
         self._clone_backing_file_for_volume(snapshot['volume_name'],
                                             snapshot['name'],
-                                            snapshot['volume_id'])
+                                            snapshot['volume_id'],
+                                            is_snapshot=True)
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
@@ -232,7 +233,8 @@ class NetAppNfsDriver(driver.ManageableVD,
         return nfs_server_ip + ':' + export_path
 
     def _clone_backing_file_for_volume(self, volume_name, clone_name,
-                                       volume_id, share=None):
+                                       volume_id, share=None,
+                                       is_snapshot=False):
         """Clone backing file for Cinder volume."""
         raise NotImplementedError()
 

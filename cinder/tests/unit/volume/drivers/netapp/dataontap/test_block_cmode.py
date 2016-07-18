@@ -203,7 +203,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
             dest_block=0, src_block=0, qos_policy_group_name=None,
-            source_snapshot=None)
+            source_snapshot=None, is_snapshot=False)
 
     def test_clone_lun_blocks(self):
         """Test for when clone lun is passed block information."""
@@ -229,7 +229,7 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false',
             block_count=block_count, dest_block=dest_block,
             src_block=src_block, qos_policy_group_name=None,
-            source_snapshot=None)
+            source_snapshot=None, is_snapshot=False)
 
     def test_clone_lun_no_space_reservation(self):
         """Test for when space_reservation is not passed."""
@@ -245,12 +245,12 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.library._add_lun_to_table = mock.Mock()
         self.library._update_stale_vols = mock.Mock()
 
-        self.library._clone_lun('fakeLUN', 'newFakeLUN')
+        self.library._clone_lun('fakeLUN', 'newFakeLUN', is_snapshot=True)
 
         self.library.zapi_client.clone_lun.assert_called_once_with(
             'fakeLUN', 'fakeLUN', 'newFakeLUN', 'false', block_count=0,
             dest_block=0, src_block=0, qos_policy_group_name=None,
-            source_snapshot=None)
+            source_snapshot=None, is_snapshot=True)
 
     def test_get_fc_target_wwpns(self):
         ports = [fake.FC_FORMATTED_TARGET_WWPNS[0],

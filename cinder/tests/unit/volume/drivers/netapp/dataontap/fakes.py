@@ -216,6 +216,7 @@ SNAPSHOT_LUN_HANDLE = 'fake_snapshot_lun_handle'
 
 SNAPSHOT = {
     'name': SNAPSHOT_NAME,
+    'volume_name': 'volume-fake_volume_id',
     'volume_size': SIZE,
     'volume_id': 'fake_volume_id',
     'busy': False,

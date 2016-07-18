@@ -138,7 +138,7 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
 
     def _clone_lun(self, name, new_name, space_reserved=None,
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0, source_snapshot=None):
+                   block_count=0, source_snapshot=None, is_snapshot=False):
         """Clone LUN with the given handle to the new name."""
         if not space_reserved:
             space_reserved = self.lun_space_reservation
@@ -149,7 +149,8 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
                                    qos_policy_group_name=qos_policy_group_name,
                                    src_block=src_block, dest_block=dest_block,
                                    block_count=block_count,
-                                   source_snapshot=source_snapshot)
+                                   source_snapshot=source_snapshot,
+                                   is_snapshot=is_snapshot)
 
         LOG.debug("Cloned LUN with new name %s", new_name)
         lun = self.zapi_client.get_lun_by_args(vserver=self.vserver,

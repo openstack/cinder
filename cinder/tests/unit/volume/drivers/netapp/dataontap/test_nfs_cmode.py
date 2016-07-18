@@ -526,6 +526,27 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(0, mock_get_flex_vol_name.call_count)
         self.assertEqual(0, mock_file_assign_qos.call_count)
 
+    @ddt.data({'share': None, 'is_snapshot': False},
+              {'share': None, 'is_snapshot': True},
+              {'share': 'fake_share', 'is_snapshot': False},
+              {'share': 'fake_share', 'is_snapshot': True})
+    @ddt.unpack
+    def test_clone_backing_file_for_volume(self, share, is_snapshot):
+
+        mock_get_vserver_and_exp_vol = self.mock_object(
+            self.driver, '_get_vserver_and_exp_vol',
+            mock.Mock(return_value=(fake.VSERVER_NAME, fake.FLEXVOL)))
+
+        self.driver._clone_backing_file_for_volume(
+            fake.FLEXVOL, 'fake_clone', fake.VOLUME_ID, share=share,
+            is_snapshot=is_snapshot)
+
+        mock_get_vserver_and_exp_vol.assert_called_once_with(
+            fake.VOLUME_ID, share)
+        self.driver.zapi_client.clone_file.assert_called_once_with(
+            fake.FLEXVOL, fake.FLEXVOL, 'fake_clone', fake.VSERVER_NAME,
+            is_snapshot=is_snapshot)
+
     def test_unmanage(self):
         mock_get_info = self.mock_object(na_utils,
                                          'get_valid_qos_policy_group_info')

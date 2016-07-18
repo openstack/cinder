@@ -259,6 +259,17 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           fake.NFS_VOLUME,
                           fake.EXTRA_SPECS)
 
+    def test_create_snapshot(self):
+
+        mock_clone_backing_file_for_volume = self.mock_object(
+            self.driver, '_clone_backing_file_for_volume')
+
+        self.driver.create_snapshot(fake.SNAPSHOT)
+
+        mock_clone_backing_file_for_volume.assert_called_once_with(
+            fake.SNAPSHOT['volume_name'], fake.SNAPSHOT['name'],
+            fake.SNAPSHOT['volume_id'], is_snapshot=True)
+
     def test_cleanup_volume_on_failure(self):
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
         mock_local_path = self.mock_object(self.driver, 'local_path')

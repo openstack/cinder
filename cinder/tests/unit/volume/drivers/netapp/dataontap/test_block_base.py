@@ -892,6 +892,21 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertRaises(NotImplementedError, self.library._clone_lun,
                           fake.VOLUME_ID, 'new-' + fake.VOLUME_ID)
 
+    def test_create_snapshot(self):
+
+        fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
+                                        fake.LUN_SIZE, fake.LUN_METADATA)
+        mock_clone_lun = self.mock_object(self.library, '_clone_lun')
+        self.mock_object(
+            self.library, '_get_lun_from_table',
+            mock.Mock(return_value=fake_lun))
+
+        self.library.create_snapshot(fake.SNAPSHOT)
+
+        mock_clone_lun.assert_called_once_with(
+            fake_lun.name, fake.SNAPSHOT_NAME, space_reserved='false',
+            is_snapshot=True)
+
     def test_create_volume_from_snapshot(self):
         mock_do_clone = self.mock_object(self.library,
                                          '_clone_source_to_destination')
