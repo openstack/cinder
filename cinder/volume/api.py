@@ -793,10 +793,10 @@ class API(base.Base):
     def create_snapshots_in_db(self, context,
                                volume_list,
                                name, description,
-                               force, cgsnapshot_id):
+                               cgsnapshot_id):
         snapshot_list = []
         for volume in volume_list:
-            self._create_snapshot_in_db_validate(context, volume, force)
+            self._create_snapshot_in_db_validate(context, volume, True)
             if volume['status'] == 'error':
                 msg = _("The snapshot cannot be created when the volume is "
                         "in error status.")

@@ -731,7 +731,7 @@ class API(base.Base):
             snap_desc = cgsnapshot.description
             with group.obj_as_admin():
                 self.volume_api.create_snapshots_in_db(
-                    context, group.volumes, snap_name, snap_desc, True,
+                    context, group.volumes, snap_name, snap_desc,
                     cgsnapshot_id)
 
         except Exception:
