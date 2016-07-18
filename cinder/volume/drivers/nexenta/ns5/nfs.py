@@ -177,7 +177,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         except exception.NexentaException:
             try:
-                url = 'storage/pools/%s/filesystems/%s/%s' % (
+                url = 'storage/pools/%s/filesystems/%s' % (
                     pool, '%2F'.join([fs, volume['name']]))
                 self.nef.delete(url)
             except exception.NexentaException:
