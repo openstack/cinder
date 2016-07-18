@@ -3030,8 +3030,8 @@ def _group_type_get_query(context, session=None, read_deleted='no',
         query = query.options(joinedload('projects'))
 
     if not context.is_admin:
-        the_filter = [models.VolumeTypes.is_public == true()]
-        projects_attr = getattr(models.VolumeTypes, 'projects')
+        the_filter = [models.GroupTypes.is_public == true()]
+        projects_attr = models.GroupTypes.projects
         the_filter.extend([
             projects_attr.any(project_id=context.project_id)
         ])
