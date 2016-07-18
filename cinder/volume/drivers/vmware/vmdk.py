@@ -513,7 +513,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
         """
         connection_info = {'driver_volume_type': 'vmdk'}
 
-        backing = self.volumeops.get_backing(volume['name'])
+        backing = self.volumeops.get_backing(volume.name)
         if 'instance' in connector:
             # The instance exists
             instance = vim_util.get_moref(connector['instance'],
@@ -526,7 +526,7 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 # Create a backing in case it does not exist under the
                 # host managing the instance.
                 LOG.info(_LI("There is no backing for the volume: %s. "
-                             "Need to create one."), volume['name'])
+                             "Need to create one."), volume.name)
                 backing = self._create_backing(volume, host)
             else:
                 # Relocate volume is necessary
@@ -539,18 +539,19 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
                 # Create a backing in case it does not exist. It is a bad use
                 # case to boot from an empty volume.
                 LOG.warning(_LW("Trying to boot from an empty volume: %s."),
-                            volume['name'])
+                            volume.name)
                 # Create backing
                 backing = self._create_backing(volume)
 
-        # Set volume's moref value and name
+        # Set volume ID and backing moref value and name.
         connection_info['data'] = {'volume': backing.value,
-                                   'volume_id': volume['id']}
+                                   'volume_id': volume.id,
+                                   'name': volume.name}
 
         LOG.info(_LI("Returning connection_info: %(info)s for volume: "
                      "%(volume)s with connector: %(connector)s."),
                  {'info': connection_info,
-                  'volume': volume['name'],
+                  'volume': volume.name,
                   'connector': connector})
 
         return connection_info

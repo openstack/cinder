@@ -27,8 +27,10 @@ from oslo_vmware import exceptions
 from oslo_vmware import image_transfer
 import six
 
+from cinder import context
 from cinder import exception as cinder_exceptions
 from cinder import test
+from cinder.tests.unit import fake_volume
 from cinder.volume import configuration
 from cinder.volume.drivers.vmware import datastore as hub
 from cinder.volume.drivers.vmware import exceptions as vmdk_exceptions
@@ -111,6 +113,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                              create_session=False)
         self._volumeops = volumeops.VMwareVolumeOps(self._session,
                                                     self.MAX_OBJECTS)
+        self._context = context.get_admin_context()
 
     def test_get_volume_stats(self):
         stats = self._driver.get_volume_stats()
@@ -139,6 +142,19 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                 'volume_attachment': attachment,
                 'project_id': project_id,
                 }
+
+    def _create_volume_obj(self,
+                           vol_id=VOL_ID,
+                           display_name=DISPLAY_NAME,
+                           volume_type_id=VOL_TYPE_ID,
+                           status='available',
+                           size=VOL_SIZE,
+                           attachment=None,
+                           project_id=PROJECT_ID):
+        vol = self._create_volume_dict(
+            vol_id, display_name, volume_type_id, status, size, attachment,
+            project_id)
+        return fake_volume.fake_volume_obj(self._context, **vol)
 
     @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
     def test_verify_volume_creation(self, select_ds_for_volume):
@@ -1689,12 +1705,13 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         else:
             connector = {}
 
-        volume = self._create_volume_dict()
+        volume = self._create_volume_obj()
         conn_info = self._driver.initialize_connection(volume, connector)
 
         self.assertEqual('vmdk', conn_info['driver_volume_type'])
         self.assertEqual(backing_val, conn_info['data']['volume'])
-        self.assertEqual(volume['id'], conn_info['data']['volume_id'])
+        self.assertEqual(volume.id, conn_info['data']['volume_id'])
+        self.assertEqual(volume.name, conn_info['data']['name'])
 
         if instance_exists:
             vops.get_host.assert_called_once_with(instance_moref)
