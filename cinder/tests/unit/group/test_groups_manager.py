@@ -29,7 +29,7 @@ from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import utils as tests_utils
-import cinder.volume
+from cinder.volume import api as volume_api
 from cinder.volume import configuration as conf
 from cinder.volume import driver
 from cinder.volume import utils as volutils
@@ -51,16 +51,15 @@ class GroupManagerTestCase(test.TestCase):
         self.volume.driver.set_initialized()
         self.volume.stats = {'allocated_capacity_gb': 0,
                              'pools': {}}
-        self.volume_api = cinder.volume.api.API()
+        self.volume_api = volume_api.API()
 
     def test_delete_volume_in_group(self):
         """Test deleting a volume that's tied to a group fails."""
-        volume_api = cinder.volume.api.API()
         volume_params = {'status': 'available',
                          'group_id': fake.GROUP_ID}
         volume = tests_utils.create_volume(self.context, **volume_params)
         self.assertRaises(exception.InvalidVolume,
-                          volume_api.delete, self.context, volume)
+                          self.volume_api.delete, self.context, volume)
 
     @mock.patch.object(GROUP_QUOTAS, "reserve",
                        return_value=["RESERVATION"])
@@ -675,18 +674,17 @@ class GroupManagerTestCase(test.TestCase):
             'id': '9999',
             'name': 'fake',
         }
-        vol_api = cinder.volume.api.API()
 
         # Volume type must be provided when creating a volume in a
         # group.
         self.assertRaises(exception.InvalidInput,
-                          vol_api.create,
+                          self.volume_api.create,
                           self.context, 1, 'vol1', 'volume 1',
                           group=grp)
 
         # Volume type must be valid.
         self.assertRaises(exception.InvalidInput,
-                          vol_api.create,
+                          self.volume_api.create,
                           self.context, 1, 'vol1', 'volume 1',
                           volume_type=fake_type,
                           group=grp)
