@@ -469,6 +469,27 @@ class XtremIOVolumeDriver(san.SanDriver):
         except exception.NotFound:
             LOG.info(_LI("snapshot %s doesn't exist"), snapshot.id)
 
+    def update_migrated_volume(self, ctxt, volume, new_volume,
+                               original_volume_status):
+        # as the volume name is used to id the volume we need to rename it
+        name_id = None
+        provider_location = None
+        current_name = new_volume['id']
+        original_name = volume['id']
+        try:
+            data = {'name': original_name}
+            self.client.req('volumes', 'PUT', data, name=current_name)
+        except exception.VolumeBackendAPIException:
+            LOG.error(_LE('Unable to rename the logical volume '
+                          'for volume: %s'), original_name)
+            # If the rename fails, _name_id should be set to the new
+            # volume id and provider_location should be set to the
+            # one from the new volume as well.
+            name_id = new_volume['_name_id'] or new_volume['id']
+            provider_location = new_volume['provider_location']
+
+        return {'_name_id': name_id, 'provider_location': provider_location}
+
     def _update_volume_stats(self):
         sys = self.client.get_cluster()
         physical_space = int(sys["ud-ssd-space"]) / units.Mi
