@@ -648,6 +648,8 @@ port_speed!N/A
             for row in rows:
                 row.pop(0)
             self._next_cmd_error['lsfabric'] = ''
+        if self._next_cmd_error['lsfabric'] == 'remove_rows':
+            rows = []
         return self._print_info_cmd(rows=rows, **kwargs)
 
     # Create a vdisk
@@ -1002,7 +1004,10 @@ port_speed!N/A
             rows.append(['id', 'name', 'port_count', 'iogrp_count', 'status'])
 
             found = False
-            for host in self._hosts_list.values():
+            # Sort hosts by names to give predictable order for tests
+            # depend on it.
+            for host_name in sorted(self._hosts_list.keys()):
+                host = self._hosts_list[host_name]
                 filterstr = 'name=' + host['host_name']
                 if (('filtervalue' not in kwargs) or
                         (kwargs['filtervalue'] == filterstr)):
@@ -1017,6 +1022,8 @@ port_speed!N/A
             if self._next_cmd_error['lshost'] == 'missing_host':
                 self._next_cmd_error['lshost'] = ''
                 return self._errors['CMMVC5754E']
+            elif self._next_cmd_error['lshost'] == 'bigger_troubles':
+                return self._errors['CMMVC6527E']
             host_name = kwargs['obj'].strip('\'\"')
             if host_name not in self._hosts_list:
                 return self._errors['CMMVC5754E']
@@ -2373,17 +2380,46 @@ class StorwizeSVCFcDriverTestCase(test.TestCase):
         self.assertIsNotNone(host_name)
 
     def test_storwize_get_host_from_connector_with_lshost_failure(self):
-        # Create a FC host
-        del self._connector['initiator']
+        self._connector.pop('initiator')
         helper = self.fc_driver._helpers
-        host_name = helper.create_host(self._connector)
-
+        # Create two hosts. The first is not related to the connector and
+        # we use the simulator for that. The second is for the connector.
+        # We will force the missing_host error for the first host, but
+        # then tolerate and find the second host on the slow path normally.
+        if self.USESIM:
+            self.sim._cmd_mkhost(name='DifferentHost', hbawwpn='123456')
+        helper.create_host(self._connector)
         # tell lshost to fail while calling get_host_from_connector
         if self.USESIM:
+            # tell lshost to fail while called from get_host_from_connector
             self.sim.error_injection('lshost', 'missing_host')
+            # tell lsfabric to skip rows so that we skip past fast path
+            self.sim.error_injection('lsfabric', 'remove_rows')
+        # Run test
         host_name = helper.get_host_from_connector(self._connector)
 
         self.assertIsNotNone(host_name)
+        # Need to assert that lshost was actually called. The way
+        # we do that is check that the next simulator error for lshost
+        # has been reset.
+        self.assertEqual(self.sim._next_cmd_error['lshost'], '',
+                         "lshost was not called in the simulator. The "
+                         "queued error still remains.")
+
+    def test_storwize_get_host_from_connector_with_lshost_failure2(self):
+        self._connector.pop('initiator')
+        self._connector['wwpns'] = []  # Clearing will skip over fast-path
+        helper = self.fc_driver._helpers
+        if self.USESIM:
+            # Add a host to the simulator. We don't need it to match the
+            # connector since we will force a bad failure for lshost.
+            self.sim._cmd_mkhost(name='DifferentHost', hbawwpn='123456')
+            # tell lshost to fail badly while called from
+            # get_host_from_connector
+            self.sim.error_injection('lshost', 'bigger_troubles')
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              helper.get_host_from_connector,
+                              self._connector)
 
     def test_storwize_initiator_multiple_wwpns_connected(self):
 

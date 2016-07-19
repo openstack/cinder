@@ -367,10 +367,10 @@ class StorwizeSSH(object):
         """Return vdisk attributes or None if it doesn't exist."""
         ssh_cmd = ['svcinfo', 'lsvdisk', '-bytes', '-delim', '!', vdisk]
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
-        if not len(err):
+        if not err:
             return CLIResponse((out, err), ssh_cmd=ssh_cmd, delim='!',
                                with_header=False)[0]
-        if err.startswith('CMMVC5754E'):
+        if 'CMMVC5754E' in err:
             return None
         msg = (_('CLI Exception output:\n command: %(cmd)s\n '
                  'stdout: %(out)s\n stderr: %(err)s.') %
@@ -716,9 +716,11 @@ class StorwizeHelpers(object):
                                 wwpn_info['remote_wwpn'].lower() ==
                                 wwpn.lower()):
                             host_name = wwpn_info['name']
+                            break
                     except KeyError:
                         self.handle_keyerror('lsfabric', wwpn_info)
-
+                if host_name:
+                    break
         if host_name:
             LOG.debug('Leave: get_host_from_connector: host %s.', host_name)
             return host_name
@@ -745,8 +747,10 @@ class StorwizeHelpers(object):
         for name in host_list:
             try:
                 resp = self.ssh.lshost(host=name)
-            except processutils.ProcessExecutionError as ex:
-                if 'CMMVC5754E' in ex.stderr:
+            except exception.VolumeBackendAPIException as ex:
+                LOG.debug("Exception message: %s" % ex.msg)
+                if 'CMMVC5754E' in ex.msg:
+                    LOG.debug("CMMVC5754E found in CLI exception.")
                     # CMMVC5754E: The specified object does not exist
                     # The host has been deleted while walking the list.
                     # This is a result of a host change on the SVC that
