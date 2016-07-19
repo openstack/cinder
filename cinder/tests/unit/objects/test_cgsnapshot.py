@@ -13,6 +13,8 @@
 #    under the License.
 
 import mock
+from oslo_utils import timeutils
+import pytz
 import six
 
 from cinder import exception
@@ -81,14 +83,23 @@ class TestCGSnapshot(test_objects.BaseObjectsTestCase):
                          cgsnapshot.obj_get_changes())
         self.assertRaises(exception.ObjectActionError, cgsnapshot.save)
 
-    @mock.patch('cinder.db.cgsnapshot_destroy')
-    def test_destroy(self, cgsnapshot_destroy):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
+    @mock.patch('cinder.db.sqlalchemy.api.cgsnapshot_destroy')
+    def test_destroy(self, cgsnapshot_destroy, utcnow_mock):
+        cgsnapshot_destroy.return_value = {
+            'status': 'deleted',
+            'deleted': True,
+            'deleted_at': utcnow_mock.return_value}
         cgsnapshot = objects.CGSnapshot(context=self.context,
                                         id=fake.CGSNAPSHOT_ID)
         cgsnapshot.destroy()
         self.assertTrue(cgsnapshot_destroy.called)
         admin_context = cgsnapshot_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
+        self.assertTrue(cgsnapshot.deleted)
+        self.assertEqual('deleted', cgsnapshot.status)
+        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
+                         cgsnapshot.deleted_at)
 
     @mock.patch('cinder.objects.consistencygroup.ConsistencyGroup.get_by_id')
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')

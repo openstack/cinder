@@ -19,6 +19,7 @@ import datetime
 import enum
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 from oslo_utils import uuidutils
 import six
 
@@ -38,6 +39,7 @@ CONF = cfg.CONF
 THREE = 3
 THREE_HUNDREDS = 300
 ONE_HUNDREDS = 100
+UTC_NOW = timeutils.utcnow()
 
 
 def _quota_reserve(context, project_id):
@@ -142,11 +144,14 @@ class DBAPIServiceTestCase(BaseTest):
         for key, value in self._get_base_values().items():
             self.assertEqual(value, service[key])
 
-    def test_service_destroy(self):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
+    def test_service_destroy(self, utcnow_mock):
         service1 = self._create_service({})
         service2 = self._create_service({'host': 'fake_host2'})
 
-        db.service_destroy(self.ctxt, service1['id'])
+        self.assertDictEqual(
+            {'deleted': True, 'deleted_at': UTC_NOW},
+            db.service_destroy(self.ctxt, service1['id']))
         self.assertRaises(exception.ServiceNotFound,
                           db.service_get, self.ctxt, service1['id'])
         self._assertEqualObjects(
@@ -393,9 +398,13 @@ class DBAPIVolumeTestCase(BaseTest):
         self._assertEqualObjects(volume, db.volume_get(self.ctxt,
                                                        volume['id']))
 
-    def test_volume_destroy(self):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
+    def test_volume_destroy(self, utcnow_mock):
         volume = db.volume_create(self.ctxt, {})
-        db.volume_destroy(self.ctxt, volume['id'])
+        self.assertDictEqual(
+            {'status': 'deleted', 'deleted': True, 'deleted_at': UTC_NOW,
+             'migration_status': None},
+            db.volume_destroy(self.ctxt, volume['id']))
         self.assertRaises(exception.VolumeNotFound, db.volume_get,
                           self.ctxt, volume['id'])
 
@@ -1803,8 +1812,11 @@ class DBAPIQuotaClassTestCase(BaseTest):
         qc = db.quota_class_get(self.ctxt, 'test_qc', 'test_resource')
         self._assertEqualObjects(self.sample_qc, qc)
 
-    def test_quota_class_destroy(self):
-        db.quota_class_destroy(self.ctxt, 'test_qc', 'test_resource')
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
+    def test_quota_class_destroy(self, utcnow_mock):
+        self.assertDictEqual(
+            {'deleted': True, 'deleted_at': UTC_NOW},
+            db.quota_class_destroy(self.ctxt, 'test_qc', 'test_resource'))
         self.assertRaises(exception.QuotaClassNotFound,
                           db.quota_class_get, self.ctxt,
                           'test_qc', 'test_resource')
@@ -1909,10 +1921,12 @@ class DBAPIQuotaTestCase(BaseTest):
                           'volumes': {'reserved': 1, 'in_use': 0}},
                          quota_usage)
 
-    def test_quota_destroy(self):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
+    def test_quota_destroy(self, utcnow_mock):
         db.quota_create(self.ctxt, 'project1', 'resource1', 41)
-        self.assertIsNone(db.quota_destroy(self.ctxt, 'project1',
-                                           'resource1'))
+        self.assertDictEqual(
+            {'deleted': True, 'deleted_at': UTC_NOW},
+            db.quota_destroy(self.ctxt, 'project1', 'resource1'))
         self.assertRaises(exception.ProjectQuotaNotFound, db.quota_get,
                           self.ctxt, 'project1', 'resource1')
 
@@ -2134,9 +2148,13 @@ class DBAPIBackupTestCase(BaseTest):
         self._assertEqualObjects(updated_values, updated_backup,
                                  self._ignored_keys)
 
-    def test_backup_destroy(self):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=UTC_NOW)
+    def test_backup_destroy(self, utcnow_mock):
         for backup in self.created:
-            db.backup_destroy(self.ctxt, backup['id'])
+            self.assertDictEqual(
+                {'status': fields.BackupStatus.DELETED, 'deleted': True,
+                 'deleted_at': UTC_NOW},
+                db.backup_destroy(self.ctxt, backup['id']))
         self.assertFalse(db.backup_get_all(self.ctxt))
 
     def test_backup_not_found(self):

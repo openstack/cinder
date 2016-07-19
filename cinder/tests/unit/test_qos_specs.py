@@ -22,6 +22,7 @@ import six
 import time
 
 from oslo_db import exception as db_exc
+from oslo_utils import timeutils
 
 from cinder import context
 from cinder import db
@@ -146,7 +147,8 @@ class QoSSpecsTestCase(test.TestCase):
             return vol_types
 
         def fake_db_delete(context, id):
-            pass
+            return {'deleted': True,
+                    'deleted_at': timeutils.utcnow()}
 
         def fake_disassociate_all(context, id):
             pass

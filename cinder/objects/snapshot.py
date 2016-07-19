@@ -178,7 +178,9 @@ class Snapshot(base.CinderPersistentObject, base.CinderObject,
         self.obj_reset_changes()
 
     def destroy(self):
-        db.snapshot_destroy(self._context, self.id)
+        updated_values = db.snapshot_destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
     def obj_load_attr(self, attrname):
         if attrname not in self.OPTIONAL_FIELDS:

@@ -90,9 +90,8 @@ def destroy(context, id):
     if id is None:
         msg = _("id cannot be None")
         raise exception.InvalidVolumeType(reason=msg)
-    else:
-        elevated = context if context.is_admin else context.elevated()
-        db.volume_type_destroy(elevated, id)
+    elevated = context if context.is_admin else context.elevated()
+    return db.volume_type_destroy(elevated, id)
 
 
 def get_all_types(context, inactive=0, filters=None, marker=None,

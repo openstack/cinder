@@ -11,6 +11,8 @@
 #    under the License.
 
 import mock
+from oslo_utils import timeutils
+import pytz
 
 from cinder.db.sqlalchemy import models
 from cinder import exception
@@ -78,17 +80,25 @@ class TestQos(test_objects.BaseObjectsTestCase):
             mock.call(self.context, fake.OBJECT_ID, 'key_to_remove1'),
             mock.call(self.context, fake.OBJECT_ID, 'key_to_remove2')])
 
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
     @mock.patch('cinder.objects.VolumeTypeList.get_all_types_for_qos',
                 return_value=None)
-    @mock.patch('cinder.db.qos_specs_delete')
-    def test_destroy_no_vol_types(self, qos_fake_delete, fake_get_vol_types):
+    @mock.patch('cinder.db.sqlalchemy.api.qos_specs_delete')
+    def test_destroy_no_vol_types(self, qos_fake_delete, fake_get_vol_types,
+                                  utcnow_mock):
+        qos_fake_delete.return_value = {
+            'deleted': True,
+            'deleted_at': utcnow_mock.return_value}
         qos_object = objects.QualityOfServiceSpecs._from_db_object(
             self.context, objects.QualityOfServiceSpecs(), fake_qos)
         qos_object.destroy()
 
-        qos_fake_delete.assert_called_once_with(self.context, fake_qos['id'])
+        qos_fake_delete.assert_called_once_with(mock.ANY, fake_qos['id'])
+        self.assertTrue(qos_object.deleted)
+        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
+                         qos_object.deleted_at)
 
-    @mock.patch('cinder.db.qos_specs_delete')
+    @mock.patch('cinder.db.sqlalchemy.api.qos_specs_delete')
     @mock.patch('cinder.db.qos_specs_disassociate_all')
     @mock.patch('cinder.objects.VolumeTypeList.get_all_types_for_qos')
     def test_destroy_with_vol_types(self, fake_get_vol_types,
@@ -100,7 +110,7 @@ class TestQos(test_objects.BaseObjectsTestCase):
         self.assertRaises(exception.QoSSpecsInUse, qos_object.destroy)
 
         qos_object.destroy(force=True)
-        qos_fake_delete.assert_called_once_with(self.context, fake_qos['id'])
+        qos_fake_delete.assert_called_once_with(mock.ANY, fake_qos['id'])
         qos_fake_disassociate.assert_called_once_with(
             self.context, fake_qos['id'])
 

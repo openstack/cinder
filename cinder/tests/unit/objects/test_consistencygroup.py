@@ -13,6 +13,8 @@
 # under the License.
 
 import mock
+from oslo_utils import timeutils
+import pytz
 import six
 
 from cinder import exception
@@ -146,14 +148,24 @@ class TestConsistencyGroup(test_objects.BaseObjectsTestCase):
         mock_vol_get_all_by_group.assert_called_once_with(self.context,
                                                           consistencygroup.id)
 
-    @mock.patch('cinder.db.consistencygroup_destroy')
-    def test_destroy(self, consistencygroup_destroy):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
+    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_destroy')
+    def test_destroy(self, consistencygroup_destroy, utcnow_mock):
+        consistencygroup_destroy.return_value = {
+            'status': fields.ConsistencyGroupStatus.DELETED,
+            'deleted': True,
+            'deleted_at': utcnow_mock.return_value}
         consistencygroup = objects.ConsistencyGroup(
             context=self.context, id=fake.CONSISTENCY_GROUP_ID)
         consistencygroup.destroy()
         self.assertTrue(consistencygroup_destroy.called)
         admin_context = consistencygroup_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
+        self.assertTrue(consistencygroup.deleted)
+        self.assertEqual(fields.ConsistencyGroupStatus.DELETED,
+                         consistencygroup.status)
+        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
+                         consistencygroup.deleted_at)
 
     @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_get')
     def test_refresh(self, consistencygroup_get):

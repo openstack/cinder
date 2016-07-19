@@ -115,7 +115,9 @@ class VolumeType(base.CinderPersistentObject, base.CinderObject,
 
     def destroy(self):
         with self.obj_as_admin():
-            volume_types.destroy(self._context, self.id)
+            updated_values = volume_types.destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
 
 @base.CinderObjectRegistry.register

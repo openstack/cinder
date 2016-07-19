@@ -13,6 +13,8 @@
 #    under the License.
 
 import mock
+from oslo_utils import timeutils
+import pytz
 import six
 
 from cinder.db.sqlalchemy import models
@@ -77,13 +79,22 @@ class TestBackup(test_objects.BaseObjectsTestCase):
         backup_update.assert_called_once_with(self.context, backup.id,
                                               {'display_name': 'foobar'})
 
-    @mock.patch('cinder.db.backup_destroy')
-    def test_destroy(self, backup_destroy):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
+    @mock.patch('cinder.db.sqlalchemy.api.backup_destroy')
+    def test_destroy(self, backup_destroy, utcnow_mock):
+        backup_destroy.return_value = {
+            'status': fields.BackupStatus.DELETED,
+            'deleted': True,
+            'deleted_at': utcnow_mock.return_value}
         backup = objects.Backup(context=self.context, id=fake.BACKUP_ID)
         backup.destroy()
         self.assertTrue(backup_destroy.called)
         admin_context = backup_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
+        self.assertTrue(backup.deleted)
+        self.assertEqual(fields.BackupStatus.DELETED, backup.status)
+        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
+                         backup.deleted_at)
 
     def test_obj_field_temp_volume_snapshot_id(self):
         backup = objects.Backup(context=self.context,

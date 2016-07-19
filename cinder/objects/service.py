@@ -95,7 +95,9 @@ class Service(base.CinderPersistentObject, base.CinderObject,
 
     def destroy(self):
         with self.obj_as_admin():
-            db.service_destroy(self._context, self.id)
+            updated_values = db.service_destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
     @classmethod
     def _get_minimum_version(cls, attribute, context, binary):

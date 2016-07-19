@@ -52,8 +52,10 @@ class CinderBase(models.TimestampMixin,
 
     def delete(self, session):
         """Delete this object."""
-        self.update(self.delete_values())
+        updated_values = self.delete_values()
+        self.update(updated_values)
         self.save(session=session)
+        return updated_values
 
 
 class Service(BASE, CinderBase):

@@ -114,7 +114,9 @@ class CGSnapshot(base.CinderPersistentObject, base.CinderObject,
 
     def destroy(self):
         with self.obj_as_admin():
-            db.cgsnapshot_destroy(self._context, self.id)
+            updated_values = db.cgsnapshot_destroy(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
 
 @base.CinderObjectRegistry.register

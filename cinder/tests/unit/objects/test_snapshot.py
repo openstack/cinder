@@ -14,6 +14,8 @@
 
 import copy
 import mock
+from oslo_utils import timeutils
+import pytz
 import six
 
 from cinder.db.sqlalchemy import models
@@ -112,12 +114,21 @@ class TestSnapshot(test_objects.BaseObjectsTestCase):
                                                          {'key1': 'value1'},
                                                          True)
 
-    @mock.patch('cinder.db.snapshot_destroy')
-    def test_destroy(self, snapshot_destroy):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
+    @mock.patch('cinder.db.sqlalchemy.api.snapshot_destroy')
+    def test_destroy(self, snapshot_destroy, utcnow_mock):
+        snapshot_destroy.return_value = {
+            'status': 'deleted',
+            'deleted': True,
+            'deleted_at': utcnow_mock.return_value}
         snapshot = objects.Snapshot(context=self.context, id=fake.SNAPSHOT_ID)
         snapshot.destroy()
         snapshot_destroy.assert_called_once_with(self.context,
                                                  fake.SNAPSHOT_ID)
+        self.assertTrue(snapshot.deleted)
+        self.assertEqual('deleted', snapshot.status)
+        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
+                         snapshot.deleted_at)
 
     @mock.patch('cinder.db.snapshot_metadata_delete')
     def test_delete_metadata_key(self, snapshot_metadata_delete):

@@ -13,6 +13,8 @@
 #    under the License.
 
 import mock
+from oslo_utils import timeutils
+import pytz
 import six
 
 from cinder import objects
@@ -69,14 +71,21 @@ class TestService(test_objects.BaseObjectsTestCase):
         service_update.assert_called_once_with(self.context, service.id,
                                                {'topic': 'foobar'})
 
-    @mock.patch('cinder.db.service_destroy')
-    def test_destroy(self, service_destroy):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
+    @mock.patch('cinder.db.sqlalchemy.api.service_destroy')
+    def test_destroy(self, service_destroy, utcnow_mock):
+        service_destroy.return_value = {
+            'deleted': True,
+            'deleted_at': utcnow_mock.return_value}
         db_service = fake_service.fake_db_service()
         service = objects.Service._from_db_object(
             self.context, objects.Service(), db_service)
         with mock.patch.object(service._context, 'elevated') as elevated_ctx:
             service.destroy()
             service_destroy.assert_called_once_with(elevated_ctx(), 123)
+        self.assertTrue(service.deleted)
+        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
+                         service.deleted_at)
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get')
     def test_refresh(self, service_get):

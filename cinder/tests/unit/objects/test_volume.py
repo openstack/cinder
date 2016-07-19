@@ -14,6 +14,8 @@
 
 import ddt
 import mock
+from oslo_utils import timeutils
+import pytz
 import six
 
 from cinder import context
@@ -132,8 +134,13 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         volume.snapshots = objects.SnapshotList()
         self.assertRaises(exception.ObjectActionError, volume.save)
 
-    @mock.patch('cinder.db.volume_destroy')
-    def test_destroy(self, volume_destroy):
+    @mock.patch('oslo_utils.timeutils.utcnow', return_value=timeutils.utcnow())
+    @mock.patch('cinder.db.sqlalchemy.api.volume_destroy')
+    def test_destroy(self, volume_destroy, utcnow_mock):
+        volume_destroy.return_value = {
+            'status': 'deleted',
+            'deleted': True,
+            'deleted_at': utcnow_mock.return_value}
         db_volume = fake_volume.fake_db_volume()
         volume = objects.Volume._from_db_object(self.context,
                                                 objects.Volume(), db_volume)
@@ -141,6 +148,11 @@ class TestVolume(test_objects.BaseObjectsTestCase):
         self.assertTrue(volume_destroy.called)
         admin_context = volume_destroy.call_args[0][0]
         self.assertTrue(admin_context.is_admin)
+        self.assertTrue(volume.deleted)
+        self.assertEqual('deleted', volume.status)
+        self.assertEqual(utcnow_mock.return_value.replace(tzinfo=pytz.UTC),
+                         volume.deleted_at)
+        self.assertIsNone(volume.migration_status)
 
     def test_obj_fields(self):
         volume = objects.Volume(context=self.context, id=fake.VOLUME_ID,

@@ -169,10 +169,11 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
         if self.volume_types:
             if not force:
                 raise exception.QoSSpecsInUse(specs_id=self.id)
-            else:
-                # remove all association
-                db.qos_specs_disassociate_all(self._context, self.id)
-        db.qos_specs_delete(self._context, self.id)
+            # remove all association
+            db.qos_specs_disassociate_all(self._context, self.id)
+        updated_values = db.qos_specs_delete(self._context, self.id)
+        self.update(updated_values)
+        self.obj_reset_changes(updated_values.keys())
 
 
 @base.CinderObjectRegistry.register
