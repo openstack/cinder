@@ -3170,7 +3170,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                           [test_volume],
                           'fake_name',
                           'fake_description',
-                          False,
                           fake.CONSISTENCY_GROUP_ID)
 
     def test_cannot_delete_volume_in_use(self):
