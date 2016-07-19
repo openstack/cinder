@@ -258,6 +258,11 @@ volume_opts = [
                choices=['iscsi', 'fc'],
                help='Protocol for transferring data between host and '
                     'storage back-end.'),
+    cfg.BoolOpt('backup_use_temp_snapshot',
+                default=False,
+                help='If this is set to True, the backup_use_temp_snapshot '
+                     'path will be used during the backup. Otherwise, it '
+                     'will use backup_use_temp_volume path.'),
 ]
 
 # for backward compatibility

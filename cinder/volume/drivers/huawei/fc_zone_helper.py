@@ -61,7 +61,7 @@ class FCZoneHelper(object):
                       {"portg": portg, "views": views[0]})
             # In fact, there is just one view for one port group.
             lungroup = self.client.get_lungroup_by_view(views[0])
-            lun_num = self.client.get_lunnum_from_lungroup(lungroup)
+            lun_num = self.client.get_obj_count_from_lungroup(lungroup)
             ports_in_portg = self.client.get_ports_by_portg(portg)
             LOG.debug("PortGroup %(portg)s contains ports: %(ports)s.",
                       {"portg": portg, "ports": ports_in_portg})
@@ -133,10 +133,11 @@ class FCZoneHelper(object):
                    'initiators': fabric_connected_initiators})
         return fabric_connected_ports, fabric_connected_initiators
 
-    def _get_lun_engine_contrs(self, engines, lun_id):
+    def _get_lun_engine_contrs(self, engines, lun_id,
+                               lun_type=constants.LUN_TYPE):
         contrs = []
         engine_id = None
-        lun_info = self.client.get_lun_info(lun_id)
+        lun_info = self.client.get_lun_info(lun_id, lun_type)
         lun_contr_id = lun_info['OWNINGCONTROLLER']
         for engine in engines:
             contrs = json.loads(engine['NODELIST'])
@@ -172,11 +173,13 @@ class FCZoneHelper(object):
         new_portg_id = self.client.create_portg(portg_name, description)
         return new_portg_id
 
-    def build_ini_targ_map(self, wwns, host_id, lun_id):
+    def build_ini_targ_map(self, wwns, host_id, lun_id,
+                           lun_type=constants.LUN_TYPE):
         engines = self.client.get_all_engines()
         LOG.debug("Get array engines: %s", engines)
 
-        contrs, engine_id = self._get_lun_engine_contrs(engines, lun_id)
+        contrs, engine_id = self._get_lun_engine_contrs(engines, lun_id,
+                                                        lun_type)
 
         # Check if there is already a port group in the view.
         # If yes and have already considered the engine,
