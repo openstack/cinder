@@ -4162,17 +4162,22 @@ class VolumeTestCase(BaseVolumeTestCase):
                        fake_error_create_cloned_volume)
         volume_src = tests_utils.create_volume(self.context,
                                                **self.volume_params)
+        self.assertEqual('creating', volume_src.status)
         self.volume.create_volume(self.context, volume_src.id,
                                   volume=volume_src)
+        self.assertEqual('available', volume_src.status)
         volume_dst = tests_utils.create_volume(self.context,
                                                source_volid=volume_src['id'],
                                                **self.volume_params)
+        self.assertEqual('creating', volume_dst.status)
         self.assertRaises(exception.CinderException,
                           self.volume.create_volume,
                           self.context,
                           volume_dst.id,
                           volume=volume_dst)
-        self.assertEqual('creating', volume_src['status'])
+        # Source volume's status is still available and dst is set to error
+        self.assertEqual('available', volume_src.status)
+        self.assertEqual('error', volume_dst.status)
         self.volume.delete_volume(self.context, volume_dst.id,
                                   volume=volume_dst)
         self.volume.delete_volume(self.context, volume_src.id,

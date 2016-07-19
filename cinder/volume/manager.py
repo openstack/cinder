@@ -550,7 +550,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                 self.driver,
                 self.scheduler_rpcapi,
                 self.host,
-                volume.id,
+                volume,
                 allow_reschedule,
                 context,
                 request_spec,
@@ -589,7 +589,6 @@ class VolumeManager(manager.SchedulerDependentManager):
         # NOTE(dulek): Flag to indicate if volume was rescheduled. Used to
         # decide if allocated_capacity should be incremented.
         rescheduled = False
-        vol_ref = None
 
         try:
             if locked_action is None:
@@ -599,7 +598,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                     _run_flow()
         finally:
             try:
-                vol_ref = flow_engine.storage.fetch('volume_ref')
+                flow_engine.storage.fetch('refreshed')
             except tfe.NotFound:
                 # If there's no vol_ref, then flow is reverted. Lets check out
                 # if rescheduling occurred.
@@ -611,16 +610,12 @@ class VolumeManager(manager.SchedulerDependentManager):
                     pass
 
             if not rescheduled:
-                if not vol_ref:
-                    # Flow was reverted and not rescheduled, fetching
-                    # volume_ref from the DB, because it will be needed.
-                    vol_ref = objects.Volume.get_by_id(context, volume.id)
                 # NOTE(dulek): Volume wasn't rescheduled so we need to update
                 # volume stats as these are decremented on delete.
-                self._update_allocated_capacity(vol_ref)
+                self._update_allocated_capacity(volume)
 
-        LOG.info(_LI("Created volume successfully."), resource=vol_ref)
-        return vol_ref.id
+        LOG.info(_LI("Created volume successfully."), resource=volume)
+        return volume.id
 
     # FIXME(bluex): replace volume_id with volume.id when volume_id is removed
     @coordination.synchronized('{volume_id}-{f_name}')

@@ -601,7 +601,7 @@ class CreateVolumeFlowManagerTestCase(test.TestCase):
                                            snapshot_obj.id)
         fake_driver.create_volume_from_snapshot.assert_called_once_with(
             volume_obj, snapshot_obj)
-        handle_bootable.assert_called_once_with(self.ctxt, volume_obj.id,
+        handle_bootable.assert_called_once_with(self.ctxt, volume_obj,
                                                 snapshot_id=snapshot_obj.id)
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -675,7 +675,7 @@ class CreateVolumeFlowManagerGlanceCinderBackendCase(test.TestCase):
         if format is 'raw' and not owner and location:
             fake_driver.create_cloned_volume.assert_called_once_with(
                 volume, image_volume)
-            handle_bootable.assert_called_once_with(self.ctxt, volume['id'],
+            handle_bootable.assert_called_once_with(self.ctxt, volume,
                                                     image_id=image_id,
                                                     image_meta=image_meta)
         else:
@@ -752,7 +752,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         mock_handle_bootable.assert_called_once_with(
             self.ctxt,
-            volume['id'],
+            volume,
             image_id=image_id,
             image_meta=image_meta
         )
@@ -812,7 +812,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         mock_handle_bootable.assert_called_once_with(
             self.ctxt,
-            volume['id'],
+            volume,
             image_id=image_id,
             image_meta=image_meta
         )
@@ -886,7 +886,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         mock_handle_bootable.assert_called_once_with(
             self.ctxt,
-            volume['id'],
+            volume,
             image_id=image_id,
             image_meta=image_meta
         )
@@ -953,7 +953,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         mock_handle_bootable.assert_called_once_with(
             self.ctxt,
-            volume['id'],
+            volume,
             image_id=image_id,
             image_meta=image_meta
         )
@@ -1079,7 +1079,7 @@ class CreateVolumeFlowManagerImageCacheTestCase(test.TestCase):
 
         mock_handle_bootable.assert_called_once_with(
             self.ctxt,
-            volume['id'],
+            volume,
             image_id=image_id,
             image_meta=image_meta
         )
