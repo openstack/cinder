@@ -251,9 +251,9 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary):
             pool['provisioned_capacity_gb'] = round(
                 pool['total_capacity_gb'] - pool['free_capacity_gb'], 2)
 
-            aggregate_name = ssc_vol_info.get('aggregate')
+            aggregate_name = ssc_vol_info.get('netapp_aggregate')
             aggr_capacity = aggr_capacities.get(aggregate_name, {})
-            pool['aggregate_used_percent'] = aggr_capacity.get(
+            pool['netapp_aggregate_used_percent'] = aggr_capacity.get(
                 'percent-used', 0)
 
             # Add utilization data

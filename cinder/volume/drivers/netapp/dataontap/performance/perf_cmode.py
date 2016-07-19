@@ -97,7 +97,7 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
         # Update pool utilization map atomically
         pool_utilization = {}
         for pool_name, pool_info in ssc_pools.items():
-            aggr_name = pool_info.get('aggregate', 'unknown')
+            aggr_name = pool_info.get('netapp_aggregate', 'unknown')
             node_name = aggr_node_map.get(aggr_name)
             if node_name:
                 pool_utilization[pool_name] = node_utilization.get(
@@ -118,7 +118,7 @@ class PerformanceCmodeLibrary(perf_base.PerformanceLibrary):
 
         aggr_names = set()
         for pool_name, pool_info in ssc_pools.items():
-            aggr_names.add(pool_info.get('aggregate'))
+            aggr_names.add(pool_info.get('netapp_aggregate'))
         return aggr_names
 
     def _get_nodes_for_aggregates(self, aggr_names):

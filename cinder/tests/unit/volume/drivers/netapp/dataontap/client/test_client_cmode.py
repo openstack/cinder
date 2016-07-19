@@ -173,7 +173,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
             max_page_length=10)
 
         num_records = result.get_child_content('num-records')
-        self.assertEqual('1', num_records)
+        self.assertEqual('4', num_records)
 
         args = copy.deepcopy(storage_disk_get_iter_args)
         args['max-records'] = 10
@@ -1681,6 +1681,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 'aggregate-name': None,
                 'aggr-raid-attributes': {
                     'raid-type': None,
+                    'is-hybrid': None,
                 },
             },
         }
@@ -1692,6 +1693,7 @@ class NetAppCmodeClientTestCase(test.TestCase):
         expected = {
             'name': fake_client.VOLUME_AGGREGATE_NAME,
             'raid-type': 'raid_dp',
+            'is-hybrid': True,
         }
         self.assertEqual(expected, result)
 
@@ -1716,19 +1718,64 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual({}, result)
 
-    def test_get_aggregate_disk_type(self):
+    @ddt.data({'types': {'FCAL'}, 'expected': ['FCAL']},
+              {'types': {'SATA', 'SSD'}, 'expected': ['SATA', 'SSD']},)
+    @ddt.unpack
+    def test_get_aggregate_disk_types(self, types, expected):
+
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types',
+            mock.Mock(return_value=types))
+
+        result = self.client.get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertItemsEqual(expected, result)
+        mock_get_aggregate_disk_types.assert_called_once_with(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+    def test_get_aggregate_disk_types_not_found(self):
+
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types',
+            mock.Mock(return_value=set()))
+
+        result = self.client.get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsNone(result)
+        mock_get_aggregate_disk_types.assert_called_once_with(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+    def test_get_aggregate_disk_types_shared(self):
+
+        self.client.features.add_feature('ADVANCED_DISK_PARTITIONING')
+        mock_get_aggregate_disk_types = self.mock_object(
+            self.client, '_get_aggregate_disk_types',
+            mock.Mock(side_effect=[set(['SSD']), set(['SATA'])]))
+
+        result = self.client.get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME)
+
+        self.assertIsInstance(result, list)
+        self.assertItemsEqual(['SATA', 'SSD'], result)
+        mock_get_aggregate_disk_types.assert_has_calls([
+            mock.call(fake_client.VOLUME_AGGREGATE_NAME),
+            mock.call(fake_client.VOLUME_AGGREGATE_NAME, shared=True),
+        ])
+
+    def test__get_aggregate_disk_types(self):
 
         api_response = netapp_api.NaElement(
             fake_client.STORAGE_DISK_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_aggregate_disk_type(
+        result = self.client._get_aggregate_disk_types(
             fake_client.VOLUME_AGGREGATE_NAME)
 
         storage_disk_get_iter_args = {
-            'max-records': 1,
             'query': {
                 'storage-disk-info': {
                     'disk-raid-info': {
@@ -1747,34 +1794,76 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 },
             },
         }
-        self.client.send_request.assert_called_once_with(
+        self.client.send_iter_request.assert_called_once_with(
             'storage-disk-get-iter', storage_disk_get_iter_args,
             enable_tunneling=False)
-        self.assertEqual(fake_client.AGGR_DISK_TYPE, result)
 
-    @ddt.data(fake_client.NO_RECORDS_RESPONSE, fake_client.INVALID_RESPONSE)
-    def test_get_aggregate_disk_type_not_found(self, response):
+        expected = set(fake_client.AGGREGATE_DISK_TYPES)
+        self.assertEqual(expected, result)
 
-        api_response = netapp_api.NaElement(response)
+    def test__get_aggregate_disk_types_shared(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.STORAGE_DISK_GET_ITER_RESPONSE)
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(return_value=api_response))
 
-        result = self.client.get_aggregate_disk_type(
+        result = self.client._get_aggregate_disk_types(
+            fake_client.VOLUME_AGGREGATE_NAME, shared=True)
+
+        storage_disk_get_iter_args = {
+            'query': {
+                'storage-disk-info': {
+                    'disk-raid-info': {
+                        'disk-shared-info': {
+                            'aggregate-list': {
+                                'shared-aggregate-info': {
+                                    'aggregate-name':
+                                    fake_client.VOLUME_AGGREGATE_NAME,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+            'desired-attributes': {
+                'storage-disk-info': {
+                    'disk-raid-info': {
+                        'effective-disk-type': None,
+                    },
+                },
+            },
+        }
+        self.client.send_iter_request.assert_called_once_with(
+            'storage-disk-get-iter', storage_disk_get_iter_args,
+            enable_tunneling=False)
+
+        expected = set(fake_client.AGGREGATE_DISK_TYPES)
+        self.assertEqual(expected, result)
+
+    def test__get_aggregate_disk_types_not_found(self):
+
+        api_response = netapp_api.NaElement(fake_client.NO_RECORDS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client._get_aggregate_disk_types(
             fake_client.VOLUME_AGGREGATE_NAME)
 
-        self.assertEqual('unknown', result)
+        self.assertEqual(set(), result)
 
-    def test_get_aggregate_disk_type_api_error(self):
+    def test__get_aggregate_disk_types_api_error(self):
 
         self.mock_object(self.client,
-                         'send_request',
+                         'send_iter_request',
                          mock.Mock(side_effect=self._mock_api_error()))
 
-        result = self.client.get_aggregate_disk_type(
+        result = self.client._get_aggregate_disk_types(
             fake_client.VOLUME_AGGREGATE_NAME)
 
-        self.assertEqual('unknown', result)
+        self.assertEqual(set([]), result)
 
     def test_get_aggregate_capacities(self):
 

@@ -208,9 +208,9 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
             capacity = self._get_share_capacity_info(nfs_share)
             pool.update(capacity)
 
-            aggregate_name = ssc_vol_info.get('aggregate')
+            aggregate_name = ssc_vol_info.get('netapp_aggregate')
             aggr_capacity = aggr_capacities.get(aggregate_name, {})
-            pool['aggregate_used_percent'] = aggr_capacity.get(
+            pool['netapp_aggregate_used_percent'] = aggr_capacity.get(
                 'percent-used', 0)
 
             # Add utilization data
