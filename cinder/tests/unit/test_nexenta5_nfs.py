@@ -183,8 +183,8 @@ class TestNexentaNfsDriver(test.TestCase):
             'path',
             root_helper='sudo cinder-rootwrap /etc/cinder/rootwrap.conf',
             run_as_root=True)
-        with mock.patch.object(self.cfg,
-                               'nexenta_sparsed_volumes',
+        with mock.patch.object(self.drv,
+                               'sparsed_volumes',
                                False):
             self.drv.extend_volume(self.TEST_VOLUME, 2)
             _execute.assert_called_with(
