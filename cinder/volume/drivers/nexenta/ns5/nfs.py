@@ -177,7 +177,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
         except exception.NexentaException:
             try:
-                url = 'storage/pools/%s/filesystems/%s/%s' % (
+                url = 'storage/pools/%s/filesystems/%s' % (
                     pool, '%2F'.join([fs, volume['name']]))
                 self.nef.delete(url)
             except exception.NexentaException:
@@ -235,8 +235,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         """
         LOG.info(_LI('Extending volume: %(id)s New size: %(size)s GB'),
                  {'id': volume['id'], 'size': new_size})
-        if getattr(self.configuration,
-                   self.driver_prefix + '_sparsed_volumes'):
+        if self.sparsed_volumes:
             self._execute('truncate', '-s', '%sG' % new_size,
                           self.local_path(volume),
                           run_as_root=self._execute_as_root)
@@ -440,7 +439,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
 
     def _get_share_datasets(self, nfs_share):
         pool_name, fs = nfs_share.split('/', 1)
-        return pool_name, fs
+        return pool_name, fs.replace('/', '%2F')
 
     def _get_clone_snapshot_name(self, volume):
         """Return name for snapshot that will be used to clone the volume."""
