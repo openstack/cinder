@@ -49,7 +49,7 @@ class VirtualPool(common.CoprHDResource):
         """Makes REST API call to query the vpool by name and type.
 
         This function will take the VPOOL name and type of VPOOL
-        as input and get uri of the first occurance of given VPOOL.
+        as input and get uri of the first occurence of given VPOOL.
 
         :param name: Name of the VPOOL
         :param vpooltype: Type of the VPOOL {'block'}

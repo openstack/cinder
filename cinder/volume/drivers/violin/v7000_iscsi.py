@@ -284,7 +284,7 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
         client info has the lun_id.
 
         Note: The structure returned for iscsi is different from the
-        one returned for FC. Therefore this funtion is here instead of
+        one returned for FC. Therefore this function is here instead of
         common.
 
         Arguments:
@@ -310,7 +310,7 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
         client info has the lun_id.
 
         Note: The structure returned for iscsi is different from the
-        one returned for FC. Therefore this funtion is here instead of
+        one returned for FC. Therefore this function is here instead of
         common.
 
         Arguments:

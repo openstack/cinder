@@ -140,7 +140,7 @@ class QualityOfServiceSpecs(base.CinderPersistentObject,
             LOG.exception(msg)
             raise exception.Invalid(msg)
         except db_exc.DBError:
-            LOG.exception(_LE('DB error occured when creating QoS specs.'))
+            LOG.exception(_LE('DB error occurred when creating QoS specs.'))
             raise exception.QoSSpecsCreateFailed(name=self.name,
                                                  qos_specs=self.specs)
         # Save ID with the object

@@ -644,7 +644,7 @@ class BackupCephTestCase(test.TestCase):
 
     @common_mocks
     def test_discard_bytes(self):
-        # Lower the chunksize to a memory managable number
+        # Lower the chunksize to a memory manageable number
         self.service.chunk_size = 1024
         image = self.mock_rbd.Image.return_value
         wrapped_rbd = self._get_wrapped_rbd_io(image)
