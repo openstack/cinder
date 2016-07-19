@@ -14,6 +14,8 @@
 
 """Generate list of cinder drivers"""
 
+import os
+
 from cinder.interface import util
 
 
@@ -39,18 +41,25 @@ def print_drivers(drivers, config_name):
 
 
 def main():
-    print('VOLUME DRIVERS')
-    print('==============')
-    print_drivers(util.get_volume_drivers(), 'volume_driver')
+    tools_dir = os.path.dirname(os.path.abspath(__file__))
+    cinder_root = os.path.dirname(tools_dir)
+    cur_dir = os.getcwd()
+    os.chdir(cinder_root)
 
-    print('BACKUP DRIVERS')
-    print('==============')
-    print_drivers(util.get_backup_drivers(), 'backup_driver')
+    try:
+        print('VOLUME DRIVERS')
+        print('==============')
+        print_drivers(util.get_volume_drivers(), 'volume_driver')
 
-    print('FC ZONE MANAGER DRIVERS')
-    print('=======================')
-    print_drivers(util.get_fczm_drivers(), 'zone_driver')
+        print('BACKUP DRIVERS')
+        print('==============')
+        print_drivers(util.get_backup_drivers(), 'backup_driver')
 
+        print('FC ZONE MANAGER DRIVERS')
+        print('=======================')
+        print_drivers(util.get_fczm_drivers(), 'zone_driver')
+    finally:
+        os.chdir(cur_dir)
 
 if __name__ == '__main__':
     main()
