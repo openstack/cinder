@@ -62,7 +62,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
         self._check_type(context, type_id)
         specs = body['extra_specs']
         self._check_key_names(specs.keys())
-        utils.validate_extra_specs(specs)
+        utils.validate_dictionary_string_length(specs)
 
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,
@@ -87,7 +87,7 @@ class VolumeTypeExtraSpecsController(wsgi.Controller):
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         self._check_key_names(body.keys())
-        utils.validate_extra_specs(body)
+        utils.validate_dictionary_string_length(body)
 
         db.volume_type_extra_specs_update_or_create(context,
                                                     type_id,

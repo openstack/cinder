@@ -1011,10 +1011,10 @@ def validate_integer(value, name, min_value=None, max_value=None):
     return value
 
 
-def validate_extra_specs(specs):
-    """Validating key and value of extra specs."""
+def validate_dictionary_string_length(specs):
+    """Check the length of each key and value of dictionary."""
     if not isinstance(specs, dict):
-        msg = _('extra_specs must be a dictionary.')
+        msg = _('specs must be a dictionary.')
         raise exception.InvalidInput(reason=msg)
 
     for key, value in specs.items():

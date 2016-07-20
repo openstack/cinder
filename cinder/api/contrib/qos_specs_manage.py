@@ -85,8 +85,7 @@ class QoSSpecsController(wsgi.Controller):
             msg = _("Please specify a name for QoS specs.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        self.validate_string_length(name, 'name', min_length=1,
-                                    max_length=255, remove_whitespaces=True)
+        utils.validate_dictionary_string_length(specs)
         name = name.strip()
         # Remove name from 'specs' since passing it in as separate param
         del specs['name']
