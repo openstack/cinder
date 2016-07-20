@@ -37,6 +37,7 @@ from cinder import objects
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder.volume import rpcapi as volume_rpcapi
 
 
@@ -60,7 +61,7 @@ class SchedulerManager(manager.Manager):
     # create_consistencygroup(), create_volume(), migrate_volume_to_host(),
     # retype() and manage_existing() in v3.0 of RPC API.
 
-    RPC_API_VERSION = '2.1'
+    RPC_API_VERSION = scheduler_rpcapi.SchedulerAPI.RPC_API_VERSION
 
     target = messaging.Target(version=RPC_API_VERSION)
 

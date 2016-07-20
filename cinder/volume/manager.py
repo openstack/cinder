@@ -157,7 +157,7 @@ MAPPING = {
 class VolumeManager(manager.SchedulerDependentManager):
     """Manages attachable block storage devices."""
 
-    RPC_API_VERSION = '2.3'
+    RPC_API_VERSION = volume_rpcapi.VolumeAPI.RPC_API_VERSION
 
     target = messaging.Target(version=RPC_API_VERSION)
 

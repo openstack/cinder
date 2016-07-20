@@ -83,7 +83,7 @@ QUOTAS = quota.QUOTAS
 class BackupManager(manager.SchedulerDependentManager):
     """Manages backup of block storage devices."""
 
-    RPC_API_VERSION = '2.0'
+    RPC_API_VERSION = backup_rpcapi.BackupAPI.RPC_API_VERSION
 
     target = messaging.Target(version=RPC_API_VERSION)
 
