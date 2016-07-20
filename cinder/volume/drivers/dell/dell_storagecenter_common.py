@@ -42,7 +42,20 @@ common_opts = [
                help='Name of the volume folder to use on the Storage Center'),
     cfg.BoolOpt('dell_sc_verify_cert',
                 default=False,
-                help='Enable HTTPS SC certificate verification.')
+                help='Enable HTTPS SC certificate verification'),
+    cfg.StrOpt('secondary_san_ip',
+               default='',
+               help='IP address of secondary DSM controller'),
+    cfg.StrOpt('secondary_san_login',
+               default='Admin',
+               help='Secondary DSM user name'),
+    cfg.StrOpt('secondary_san_password',
+               default='',
+               help='Secondary DSM user password name',
+               secret=True),
+    cfg.PortOpt('secondary_sc_api_port',
+                default=3033,
+                help='Secondary Dell API port')
 ]
 
 LOG = logging.getLogger(__name__)
@@ -594,6 +607,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             data['storage_protocol'] = self.storage_protocol
             data['reserved_percentage'] = 0
             data['consistencygroup_support'] = True
+            data['thin_provisioning_support'] = True
             totalcapacity = storageusage.get('availableSpace')
             totalcapacitygb = self._bytes_to_gb(totalcapacity)
             data['total_capacity_gb'] = totalcapacitygb

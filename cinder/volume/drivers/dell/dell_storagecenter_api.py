@@ -18,6 +18,7 @@ import os.path
 
 import eventlet
 from oslo_log import log as logging
+from oslo_utils import excutils
 import requests
 from simplejson import scanner
 import six
@@ -265,7 +266,67 @@ class StorageCenterApiHelper(object):
         self.active_backend_id = active_backend_id
         self.primaryssn = self.config.dell_sc_ssn
         self.storage_protocol = storage_protocol
+        self.san_ip = self.config.san_ip
+        self.san_login = self.config.san_login
+        self.san_password = self.config.san_password
+        self.san_port = self.config.dell_sc_api_port
         self.apiversion = '2.0'
+
+    def _swap_credentials(self):
+        """Change out to our secondary credentials
+
+        Or back to our primary creds.
+        :return: True if swapped. False if no alt credentials supplied.
+        """
+        if self.san_ip == self.config.san_ip:
+            # Do we have a secondary IP and credentials?
+            if (self.config.secondary_san_ip and
+                    self.config.secondary_san_login and
+                    self.config.secondary_san_password):
+                self.san_ip = self.config.secondary_san_ip
+                self.san_login = self.config.secondary_san_login
+                self.san_password = self.config.secondary_san_password
+            else:
+                # Cannot swap.
+                return False
+            # Odds on this hasn't changed so no need to make setting this a
+            # requirement.
+            if self.config.secondary_sc_api_port:
+                self.san_port = self.config.secondary_sc_api_port
+        else:
+            # These have to be set.
+            self.san_ip = self.config.san_ip
+            self.san_login = self.config.san_login
+            self.san_password = self.config.san_password
+            self.san_port = self.config.dell_sc_api_port
+        return True
+
+    def _setup_connection(self):
+        """Attempts to open a connection to the storage center."""
+        connection = StorageCenterApi(self.san_ip,
+                                      self.san_port,
+                                      self.san_login,
+                                      self.san_password,
+                                      self.config.dell_sc_verify_cert,
+                                      self.apiversion)
+        # This instance is for a single backend.  That backend has a
+        # few items of information we should save rather than passing them
+        # about.
+        connection.vfname = self.config.dell_sc_volume_folder
+        connection.sfname = self.config.dell_sc_server_folder
+        # Our primary SSN doesn't change
+        connection.primaryssn = self.primaryssn
+        if self.storage_protocol == 'FC':
+            connection.protocol = 'FibreChannel'
+        # Set appropriate ssn and failover state.
+        if self.active_backend_id:
+            # active_backend_id is a string.  Convert to int.
+            connection.ssn = int(self.active_backend_id)
+        else:
+            connection.ssn = self.primaryssn
+        # Make the actual connection to the DSM.
+        connection.open_connection()
+        return connection
 
     def open_connection(self):
         """Creates the StorageCenterApi object.
@@ -278,30 +339,17 @@ class StorageCenterApiHelper(object):
                  {'ssn': self.primaryssn,
                   'ip': self.config.san_ip})
         if self.primaryssn:
-            """Open connection to REST API."""
-            connection = StorageCenterApi(self.config.san_ip,
-                                          self.config.dell_sc_api_port,
-                                          self.config.san_login,
-                                          self.config.san_password,
-                                          self.config.dell_sc_verify_cert,
-                                          self.apiversion)
-            # This instance is for a single backend.  That backend has a
-            # few items of information we should save rather than passing them
-            # about.
-            connection.vfname = self.config.dell_sc_volume_folder
-            connection.sfname = self.config.dell_sc_server_folder
-            # Our primary SSN doesn't change
-            connection.primaryssn = self.primaryssn
-            if self.storage_protocol == 'FC':
-                connection.protocol = 'FibreChannel'
-            # Set appropriate ssn and failover state.
-            if self.active_backend_id:
-                # active_backend_id is a string.  Convert to int.
-                connection.ssn = int(self.active_backend_id)
-            else:
-                connection.ssn = self.primaryssn
-            # Open connection.
-            connection.open_connection()
+            try:
+                """Open connection to REST API."""
+                connection = self._setup_connection()
+            except Exception:
+                # If we have credentials to swap to we try it here.
+                if self._swap_credentials():
+                    connection = self._setup_connection()
+                else:
+                    with excutils.save_and_reraise_exception():
+                        LOG.error(_LE('Failed to connect to the API. '
+                                      'No backup DSM provided.'))
             # Save our api version for next time.
             if self.apiversion != connection.apiversion:
                 LOG.info(_LI('open_connection: Updating API version to %s'),
@@ -334,9 +382,10 @@ class StorageCenterApi(object):
         2.5.0 - ManageableSnapshotsVD implemented.
         3.0.0 - ProviderID utilized.
         3.1.0 - Failback Supported.
+        3.3.0 - Support for a secondary DSM.
     """
 
-    APIDRIVERVERSION = '3.1.0'
+    APIDRIVERVERSION = '3.3.0'
 
     def __init__(self, host, port, user, password, verify, apiversion):
         """This creates a connection to Dell SC or EM.
