@@ -31,7 +31,7 @@ LOG = logging.getLogger(__name__)
 class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                                 driver.FibreChannelDriver):
 
-    """Implements commands for Dell EqualLogic SAN ISCSI management.
+    """Implements commands for Dell Storage Center FC management.
 
     To enable the driver add the following line to the cinder configuration:
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterFCDriver
