@@ -1830,9 +1830,10 @@ class HuaweiISCSIDriver(HuaweiBaseDriver, driver.ISCSIDriver):
                 Consistency group support
                 Cgsnapshot support
         2.0.8 - Backup snapshot optimal path support
+        2.0.9 - Support reporting disk type of pool
     """
 
-    VERSION = "2.0.8"
+    VERSION = "2.0.9"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiISCSIDriver, self).__init__(*args, **kwargs)
@@ -2029,9 +2030,10 @@ class HuaweiFCDriver(HuaweiBaseDriver, driver.FibreChannelDriver):
                 Consistency group support
                 Cgsnapshot support
         2.0.8 - Backup snapshot optimal path support
+        2.0.9 - Support reporting disk type of pool
     """
 
-    VERSION = "2.0.8"
+    VERSION = "2.0.9"
 
     def __init__(self, *args, **kwargs):
         super(HuaweiFCDriver, self).__init__(*args, **kwargs)
