@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev161\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-04-23 16:54+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -201,10 +201,6 @@ msgid "Backup service: %s."
 msgstr "Yedek servisi: %s."
 
 #, python-format
-msgid "Bandwidth limit is: %s."
-msgstr "Bant genişliği sınırı: %s."
-
-#, python-format
 msgid "Begin backup of volume %s."
 msgstr "Mantıksal sürücü %s yedeğine başla."
 
@@ -214,10 +210,6 @@ msgstr "Mantıksal sürücünün ayrılmasına başlanması başarıyla tamamlan
 #, python-format
 msgid "CONCERTO version: %s"
 msgstr "CONCERTO sürümü: %s"
-
-#, python-format
-msgid "Cancelling Migration from LUN %s."
-msgstr "LUN %s'den Göç iptal ediliyor"
 
 #, python-format
 msgid ""
@@ -355,10 +347,6 @@ msgid "Connector returning fcnsinfo-%s"
 msgstr "Bağlayıcı fcnsinfo-%s döndürüyor"
 
 #, python-format
-msgid "Consistency group %s was deleted successfully."
-msgstr "Tutarlılık grubu %s başarıyla silindi."
-
-#, python-format
 msgid "Consistency group %s: created successfully"
 msgstr "Tutarlılık grubu %s: başarıyla oluşturuldu"
 
@@ -483,10 +471,6 @@ msgstr ""
 #, python-format
 msgid "Create snapshot from volume %s"
 msgstr "%s biriminden sistem görüntüsü oluşturuluyor"
-
-#, python-format
-msgid "Create snapshot: %(snapshot)s: volume: %(volume)s"
-msgstr "Anlık görüntü oluştur: %(snapshot)s: mantıksal sürücü: %(volume)s"
 
 #, python-format
 msgid ""
@@ -639,10 +623,6 @@ msgid "Delete Snapshot %(snapshot_id)s completed."
 msgstr "%(snapshot_id)s anlık görüntü silme tamamlandı."
 
 #, python-format
-msgid "Delete Snapshot: %(snapshot)s"
-msgstr "Anlık görüntü sil: %(snapshot)s"
-
-#, python-format
 msgid "Delete Snapshot: %(snapshot)s."
 msgstr "Anlık görüntü sil: %(snapshot)s."
 
@@ -770,10 +750,6 @@ msgid "Deleting stale snapshot: %s"
 msgstr "Eski anlık görüntü siliniyor: %s"
 
 #, python-format
-msgid "Deleting unneeded host %(host_name)r."
-msgstr "İhtiyaç duyulmayan istemci %(host_name)r siliniyor."
-
-#, python-format
 msgid "Deleting volume %s "
 msgstr "Mantıksal sürücü %s siliniyor "
 
@@ -899,10 +875,6 @@ msgid "Extending volume %s."
 msgstr "Mantıksal sürücü %s büyütülüyor."
 
 #, python-format
-msgid "FC Initiators %(in)s of %(ins)s need registration"
-msgstr "FC Başlatıcıları %(in)s / %(ins)s kaydolmalı"
-
-#, python-format
 msgid "Failed to open iet session list for %(vol_id)s: %(e)s"
 msgstr "%(vol_id)s için iet oturumu açılamadı: %(e)s"
 
@@ -983,14 +955,6 @@ msgstr "Arka uç için boş kapasite: %(free)s, toplam kapasite: %(total)s."
 #, python-format
 msgid "Generating transfer record for volume %s"
 msgstr "Mantıksal sürücü %s için aktarım kaydı üretiliyor"
-
-#, python-format
-msgid "Get FC targets %(tg)s to register initiator %(in)s."
-msgstr "%(in)s başlatıcısını kaydetmek için FC hedeflerini %(tg)s getir."
-
-#, python-format
-msgid "Get ISCSI targets %(tg)s to register initiator %(in)s."
-msgstr "%(in)s başlatıcısını kaydetmek için ISCSI hedefleri %(tg)s'yi getir."
 
 msgid "Get all volumes completed successfully."
 msgstr "Tüm mantıksal sürücülerin getirilmesi başarıyla bitti."
@@ -1222,14 +1186,6 @@ msgstr "FC Bölgesi silinmeli, başlatıcı hedef haritası inşa ediliyor"
 msgid "Need to remove FC Zone, building initiator target map."
 msgstr "FC Bölgesi kaldırılmalı, başlatıcı hedef haritası inşa ediliyor."
 
-msgid ""
-"Neither security file nor plain text credentials are specified. Security "
-"file under home directory will be used for authentication if present."
-msgstr ""
-"Güvenlik dosyası ya da düz metin kimlik bilgileri belirtilmedi. Eğer "
-"mevcutsa ev dizini altındaki güvenlik dosyası kimlik doğrulama için "
-"kullanılacak."
-
 #, python-format
 msgid ""
 "NetApp driver of family %(storage_family)s and protocol %(storage_protocol)s "
@@ -1301,9 +1257,6 @@ msgstr "%s için klon sonrası işler gerçekleştiriliyor"
 #, python-format
 msgid "Performing secure delete on volume: %s"
 msgstr "Mantıksal sürücü güvenle siliniyor: %s"
-
-msgid "Plain text credentials are being used for authentication"
-msgstr "Kimlik doğrulama için düz metin kimlik bilgileri kullanılıyor"
 
 #, python-format
 msgid "Pool id is %s."
@@ -1525,14 +1478,6 @@ msgid "Roll detaching of volume completed successfully."
 msgstr "Mantıksal sürücünün ayrılmasının yuvarlanması başarıyla tamamlandı."
 
 #, python-format
-msgid "Running cluster latest ssc job for %(server)s and vserver %(vs)s"
-msgstr "%(server)s ve vserver %(vs)s için küme son ssc işi çalıştırılıyor"
-
-#, python-format
-msgid "Running stale ssc refresh job for %(server)s and vserver %(vs)s"
-msgstr "%(server)s ve vserver %(vs)s için eski ssc tazeleme işi çalıştırılıyor"
-
-#, python-format
 msgid "Running with vmemclient version: %s"
 msgstr "vmemclient sürüm: %s ile çalışıyor"
 
@@ -1616,12 +1561,6 @@ msgid "Skipping deletion of volume %s as it does not exist."
 msgstr "%s mantıksal sürücüsünün silinmesi atlanıyor çünkü mevcut değil."
 
 #, python-format
-msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
-msgstr ""
-"ensure_export atlanıyor. Mantıksal sürücü: %s için hiçbir iscsi_target "
-"hazırlanmamış"
-
-#, python-format
 msgid ""
 "Skipping remove_export. No iscsi_target is presently exported for volume: %s"
 msgstr ""
@@ -1638,10 +1577,6 @@ msgstr ""
 msgid "Smb share %(share)s Total size %(size)s Total allocated %(allocated)s"
 msgstr ""
 "Smb paylaşımı %(share)s Toplam boyut %(size)s Toplam ayrılan %(allocated)s"
-
-#, python-format
-msgid "Snapshot %s was deleted successfully."
-msgstr "Anlık görüntü %s başarıyla silindi."
 
 msgid "Snapshot create request issued successfully."
 msgstr "Anlık görüntü oluşturma isteği başarıyla yapıldı."
@@ -1698,10 +1633,6 @@ msgid "Starting volume driver %(driver_name)s (%(version)s)"
 msgstr "Mantıksal sürücü %(driver_name)s (%(version)s) başlatılıyor"
 
 #, python-format
-msgid "Storage Group %s was empty."
-msgstr "Depolama Grubu %s boştu."
-
-#, python-format
 msgid "Storage group not associated with the policy. Exception is %s."
 msgstr "Depolama grubu ilke ile ilişkilendirilmemiş. İstisna %s."
 
@@ -1716,16 +1647,6 @@ msgstr ""
 #, python-format
 msgid "Successful login by user %s"
 msgstr "%s kullanıcısı tarafından başarılı giriş"
-
-#, python-format
-msgid "Successfully completed ssc job for %(server)s and vserver %(vs)s"
-msgstr "%(server)s ve vserver %(vs)s için ssc işi başarıyla tamamlandı"
-
-#, python-format
-msgid ""
-"Successfully completed stale refresh job for %(server)s and vserver %(vs)s"
-msgstr ""
-"%(server)s ve vserver %(vs)s için eski tazeleme işi başarıyla tamamlandı"
 
 #, python-format
 msgid "Successfully copied disk at: %(src)s to: %(dest)s."
@@ -2054,10 +1975,6 @@ msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr "%(cpg)s yerine %(pool)s havuzu kullanılıyor"
 
 #, python-format
-msgid "Using security file in %s for authentication"
-msgstr "Kimlik doğrulama için %s içindeki güvenlik dosyası kullanılıyor"
-
-#, python-format
 msgid "Using service label: %s"
 msgstr "Servis etiketi kullanılıyor: %s"
 
@@ -2285,10 +2202,6 @@ msgstr ""
 "%(pool)s havuzu için boş kapasite: %(free)s, toplam kapasite: %(total)s."
 
 #, python-format
-msgid "iSCSI Initiators %(in)s of %(ins)s need registration."
-msgstr "iSCSI Başlatıcıları %(in)s / %(ins)s kaydolmalı."
-
-#, python-format
 msgid "iSCSI portal found for service: %s"
 msgstr "Servis içi iSCSI portalı bulundu: %s"
 
@@ -2312,21 +2225,6 @@ msgstr ""
 #, python-format
 msgid "initiate: connection %s"
 msgstr "başlat: bağlantı %s"
-
-msgid ""
-"initiator_auto_registration: False. Initiator auto registration is not "
-"enabled. Please register initiator manually."
-msgstr ""
-"initiator_auto_registration: False. Başlatıcı otomatik kaydı etkin değil. "
-"Lütfen başlatıcıyı elle kaydedin."
-
-#, python-format
-msgid "iops limit is: %s."
-msgstr "iops sınırı: %s."
-
-#, python-format
-msgid "iscsi_initiators: %s"
-msgstr "iscsi_initiators: %s"
 
 #, python-format
 msgid "location is: %(location)s"

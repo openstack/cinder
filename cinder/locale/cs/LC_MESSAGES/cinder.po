@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-06-01 22:30+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -244,9 +244,6 @@ msgstr "'status' musí být zadáno."
 msgid "'volume_id' must be specified"
 msgstr "'volume_id' svazku musí být zadáno."
 
-msgid "'{}' object has no attribute '{}'"
-msgstr "Objekt '{}' nemá vlastnost '{}'"
-
 #, python-format
 msgid ""
 "(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
@@ -394,16 +391,8 @@ msgstr ""
 "Žádné ze zadaných zásob úložiště, které mají být spravovány, neexistují. "
 "Prosím zkontrolujte své nastavení. Neexistující zásoby: %s"
 
-#, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
-msgstr "V ovladači SheepDog nastala chyba. (Důvod: %(reason)s)"
-
 msgid "An error has occurred during backup operation"
 msgstr "Během operace zálohování nastala chyba"
-
-#, python-format
-msgid "An error occured while seeking for volume \"%s\"."
-msgstr "Při hledání svazku \"%s\" nastal problém."
 
 #, python-format
 msgid ""
@@ -526,9 +515,6 @@ msgstr "Podpůrná vrstva hlásí: Položka již existuje"
 msgid "Backend reports: item not found"
 msgstr "Podpůrná vrstva hlásí: Položka nenalezena"
 
-msgid "Backend server not NaServer."
-msgstr "Server podpůrné vrstvy není NaServer."
-
 #, python-format
 msgid "Backend service retry timeout hit: %(timeout)s sec"
 msgstr ""
@@ -625,12 +611,6 @@ msgstr ""
 msgid "Bad project format: project is not in proper format (%s)"
 msgstr "Špatný formát projektu: projekt není ve správném formátu (%s)"
 
-#, python-format
-msgid "Bad request sent to Datera cluster:Invalid args: %(args)s | %(message)s"
-msgstr ""
-"Clusteru Datera zaslán špatný požadavek:neplatné argumenty: %(args)s | "
-"%(message)s"
-
 msgid "Bad response from Datera API"
 msgstr "Špatná odpověď od API Datera"
 
@@ -646,18 +626,6 @@ msgstr "Binární soubor"
 
 msgid "Blank components"
 msgstr "Prázdné součásti"
-
-msgid "Blockbridge API authentication scheme (token or password)"
-msgstr "Způsob ověření Blockbridge API (příznak nebo heslo)"
-
-msgid "Blockbridge API password (for auth scheme 'password')"
-msgstr "Heslo API Blockbridge (pro způsob ověření 'password')"
-
-msgid "Blockbridge API token (for auth scheme 'token')"
-msgstr "Příznak API Blockbridge (pro způsob ověření 'token')"
-
-msgid "Blockbridge API user (for auth scheme 'password')"
-msgstr "Uživatel API Blockbridge (pro způsob ověření 'password')"
 
 msgid "Blockbridge api host not configured"
 msgstr "Hostitel API Blockbridge není nastaven"
@@ -1221,10 +1189,6 @@ msgid "Command %(cmd)s blocked in the CLI and was cancelled"
 msgstr "Příkaz %(cmd)s byl v klientském řádku zablokován a zrušen"
 
 #, python-format
-msgid "CommandLineHelper._wait_for_a_condition: %s timeout"
-msgstr "CommandLineHelper. čekání na podmínku: vypršel časový limit %s"
-
-#, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
 msgstr ""
 "Pomocník příkazového řádku: Čekání na podmínku: Vypršel časový limit %s."
@@ -1515,9 +1479,6 @@ msgstr ""
 "Současný mapovaný hostitel svazku %(vol)s je v nepodporované skupině "
 "hostitele s %(group)s."
 
-msgid "DEPRECATED: Deploy v1 of the Cinder API."
-msgstr "ZASTARALÉ: Nasazení Cinder API v1."
-
 msgid ""
 "DRBDmanage driver setup error: some required libraries (dbus, drbdmanage.*) "
 "not found."
@@ -1549,14 +1510,6 @@ msgstr ""
 msgid "Dedup luns cannot be extended"
 msgstr "Deduplikované lun nemohou být rozšířeny"
 
-msgid ""
-"Deduplication Enabler is not installed. Can not create deduplicated volume"
-msgstr ""
-"Povolovač komprimace není nainstalován. Nelze vytvořit deduplikovaný svazek."
-
-msgid "Default pool name if unspecified."
-msgstr "Název výchozí zásoby není zadán."
-
 #, python-format
 msgid ""
 "Default quota for resource: %(res)s is set by the default quota flag: quota_"
@@ -1569,12 +1522,6 @@ msgstr ""
 
 msgid "Default volume type can not be found."
 msgstr "Výchozí typ svazku nenalezen."
-
-msgid ""
-"Defines the set of exposed pools and their associated backend query strings"
-msgstr ""
-"Určuje sadu vystavených zásob a jejich přidružené dotazovací řetězce z "
-"podpůrné vrstvy."
 
 msgid "Delete LUNcopy error."
 msgstr "Chyba při mazání kopírování LUN."
@@ -1698,13 +1645,6 @@ msgstr ""
 #, python-format
 msgid "Driver initialize connection failed (error: %(err)s)."
 msgstr "Zavedení připojení ovladačem selhalo (chyba: %(err)s)."
-
-msgid ""
-"Driver is not able to do retype because the volume (LUN {}) has snapshot "
-"which is forbidden to migrate."
-msgstr ""
-"Ovladač není schopen provést přetypování protože svazek (LUN {}) má snímek, "
-"který má přesunování zakázáno."
 
 msgid "Driver must implement initialize_connection"
 msgstr "Ovladač musí zavést initialize_connection"
@@ -2325,10 +2265,6 @@ msgid "Error in space-extend for volume %(space)s with %(size)d additional GB"
 msgstr "Chyba při rozšiřování prostoru svazku %(space)s o dalších %(size)d GB"
 
 #, python-format
-msgid "Error mapping volume %(vol)s. %(error)s."
-msgstr "Chyba při mapování svazku %(vol)s. %(error)s."
-
-#, python-format
 msgid ""
 "Error modify replica synchronization: %(sv)s operation: %(operation)s. "
 "Return code: %(rc)lu.  Error: %(error)s."
@@ -2376,10 +2312,6 @@ msgstr "Nelze zpracovat soubor s nastavením: %s"
 
 msgid "Error promoting secondary volume to primary"
 msgstr "Chyba při propagování druhotného svazku na hlavní"
-
-#, python-format
-msgid "Error removing volume %(vol)s. %(error)s."
-msgstr "Chyba při mazání svazku: %(vol)s. %(error)s."
 
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
@@ -2540,12 +2472,6 @@ msgstr ""
 msgid "Extend volume not implemented"
 msgstr "Rozšíření svazku není zavedeno"
 
-msgid ""
-"FAST VP Enabler is not installed. Can't set tiering policy for the volume"
-msgstr ""
-"Povolovač rychlého VP není nainstalován. Nelze nastavit zásadu vrstvení pro "
-"svazek"
-
 msgid "FAST is not supported on this array."
 msgstr "FAST není podporován v tomto poli."
 
@@ -2601,10 +2527,6 @@ msgid ""
 msgstr ""
 "Nelze získat zámek zdroje. (Sériová konzole: %(serial)s, inst: %(inst)s, "
 "ret: %(ret)s, chybový výstup: %(err)s)"
-
-#, python-format
-msgid "Failed to add %(vol)s into %(sg)s after %(retries)s tries."
-msgstr "Nelze přidat %(vol)s do %(sg)s po %(retries)s pokusech."
 
 msgid "Failed to add the logical device."
 msgstr "Nelze přidat logické zařízení."
@@ -2797,9 +2719,6 @@ msgstr "Nelze vytvořit postup správce plánovače svazku"
 msgid "Failed to create snapshot %s"
 msgstr "Nelze vytvořit snímek %s"
 
-msgid "Failed to create snapshot as no LUN ID is specified"
-msgstr "Nelze vytvořit snímek protože nebylo zadáno LUN ID"
-
 #, python-format
 msgid "Failed to create snapshot for cg: %(cgName)s."
 msgstr "Nelze vytvořit snímek pro skupinu jednotnosti: %(cgName)s."
@@ -2971,10 +2890,6 @@ msgstr ""
 #, python-format
 msgid "Failed to find host %s."
 msgstr "Nelze najít hostitele %s."
-
-#, python-format
-msgid "Failed to find storage pool for source volume %s."
-msgstr "Nelze najít zásobu úložiště pro zdrojový svazek %s."
 
 #, python-format
 msgid "Failed to get CloudByte account details for account [%s]."
@@ -3461,9 +3376,6 @@ msgstr "Chyba při hledání id hostitele lun."
 msgid "Find lun group from mapping view error."
 msgstr "Chyba při hledání skupiny lun v zobrazení mapování."
 
-msgid "Find lun number error."
-msgstr "Chyba při hledání čísla lun."
-
 msgid "Find mapping view error."
 msgstr "Chyba při hledání zobrazení mapování."
 
@@ -3794,10 +3706,6 @@ msgid "Host %s has no FC initiators"
 msgstr "Hostitel %s nemá žádné zavaděče FC"
 
 #, python-format
-msgid "Host %s has no iSCSI initiator"
-msgstr "Hostitel %s nemá žádný zavaděč iSCSI"
-
-#, python-format
 msgid "Host '%s' could not be found."
 msgstr "Hostitel '%s' nemohl být nalezen."
 
@@ -3831,9 +3739,6 @@ msgstr ""
 
 msgid "ID"
 msgstr "ID"
-
-msgid "IP address/hostname of Blockbridge API."
-msgstr "IP adresa/název hostitele API Blockbridge."
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -3928,12 +3833,6 @@ msgstr ""
 "Výjimka CLI Infortrend: %(err)s, parametr: %(param)s (Návratový kód: %(rc)s) "
 "(Výstup: %(out)s)"
 
-msgid "Initial tier: {}, policy: {} is not valid."
-msgstr "Původní vrstva: {}, zásada: {} není platné."
-
-msgid "Input type {} is not supported."
-msgstr "Typ vstupu {} není podporován."
-
 msgid "Input volumes or snapshots are invalid."
 msgstr "Vstupní svazky nebo snímky jsou neplatné."
 
@@ -3949,17 +3848,6 @@ msgstr "Pro rozšíření svazku není dostatek volného místa."
 
 msgid "Insufficient privileges"
 msgstr "Nedostatečná oprávnění"
-
-msgid "Interval value (in seconds) between connection retries to ceph cluster."
-msgstr ""
-"Hodnota intervalu ( ve vteřinách) mezi jednotlivými pokusy o připojení ke "
-"clusteru ceph."
-
-#, python-format
-msgid "Invalid %(protocol)s ports %(port)s specified for io_port_list."
-msgstr ""
-"V seznamu vstupních/výstupních portů zadány neplatné porty %(port)s pro "
-"protokol %(protocol)s."
 
 #, python-format
 msgid "Invalid 3PAR Domain: %(err)s"
@@ -4001,10 +3889,6 @@ msgid ""
 "Invalid QoS specification detected while getting QoS policy for volume %s"
 msgstr ""
 "Při získávání zásady QoS pro svazek %s byla zjištěna neplatná specifikace QoS"
-
-#, python-format
-msgid "Invalid VNX authentication type: %s"
-msgstr "Neplatný typ ověření VNX: %s"
 
 #, python-format
 msgid ""
@@ -4388,18 +4272,12 @@ msgstr "Chyba klíče: %s"
 msgid "LUN export failed!"
 msgstr "Export LUN selhal!"
 
-msgid "LUN id({}) is not valid."
-msgstr "LUN id({}) není platné."
-
 msgid "LUN map overflow on every channel."
 msgstr "Přetečení LUN mapy ve všech kanálech."
 
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "LUN nenalezena pomocí zadaného odkazu %s."
-
-msgid "LUN number ({}) is not an integer."
-msgstr "LUN číslo ({}) není celé číslo."
 
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
@@ -4573,43 +4451,14 @@ msgstr "Položka popisných dat nenalezena"
 msgid "Metadata item was not found."
 msgstr "Položka popisných dat nebyla nalezena."
 
-#, python-format
-msgid "Metadata property key %s greater than 255 characters"
-msgstr "Klíč vlastnosti popisných dat %s je větší než 255 znaků"
-
-#, python-format
-msgid "Metadata property key %s value greater than 255 characters"
-msgstr "Hodnota vlastnosti klíče popisných dat %s je vetší než 255 znaků"
-
-msgid "Metadata property key blank"
-msgstr "Klíč vlastnosti popisných dat je prázdný"
-
 msgid "Metadata property key blank."
 msgstr "Klíč vlastnosti popisných dat je prázdný."
-
-msgid "Metadata property key greater than 255 characters."
-msgstr "Klíč vlastnosti popisných dat je větší než 255 znaků."
-
-msgid "Metadata property value greater than 255 characters."
-msgstr "Hodnota vlastnosti popisných dat je vetší než 255 znaků."
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "Obnovení popisných dat selhalo kvůli nekompatibilní verzi"
 
 msgid "Metadata restore failed due to incompatible version."
 msgstr "Obnovení popisných dat selhalo kvůli nekompatibilní verzi."
-
-#, python-format
-msgid "Migrate volume %(src)s failed."
-msgstr "Přesunutí svazku %(src)s selhalo."
-
-#, python-format
-msgid "Migrate volume failed between source vol %(src)s and dest vol %(dst)s."
-msgstr "Přesun svazku selhal mezi zdrojovým %(src)s a cílovým %(dst)s svazkem."
-
-#, python-format
-msgid "Migration of LUN %s has been stopped or faulted."
-msgstr "Přesun LUN %s byl zastaven nebo je chybný."
 
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
@@ -5103,9 +4952,6 @@ msgstr ""
 "Při dotazování úkolu [%(job)s] využívající [%(operation)s] v úložišti "
 "CloudByte byla obdržena prázdná odpověď."
 
-msgid "Number of retries if connection to ceph cluster failed."
-msgstr "Počet pokusů pokud připojení ke clusteru ceph selže."
-
 msgid "Object Count"
 msgstr "Počet objektů"
 
@@ -5162,15 +5008,9 @@ msgstr "Volba gpfs_images_share_mode není správně nastavena."
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "Volba gpfs_mount_point_base není správně nastavena."
 
-msgid "Option map (cls._map) is not defined."
-msgstr "Mapa voleb (cls._map) není zadána."
-
 #, python-format
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
 msgstr "Původní %(res)s %(prop)s musí mít jednu z hodnot '%(vals)s'"
-
-msgid "Override HTTPS port to connect to Blockbridge API server."
-msgstr "Potlačit port HTTPS pro připojení k API serveru Blockbridge."
 
 #, python-format
 msgid "ParseException: %s"
@@ -5389,14 +5229,6 @@ msgid "Raid did not have MCS Channel."
 msgstr "RAID neměl kanál MCS."
 
 #, python-format
-msgid ""
-"Reach limitation set by configuration option max_luns_per_storage_group. "
-"Operation to add %(vol)s into Storage Group %(sg)s is rejected."
-msgstr ""
-"Dosaženo omezení nastavené konfigurační volbou max_luns_per_storage_group. "
-"Operace přidávající %(vol)s do skupiny úložiště %(sg)s byla zamítnuta."
-
-#, python-format
 msgid "Received error string: %s"
 msgstr "Obdržen chybový řetězec: %s"
 
@@ -5540,9 +5372,6 @@ msgstr "Požadované nastavení nenalezeno."
 #, python-format
 msgid "Required flag %s is not set"
 msgstr "Požádovaný příznak %s není nastaven"
-
-msgid "Requires an NaServer instance."
-msgstr "Vyžaduje instanci NaServeru."
 
 #, python-format
 msgid ""
@@ -5926,9 +5755,6 @@ msgstr "ID úložného systému nebylo nastaveno."
 msgid "Storage system not found for pool %(poolNameInStr)s."
 msgstr "Systém úložiště nebyl nalezen pro zásobu %(poolNameInStr)s."
 
-msgid "Storage-assisted migration failed during manage volume."
-msgstr "Přesun za pomocí úložiště selhal během správy svazku."
-
 #, python-format
 msgid "StorageSystem %(array)s is not found."
 msgstr "Systém úložiště %(array)s nebyl nalezen."
@@ -6052,10 +5878,6 @@ msgid "The end time (%(end)s) must be after the start time (%(start)s)."
 msgstr "Doba konce (%(end)s) musí být po době začátku (%(start)s)."
 
 #, python-format
-msgid "The extra_spec: %s is invalid."
-msgstr "Dodatečná specifikace %s je neplatná."
-
-#, python-format
 msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "Dodatečná specifikace: %(extraspec)s není platná."
 
@@ -6084,14 +5906,6 @@ msgstr "Skupina hostitele nebo cíl iSCSI nebyly nalezeny."
 #, python-format
 msgid "The iSCSI CHAP user %(user)s does not exist."
 msgstr "CHAP uživatel iSCSI %(user)s neexistuje."
-
-#, python-format
-msgid ""
-"The imported lun %(lun_id)s is in pool %(lun_pool)s which is not managed by "
-"the host %(host)s."
-msgstr ""
-"Importovaný lun %(lun_id)s je v zásobě %(lun_pool)s, kterou nespravuje "
-"hostitel %(host)s."
 
 msgid "The key cannot be None."
 msgstr "Klíč nemůže být None."
@@ -6157,11 +5971,6 @@ msgstr "Výsledky jsou neplatné."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr "Snímek nelze vytvořit, zatímco svazek je v režimu údržby."
-
-#, python-format
-msgid ""
-"The source volume %s is not in the pool which is managed by the current host."
-msgstr "Zdrojový svazek %s není v zásobě spravované současným hostitelem."
 
 msgid "The source volume for this WebDAV operation not found."
 msgstr "Zdrojový svazek nebyl nalezen pro tuto operaci WebDAV."
@@ -6320,10 +6129,6 @@ msgstr "Žádné dostupné zdroje k použití. (Zdroj: %(resource)s)"
 msgid "There are no valid ESX hosts."
 msgstr "Žádní platní hostitelé ESX."
 
-#, python-format
-msgid "There are no valid datastores attached to %s."
-msgstr "K %s nejsou připojena žádná platná datová úložiště."
-
 msgid "There are no valid datastores."
 msgstr "Žádná platná datová úložiště."
 
@@ -6410,10 +6215,6 @@ msgstr ""
 msgid "Thin provisioning not supported on this version of LVM."
 msgstr "Mělké poskytování není podporováno v této verzi LVM."
 
-msgid "ThinProvisioning Enabler is not installed. Can not create thin volume"
-msgstr ""
-"Povolovač mělkého poskytování není nainstalován. Nelze vytvořit mělký svazek"
-
 msgid "This driver does not support deleting in-use snapshots."
 msgstr "Tento ovladač nepodporuje mazání právě používaných snímků."
 
@@ -6444,14 +6245,6 @@ msgid ""
 "Timed out while waiting for Nova update for deletion of snapshot %(id)s."
 msgstr ""
 "Při čekání na aktualizaci od Nova při mazání snímku %(id)s vypršel čas."
-
-msgid ""
-"Timeout value (in seconds) used when connecting to ceph cluster. If value < "
-"0, no timeout is set and default librados value is used."
-msgstr ""
-"Hodnota časového limitu (ve vteřinách) použitá při připojování do clusteru "
-"ceph. Pokud je hodnota < 0, není nastaven žádný limit a bude použita výchozí "
-"hodnota librados."
 
 #, python-format
 msgid "Timeout while requesting %(service)s API."
@@ -7430,10 +7223,6 @@ msgstr ""
 msgid "Volume: %s could not be found."
 msgstr "Svazek: %s nemohlo být nalezeno."
 
-msgid "Volumes will be chunked into objects of this size (in megabytes)."
-msgstr ""
-"Svazky mnohou být rozkouskovány do objektů této velikosti (v megabajtech)."
-
 #, python-format
 msgid ""
 "VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
@@ -7737,13 +7526,6 @@ msgstr "ovládací umístění musí být zadáno"
 msgid "create_cloned_volume: Source and destination size differ."
 msgstr "Vytvoření klonovaného svazku: Velikost zdroje a cíle se liší."
 
-msgid ""
-"create_consistencygroup_from_src supports a cgsnapshot source or a "
-"consistency group source. Multiple sources cannot be used."
-msgstr ""
-"vytváření skupiny jednotnosti ze zdroje podporuje zdroj snímku skupiny "
-"jednotnosti, nebo zdroj skupiny jednotnosti. Nelze použít více zdrojů."
-
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."
 msgstr ""
@@ -7793,9 +7575,6 @@ msgid ""
 "volume."
 msgstr ""
 "Vytvoření svazku ze snímku: Velikost svazku se liší od svazku ze snímku."
-
-msgid "deduplicated and auto tiering can't be both enabled."
-msgstr "Automatické a deduplikující vrstvení nemůže být povoleno současně."
 
 #, python-format
 msgid ""
@@ -8050,10 +7829,6 @@ msgid "name cannot be None"
 msgstr "název nemůže být Žádný"
 
 #, python-format
-msgid "naviseccli_path: Could not find NAVISECCLI tool %(path)s."
-msgstr "naviseccli_path:  Nelze najít nástroj NAVISECCLI %(path)s."
-
-#, python-format
 msgid "no REPLY but %r"
 msgstr "Žádná odpověď ale %r"
 
@@ -8164,9 +7939,6 @@ msgstr "san_ip není nastaveno."
 
 msgid "san_ip must be set"
 msgstr "san_ip musí být nastaveno"
-
-msgid "san_ip: Mandatory field configuration. san_ip is not set."
-msgstr "san_ip: Povinné pole nastavení san_ip není nastaveno."
 
 msgid ""
 "san_login and/or san_password is not set for Datera driver in the cinder."
@@ -8328,6 +8100,3 @@ msgstr "svazky změněny"
 #, python-format
 msgid "wait_for_condition: %s timed out."
 msgstr "Čekání na podmínku: %s vypršel časový limit."
-
-msgid "{} is not a valid option."
-msgstr "{} není platná volba."

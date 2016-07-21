@@ -9,9 +9,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-06-01 22:30+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -178,23 +178,11 @@ msgid "Call to json.loads() raised an exception: %s."
 msgstr "Volání json.loads() vyvolalo výjimku: %s."
 
 #, python-format
-msgid "Can not add the lun %(lun)s to consistency group %(cg_name)s."
-msgstr "Nelze přidat lun %(lun)s do skupiny jednotnosti %(cg_name)s."
-
-#, python-format
 msgid "Can not discovery in %(target_ip)s with %(target_iqn)s."
 msgstr "Nelze zjišťovat v %(target_ip)s pomocí %(target_iqn)s."
 
 msgid "Can not open the recent url, login again."
 msgstr "Nelze otevřít nedávnou adresu url, probíhá znovu přihlašování."
-
-#, python-format
-msgid "Can not place new LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr "Nelze umístit nové LUN %(luns)s do skupiny jednotnosti %(cg_name)s."
-
-#, python-format
-msgid "Can not remove LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr "Nelze odebrat lun %(luns)s ze skupiny jednotnosti %(cg_name)s."
 
 #, python-format
 msgid "Can't find volume to map %(key)s, %(msg)s"
@@ -448,20 +436,12 @@ msgid "Could not validate device %s"
 msgstr "Nelze ověřit zařízení %s"
 
 #, python-format
-msgid "Create cg snapshot %s failed."
-msgstr "Vytvoření snímku skupiny jednotnosti %s selhalo."
-
-#, python-format
 msgid ""
 "Create clone_image_volume: %(volume_id)sfor image %(image_id)s, failed "
 "(Exception: %(except)s)"
 msgstr ""
 "Vytvoření klonu svazku obrazu: %(volume_id)s pro obraz %(image_id)s selhalo "
 "(Výjimka: %(except)s)"
-
-#, python-format
-msgid "Create consistency group %s failed."
-msgstr "Vytvoření skupiny jednotnosti %s selhalo."
 
 #, python-format
 msgid ""
@@ -532,14 +512,6 @@ msgid ""
 msgstr ""
 "Výchozí typ svazku nenalezen. Prosím zkontrolujte nastavení "
 "default_volume_type:"
-
-#, python-format
-msgid "Delete cgsnapshot %s failed."
-msgstr "Smazání snímku skupiny jednotnosti %s selhalo."
-
-#, python-format
-msgid "Delete consistency group %s failed."
-msgstr "Smazání skupiny jednotnosti %s selhalo."
 
 msgid "Delete consistency group failed to update usages."
 msgstr "Nelze aktualizovat využití při mazání skupin jednotnosti."
@@ -799,10 +771,6 @@ msgid "Error getting target pool name and array."
 msgstr "Chyba při získávání názvu cílového pole a zásoby."
 
 #, python-format
-msgid "Error happened during storage pool querying, %s."
-msgstr "Při dotazu na zásobu úložiště se stala chyba, %s."
-
-#, python-format
 msgid "Error in copying volume: %s"
 msgstr "Chyba při kopírování svazku %s"
 
@@ -938,14 +906,6 @@ msgstr "Při vytváření dočasné zálohy nastala chyba."
 #, python-format
 msgid "Error occurred while creating volume: %(id)s from image: %(image_id)s."
 msgstr "Při vytváření svazku nastala chyba: %(id)s z obrazu %(image_id)s."
-
-#, python-format
-msgid "Error on adding lun to consistency group. %s"
-msgstr "Chyba při přidávání lun do skupiny jednotnosti. %s"
-
-#, python-format
-msgid "Error on enable compression on lun %s."
-msgstr "Chyba při povolení komprimace v lun %s."
 
 #, python-format
 msgid ""
@@ -1530,10 +1490,6 @@ msgstr "Nelze rozšířit svazek %(name)s z %(current_size)sGB na %(new_size)sGB
 msgid "Failed to find %(s)s.  Result %(r)s"
 msgstr "Nelze najít %(s)s. Výsledek %(r)s"
 
-#, python-format
-msgid "Failed to find available iSCSI targets for %s."
-msgstr "Nelze získat dostupné cíle iSCSI pro %s."
-
 msgid "Failed to get IQN!"
 msgstr "Nelze získat IQN!"
 
@@ -1656,9 +1612,6 @@ msgstr "Nelze otevřít svazek z %(path)s."
 #, python-format
 msgid "Failed to present volume %(name)s (%(status)d)!"
 msgstr "Nelze darovat svazek %(name)s (%(status)d)!"
-
-msgid "Failed to query migration status of LUN."
-msgstr "Dotaz na stav přesunu LUN selhal."
 
 msgid "Failed to re-export volume, setting to ERROR."
 msgstr "Nelze znovu exportovat svazek, je nastavován na ERROR."
@@ -1822,14 +1775,6 @@ msgid ""
 msgstr ""
 "Nelze aktualizovat popisná data %(volume_id)s pomocí popisných dat zadaného "
 "snímku %(snapshot_id)s."
-
-#, python-format
-msgid ""
-"Failed to update initiator data for initiator %(initiator)s and backend "
-"%(backend)s"
-msgstr ""
-"Nelze aktualizovat data zavedení ovladače pro zavaděč %(initiator)s a "
-"podpůrnou vrstvu %(backend)s"
 
 #, python-format
 msgid "Failed to update quota donating volume transfer id %s"
@@ -2042,10 +1987,6 @@ msgstr "Neplatné předání seznamu zpětného načtení: %s"
 msgid "Invalid hostname %(host)s"
 msgstr "Neplatný název hostitele %(host)s"
 
-#, python-format
-msgid "Invalid value for %(key)s, value is %(value)s."
-msgstr "Neplatná hodnota pro %(key)s, hodnota je %(value)s."
-
 msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr ""
@@ -2102,10 +2043,6 @@ msgstr "Vytvoření snímku Lun pro svazek %(vol)s a snímek %(snap)s selhalo!"
 msgid "Lun delete for %s failed!"
 msgstr "Smazání Lun pro %s selhalo!"
 
-#, python-format
-msgid "Lun delete snapshot for volume %(vol)s snapshot %(snap)s failed!"
-msgstr "Smazání snímku Lun pro svazek %(vol)s a snímek %(snap)s selhalo!"
-
 msgid "Lun mapping returned null!"
 msgstr "Mapování Lun vrátilo prázdný obsah!"
 
@@ -2139,10 +2076,6 @@ msgstr ""
 #, python-format
 msgid "Message: %s"
 msgstr "Zpráva: %s"
-
-#, python-format
-msgid "Migration of LUN %s failed to complete."
-msgstr "Přesun LUN %s nelze dokončit."
 
 msgid "Model update failed."
 msgstr "Aktualizace modelu selhala."
@@ -2495,9 +2428,6 @@ msgstr "Konektor neobsahuje požadované informace: zavaděč chybí"
 msgid ""
 "The connector does not contain the required information: wwpns is missing"
 msgstr "Konektor neobsahuje požadované informace: wwpns chybí"
-
-msgid "The given extra_spec or valid_values is None."
-msgstr "Zadané dodatečné specifikace, nebo platné hodnoty jsou None."
 
 msgid "The list of iscsi_ip_addresses is empty"
 msgstr "Seznam ip adres iscsi je prázdný."

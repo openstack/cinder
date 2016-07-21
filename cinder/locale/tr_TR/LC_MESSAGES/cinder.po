@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-06-01 22:30+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -348,10 +348,6 @@ msgstr ""
 "Belirtilen yönetilecek depolama havuzlarından hepsi mevcut değil. Lütfen "
 "yapılandırmanızı kontrol edin. Mevcut olmayan havuzlar: %s"
 
-#, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
-msgstr "SheepdogDriver'da bir sorun oluştu.(Reason: %(reason)s)"
-
 msgid "An error has occurred during backup operation"
 msgstr "Yedekleme işlemi sırasında bir hata oluştu"
 
@@ -439,9 +435,6 @@ msgstr "Art alanda çalışan uygulama raporları: öge zaten mevcut"
 
 msgid "Backend reports: item not found"
 msgstr "Art alanda çalışan uygulama raporları: öge bulunamadı"
-
-msgid "Backend server not NaServer."
-msgstr "Arkauç sunucusu NaServer değil."
 
 #, python-format
 msgid "Backend service retry timeout hit: %(timeout)s sec"
@@ -556,18 +549,6 @@ msgstr "İkili Değer"
 
 msgid "Blank components"
 msgstr "Boş bileşenler"
-
-msgid "Blockbridge API authentication scheme (token or password)"
-msgstr "Blockbridge API kimlik doğrulama şeması (jeton ya da parola)"
-
-msgid "Blockbridge API password (for auth scheme 'password')"
-msgstr "Blockbridge API parola (kimlik doğrulama şeması için 'password')"
-
-msgid "Blockbridge API token (for auth scheme 'token')"
-msgstr "Blockbridge API jetonu (kimlik doğrulama şeması için 'token')"
-
-msgid "Blockbridge API user (for auth scheme 'password')"
-msgstr "Blockbridge API kullanıcı (kimlik doğrulama şeması için 'password')"
 
 msgid "Blockbridge api host not configured"
 msgstr "Blockbridge api istemcisi yapılandırılmadı"
@@ -985,10 +966,6 @@ msgid "Command %(cmd)s blocked in the CLI and was cancelled"
 msgstr "CLI içindeki %(cmd)s komutu bloklandı ve iptal edildi"
 
 #, python-format
-msgid "CommandLineHelper._wait_for_a_condition: %s timeout"
-msgstr "CommandLineHelper._wait_for_a_condition: %s zaman aşımı"
-
-#, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
 msgstr "CommandLineHelper._wait_for_condition: %s zaman aşımına uğradı."
 
@@ -1215,9 +1192,6 @@ msgstr ""
 "%(vol)s mantıksal sürücüsü için şu an eşleştirilmiş istemci %(group)s ile "
 "desteklenmeyen istemci grubunda."
 
-msgid "DEPRECATED: Deploy v1 of the Cinder API."
-msgstr "ÖNERİLMİYOR: Cinder API v1 sürümünü dağıt."
-
 msgid ""
 "DRBDmanage driver setup error: some required libraries (dbus, drbdmanage.*) "
 "not found."
@@ -1246,15 +1220,6 @@ msgstr ""
 msgid "Dedup luns cannot be extended"
 msgstr "Dedup lun'lar büyütülemez"
 
-msgid ""
-"Deduplication Enabler is not installed. Can not create deduplicated volume"
-msgstr ""
-"Kopyaları kaldırma etkinleştirici kurulu değil.  Kopyaları kaldırılmış "
-"mantıksal sürücü oluşturulamıyor"
-
-msgid "Default pool name if unspecified."
-msgstr "Belirtilmezse öntanımlı havuz adı."
-
 #, python-format
 msgid ""
 "Default quota for resource: %(res)s is set by the default quota flag: quota_"
@@ -1267,12 +1232,6 @@ msgstr ""
 
 msgid "Default volume type can not be found."
 msgstr "Öntanımlı mantıksal sürücü türü bulunamadı."
-
-msgid ""
-"Defines the set of exposed pools and their associated backend query strings"
-msgstr ""
-"Ortaya çıkarılan havuzlar ve onların ilişkili arka uç sorgu karakter "
-"dizilerini tanımlar"
 
 #, python-format
 msgid ""
@@ -1843,10 +1802,6 @@ msgstr ""
 "sırasında hata"
 
 #, python-format
-msgid "Error mapping volume %(vol)s. %(error)s."
-msgstr "%(vol)s mantıksal sürücüsü eşleştirilirken hata. %(error)s."
-
-#, python-format
 msgid ""
 "Error modify replica synchronization: %(sv)s operation: %(operation)s. "
 "Return code: %(rc)lu.  Error: %(error)s."
@@ -1880,10 +1835,6 @@ msgstr "Yapılandırma dosyasını ayrıştırmada hata: %s"
 
 msgid "Error promoting secondary volume to primary"
 msgstr "İkincil mantıksal sürücünün birincil hale getirilmesinde hata"
-
-#, python-format
-msgid "Error removing volume %(vol)s. %(error)s."
-msgstr "%(vol)s mantıksal sürücüsü kaldırılırken hata. %(error)s."
 
 #, python-format
 msgid "Error unbinding volume %(vol)s from pool. %(error)s."
@@ -1987,12 +1938,6 @@ msgstr ""
 msgid "Extend volume not implemented"
 msgstr "Mantıksal sürücü genişletme uygulanmadı"
 
-msgid ""
-"FAST VP Enabler is not installed. Can't set tiering policy for the volume"
-msgstr ""
-"FAST VP Etkinleştirici kurulu değil. Mantıksal sürücü için aşama ilkesi "
-"ayarlanamıyor"
-
 msgid "FAST is not supported on this array."
 msgstr "FAST bu dizi üzerinde desteklenmiyor."
 
@@ -2043,11 +1988,6 @@ msgid ""
 msgstr ""
 "Kaynak kilidi alma başarısız. (seri: %(serial)s, inst: %(inst)s, ret: "
 "%(ret)s, stderr: %(err)s)"
-
-#, python-format
-msgid "Failed to add %(vol)s into %(sg)s after %(retries)s tries."
-msgstr ""
-"%(vol)s in %(sg)s e eklenmesi %(retries)s denemeden sonra başarısız oldu."
 
 msgid "Failed to add the logical device."
 msgstr "Mantıksal aygıt ekleme başarısız."
@@ -2200,9 +2140,6 @@ msgstr "Zamanlayıcı yönetici mantıksal sürücü akışı oluşturma başar�
 #, python-format
 msgid "Failed to create snapshot %s"
 msgstr "%s anlık sistem görüntüsü oluşturulamadı"
-
-msgid "Failed to create snapshot as no LUN ID is specified"
-msgstr "LUN ID belirtilmediğinden anlık görüntü oluşturma başarısız"
 
 #, python-format
 msgid "Failed to create snapshot for cg: %(cgName)s."
@@ -2369,10 +2306,6 @@ msgstr ""
 #, python-format
 msgid "Failed to find host %s."
 msgstr "%s istemcisi bulunamadı."
-
-#, python-format
-msgid "Failed to find storage pool for source volume %s."
-msgstr "%s kaynak mantıksal sürücüsü için depolama havuzu bulma başarısız."
 
 #, python-format
 msgid "Failed to get CloudByte account details for account [%s]."
@@ -3051,10 +2984,6 @@ msgid "Host %s has no FC initiators"
 msgstr "%s istemcisinin FC başlatıcısı yok"
 
 #, python-format
-msgid "Host %s has no iSCSI initiator"
-msgstr "%s istemcisinin iSCSI başlatıcısı yok"
-
-#, python-format
 msgid "Host '%s' could not be found."
 msgstr "'%s' istemcisi bulunamadı."
 
@@ -3088,9 +3017,6 @@ msgstr ""
 
 msgid "ID"
 msgstr "KİMLİK"
-
-msgid "IP address/hostname of Blockbridge API."
-msgstr "Blockbridge API IP adresi/bilgisayar adı."
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -3172,9 +3098,6 @@ msgstr "%(uuid)s örneği bulunamadı."
 msgid "Insufficient privileges"
 msgstr "Yetersiz ayrıcalıklar"
 
-msgid "Interval value (in seconds) between connection retries to ceph cluster."
-msgstr "Ceph kümesi için bağlantılar arasındaki dahili değer (saniye cinsinde)"
-
 #, python-format
 msgid "Invalid 3PAR Domain: %(err)s"
 msgstr "Geçersiz 3PAR Alanı: %(err)s"
@@ -3203,10 +3126,6 @@ msgid ""
 msgstr ""
 "%s mantıksal sürücüsü için QoS ilkesi alırken geçersiz QoS özellikleri "
 "algılandı"
-
-#, python-format
-msgid "Invalid VNX authentication type: %s"
-msgstr "Geçersiz VNX kimlik doğrulama türü: %s"
 
 #, python-format
 msgid ""
@@ -3673,45 +3592,14 @@ msgstr "İçerik özelliği bilgisi bulunamadı"
 msgid "Metadata item was not found."
 msgstr "Metadata öğesi bulunamadı."
 
-#, python-format
-msgid "Metadata property key %s greater than 255 characters"
-msgstr "Metadata özellik anahtarı %s 255 karakterden büyük"
-
-#, python-format
-msgid "Metadata property key %s value greater than 255 characters"
-msgstr "Metadata özellik anahtarı %s değeri 255 karakterden büyük"
-
-msgid "Metadata property key blank"
-msgstr "Metadata özellik anahtarı boş"
-
 msgid "Metadata property key blank."
 msgstr "Metadata özellik anahtarı boş."
-
-msgid "Metadata property key greater than 255 characters."
-msgstr "Metadata özellik anahtarı 255 karakterden büyük."
-
-msgid "Metadata property value greater than 255 characters."
-msgstr "255 karakterden daha fazla metadata özellik değeri."
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "Uyumsuz sürüm nedeniyle metadata geri yüklemesi başarısız oldu"
 
 msgid "Metadata restore failed due to incompatible version."
 msgstr "Metadata geri yüklemesi uyumsuz sürüm nedeniyle başarısız oldu."
-
-#, python-format
-msgid "Migrate volume %(src)s failed."
-msgstr "%(src)s mantıksal sürücü göçü başarısız."
-
-#, python-format
-msgid "Migrate volume failed between source vol %(src)s and dest vol %(dst)s."
-msgstr ""
-"%(src)s kaynak mantıksal sürücüsü ile %(dst)s hedef mantıksal sürücü "
-"arasında göç başarısız oldu."
-
-#, python-format
-msgid "Migration of LUN %s has been stopped or faulted."
-msgstr "LUN %s göçü durduruldu ya da arızalandı."
 
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
@@ -4141,9 +4029,6 @@ msgstr ""
 "CloudByte depolamasında [%s] mantıksal sürücüsü oluşturulurken boş yanıt "
 "alındı."
 
-msgid "Number of retries if connection to ceph cluster failed."
-msgstr "Ceph kümesine bağlantı başarısız olursa tekrar deneme sayısı."
-
 msgid "Object Count"
 msgstr "Nesne Sayısı"
 
@@ -4185,11 +4070,6 @@ msgstr "gpfs_images_share_mode seçeneği doğru ayarlanmamış."
 
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "gpfs_mount_point_base seçeneği doğru ayarlanmamış."
-
-msgid "Override HTTPS port to connect to Blockbridge API server."
-msgstr ""
-"Blockbridge API sunucusuna bağlanmak için HTTPS bağlantı noktasının üzerine "
-"yaz."
 
 #, python-format
 msgid "ParseException: %s"
@@ -4356,15 +4236,6 @@ msgstr "REST sunucu kullanıcı adı belirtilmelidir."
 
 msgid "Raid did not have MCS Channel."
 msgstr "Raid MCS Kanalına sahip değil."
-
-#, python-format
-msgid ""
-"Reach limitation set by configuration option max_luns_per_storage_group. "
-"Operation to add %(vol)s into Storage Group %(sg)s is rejected."
-msgstr ""
-"max_luns_per_storage_group yapılandırma seçeneği ile ayarlanan "
-"sınırlandırmaya eriş. %(vol)s in %(sg)s Depolama Grubuna eklenmesi "
-"reddedildi."
 
 #, python-format
 msgid "Received error string: %s"
@@ -4945,10 +4816,6 @@ msgstr ""
 "Bitiş zamanı (%(end)s) başlangıç zamanından (%(start)s) sonra olmalıdır."
 
 #, python-format
-msgid "The extra_spec: %s is invalid."
-msgstr "extra_spec: %s geçersizdir."
-
-#, python-format
 msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "extraspec: %(extraspec)s geçersizdir."
 
@@ -4965,14 +4832,6 @@ msgstr "İstemci grubu ya da iSCSI hedefi bulunamadı."
 #, python-format
 msgid "The iSCSI CHAP user %(user)s does not exist."
 msgstr "iSCSI CHAP kullanıcısı %(user)s mevcut değil."
-
-#, python-format
-msgid ""
-"The imported lun %(lun_id)s is in pool %(lun_pool)s which is not managed by "
-"the host %(host)s."
-msgstr ""
-"İçe aktarılan lun %(lun_id)s %(host)s istemcisi tarafından yönetilmeyen "
-"%(lun_pool)s havuzunda."
 
 msgid "The key cannot be None."
 msgstr "Anahtar boş olamaz."
@@ -5013,12 +4872,6 @@ msgstr "Sonuçlar geçersizdir."
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr "Disk bölümü bakım modunda iken anlık görüntü oluşturulamaz."
-
-#, python-format
-msgid ""
-"The source volume %s is not in the pool which is managed by the current host."
-msgstr ""
-"Kaynak mantıksal sürücü %s mevcut istemci tarafından yönetilen havuzda değil."
 
 msgid "The source volume for this WebDAV operation not found."
 msgstr "Bu WebDAV işlemi için kaynak mantıksal sürücü bulunamadı."
@@ -5157,10 +5010,6 @@ msgstr ""
 msgid "There are no resources available for use. (resource: %(resource)s)"
 msgstr "Kullanım için uygun kaynak yok. (kaynak: %(resource)s)"
 
-#, python-format
-msgid "There are no valid datastores attached to %s."
-msgstr "%s'e ekli geçerli veridepoları yok."
-
 msgid "There are no valid datastores."
 msgstr "Geçerli veri depoları yok."
 
@@ -5208,11 +5057,6 @@ msgstr "Yapılandırılmış NFS yapılandırma dosyası yok (%s)"
 msgid "Thin provisioning not supported on this version of LVM."
 msgstr "LVM'in bu sürümünde ince hazırlık desteklenmiyor."
 
-msgid "ThinProvisioning Enabler is not installed. Can not create thin volume"
-msgstr ""
-"ThinProvisioning Etkinleştirici kurulu değil. İnce mantıksal sürücü "
-"oluşturulamıyor"
-
 msgid "This driver does not support deleting in-use snapshots."
 msgstr ""
 "Bu sürücü kullanımdaki anlık sistem görüntülerinin silinmesini desteklemez."
@@ -5249,13 +5093,6 @@ msgid ""
 msgstr ""
 "%(id)s anlık sistem görüntüsünü silmek için Nova güncellemesi beklenirken "
 "zaman aşımı oluştu."
-
-msgid ""
-"Timeout value (in seconds) used when connecting to ceph cluster. If value < "
-"0, no timeout is set and default librados value is used."
-msgstr ""
-"Ceph kümesine bağlanırken zaman aşımı değeri (saniye) kullanılır. Eğer değer "
-"< 0 ise, zaman aşımı ayarlanmamıştır ve öntanımlı librados değeri kullanılır."
 
 #, python-format
 msgid "Timeout while requesting %(service)s API."
@@ -6109,9 +5946,6 @@ msgstr ""
 msgid "Volume: %s could not be found."
 msgstr "Disk bölümü:  %s bulunamadı."
 
-msgid "Volumes will be chunked into objects of this size (in megabytes)."
-msgstr "Mantıksal sürücüler bu boyutta nesnelere bölünecek (megabayt olarak)."
-
 #, python-format
 msgid ""
 "VzStorage config 'vzstorage_used_ratio' invalid. Must be > 0 and <= 1.0: %s."
@@ -6390,9 +6224,6 @@ msgstr ""
 "create_volume_from_snapshot: Mantıksal sürücü boyutu anlık görüntü tabanlı "
 "mantıksal sürücüden farklı."
 
-msgid "deduplicated and auto tiering can't be both enabled."
-msgstr "kopyasız sıkıştırma ve otomatik aşamalama aynı anda etkin olamaz."
-
 #, python-format
 msgid ""
 "delete: %(vol_id)s failed to run dsmc due to invalid arguments with stdout: "
@@ -6625,10 +6456,6 @@ msgid "name cannot be None"
 msgstr "ad Hiçbiri olamaz"
 
 #, python-format
-msgid "naviseccli_path: Could not find NAVISECCLI tool %(path)s."
-msgstr "naviseccli_path: NAVISECCLI araç %(path)s bulunamadı."
-
-#, python-format
 msgid "no snapshot with id %s found in drbdmanage"
 msgstr "drbdmanage içinde %s anlık sistem görüntüsü bulunamadı"
 
@@ -6738,9 +6565,6 @@ msgstr "san_ip ayarlanmamış."
 
 msgid "san_ip must be set"
 msgstr "san_ip ayarlanmış olmalı"
-
-msgid "san_ip: Mandatory field configuration. san_ip is not set."
-msgstr "san_ip: Gerekli alan yapılandırması. san_ip ayarlanmamış."
 
 msgid ""
 "san_login and/or san_password is not set for Datera driver in the cinder."

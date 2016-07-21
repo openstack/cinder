@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-06-01 22:30+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -205,10 +205,6 @@ msgid "Backup service: %s."
 msgstr "Zálohovací služba: %s."
 
 #, python-format
-msgid "Bandwidth limit is: %s."
-msgstr "Limit šířky pásma je: %s."
-
-#, python-format
 msgid "Begin backup of volume %s."
 msgstr "Spuštění zálohování svazku %s."
 
@@ -224,10 +220,6 @@ msgstr "Verze CONCERTO: %s"
 
 msgid "Calling os-brick to detach ScaleIO volume."
 msgstr "Volání os-brick pro odpojení svazku ScaleIO."
-
-#, python-format
-msgid "Cancelling Migration from LUN %s."
-msgstr "Rušení přesunu z LUN %s."
 
 #, python-format
 msgid ""
@@ -417,14 +409,6 @@ msgid "Connector returning fcnsinfo-%s"
 msgstr "Konektor vrací fcnsinfo-%s"
 
 #, python-format
-msgid "Consistency group %(cg)s is created successfully."
-msgstr "Skupina jednotnosti %(cg)s byla úspěšně vytvořena."
-
-#, python-format
-msgid "Consistency group %s was deleted successfully."
-msgstr "Skupina jednotnosti %s byla úspěšně smazána."
-
-#, python-format
 msgid "Consistency group %s: created successfully"
 msgstr "Skupina jednotnosti %s: úspěšně vytvořena"
 
@@ -541,14 +525,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Create Volume: %(volume)s  Size: %(size)s pool: %(pool)s provisioning: "
-"%(provisioning)s tiering: %(tiering)s "
-msgstr ""
-"Vytvoření svazku: %(volume)s, velikost: %(size)s, zásoba: %(pool)s, "
-"poskytování: %(provisioning)s, vrstvení: %(tiering)s "
-
-#, python-format
-msgid ""
 "Create a replica from Volume: Clone Volume: %(cloneName)s Source Volume: "
 "%(sourceName)s."
 msgstr ""
@@ -587,10 +563,6 @@ msgstr ""
 #, python-format
 msgid "Create snapshot from volume %s"
 msgstr "Vytvořit snímek ze svazku %s"
-
-#, python-format
-msgid "Create snapshot: %(snapshot)s: volume: %(volume)s"
-msgstr "Vytvoření snímku: %(snapshot)s, svazek: %(volume)s"
 
 #, python-format
 msgid ""
@@ -785,10 +757,6 @@ msgid "Delete Snapshot %(snapshot_id)s completed."
 msgstr "Mazání snímku %(snapshot_id)s dokončeno."
 
 #, python-format
-msgid "Delete Snapshot: %(snapshot)s"
-msgstr "Smazat snímek: %(snapshot)s"
-
-#, python-format
 msgid "Delete Snapshot: %(snapshot)s."
 msgstr "Smazání snímku: %(snapshot)s."
 
@@ -913,10 +881,6 @@ msgstr "Mazání snímku: %s"
 #, python-format
 msgid "Deleting stale snapshot: %s"
 msgstr "Mazání starého snímku: %s"
-
-#, python-format
-msgid "Deleting unneeded host %(host_name)r."
-msgstr "Mazání nepotřebného hostitele %(host_name)r."
 
 #, python-format
 msgid "Deleting volume %s "
@@ -1093,10 +1057,6 @@ msgstr ""
 "v gb: %(free_capacity_gb)lu."
 
 #, python-format
-msgid "FC Initiators %(in)s of %(ins)s need registration"
-msgstr "Zavaděče FC %(in)s v %(ins)s je třeba registrovat"
-
-#, python-format
 msgid "Failed to create host: %(name)s. Check if it exists on the array."
 msgstr "Nelze vytvořit hostitele: %(name)s. Zkontrolujte zda existuje v poli."
 
@@ -1118,10 +1078,6 @@ msgstr "Vyvolána chyba: %s"
 #, python-format
 msgid "Fetched vCenter server version: %s"
 msgstr "Získaná verze serveru vCenter: %s"
-
-#, python-format
-msgid "Filter %(cls_name)s returned %(obj_len)d host(s)"
-msgstr "Filtr %(cls_name)s vrátil %(obj_len)d hostitelů"
 
 #, python-format
 msgid "Filtered targets for SAN is: %s"
@@ -1194,14 +1150,6 @@ msgstr ""
 #, python-format
 msgid "Generating transfer record for volume %s"
 msgstr "Vytváření záznamu o přenosu pro svazek %s"
-
-#, python-format
-msgid "Get FC targets %(tg)s to register initiator %(in)s."
-msgstr "Získávání cílů FC %(tg)s pro registraci zavaděče %(in)s."
-
-#, python-format
-msgid "Get ISCSI targets %(tg)s to register initiator %(in)s."
-msgstr "Získávání cílů ISCSI %(tg)s pro registraci zavaděče %(in)s."
 
 msgid "Get all snapshots completed successfully."
 msgstr "Získání všech snímků úspěšně dokončeno."
@@ -1482,13 +1430,6 @@ msgstr "Je třeba odstranit zónu FC, probíhá sestavování mapu cílů zavad�
 msgid "Need to remove FC Zone, building initiator target map."
 msgstr "Je třeba odstranit zónu FC, probíhá sestavování mapu cílů zavaděče."
 
-msgid ""
-"Neither security file nor plain text credentials are specified. Security "
-"file under home directory will be used for authentication if present."
-msgstr ""
-"Není zadán bezpečnostní soubor ani ověřovací údaje v prostém textu. Pokud "
-"existuje bezpečnostní soubor v domovském adresáři, bude použit pro ověření."
-
 #, python-format
 msgid ""
 "NetApp driver of family %(storage_family)s and protocol %(storage_protocol)s "
@@ -1569,9 +1510,6 @@ msgstr "Provádění operací po klonování pro %s"
 #, python-format
 msgid "Performing secure delete on volume: %s"
 msgstr "Provádění bezpečného smazání svazku: %s"
-
-msgid "Plain text credentials are being used for authentication"
-msgstr "Pro ověření jsou použity přihlašovací údaje v prostém textu"
 
 #, python-format
 msgid "Pool id is %s."
@@ -1885,18 +1823,6 @@ msgid "Roll detaching of volume completed successfully."
 msgstr "Provedení odpojení svazku úspěšně dokončeno."
 
 #, python-format
-msgid "Running cluster latest ssc job for %(server)s and vserver %(vs)s"
-msgstr ""
-"Spouštění úkolu shlukování nejnovějšího ssc pro %(server)s a virtuálního "
-"serveru %(vs)s"
-
-#, python-format
-msgid "Running stale ssc refresh job for %(server)s and vserver %(vs)s"
-msgstr ""
-"Spouštění úkolu obnovy zastaralého ssc pro %(server)s a virtuálního serveru "
-"%(vs)s"
-
-#, python-format
 msgid "Running with vmemclient version: %s"
 msgstr "Spuštěno s vmemclient verze %s"
 
@@ -1994,11 +1920,6 @@ msgid "Skipping deletion of volume %s as it does not exist."
 msgstr "Přeskakování mazání svazku %s protože neexistuje."
 
 #, python-format
-msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
-msgstr ""
-"Zajištění exportu přeskočeno. Svazku %s není poskytnut žádný cíl iscsi."
-
-#, python-format
 msgid ""
 "Skipping image volume %(id)s because it is not accessible by current Tenant."
 msgstr ""
@@ -2046,10 +1967,6 @@ msgstr "Snímek %s neexistuje v podpůrné vrstvě,"
 #, python-format
 msgid "Snapshot %s not found"
 msgstr "Snímek %s nenalezen"
-
-#, python-format
-msgid "Snapshot %s was deleted successfully."
-msgstr "Snímek %s byl úspěšně smazán."
 
 #, python-format
 msgid "Snapshot '%(ref)s' renamed to '%(new)s'."
@@ -2125,10 +2042,6 @@ msgid "Storage Group %(storageGroupName)s successfully deleted."
 msgstr "Skupina úložiště %(storageGroupName)s úspěšně smazána."
 
 #, python-format
-msgid "Storage Group %s was empty."
-msgstr "Skupina úložiště %s byla prázdná."
-
-#, python-format
 msgid "Storage group not associated with the policy. Exception is %s."
 msgstr "Skupina úložiště není přidružena k zásadě. Výjimka je %s."
 
@@ -2147,17 +2060,6 @@ msgstr "Uživatel %s se úspěšně přihlásil"
 #, python-format
 msgid "Successfully added %(volumeName)s to %(sgGroupName)s."
 msgstr "%(volumeName)s úspěšně přidáno do %(sgGroupName)s."
-
-#, python-format
-msgid "Successfully completed ssc job for %(server)s and vserver %(vs)s"
-msgstr "Úspěšně proveden úkol ssc pro %(server)s a virtuální server %(vs)s"
-
-#, python-format
-msgid ""
-"Successfully completed stale refresh job for %(server)s and vserver %(vs)s"
-msgstr ""
-"Úspěšně proveden úkol obnovy zastaralého ssc pro %(server)s a virtuální "
-"server %(vs)s"
 
 #, python-format
 msgid "Successfully copied disk at: %(src)s to: %(dest)s."
@@ -2587,10 +2489,6 @@ msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr "Používání zásoby %(pool)s místo %(cpg)s"
 
 #, python-format
-msgid "Using security file in %s for authentication"
-msgstr "Pro ověření je použit bezpečnostní soubor v %s"
-
-#, python-format
 msgid "Using service label: %s"
 msgstr "Použita jmenovka služby: %s"
 
@@ -2932,10 +2830,6 @@ msgstr ""
 "Volná kapacita zásoby %(pool)s je: %(free)s, celková kapacita: %(total)s."
 
 #, python-format
-msgid "iSCSI Initiators %(in)s of %(ins)s need registration."
-msgstr "Zavaděče iSCSI %(in)s v %(ins)s je třeba registrovat."
-
-#, python-format
 msgid "iSCSI portal found for service: %s"
 msgstr "Portál iSCSI nalezen pro službu: %s"
 
@@ -2986,21 +2880,6 @@ msgstr "Zavedení: Spojení %s"
 
 msgid "initiator has no password while using chap,adding it"
 msgstr "Zavaděč nemá žádné heslo při používání chap, heslo je přidáno"
-
-msgid ""
-"initiator_auto_registration: False. Initiator auto registration is not "
-"enabled. Please register initiator manually."
-msgstr ""
-"initiator_auto_registration: False. Automatická registrace zavaděče není "
-"povolena. Prosím registrujte ho ručně."
-
-#, python-format
-msgid "iops limit is: %s."
-msgstr "Limit iops je: %s."
-
-#, python-format
-msgid "iscsi_initiators: %s"
-msgstr "Zavaděče iscsi: %s"
 
 #, python-format
 msgid "location is: %(location)s"
