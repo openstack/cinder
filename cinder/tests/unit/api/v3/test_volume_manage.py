@@ -37,7 +37,7 @@ def app():
 
 
 @mock.patch('cinder.objects.service.Service.get_by_host_and_topic',
-            test_contrib.service_get_by_host_and_topic)
+            test_contrib.service_get)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',
             test_contrib.vt_get_volume_type_by_name)
 @mock.patch('cinder.volume.volume_types.get_volume_type',

@@ -112,7 +112,7 @@ class SnapshotManageTest(test.TestCase):
     @mock.patch('cinder.db.service_get')
     def test_manage_snapshot_ok(self, mock_db,
                                 mock_create_snapshot, mock_rpcapi):
-        """Test successful manage volume execution.
+        """Test successful manage snapshot execution.
 
         Tests for correct operation when valid arguments are passed in the
         request body. We ensure that cinder.volume.api.API.manage_existing got
@@ -143,6 +143,41 @@ class SnapshotManageTest(test.TestCase):
         self.assertEqual(1, mock_rpcapi.call_count)
         args = mock_rpcapi.call_args[0]
         self.assertEqual('fake_ref', args[2])
+
+    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
+    @mock.patch('cinder.db.service_get')
+    def test_manage_snapshot_disabled(self, mock_db, mock_create_snapshot,
+                                      mock_rpcapi, mock_is_up):
+        """Test manage snapshot failure due to disabled service."""
+        mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt,
+                                                             disabled=True)
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
+        res = self._get_resp_post(body)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        mock_create_snapshot.assert_not_called()
+        mock_rpcapi.assert_not_called()
+        mock_is_up.assert_not_called()
+
+    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.manage_existing_snapshot')
+    @mock.patch('cinder.volume.api.API.create_snapshot_in_db')
+    @mock.patch('cinder.db.service_get')
+    def test_manage_snapshot_is_down(self, mock_db, mock_create_snapshot,
+                                     mock_rpcapi, mock_is_up):
+        """Test manage snapshot failure due to down service."""
+        mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt)
+        body = {'snapshot': {'volume_id': fake.VOLUME_ID, 'ref': 'fake_ref'}}
+        res = self._get_resp_post(body)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        mock_create_snapshot.assert_not_called()
+        mock_rpcapi.assert_not_called()
+        self.assertTrue(mock_is_up.called)
 
     def test_manage_snapshot_missing_volume_id(self):
         """Test correct failure when volume_id is not specified."""
@@ -240,3 +275,24 @@ class SnapshotManageTest(test.TestCase):
         mock_api_manageable.assert_called_once_with(
             self._admin_ctxt, 'fakehost', limit=10, marker='1234', offset=4,
             sort_dirs=['asc'], sort_keys=['reference'])
+
+    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    @mock.patch('cinder.db.service_get')
+    def test_get_manageable_snapshots_disabled(self, mock_db, mock_is_up):
+        mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt,
+                                                             disabled=True)
+        res = self._get_resp_get('host_ok', False, True)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        mock_is_up.assert_not_called()
+
+    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    @mock.patch('cinder.db.service_get')
+    def test_get_manageable_snapshots_is_down(self, mock_db, mock_is_up):
+        mock_db.return_value = fake_service.fake_service_obj(self._admin_ctxt)
+        res = self._get_resp_get('host_ok', False, True)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        self.assertTrue(mock_is_up.called)
