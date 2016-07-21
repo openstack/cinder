@@ -585,7 +585,23 @@ class EMCVMAXCommon(object):
                                 % {'volumename': volumeName})
             LOG.error(exceptionMessage)
             raise exception.VolumeBackendAPIException(data=exceptionMessage)
+        return self._extend_volume(
+            volumeInstance, volumeName, newSize, originalVolumeSize,
+            extraSpecs)
 
+    def _extend_volume(
+            self, volumeInstance, volumeName, newSize, originalVolumeSize,
+            extraSpecs):
+        """Extends an existing volume.
+
+        :params volumeInstance: the volume Instance
+        :params volumeName: the volume name
+        :params newSize: the new size to increase the volume to
+        :params originalVolumeSize: the original size
+        :params extraSpecs: extra specifications
+        :returns: dict -- modifiedVolumeDict - the extended volume Object
+        :raises: VolumeBackendAPIException
+        """
         if int(originalVolumeSize) > int(newSize):
             exceptionMessage = (_(
                 "Your original size: %(originalVolumeSize)s GB is greater "
@@ -608,7 +624,6 @@ class EMCVMAXCommon(object):
             rc, modifiedVolumeDict = self._extend_composite_volume(
                 volumeInstance, volumeName, newSize, additionalVolumeSize,
                 extraSpecs)
-
         # Check the occupied space of the new extended volume.
         extendedVolumeInstance = self.utils.find_volume_instance(
             self.conn, modifiedVolumeDict, volumeName)
@@ -2168,6 +2183,23 @@ class EMCVMAXCommon(object):
                                                   sourceInstance,
                                                   isSnapshot,
                                                   extraSpecs)
+
+        if not isSnapshot:
+            old_size_gbs = self.utils.convert_bits_to_gbs(
+                self.utils.get_volume_size(
+                    self.conn, sourceInstance))
+
+            if cloneVolume['size'] != old_size_gbs:
+                LOG.info(_LI("Extending clone %(cloneName)s to "
+                             "%(newSize)d GBs"),
+                         {'cloneName': cloneName,
+                          'newSize': cloneVolume['size']})
+                cloneInstance = self.utils.find_volume_instance(
+                    self.conn, cloneDict, cloneName)
+                self._extend_volume(
+                    cloneInstance, cloneName, cloneVolume['size'],
+                    old_size_gbs, extraSpecs)
+
         LOG.debug("Leaving _create_cloned_volume: Volume: "
                   "%(cloneName)s Source Volume: %(sourceName)s "
                   "Return code: %(rc)lu.",

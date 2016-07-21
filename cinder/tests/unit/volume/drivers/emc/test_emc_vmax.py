@@ -3430,6 +3430,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
         'get_meta_members_capacity_in_byte',
         return_value=[1234567])
     @mock.patch.object(
@@ -3445,7 +3449,8 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def test_create_volume_from_same_size_meta_snapshot(
-            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size):
+            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size,
+            mock_compare):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.create_volume_from_snapshot(
             self.data.test_volume, self.data.test_volume)
@@ -3457,6 +3462,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                           self.data.test_volume,
                           self.data.test_volume)
 
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
         'get_volume_meta_head',
@@ -3475,7 +3484,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def test_create_clone_simple_volume_no_fast_success(
             self, mock_volume_type, mock_volume, mock_sync_sv,
-            mock_simple_volume):
+            mock_simple_volume, mock_compare):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.driver.create_cloned_volume(self.data.test_volume,
                                          EMCVMAXCommonData.test_source_volume)
@@ -3698,6 +3707,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     # Bug https://bugs.launchpad.net/cinder/+bug/1442376
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
+    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
@@ -3719,7 +3732,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def _test_create_clone_with_different_meta_sizes(
             self, mock_volume_type, mock_volume,
-            mock_meta, mock_size, mock_pool):
+            mock_meta, mock_size, mock_pool, mock_compare):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         volumeDict = {'classname': u'Symm_StorageVolume',
@@ -3734,7 +3747,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             mock.Mock(return_value=(0,
                                     volumeDict,
                                     EMCVMAXCommonData.storage_system)))
-
         self.driver.create_cloned_volume(self.data.test_volume,
                                          EMCVMAXCommonData.test_source_volume)
         extraSpecs = self.driver.common._initial_setup(self.data.test_volume)
@@ -4327,6 +4339,10 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
         'wait_for_job_complete',
         return_value=(0, 'success'))
     @mock.patch.object(
@@ -4347,7 +4363,7 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'ISCSIFAST'})
     def test_create_volume_from_same_size_meta_snapshot(
             self, mock_volume_type, mock_sync_sv, mock_meta, mock_size,
-            mock_wait):
+            mock_wait, mock_compare):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         common.fast.is_volume_in_default_SG = mock.Mock(return_value=True)
@@ -5542,6 +5558,10 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
         emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
         'get_meta_members_capacity_in_byte',
         return_value=[1234567])
     @mock.patch.object(
@@ -5557,7 +5577,8 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'FCFAST'})
     def test_create_volume_from_same_size_meta_snapshot(
-            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size):
+            self, mock_volume_type, mock_sync_sv, mock_meta, mock_size,
+            mock_compare):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         common.fast.is_volume_in_default_SG = mock.Mock(return_value=True)
@@ -5585,7 +5606,11 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
                           self.data.test_volume,
                           EMCVMAXCommonData.test_source_volume)
 
-    def test_create_clone_simple_volume_fast_success(self):
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
+    def test_create_clone_simple_volume_fast_success(self, mock_compare):
         extraSpecs = {'storagetype:fastpolicy': 'FC_GOLD1',
                       'volume_backend_name': 'FCFAST',
                       'isV3': False}
@@ -6191,6 +6216,10 @@ class EMCV3DriverTestCase(test.TestCase):
 
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
+    @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
         '_get_pool_and_storage_system',
         return_value=(None, EMCVMAXCommonData.storage_system))
@@ -6203,7 +6232,7 @@ class EMCV3DriverTestCase(test.TestCase):
         'volume_get',
         return_value=EMCVMAXCommonData.test_source_volume)
     def test_create_cloned_volume_v3_success(
-            self, mock_volume_db, mock_type, moke_pool):
+            self, mock_volume_db, mock_type, mock_pool, mock_compare):
         self.data.test_volume_v3['volume_name'] = "vmax-1234567"
         cloneVol = {}
         cloneVol['name'] = 'vol1'
@@ -6217,6 +6246,7 @@ class EMCV3DriverTestCase(test.TestCase):
         cloneVol['NumberOfBlocks'] = 100
         cloneVol['BlockSize'] = self.data.block_size
         cloneVol['host'] = self.data.fake_host_v3
+        cloneVol['size'] = 1
         common = self.driver.common
         common.utils.is_clone_licensed = (
             mock.Mock(return_value=True))
@@ -8228,6 +8258,9 @@ class EMCVMAXCommonTest(test.TestCase):
         configuration.safe_get.return_value = 'CommonTests'
         configuration.config_group = 'CommonTests'
         emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        instancename = FakeCIMInstanceName()
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -8343,6 +8376,27 @@ class EMCVMAXCommonTest(test.TestCase):
             ip_and_iqn['iqn'])
         self.assertEqual(
             '10.10.10.10', ip_and_iqn['ip'])
+
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'compare_size',
+        return_value=0)
+    def test_extend_volume(self, mock_compare):
+        self.driver.common.conn = FakeEcomConnection()
+        conn = FakeEcomConnection()
+        volumeInstanceName = (
+            conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
+        volumeInstance = conn.GetInstance(volumeInstanceName)
+        new_size_gb = 5
+        old_size_gbs = 1
+        volumeName = 'extendVol'
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'pool': 'SRP_1',
+                      'workload': 'DSS',
+                      'slo': 'Bronze'}
+        self.driver.common._extend_volume(
+            volumeInstance, volumeName, new_size_gb, old_size_gbs, extraSpecs)
 
 
 class EMCVMAXProvisionTest(test.TestCase):
