@@ -444,30 +444,21 @@ class QoSSpecManageApiTest(test.TestCase):
                               self.controller.create, req, body)
             self.assertEqual(1, notifier.get_notification_count())
 
-    def _create_qos_specs_bad_body(self, body):
-        req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID)
+    @ddt.data({'foo': {'a': 'b'}},
+              {'qos_specs': {'a': 'b'}},
+              {'qos_specs': 'string'},
+              None)
+    def test_create_invalid_body_bad_request(self, body):
+        req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID,
+                                      use_admin_context=True)
         req.method = 'POST'
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, body)
 
-    def test_create_no_body(self):
-        self._create_qos_specs_bad_body(body=None)
-
-    def test_create_invalid_body(self):
-        body = {'foo': {'a': 'b'}}
-        self._create_qos_specs_bad_body(body=body)
-
-    def test_create_missing_specs_name(self):
-        body = {'qos_specs': {'a': 'b'}}
-        self._create_qos_specs_bad_body(body=body)
-
-    def test_create_malformed_entity(self):
-        body = {'qos_specs': 'string'}
-        self._create_qos_specs_bad_body(body=body)
-
     @ddt.data({'name': 'fake_name', 'a' * 256: 'a'},
               {'name': 'fake_name', 'a': 'a' * 256},
-              {'name': 'fake_name' * 256, 'a': 'a'})
+              {'name': 'fake_name' * 256, 'a': 'a'},
+              {'name': 'fake_name' * 256, '': 'a'})
     def test_create_qos_with_invalid_specs(self, value):
         body = {'qos_specs': value}
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID,
