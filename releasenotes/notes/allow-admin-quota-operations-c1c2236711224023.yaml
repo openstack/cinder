@@ -1,0 +1,4 @@
+---
+fixes:
+  - Projects with the admin role are now allowed to operate
+    on the quotas of all other projects.
