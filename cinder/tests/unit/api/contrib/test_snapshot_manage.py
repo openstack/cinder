@@ -24,6 +24,7 @@ import webob
 
 from cinder import context
 from cinder import exception
+from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -42,8 +43,9 @@ def app():
 
 def volume_get(self, context, volume_id, viewable_admin_meta=False):
     if volume_id == fake.VOLUME_ID:
-        return {'id': fake.VOLUME_ID, 'name': 'fake_volume_name',
-                'host': 'fake_host'}
+        return objects.Volume(context, id=fake.VOLUME_ID,
+                              _name_id=fake.VOLUME2_ID,
+                              host='fake_host')
     raise exception.VolumeNotFound(volume_id=volume_id)
 
 

@@ -1468,7 +1468,7 @@ class API(base.Base):
         LOG.info(_LI("Retype volume request issued successfully."),
                  resource=volume)
 
-    def _get_service_by_host(self, context, host):
+    def _get_service_by_host(self, context, host, resource='volume'):
         elevated = context.elevated()
         try:
             svc_host = volume_utils.extract_host(host, 'backend')
@@ -1481,8 +1481,8 @@ class API(base.Base):
                           {'service': CONF.volume_topic, 'host': host})
 
         if service.disabled:
-            LOG.error(_LE('Unable to manage_existing volume on a disabled '
-                          'service.'))
+            LOG.error(_LE('Unable to manage existing %s on a disabled '
+                          'service.'), resource)
             raise exception.ServiceUnavailable()
 
         return service
@@ -1542,28 +1542,13 @@ class API(base.Base):
     def manage_existing_snapshot(self, context, ref, volume,
                                  name=None, description=None,
                                  metadata=None):
-        host = volume_utils.extract_host(volume['host'])
-        try:
-            # NOTE(jdg): We don't use this, we just make sure it's valid
-            # and exists before sending off the call
-            service = objects.Service.get_by_args(
-                context.elevated(), host, 'cinder-volume')
-        except exception.ServiceNotFound:
-            with excutils.save_and_reraise_exception():
-                LOG.error(_LE('Unable to find service: %(service)s for '
-                              'given host: %(host)s.'),
-                          {'service': CONF.volume_topic, 'host': host})
-        if service.disabled:
-            LOG.error(_LE('Unable to manage_existing snapshot on a disabled '
-                          'service.'))
-            raise exception.ServiceUnavailable()
-
+        service = self._get_service_by_host(context, volume.host, 'snapshot')
         snapshot_object = self.create_snapshot_in_db(context, volume, name,
                                                      description, False,
                                                      metadata, None,
                                                      commit_quota=False)
         self.volume_rpcapi.manage_existing_snapshot(context, snapshot_object,
-                                                    ref, host)
+                                                    ref, service.host)
         return snapshot_object
 
     def get_manageable_snapshots(self, context, host, marker=None, limit=None,
