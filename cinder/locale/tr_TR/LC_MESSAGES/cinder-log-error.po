@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-06-01 22:30+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -135,21 +135,8 @@ msgid "Call to json.loads() raised an exception: %s."
 msgstr "json.loads() çağrısı bir istisna oluşturdu: %s."
 
 #, python-format
-msgid "Can not add the lun %(lun)s to consistency group %(cg_name)s."
-msgstr "%(cg_name)s tutarsızlık grubuna %(lun)s lun eklenemiyor."
-
-#, python-format
 msgid "Can not discovery in %(target_ip)s with %(target_iqn)s."
 msgstr "%(target_iqn)s ile %(target_ip)s keşfedilemiyor."
-
-#, python-format
-msgid "Can not place new LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr ""
-"%(cg_name)s tutarsızlık grubunda yeni %(luns)s LUN'lar yerleştirilemiyor."
-
-#, python-format
-msgid "Can not remove LUNs %(luns)s in consistency group %(cg_name)s."
-msgstr "%(cg_name)s tutarsızlık grubunda %(luns)s LUN'lar kaldırılamıyor."
 
 #, python-format
 msgid "Can't find volume to map %(key)s, %(msg)s"
@@ -288,14 +275,6 @@ msgid "Could not stat scheduler options file %(filename)s."
 msgstr "%(filename)s zamanlayıcı seçenek dosyalarının bilgileri gösterilemedi."
 
 #, python-format
-msgid "Create cg snapshot %s failed."
-msgstr "%s cg anlık sistem görüntüsü oluşturma başarısız oldu."
-
-#, python-format
-msgid "Create consistency group %s failed."
-msgstr "%s tutarlılık grubu oluşturma başarısız oldu."
-
-#, python-format
 msgid ""
 "Create consistency group from snapshot-%(snap)s failed: SnapshotNotFound."
 msgstr ""
@@ -335,14 +314,6 @@ msgstr "DB hatası:"
 
 msgid "DBError encountered: "
 msgstr "DBError ile karşılaşıldı: "
-
-#, python-format
-msgid "Delete cgsnapshot %s failed."
-msgstr "%s cgsnapshot silme başarısız oldu."
-
-#, python-format
-msgid "Delete consistency group %s failed."
-msgstr "%s tutarlılık grubu silme başarısız oldu."
 
 msgid "Delete consistency group failed to update usages."
 msgstr "Kullanımları güncellemek için tutarlılık grubu silme başarısız oldu."
@@ -547,10 +518,6 @@ msgid "Error getting target pool name and array."
 msgstr "Hedef havuz adı ve dizisi alınırken hata."
 
 #, python-format
-msgid "Error happened during storage pool querying, %s."
-msgstr "Depolama havuzu sorgulama sırasında hata oluştu, %s."
-
-#, python-format
 msgid "Error in copying volume: %s"
 msgstr "Mantıksal sürücü kopyalamada hata: %s"
 
@@ -673,14 +640,6 @@ msgstr "Geçici destekleme oluşturulurken hata oluştu."
 msgid "Error occurred while creating volume: %(id)s from image: %(image_id)s."
 msgstr ""
 "Mantıksal sürücü oluşturulurken hata oluştu: imajdan %(id)s: %(image_id)s."
-
-#, python-format
-msgid "Error on adding lun to consistency group. %s"
-msgstr "Tutarsızlık grubuna lun eklenirken hata. %s"
-
-#, python-format
-msgid "Error on enable compression on lun %s."
-msgstr "Lun %s sıkıştırma etkinleştirmede hata."
 
 #, python-format
 msgid ""
@@ -1135,10 +1094,6 @@ msgid "Failed to find %(s)s.  Result %(r)s"
 msgstr "%(s)s bulunamadı.  Sonuç %(r)s"
 
 #, python-format
-msgid "Failed to find available iSCSI targets for %s."
-msgstr "%s için kullanılabilir iSCSI hedefleri bulunamadı."
-
-#, python-format
 msgid "Failed to get device number for throttling: %(error)s"
 msgstr "Ayarlama için aygıt numarası alınamadı: %(error)s"
 
@@ -1227,9 +1182,6 @@ msgstr "osapi_volume yükleme başarısız"
 #, python-format
 msgid "Failed to open iet session list for %s"
 msgstr "%s için iet oturum listesi açılamadı"
-
-msgid "Failed to query migration status of LUN."
-msgstr "LUN'un göç durumu sorgulanamadı."
 
 msgid "Failed to re-export volume, setting to ERROR."
 msgstr "Mantıksal sürücü yeniden dışa aktarılamadı, HATA durumuna ayarlıyor."
@@ -1364,14 +1316,6 @@ msgid ""
 msgstr ""
 "Verilen anlık sistem görüntüsü %(snapshot_id)s metadata'sı kullanılarak "
 "%(volume_id)s metadata'sı güncellenemedi."
-
-#, python-format
-msgid ""
-"Failed to update initiator data for initiator %(initiator)s and backend "
-"%(backend)s"
-msgstr ""
-"%(backend)s art alanda çalışan uygulama ve %(initiator)s başlatıcısı için "
-"başlatıcı veri güncellenemedi"
 
 #, python-format
 msgid "Failed to update quota donating volume transfer id %s"
@@ -1528,10 +1472,6 @@ msgid "Invalid ReplayList return: %s"
 msgstr "Geçersiz ReplayList dönüşü: %s"
 
 #, python-format
-msgid "Invalid value for %(key)s, value is %(value)s."
-msgstr "%(key)s için geçersiz değer, değer %(value)s."
-
-#, python-format
 msgid "JSON encode params %(param)s error: %(status)s."
 msgstr "JSON %(param)s parametre şifreleme hatası: %(status)s."
 
@@ -1569,12 +1509,6 @@ msgstr ""
 msgid "Lun delete for %s failed!"
 msgstr "%s için Lun silme başarısız oldu!"
 
-#, python-format
-msgid "Lun delete snapshot for volume %(vol)s snapshot %(snap)s failed!"
-msgstr ""
-"Lun %(vol)s mantıksal sürücüsü %(snap)s anlık görüntüsü için anlık görüntüyü "
-"silemedi!"
-
 msgid "Lun mapping returned null!"
 msgstr "Lun eşleştirmesi boş değer döndü!"
 
@@ -1600,10 +1534,6 @@ msgstr ""
 #, python-format
 msgid "Message: %s"
 msgstr "İleti: %s"
-
-#, python-format
-msgid "Migration of LUN %s failed to complete."
-msgstr "%s LUN göçü tamamlanamadı."
 
 msgid "Model update failed."
 msgstr "Model güncellemesi başarısız oldu."
@@ -1841,9 +1771,6 @@ msgstr "Bağlayıcı gerekli bilgileri içermiyor: başlatıcı eksik"
 msgid ""
 "The connector does not contain the required information: wwpns is missing"
 msgstr "Bağlayıcı gerekli bilgileri içermiyor: wwpns eksik"
-
-msgid "The given extra_spec or valid_values is None."
-msgstr "Verilen extra_spec ya da valid_values hiçbiridir."
 
 #, python-format
 msgid ""

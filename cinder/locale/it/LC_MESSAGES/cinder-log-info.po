@@ -8,13 +8,13 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-06-01 22:30+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-17 10:50+0000\n"
+"PO-Revision-Date: 2016-03-17 10:49+0000\n"
 "Last-Translator: Alessandra <alessandra@translated.net>\n"
 "Language: it\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
@@ -240,10 +240,6 @@ msgid "Backup service: %s."
 msgstr "Servizio di backup: %s."
 
 #, python-format
-msgid "Bandwidth limit is: %s."
-msgstr "Il limite della larghezza di banda è: %s."
-
-#, python-format
 msgid "Begin backup of volume %s."
 msgstr "Inizio backup del volume %s."
 
@@ -275,10 +271,6 @@ msgstr "Versione CONCERTO: %s"
 
 msgid "Calling os-brick to detach ScaleIO volume."
 msgstr "Chiamata os-brick per scollegare il volume ScaleIO."
-
-#, python-format
-msgid "Cancelling Migration from LUN %s."
-msgstr "Annullamento della migrazione da LUN %s."
 
 #, python-format
 msgid ""
@@ -470,14 +462,6 @@ msgid "Connector returning fcnsinfo-%s"
 msgstr "Il connettore restituisce fcnsinfo-%s"
 
 #, python-format
-msgid "Consistency group %(cg)s is created successfully."
-msgstr "Gruppo di coerenza %(cg)s creato correttamente."
-
-#, python-format
-msgid "Consistency group %s was deleted successfully."
-msgstr "Gruppo di coerenza %s eliminato correttamente."
-
-#, python-format
 msgid "Consistency group %s: created successfully"
 msgstr "Gruppo di coerenza %s: creato correttamente"
 
@@ -595,14 +579,6 @@ msgstr ""
 
 #, python-format
 msgid ""
-"Create Volume: %(volume)s  Size: %(size)s pool: %(pool)s provisioning: "
-"%(provisioning)s tiering: %(tiering)s "
-msgstr ""
-"Crea volume: %(volume)s  Dimensione: %(size)s pool: %(pool)s provisioning: "
-"%(provisioning)s livellamento: %(tiering)s "
-
-#, python-format
-msgid ""
 "Create a replica from Volume: Clone Volume: %(cloneName)s Source Volume: "
 "%(sourceName)s."
 msgstr ""
@@ -642,10 +618,6 @@ msgstr ""
 #, python-format
 msgid "Create snapshot from volume %s"
 msgstr "Crea istantanea dal volume %s"
-
-#, python-format
-msgid "Create snapshot: %(snapshot)s: volume: %(volume)s"
-msgstr "Crea istantanea: %(snapshot)s: volume: %(volume)s"
 
 #, python-format
 msgid ""
@@ -875,10 +847,6 @@ msgid "Delete Snapshot %(snapshot_id)s completed."
 msgstr "Eliminazione istantanea %(snapshot_id)s completata."
 
 #, python-format
-msgid "Delete Snapshot: %(snapshot)s"
-msgstr "Elimina istantanea: %(snapshot)s."
-
-#, python-format
 msgid "Delete Snapshot: %(snapshot)s."
 msgstr "Elimina istantanea: %(snapshot)s."
 
@@ -1014,10 +982,6 @@ msgstr "Eliminazione dell'istantanea: %s"
 #, python-format
 msgid "Deleting stale snapshot: %s"
 msgstr "Eliminazione dell'istantanea obsoleta: %s"
-
-#, python-format
-msgid "Deleting unneeded host %(host_name)r."
-msgstr "Eliminazione dell'host non necessario %(host_name)r."
 
 #, python-format
 msgid "Deleting volume %s "
@@ -1220,10 +1184,6 @@ msgstr ""
 "%(arrayName)s. total_capacity_gb=%(total_capacity_gb)lu, free_capacity_gb="
 "%(free_capacity_gb)lu."
 
-#, python-format
-msgid "FC Initiators %(in)s of %(ins)s need registration"
-msgstr "Gli iniziatori FC %(in)s di %(ins)s necessitano la registrazione."
-
 msgid "Failed over to replication target successfully."
 msgstr "Failover della destinazione di replica eseguito correttamente."
 
@@ -1254,10 +1214,6 @@ msgstr "Errore generato: %s"
 #, python-format
 msgid "Fetched vCenter server version: %s"
 msgstr "Recuperata versione server vCenter: %s"
-
-#, python-format
-msgid "Filter %(cls_name)s returned %(obj_len)d host(s)"
-msgstr "Il filtro %(cls_name)s ha restituito %(obj_len)d host(s)"
 
 #, python-format
 msgid "Filtered targets for SAN is: %(targets)s"
@@ -1360,18 +1316,6 @@ msgstr "Nome zona breve dopo la formazione: %(zonename)s"
 #, python-format
 msgid "Generating transfer record for volume %s"
 msgstr "Generazione del record di trasferimento per il volume %s"
-
-#, python-format
-msgid "Get FC targets %(tg)s to register initiator %(in)s."
-msgstr "Ricevi destinazioni FC %(tg)s per registrare l'iniziatore %(in)s."
-
-#, python-format
-msgid "Get ISCSI targets %(tg)s to register initiator %(in)s."
-msgstr "Ricevi destinazioni ISCSI %(tg)s per registrare l'iniziatore %(in)s."
-
-#, python-format
-msgid "Get Volume response: %s"
-msgstr "Ricevi risposta del volume: %s"
 
 msgid "Get all snapshots completed successfully."
 msgstr "Richiamo di tutte le istantanee completato correttamente."
@@ -1704,14 +1648,6 @@ msgstr ""
 "È necessario rimuovere la zona FC, creazione dell'associazione di "
 "destinazione dell'iniziatore."
 
-msgid ""
-"Neither security file nor plain text credentials are specified. Security "
-"file under home directory will be used for authentication if present."
-msgstr ""
-"Non sono specificati né il file di sicurezza né le credenziali del testo "
-"normale. Il file di sicurezza nella directory home verrà utilizzato per "
-"l'autenticazione, se presente."
-
 #, python-format
 msgid ""
 "NetApp driver of family %(storage_family)s and protocol %(storage_protocol)s "
@@ -1824,10 +1760,6 @@ msgstr "Esecuzione del post clone per %s"
 #, python-format
 msgid "Performing secure delete on volume: %s"
 msgstr "Esecuzione di secure delete nel volume: %s"
-
-msgid "Plain text credentials are being used for authentication"
-msgstr ""
-"Per l'autenticazione vengono utilizzare le credenziali del testo normale"
 
 #, python-format
 msgid "Pool id is %s."
@@ -2175,17 +2107,6 @@ msgid "Roll detaching of volume completed successfully."
 msgstr "Esecuzione dello scollegamento del volume completata correttamente."
 
 #, python-format
-msgid "Running cluster latest ssc job for %(server)s and vserver %(vs)s"
-msgstr ""
-"Esecuzione dell'ultimo lavoro ssc cluster per %(server)s e vserver %(vs)s"
-
-#, python-format
-msgid "Running stale ssc refresh job for %(server)s and vserver %(vs)s"
-msgstr ""
-"Esecuzione del lavoro di aggiornamento ssc obsoleto per %(server)s e vserver "
-"%(vs)s"
-
-#, python-format
 msgid "Running with vmemclient version: %s"
 msgstr "Esecuzione con versione vmemclient: %s"
 
@@ -2326,12 +2247,6 @@ msgid "Skipping ensure_export. Found existing iSCSI target."
 msgstr "Ignorare ensure_export. Trovata destinazione iSCSI esistente."
 
 #, python-format
-msgid "Skipping ensure_export. No iscsi_target provision for volume: %s"
-msgstr ""
-"ensure_export viene ignorato. Nessun provisioning di iscsi_target per il "
-"volume: %s"
-
-#, python-format
 msgid ""
 "Skipping image volume %(id)s because it is not accessible by current Tenant."
 msgstr ""
@@ -2406,10 +2321,6 @@ msgstr "L'istantanea %s ha cloni dipendenti, verrà eliminata successivamente."
 #, python-format
 msgid "Snapshot %s not found"
 msgstr "Istantanea %s non trovata"
-
-#, python-format
-msgid "Snapshot %s was deleted successfully."
-msgstr "Istantanea %s eliminata correttamente."
 
 #, python-format
 msgid "Snapshot '%(ref)s' renamed to '%(new)s'."
@@ -2489,10 +2400,6 @@ msgid "Storage Group %(storageGroupName)s successfully deleted."
 msgstr "Gruppo di archiviazione %(storageGroupName)s eliminato correttamente."
 
 #, python-format
-msgid "Storage Group %s was empty."
-msgstr "Il gruppo di archiviazione %s è vuoto."
-
-#, python-format
 msgid "Storage group not associated with the policy. Exception is %s."
 msgstr "Gruppo di archiviazione non associato alla politica. L'eccezione è %s."
 
@@ -2511,17 +2418,6 @@ msgstr "Login corretto da parte dell'utente %s"
 #, python-format
 msgid "Successfully added %(volumeName)s to %(sgGroupName)s."
 msgstr "Aggiunto correttamente %(volumeName)s a %(sgGroupName)s."
-
-#, python-format
-msgid "Successfully completed ssc job for %(server)s and vserver %(vs)s"
-msgstr "Completato correttamente lavoro ssc per %(server)s e vserver %(vs)s"
-
-#, python-format
-msgid ""
-"Successfully completed stale refresh job for %(server)s and vserver %(vs)s"
-msgstr ""
-"Completato correttamente lavoro di aggiornamento obsoleto per %(server)s e "
-"vserver %(vs)s"
 
 #, python-format
 msgid "Successfully copied disk at: %(src)s to: %(dest)s."
@@ -2800,10 +2696,6 @@ msgstr ""
 "Non esiste alcun punto di istantanea per il volume con istantanea: %(snap)s. "
 "Non viene creato alcun backup per il volume: %(vol)s."
 
-#, python-format
-msgid "Toggle san_ip from %(current)s to %(new)s."
-msgstr "Passare a san_ip da %(current)s a %(new)s."
-
 msgid "Token is invalid, going to re-login and get a new one."
 msgstr "Il token non è valido, rieseguire il login e ottenere un nuovo token."
 
@@ -3017,10 +2909,6 @@ msgstr "Utilizzo della versione vmware_host_version sovrascritta da config: %s"
 #, python-format
 msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr "Utilizzo del pool %(pool)s anziché %(cpg)s"
-
-#, python-format
-msgid "Using security file in %s for authentication"
-msgstr "Viene utilizzato il file di sicurezza %s per l'autenticazione"
 
 #, python-format
 msgid "Using service label: %s"
@@ -3265,10 +3153,6 @@ msgstr ""
 "La zona esiste in modalità I-T. Ignorare la creazione zone per %(zonename)s"
 
 #, python-format
-msgid "Zone map to add: %(zonemap)s"
-msgstr "Associazione zone da aggiungere: %(zonemap)s"
-
-#, python-format
 msgid "Zone map to add: %s"
 msgstr "Associazione zone da aggiungere: %s"
 
@@ -3498,10 +3382,6 @@ msgstr ""
 "%(total)s."
 
 #, python-format
-msgid "iSCSI Initiators %(in)s of %(ins)s need registration."
-msgstr "Gli iniziatori iSCSI %(in)s di %(ins)s necessitano la registrazione."
-
-#, python-format
 msgid "iSCSI portal found for service: %s"
 msgstr "Portale iSCSI trovato per il servizio: %s"
 
@@ -3583,21 +3463,6 @@ msgstr ""
 #, python-format
 msgid "initiator name: %(initiator_name)s, LUN ID: %(lun_id)s."
 msgstr "nome iniziatore: %(initiator_name)s, ID LUN: %(lun_id)s."
-
-msgid ""
-"initiator_auto_registration: False. Initiator auto registration is not "
-"enabled. Please register initiator manually."
-msgstr ""
-"initiator_auto_registration: False. La registrazione automatica "
-"dell'iniziatore non è abilitata. Registrare l'iniziatore manualmente."
-
-#, python-format
-msgid "iops limit is: %s."
-msgstr "Il limite iops è: %s."
-
-#, python-format
-msgid "iscsi_initiators: %s"
-msgstr "iscsi_initiators: %s"
 
 #, python-format
 msgid "location is: %(location)s"

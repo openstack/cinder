@@ -8,16 +8,17 @@
 # Ryo Fujita <rfujita@redhat.com>, 2013
 # Tomoyuki KATO <tomo@dream.daynight.jp>, 2013
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b2.dev1\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-06-01 22:30+0000\n"
+"POT-Creation-Date: 2016-07-20 21:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-04-04 06:28+0000\n"
-"Last-Translator: Tsutomu Kimura <ebb0de2@jp.ibm.com>\n"
+"PO-Revision-Date: 2016-07-20 01:21+0000\n"
+"Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 "Generated-By: Babel 2.0\n"
@@ -265,9 +266,6 @@ msgstr "'status' を指定する必要があります。"
 msgid "'volume_id' must be specified"
 msgstr "'volume_id' を指定する必要があります"
 
-msgid "'{}' object has no attribute '{}'"
-msgstr "'{}' オブジェクトに属性 '{}' がありません"
-
 #, python-format
 msgid ""
 "(Command: %(cmd)s) (Return Code: %(exit_code)s) (Stdout: %(stdout)s) "
@@ -430,20 +428,8 @@ msgstr ""
 "API バージョンのリクエストは VersionedMethod オブジェクトと比較する必要があり"
 "ます。"
 
-#, python-format
-msgid "An error has occured in SheepdogDriver. (Reason: %(reason)s)"
-msgstr "SheepdogDriver でエラーが発生しました。(理由: %(reason)s)"
-
 msgid "An error has occurred during backup operation"
 msgstr "バックアップ操作中にエラーが発生しました"
-
-#, python-format
-msgid "An error occured while attempting to modifySnapshot '%s'."
-msgstr "スナップショット '%s' を変更しようとしたときにエラーが発生しました。"
-
-#, python-format
-msgid "An error occured while seeking for volume \"%s\"."
-msgstr "ボリューム \"%s\" の検出中にエラーが発生しました。"
 
 #, python-format
 msgid ""
@@ -577,11 +563,6 @@ msgstr ""
 msgid "Backend doesn't exist (%(backend)s)"
 msgstr "バックエンドが存在しません(%(backend)s)"
 
-msgid "Backend has already been failed over. Unable to fail back."
-msgstr ""
-"バックエンドで既にフェイルオーバーが完了しました。フェイルバックすることはで"
-"きません。"
-
 #, python-format
 msgid "Backend reports: %(message)s"
 msgstr "バックエンドレポート: %(message)s"
@@ -591,9 +572,6 @@ msgstr "バックエンドレポート: 項目は既に存在します"
 
 msgid "Backend reports: item not found"
 msgstr "バックエンドレポート: 項目が見つかりません"
-
-msgid "Backend server not NaServer."
-msgstr "バックエンドサーバーが NaServer ではありません。"
 
 #, python-format
 msgid "Backend service retry timeout hit: %(timeout)s sec"
@@ -702,12 +680,6 @@ msgstr ""
 msgid "Bad project format: project is not in proper format (%s)"
 msgstr "不正なプロジェクト形式: プロジェクトの形式が正しくありません (%s)"
 
-#, python-format
-msgid "Bad request sent to Datera cluster:Invalid args: %(args)s | %(message)s"
-msgstr ""
-"Datera クラスターに不正な要求 (無効な引数) が送信されました: %(args)s | "
-"%(message)s"
-
 msgid "Bad response from Datera API"
 msgstr "Datera API からの正しくない応答"
 
@@ -723,18 +695,6 @@ msgstr "バイナリー"
 
 msgid "Blank components"
 msgstr "空白コンポーネント"
-
-msgid "Blockbridge API authentication scheme (token or password)"
-msgstr "Blockbridge API の認証スキーム (トークンまたはパスワード)"
-
-msgid "Blockbridge API password (for auth scheme 'password')"
-msgstr "Blockbridge API のパスワード ('password' の認証スキーム)"
-
-msgid "Blockbridge API token (for auth scheme 'token')"
-msgstr "Blockbridge API のトークン ('token' の認証スキーム )"
-
-msgid "Blockbridge API user (for auth scheme 'password')"
-msgstr "Blockbridge API のユーザー ('password' の認証スキーム)"
 
 msgid "Blockbridge api host not configured"
 msgstr "Blockbridge API のホストが設定されていません"
@@ -854,9 +814,6 @@ msgstr "%s を整数に変換できません。"
 #, python-format
 msgid "Can't access 'scality_sofs_config': %s"
 msgstr "'scality_sofs_config' にアクセスできません: %s"
-
-msgid "Can't attach snapshot."
-msgstr "スナップショットを追加できません。"
 
 msgid "Can't decode backup record."
 msgstr "バックアップレコードを復号化できません。"
@@ -1127,7 +1084,7 @@ msgstr "サイズが %s のボリュームを作成できません: 8GB の倍�
 msgid "Cannot create volume_type with name %(name)s and specs %(extra_specs)s"
 msgstr ""
 "名前 %(name)s および仕様 %(extra_specs)s を使用して volume_type を作成できま"
-"せん"
+"せん。"
 
 #, python-format
 msgid "Cannot delete LUN %s while snapshots exist."
@@ -1347,7 +1304,7 @@ msgstr "暗号化仕様を更新できません。ボリュームタイプは使
 
 #, python-format
 msgid "Cannot update volume_type %(id)s"
-msgstr "volume_type %(id)s を更新できません"
+msgstr "volume_type %(id)s を更新できません。"
 
 #, python-format
 msgid "Cannot verify the existence of object:%(instanceName)s."
@@ -1437,10 +1394,6 @@ msgstr "Coho の rpc ポートが設定されていません"
 #, python-format
 msgid "Command %(cmd)s blocked in the CLI and was cancelled"
 msgstr "CLI でブロックされたコマンド %(cmd)s を取り消しました"
-
-#, python-format
-msgid "CommandLineHelper._wait_for_a_condition: %s timeout"
-msgstr "CommandLineHelper._wait_for_a_condition: %s タイムアウト"
 
 #, python-format
 msgid "CommandLineHelper._wait_for_condition: %s timeout."
@@ -1611,7 +1564,7 @@ msgstr ""
 
 #, python-format
 msgid "Could not find config at %(path)s"
-msgstr "%(path)s で config が見つかりませんでした"
+msgstr "%(path)s で config が見つかりませんでした。"
 
 #, python-format
 msgid "Could not find iSCSI export  for volume %(volumeName)s."
@@ -1635,7 +1588,7 @@ msgstr ""
 
 #, python-format
 msgid "Could not find parameter %(param)s"
-msgstr "パラメーター %(param)s が見つかりませんでした"
+msgstr "パラメーター %(param)s が見つかりませんでした。"
 
 #, python-format
 msgid "Could not find target %s"
@@ -1659,7 +1612,7 @@ msgstr "システム名を取得できませんでした。"
 #, python-format
 msgid "Could not load paste app '%(name)s' from %(path)s"
 msgstr ""
-"paste アプリケーション '%(name)s' を %(path)s からロードできませんでした"
+"paste アプリケーション '%(name)s' を %(path)s からロードできませんでした。"
 
 #, python-format
 msgid "Could not read %s. Re-running with sudo"
@@ -1806,12 +1759,6 @@ msgstr ""
 "現在、ボリューム %(vol)s のマップ済みホストは、サポート対象ではない "
 "%(group)s のホストグループ内にあります。"
 
-msgid "DEPRECATED: Deploy v1 of the Cinder API."
-msgstr "非推奨: Cinder API の v1 をデプロイしてください。"
-
-msgid "DEPRECATED: Deploy v2 of the Cinder API."
-msgstr "提供を終了しています: Cinder API の v2 を実装してください。"
-
 #, python-format
 msgid ""
 "DRBDmanage driver error: expected key \"%s\" not in answer, wrong DRBDmanage "
@@ -1895,15 +1842,6 @@ msgstr ""
 msgid "Dedup luns cannot be extended"
 msgstr "Dedup luns は拡張できません"
 
-msgid ""
-"Deduplication Enabler is not installed. Can not create deduplicated volume"
-msgstr ""
-"重複排除イネーブラーがインストールされていません。重複排除されたボリュームを"
-"作成できません"
-
-msgid "Default pool name if unspecified."
-msgstr "デフォルトのプール名 (プール名を指定していない場合)"
-
 #, python-format
 msgid ""
 "Default quota for resource: %(res)s is set by the default quota flag: quota_"
@@ -1916,12 +1854,6 @@ msgstr ""
 
 msgid "Default volume type can not be found."
 msgstr "デフォルトのボリュームタイプが見つかりません。"
-
-msgid ""
-"Defines the set of exposed pools and their associated backend query strings"
-msgstr ""
-"一連の影響を受けるプールに加え関連するバックエンドのクエリー文字列を定義しま"
-"す。"
 
 msgid "Delete LUNcopy error."
 msgstr "LUN コピー削除のエラー。"
@@ -2008,9 +1940,6 @@ msgid "Dell Cinder driver configuration error replication_device %s not found"
 msgstr ""
 "Dell Cinder ドライバーの設定エラー の replication_device %s が見つかりません"
 
-msgid "Deploy v3 of the Cinder API."
-msgstr "Cinder API の v3 を実装してください。"
-
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource は管理者専用の機能です"
 
@@ -2034,7 +1963,7 @@ msgstr "ボリュームをインスタンスから切り離して、再試行し
 
 #, python-format
 msgid "Detected more than one volume with name %(vol_name)s"
-msgstr "名前 %(vol_name)s を持つ複数のボリュームが検出されました"
+msgstr "名前 %(vol_name)s を持つ複数のボリュームが検出されました。"
 
 #, python-format
 msgid "Did not find expected column in %(fun)s: %(hdr)s."
@@ -2063,13 +1992,6 @@ msgstr ""
 #, python-format
 msgid "Driver initialize connection failed (error: %(err)s)."
 msgstr "ドライバーの初期化接続に失敗しました (エラー: %(err)s)。"
-
-msgid ""
-"Driver is not able to do retype because the volume (LUN {}) has snapshot "
-"which is forbidden to migrate."
-msgstr ""
-"ボリューム (LUN {}) にマイグレーションが禁止されているスナップショットが含ま"
-"れているため、ドライバーのタイプを変更することができません。"
 
 msgid "Driver must implement initialize_connection"
 msgstr "ドライバーは initialize_connection を実装する必要があります"
@@ -2755,10 +2677,6 @@ msgid "Error managing volume: %s."
 msgstr "ボリュームの管理中にエラーが発生しました: %s。"
 
 #, python-format
-msgid "Error mapping volume %(vol)s. %(error)s."
-msgstr "ボリューム %(vol)s のマッピングエラー。%(error)s。"
-
-#, python-format
 msgid ""
 "Error modify replica synchronization: %(sv)s operation: %(operation)s. "
 "Return code: %(rc)lu.  Error: %(error)s."
@@ -2807,10 +2725,6 @@ msgstr "構成ファイルの解析エラー: %s"
 
 msgid "Error promoting secondary volume to primary"
 msgstr "2 次ボリュームの 1 次ボリュームへのプロモート中にエラーが発生しました"
-
-#, python-format
-msgid "Error removing volume %(vol)s. %(error)s."
-msgstr "ボリューム %(vol)s の削除エラー。%(error)s。"
 
 #, python-format
 msgid "Error renaming volume %(vol)s: %(err)s."
@@ -3101,12 +3015,6 @@ msgstr ""
 msgid "Extend volume not implemented"
 msgstr "ボリュームの拡張が実装されていません"
 
-msgid ""
-"FAST VP Enabler is not installed. Can't set tiering policy for the volume"
-msgstr ""
-"FAST VP イネーブラーがインストールされていません。ボリュームの階層化ポリシー"
-"を設定できません"
-
 msgid "FAST is not supported on this array."
 msgstr "FAST はこのアレイでサポートされていません。"
 
@@ -3171,10 +3079,6 @@ msgid ""
 msgstr ""
 "リソースロックを獲得できませんでした。(シリアル: %(serial)s、inst: %(inst)s、"
 "ret: %(ret)s、stderr: %(err)s)"
-
-#, python-format
-msgid "Failed to add %(vol)s into %(sg)s after %(retries)s tries."
-msgstr "%(vol)s の %(sg)s への追加が、%(retries)s 回の再試行後に失敗しました。"
 
 msgid "Failed to add the logical device."
 msgstr "論理デバイスを追加できませんでした。"
@@ -3378,9 +3282,6 @@ msgstr "スケジューラーマネージャーのボリュームフローを作
 #, python-format
 msgid "Failed to create snapshot %s"
 msgstr "スナップショット %s の作成に失敗しました"
-
-msgid "Failed to create snapshot as no LUN ID is specified"
-msgstr "LUN ID が指定されていないため、スナップショットの作成に失敗しました"
 
 #, python-format
 msgid "Failed to create snapshot for cg: %(cgName)s."
@@ -3587,10 +3488,6 @@ msgid "Failed to find iSCSI initiator group containing %(initiator)s."
 msgstr ""
 "%(initiator)s を含む  iSCSI イニシエーターグループを見つけることに失敗しまし"
 "た。"
-
-#, python-format
-msgid "Failed to find storage pool for source volume %s."
-msgstr "ソースボリューム %s のストレージプールの検出に失敗しました。"
 
 #, python-format
 msgid "Failed to get CloudByte account details for account [%s]."
@@ -4187,9 +4084,6 @@ msgstr "ホスト LUN ID 検索のエラー。"
 msgid "Find lun group from mapping view error."
 msgstr "マッピングビューからの LUN グループ検索のエラー。"
 
-msgid "Find lun number error."
-msgstr "LUN 番号検索のエラー。"
-
 msgid "Find mapping view error."
 msgstr "マッピングビュー検索のエラー。"
 
@@ -4616,10 +4510,6 @@ msgid "Host %s has no FC initiators"
 msgstr "ホスト %s に FC イニシエーターがありません"
 
 #, python-format
-msgid "Host %s has no iSCSI initiator"
-msgstr "ホスト %s に iSCSI イニシエーターがありません"
-
-#, python-format
 msgid "Host '%s' could not be found."
 msgstr "ホスト '%s' が見つかりませんでした。"
 
@@ -4670,9 +4560,6 @@ msgstr ""
 
 msgid "ID"
 msgstr "ID"
-
-msgid "IP address/hostname of Blockbridge API."
-msgstr "Blockbridge API の IP アドレスとホスト名。"
 
 msgid ""
 "If compression is set to True, rsize must also be set (not equal to -1)."
@@ -4729,6 +4616,9 @@ msgstr "イメージ %(image_id)s は受け入れられません: %(reason)s"
 msgid "Image location not present."
 msgstr "イメージロケーションが存在しません。"
 
+msgid "Image quota exceeded"
+msgstr "イメージのクォータを超えました。"
+
 #, python-format
 msgid ""
 "Image virtual size is %(image_size)dGB and doesn't fit in a volume of size "
@@ -4771,12 +4661,6 @@ msgstr ""
 "Infortrend CLI の例外: %(err)s。パラメーター: %(param)s (戻りコード: %(rc)s) "
 "(出力: %(out)s)"
 
-msgid "Initial tier: {}, policy: {} is not valid."
-msgstr "当初の層 {} のポリシー {} が無効です。"
-
-msgid "Input type {} is not supported."
-msgstr "入力タイプ {} はサポートされません。"
-
 msgid "Input volumes or snapshots are invalid."
 msgstr "入力ボリュームまたはスナップショットが無効です。"
 
@@ -4792,13 +4676,6 @@ msgstr "ボリュームを拡張するために十分な空きスペースがあ
 
 msgid "Insufficient privileges"
 msgstr "不十分な権限"
-
-msgid "Interval value (in seconds) between connection retries to ceph cluster."
-msgstr "ceph クラスターへの接続と接続の間の間隔の値 (秒)。"
-
-#, python-format
-msgid "Invalid %(protocol)s ports %(port)s specified for io_port_list."
-msgstr "無効な %(protocol)s ポート %(port)s が io_port_list に指定されました。"
 
 #, python-format
 msgid "Invalid 3PAR Domain: %(err)s"
@@ -4843,10 +4720,6 @@ msgstr ""
 #, python-format
 msgid "Invalid Replication Target: %(reason)s"
 msgstr "無効なレプリケーションターゲット: %(reason)s"
-
-#, python-format
-msgid "Invalid VNX authentication type: %s"
-msgstr "無効な VNX 認証タイプ: %s"
 
 #, python-format
 msgid ""
@@ -5069,10 +4942,6 @@ msgstr "無効なストレージプール %s が指定されました。"
 msgid "Invalid storage pool is configured."
 msgstr "無効なストレージプールが設定されています。"
 
-#, python-format
-msgid "Invalid synchronize mode specified, allowed mode is %s."
-msgstr "無効な同期モードが指定されました。許可されるモードは %s です。"
-
 msgid "Invalid transport type."
 msgstr "無効なトランスポートタイプ。"
 
@@ -5271,18 +5140,12 @@ msgstr "ボリューム: %s 用の LU は存在しません"
 msgid "LUN export failed!"
 msgstr "LUN のエクスポートが失敗しました。"
 
-msgid "LUN id({}) is not valid."
-msgstr "LUN id({}) は無効です。"
-
 msgid "LUN map overflow on every channel."
 msgstr "すべてのチャンネルでの LUN マップのオーバーフロー。"
 
 #, python-format
 msgid "LUN not found with given ref %s."
 msgstr "指定された参照 %s を持つ LUN が見つかりません。"
-
-msgid "LUN number ({}) is not an integer."
-msgstr "LUN 番号 ({}) が整数ではありません。"
 
 #, python-format
 msgid "LUN number is out of bound on channel id: %(ch_id)s."
@@ -5448,11 +5311,11 @@ msgstr "マスキングビュー %(maskingViewName)s は正常に削除されま
 
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
-msgstr "バックアップの許容最大数 (%(allowed)d) を超えました"
+msgstr "バックアップの許容最大数 (%(allowed)d) を超えました。"
 
 #, python-format
 msgid "Maximum number of snapshots allowed (%(allowed)d) exceeded"
-msgstr "スナップショットの許容最大数 (%(allowed)d) を超えました"
+msgstr "スナップショットの許容最大数 (%(allowed)d) を超えました。"
 
 #, python-format
 msgid ""
@@ -5465,6 +5328,10 @@ msgstr ""
 #, python-format
 msgid "May specify only one of %s"
 msgstr "指定できる %s は 1 つのみです"
+
+#, python-format
+msgid "Message %(message_id)s could not be found."
+msgstr "メッセージ %(message_id)s が見つかりませんでした。"
 
 msgid "Metadata backup already exists for this volume"
 msgstr "このボリュームのメタデータバックアップは既に存在します"
@@ -5479,48 +5346,14 @@ msgstr "メタデータ項目が見つかりませんでした"
 msgid "Metadata item was not found."
 msgstr "メタデータ項目が見つかりませんでした。"
 
-#, python-format
-msgid "Metadata property key %s greater than 255 characters"
-msgstr "メタデータのプロパティーキー %s が 255 文字を超えています"
-
-#, python-format
-msgid "Metadata property key %s value greater than 255 characters"
-msgstr "メタデータのプロパティーキー %s 値が 255 文字を超えています"
-
-msgid "Metadata property key blank"
-msgstr "メタデータプロパティーキーがブランクです"
-
 msgid "Metadata property key blank."
 msgstr "メタデータプロパティーのキーがブランクです。"
-
-msgid "Metadata property key greater than 255 characters."
-msgstr "メタデータプロパティーのキーが 255 文字を超えています。"
-
-msgid "Metadata property value greater than 255 characters."
-msgstr "メタデータプロパティー値が 255 文字を超えています。"
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "バージョンの非互換のため、メタデータのリストアに失敗しました"
 
 msgid "Metadata restore failed due to incompatible version."
 msgstr "バージョンの非互換のため、メタデータのリストアに失敗しました。"
-
-#, python-format
-msgid "Migrate volume %(src)s failed."
-msgstr "ボリューム %(src)s のマイグレーションが失敗しました。"
-
-#, python-format
-msgid "Migrate volume failed between source vol %(src)s and dest vol %(dst)s."
-msgstr ""
-"ソースボリューム %(src)s と宛先ボリューム %(dst)s の間のボリュームのマイグ"
-"レーションが失敗しました。"
-
-#, python-format
-msgid "Migration of LUN %s has been stopped or faulted."
-msgstr "LUN %s のマイグレーションが停止したか、障害が発生しました。"
-
-msgid "MirrorView/S enabler is not installed."
-msgstr "MirrorView/S イネーブラーがインストールされていません。"
 
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
@@ -6076,9 +5909,6 @@ msgstr ""
 "CloudByte のストレージで [%(operation)s] に 関するジョブ [%(job)s] の検索中"
 "に Null のレスポンスを受信しました。"
 
-msgid "Number of retries if connection to ceph cluster failed."
-msgstr "ceph クラスターへの接続が失敗した場合の再接続の回数。"
-
 msgid "Object Count"
 msgstr "オブジェクト数"
 
@@ -6138,17 +5968,10 @@ msgstr "gpfs_images_share_mode オプションが正しく設定されていま�
 msgid "Option gpfs_mount_point_base is not set correctly."
 msgstr "gpfs_mount_point_base オプションが正しく設定されていません。"
 
-msgid "Option map (cls._map) is not defined."
-msgstr "オプションマップ (cls._map) が定義されていません。"
-
 #, python-format
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
 msgstr ""
 "作成元の %(res)s %(prop)s は '%(vals)s' 値のいずれかでなければなりません。"
-
-msgid "Override HTTPS port to connect to Blockbridge API server."
-msgstr ""
-"Blockbridge API サーバーにアクセスするために HTTPS ポートを上書きする。"
 
 #, python-format
 msgid "ParseException: %s"
@@ -6241,6 +6064,10 @@ msgstr "プール名が設定されていません。"
 #, python-format
 msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
 msgstr "プライマリーコピーの状態: %(status)s および同期済み: %(sync)s。"
+
+#, python-format
+msgid "Programming error in Cinder: %(reason)s"
+msgstr "Cinder でのプログラミングエラー : %(reason)s"
 
 msgid "Project ID"
 msgstr "プロジェクト ID"
@@ -6406,14 +6233,6 @@ msgstr "RPC サーバーの応答が完了していません"
 
 msgid "Raid did not have MCS Channel."
 msgstr "RAID に MCS チャンネルがありません。"
-
-#, python-format
-msgid ""
-"Reach limitation set by configuration option max_luns_per_storage_group. "
-"Operation to add %(vol)s into Storage Group %(sg)s is rejected."
-msgstr ""
-"構成オプション max_luns_per_storage_group によって設定された制限に達しまし"
-"た。%(vol)s をストレージグループ %(sg)s に追加する操作は拒否されます。"
 
 #, python-format
 msgid "Received error string: %s"
@@ -6602,9 +6421,6 @@ msgstr "必要な構成が見つかりません"
 #, python-format
 msgid "Required flag %s is not set"
 msgstr "必須フラグ %s が設定されていません"
-
-msgid "Requires an NaServer instance."
-msgstr "NaServer インスタンスが必要です。"
 
 #, python-format
 msgid ""
@@ -7089,11 +6905,6 @@ msgstr "ストレージシステム ID が設定されていません。"
 msgid "Storage system not found for pool %(poolNameInStr)s."
 msgstr "プール %(poolNameInStr)s のストレージシステムが見つかりません。"
 
-msgid "Storage-assisted migration failed during manage volume."
-msgstr ""
-"ボリュームの管理中にストレージによってサポートされるマイグレーションが失敗し"
-"ました。"
-
 #, python-format
 msgid "StorageSystem %(array)s is not found."
 msgstr "ストレージシステム %(array)s が見つかりません。"
@@ -7241,10 +7052,6 @@ msgid "The end time (%(end)s) must be after the start time (%(start)s)."
 msgstr "終了時刻 (%(end)s) は開始時刻 (%(start)s) より後でなければなりません。"
 
 #, python-format
-msgid "The extra_spec: %s is invalid."
-msgstr "extra_spec: %s が無効です。"
-
-#, python-format
 msgid "The extraspec: %(extraspec)s is not valid."
 msgstr "追加仕様: %(extraspec)s は無効です。"
 
@@ -7294,14 +7101,6 @@ msgstr ""
 #, python-format
 msgid "The iSCSI CHAP user %(user)s does not exist."
 msgstr "iSCSI CHAP ユーザー %(user)s は存在しません。"
-
-#, python-format
-msgid ""
-"The imported lun %(lun_id)s is in pool %(lun_pool)s which is not managed by "
-"the host %(host)s."
-msgstr ""
-"インポートされた LUN %(lun_id)s はホスト %(host)s が管理しないプール "
-"%(lun_pool)s にあります。"
 
 msgid "The key cannot be None."
 msgstr "キーは None に設定することはできません。"
@@ -7386,9 +7185,8 @@ msgstr ""
 "ボリュームがメンテナンスモードの場合は、スナップショットを作成できません。"
 
 #, python-format
-msgid ""
-"The source volume %s is not in the pool which is managed by the current host."
-msgstr "ソースボリューム %s は現在のホストが管理するプールにありません。"
+msgid "The snapshot is unavailable: %(data)s"
+msgstr "スナップショットは使用できません : %(data)s"
 
 msgid "The source volume for this WebDAV operation not found."
 msgstr "この WebDAV 操作のソースボリュームが見つかりません。"
@@ -7561,10 +7359,6 @@ msgstr "使用できるリソースがありません。(リソース: %(resourc
 msgid "There are no valid ESX hosts."
 msgstr "有効な ESX ホストがありません。"
 
-#, python-format
-msgid "There are no valid datastores attached to %s."
-msgstr "%s に接続された有効なデータストアがありません。"
-
 msgid "There are no valid datastores."
 msgstr "有効なデータストアがありません。"
 
@@ -7659,11 +7453,6 @@ msgid "Thin provisioning not supported on this version of LVM."
 msgstr ""
 "このバージョンの LVM ではシンプロビジョニングはサポートされていません。"
 
-msgid "ThinProvisioning Enabler is not installed. Can not create thin volume"
-msgstr ""
-"シンプロビジョニングイネーブラーがインストールされていません。シンボリューム"
-"を作成できません"
-
 msgid "This driver does not support deleting in-use snapshots."
 msgstr ""
 "このドライバーは、使用中のスナップショットの削除をサポートしていません。"
@@ -7700,13 +7489,6 @@ msgid ""
 msgstr ""
 "スナップショット %(id)s を削除するために Nova の更新を待機している間にタイム"
 "アウトになりました。"
-
-msgid ""
-"Timeout value (in seconds) used when connecting to ceph cluster. If value < "
-"0, no timeout is set and default librados value is used."
-msgstr ""
-"ceph クラスターへの接続時にタイムアウト値 (秒) が使用されます。値が 0 より小"
-"さい場合、タイムアウトは設定されず、デフォルトの librados 値が使用されます。"
 
 #, python-format
 msgid "Timeout while calling %s "
@@ -7897,9 +7679,6 @@ msgid ""
 msgstr ""
 "Purity REST API のバージョン %(api_version)s ではレプリケーションを行うことが"
 "できません。%(required_versions)s のうちのいずれかのバージョンが必要です。"
-
-msgid "Unable to enable replication and snapcopy at the same time."
-msgstr "レプリケーションとスナップコピーを同時に有効化することはできません。"
 
 #, python-format
 msgid "Unable to establish the partnership with the Storwize cluster %s."
@@ -8222,6 +8001,10 @@ msgstr ""
 "予期しない出力。[%(expected)s] が予期されましたが、[%(output)s] を受け取りま"
 "した"
 
+#, python-format
+msgid "Unexpected over quota on %(name)s."
+msgstr "%(name)s で、予期せずクォータを超過しました。"
+
 msgid "Unexpected response from Nimble API"
 msgstr "Nimble API からの予期しない応答"
 
@@ -8291,7 +8074,7 @@ msgstr "不明な処理 %s。"
 
 #, python-format
 msgid "Unknown or unsupported command %(cmd)s"
-msgstr "不明またはサポートされないコマンド (%(cmd)s) です"
+msgstr "不明またはサポートされないコマンド (%(cmd)s) です。"
 
 #, python-format
 msgid "Unknown protocol: %(protocol)s."
@@ -8892,9 +8675,6 @@ msgstr ""
 msgid "Volume size must be a multiple of 1 GB."
 msgstr "ボリュームサイズは 1 GB の倍数である必要があります。"
 
-msgid "Volume size must be multiple of 1 GB."
-msgstr "ボリュームサイズは 1 GB の倍数である必要があります。"
-
 msgid "Volume size must multiple of 1 GB."
 msgstr "ボリュームサイズは 1 GB の倍数である必要があります"
 
@@ -8998,10 +8778,6 @@ msgstr "ボリューム %s が見つかりませんでした。"
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
 msgstr "ボリューム: %s はすでに Cinder によって管理されています。"
-
-msgid "Volumes will be chunked into objects of this size (in megabytes)."
-msgstr ""
-"ボリュームは、このサイズ (メガバイト) のオブジェクトにチャンク化されます。"
 
 msgid ""
 "Volumes/account exceeded on both primary and secondary SolidFire accounts."
@@ -9640,13 +9416,6 @@ msgstr ""
 "create_consistencygroup_from_src は 1 つの cgsnapshot ソースまたは整合性グ"
 "ループソースのみをサポートします。複数ソースは使用できません。"
 
-msgid ""
-"create_consistencygroup_from_src supports a cgsnapshot source or a "
-"consistency group source. Multiple sources cannot be used."
-msgstr ""
-"create_consistencygroup_from_src は 1 つの cgsnapshot source または整合性グ"
-"ループソースのみをサポートします。複数ソースは使用できません。"
-
 #, python-format
 msgid "create_copy: Source vdisk %(src)s (%(src_id)s) does not exist."
 msgstr "create_copy: ソース vdisk %(src)s (%(src_id)s) は存在しません。"
@@ -9764,9 +9533,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: ボリュームサイズが、スナップショットベースボ"
 "リュームと異なります。"
-
-msgid "deduplicated and auto tiering can't be both enabled."
-msgstr "重複排除と自動階層化の両方を有効にすることはできません。"
 
 #, python-format
 msgid ""
@@ -10025,13 +9791,6 @@ msgstr "limit パラメーターは整数でなければなりません"
 msgid "limit param must be positive"
 msgstr "limit パラメーターは正でなければなりません"
 
-msgid ""
-"manage_existing cannot manage a volume connected to hosts. Please disconnect "
-"this volume from existing hosts before importing"
-msgstr ""
-"manage_existing はホストに接続されたボリュームを管理できません。インポートを"
-"行う前にこのボリュームを既存のホストから切断してください"
-
 msgid "manage_existing requires a 'name' key to identify an existing volume."
 msgstr ""
 "既存のボリュームを特定するには、manage_existing で 'name' キーが必要です。"
@@ -10079,10 +9838,6 @@ msgstr "スナップショット ID %s を持つ複数のリソースが見つ�
 
 msgid "name cannot be None"
 msgstr "名前を None に設定することはできません"
-
-#, python-format
-msgid "naviseccli_path: Could not find NAVISECCLI tool %(path)s."
-msgstr "naviseccli_path: NAVISECCLI ツール %(path)s が見つかりませんでした。"
 
 #, python-format
 msgid "no REPLY but %r"
@@ -10150,14 +9905,6 @@ msgstr ""
 "できません"
 
 #, python-format
-msgid "replication_device should be configured on backend: %s."
-msgstr "replication_device は backend: %s で設定する必要があります。"
-
-#, python-format
-msgid "replication_device with backend_id [%s] is missing."
-msgstr "backend_id [%s] の replication_device が欠落しています。"
-
-#, python-format
 msgid "replication_failover failed. %s not found."
 msgstr "replication_failover が失敗しました。%s が見つかりません。"
 
@@ -10216,9 +9963,6 @@ msgstr "san_ip が設定されていません。"
 
 msgid "san_ip must be set"
 msgstr "san_ip を設定する必要があります"
-
-msgid "san_ip: Mandatory field configuration. san_ip is not set."
-msgstr "san_ip: 必須フィールド構成。san_ip が設定されていません。"
 
 msgid ""
 "san_login and/or san_password is not set for Datera driver in the cinder."
@@ -10412,6 +10156,3 @@ msgid ""
 msgstr ""
 "zfssa_manage_policy プロパティーは 'strict' または 'loose' に設定する必要があ"
 "ります。現在の値は %s です。"
-
-msgid "{} is not a valid option."
-msgstr "{} は有効なオプションではありません。"
