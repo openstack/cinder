@@ -2690,7 +2690,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                          mock_close_connection,
                                          mock_open_connection,
                                          mock_init):
-        res = self.scapi.create_server(self.WWNS)
+        res = self.scapi.create_server(self.WWNS, 'Red Hat Linux 6.x')
         self.assertTrue(mock_create_server.called)
         self.assertTrue(mock_add_hba.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
@@ -2719,7 +2719,7 @@ class DellSCSanAPITestCase(test.TestCase):
                            mock_close_connection,
                            mock_open_connection,
                            mock_init):
-        res = self.scapi.create_server(self.IQN)
+        res = self.scapi.create_server(self.IQN, 'Red Hat Linux 6.x')
         self.assertTrue(mock_find_serveros.called)
         self.assertTrue(mock_find_server_folder.called)
         self.assertTrue(mock_first_result.called)
@@ -2750,7 +2750,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                         mock_close_connection,
                                         mock_open_connection,
                                         mock_init):
-        res = self.scapi.create_server(self.IQN)
+        res = self.scapi.create_server(self.IQN, 'Red Hat Binux 6.x')
         self.assertTrue(mock_find_serveros.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
 
@@ -2778,7 +2778,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                           mock_close_connection,
                                           mock_open_connection,
                                           mock_init):
-        res = self.scapi.create_server(self.IQN)
+        res = self.scapi.create_server(self.IQN, 'Red Hat Linux 6.x')
         self.assertTrue(mock_find_server_folder.called)
         self.assertEqual(self.SCSERVER, res, 'Unexpected ScServer')
 
@@ -2806,7 +2806,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_close_connection,
                                    mock_open_connection,
                                    mock_init):
-        res = self.scapi.create_server(self.IQN)
+        res = self.scapi.create_server(self.IQN, 'Red Hat Linux 6.x')
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2834,7 +2834,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                      mock_open_connection,
                                      mock_init):
         # Test create server where _first_result is None
-        res = self.scapi.create_server(self.IQN)
+        res = self.scapi.create_server(self.IQN, 'Red Hat Linux 6.x')
         self.assertIsNone(res, 'None expected')
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -2866,7 +2866,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_open_connection,
                                        mock_init):
         # Tests create server where add hba fails
-        res = self.scapi.create_server(self.IQN)
+        res = self.scapi.create_server(self.IQN, 'Red Hat Linux 6.x')
         self.assertTrue(mock_delete_server.called)
         self.assertIsNone(res, 'None expected')
 

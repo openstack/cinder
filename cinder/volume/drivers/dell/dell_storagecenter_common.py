@@ -60,7 +60,11 @@ common_opts = [
     cfg.MultiOpt('excluded_domain_ip',
                  item_type=types.IPAddress(),
                  default=None,
-                 help='Domain IP to be excluded from iSCSI returns.')
+                 help='Domain IP to be excluded from iSCSI returns.'),
+    cfg.StrOpt('dell_server_os',
+               default='Red Hat Linux 6.x',
+               help='Server OS type to use when creating a new server on the '
+                    'Storage Center.')
 ]
 
 LOG = logging.getLogger(__name__)
