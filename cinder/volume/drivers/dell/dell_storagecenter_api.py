@@ -2648,6 +2648,7 @@ class StorageCenterApi(object):
         # Have to replicate the active replay.
         payload['ReplicateActiveReplay'] = replicate_active or synchronous
         payload['Type'] = 'Synchronous' if synchronous else 'Asynchronous'
+        payload['SyncMode'] = 'HighAvailability'
         destinationvolumeattributes = {}
         destinationvolumeattributes['CreateSourceVolumeFolderPath'] = True
         destinationvolumeattributes['Notes'] = self.notes

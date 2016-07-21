@@ -5997,6 +5997,7 @@ class DellSCSanAPITestCase(test.TestCase):
                    'StorageCenter': ssn,
                    'ReplicateActiveReplay': False,
                    'Type': 'Asynchronous',
+                   'SyncMode': 'HighAvailability',
                    'DestinationVolumeAttributes':
                        {'CreateSourceVolumeFolderPath': True,
                         'Notes': notes,
@@ -6062,6 +6063,7 @@ class DellSCSanAPITestCase(test.TestCase):
                    'StorageCenter': ssn,
                    'ReplicateActiveReplay': False,
                    'Type': 'Asynchronous',
+                   'SyncMode': 'HighAvailability',
                    'DestinationVolumeAttributes':
                        {'CreateSourceVolumeFolderPath': True,
                         'Notes': notes,
