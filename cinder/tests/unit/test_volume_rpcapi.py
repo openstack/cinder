@@ -439,20 +439,26 @@ class VolumeRpcAPITestCase(test.TestCase):
                               mode='rw',
                               version=version)
 
-    def test_detach_volume(self):
+    @ddt.data('3.0', '3.4')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_detach_volume(self, version, can_send_version):
+        can_send_version.return_value = (version == '3.4')
         self._test_volume_api('detach_volume',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
                               attachment_id='fake_uuid',
-                              version="3.0")
+                              version=version)
 
-    def test_detach_volume_cluster(self):
+    @ddt.data('3.0', '3.4')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_detach_volume_cluster(self, version, can_send_version):
+        can_send_version.return_value = (version == '3.4')
         self._set_cluster()
         self._test_volume_api('detach_volume',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
                               attachment_id='fake_uuid',
-                              version="3.0")
+                              version=version)
 
     def test_copy_volume_to_image(self):
         self._test_volume_api('copy_volume_to_image',

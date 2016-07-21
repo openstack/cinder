@@ -435,6 +435,73 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                                                     True)
             self.assertEqual('rw', volume.admin_metadata['attached_mode'])
 
+    @mock.patch('cinder.db.volume_admin_metadata_delete')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_detached')
+    @mock.patch('cinder.objects.volume_attachment.VolumeAttachmentList.'
+                'get_all_by_volume_id')
+    def test_volume_detached_with_attachment(
+            self, volume_attachment_get,
+            volume_detached,
+            metadata_delete):
+        va_objs = [objects.VolumeAttachment(context=self.context, id=i)
+                   for i in [fake.OBJECT_ID, fake.OBJECT2_ID, fake.OBJECT3_ID]]
+        # As changes are not saved, we need reset it here. Later changes
+        # will be checked.
+        for obj in va_objs:
+            obj.obj_reset_changes()
+        va_list = objects.VolumeAttachmentList(context=self.context,
+                                               objects=va_objs)
+        va_list.obj_reset_changes()
+        volume_attachment_get.return_value = va_list
+        admin_context = context.get_admin_context()
+        volume = fake_volume.fake_volume_obj(
+            admin_context,
+            volume_attachment=va_list,
+            volume_admin_metadata=[{'key': 'attached_mode',
+                                    'value': 'rw'}])
+        self.assertEqual(3, len(volume.volume_attachment))
+        volume_detached.return_value = ({'status': 'in-use'},
+                                        {'attached_mode': 'rw'})
+        with mock.patch.object(admin_context, 'elevated') as mock_elevated:
+            mock_elevated.return_value = admin_context
+            volume.finish_detach(fake.OBJECT_ID)
+            volume_detached.assert_called_once_with(admin_context,
+                                                    volume.id,
+                                                    fake.OBJECT_ID)
+            metadata_delete.assert_called_once_with(admin_context,
+                                                    volume.id,
+                                                    'attached_mode')
+            self.assertEqual('in-use', volume.status)
+            self.assertEqual({}, volume.cinder_obj_get_changes())
+            self.assertEqual(2, len(volume.volume_attachment))
+            self.assertIsNone(volume.admin_metadata.get('attached_mode'))
+
+    @mock.patch('cinder.db.volume_admin_metadata_delete')
+    @mock.patch('cinder.db.sqlalchemy.api.volume_detached')
+    @mock.patch('cinder.objects.volume_attachment.VolumeAttachmentList.'
+                'get_all_by_volume_id')
+    def test_volume_detached_without_attachment(
+            self, volume_attachment_get, volume_detached, metadata_delete):
+        admin_context = context.get_admin_context()
+        volume = fake_volume.fake_volume_obj(
+            admin_context,
+            volume_admin_metadata=[{'key': 'attached_mode',
+                                    'value': 'rw'}])
+        self.assertFalse(volume.obj_attr_is_set('volume_attachment'))
+        volume_detached.return_value = ({'status': 'in-use'}, None)
+        with mock.patch.object(admin_context, 'elevated') as mock_elevated:
+            mock_elevated.return_value = admin_context
+            volume.finish_detach(fake.OBJECT_ID)
+            metadata_delete.assert_called_once_with(admin_context,
+                                                    volume.id,
+                                                    'attached_mode')
+            volume_detached.assert_called_once_with(admin_context,
+                                                    volume.id,
+                                                    fake.OBJECT_ID)
+            self.assertEqual('in-use', volume.status)
+            self.assertEqual({}, volume.cinder_obj_get_changes())
+            self.assertFalse(volume_attachment_get.called)
+
 
 class TestVolumeList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.volume_get_all')

@@ -517,6 +517,25 @@ class Volume(cleanable.CinderCleanableObject, base.CinderObject,
             self.save()
         return attachment
 
+    def finish_detach(self, attachment_id):
+        with self.obj_as_admin():
+            volume_updates, attachment_updates = (
+                db.volume_detached(self._context, self.id, attachment_id))
+            db.volume_admin_metadata_delete(self._context, self.id,
+                                            'attached_mode')
+            self.admin_metadata.pop('attached_mode', None)
+        # Remove attachment in volume only when this field is loaded.
+        if attachment_updates and self.obj_attr_is_set('volume_attachment'):
+            for i, attachment in enumerate(self.volume_attachment):
+                if attachment.id == attachment_id:
+                    del self.volume_attachment.objects[i]
+                    break
+
+        self.update(volume_updates)
+        self.obj_reset_changes(
+            list(volume_updates.keys()) +
+            ['volume_attachment', 'admin_metadata'])
+
 
 @base.CinderObjectRegistry.register
 class VolumeList(base.ObjectListBase, base.CinderObject):

@@ -2087,7 +2087,7 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         with volume.obj_as_admin():
             volume.admin_metadata['readonly'] = True
             volume.save()
-        volume_id = volume['id']
+        volume_id = volume.id
         self.volume.create_volume(self.user_context,
                                   volume=volume)
         volume_passed = volume if volume_object else None
@@ -2120,10 +2120,12 @@ class VolumeTestCase(base.BaseVolumeTestCase):
         self.assertRaises(exception.VolumeAttached,
                           self.volume.delete_volume,
                           self.context,
-                          volume)
-        self.volume.detach_volume(self.context, volume_id, attachment['id'])
-        vol = db.volume_get(self.context, volume_id)
-        self.assertEqual('available', vol['status'])
+                          volume=volume)
+        self.volume.detach_volume(self.context, volume_id,
+                                  attachment.id,
+                                  volume=volume_passed)
+        vol = objects.Volume.get_by_id(self.context, volume_id)
+        self.assertEqual('available', vol.status)
 
         self.volume.delete_volume(self.context, volume)
         self.assertRaises(exception.VolumeNotFound,

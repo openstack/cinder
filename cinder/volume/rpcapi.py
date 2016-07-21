@@ -114,9 +114,10 @@ class VolumeAPI(rpc.RPCAPI):
         3.2  - Adds support for sending objects over RPC in
                get_backup_device().
         3.3  - Adds support for sending objects over RPC in attach_volume().
+        3.4  - Adds support for sending objects over RPC in detach_volume().
     """
 
-    RPC_API_VERSION = '3.3'
+    RPC_API_VERSION = '3.4'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -201,9 +202,13 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'attach_volume', **msg_args)
 
     def detach_volume(self, ctxt, volume, attachment_id):
-        cctxt = self._get_cctxt(volume.service_topic_queue)
-        return cctxt.call(ctxt, 'detach_volume', volume_id=volume.id,
-                          attachment_id=attachment_id)
+        msg_args = {'volume_id': volume.id,
+                    'attachment_id': attachment_id,
+                    'volume': volume}
+        cctxt = self._get_cctxt(volume.service_topic_queue, ('3.4', '3.0'))
+        if not self.client.can_send_version('3.4'):
+            msg_args.pop('volume')
+        return cctxt.call(ctxt, 'detach_volume', **msg_args)
 
     def copy_volume_to_image(self, ctxt, volume, image_meta):
         cctxt = self._get_cctxt(volume['host'])

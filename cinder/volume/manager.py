@@ -1022,29 +1022,33 @@ class VolumeManager(manager.CleanableManager,
         return attachment
 
     @coordination.synchronized('{volume_id}-{f_name}')
-    def detach_volume(self, context, volume_id, attachment_id=None):
+    def detach_volume(self, context, volume_id, attachment_id=None,
+                      volume=None):
         """Updates db to show volume is detached."""
         # TODO(vish): refactor this into a more general "unreserve"
-        volume = self.db.volume_get(context, volume_id)
-        attachment = None
+        # FIXME(lixiaoy1): Remove this in v4.0 of RPC API.
+        if volume is None:
+            # For older clients, mimic the old behavior and look up the volume
+            # by its volume_id.
+            volume = objects.Volume.get_by_id(context, volume_id)
+
         if attachment_id:
             try:
-                attachment = self.db.volume_attachment_get(context,
-                                                           attachment_id)
+                attachment = objects.VolumeAttachment.get_by_id(context,
+                                                                attachment_id)
             except exception.VolumeAttachmentNotFound:
                 LOG.info(_LI("Volume detach called, but volume not attached."),
                          resource=volume)
                 # We need to make sure the volume status is set to the correct
                 # status.  It could be in detaching status now, and we don't
                 # want to leave it there.
-                self.db.volume_detached(context, volume_id, attachment_id)
+                volume.finish_detach(attachment_id)
                 return
         else:
             # We can try and degrade gracefully here by trying to detach
             # a volume without the attachment_id here if the volume only has
             # one attachment.  This is for backwards compatibility.
-            attachments = self.db.volume_attachment_get_all_by_volume_id(
-                context, volume_id)
+            attachments = volume.volume_attachment
             if len(attachments) > 1:
                 # There are more than 1 attachments for this volume
                 # we have to have an attachment id.
@@ -1059,10 +1063,9 @@ class VolumeManager(manager.CleanableManager,
                 # so set the status to available and move on.
                 LOG.info(_LI("Volume detach called, but volume not attached."),
                          resource=volume)
-                self.db.volume_update(
-                    context, volume_id, {
-                        'status': 'available',
-                        'attach_status': fields.VolumeAttachStatus.DETACHED})
+                volume.status = 'available'
+                volume.attach_status = fields.VolumeAttachStatus.DETACHED
+                volume.save()
                 return
 
         self._notify_about_volume_usage(context, volume, "detach.start")
@@ -1092,7 +1095,6 @@ class VolumeManager(manager.CleanableManager,
 
         # We're going to remove the export here
         # (delete the iscsi target)
-        volume = self.db.volume_get(context, volume_id)
         try:
             utils.require_driver_initialized(self.driver)
             self.driver.remove_export(context.elevated(), volume)
@@ -1108,11 +1110,7 @@ class VolumeManager(manager.CleanableManager,
             raise exception.RemoveExportException(volume=volume_id,
                                                   reason=six.text_type(ex))
 
-        self.db.volume_detached(context.elevated(), volume_id,
-                                attachment.get('id'))
-        self.db.volume_admin_metadata_delete(context.elevated(), volume_id,
-                                             'attached_mode')
-
+        volume.finish_detach(attachment.id)
         self._notify_about_volume_usage(context, volume, "detach.end")
         LOG.info(_LI("Detach volume completed successfully."), resource=volume)
 

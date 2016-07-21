@@ -387,33 +387,101 @@ class DBAPIVolumeTestCase(BaseTest):
                   'instance_uuid': instance_uuid,
                   'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
-        db.volume_attached(self.ctxt, attachment['id'],
+        db.volume_attached(self.ctxt, attachment.id,
                            instance_uuid,
                            None, '/tmp')
-        db.volume_detached(self.ctxt, volume['id'], attachment['id'])
-        volume = db.volume_get(self.ctxt, volume['id'])
+        volume_updates, attachment_updates = (
+            db.volume_detached(self.ctxt, volume.id, attachment.id))
+        expected_attachment = {
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
+            'detach_time': mock.ANY,
+            'deleted': True,
+            'deleted_at': mock.ANY, }
+        self.assertDictEqual(expected_attachment, attachment_updates)
+        expected_volume = {
+            'status': 'available',
+            'attach_status': fields.VolumeAttachStatus.DETACHED, }
+        self.assertDictEqual(expected_volume, volume_updates)
+        volume = db.volume_get(self.ctxt, volume.id)
         self.assertRaises(exception.VolumeAttachmentNotFound,
                           db.volume_attachment_get,
                           self.ctxt,
-                          attachment['id'])
-        self.assertEqual('available', volume['status'])
+                          attachment.id)
+        self.assertEqual('available', volume.status)
+
+    def test_volume_detached_two_attachments(self):
+        volume = db.volume_create(self.ctxt, {})
+        instance_uuid = fake.INSTANCE_ID
+        values = {'volume_id': volume.id,
+                  'instance_uuid': instance_uuid,
+                  'attach_status': fields.VolumeAttachStatus.ATTACHING, }
+        attachment = db.volume_attach(self.ctxt, values)
+        values2 = {'volume_id': volume.id,
+                   'instance_uuid': fake.OBJECT_ID,
+                   'attach_status': fields.VolumeAttachStatus.ATTACHING, }
+        db.volume_attach(self.ctxt, values2)
+        db.volume_attached(self.ctxt, attachment.id,
+                           instance_uuid,
+                           None, '/tmp')
+        volume_updates, attachment_updates = (
+            db.volume_detached(self.ctxt, volume.id, attachment.id))
+        expected_attachment = {
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
+            'detach_time': mock.ANY,
+            'deleted': True,
+            'deleted_at': mock.ANY, }
+        self.assertDictEqual(expected_attachment, attachment_updates)
+        expected_volume = {
+            'status': 'in-use',
+            'attach_status': fields.VolumeAttachStatus.ATTACHED, }
+        self.assertDictEqual(expected_volume, volume_updates)
+        volume = db.volume_get(self.ctxt, volume.id)
+        self.assertRaises(exception.VolumeAttachmentNotFound,
+                          db.volume_attachment_get,
+                          self.ctxt,
+                          attachment.id)
+        self.assertEqual('in-use', volume.status)
+
+    def test_volume_detached_invalid_attachment(self):
+        volume = db.volume_create(self.ctxt, {})
+        # detach it again
+        volume_updates, attachment_updates = (
+            db.volume_detached(self.ctxt, volume.id, fake.ATTACHMENT_ID))
+        self.assertIsNone(attachment_updates)
+        expected_volume = {
+            'status': 'available',
+            'attach_status': fields.VolumeAttachStatus.DETACHED, }
+        self.assertDictEqual(expected_volume, volume_updates)
+        volume = db.volume_get(self.ctxt, volume.id)
+        self.assertEqual('available', volume.status)
 
     def test_volume_detached_from_host(self):
         volume = db.volume_create(self.ctxt, {})
         host_name = 'fake_host'
-        values = {'volume_id': volume['id'],
+        values = {'volume_id': volume.id,
                   'attach_host': host_name,
                   'attach_status': fields.VolumeAttachStatus.ATTACHING, }
         attachment = db.volume_attach(self.ctxt, values)
-        db.volume_attached(self.ctxt, attachment['id'],
+        db.volume_attached(self.ctxt, attachment.id,
                            None, host_name, '/tmp')
-        db.volume_detached(self.ctxt, volume['id'], attachment['id'])
-        volume = db.volume_get(self.ctxt, volume['id'])
+        volume_updates, attachment_updates = (
+            db.volume_detached(self.ctxt, volume.id, attachment.id))
+        expected_attachment = {
+            'attach_status': fields.VolumeAttachStatus.DETACHED,
+            'detach_time': mock.ANY,
+            'deleted': True,
+            'deleted_at': mock.ANY}
+        self.assertDictEqual(expected_attachment, attachment_updates)
+        expected_volume = {
+            'status': 'available',
+            'attach_status': fields.VolumeAttachStatus.DETACHED, }
+        self.assertDictEqual(expected_volume, volume_updates)
+        volume = db.volume_get(self.ctxt, volume.id)
         self.assertRaises(exception.VolumeAttachmentNotFound,
                           db.volume_attachment_get,
                           self.ctxt,
-                          attachment['id'])
-        self.assertEqual('available', volume['status'])
+                          attachment.id)
+        self.assertEqual('available', volume.status)
 
     def test_volume_get(self):
         volume = db.volume_create(self.ctxt, {})
