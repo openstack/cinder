@@ -115,9 +115,10 @@ class VolumeAPI(rpc.RPCAPI):
                get_backup_device().
         3.3  - Adds support for sending objects over RPC in attach_volume().
         3.4  - Adds support for sending objects over RPC in detach_volume().
+        3.5  - Adds support for cluster in retype and migrate_volume
     """
 
-    RPC_API_VERSION = '3.4'
+    RPC_API_VERSION = '3.5'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -125,10 +126,10 @@ class VolumeAPI(rpc.RPCAPI):
     def _get_cctxt(self, host=None, version=None, **kwargs):
         if host is not None:
             kwargs['server'] = utils.get_volume_rpc_host(host)
-        return super(VolumeAPI, self)._get_cctxt(version, **kwargs)
+        return super(VolumeAPI, self)._get_cctxt(version=version, **kwargs)
 
-    def create_consistencygroup(self, ctxt, group, host):
-        cctxt = self._get_cctxt(host)
+    def create_consistencygroup(self, ctxt, group):
+        cctxt = self._get_cctxt(group.service_topic_queue)
         cctxt.cast(ctxt, 'create_consistencygroup', group=group)
 
     def delete_consistencygroup(self, ctxt, group):
@@ -145,7 +146,7 @@ class VolumeAPI(rpc.RPCAPI):
 
     def create_consistencygroup_from_src(self, ctxt, group, cgsnapshot=None,
                                          source_cg=None):
-        cctxt = self._get_cctxt(group.host)
+        cctxt = self._get_cctxt(group.service_topic_queue)
         cctxt.cast(ctxt, 'create_consistencygroup_from_src',
                    group=group,
                    cgsnapshot=cgsnapshot,
@@ -159,9 +160,9 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(cgsnapshot.service_topic_queue)
         cctxt.cast(ctxt, 'delete_cgsnapshot', cgsnapshot=cgsnapshot)
 
-    def create_volume(self, ctxt, volume, host, request_spec,
-                      filter_properties, allow_reschedule=True):
-        cctxt = self._get_cctxt(host)
+    def create_volume(self, ctxt, volume, request_spec, filter_properties,
+                      allow_reschedule=True):
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         cctxt.cast(ctxt, 'create_volume',
                    request_spec=request_spec,
                    filter_properties=filter_properties,
@@ -239,35 +240,48 @@ class VolumeAPI(rpc.RPCAPI):
                           new_user=new_user, new_project=new_project)
 
     def extend_volume(self, ctxt, volume, new_size, reservations):
-        cctxt = self._get_cctxt(volume.host)
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         cctxt.cast(ctxt, 'extend_volume', volume=volume, new_size=new_size,
                    reservations=reservations)
 
     def migrate_volume(self, ctxt, volume, dest_host, force_host_copy):
-        host_p = {'host': dest_host.host,
-                  'capabilities': dest_host.capabilities}
-        cctxt = self._get_cctxt(volume.host)
-        cctxt.cast(ctxt, 'migrate_volume', volume=volume, host=host_p,
+        backend_p = {'host': dest_host.host,
+                     'cluster_name': dest_host.cluster_name,
+                     'capabilities': dest_host.capabilities}
+
+        version = '3.5'
+        if not self.client.can_send_version(version):
+            version = '3.0'
+            del backend_p['cluster_name']
+
+        cctxt = self._get_cctxt(volume.service_topic_queue, version)
+        cctxt.cast(ctxt, 'migrate_volume', volume=volume, host=backend_p,
                    force_host_copy=force_host_copy)
 
     def migrate_volume_completion(self, ctxt, volume, new_volume, error):
-        cctxt = self._get_cctxt(volume.host)
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         return cctxt.call(ctxt, 'migrate_volume_completion', volume=volume,
                           new_volume=new_volume, error=error,)
 
     def retype(self, ctxt, volume, new_type_id, dest_host,
                migration_policy='never', reservations=None,
                old_reservations=None):
-        host_p = {'host': dest_host.host,
-                  'capabilities': dest_host.capabilities}
-        cctxt = self._get_cctxt(volume.host)
+        backend_p = {'host': dest_host.host,
+                     'cluster_name': dest_host.cluster_name,
+                     'capabilities': dest_host.capabilities}
+        version = '3.5'
+        if not self.client.can_send_version(version):
+            version = '3.0'
+            del backend_p['cluster_name']
+
+        cctxt = self._get_cctxt(volume.service_topic_queue, version)
         cctxt.cast(ctxt, 'retype', volume=volume, new_type_id=new_type_id,
-                   host=host_p, migration_policy=migration_policy,
+                   host=backend_p, migration_policy=migration_policy,
                    reservations=reservations,
                    old_reservations=old_reservations)
 
     def manage_existing(self, ctxt, volume, ref):
-        cctxt = self._get_cctxt(volume.host)
+        cctxt = self._get_cctxt(volume.service_topic_queue)
         cctxt.cast(ctxt, 'manage_existing', ref=ref, volume=volume)
 
     def update_migrated_volume(self, ctxt, volume, new_volume,
@@ -334,8 +348,8 @@ class VolumeAPI(rpc.RPCAPI):
                           limit=limit, offset=offset, sort_keys=sort_keys,
                           sort_dirs=sort_dirs)
 
-    def create_group(self, ctxt, group, host):
-        cctxt = self._get_cctxt(host)
+    def create_group(self, ctxt, group):
+        cctxt = self._get_cctxt(group.service_topic_queue)
         cctxt.cast(ctxt, 'create_group', group=group)
 
     def delete_group(self, ctxt, group):
@@ -349,7 +363,7 @@ class VolumeAPI(rpc.RPCAPI):
 
     def create_group_from_src(self, ctxt, group, group_snapshot=None,
                               source_group=None):
-        cctxt = self._get_cctxt(group.host)
+        cctxt = self._get_cctxt(group.service_topic_queue)
         cctxt.cast(ctxt, 'create_group_from_src', group=group,
                    group_snapshot=group_snapshot, source_group=source_group)
 

@@ -752,6 +752,9 @@ def matching_backend_name(src_volume_type, volume_type):
 
 
 def hosts_are_equivalent(host_1, host_2):
+    # In case host_1 or host_2 are None
+    if not (host_1 and host_2):
+        return host_1 == host_2
     return extract_host(host_1) == extract_host(host_2)
 
 

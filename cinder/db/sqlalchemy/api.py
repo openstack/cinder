@@ -424,7 +424,7 @@ def _filter_host(field, value, match_level=None):
 
 def _service_query(context, session=None, read_deleted='no', host=None,
                    cluster_name=None, is_up=None, backend_match_level=None,
-                   **filters):
+                   disabled=None, **filters):
     filters = _clean_filters(filters)
     if filters and not is_valid_model_filters(models.Service, filters):
         return None
@@ -442,6 +442,22 @@ def _service_query(context, session=None, read_deleted='no', host=None,
         query = query.filter(_filter_host(models.Service.cluster_name,
                                           cluster_name, backend_match_level))
 
+    # Now that we have clusters, a service is disabled if the service doesn't
+    # belong to a cluster or if it belongs to a cluster and the cluster itself
+    # is disabled.
+    if disabled is not None:
+        disabled_filter = or_(
+            and_(models.Service.cluster_name.is_(None),
+                 models.Service.disabled),
+            and_(models.Service.cluster_name.isnot(None),
+                 sql.exists().where(and_(
+                     models.Cluster.name == models.Service.cluster_name,
+                     models.Cluster.binary == models.Service.binary,
+                     ~models.Cluster.deleted,
+                     models.Cluster.disabled))))
+        if not disabled:
+            disabled_filter = ~disabled_filter
+        query = query.filter(disabled_filter)
     if filters:
         query = query.filter_by(**filters)
 
@@ -5074,16 +5090,14 @@ def consistencygroup_create(context, values, cg_snap_id=None, cg_id=None):
 
         if conditions:
             # We don't want duplicated field values
-            values.pop('volume_type_id', None)
-            values.pop('availability_zone', None)
-            values.pop('host', None)
+            names = ['volume_type_id', 'availability_zone', 'host',
+                     'cluster_name']
+            for name in names:
+                values.pop(name, None)
 
-            sel = session.query(cg_model.volume_type_id,
-                                cg_model.availability_zone,
-                                cg_model.host,
-                                *(bindparam(k, v) for k, v in values.items())
-                                ).filter(*conditions)
-            names = ['volume_type_id', 'availability_zone', 'host']
+            fields = [getattr(cg_model, name) for name in names]
+            fields.extend(bindparam(k, v) for k, v in values.items())
+            sel = session.query(*fields).filter(*conditions)
             names.extend(values.keys())
             insert_stmt = cg_model.__table__.insert().from_select(names, sel)
             result = session.execute(insert_stmt)

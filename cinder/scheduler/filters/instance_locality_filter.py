@@ -69,9 +69,9 @@ class InstanceLocalityFilter(filters.BaseHostFilter):
 
         return self._nova_ext_srv_attr
 
-    def host_passes(self, host_state, filter_properties):
+    def host_passes(self, backend_state, filter_properties):
         context = filter_properties['context']
-        host = volume_utils.extract_host(host_state.host, 'host')
+        host = volume_utils.extract_host(backend_state.backend_id, 'host')
 
         scheduler_hints = filter_properties.get('scheduler_hints') or {}
         instance_uuid = scheduler_hints.get(HINT_KEYWORD, None)

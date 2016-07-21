@@ -10,6 +10,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import ddt
 import fixtures
 import mock
 from oslo_concurrency import lockutils
@@ -21,6 +22,7 @@ import webob
 from webob import exc
 
 from cinder.api.contrib import admin_actions
+from cinder.api.openstack import api_version_request as api_version
 from cinder.backup import api as backup_api
 from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
@@ -70,6 +72,7 @@ class BaseAdminTest(test.TestCase):
         return volume
 
 
+@ddt.ddt
 class AdminActionsTest(BaseAdminTest):
     def setUp(self):
         super(AdminActionsTest, self).setUp()
@@ -101,6 +104,7 @@ class AdminActionsTest(BaseAdminTest):
 
         self.patch('cinder.objects.Service.get_minimum_rpc_version',
                    side_effect=_get_minimum_rpc_version_mock)
+        self.controller = admin_actions.VolumeAdminController()
 
     def tearDown(self):
         self.svc.stop()
@@ -138,7 +142,7 @@ class AdminActionsTest(BaseAdminTest):
                                           updated_status)
 
     def test_valid_updates(self):
-        vac = admin_actions.VolumeAdminController()
+        vac = self.controller
 
         vac.validate_update({'status': 'creating'})
         vac.validate_update({'status': 'available'})
@@ -503,9 +507,73 @@ class AdminActionsTest(BaseAdminTest):
                           {'host': 'test2',
                            'topic': constants.VOLUME_TOPIC,
                            'created_at': timeutils.utcnow()})
+        db.service_create(self.ctx,
+                          {'host': 'clustered_host',
+                           'topic': constants.VOLUME_TOPIC,
+                           'binary': constants.VOLUME_BINARY,
+                           'cluster_name': 'cluster',
+                           'created_at': timeutils.utcnow()})
+        db.cluster_create(self.ctx,
+                          {'name': 'cluster',
+                           'binary': constants.VOLUME_BINARY})
         # current status is available
         volume = self._create_volume(self.ctx)
         return volume
+
+    def _migrate_volume_3_exec(self, ctx, volume, host, expected_status,
+                               force_host_copy=False, version=None,
+                               cluster=None):
+        # build request to migrate to host
+        # req = fakes.HTTPRequest.blank('/v3/%s/volumes/%s/action' % (
+        #     fake.PROJECT_ID, volume['id']))
+        req = webob.Request.blank('/v3/%s/volumes/%s/action' % (
+            fake.PROJECT_ID, volume['id']))
+        req.method = 'POST'
+        req.headers['content-type'] = 'application/json'
+        body = {'os-migrate_volume': {'host': host,
+                                      'force_host_copy': force_host_copy}}
+        version = version or '3.0'
+        req.headers = {'OpenStack-API-Version': 'volume %s' % version}
+        req.api_version_request = api_version.APIVersionRequest(version)
+        if version == '3.16':
+            body['os-migrate_volume']['cluster'] = cluster
+        req.body = jsonutils.dump_as_bytes(body)
+        req.environ['cinder.context'] = ctx
+        resp = self.controller._migrate_volume(req, volume.id, body)
+
+        # verify status
+        self.assertEqual(expected_status, resp.status_int)
+        volume = db.volume_get(self.ctx, volume['id'])
+        return volume
+
+    @ddt.data('3.0', '3.15', '3.16')
+    def test_migrate_volume_success_3(self, version):
+        expected_status = 202
+        host = 'test2'
+        volume = self._migrate_volume_prep()
+        volume = self._migrate_volume_3_exec(self.ctx, volume, host,
+                                             expected_status, version=version)
+        self.assertEqual('starting', volume['migration_status'])
+
+    def test_migrate_volume_success_cluster(self):
+        expected_status = 202
+        # We cannot provide host and cluster, so send host to None
+        host = None
+        cluster = 'cluster'
+        volume = self._migrate_volume_prep()
+        volume = self._migrate_volume_3_exec(self.ctx, volume, host,
+                                             expected_status, version='3.16',
+                                             cluster=cluster)
+        self.assertEqual('starting', volume['migration_status'])
+
+    def test_migrate_volume_fail_host_and_cluster(self):
+        # We cannot send host and cluster in the request
+        host = 'test2'
+        cluster = 'cluster'
+        volume = self._migrate_volume_prep()
+        self.assertRaises(exception.InvalidInput,
+                          self._migrate_volume_3_exec, self.ctx, volume, host,
+                          None, version='3.16', cluster=cluster)
 
     def _migrate_volume_exec(self, ctx, volume, host, expected_status,
                              force_host_copy=False):

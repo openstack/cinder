@@ -64,6 +64,7 @@ REST_API_VERSION_HISTORY = """
     * 3.14 - Add group snapshot and create group from src APIs.
     * 3.15 - Inject the response's `Etag` header to avoid the lost update
              problem with volume metadata.
+    * 3.16 - Migrate volume now supports cluster
 """
 
 # The minimum and maximum versions of the API supported
@@ -71,7 +72,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.15"
+_MAX_API_VERSION = "3.16"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

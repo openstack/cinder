@@ -17,6 +17,7 @@
 Unit Tests for cinder.scheduler.rpcapi
 """
 
+import ddt
 import mock
 
 from cinder import context
@@ -27,6 +28,7 @@ from cinder.tests.unit import fake_constants
 from cinder.tests.unit import fake_volume
 
 
+@ddt.ddt
 class SchedulerRpcAPITestCase(test.TestCase):
 
     def setUp(self):
@@ -75,14 +77,20 @@ class SchedulerRpcAPITestCase(test.TestCase):
                 for kwarg, value in self.fake_kwargs.items():
                     self.assertEqual(expected_msg[kwarg], value)
 
-    def test_update_service_capabilities(self):
+    @ddt.data('3.0', '3.3')
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_update_service_capabilities(self, version, can_send_version):
+        can_send_version.side_effect = lambda x: x == version
         self._test_scheduler_api('update_service_capabilities',
                                  rpc_method='cast',
                                  service_name='fake_name',
                                  host='fake_host',
-                                 capabilities='fake_capabilities',
+                                 cluster_name='cluster_name',
+                                 capabilities={},
                                  fanout=True,
-                                 version='3.0')
+                                 version=version,
+                                 timestamp='123')
+        can_send_version.assert_called_once_with('3.3')
 
     def test_create_volume(self):
         volume = fake_volume.fake_volume_obj(self.context)
@@ -135,17 +143,18 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  version='3.0')
         create_worker_mock.assert_called_once()
 
-    def test_migrate_volume_to_host(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version')
+    def test_migrate_volume(self, can_send_version):
         volume = fake_volume.fake_volume_obj(self.context)
         create_worker_mock = self.mock_object(volume, 'create_worker')
-        self._test_scheduler_api('migrate_volume_to_host',
+        self._test_scheduler_api('migrate_volume',
                                  rpc_method='cast',
-                                 host='host',
-                                 force_host_copy=True,
+                                 backend='host',
+                                 force_copy=True,
                                  request_spec='fake_request_spec',
                                  filter_properties='filter_properties',
                                  volume=volume,
-                                 version='3.0')
+                                 version='3.3')
         create_worker_mock.assert_not_called()
 
     def test_retype(self):

@@ -103,7 +103,7 @@ class SchedulerManagerTestCase(test.TestCase):
         self.manager.update_service_capabilities(self.context,
                                                  service_name=service,
                                                  host=host)
-        _mock_update_cap.assert_called_once_with(service, host, {})
+        _mock_update_cap.assert_called_once_with(service, host, {}, None, None)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.'
                 'update_service_capabilities')
@@ -117,7 +117,8 @@ class SchedulerManagerTestCase(test.TestCase):
                                                  service_name=service,
                                                  host=host,
                                                  capabilities=capabilities)
-        _mock_update_cap.assert_called_once_with(service, host, capabilities)
+        _mock_update_cap.assert_called_once_with(service, host, capabilities,
+                                                 None, None)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('cinder.message.api.API.create')
@@ -163,6 +164,19 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_sched_create.assert_called_once_with(self.context,
                                                    request_spec_obj, {})
         self.assertFalse(_mock_sleep.called)
+
+    @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
+    @mock.patch('eventlet.sleep')
+    def test_create_volume_set_worker(self, _mock_sleep, _mock_sched_create):
+        """Make sure that the worker is created when creating a volume."""
+        volume = tests_utils.create_volume(self.context, status='creating')
+
+        request_spec = {'volume_id': volume.id}
+
+        self.manager.create_volume(self.context, volume,
+                                   request_spec=request_spec,
+                                   filter_properties={})
+        volume.set_worker.assert_called_once_with()
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
     @mock.patch('cinder.scheduler.driver.Scheduler.is_ready')
@@ -326,6 +340,13 @@ class SchedulerManagerTestCase(test.TestCase):
 
             self.manager.driver = original_driver
 
+    def test_do_cleanup(self):
+        vol = tests_utils.create_volume(self.context, status='creating')
+        self.manager._do_cleanup(self.context, vol)
+
+        vol.refresh()
+        self.assertEqual('error', vol.status)
+
 
 class SchedulerTestCase(test.TestCase):
     """Test case for base scheduler driver class."""
@@ -346,9 +367,9 @@ class SchedulerTestCase(test.TestCase):
         host = 'fake_host'
         capabilities = {'fake_capability': 'fake_value'}
         self.driver.update_service_capabilities(service_name, host,
-                                                capabilities)
+                                                capabilities, None)
         _mock_update_cap.assert_called_once_with(service_name, host,
-                                                 capabilities)
+                                                 capabilities, None)
 
     @mock.patch('cinder.scheduler.host_manager.HostManager.'
                 'has_all_capabilities', return_value=False)
@@ -387,8 +408,10 @@ class SchedulerDriverModuleTestCase(test.TestCase):
         volume = fake_volume.fake_volume_obj(self.context)
         _mock_volume_get.return_value = volume
 
-        driver.volume_update_db(self.context, volume.id, 'fake_host')
+        driver.volume_update_db(self.context, volume.id, 'fake_host',
+                                'fake_cluster')
         scheduled_at = volume.scheduled_at.replace(tzinfo=None)
         _mock_vol_update.assert_called_once_with(
             self.context, volume.id, {'host': 'fake_host',
+                                      'cluster_name': 'fake_cluster',
                                       'scheduled_at': scheduled_at})

@@ -17,6 +17,7 @@ import oslo_messaging as messaging
 import webob
 from webob import exc
 
+from cinder.api import common
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import backup
@@ -241,14 +242,12 @@ class VolumeAdminController(AdminController):
         # Not found exception will be handled at the wsgi level
         volume = self._get(context, id)
         params = body['os-migrate_volume']
-        try:
-            host = params['host']
-        except KeyError:
-            raise exc.HTTPBadRequest(explanation=_("Must specify 'host'."))
+
+        cluster_name, host = common.get_cluster_host(req, params, '3.16')
         force_host_copy = utils.get_bool_param('force_host_copy', params)
         lock_volume = utils.get_bool_param('lock_volume', params)
-        self.volume_api.migrate_volume(context, volume, host, force_host_copy,
-                                       lock_volume)
+        self.volume_api.migrate_volume(context, volume, host, cluster_name,
+                                       force_host_copy, lock_volume)
         return webob.Response(status_int=202)
 
     @wsgi.action('os-migrate_volume_completion')

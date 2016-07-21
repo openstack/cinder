@@ -24,6 +24,14 @@ class AffinityFilter(filters.BaseHostFilter):
     def __init__(self):
         self.volume_api = volume.API()
 
+    def _get_volumes(self, context, affinity_uuids, backend_state):
+        filters = {'id': affinity_uuids, 'deleted': False}
+        if backend_state.cluster_name:
+            filters['cluster_name'] = backend_state.cluster_name
+        else:
+            filters['host'] = backend_state.host
+        return self.volume_api.get_all(context, filters=filters)
+
 
 class DifferentBackendFilter(AffinityFilter):
     """Schedule volume on a different back-end from a set of volumes."""
@@ -53,11 +61,8 @@ class DifferentBackendFilter(AffinityFilter):
             return False
 
         if affinity_uuids:
-            return not self.volume_api.get_all(
-                context, filters={'host': host_state.host,
-                                  'id': affinity_uuids,
-                                  'deleted': False})
-
+            return not self._get_volumes(context, affinity_uuids,
+                                         host_state)
         # With no different_host key
         return True
 
@@ -90,10 +95,7 @@ class SameBackendFilter(AffinityFilter):
             return False
 
         if affinity_uuids:
-            return self.volume_api.get_all(
-                context, filters={'host': host_state.host,
-                                  'id': affinity_uuids,
-                                  'deleted': False})
+            return self._get_volumes(context, affinity_uuids, host_state)
 
         # With no same_host key
         return True

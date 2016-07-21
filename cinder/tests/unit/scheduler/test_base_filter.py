@@ -178,7 +178,7 @@ class TestBaseFilterHandler(test.TestCase):
     def test_get_filtered_objects_info_and_debug_log_none_returned(self):
 
         all_filters = [FilterA, FilterA, FilterB]
-        fake_hosts = [host_manager.HostState('fake_host%s' % x)
+        fake_hosts = [host_manager.HostState('fake_host%s' % x, None)
                       for x in range(1, 4)]
 
         filt_props = {"request_spec": {'volume_id': fake.VOLUME_ID,

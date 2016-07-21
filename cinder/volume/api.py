@@ -1344,32 +1344,47 @@ class API(base.Base):
                  resource=volume)
 
     @wrap_check_policy
-    def migrate_volume(self, context, volume, host, force_host_copy,
+    def migrate_volume(self, context, volume, host, cluster_name, force_copy,
                        lock_volume):
-        """Migrate the volume to the specified host."""
-        # Make sure the host is in the list of available hosts
+        """Migrate the volume to the specified host or cluster."""
         elevated = context.elevated()
-        topic = constants.VOLUME_TOPIC
-        services = objects.ServiceList.get_all_by_topic(
-            elevated, topic, disabled=False)
-        found = False
-        svc_host = volume_utils.extract_host(host, 'backend')
-        for service in services:
-            if service.is_up and service.host == svc_host:
-                found = True
-                break
-        if not found:
-            msg = _('No available service named %s') % host
+
+        # If we received a request to migrate to a host
+        # Look for the service - must be up and enabled
+        svc_host = host and volume_utils.extract_host(host, 'backend')
+        svc_cluster = cluster_name and volume_utils.extract_host(cluster_name,
+                                                                 'backend')
+        # NOTE(geguileo): Only svc_host or svc_cluster is set, so when we get
+        # a service from the DB we are getting either one specific service from
+        # a host or any service from a cluster that is up, which means that the
+        # cluster itself is also up.
+        try:
+            svc = objects.Service.get_by_id(elevated, None, is_up=True,
+                                            topic=constants.VOLUME_TOPIC,
+                                            host=svc_host, disabled=False,
+                                            cluster_name=svc_cluster,
+                                            backend_match_level='pool')
+        except exception.ServiceNotFound:
+            msg = _('No available service named %s') % cluster_name or host
             LOG.error(msg)
             raise exception.InvalidHost(reason=msg)
+        # Even if we were requested to do a migration to a host, if the host is
+        # in a cluster we will do a cluster migration.
+        cluster_name = svc.cluster_name
 
         # Build required conditions for conditional update
         expected = {'status': ('available', 'in-use'),
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
                     'replication_status': (None, 'disabled'),
                     'consistencygroup_id': (None, ''),
-                    'group_id': (None, ''),
-                    'host': db.Not(host)}
+                    'group_id': (None, '')}
+
+        # We want to make sure that the migration is to another host or
+        # another cluster.
+        if cluster_name:
+            expected['cluster_name'] = db.Not(cluster_name)
+        else:
+            expected['host'] = db.Not(host)
 
         filters = [~db.volume_has_snapshots_filter()]
 
@@ -1392,8 +1407,8 @@ class API(base.Base):
         if not result:
             msg = _('Volume %s status must be available or in-use, must not '
                     'be migrating, have snapshots, be replicated, be part of '
-                    'a group and destination host must be different than the '
-                    'current host') % {'vol_id': volume.id}
+                    'a group and destination host/cluster must be different '
+                    'than the current one') % {'vol_id': volume.id}
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
@@ -1406,11 +1421,11 @@ class API(base.Base):
         request_spec = {'volume_properties': volume,
                         'volume_type': volume_type,
                         'volume_id': volume.id}
-        self.scheduler_rpcapi.migrate_volume_to_host(context,
-                                                     volume,
-                                                     host,
-                                                     force_host_copy,
-                                                     request_spec)
+        self.scheduler_rpcapi.migrate_volume(context,
+                                             volume,
+                                             cluster_name or host,
+                                             force_copy,
+                                             request_spec)
         LOG.info(_LI("Migrate volume request issued successfully."),
                  resource=volume)
 
@@ -1556,19 +1571,31 @@ class API(base.Base):
         LOG.info(_LI("Retype volume request issued successfully."),
                  resource=volume)
 
-    def _get_service_by_host(self, context, host, resource='volume'):
+    def _get_service_by_host_cluster(self, context, host, cluster_name,
+                                     resource='volume'):
         elevated = context.elevated()
+
+        svc_cluster = cluster_name and volume_utils.extract_host(cluster_name,
+                                                                 'backend')
+        svc_host = host and volume_utils.extract_host(host, 'backend')
+
+        # NOTE(geguileo): Only svc_host or svc_cluster is set, so when we get
+        # a service from the DB we are getting either one specific service from
+        # a host or any service that is up from a cluster, which means that the
+        # cluster itself is also up.
         try:
-            svc_host = volume_utils.extract_host(host, 'backend')
-            service = objects.Service.get_by_args(
-                elevated, svc_host, 'cinder-volume')
+            service = objects.Service.get_by_id(elevated, None, host=svc_host,
+                                                binary='cinder-volume',
+                                                cluster_name=svc_cluster)
         except exception.ServiceNotFound:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Unable to find service: %(service)s for '
-                              'given host: %(host)s.'),
-                          {'service': constants.VOLUME_BINARY, 'host': host})
+                              'given host: %(host)s and cluster %(cluster)s.'),
+                          {'service': constants.VOLUME_BINARY, 'host': host,
+                           'cluster': cluster_name})
 
-        if service.disabled:
+        if service.disabled and (not service.cluster_name or
+                                 service.cluster.disabled):
             LOG.error(_LE('Unable to manage existing %s on a disabled '
                           'service.'), resource)
             raise exception.ServiceUnavailable()
@@ -1580,15 +1607,16 @@ class API(base.Base):
 
         return service
 
-    def manage_existing(self, context, host, ref, name=None, description=None,
-                        volume_type=None, metadata=None,
+    def manage_existing(self, context, host, cluster_name, ref, name=None,
+                        description=None, volume_type=None, metadata=None,
                         availability_zone=None, bootable=False):
         if volume_type and 'extra_specs' not in volume_type:
             extra_specs = volume_types.get_volume_type_extra_specs(
                 volume_type['id'])
             volume_type['extra_specs'] = extra_specs
 
-        service = self._get_service_by_host(context, host)
+        service = self._get_service_by_host_cluster(context, host,
+                                                    cluster_name)
 
         if availability_zone is None:
             availability_zone = service.availability_zone
@@ -1597,7 +1625,8 @@ class API(base.Base):
             'context': context,
             'name': name,
             'description': description,
-            'host': host,
+            'host': service.host,
+            'cluster_name': service.cluster_name,
             'ref': ref,
             'volume_type': volume_type,
             'metadata': metadata,
@@ -1626,7 +1655,7 @@ class API(base.Base):
 
     def get_manageable_volumes(self, context, host, marker=None, limit=None,
                                offset=None, sort_keys=None, sort_dirs=None):
-        self._get_service_by_host(context, host)
+        self._get_service_by_host_cluster(context, host, None)
         return self.volume_rpcapi.get_manageable_volumes(context, host,
                                                          marker, limit,
                                                          offset, sort_keys,
@@ -1635,18 +1664,21 @@ class API(base.Base):
     def manage_existing_snapshot(self, context, ref, volume,
                                  name=None, description=None,
                                  metadata=None):
-        service = self._get_service_by_host(context, volume.host, 'snapshot')
+        service = self._get_service_by_host_cluster(context, volume.host,
+                                                    volume.cluster_name,
+                                                    'snapshot')
+
         snapshot_object = self.create_snapshot_in_db(context, volume, name,
                                                      description, True,
                                                      metadata, None,
                                                      commit_quota=False)
-        self.volume_rpcapi.manage_existing_snapshot(context, snapshot_object,
-                                                    ref, service.host)
+        self.volume_rpcapi.manage_existing_snapshot(
+            context, snapshot_object, ref, service.service_topic_queue)
         return snapshot_object
 
     def get_manageable_snapshots(self, context, host, marker=None, limit=None,
                                  offset=None, sort_keys=None, sort_dirs=None):
-        self._get_service_by_host(context, host, resource='snapshot')
+        self._get_service_by_host_cluster(context, host, None, 'snapshot')
         return self.volume_rpcapi.get_manageable_snapshots(context, host,
                                                            marker, limit,
                                                            offset, sort_keys,

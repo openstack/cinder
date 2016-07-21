@@ -26,6 +26,7 @@ from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder import objects
+from cinder.objects import base as ovo_base
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_backup
@@ -158,8 +159,12 @@ class VolumeRpcAPITestCase(test.TestCase):
         if 'dest_host' in expected_msg:
             dest_host = expected_msg.pop('dest_host')
             dest_host_dict = {'host': dest_host.host,
+                              'cluster_name': dest_host.cluster_name,
                               'capabilities': dest_host.capabilities}
             expected_msg['host'] = dest_host_dict
+        if 'force_copy' in expected_msg:
+            expected_msg['force_host_copy'] = expected_msg.pop('force_copy')
+
         if 'new_volume' in expected_msg:
             volume = expected_msg['new_volume']
             expected_msg['new_volume_id'] = volume['id']
@@ -229,26 +234,11 @@ class VolumeRpcAPITestCase(test.TestCase):
             self.assertEqual(expected_arg, arg)
 
         for kwarg, value in self.fake_kwargs.items():
-            if isinstance(value, objects.Snapshot):
-                expected_snapshot = expected_msg[kwarg].obj_to_primitive()
-                snapshot = value.obj_to_primitive()
-                self.assertEqual(expected_snapshot, snapshot)
-            elif isinstance(value, objects.ConsistencyGroup):
-                expected_cg = expected_msg[kwarg].obj_to_primitive()
-                cg = value.obj_to_primitive()
-                self.assertEqual(expected_cg, cg)
-            elif isinstance(value, objects.CGSnapshot):
-                expected_cgsnapshot = expected_msg[kwarg].obj_to_primitive()
-                cgsnapshot = value.obj_to_primitive()
-                self.assertEqual(expected_cgsnapshot, cgsnapshot)
-            elif isinstance(value, objects.Volume):
-                expected_volume = expected_msg[kwarg].obj_to_primitive()
-                volume = value.obj_to_primitive()
-                self.assertDictEqual(expected_volume, volume)
-            elif isinstance(value, objects.Backup):
-                expected_backup = expected_msg[kwarg].obj_to_primitive()
-                backup = value.obj_to_primitive()
-                self.assertEqual(expected_backup, backup)
+            if isinstance(value, ovo_base.CinderObject):
+                expected = expected_msg[kwarg].obj_to_primitive()
+                primitive = value.obj_to_primitive()
+                self.assertEqual(expected, primitive)
+
             else:
                 self.assertEqual(expected_msg[kwarg], value)
 
@@ -328,8 +318,7 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     def test_create_consistencygroup(self):
         self._test_volume_api('create_consistencygroup', rpc_method='cast',
-                              group=self.fake_cg, host='fake_host1',
-                              version='3.0')
+                              group=self.fake_cg, version='3.0')
 
     def test_delete_consistencygroup(self):
         self._test_volume_api('delete_consistencygroup', rpc_method='cast',
@@ -358,7 +347,6 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('create_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
-                              host='fake_host1',
                               request_spec='fake_request_spec',
                               filter_properties='fake_properties',
                               allow_reschedule=True,
@@ -540,7 +528,13 @@ class VolumeRpcAPITestCase(test.TestCase):
                                           '-8ffd-0800200c9a66',
                               version='3.0')
 
-    def test_extend_volume(self):
+    def _change_cluster_name(self, resource, cluster_name):
+        resource.cluster_name = cluster_name
+        resource.obj_reset_changes()
+
+    @ddt.data(None, 'mycluster')
+    def test_extend_volume(self, cluster_name):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('extend_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
@@ -548,10 +542,12 @@ class VolumeRpcAPITestCase(test.TestCase):
                               reservations=self.fake_reservations,
                               version='3.0')
 
-    def test_migrate_volume(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_migrate_volume(self, can_send_version):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
+                self.cluster_name = 'cluster_name'
                 self.capabilities = {}
         dest_host = FakeHost()
         self._test_volume_api('migrate_volume',
@@ -559,7 +555,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume_obj,
                               dest_host=dest_host,
                               force_host_copy=True,
-                              version='3.0')
+                              version='3.5')
 
     def test_migrate_volume_completion(self):
         self._test_volume_api('migrate_volume_completion',
@@ -569,10 +565,12 @@ class VolumeRpcAPITestCase(test.TestCase):
                               error=False,
                               version='3.0')
 
-    def test_retype(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_retype(self, can_send_version):
         class FakeHost(object):
             def __init__(self):
                 self.host = 'host'
+                self.cluster_name = 'cluster_name'
                 self.capabilities = {}
         dest_host = FakeHost()
         self._test_volume_api('retype',
@@ -583,7 +581,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               migration_policy='never',
                               reservations=self.fake_reservations,
                               old_reservations=self.fake_reservations,
-                              version='3.0')
+                              version='3.5')
 
     def test_manage_existing(self):
         self._test_volume_api('manage_existing',
@@ -685,8 +683,7 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     def test_create_group(self):
         self._test_group_api('create_group', rpc_method='cast',
-                             group=self.fake_group, host='fake_host1',
-                             version='3.0')
+                             group=self.fake_group, version='3.0')
 
     def test_delete_group(self):
         self._test_group_api('delete_group', rpc_method='cast',

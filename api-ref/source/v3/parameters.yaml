@@ -349,6 +349,13 @@ cgsnapshot_id:
   in: body
   required: false
   type: string
+cluster_mutex:
+  description: |
+    The OpenStack Block Storage cluster where the resource resides.  Optional
+    only if host field is provided.
+  in: body
+  required: false
+  type: string
 connector:
   description: |
     The ``connector`` object.
@@ -637,6 +644,13 @@ host:
     existing volume resides.
   in: body
   required: true
+  type: string
+host_mutex:
+  description: |
+    The OpenStack Block Storage host where the existing resource resides.
+    Optional only if cluster field is provided.
+  in: body
+  required: false
   type: string
 host_name:
   description: |

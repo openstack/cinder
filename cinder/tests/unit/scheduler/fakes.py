@@ -23,6 +23,9 @@ from cinder.scheduler import filter_scheduler
 from cinder.scheduler import host_manager
 
 
+UTC_NOW = timeutils.utcnow()
+
+
 class FakeFilterScheduler(filter_scheduler.FilterScheduler):
     def __init__(self, *args, **kwargs):
         super(FakeFilterScheduler, self).__init__(*args, **kwargs)
@@ -43,7 +46,7 @@ class FakeHostManager(host_manager.HostManager):
                       'thick_provisioning_support': True,
                       'reserved_percentage': 10,
                       'volume_backend_name': 'lvm1',
-                      'timestamp': None},
+                      'timestamp': UTC_NOW},
             'host2': {'total_capacity_gb': 2048,
                       'free_capacity_gb': 300,
                       'allocated_capacity_gb': 1748,
@@ -53,7 +56,7 @@ class FakeHostManager(host_manager.HostManager):
                       'thick_provisioning_support': False,
                       'reserved_percentage': 10,
                       'volume_backend_name': 'lvm2',
-                      'timestamp': None},
+                      'timestamp': UTC_NOW},
             'host3': {'total_capacity_gb': 512,
                       'free_capacity_gb': 256,
                       'allocated_capacity_gb': 256,
@@ -63,7 +66,7 @@ class FakeHostManager(host_manager.HostManager):
                       'thick_provisioning_support': True,
                       'reserved_percentage': 0,
                       'volume_backend_name': 'lvm3',
-                      'timestamp': None},
+                      'timestamp': UTC_NOW},
             'host4': {'total_capacity_gb': 2048,
                       'free_capacity_gb': 200,
                       'allocated_capacity_gb': 1848,
@@ -73,7 +76,7 @@ class FakeHostManager(host_manager.HostManager):
                       'thick_provisioning_support': False,
                       'reserved_percentage': 5,
                       'volume_backend_name': 'lvm4',
-                      'timestamp': None,
+                      'timestamp': UTC_NOW,
                       'consistencygroup_support': True},
             'host5': {'total_capacity_gb': 'infinite',
                       'free_capacity_gb': 'unknown',
@@ -83,13 +86,13 @@ class FakeHostManager(host_manager.HostManager):
                       'thin_provisioning_support': True,
                       'thick_provisioning_support': False,
                       'reserved_percentage': 5,
-                      'timestamp': None},
+                      'timestamp': UTC_NOW},
         }
 
 
 class FakeHostState(host_manager.HostState):
     def __init__(self, host, attribute_dict):
-        super(FakeHostState, self).__init__(host)
+        super(FakeHostState, self).__init__(host, None)
         for (key, val) in attribute_dict.items():
             setattr(self, key, val)
 

@@ -41,13 +41,14 @@ CONF = cfg.CONF
 CONF.register_opts(scheduler_driver_opts)
 
 
-def volume_update_db(context, volume_id, host):
-    """Set the host and set the scheduled_at field of a volume.
+def volume_update_db(context, volume_id, host, cluster_name):
+    """Set the host, cluster_name, and set the scheduled_at field of a volume.
 
     :returns: A Volume with the updated fields set properly.
     """
     volume = objects.Volume.get_by_id(context, volume_id)
     volume.host = host
+    volume.cluster_name = cluster_name
     volume.scheduled_at = timeutils.utcnow()
     volume.save()
 
@@ -56,22 +57,24 @@ def volume_update_db(context, volume_id, host):
     return volume
 
 
-def group_update_db(context, group, host):
+def group_update_db(context, group, host, cluster_name):
     """Set the host and the scheduled_at field of a consistencygroup.
 
     :returns: A Consistencygroup with the updated fields set properly.
     """
-    group.update({'host': host, 'updated_at': timeutils.utcnow()})
+    group.update({'host': host, 'updated_at': timeutils.utcnow(),
+                  'cluster_name': cluster_name})
     group.save()
     return group
 
 
-def generic_group_update_db(context, group, host):
+def generic_group_update_db(context, group, host, cluster_name):
     """Set the host and the scheduled_at field of a group.
 
     :returns: A Group with the updated fields set properly.
     """
-    group.update({'host': host, 'updated_at': timeutils.utcnow()})
+    group.update({'host': host, 'updated_at': timeutils.utcnow(),
+                  'cluster_name': cluster_name})
     group.save()
     return group
 
@@ -97,11 +100,14 @@ class Scheduler(object):
 
         return self.host_manager.has_all_capabilities()
 
-    def update_service_capabilities(self, service_name, host, capabilities):
+    def update_service_capabilities(self, service_name, host, capabilities,
+                                    cluster_name, timestamp):
         """Process a capability update from a service node."""
         self.host_manager.update_service_capabilities(service_name,
                                                       host,
-                                                      capabilities)
+                                                      capabilities,
+                                                      cluster_name,
+                                                      timestamp)
 
     def notify_service_capabilities(self, service_name, host, capabilities):
         """Notify capability update from a service node."""

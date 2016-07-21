@@ -19,12 +19,15 @@
 Scheduler Service
 """
 
+from datetime import datetime
+
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
+from oslo_utils import timeutils
 import six
 
 from cinder import context
@@ -33,6 +36,7 @@ from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE
 from cinder import manager
+from cinder import objects
 from cinder import quota
 from cinder import rpc
 from cinder.scheduler.flows import create_volume
@@ -53,7 +57,7 @@ QUOTAS = quota.QUOTAS
 LOG = logging.getLogger(__name__)
 
 
-class SchedulerManager(manager.Manager):
+class SchedulerManager(manager.CleanableManager, manager.Manager):
     """Chooses a host to create volumes."""
 
     RPC_API_VERSION = scheduler_rpcapi.SchedulerAPI.RPC_API_VERSION
@@ -80,13 +84,22 @@ class SchedulerManager(manager.Manager):
         self.driver.reset()
 
     def update_service_capabilities(self, context, service_name=None,
-                                    host=None, capabilities=None, **kwargs):
+                                    host=None, capabilities=None,
+                                    cluster_name=None, timestamp=None,
+                                    **kwargs):
         """Process a capability update from a service node."""
         if capabilities is None:
             capabilities = {}
+        # If we received the timestamp we have to deserialize it
+        elif timestamp:
+            timestamp = datetime.strptime(timestamp,
+                                          timeutils.PERFECT_TIME_FORMAT)
+
         self.driver.update_service_capabilities(service_name,
                                                 host,
-                                                capabilities)
+                                                capabilities,
+                                                cluster_name,
+                                                timestamp)
 
     def notify_service_capabilities(self, context, service_name,
                                     host, capabilities):
@@ -150,9 +163,9 @@ class SchedulerManager(manager.Manager):
                 group.status = 'error'
                 group.save()
 
+    @objects.Volume.set_workers
     def create_volume(self, context, volume, snapshot_id=None, image_id=None,
                       request_spec=None, filter_properties=None):
-
         self._wait_for_scheduler()
 
         try:
@@ -171,13 +184,21 @@ class SchedulerManager(manager.Manager):
         with flow_utils.DynamicLogListener(flow_engine, logger=LOG):
             flow_engine.run()
 
+    def _do_cleanup(self, ctxt, vo_resource):
+        # We can only receive cleanup requests for volumes, but we check anyway
+        # We need to cleanup the volume status for cases where the scheduler
+        # died while scheduling the volume creation.
+        if (isinstance(vo_resource, objects.Volume) and
+                vo_resource.status == 'creating'):
+            vo_resource.status = 'error'
+            vo_resource.save()
+
     def request_service_capabilities(self, context):
         volume_rpcapi.VolumeAPI().publish_service_capabilities(context)
 
-    def migrate_volume_to_host(self, context, volume, host, force_host_copy,
-                               request_spec, filter_properties=None):
+    def migrate_volume(self, context, volume, backend, force_copy,
+                       request_spec, filter_properties):
         """Ensure that the host exists and can accept the volume."""
-
         self._wait_for_scheduler()
 
         def _migrate_volume_set_error(self, context, ex, request_spec):
@@ -193,9 +214,9 @@ class SchedulerManager(manager.Manager):
                                               context, ex, request_spec)
 
         try:
-            tgt_host = self.driver.host_passes_filters(context, host,
-                                                       request_spec,
-                                                       filter_properties)
+            tgt_backend = self.driver.host_passes_filters(context, backend,
+                                                          request_spec,
+                                                          filter_properties)
         except exception.NoValidHost as ex:
             _migrate_volume_set_error(self, context, ex, request_spec)
         except Exception as ex:
@@ -203,8 +224,14 @@ class SchedulerManager(manager.Manager):
                 _migrate_volume_set_error(self, context, ex, request_spec)
         else:
             volume_rpcapi.VolumeAPI().migrate_volume(context, volume,
-                                                     tgt_host,
-                                                     force_host_copy)
+                                                     tgt_backend,
+                                                     force_copy)
+
+    # FIXME(geguileo): Remove this in v4.0 of RPC API.
+    def migrate_volume_to_host(self, context, volume, host, force_host_copy,
+                               request_spec, filter_properties=None):
+        return self.migrate_volume(context, volume, host, force_host_copy,
+                                   request_spec, filter_properties)
 
     def retype(self, context, volume, request_spec, filter_properties=None):
         """Schedule the modification of a volume's type.
@@ -272,7 +299,7 @@ class SchedulerManager(manager.Manager):
 
         try:
             self.driver.host_passes_filters(context,
-                                            volume.host,
+                                            volume.service_topic_queue,
                                             request_spec,
                                             filter_properties)
         except exception.NoValidHost as ex:
@@ -306,7 +333,8 @@ class SchedulerManager(manager.Manager):
 
         filter_properties['new_size'] = new_size
         try:
-            self.driver.host_passes_filters(context, volume.host,
+            self.driver.host_passes_filters(context,
+                                            volume.service_topic_queue,
                                             request_spec, filter_properties)
             volume_rpcapi.VolumeAPI().extend_volume(context, volume, new_size,
                                                     reservations)

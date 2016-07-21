@@ -58,7 +58,7 @@ class ChanceWeigherTestCase(test.TestCase):
         # ensure we don't lose any hosts when weighing with
         # the ChanceWeigher
         hm = host_manager.HostManager()
-        fake_hosts = [host_manager.HostState('fake_host%s' % x)
+        fake_hosts = [host_manager.HostState('fake_host%s' % x, None)
                       for x in range(1, 5)]
         weighed_hosts = hm.get_weighed_hosts(fake_hosts, {}, 'ChanceWeigher')
         self.assertEqual(4, len(weighed_hosts))

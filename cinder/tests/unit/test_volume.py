@@ -344,20 +344,19 @@ class VolumeTestCase(base.BaseVolumeTestCase):
     def test_init_host_added_to_cluster(self, cg_include_mock,
                                         vol_include_mock, vol_get_all_mock,
                                         snap_get_all_mock):
-        self.mock_object(self.volume, 'cluster', mock.sentinel.cluster)
+        cluster = str(mock.sentinel.cluster)
+        self.mock_object(self.volume, 'cluster', cluster)
         self.volume.init_host(added_to_cluster=True,
                               service_id=self.service_id)
 
-        vol_include_mock.assert_called_once_with(mock.ANY,
-                                                 mock.sentinel.cluster,
+        vol_include_mock.assert_called_once_with(mock.ANY, cluster,
                                                  host=self.volume.host)
-        cg_include_mock.assert_called_once_with(mock.ANY,
-                                                mock.sentinel.cluster,
+        cg_include_mock.assert_called_once_with(mock.ANY, cluster,
                                                 host=self.volume.host)
         vol_get_all_mock.assert_called_once_with(
-            mock.ANY, filters={'cluster_name': mock.sentinel.cluster})
+            mock.ANY, filters={'cluster_name': cluster})
         snap_get_all_mock.assert_called_once_with(
-            mock.ANY, search_opts={'cluster_name': mock.sentinel.cluster})
+            mock.ANY, search_opts={'cluster_name': cluster})
 
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
@@ -4785,7 +4784,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
         self.assertEqual('newhost', volume.host)
         self.assertEqual('success', volume.migration_status)
 
-    def _fake_create_volume(self, ctxt, volume, host, req_spec, filters,
+    def _fake_create_volume(self, ctxt, volume, req_spec, filters,
                             allow_reschedule=True):
         return db.volume_update(ctxt, volume['id'],
                                 {'status': self.expected_status})
@@ -4880,7 +4879,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                                      nova_api, create_volume,
                                                      save):
         def fake_create_volume(*args, **kwargs):
-            context, volume, host, request_spec, filter_properties = args
+            context, volume, request_spec, filter_properties = args
             fake_db = mock.Mock()
             task = create_volume_manager.ExtractVolumeSpecTask(fake_db)
             specs = task.execute(context, volume, {})
@@ -4916,7 +4915,7 @@ class VolumeMigrationTestCase(base.BaseVolumeTestCase):
                                               migrate_volume_completion,
                                               nova_api, create_volume, save):
         def fake_create_volume(*args, **kwargs):
-            context, volume, host, request_spec, filter_properties = args
+            context, volume, request_spec, filter_properties = args
             fake_db = mock.Mock()
             task = create_volume_manager.ExtractVolumeSpecTask(fake_db)
             specs = task.execute(context, volume, {})
