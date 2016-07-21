@@ -28,22 +28,22 @@ from cinder.scheduler import filters
 LOG = logging.getLogger(__name__)
 
 
-class CapacityFilter(filters.BaseHostFilter):
-    """CapacityFilter filters based on volume host's capacity utilization."""
+class CapacityFilter(filters.BaseBackendFilter):
+    """Capacity filters based on volume backend's capacity utilization."""
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         """Return True if host has sufficient capacity."""
 
         # If the volume already exists on this host, don't fail it for
         # insufficient capacity (e.g., if we are retyping)
-        if host_state.backend_id == filter_properties.get('vol_exists_on'):
+        if backend_state.backend_id == filter_properties.get('vol_exists_on'):
             return True
 
         spec = filter_properties.get('request_spec')
         if spec:
             volid = spec.get('volume_id')
 
-        grouping = 'cluster' if host_state.cluster_name else 'host'
+        grouping = 'cluster' if backend_state.cluster_name else 'host'
         if filter_properties.get('new_size'):
             # If new_size is passed, we are allocating space to extend a volume
             requested_size = (int(filter_properties.get('new_size')) -
@@ -51,25 +51,25 @@ class CapacityFilter(filters.BaseHostFilter):
             LOG.debug('Checking if %(grouping)s %(grouping_name)s can extend '
                       'the volume %(id)s in %(size)s GB',
                       {'grouping': grouping,
-                       'grouping_name': host_state.backend_id, 'id': volid,
+                       'grouping_name': backend_state.backend_id, 'id': volid,
                        'size': requested_size})
         else:
             requested_size = filter_properties.get('size')
             LOG.debug('Checking if %(grouping)s %(grouping_name)s can create '
                       'a %(size)s GB volume (%(id)s)',
                       {'grouping': grouping,
-                       'grouping_name': host_state.backend_id, 'id': volid,
+                       'grouping_name': backend_state.backend_id, 'id': volid,
                        'size': requested_size})
 
-        if host_state.free_capacity_gb is None:
+        if backend_state.free_capacity_gb is None:
             # Fail Safe
             LOG.error(_LE("Free capacity not set: "
                           "volume node info collection broken."))
             return False
 
-        free_space = host_state.free_capacity_gb
-        total_space = host_state.total_capacity_gb
-        reserved = float(host_state.reserved_percentage) / 100
+        free_space = backend_state.free_capacity_gb
+        total_space = backend_state.total_capacity_gb
+        reserved = float(backend_state.reserved_percentage) / 100
         if free_space in ['infinite', 'unknown']:
             # NOTE(zhiteng) for those back-ends cannot report actual
             # available capacity, we assume it is able to serve the
@@ -93,7 +93,7 @@ class CapacityFilter(filters.BaseHostFilter):
                             "%(grouping_name)s."),
                         {"total": total,
                          "grouping": grouping,
-                         "grouping_name": host_state.backend_id})
+                         "grouping_name": backend_state.backend_id})
             return False
         # Calculate how much free space is left after taking into account
         # the reserved space.
@@ -114,16 +114,16 @@ class CapacityFilter(filters.BaseHostFilter):
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
         # subscription ratio.
-        if (thin and host_state.thin_provisioning_support and
-                host_state.max_over_subscription_ratio >= 1):
-            provisioned_ratio = ((host_state.provisioned_capacity_gb +
+        if (thin and backend_state.thin_provisioning_support and
+                backend_state.max_over_subscription_ratio >= 1):
+            provisioned_ratio = ((backend_state.provisioned_capacity_gb +
                                   requested_size) / total)
-            if provisioned_ratio > host_state.max_over_subscription_ratio:
+            if provisioned_ratio > backend_state.max_over_subscription_ratio:
                 msg_args = {
                     "provisioned_ratio": provisioned_ratio,
-                    "oversub_ratio": host_state.max_over_subscription_ratio,
+                    "oversub_ratio": backend_state.max_over_subscription_ratio,
                     "grouping": grouping,
-                    "grouping_name": host_state.backend_id,
+                    "grouping_name": backend_state.backend_id,
                 }
                 LOG.warning(_LW(
                     "Insufficient free space for thin provisioning. "
@@ -140,20 +140,20 @@ class CapacityFilter(filters.BaseHostFilter):
                 # the currently available free capacity (taking into account
                 # of reserved space) which we can over-subscribe.
                 adjusted_free_virtual = (
-                    free * host_state.max_over_subscription_ratio)
+                    free * backend_state.max_over_subscription_ratio)
                 return adjusted_free_virtual >= requested_size
-        elif thin and host_state.thin_provisioning_support:
+        elif thin and backend_state.thin_provisioning_support:
             LOG.warning(_LW("Filtering out %(grouping)s %(grouping_name)s "
                             "with an invalid maximum over subscription ratio "
                             "of %(oversub_ratio).2f. The ratio should be a "
                             "minimum of 1.0."),
                         {"oversub_ratio":
-                            host_state.max_over_subscription_ratio,
+                            backend_state.max_over_subscription_ratio,
                          "grouping": grouping,
-                         "grouping_name": host_state.backend_id})
+                         "grouping_name": backend_state.backend_id})
             return False
 
-        msg_args = {"grouping_name": host_state.backend_id,
+        msg_args = {"grouping_name": backend_state.backend_id,
                     "grouping": grouping,
                     "requested": requested_size,
                     "available": free}

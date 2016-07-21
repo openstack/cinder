@@ -16,17 +16,18 @@
 from cinder.scheduler import filters
 
 
-class AvailabilityZoneFilter(filters.BaseHostFilter):
-    """Filters Hosts by availability zone."""
+class AvailabilityZoneFilter(filters.BaseBackendFilter):
+    """Filters Backends by availability zone."""
 
     # Availability zones do not change within a request
     run_filter_once_per_request = True
 
-    def host_passes(self, host_state, filter_properties):
+    def backend_passes(self, backend_state, filter_properties):
         spec = filter_properties.get('request_spec', {})
         props = spec.get('resource_properties', {})
         availability_zone = props.get('availability_zone')
 
         if availability_zone:
-            return availability_zone == host_state.service['availability_zone']
+            return (availability_zone ==
+                    backend_state.service['availability_zone'])
         return True

@@ -14,7 +14,7 @@
 #    under the License.
 
 """
-Manage hosts in the current zone.
+Manage backends in the current zone.
 """
 
 import collections
@@ -32,6 +32,11 @@ from cinder import utils
 from cinder.i18n import _LI, _LW
 from cinder.scheduler import filters
 from cinder.volume import utils as vol_utils
+
+
+# FIXME: This file should be renamed to backend_manager, we should also rename
+# HostManager class, and scheduler_host_manager option, and also the weight
+# classes, and add code to maintain backward compatibility.
 
 
 host_manager_opts = [
@@ -83,7 +88,7 @@ class ReadOnlyDict(collections.Mapping):
         return '%s(%r)' % (self.__class__.__name__, self.data)
 
 
-class HostState(object):
+class BackendState(object):
     """Mutable and immutable information tracked for a volume backend."""
 
     def __init__(self, host, cluster_name, capabilities=None, service=None):
@@ -303,12 +308,11 @@ class HostState(object):
         # come up with better representation of HostState.
         grouping = 'cluster' if self.cluster_name else 'host'
         grouping_name = self.backend_id
-
         return ("%s '%s': free_capacity_gb: %s, pools: %s" %
                 (grouping, grouping_name, self.free_capacity_gb, self.pools))
 
 
-class PoolState(HostState):
+class PoolState(BackendState):
     def __init__(self, host, cluster_name, capabilities, pool_name):
         new_host = vol_utils.append_host(host, pool_name)
         new_cluster = vol_utils.append_host(cluster_name, pool_name)
@@ -356,7 +360,7 @@ class PoolState(HostState):
 class HostManager(object):
     """Base HostManager class."""
 
-    host_state_cls = HostState
+    backend_state_cls = BackendState
 
     REQUIRED_KEYS = frozenset([
         'pool_name',
@@ -371,20 +375,20 @@ class HostManager(object):
 
     def __init__(self):
         self.service_states = {}  # { <host>: {<service>: {cap k : v}}}
-        self.host_state_map = {}
-        self.filter_handler = filters.HostFilterHandler('cinder.scheduler.'
-                                                        'filters')
+        self.backend_state_map = {}
+        self.filter_handler = filters.BackendFilterHandler('cinder.scheduler.'
+                                                           'filters')
         self.filter_classes = self.filter_handler.get_all_classes()
         self.weight_handler = importutils.import_object(
             CONF.scheduler_weight_handler,
             'cinder.scheduler.weights')
         self.weight_classes = self.weight_handler.get_all_classes()
 
-        self._no_capabilities_hosts = set()  # Hosts having no capabilities
-        self._update_host_state_map(cinder_context.get_admin_context())
+        self._no_capabilities_hosts = set()  # Services without capabilities
+        self._update_backend_state_map(cinder_context.get_admin_context())
         self.service_states_last_update = {}
 
-    def _choose_host_filters(self, filter_cls_names):
+    def _choose_backend_filters(self, filter_cls_names):
         """Return a list of available filter names.
 
         This function checks input filter names against a predefined set
@@ -411,7 +415,7 @@ class HostManager(object):
                 filter_name=", ".join(bad_filters))
         return good_filters
 
-    def _choose_host_weighers(self, weight_cls_names):
+    def _choose_backend_weighers(self, weight_cls_names):
         """Return a list of available weigher names.
 
         This function checks input weigher names against a predefined set
@@ -439,20 +443,20 @@ class HostManager(object):
                 weigher_name=", ".join(bad_weighers))
         return good_weighers
 
-    def get_filtered_hosts(self, hosts, filter_properties,
-                           filter_class_names=None):
-        """Filter hosts and return only ones passing all filters."""
-        filter_classes = self._choose_host_filters(filter_class_names)
+    def get_filtered_backends(self, backends, filter_properties,
+                              filter_class_names=None):
+        """Filter backends and return only ones passing all filters."""
+        filter_classes = self._choose_backend_filters(filter_class_names)
         return self.filter_handler.get_filtered_objects(filter_classes,
-                                                        hosts,
+                                                        backends,
                                                         filter_properties)
 
-    def get_weighed_hosts(self, hosts, weight_properties,
-                          weigher_class_names=None):
-        """Weigh the hosts."""
-        weigher_classes = self._choose_host_weighers(weigher_class_names)
+    def get_weighed_backends(self, backends, weight_properties,
+                             weigher_class_names=None):
+        """Weigh the backends."""
+        weigher_classes = self._choose_backend_weighers(weigher_class_names)
         return self.weight_handler.get_weighed_objects(weigher_classes,
-                                                       hosts,
+                                                       backends,
                                                        weight_properties)
 
     def update_service_capabilities(self, service_name, host, capabilities,
@@ -532,7 +536,7 @@ class HostManager(object):
     def has_all_capabilities(self):
         return len(self._no_capabilities_hosts) == 0
 
-    def _update_host_state_map(self, context):
+    def _update_backend_state_map(self, context):
 
         # Get resource usage across the available volume nodes:
         topic = constants.VOLUME_TOPIC
@@ -555,14 +559,14 @@ class HostManager(object):
 
             # Since the service could have been added or remove from a cluster
             backend_key = service.service_topic_queue
-            backend_state = self.host_state_map.get(backend_key, None)
+            backend_state = self.backend_state_map.get(backend_key, None)
             if not backend_state:
-                backend_state = self.host_state_cls(
+                backend_state = self.backend_state_cls(
                     host,
                     service.cluster_name,
                     capabilities=capabilities,
                     service=dict(service))
-                self.host_state_map[backend_key] = backend_state
+                self.backend_state_map[backend_key] = backend_state
 
             # We may be receiving capability reports out of order from
             # different volume services in a cluster, so we drop older updates
@@ -577,8 +581,8 @@ class HostManager(object):
 
         self._no_capabilities_hosts = no_capabilities_hosts
 
-        # remove non-active keys from host_state_map
-        inactive_backend_keys = set(self.host_state_map) - active_backends
+        # remove non-active keys from backend_state_map
+        inactive_backend_keys = set(self.backend_state_map) - active_backends
         for backend_key in inactive_backend_keys:
             # NOTE(geguileo): We don't want to log the removal of a host from
             # the map when we are removing it because it has been added to a
@@ -586,27 +590,28 @@ class HostManager(object):
             if backend_key not in active_hosts:
                 LOG.info(_LI("Removing non-active backend: %(backend)s from "
                              "scheduler cache."), {'backend': backend_key})
-            del self.host_state_map[backend_key]
+            del self.backend_state_map[backend_key]
 
-    def get_all_host_states(self, context):
-        """Returns a dict of all the hosts the HostManager knows about.
+    def get_all_backend_states(self, context):
+        """Returns a dict of all the backends the HostManager knows about.
 
-        Each of the consumable resources in HostState are
+        Each of the consumable resources in BackendState are
         populated with capabilities scheduler received from RPC.
 
         For example:
-          {'192.168.1.100': HostState(), ...}
+          {'192.168.1.100': BackendState(), ...}
         """
 
-        self._update_host_state_map(context)
+        self._update_backend_state_map(context)
 
-        # build a pool_state map and return that map instead of host_state_map
+        # build a pool_state map and return that map instead of
+        # backend_state_map
         all_pools = {}
-        for host, state in self.host_state_map.items():
+        for backend_key, state in self.backend_state_map.items():
             for key in state.pools:
                 pool = state.pools[key]
-                # use host.pool_name to make sure key is unique
-                pool_key = '.'.join([host, pool.pool_name])
+                # use backend_key.pool_name to make sure key is unique
+                pool_key = '.'.join([backend_key, pool.pool_name])
                 all_pools[pool_key] = pool
 
         return all_pools.values()
@@ -614,14 +619,14 @@ class HostManager(object):
     def get_pools(self, context):
         """Returns a dict of all pools on all hosts HostManager knows about."""
 
-        self._update_host_state_map(context)
+        self._update_backend_state_map(context)
 
         all_pools = []
-        for host, state in self.host_state_map.items():
+        for backend_key, state in self.backend_state_map.items():
             for key in state.pools:
                 pool = state.pools[key]
-                # use host.pool_name to make sure key is unique
-                pool_key = vol_utils.append_host(host, pool.pool_name)
+                # use backend_key.pool_name to make sure key is unique
+                pool_key = vol_utils.append_host(backend_key, pool.pool_name)
                 new_pool = dict(name=pool_key)
                 new_pool.update(dict(capabilities=pool.capabilities))
                 all_pools.append(new_pool)

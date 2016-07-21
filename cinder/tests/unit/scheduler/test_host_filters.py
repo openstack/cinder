@@ -32,15 +32,16 @@ from cinder.tests.unit.scheduler import fakes
 from cinder.tests.unit import utils
 
 
-class HostFiltersTestCase(test.TestCase):
-    """Test case for host filters."""
+class BackendFiltersTestCase(test.TestCase):
+    """Test case for backend filters."""
 
     def setUp(self):
-        super(HostFiltersTestCase, self).setUp()
+        super(BackendFiltersTestCase, self).setUp()
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         # This has a side effect of testing 'get_filter_classes'
         # when specifying a method (in this case, our standard filters)
-        filter_handler = filters.HostFilterHandler('cinder.scheduler.filters')
+        filter_handler = filters.BackendFilterHandler(
+            'cinder.scheduler.filters')
         classes = filter_handler.get_all_classes()
         self.class_map = {}
         for cls in classes:
@@ -50,7 +51,7 @@ class HostFiltersTestCase(test.TestCase):
 @ddt.ddt
 @mock.patch('cinder.objects.service.Service.is_up',
             new_callable=mock.PropertyMock)
-class CapacityFilterTestCase(HostFiltersTestCase):
+class CapacityFilterTestCase(BackendFiltersTestCase):
     def setUp(self):
         super(CapacityFilterTestCase, self).setUp()
         self.json_query = jsonutils.dumps(
@@ -64,25 +65,25 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 200,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 200,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
-    def test_filter_current_host_passes(self, _mock_serv_is_up):
+    def test_filter_current_backend_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['CapacityFilter']()
         filter_properties = {'size': 100, 'vol_exists_on': 'host1',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 100,
-                                    'free_capacity_gb': 10,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 100,
+                                       'free_capacity_gb': 10,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -90,13 +91,13 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 200,
-                                    'free_capacity_gb': 120,
-                                    'reserved_percentage': 20,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 200,
+                                       'free_capacity_gb': 120,
+                                       'reserved_percentage': 20,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_fails_free_capacity_None(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -104,11 +105,11 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': None,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': None,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_passes_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -116,11 +117,11 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': 'infinite',
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': 'infinite',
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_extend_request(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -128,12 +129,12 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'new_size': 100, 'size': 50,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': 200,
-                                    'updated_at': None,
-                                    'total_capacity_gb': 500,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': 200,
+                                       'updated_at': None,
+                                       'total_capacity_gb': 500,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_extend_request_negative(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -141,12 +142,12 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 50,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': 49,
-                                    'updated_at': None,
-                                    'total_capacity_gb': 500,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': 49,
+                                       'updated_at': None,
+                                       'total_capacity_gb': 500,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_passes_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -154,11 +155,11 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': 'unknown',
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': 'unknown',
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_passes_total_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -166,13 +167,13 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': 'infinite',
-                                    'total_capacity_gb': 'infinite',
-                                    'reserved_percentage': 0,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': 'infinite',
+                                       'total_capacity_gb': 'infinite',
+                                       'reserved_percentage': 0,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_passes_total_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -180,13 +181,13 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': 'unknown',
-                                    'total_capacity_gb': 'unknown',
-                                    'reserved_percentage': 0,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': 'unknown',
+                                       'total_capacity_gb': 'unknown',
+                                       'reserved_percentage': 0,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_fails_total_infinite(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -194,12 +195,12 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 'infinite',
-                                    'reserved_percentage': 5,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 'infinite',
+                                       'reserved_percentage': 5,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_fails_total_unknown(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -207,12 +208,12 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 'unknown',
-                                    'reserved_percentage': 5,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 'unknown',
+                                       'reserved_percentage': 5,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_fails_total_zero(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -220,12 +221,12 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         filter_properties = {'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 0,
-                                    'reserved_percentage': 5,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 0,
+                                       'reserved_percentage': 5,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_thin_true_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -237,17 +238,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 200,
-                                    'provisioned_capacity_gb': 500,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 200,
+                                       'provisioned_capacity_gb': 500,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_thin_true_passes2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -259,17 +260,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 200,
-                                    'provisioned_capacity_gb': 7000,
-                                    'max_over_subscription_ratio': 20,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 200,
+                                       'provisioned_capacity_gb': 7000,
+                                       'max_over_subscription_ratio': 20,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_thin_false_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -283,17 +284,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         service = {'disabled': False}
         # If "thin_provisioning_support" is False,
         # "max_over_subscription_ratio" will be ignored.
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 200,
-                                    'provisioned_capacity_gb': 300,
-                                    'max_over_subscription_ratio': 1.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': False,
-                                    'thick_provisioning_support': True,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 200,
+                                       'provisioned_capacity_gb': 300,
+                                       'max_over_subscription_ratio': 1.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': False,
+                                       'thick_provisioning_support': True,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_over_subscription_less_than_1(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -305,17 +306,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 100,
-                                    'provisioned_capacity_gb': 400,
-                                    'max_over_subscription_ratio': 0.8,
-                                    'reserved_percentage': 0,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 100,
+                                       'provisioned_capacity_gb': 400,
+                                       'max_over_subscription_ratio': 0.8,
+                                       'reserved_percentage': 0,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_over_subscription_equal_to_1(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -327,17 +328,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 200,
-                                    'provisioned_capacity_gb': 400,
-                                    'max_over_subscription_ratio': 1.0,
-                                    'reserved_percentage': 0,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 200,
+                                       'provisioned_capacity_gb': 400,
+                                       'max_over_subscription_ratio': 1.0,
+                                       'reserved_percentage': 0,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_over_subscription_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -349,17 +350,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 200,
-                                    'provisioned_capacity_gb': 700,
-                                    'max_over_subscription_ratio': 1.5,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 200,
+                                       'provisioned_capacity_gb': 700,
+                                       'max_over_subscription_ratio': 1.5,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_over_subscription_fails2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -371,17 +372,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 30,
-                                    'provisioned_capacity_gb': 9000,
-                                    'max_over_subscription_ratio': 20,
-                                    'reserved_percentage': 0,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 30,
+                                       'provisioned_capacity_gb': 9000,
+                                       'max_over_subscription_ratio': 20,
+                                       'reserved_percentage': 0,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_reserved_thin_true_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -393,17 +394,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 100,
-                                    'provisioned_capacity_gb': 1000,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 100,
+                                       'provisioned_capacity_gb': 1000,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_reserved_thin_false_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -417,17 +418,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
         service = {'disabled': False}
         # If "thin_provisioning_support" is False,
         # "max_over_subscription_ratio" will be ignored.
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 100,
-                                    'provisioned_capacity_gb': 400,
-                                    'max_over_subscription_ratio': 1.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': False,
-                                    'thick_provisioning_support': True,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 100,
+                                       'provisioned_capacity_gb': 400,
+                                       'max_over_subscription_ratio': 1.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': False,
+                                       'thick_provisioning_support': True,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_reserved_thin_thick_true_fails(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -439,17 +440,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> True',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 0,
-                                    'provisioned_capacity_gb': 800,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': True,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 0,
+                                       'provisioned_capacity_gb': 800,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': True,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_reserved_thin_thick_true_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -461,17 +462,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> True',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 125,
-                                    'provisioned_capacity_gb': 400,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': True,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 125,
+                                       'provisioned_capacity_gb': 400,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': True,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_reserved_thin_true_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -483,17 +484,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> False',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 80,
-                                    'provisioned_capacity_gb': 600,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': False,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 80,
+                                       'provisioned_capacity_gb': 600,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': False,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_reserved_thin_thick_true_fails2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -505,17 +506,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> True',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 99,
-                                    'provisioned_capacity_gb': 1000,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 5,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': True,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 99,
+                                       'provisioned_capacity_gb': 1000,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 5,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': True,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_filter_reserved_thin_thick_true_passes2(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
@@ -527,17 +528,17 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                                  '<is> True',
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 100,
-                                    'provisioned_capacity_gb': 400,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 0,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': True,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 100,
+                                       'provisioned_capacity_gb': 400,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 0,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': True,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     @ddt.data(
         {'volume_type': {'extra_specs': {'provisioning:type': 'thick'}}},
@@ -554,30 +555,30 @@ class CapacityFilterTestCase(HostFiltersTestCase):
                              'volume_type': volume_type,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'total_capacity_gb': 500,
-                                    'free_capacity_gb': 100,
-                                    'provisioned_capacity_gb': 400,
-                                    'max_over_subscription_ratio': 2.0,
-                                    'reserved_percentage': 0,
-                                    'thin_provisioning_support': True,
-                                    'thick_provisioning_support': True,
-                                    'updated_at': None,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'total_capacity_gb': 500,
+                                       'free_capacity_gb': 100,
+                                       'provisioned_capacity_gb': 400,
+                                       'max_over_subscription_ratio': 2.0,
+                                       'reserved_percentage': 0,
+                                       'thin_provisioning_support': True,
+                                       'thick_provisioning_support': True,
+                                       'updated_at': None,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
 
-class AffinityFilterTestCase(HostFiltersTestCase):
+class AffinityFilterTestCase(BackendFiltersTestCase):
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
     def test_different_filter_passes(self, _mock_serv_is_up):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['DifferentBackendFilter']()
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1:pool0',
-                                   {'free_capacity_gb': '1000',
-                                    'updated_at': None,
-                                    'service': service})
+        host = fakes.FakeBackendState('host1:pool0',
+                                      {'free_capacity_gb': '1000',
+                                       'updated_at': None,
+                                       'service': service})
         volume = utils.create_volume(self.context, host='host1:pool1')
         vol_id = volume.id
 
@@ -585,7 +586,7 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'different_host': [vol_id], },
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     @mock.patch('cinder.objects.service.Service.is_up',
                 new_callable=mock.PropertyMock)
@@ -594,10 +595,10 @@ class AffinityFilterTestCase(HostFiltersTestCase):
         _mock_serv_is_up.return_value = True
         filt_cls = self.class_map['DifferentBackendFilter']()
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1:pool0',
-                                   {'free_capacity_gb': '1000',
-                                    'updated_at': None,
-                                    'service': service})
+        host = fakes.FakeBackendState('host1:pool0',
+                                      {'free_capacity_gb': '1000',
+                                       'updated_at': None,
+                                       'service': service})
         volume = utils.create_volume(self.context, host='host1')
         vol_id = volume.id
 
@@ -605,11 +606,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'different_host': [vol_id], },
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_different_filter_non_list_fails(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host2', {})
+        host = fakes.FakeBackendState('host2', {})
         volume = utils.create_volume(self.context, host='host2')
         vol_id = volume.id
 
@@ -617,11 +618,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'different_host': vol_id}}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_different_filter_fails(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         volume = utils.create_volume(self.context, host='host1')
         vol_id = volume.id
 
@@ -629,21 +630,21 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'different_host': [vol_id], },
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_different_filter_handles_none(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = {'context': self.context.elevated(),
                              'scheduler_hints': None,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_different_filter_handles_deleted_instance(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         volume = utils.create_volume(self.context, host='host1')
         vol_id = volume.id
         db.volume_destroy(utils.get_test_admin_context(), vol_id)
@@ -652,21 +653,21 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'different_host': [vol_id], }}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_different_filter_fail_nonuuid_hint(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = {'context': self.context.elevated(),
                              'scheduler_hints': {
             'different_host': "NOT-a-valid-UUID", }}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_different_filter_handles_multiple_uuids(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host1#pool0', {})
+        host = fakes.FakeBackendState('host1#pool0', {})
         volume1 = utils.create_volume(self.context, host='host1:pool1')
         vol_id1 = volume1.id
         volume2 = utils.create_volume(self.context, host='host1:pool3')
@@ -676,11 +677,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'different_host': [vol_id1, vol_id2], }}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_different_filter_handles_invalid_uuids(self):
         filt_cls = self.class_map['DifferentBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         volume = utils.create_volume(self.context, host='host2')
         vol_id = volume.id
 
@@ -688,11 +689,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'different_host': [vol_id, "NOT-a-valid-UUID"], }}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_no_list_passes(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         volume = utils.create_volume(self.context, host='host1')
         vol_id = volume.id
 
@@ -700,11 +701,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'same_host': vol_id}}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_passes(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1#pool0', {})
+        host = fakes.FakeBackendState('host1#pool0', {})
         volume = utils.create_volume(self.context, host='host1#pool0')
         vol_id = volume.id
 
@@ -712,11 +713,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_legacy_vol_fails(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1#pool0', {})
+        host = fakes.FakeBackendState('host1#pool0', {})
         volume = utils.create_volume(self.context, host='host1')
         vol_id = volume.id
 
@@ -724,11 +725,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_fails(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1#pool0', {})
+        host = fakes.FakeBackendState('host1#pool0', {})
         volume = utils.create_volume(self.context, host='host1#pool1')
         vol_id = volume.id
 
@@ -736,11 +737,11 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_vol_list_pass(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         volume1 = utils.create_volume(self.context, host='host1')
         vol_id1 = volume1.id
         volume2 = utils.create_volume(self.context, host='host2')
@@ -750,20 +751,20 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id1, vol_id2], }}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_handles_none(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = {'context': self.context.elevated(),
                              'scheduler_hints': None}
 
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_handles_deleted_instance(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         volume = utils.create_volume(self.context, host='host2')
         vol_id = volume.id
         db.volume_destroy(utils.get_test_admin_context(), vol_id)
@@ -772,23 +773,23 @@ class AffinityFilterTestCase(HostFiltersTestCase):
                              'scheduler_hints': {
             'same_host': [vol_id], }}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_same_filter_fail_nonuuid_hint(self):
         filt_cls = self.class_map['SameBackendFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = {'context': self.context.elevated(),
                              'scheduler_hints': {
             'same_host': "NOT-a-valid-UUID", }}
 
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
 
-class DriverFilterTestCase(HostFiltersTestCase):
+class DriverFilterTestCase(BackendFiltersTestCase):
     def test_passing_function(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': '1 == 1',
@@ -797,11 +798,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {'volume_type': {}}
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_failing_function(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': '1 == 2',
@@ -810,11 +811,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {'volume_type': {}}
 
-        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host1, filter_properties))
 
     def test_no_filter_function(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': None,
@@ -823,22 +824,22 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {'volume_type': {}}
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_not_implemented(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {}
             })
 
         filter_properties = {'volume_type': {}}
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_no_volume_extra_specs(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': '1 == 1',
@@ -847,11 +848,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {'volume_type': {}}
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_function_extra_spec_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': 'extra.var == 1',
@@ -866,11 +867,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
             }
         }
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_function_stats_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'total_capacity_gb': 100,
                 'capabilities': {
@@ -880,11 +881,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {'volume_type': {}}
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_function_volume_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': 'volume.size < 5',
@@ -899,11 +900,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
             }
         }
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_function_qos_spec_replacement(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': 'qos.var == 1',
@@ -916,11 +917,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
             }
         }
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_function_exception_caught(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': '1 / 0 == 0',
@@ -929,11 +930,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {}
 
-        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host1, filter_properties))
 
     def test_function_empty_qos(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'filter_function': 'qos.maxiops == 1',
@@ -944,11 +945,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
             'qos_specs': None
         }
 
-        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host1, filter_properties))
 
     def test_capabilities(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'foo': 10,
@@ -958,11 +959,11 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {}
 
-        self.assertTrue(filt_cls.host_passes(host1, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host1, filter_properties))
 
     def test_wrong_capabilities(self):
         filt_cls = self.class_map['DriverFilter']()
-        host1 = fakes.FakeHostState(
+        host1 = fakes.FakeBackendState(
             'host1', {
                 'capabilities': {
                     'bar': 10,
@@ -972,10 +973,10 @@ class DriverFilterTestCase(HostFiltersTestCase):
 
         filter_properties = {}
 
-        self.assertFalse(filt_cls.host_passes(host1, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host1, filter_properties))
 
 
-class InstanceLocalityFilterTestCase(HostFiltersTestCase):
+class InstanceLocalityFilterTestCase(BackendFiltersTestCase):
     def setUp(self):
         super(InstanceLocalityFilterTestCase, self).setUp()
         self.override_config('nova_endpoint_template',
@@ -993,13 +994,13 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         fake_extensions.return_value = (
             fakes.FakeNovaClient().list_extensions.show_all())
         filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         uuid = nova.novaclient().servers.create('host1')
 
         filter_properties = {'context': self.context,
                              'scheduler_hints': {'local_to_instance': uuid},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     @mock.patch('novaclient.client.discover_extensions')
     @mock.patch('cinder.compute.nova.novaclient')
@@ -1008,47 +1009,47 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         fake_extensions.return_value = (
             fakes.FakeNovaClient().list_extensions.show_all())
         filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         uuid = nova.novaclient().servers.create('host2')
 
         filter_properties = {'context': self.context,
                              'scheduler_hints': {'local_to_instance': uuid},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_handles_none(self):
         filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = {'context': self.context,
                              'scheduler_hints': None,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_invalid_uuid(self):
         filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = {'context': self.context,
                              'scheduler_hints':
                              {'local_to_instance': 'e29b11d4-not-valid-a716'},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertRaises(exception.InvalidUUID,
-                          filt_cls.host_passes, host, filter_properties)
+                          filt_cls.backend_passes, host, filter_properties)
 
     @mock.patch('cinder.compute.nova.novaclient')
     def test_nova_no_extended_server_attributes(self, _mock_novaclient):
         _mock_novaclient.return_value = fakes.FakeNovaClient(
             ext_srv_attr=False)
         filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         uuid = nova.novaclient().servers.create('host1')
 
         filter_properties = {'context': self.context,
                              'scheduler_hints': {'local_to_instance': uuid},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertRaises(exception.CinderException,
-                          filt_cls.host_passes, host, filter_properties)
+                          filt_cls.backend_passes, host, filter_properties)
 
     @mock.patch('cinder.compute.nova.novaclient')
     def test_nova_down_does_not_alter_other_filters(self, _mock_novaclient):
@@ -1056,11 +1057,11 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         _mock_novaclient.side_effect = Exception
 
         filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = {'context': self.context, 'size': 100,
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     @mock.patch('cinder.compute.nova.novaclient')
     def test_nova_timeout(self, mock_novaclient):
@@ -1069,22 +1070,22 @@ class InstanceLocalityFilterTestCase(HostFiltersTestCase):
         mock_show_all.side_effect = request_exceptions.Timeout
 
         filt_cls = self.class_map['InstanceLocalityFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
 
         filter_properties = \
             {'context': self.context, 'scheduler_hints':
                 {'local_to_instance': 'e29b11d4-15ef-34a9-a716-598a6f0b5467'},
              'request_spec': {'volume_id': fake.VOLUME_ID}}
         self.assertRaises(exception.APITimeout,
-                          filt_cls.host_passes, host, filter_properties)
+                          filt_cls.backend_passes, host, filter_properties)
 
 
-class TestFilter(filters.BaseHostFilter):
+class TestFilter(filters.BaseBackendFilter):
     pass
 
 
 class TestBogusFilter(object):
-    """Class that doesn't inherit from BaseHostFilter."""
+    """Class that doesn't inherit from BaseBackendFilter."""
     pass
 
 
@@ -1317,7 +1318,7 @@ class ExtraSpecsOpsTestCase(test.TestCase):
 
 
 @ddt.ddt
-class BasicFiltersTestCase(HostFiltersTestCase):
+class BasicFiltersTestCase(BackendFiltersTestCase):
     """Test case for host filters."""
 
     def setUp(self):
@@ -1341,12 +1342,12 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         filter_properties = {'resource_type': {'name': 'fake_type',
                                                'extra_specs': especs},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
-        host = fakes.FakeHostState('host1',
-                                   {'free_capacity_gb': 1024,
-                                    'capabilities': capabilities,
-                                    'service': service})
+        host = fakes.FakeBackendState('host1',
+                                      {'free_capacity_gb': 1024,
+                                       'capabilities': capabilities,
+                                       'service': service})
         assertion = self.assertTrue if passes else self.assertFalse
-        assertion(filt_cls.host_passes(host, filter_properties))
+        assertion(filt_cls.backend_passes(host, filter_properties))
 
     def test_capability_filter_passes_extra_specs_simple(self):
         self._do_test_type_filter_extra_specs(
@@ -1500,11 +1501,11 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'query': self.json_query},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 1024,
-                                    'free_disk_mb': 200 * 1024,
-                                    'capabilities': capabilities})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 1024,
+                                       'free_disk_mb': 200 * 1024,
+                                       'capabilities': capabilities})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_passes_with_no_query(self):
         filt_cls = self.class_map['JsonFilter']()
@@ -1513,11 +1514,11 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                                                'ephemeral_gb': 0},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 0,
-                                    'free_disk_mb': 0,
-                                    'capabilities': capabilities})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 0,
+                                       'free_disk_mb': 0,
+                                       'capabilities': capabilities})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_fails_on_memory(self):
         filt_cls = self.class_map['JsonFilter']()
@@ -1527,11 +1528,11 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'query': self.json_query},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 1023,
-                                    'free_disk_mb': 200 * 1024,
-                                    'capabilities': capabilities})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 1023,
+                                       'free_disk_mb': 200 * 1024,
+                                       'capabilities': capabilities})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_fails_on_disk(self):
         filt_cls = self.class_map['JsonFilter']()
@@ -1541,11 +1542,11 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'query': self.json_query},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 1024,
-                                    'free_disk_mb': (200 * 1024) - 1,
-                                    'capabilities': capabilities})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 1024,
+                                       'free_disk_mb': (200 * 1024) - 1,
+                                       'capabilities': capabilities})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_fails_on_caps_disabled(self):
         filt_cls = self.class_map['JsonFilter']()
@@ -1559,11 +1560,11 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'query': json_query},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 1024,
-                                    'free_disk_mb': 200 * 1024,
-                                    'capabilities': capabilities})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 1024,
+                                       'free_disk_mb': 200 * 1024,
+                                       'capabilities': capabilities})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_fails_on_service_disabled(self):
         filt_cls = self.class_map['JsonFilter']()
@@ -1576,11 +1577,11 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                              'scheduler_hints': {'query': json_query},
                              'request_spec': {'volume_id': fake.VOLUME_ID}}
         capabilities = {'enabled': True}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 1024,
-                                    'free_disk_mb': 200 * 1024,
-                                    'capabilities': capabilities})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 1024,
+                                       'free_disk_mb': 200 * 1024,
+                                       'capabilities': capabilities})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_happy_day(self):
         """Test json filter more thoroughly."""
@@ -1605,67 +1606,67 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         # Passes
         capabilities = {'enabled': True, 'opt1': 'match'}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 10,
-                                    'free_disk_mb': 200,
-                                    'capabilities': capabilities,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 10,
+                                       'free_disk_mb': 200,
+                                       'capabilities': capabilities,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
         # Passes
         capabilities = {'enabled': True, 'opt1': 'match'}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 40,
-                                    'free_disk_mb': 400,
-                                    'capabilities': capabilities,
-                                    'service': service})
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 40,
+                                       'free_disk_mb': 400,
+                                       'capabilities': capabilities,
+                                       'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
         # Fails due to capabilities being disabled
         capabilities = {'enabled': False, 'opt1': 'match'}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 40,
-                                    'free_disk_mb': 400,
-                                    'capabilities': capabilities,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 40,
+                                       'free_disk_mb': 400,
+                                       'capabilities': capabilities,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
         # Fails due to being exact memory/disk we don't want
         capabilities = {'enabled': True, 'opt1': 'match'}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 30,
-                                    'free_disk_mb': 300,
-                                    'capabilities': capabilities,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 30,
+                                       'free_disk_mb': 300,
+                                       'capabilities': capabilities,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
         # Fails due to memory lower but disk higher
         capabilities = {'enabled': True, 'opt1': 'match'}
         service = {'disabled': False}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 20,
-                                    'free_disk_mb': 400,
-                                    'capabilities': capabilities,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 20,
+                                       'free_disk_mb': 400,
+                                       'capabilities': capabilities,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
         # Fails due to capabilities 'opt1' not equal
         capabilities = {'enabled': True, 'opt1': 'no-match'}
         service = {'enabled': True}
-        host = fakes.FakeHostState('host1',
-                                   {'free_ram_mb': 20,
-                                    'free_disk_mb': 400,
-                                    'capabilities': capabilities,
-                                    'service': service})
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        host = fakes.FakeBackendState('host1',
+                                      {'free_ram_mb': 20,
+                                       'free_disk_mb': 400,
+                                       'capabilities': capabilities,
+                                       'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_basic_operators(self):
         filt_cls = self.class_map['JsonFilter']()
-        host = fakes.FakeHostState('host1',
-                                   {'capabilities': {'enabled': True}})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': {'enabled': True}})
         # (operator, arguments, expected_result)
         ops_to_test = [
             ['=', [1, 1], True],
@@ -1704,7 +1705,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'request_spec': {'volume_id': fake.VOLUME_ID}
             }
             self.assertEqual(expected,
-                             filt_cls.host_passes(host, filter_properties))
+                             filt_cls.backend_passes(host, filter_properties))
 
         # This results in [False, True, False, True] and if any are True
         # then it passes...
@@ -1714,7 +1715,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
         # This results in [False, False, False] and if any are True
         # then it passes...which this doesn't
@@ -1724,7 +1725,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_unknown_operator_raises(self):
         filt_cls = self.class_map['JsonFilter']()
@@ -1734,15 +1735,15 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        host = fakes.FakeHostState('host1',
-                                   {'capabilities': {'enabled': True}})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': {'enabled': True}})
         self.assertRaises(KeyError,
-                          filt_cls.host_passes, host, filter_properties)
+                          filt_cls.backend_passes, host, filter_properties)
 
     def test_json_filter_empty_filters_pass(self):
         filt_cls = self.class_map['JsonFilter']()
-        host = fakes.FakeHostState('host1',
-                                   {'capabilities': {'enabled': True}})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': {'enabled': True}})
 
         raw = []
         filter_properties = {
@@ -1750,19 +1751,19 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
         raw = {}
         filter_properties = {
             'scheduler_hints': {
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_invalid_num_arguments_fails(self):
         filt_cls = self.class_map['JsonFilter']()
-        host = fakes.FakeHostState('host1',
-                                   {'capabilities': {'enabled': True}})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': {'enabled': True}})
 
         raw = ['>', ['and', ['or', ['not', ['<', ['>=', ['<=', ['in', ]]]]]]]]
         filter_properties = {
@@ -1770,7 +1771,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
         raw = ['>', 1]
         filter_properties = {
@@ -1778,12 +1779,12 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))
 
     def test_json_filter_unknown_variable_ignored(self):
         filt_cls = self.class_map['JsonFilter']()
-        host = fakes.FakeHostState('host1',
-                                   {'capabilities': {'enabled': True}})
+        host = fakes.FakeBackendState('host1',
+                                      {'capabilities': {'enabled': True}})
 
         raw = ['=', '$........', 1, 1]
         filter_properties = {
@@ -1791,7 +1792,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
         raw = ['=', '$foo', 2, 2]
         filter_properties = {
@@ -1799,7 +1800,7 @@ class BasicFiltersTestCase(HostFiltersTestCase):
                 'query': jsonutils.dumps(raw),
             },
         }
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     @staticmethod
     def _make_zone_request(zone, is_admin=False):
@@ -1817,45 +1818,42 @@ class BasicFiltersTestCase(HostFiltersTestCase):
         filt_cls = self.class_map['AvailabilityZoneFilter']()
         service = {'availability_zone': 'nova'}
         request = self._make_zone_request('nova')
-        host = fakes.FakeHostState('host1',
-                                   {'service': service})
-        self.assertTrue(filt_cls.host_passes(host, request))
+        host = fakes.FakeBackendState('host1', {'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, request))
 
     def test_availability_zone_filter_different(self):
         filt_cls = self.class_map['AvailabilityZoneFilter']()
         service = {'availability_zone': 'nova'}
         request = self._make_zone_request('bad')
-        host = fakes.FakeHostState('host1',
-                                   {'service': service})
-        self.assertFalse(filt_cls.host_passes(host, request))
+        host = fakes.FakeBackendState('host1', {'service': service})
+        self.assertFalse(filt_cls.backend_passes(host, request))
 
     def test_availability_zone_filter_empty(self):
         filt_cls = self.class_map['AvailabilityZoneFilter']()
         service = {'availability_zone': 'nova'}
         request = {}
-        host = fakes.FakeHostState('host1',
-                                   {'service': service})
-        self.assertTrue(filt_cls.host_passes(host, request))
+        host = fakes.FakeBackendState('host1', {'service': service})
+        self.assertTrue(filt_cls.backend_passes(host, request))
 
     def test_ignore_attempted_hosts_filter_disabled(self):
         # Test case where re-scheduling is disabled.
         filt_cls = self.class_map['IgnoreAttemptedHostsFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         filter_properties = {}
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_ignore_attempted_hosts_filter_pass(self):
         # Node not previously tried.
         filt_cls = self.class_map['IgnoreAttemptedHostsFilter']()
-        host = fakes.FakeHostState('host1', {})
+        host = fakes.FakeBackendState('host1', {})
         attempted = dict(num_attempts=2, hosts=['host2'])
         filter_properties = dict(retry=attempted)
-        self.assertTrue(filt_cls.host_passes(host, filter_properties))
+        self.assertTrue(filt_cls.backend_passes(host, filter_properties))
 
     def test_ignore_attempted_hosts_filter_fail(self):
         # Node was already tried.
         filt_cls = self.class_map['IgnoreAttemptedHostsFilter']()
-        host = fakes.FakeHostState('host1', {})
-        attempted = dict(num_attempts=2, hosts=['host1'])
+        host = fakes.FakeBackendState('host1', {})
+        attempted = dict(num_attempts=2, backends=['host1'])
         filter_properties = dict(retry=attempted)
-        self.assertFalse(filt_cls.host_passes(host, filter_properties))
+        self.assertFalse(filt_cls.backend_passes(host, filter_properties))

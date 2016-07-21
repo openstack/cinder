@@ -156,15 +156,14 @@ class VolumeRpcAPITestCase(test.TestCase):
 
         if 'host' in expected_msg:
             del expected_msg['host']
-        if 'dest_host' in expected_msg:
-            dest_host = expected_msg.pop('dest_host')
-            dest_host_dict = {'host': dest_host.host,
-                              'cluster_name': dest_host.cluster_name,
-                              'capabilities': dest_host.capabilities}
-            expected_msg['host'] = dest_host_dict
+        if 'dest_backend' in expected_msg:
+            dest_backend = expected_msg.pop('dest_backend')
+            dest_backend_dict = {'host': dest_backend.host,
+                                 'cluster_name': dest_backend.cluster_name,
+                                 'capabilities': dest_backend.capabilities}
+            expected_msg['host'] = dest_backend_dict
         if 'force_copy' in expected_msg:
             expected_msg['force_host_copy'] = expected_msg.pop('force_copy')
-
         if 'new_volume' in expected_msg:
             volume = expected_msg['new_volume']
             expected_msg['new_volume_id'] = volume['id']
@@ -544,16 +543,16 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
     def test_migrate_volume(self, can_send_version):
-        class FakeHost(object):
+        class FakeBackend(object):
             def __init__(self):
                 self.host = 'host'
                 self.cluster_name = 'cluster_name'
                 self.capabilities = {}
-        dest_host = FakeHost()
+        dest_backend = FakeBackend()
         self._test_volume_api('migrate_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
-                              dest_host=dest_host,
+                              dest_backend=dest_backend,
                               force_host_copy=True,
                               version='3.5')
 
@@ -567,17 +566,17 @@ class VolumeRpcAPITestCase(test.TestCase):
 
     @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
     def test_retype(self, can_send_version):
-        class FakeHost(object):
+        class FakeBackend(object):
             def __init__(self):
                 self.host = 'host'
                 self.cluster_name = 'cluster_name'
                 self.capabilities = {}
-        dest_host = FakeHost()
+        dest_backend = FakeBackend()
         self._test_volume_api('retype',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
                               new_type_id='fake',
-                              dest_host=dest_host,
+                              dest_backend=dest_backend,
                               migration_policy='never',
                               reservations=self.fake_reservations,
                               old_reservations=self.fake_reservations,
@@ -608,7 +607,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               rpc_method='cast',
                               snapshot=my_fake_snapshot_obj,
                               ref='foo',
-                              host='fake_host',
+                              backend='fake_host',
                               version='3.0')
 
     def test_freeze_host(self):

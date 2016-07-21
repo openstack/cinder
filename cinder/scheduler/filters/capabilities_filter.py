@@ -21,8 +21,8 @@ from cinder.scheduler.filters import extra_specs_ops
 LOG = logging.getLogger(__name__)
 
 
-class CapabilitiesFilter(filters.BaseHostFilter):
-    """HostFilter to work with resource (instance & volume) type records."""
+class CapabilitiesFilter(filters.BaseBackendFilter):
+    """BackendFilter to work with resource (instance & volume) type records."""
 
     def _satisfies_extra_specs(self, capabilities, resource_type):
         """Check if capabilities satisfy resource type requirements.
@@ -55,7 +55,7 @@ class CapabilitiesFilter(filters.BaseHostFilter):
                 try:
                     cap = cap[scope[index]]
                 except (TypeError, KeyError):
-                    LOG.debug("Host doesn't provide capability '%(cap)s' " %
+                    LOG.debug("Backend doesn't provide capability '%(cap)s' " %
                               {'cap': scope[index]})
                     return False
 
@@ -75,15 +75,15 @@ class CapabilitiesFilter(filters.BaseHostFilter):
                 return False
         return True
 
-    def host_passes(self, host_state, filter_properties):
-        """Return a list of hosts that can create resource_type."""
+    def backend_passes(self, backend_state, filter_properties):
+        """Return a list of backends that can create resource_type."""
         # Note(zhiteng) Currently only Cinder and Nova are using
         # this filter, so the resource type is either instance or
         # volume.
         resource_type = filter_properties.get('resource_type')
-        if not self._satisfies_extra_specs(host_state.capabilities,
+        if not self._satisfies_extra_specs(backend_state.capabilities,
                                            resource_type):
-            LOG.debug("%(host_state)s fails resource_type extra_specs "
-                      "requirements", {'host_state': host_state})
+            LOG.debug("%(backend_state)s fails resource_type extra_specs "
+                      "requirements", {'backend_state': backend_state})
             return False
         return True

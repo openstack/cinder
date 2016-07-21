@@ -42,11 +42,11 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
             weight_properties)[0]
 
     @mock.patch('cinder.db.sqlalchemy.api.service_get_all')
-    def _get_all_hosts(self, _mock_service_get_all, disabled=False):
+    def _get_all_backends(self, _mock_service_get_all, disabled=False):
         ctxt = context.get_admin_context()
         fakes.mock_host_manager_db_calls(_mock_service_get_all,
                                          disabled=disabled)
-        host_states = self.host_manager.get_all_host_states(ctxt)
+        host_states = self.host_manager.get_all_backend_states(ctxt)
         _mock_service_get_all.assert_called_once_with(
             ctxt,
             None,  # backend_match_level
@@ -54,7 +54,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
         return host_states
 
     def test_default_of_spreading_first(self):
-        hostinfo_list = self._get_all_hosts()
+        hostinfo_list = self._get_all_backends()
 
         # host1: allocated_capacity_gb=0, weight=0        Norm=0.0
         # host2: allocated_capacity_gb=1748, weight=-1748
@@ -70,7 +70,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
 
     def test_capacity_weight_multiplier1(self):
         self.flags(allocated_capacity_weight_multiplier=1.0)
-        hostinfo_list = self._get_all_hosts()
+        hostinfo_list = self._get_all_backends()
 
         # host1: allocated_capacity_gb=0, weight=0          Norm=0.0
         # host2: allocated_capacity_gb=1748, weight=1748
@@ -86,7 +86,7 @@ class AllocatedCapacityWeigherTestCase(test.TestCase):
 
     def test_capacity_weight_multiplier2(self):
         self.flags(allocated_capacity_weight_multiplier=-2.0)
-        hostinfo_list = self._get_all_hosts()
+        hostinfo_list = self._get_all_backends()
 
         # host1: allocated_capacity_gb=0, weight=0        Norm=0.0
         # host2: allocated_capacity_gb=1748, weight=-3496
