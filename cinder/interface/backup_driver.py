@@ -52,9 +52,9 @@ class BackupDriver(base.CinderInterface):
         """Start a backup of a specified volume.
 
         If backup['parent_id'] is given, then an incremental backup
-        should be performed is supported.
+        should be performed.
 
-        If the parent backup is a different size, a full backup should be
+        If the parent backup is of different size, a full backup should be
         performed to ensure all data is included.
 
         TODO(smcginnis) Document backup variable structure.
@@ -66,7 +66,7 @@ class BackupDriver(base.CinderInterface):
         """
 
     def restore(self, backup, volume_id, volume_file):
-        """Restore data from a backup.
+        """Restore volume from a backup.
 
         :param backup: The backup information.
         :param volume_id: The volume to be restored.
@@ -83,9 +83,8 @@ class BackupDriver(base.CinderInterface):
         """Export driver specific backup record information.
 
         If backup backend needs additional driver specific information to
-        import backup record back into the system it must overwrite this method
-        and return it here as a dictionary so it can be serialized into a
-        string.
+        import backup record back into the system it must override this method
+        and return it as a dictionary so it can be serialized into a string.
 
         Default backup driver implementation has no extra information.
 
@@ -97,7 +96,7 @@ class BackupDriver(base.CinderInterface):
         """Import driver specific backup record information.
 
         If backup backend needs additional driver specific information to
-        import backup record back into the system it must overwrite this method
+        import backup record back into the system it must override this method
         since it will be called with the extra information that was provided by
         export_record when exporting the backup.
 
@@ -107,5 +106,5 @@ class BackupDriver(base.CinderInterface):
         :param backup: backup object to export
         :param driver_info: dictionary with driver specific backup record
                             information
-        :returns: nothing
+        :returns: None
         """

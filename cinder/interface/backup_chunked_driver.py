@@ -58,7 +58,7 @@ class BackupChunkedDriver(backup_driver.BackupDriver):
         """Delete object from container.
 
        :param container: The container to modify.
-       :param object_name: The object name delete.
+       :param object_name: The object name to delete.
        """
 
     def update_container_name(self, backup, container):
@@ -75,5 +75,7 @@ class BackupChunkedDriver(backup_driver.BackupDriver):
         This method allows for collection of extra metadata in prepare_backup()
         which will be passed to get_object_reader() and get_object_writer().
         Subclass extensions can use this extra information to optimize
-        data transfers. Return a json serializable object.
+        data transfers.
+
+         :returns: json serializable object
         """
