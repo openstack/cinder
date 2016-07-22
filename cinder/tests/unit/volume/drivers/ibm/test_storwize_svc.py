@@ -232,7 +232,7 @@ class StorwizeSVCManagementSimulator(object):
     # Check if name is valid
     @staticmethod
     def _is_invalid_name(name):
-        if re.match(r'^[a-zA-Z_][\w ._-]*$', name):
+        if re.match(r'^[a-zA-Z_][\w._-]*$', name):
             return False
         return True
 
@@ -297,6 +297,12 @@ class StorwizeSVCManagementSimulator(object):
             if skip:
                 skip = False
                 continue
+            # Check for a quoted command argument for volumes and strip
+            # quotes so that the simulater can match it later. Just
+            # match against test naming convensions for now.
+            if arg_list[i][0] == '"' and ('volume' in arg_list[i] or
+                                          'snapshot' in arg_list[i]):
+                arg_list[i] = arg_list[i][1:-1]
             if arg_list[i][0] == '-':
                 if arg_list[i][1:] in no_param_args:
                     ret[arg_list[i][1:]] = True
@@ -3520,6 +3526,19 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.ensure_export(None, vol_no_exist)
 
         # Delete the volume
+        self.driver.delete_volume(volume)
+
+    def test_storwize_svc_volume_name(self):
+        # Create a volume with space in name
+        volume = self._generate_vol_info(None, None)
+        volume['name'] = 'volume_ space'
+        self.driver.create_volume(volume)
+        self.driver.ensure_export(None, volume)
+
+        # Ensure lsvdisk can find the volume by name
+        attributes = self.driver._helpers.get_vdisk_attributes(volume['name'])
+        self.assertIn('name', attributes)
+        self.assertEqual(volume['name'], attributes['name'])
         self.driver.delete_volume(volume)
 
     def test_storwize_svc_volume_params(self):

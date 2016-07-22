@@ -255,7 +255,7 @@ class StorwizeSSH(object):
         If vdisk already mapped and multihostmap is True, use the force flag.
         """
         ssh_cmd = ['svctask', 'mkvdiskhostmap', '-host', '"%s"' % host,
-                   '-scsi', lun, vdisk]
+                   '-scsi', lun, '"%s"' % vdisk]
         if multihostmap:
             ssh_cmd.insert(ssh_cmd.index('mkvdiskhostmap') + 1, '-force')
         try:
@@ -335,11 +335,12 @@ class StorwizeSSH(object):
         return self.run_ssh_assert_no_output(ssh_cmd)
 
     def rmvdiskhostmap(self, host, vdisk):
-        ssh_cmd = ['svctask', 'rmvdiskhostmap', '-host', '"%s"' % host, vdisk]
+        ssh_cmd = ['svctask', 'rmvdiskhostmap', '-host', '"%s"' % host,
+                   '"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lsvdiskhostmap(self, vdisk):
-        ssh_cmd = ['svcinfo', 'lsvdiskhostmap', '-delim', '!', vdisk]
+        ssh_cmd = ['svcinfo', 'lsvdiskhostmap', '-delim', '!', '"%s"' % vdisk]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def lshostvdiskmap(self, host):
@@ -360,12 +361,13 @@ class StorwizeSSH(object):
         ssh_cmd = ['svctask', 'rmvdisk']
         if force:
             ssh_cmd += ['-force']
-        ssh_cmd += [vdisk]
+        ssh_cmd += ['"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lsvdisk(self, vdisk):
         """Return vdisk attributes or None if it doesn't exist."""
-        ssh_cmd = ['svcinfo', 'lsvdisk', '-bytes', '-delim', '!', vdisk]
+        ssh_cmd = ['svcinfo', 'lsvdisk', '-bytes', '-delim', '!',
+                   '"%s"' % vdisk]
         out, err = self._ssh(ssh_cmd, check_exit_code=False)
         if not err:
             return CLIResponse((out, err), ssh_cmd=ssh_cmd, delim='!',
@@ -390,22 +392,22 @@ class StorwizeSSH(object):
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def chvdisk(self, vdisk, params):
-        ssh_cmd = ['svctask', 'chvdisk'] + params + [vdisk]
+        ssh_cmd = ['svctask', 'chvdisk'] + params + ['"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def movevdisk(self, vdisk, iogrp):
-        ssh_cmd = ['svctask', 'movevdisk', '-iogrp', iogrp, vdisk]
+        ssh_cmd = ['svctask', 'movevdisk', '-iogrp', iogrp, '"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def expandvdisksize(self, vdisk, amount):
         ssh_cmd = (
             ['svctask', 'expandvdisksize', '-size', six.text_type(amount),
-             '-unit', 'gb', vdisk])
+             '-unit', 'gb', '"%s"' % vdisk])
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def mkfcmap(self, source, target, full_copy, copy_rate, consistgrp=None):
-        ssh_cmd = ['svctask', 'mkfcmap', '-source', source, '-target',
-                   target, '-autodelete']
+        ssh_cmd = ['svctask', 'mkfcmap', '-source', '"%s"' % source, '-target',
+                   '"%s"' % target, '-autodelete']
         if not full_copy:
             ssh_cmd.extend(['-copyrate', '0'])
         else:
@@ -469,7 +471,8 @@ class StorwizeSSH(object):
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lsvdiskfcmappings(self, vdisk):
-        ssh_cmd = ['svcinfo', 'lsvdiskfcmappings', '-delim', '!', vdisk]
+        ssh_cmd = ['svcinfo', 'lsvdiskfcmappings', '-delim', '!',
+                   '"%s"' % vdisk]
         return self.run_ssh_info(ssh_cmd, with_header=True)
 
     def lsfcmap(self, fc_map_id):
@@ -493,7 +496,7 @@ class StorwizeSSH(object):
 
     def addvdiskcopy(self, vdisk, dest_pool, params):
         ssh_cmd = (['svctask', 'addvdiskcopy'] + params + ['-mdiskgrp',
-                   '"%s"' % dest_pool, vdisk])
+                   '"%s"' % dest_pool, '"%s"' % vdisk])
         return self.run_ssh_check_created(ssh_cmd)
 
     def lsvdiskcopy(self, vdisk, copy_id=None):
@@ -502,24 +505,25 @@ class StorwizeSSH(object):
         if copy_id:
             ssh_cmd += ['-copy', copy_id]
             with_header = False
-        ssh_cmd += [vdisk]
+        ssh_cmd += ['"%s"' % vdisk]
         return self.run_ssh_info(ssh_cmd, with_header=with_header)
 
     def lsvdisksyncprogress(self, vdisk, copy_id):
         ssh_cmd = ['svcinfo', 'lsvdisksyncprogress', '-delim', '!',
-                   '-copy', copy_id, vdisk]
+                   '-copy', copy_id, '"%s"' % vdisk]
         return self.run_ssh_info(ssh_cmd, with_header=True)[0]
 
     def rmvdiskcopy(self, vdisk, copy_id):
-        ssh_cmd = ['svctask', 'rmvdiskcopy', '-copy', copy_id, vdisk]
+        ssh_cmd = ['svctask', 'rmvdiskcopy', '-copy', copy_id, '"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def addvdiskaccess(self, vdisk, iogrp):
-        ssh_cmd = ['svctask', 'addvdiskaccess', '-iogrp', iogrp, vdisk]
+        ssh_cmd = ['svctask', 'addvdiskaccess', '-iogrp', iogrp,
+                   '"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def rmvdiskaccess(self, vdisk, iogrp):
-        ssh_cmd = ['svctask', 'rmvdiskaccess', '-iogrp', iogrp, vdisk]
+        ssh_cmd = ['svctask', 'rmvdiskaccess', '-iogrp', iogrp, '"%s"' % vdisk]
         self.run_ssh_assert_no_output(ssh_cmd)
 
     def lsportfc(self, node_id):
@@ -1130,6 +1134,7 @@ class StorwizeHelpers(object):
         return params
 
     def create_vdisk(self, name, size, units, pool, opts):
+        name = '"%s"' % name
         LOG.debug('Enter: create_vdisk: vdisk %s.', name)
         params = self._get_vdisk_create_params(opts)
         self.ssh.mkvdisk(name, size, units, pool, opts, params)
