@@ -93,7 +93,8 @@ class Scheduler(object):
                                                       host,
                                                       capabilities)
 
-    def host_passes_filters(self, context, volume_id, host, filter_properties):
+    def host_passes_filters(self, context, host, request_spec,
+                            filter_properties):
         """Check if the specified host passes the filters."""
         raise NotImplementedError(_("Must implement host_passes_filters"))
 
