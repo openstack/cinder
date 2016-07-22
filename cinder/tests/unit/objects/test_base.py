@@ -94,6 +94,23 @@ class TestCinderObject(test_objects.BaseObjectsTestCase):
         test_obj.refresh()
         self._compare(self, refresh_obj, test_obj)
 
+    @mock.patch('cinder.objects.base.CinderPersistentObject.get_by_id')
+    def test_refresh_readonly(self, get_by_id_mock):
+        @objects.base.CinderObjectRegistry.register_if(False)
+        class MyTestObject(objects.base.CinderObject,
+                           objects.base.CinderObjectDictCompat,
+                           objects.base.CinderComparableObject,
+                           objects.base.CinderPersistentObject):
+            fields = {'id': fields.UUIDField(),
+                      'name': fields.StringField(read_only=True)}
+
+        test_obj = MyTestObject(id=fake.OBJECT_ID, name='foo')
+        refresh_obj = MyTestObject(id=fake.OBJECT_ID, name='bar')
+        get_by_id_mock.return_value = refresh_obj
+
+        test_obj.refresh()
+        self._compare(self, refresh_obj, test_obj)
+
     def test_refresh_no_id_field(self):
         @objects.base.CinderObjectRegistry.register_if(False)
         class MyTestObjectNoId(objects.base.CinderObject,

@@ -410,14 +410,10 @@ class CinderPersistentObject(object):
 
         current = self.get_by_id(self._context, self.id)
 
-        for field in self.fields:
-            # Only update attributes that are already set.  We do not want to
-            # unexpectedly trigger a lazy-load.
-            if self.obj_attr_is_set(field):
-                current_field = getattr(current, field)
-                if getattr(self, field) != current_field:
-                    setattr(self, field, current_field)
-        self.obj_reset_changes()
+        # Copy contents retrieved from the DB into self
+        my_data = vars(self)
+        my_data.clear()
+        my_data.update(vars(current))
 
     @classmethod
     def exists(cls, context, id_):
