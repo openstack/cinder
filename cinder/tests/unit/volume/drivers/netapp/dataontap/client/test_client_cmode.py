@@ -576,6 +576,31 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         self.assertEqual(1, self.connection.invoke_successfully.call_count)
 
+    @ddt.data({'supports_is_backup': True, 'is_snapshot': True},
+              {'supports_is_backup': True, 'is_snapshot': False},
+              {'supports_is_backup': False, 'is_snapshot': True},
+              {'supports_is_backup': False, 'is_snapshot': False})
+    @ddt.unpack
+    def test_clone_lun_is_snapshot(self, supports_is_backup, is_snapshot):
+
+        self.client.features.add_feature('BACKUP_CLONE_PARAM',
+                                         supported=supports_is_backup)
+
+        self.client.clone_lun(
+            'volume', 'fakeLUN', 'newFakeLUN', is_snapshot=is_snapshot)
+
+        clone_create_args = {
+            'volume': 'volume',
+            'source-path': 'fakeLUN',
+            'destination-path': 'newFakeLUN',
+            'space-reserve': 'true',
+        }
+        if is_snapshot and supports_is_backup:
+            clone_create_args['is-backup'] = 'true'
+        self.connection.invoke_successfully.assert_called_once_with(
+            netapp_api.NaElement.create_node_with_children(
+                'clone-create', **clone_create_args), True)
+
     def test_clone_lun_multiple_zapi_calls(self):
         """Test for when lun clone requires more than one zapi call."""
 
@@ -1042,6 +1067,32 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(expected_dest_path, actual_dest_path)
         self.assertIsNone(actual_request.get_child_by_name(
             'destination-exists'))
+
+    @ddt.data({'supports_is_backup': True, 'is_snapshot': True},
+              {'supports_is_backup': True, 'is_snapshot': False},
+              {'supports_is_backup': False, 'is_snapshot': True},
+              {'supports_is_backup': False, 'is_snapshot': False})
+    @ddt.unpack
+    def test_clone_file_is_snapshot(self, supports_is_backup, is_snapshot):
+
+        self.connection.get_api_version.return_value = (1, 20)
+        self.client.features.add_feature('BACKUP_CLONE_PARAM',
+                                         supported=supports_is_backup)
+
+        self.client.clone_file(
+            'volume', 'fake_source', 'fake_destination', 'fake_vserver',
+            is_snapshot=is_snapshot)
+
+        clone_create_args = {
+            'volume': 'volume',
+            'source-path': 'fake_source',
+            'destination-path': 'fake_destination',
+        }
+        if is_snapshot and supports_is_backup:
+            clone_create_args['is-backup'] = 'true'
+        self.connection.invoke_successfully.assert_called_once_with(
+            netapp_api.NaElement.create_node_with_children(
+                'clone-create', **clone_create_args), True)
 
     def test_get_file_usage(self):
         expected_bytes = "2048"

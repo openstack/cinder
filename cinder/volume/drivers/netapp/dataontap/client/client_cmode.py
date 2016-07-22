@@ -59,6 +59,7 @@ class Client(client_base.Client):
         ontapi_1_20 = ontapi_version >= (1, 20)
         ontapi_1_2x = (1, 20) <= ontapi_version < (1, 30)
         ontapi_1_30 = ontapi_version >= (1, 30)
+        ontapi_1_100 = ontapi_version >= (1, 100)
 
         self.features.add_feature('USER_CAPABILITY_LIST',
                                   supported=ontapi_1_20)
@@ -66,6 +67,7 @@ class Client(client_base.Client):
         self.features.add_feature('FAST_CLONE_DELETE', supported=ontapi_1_30)
         self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
                                   supported=ontapi_1_30)
+        self.features.add_feature('BACKUP_CLONE_PARAM', supported=ontapi_1_100)
 
     def _invoke_vserver_api(self, na_element, vserver):
         server = copy.copy(self.connection)
@@ -375,7 +377,7 @@ class Client(client_base.Client):
 
     def clone_lun(self, volume, name, new_name, space_reserved='true',
                   qos_policy_group_name=None, src_block=0, dest_block=0,
-                  block_count=0, source_snapshot=None):
+                  block_count=0, source_snapshot=None, is_snapshot=False):
         # zAPI can only handle 2^24 blocks per range
         bc_limit = 2 ** 24  # 8GB
         # zAPI can only handle 32 block ranges per call
@@ -400,6 +402,8 @@ class Client(client_base.Client):
             }
             if source_snapshot:
                 zapi_args['snapshot-name'] = source_snapshot
+            if is_snapshot and self.features.BACKUP_CLONE_PARAM:
+                zapi_args['is-backup'] = 'true'
             clone_create = netapp_api.NaElement.create_node_with_children(
                 'clone-create', **zapi_args)
             if qos_policy_group_name is not None:
@@ -624,16 +628,23 @@ class Client(client_base.Client):
                                    "%(junction)s ") % msg_fmt)
 
     def clone_file(self, flex_vol, src_path, dest_path, vserver,
-                   dest_exists=False):
+                   dest_exists=False, is_snapshot=False):
         """Clones file on vserver."""
         LOG.debug("Cloning with params volume %(volume)s, src %(src_path)s, "
                   "dest %(dest_path)s, vserver %(vserver)s",
                   {'volume': flex_vol, 'src_path': src_path,
                    'dest_path': dest_path, 'vserver': vserver})
+
+        zapi_args = {
+            'volume': flex_vol,
+            'source-path': src_path,
+            'destination-path': dest_path,
+        }
+        if is_snapshot and self.features.BACKUP_CLONE_PARAM:
+            zapi_args['is-backup'] = 'true'
         clone_create = netapp_api.NaElement.create_node_with_children(
-            'clone-create',
-            **{'volume': flex_vol, 'source-path': src_path,
-               'destination-path': dest_path})
+            'clone-create', **zapi_args)
+
         major, minor = self.connection.get_api_version()
         if major == 1 and minor >= 20 and dest_exists:
             clone_create.add_new_child('destination-exists', 'true')

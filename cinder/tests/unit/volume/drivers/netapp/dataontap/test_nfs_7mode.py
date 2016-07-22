@@ -55,6 +55,31 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         config.netapp_server_port = '80'
         return config
 
+    @ddt.data({'share': None, 'is_snapshot': False},
+              {'share': None, 'is_snapshot': True},
+              {'share': 'fake_share', 'is_snapshot': False},
+              {'share': 'fake_share', 'is_snapshot': True})
+    @ddt.unpack
+    def test_clone_backing_file_for_volume(self, share, is_snapshot):
+
+        mock_get_export_ip_path = self.mock_object(
+            self.driver, '_get_export_ip_path',
+            mock.Mock(return_value=(fake.SHARE_IP, fake.EXPORT_PATH)))
+        mock_get_actual_path_for_export = self.mock_object(
+            self.driver.zapi_client, 'get_actual_path_for_export',
+            mock.Mock(return_value='fake_path'))
+
+        self.driver._clone_backing_file_for_volume(
+            fake.FLEXVOL, 'fake_clone', fake.VOLUME_ID, share=share,
+            is_snapshot=is_snapshot)
+
+        mock_get_export_ip_path.assert_called_once_with(
+            fake.VOLUME_ID, share)
+        mock_get_actual_path_for_export.assert_called_once_with(
+            fake.EXPORT_PATH)
+        self.driver.zapi_client.clone_file.assert_called_once_with(
+            'fake_path/' + fake.FLEXVOL, 'fake_path/fake_clone')
+
     @ddt.data({'nfs_sparsed_volumes': True},
               {'nfs_sparsed_volumes': False})
     @ddt.unpack

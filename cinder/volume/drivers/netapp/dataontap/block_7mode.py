@@ -194,8 +194,12 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
 
     def _clone_lun(self, name, new_name, space_reserved=None,
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0, source_snapshot=None):
-        """Clone LUN with the given handle to the new name."""
+                   block_count=0, source_snapshot=None, is_snapshot=False):
+        """Clone LUN with the given handle to the new name.
+
+        :param: is_snapshot Not used, present for method signature consistency
+        """
+
         if not space_reserved:
             space_reserved = self.lun_space_reservation
         if qos_policy_group_name is not None:

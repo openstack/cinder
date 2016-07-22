@@ -275,7 +275,8 @@ class NetAppBlockStorageLibrary(object):
         vol_name = snapshot['volume_name']
         snapshot_name = snapshot['name']
         lun = self._get_lun_from_table(vol_name)
-        self._clone_lun(lun.name, snapshot_name, space_reserved='false')
+        self._clone_lun(lun.name, snapshot_name, space_reserved='false',
+                        is_snapshot=True)
 
     def delete_snapshot(self, snapshot):
         """Driver entry point for deleting a snapshot."""
@@ -453,7 +454,7 @@ class NetAppBlockStorageLibrary(object):
 
     def _clone_lun(self, name, new_name, space_reserved='true',
                    qos_policy_group_name=None, src_block=0, dest_block=0,
-                   block_count=0, source_snapshot=None):
+                   block_count=0, source_snapshot=None, is_snapshot=False):
         """Clone LUN with the given name to the new name."""
         raise NotImplementedError()
 

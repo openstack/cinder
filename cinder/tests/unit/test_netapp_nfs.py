@@ -170,7 +170,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mox.StubOutWithMock(drv, '_clone_backing_file_for_volume')
         drv._clone_backing_file_for_volume(mox_lib.IgnoreArg(),
                                            mox_lib.IgnoreArg(),
-                                           mox_lib.IgnoreArg())
+                                           mox_lib.IgnoreArg(),
+                                           is_snapshot=True)
         mox.ReplayAll()
 
         drv.create_snapshot(FakeSnapshot())
@@ -249,7 +250,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         drv.zapi_client.get_vol_by_junc_vserver('openstack', '/nfs').AndReturn(
             'nfsvol')
         drv.zapi_client.clone_file('nfsvol', 'volume_name', 'clone_name',
-                                   'openstack')
+                                   'openstack', is_snapshot=False)
         drv._get_host_ip(mox_lib.IgnoreArg()).AndReturn('127.0.0.1')
         drv._get_export_path(mox_lib.IgnoreArg()).AndReturn('/nfs')
         return mox
@@ -296,7 +297,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         share = 'ip:/share'
 
         drv._clone_backing_file_for_volume(volume_name, clone_name, volume_id,
-                                           share)
+                                           share, is_snapshot=False)
 
         mox.VerifyAll()
 
