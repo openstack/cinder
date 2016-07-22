@@ -1553,7 +1553,7 @@ class API(base.Base):
 
     def get_manageable_snapshots(self, context, host, marker=None, limit=None,
                                  offset=None, sort_keys=None, sort_dirs=None):
-        self._get_service_by_host(context, host)
+        self._get_service_by_host(context, host, resource='snapshot')
         return self.volume_rpcapi.get_manageable_snapshots(context, host,
                                                            marker, limit,
                                                            offset, sort_keys,
