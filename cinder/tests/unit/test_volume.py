@@ -169,16 +169,6 @@ class BaseVolumeTestCase(test.TestCase):
         except OSError:
             pass
 
-    def assert_notify_called(self, mock_notify, calls):
-        for i in range(0, len(calls)):
-            mock_call = mock_notify.call_args_list[i]
-            call = calls[i]
-
-            posargs = mock_call[0]
-
-            self.assertEqual(call[0], posargs[0])
-            self.assertEqual(call[1], posargs[2])
-
     def fake_get_all_volume_groups(obj, vg_name=None, no_suffix=True):
         return [{'name': 'cinder-volumes',
                  'size': '5.00',
