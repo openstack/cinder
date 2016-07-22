@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev52\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-22 04:11+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-07-20 01:21+0000\n"
+"PO-Revision-Date: 2016-07-21 01:33+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -131,6 +131,10 @@ msgstr ""
 "ト %(port)d を使用していないことを確認してください。"
 
 #, python-format
+msgid "%(name)s cannot be all spaces."
+msgstr "%(name)s は全て空白にはできません。"
+
+#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -141,6 +145,10 @@ msgstr ""
 "プがサポートされています。実際のモードは %(vol_mode)s です。"
 
 #, python-format
+msgid "%(reason)s"
+msgstr "%(reason)s"
+
+#, python-format
 msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
 msgstr ""
 "%(service)s サービスはストレージアプライアンス %(host)s で %(status)s になっ"
@@ -148,11 +156,11 @@ msgstr ""
 
 #, python-format
 msgid "%(value_name)s must be <= %(max_value)d"
-msgstr "%(value_name)s は %(max_value)d 以下である必要があります"
+msgstr "%(value_name)s は %(max_value)d 以下である必要があります。"
 
 #, python-format
 msgid "%(value_name)s must be >= %(min_value)d"
-msgstr "%(value_name)s は %(min_value)d 以上である必要があります"
+msgstr "%(value_name)s は %(min_value)d 以上である必要があります。"
 
 #, python-format
 msgid ""
@@ -255,7 +263,7 @@ msgid "'active' must be present when writing snap_info."
 msgstr "snap_info の書き込み時には 'active' が存在しなければなりません。"
 
 msgid "'consistencygroup_id' must be specified"
-msgstr "'consistencygroup_id' を指定する必要があります"
+msgstr "'consistencygroup_id' を指定する必要があります。"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info' の解析に失敗しました。"
@@ -430,6 +438,10 @@ msgstr ""
 
 msgid "An error has occurred during backup operation"
 msgstr "バックアップ操作中にエラーが発生しました"
+
+#, python-format
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
+msgstr "SheepdogDriver でエラーが発生しました。(理由: %(reason)s)"
 
 #, python-format
 msgid ""
@@ -660,6 +672,10 @@ msgstr "バックアップ状況は「使用可能」または「エラー」で
 
 msgid "Backup to be restored has invalid size"
 msgstr "復元するバックアップのサイズが無効です"
+
+#, python-format
+msgid "Bad HTTP response status %(status)s"
+msgstr "不正な HTTP レスポンスステータス : %(status)s"
 
 #, python-format
 msgid "Bad Status line returned: %(arg)s."
@@ -1238,10 +1254,10 @@ msgstr ""
 "'source_cgid' の両方を提供することができません。"
 
 msgid "Cannot register resource"
-msgstr "リソースを登録できません"
+msgstr "リソースを登録できません。"
 
 msgid "Cannot register resources"
-msgstr "リソースを登録できません"
+msgstr "リソースを登録できません。"
 
 #, python-format
 msgid ""
@@ -3034,7 +3050,7 @@ msgid "Failed adding connection for fabric=%(fabric)s: Error: %(err)s"
 msgstr "ファブリック %(fabric)s の接続の追加に失敗しました。エラー: %(err)s"
 
 msgid "Failed cgsnapshot"
-msgstr "cgsnapshot が失敗しました"
+msgstr "cgsnapshot が失敗しました。"
 
 #, python-format
 msgid "Failed creating snapshot for group: %(response)s."
@@ -3904,6 +3920,10 @@ msgid "Failed to retrieve active zoning configuration %s"
 msgstr "アクティブなゾーニング構成 %s の取得に失敗しました"
 
 #, python-format
+msgid "Failed to retrieve attachments for volume %(name)s"
+msgstr "ボリューム  %(name)s の接続を取得できません。"
+
+#, python-format
 msgid ""
 "Failed to set CHAP authentication for target IQN %(iqn)s. Details: %(ex)s"
 msgstr "ターゲット IQN %(iqn)s の CHAP 認証の設定に失敗しました。詳細: %(ex)s"
@@ -4474,6 +4494,10 @@ msgid "HPELeftHand url not found"
 msgstr "HPELeftHand url が見つかりません"
 
 #, python-format
+msgid "HTTP exit code: [%(code)s]"
+msgstr "HTTP 終了コード : [%(code)s]"
+
+#, python-format
 msgid ""
 "Hash block size has changed since the last backup. New hash block size: "
 "%(new)s. Old hash block size: %(old)s. Do a full backup."
@@ -4645,7 +4669,7 @@ msgstr ""
 "が見つかりません。要求サービス %(service)s"
 
 msgid "Incorrect request body format"
-msgstr "要求本体の形式が正しくありません"
+msgstr "要求本体の形式が正しくありません。"
 
 msgid "Incorrect request body format."
 msgstr "要求本体の形式が正しくありません。"
@@ -4756,6 +4780,10 @@ msgstr "引数が無効です。whence=%s はサポートされません。"
 #, python-format
 msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "接続モード '%(mode)s' はボリューム %(volume_id)s には無効です。"
+
+#, python-format
+msgid "Invalid attachment info for volume %(name)s: %(reason)s"
+msgstr "ボリューム  %(name)s の接続が無効です : %(reason)s"
 
 #, python-format
 msgid "Invalid auth key: %(reason)s"
@@ -5117,6 +5145,10 @@ msgstr ""
 "CloudByte のボリューム [%s] 削除に関するレスポンスにジョブ ID が見つかりませ"
 "ん。"
 
+#, python-format
+msgid "KaminarioCinderDriver failure: %(reason)s"
+msgstr "Kaminario Cinder ドライバー障害です: %(reason)s"
+
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods, "
 "colons and hyphens."
@@ -5142,6 +5174,10 @@ msgstr "LUN のエクスポートが失敗しました。"
 
 msgid "LUN map overflow on every channel."
 msgstr "すべてのチャンネルでの LUN マップのオーバーフロー。"
+
+#, python-format
+msgid "LUN not found by UUID: %(uuid)s."
+msgstr "UUID %(uuid)s の LUN が見つかりません。"
 
 #, python-format
 msgid "LUN not found with given ref %s."
@@ -5346,8 +5382,16 @@ msgstr "メタデータ項目が見つかりませんでした"
 msgid "Metadata item was not found."
 msgstr "メタデータ項目が見つかりませんでした。"
 
+#, python-format
+msgid "Metadata property key %s greater than 255 characters."
+msgstr "メタデータプロパティーのキー %s の文字数が255文字を超えています。"
+
+#, python-format
+msgid "Metadata property key %s value greater than 255 characters."
+msgstr "メタデータプロパティーのキー %s の値の文字数が255文字を超えています。"
+
 msgid "Metadata property key blank."
-msgstr "メタデータプロパティーのキーがブランクです。"
+msgstr "メタデータプロパティーのキーが空です。"
 
 msgid "Metadata restore failed due to incompatible version"
 msgstr "バージョンの非互換のため、メタデータのリストアに失敗しました"
@@ -5450,10 +5494,10 @@ msgid "Must specify 'host'."
 msgstr "'host' を指定する必要があります。"
 
 msgid "Must specify 'new_volume'"
-msgstr "'new_volume' を指定する必要があります"
+msgstr "'new_volume' を指定する必要があります。"
 
 msgid "Must specify 'status'"
-msgstr "'status' を指定する必要があります"
+msgstr "'status' を指定する必要があります。"
 
 msgid ""
 "Must specify 'status', 'attach_status' or 'migration_status' for update."
@@ -5462,10 +5506,10 @@ msgstr ""
 "必要があります。"
 
 msgid "Must specify a valid attach status"
-msgstr "有効な接続状況を指定してください"
+msgstr "有効な接続状況を指定してください。"
 
 msgid "Must specify a valid migration status"
-msgstr "有効なマイグレーション状況を指定してください"
+msgstr "有効なマイグレーション状況を指定してください。"
 
 #, python-format
 msgid "Must specify a valid persona %(valid)s,value '%(persona)s' is invalid."
@@ -5481,7 +5525,7 @@ msgstr ""
 "'%(prov)s' は無効です。"
 
 msgid "Must specify a valid status"
-msgstr "有効な状況を指定してください"
+msgstr "有効な状況を指定してください。"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "ExtensionManager クラスを指定する必要があります"
@@ -6505,6 +6549,12 @@ msgstr ""
 msgid "Retry count exceeded for command: %s"
 msgstr "コマンドの再試行回数を超過しました: %s"
 
+msgid "Retryable Dell Exception encountered"
+msgstr "再試行可能な Dell 例外が発生しました"
+
+msgid "Retryable Pure Storage Exception encountered"
+msgstr "再試行可能な Pure Storage 例外が発生しました"
+
 msgid "Retryable SolidFire Exception encountered"
 msgstr "再試行可能な SolidFire 例外が発生しました"
 
@@ -6825,7 +6875,7 @@ msgstr ""
 "ID %s の指定されたスナップショットグループを見つけることができませんでした。"
 
 msgid "Specify a password or private_key"
-msgstr "パスワードまたは private_key を指定してください"
+msgstr "パスワードまたは private_key を指定してください。"
 
 msgid "Specify san_password or san_private_key"
 msgstr "san_password または san_private_key を指定してください"
@@ -7603,6 +7653,10 @@ msgid "Unable to create replica clone for volume %s."
 msgstr "ボリューム %s のレプリカ複製を作成できません。"
 
 #, python-format
+msgid "Unable to create server object for initiator %(name)s"
+msgstr "イニシエーター %(name)s 用にサーバーオブジェクトを作成できません。"
+
+#, python-format
 msgid "Unable to create the relationship for %s."
 msgstr "%s の関係を作成できません。"
 
@@ -7724,6 +7778,9 @@ msgstr "名前 %s を持つ Purity 参照が見つかりません"
 msgid "Unable to find Volume Group: %(vg_name)s"
 msgstr "ボリュームグループが見つかりません: %(vg_name)s"
 
+msgid "Unable to find any active VPSA controller"
+msgstr "アクティブな VPSA コントローラーが見つかりません。"
+
 msgid "Unable to find failover target, no secondary targets configured."
 msgstr ""
 "フェイルオーバーのターゲットが見つかりません。セカンダリーターゲットが設定さ"
@@ -7731,6 +7788,10 @@ msgstr ""
 
 msgid "Unable to find iSCSI mappings."
 msgstr "iSCSI のマッピングが見つかりません。"
+
+#, python-format
+msgid "Unable to find server object for initiator %(name)s"
+msgstr "イニシエーター %(name)s 用のサーバーオブジェクトが見つかりません。"
 
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
@@ -7760,7 +7821,7 @@ msgstr "ボリューム %s が見つかりません"
 
 #, python-format
 msgid "Unable to get a block device for file '%s'"
-msgstr "ファイル '%s' のブロックデバイスを取得できません"
+msgstr "ファイル '%s' のブロックデバイスを取得できません。"
 
 #, python-format
 msgid ""
@@ -8120,6 +8181,14 @@ msgstr "認識されないバッキングフォーマット: %s"
 #, python-format
 msgid "Unrecognized read_deleted value '%s'"
 msgstr "認識されない read_deleted 値 '%s'"
+
+#, python-format
+msgid ""
+"Unrecoverable Error: Versioned Objects in DB are capped to unknown version "
+"%(version)s."
+msgstr ""
+"リカバリー不可能なエラー : DB 内のバージョニングされたオブジェクトは、不明な"
+"バージョン %(version)s でキャップされています。"
 
 #, python-format
 msgid "Unset gcs options: %s"
@@ -8701,7 +8770,7 @@ msgid "Volume status must be 'available'."
 msgstr "ボリューム状況は「使用可能」でなければなりません。"
 
 msgid "Volume to Initiator Group mapping already exists"
-msgstr "ボリュームからイニシエーターグループへのマッピングは既に存在します"
+msgstr "ボリュームからイニシエーターグループへのマッピングは既に存在します。"
 
 #, python-format
 msgid ""
@@ -9786,10 +9855,10 @@ msgid "keymgr.fixed_key not defined"
 msgstr "keymgr.fixed_key が定義されていません"
 
 msgid "limit param must be an integer"
-msgstr "limit パラメーターは整数でなければなりません"
+msgstr "limit パラメーターは整数でなければなりません。"
 
 msgid "limit param must be positive"
-msgstr "limit パラメーターは正でなければなりません"
+msgstr "limit パラメーターは正でなければなりません。"
 
 msgid "manage_existing requires a 'name' key to identify an existing volume."
 msgstr ""
@@ -9805,7 +9874,7 @@ msgstr ""
 
 #, python-format
 msgid "marker [%s] not found"
-msgstr "マーカー [%s] が見つかりません"
+msgstr "マーカー [%s] が見つかりません。"
 
 #, python-format
 msgid "mdiskgrp missing quotes %s"
@@ -9973,7 +10042,7 @@ msgstr ""
 "てください。"
 
 msgid "serve() can only be called once"
-msgstr "serve() は一度しか呼び出せません"
+msgstr "serve() は一度しか呼び出せません。"
 
 msgid "service not found"
 msgstr "サービスが見つかりません"
@@ -10009,6 +10078,9 @@ msgstr "source-name は空にできません。"
 msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
 msgstr ""
 "source-name 形式は 'vmdk_path@vm_inventory_path' でなければなりません。"
+
+msgid "specs must be a dictionary."
+msgstr "スペックはディクショナリーである必要があります。"
 
 #, python-format
 msgid "status must be %s and"
