@@ -215,7 +215,7 @@ class SchedulerManager(manager.Manager):
             volume = objects.Volume.get_by_id(context, volume_id)
 
         def _retype_volume_set_error(self, context, ex, request_spec,
-                                     volume_ref, msg, reservations):
+                                     volume_ref, reservations, msg=None):
             if reservations:
                 QUOTAS.rollback(context, reservations)
             previous_status = (
@@ -231,7 +231,7 @@ class SchedulerManager(manager.Manager):
             msg = _('New volume type not specified in request_spec.')
             ex = exception.ParameterNotFound(param='volume_type')
             _retype_volume_set_error(self, context, ex, request_spec,
-                                     volume, msg, reservations)
+                                     volume, reservations, msg)
 
         # Default migration policy is 'never'
         migration_policy = request_spec.get('migration_policy')
@@ -242,14 +242,11 @@ class SchedulerManager(manager.Manager):
             tgt_host = self.driver.find_retype_host(context, request_spec,
                                                     filter_properties,
                                                     migration_policy)
-        except exception.NoValidHost as ex:
-            msg = (_("Could not find a host for volume %(volume_id)s with "
-                     "type %(type_id)s.") %
-                   {'type_id': new_type['id'], 'volume_id': volume.id})
-            _retype_volume_set_error(self, context, ex, request_spec,
-                                     volume, msg, reservations)
         except Exception as ex:
-            with excutils.save_and_reraise_exception():
+            # Not having a valid host is an expected exception, so we don't
+            # reraise on it.
+            reraise = not isinstance(ex, exception.NoValidHost)
+            with excutils.save_and_reraise_exception(reraise=reraise):
                 _retype_volume_set_error(self, context, ex, request_spec,
                                          volume, None, reservations)
         else:
