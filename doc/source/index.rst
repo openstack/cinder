@@ -60,11 +60,6 @@ Sample Configuration File
 
     sample_config
 
-Outstanding Documentation Tasks
-===============================
-
-.. todolist::
-
 Indices and tables
 ==================
 
