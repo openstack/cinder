@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev52\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev62\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-22 04:11+0000\n"
+"POT-Creation-Date: 2016-07-23 05:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-07-21 01:33+0000\n"
+"PO-Revision-Date: 2016-07-22 02:44+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -4551,6 +4551,9 @@ msgstr "ホストは固定化されていません。"
 msgid "Host is already Frozen."
 msgstr "ホストは既に固定化されています。"
 
+msgid "Host must be specified in query parameters"
+msgstr "クエリーパラメーターではホストの指定が必要です。"
+
 msgid "Host not found"
 msgstr "ホストが見つかりません"
 
@@ -4954,6 +4957,14 @@ msgstr "シープドッグクラスターの状態が無効です。"
 #, python-format
 msgid "Invalid snapshot: %(reason)s"
 msgstr "無効なスナップショット: %(reason)s"
+
+#, python-format
+msgid "Invalid sort dirs passed: %s"
+msgstr "無効なソート方向が渡されました : %s"
+
+#, python-format
+msgid "Invalid sort keys passed: %s"
+msgstr "無効なソートキーが渡されました : %s"
 
 #, python-format
 msgid "Invalid status: '%s'"
