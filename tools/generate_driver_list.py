@@ -34,7 +34,8 @@ def print_drivers(drivers, config_name):
         if driver.version:
             print('* Version: %s' % driver.version)
         print('* %s=%s' % (config_name, driver.class_fqn))
-        print('* Description:')
+        print('* Description::')
+        print('')
         format_description(driver.desc)
         print('')
     print('')
