@@ -1,0 +1,16 @@
+{
+    "group": {
+        "id": "6f519a48-3183-46cf-a32f-41815f813986",
+        "status": "available",
+        "availability_zone": "az1",
+        "created_at": "2015-09-16T09:28:52.000000",
+        "name": "first_group",
+        "description": "my first group",
+        "group_type": "29514915-5208-46ab-9ece-1cc4688ad0c1",
+        "volume_types": [
+            "c4daaf47-c530-4901-b28e-f5f0a359c4e6"
+        ],
+        "group_snapshot_id": None,
+        "source_group_id": None
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "group_type": {
+        "name": "grp-type-001",
+        "description": "group type 0001",
+        "is_public": True,
+        "group_specs": {
+            "consistent_group_snapshot_enabled": "<is> False"
+        }
+    }
+}

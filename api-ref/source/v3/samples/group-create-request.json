@@ -1,0 +1,12 @@
+{
+    "group": {
+        "name": "first_group",
+        "description": "first group",
+        "group_type": "29514915-5208-46ab-9ece-1cc4688ad0c1",
+        "volume_types": [
+            "4e9e6d23-eed0-426d-b90a-28f87a94b6fe",
+            "c4daaf47-c530-4901-b28e-f5f0a359c4e6"
+        ],
+        "availability_zone": "az0",
+    }
+}

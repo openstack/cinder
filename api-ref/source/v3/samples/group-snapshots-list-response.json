@@ -1,0 +1,12 @@
+{
+    "group_snapshots": [
+        {
+            "id": "6f519a48-3183-46cf-a32f-41815f813986",
+            "name": "my_group_snapshot1"
+        },
+        {
+            "id": "aed36625-a6d7-4681-ba59-c7ba3d18c148",
+            "name": "my_group_snapshot2"
+        }
+    ]
+}
