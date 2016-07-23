@@ -36,6 +36,7 @@ extensions = ['sphinx.ext.autodoc',
               'oslosphinx',
               'stevedore.sphinxext',
               'oslo_config.sphinxconfiggen',
+              'ext.cinder_driverlist',
               ]
 
 config_generator_config_file = '../../cinder/config/cinder-config-generator.conf'
