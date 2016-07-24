@@ -791,6 +791,24 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
         self.assertEqual(1, len(xms_data['consistency-group-volumes']))
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
+    def test_create_cg(self, get_all_for_cgsnapshot, req):
+        req.side_effect = xms_request
+        d = self.data
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        get_all_for_cgsnapshot.return_value = [snapshot_obj]
+        self.driver.create_consistencygroup(d.context, d.group)
+        self.driver.update_consistencygroup(d.context, d.group,
+                                            add_volumes=[d.test_volume,
+                                                         d.test_volume2])
+        self.driver.db = mock.Mock()
+        (self.driver.db.
+         volume_get_all_by_group.return_value) = [mock.MagicMock()]
+        res = self.driver.create_cgsnapshot(d.context, d.cgsnapshot,
+                                            [snapshot_obj])
+        self.assertEqual((None, None), res)
+
+    @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
     def test_cg_delete(self, get_all_for_cgsnapshot, req):
         req.side_effect = xms_request
         d = self.data
@@ -804,7 +822,7 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
         self.driver.db = mock.Mock()
         (self.driver.db.
          volume_get_all_by_group.return_value) = [mock.MagicMock()]
-        self.driver.create_cgsnapshot(d.context, d.cgsnapshot, [])
+        self.driver.create_cgsnapshot(d.context, d.cgsnapshot, [snapshot_obj])
         self.driver.delete_consistencygroup(d.context, d.group, [])
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
@@ -827,7 +845,9 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
                     'name': snapset_name,
                     'index': 1}
         xms_data['snapshot-sets'] = {snapset_name: snapset1, 1: snapset1}
-        self.driver.delete_cgsnapshot(d.context, d.cgsnapshot, [])
+        res = self.driver.delete_cgsnapshot(d.context, d.cgsnapshot,
+                                            [snapshot_obj])
+        self.assertEqual((None, None), res)
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
     def test_cg_from_src_snapshot(self, get_all_for_cgsnapshot, req):
@@ -855,9 +875,11 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
         snapshot1 = (fake_snapshot
                      .fake_snapshot_obj
                      (d.context, volume_id=d.test_volume['id']))
-        self.driver.create_consistencygroup_from_src(d.context, cg_obj,
-                                                     [new_vol1],
-                                                     d.cgsnapshot, [snapshot1])
+        res = self.driver.create_consistencygroup_from_src(d.context, cg_obj,
+                                                           [new_vol1],
+                                                           d.cgsnapshot,
+                                                           [snapshot1])
+        self.assertEqual((None, None), res)
 
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
     def test_cg_from_src_cg(self, get_all_for_cgsnapshot, req):
