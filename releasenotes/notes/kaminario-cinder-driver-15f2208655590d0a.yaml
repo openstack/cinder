@@ -1,0 +1,4 @@
+---
+features:
+  - Add manage/unmanage and extra-specs feature in Kaminario iSCSI and FC Cinder drivers.
+
