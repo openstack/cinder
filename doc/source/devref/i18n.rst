@@ -1,29 +1,46 @@
 Internationalization
 ====================
-cinder uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
+
+For internationalization guidelines, see the
+`oslo.i18n documention <http://docs.openstack.org/developer/oslo.i18n/guidelines.html>`_.
+The information below can be used to get started.
+
+Cinder uses `gettext <http://docs.python.org/library/gettext.html>`_ so that
 user-facing strings such as log messages appear in the appropriate
 language in different locales.
 
 To use gettext, make sure that the strings passed to the logger are wrapped
-in a ``_()`` function call. For example::
+in a ``_Lx()`` function call. For example::
 
-    LOG.info(_("block_device_mapping %s") % block_device_mapping)
+    LOG.info(_LI("block_device_mapping %s"), block_device_mapping)
+
+There are a few different _() translation markers, depending on the logging
+level of the text:
+
+- _LI() - Used for INFO level log messages
+- _LW() - Used for WARNING level log messages
+- _LE() - Used for ERROR level log messages (this includes LOG.exception)
+- _() - Used for any exception messages, including strings used for both
+            logging and exceptions.
 
 Do not use ``locals()`` for formatting messages because:
+
 1. It is not as clear as using explicit dicts.
 2. It could produce hidden errors during refactoring.
 3. Changing the name of a variable causes a change in the message.
 4. It creates a lot of otherwise unused variables.
 
-If you do not follow the project conventions, your code may cause the
-LocalizationTestCase.test_multiple_positional_format_placeholders test to fail
-in cinder/tests/test_localization.py.
+If you do not follow the project conventions, your code may cause pep8 hacking
+check failures.
 
 For translation to work properly, the top level scripts for Cinder need
 to first do the following before any Cinder modules are imported::
 
     from cinder import i18n
     i18n.enable_lazy()
+
+Note: this should _only_ be called from top level scripts - no library code
+or common modules should call this method.
 
 Any files that use the _() for translation then must have the following
 lines::
@@ -34,3 +51,4 @@ If the above code is missing, it may result in an error that looks
 like::
 
     NameError: name '_' is not defined
+
