@@ -100,7 +100,7 @@ We call this infor the model_update and it's used to update vital target
 information associated with the volume in the Cinder database.
 
 driver.initialize_connection
-***************************
+****************************
 
 Now that we've actually built a target and persisted the important
 bits of information associated with it, we're ready to actually assign
