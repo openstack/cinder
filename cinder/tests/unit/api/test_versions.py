@@ -262,7 +262,8 @@ class VersionsControllerTestCase(test.TestCase):
         ('3.2', 'index', 'child 3.2', 'ControllerChild'),
         ('3.2', 'show', 404, 'ControllerChild'),
         ('3.3', 'index', 'child 3.3', 'ControllerChild'),
-        ('3.3', 'show', 'show', 'ControllerChild'))
+        ('3.3', 'show', 'show', 'ControllerChild'),
+        ('3.4', 'index', 'child 3.4', 'ControllerChild'))
     @ddt.unpack
     def test_versions_inheritance_of_non_base_controller(self, version, call,
                                                          expected, controller):
@@ -287,11 +288,13 @@ class VersionsControllerTestCase(test.TestCase):
             def index(self, req):
                 return 'child 3.2'
 
-            # TODO(geguileo): Figure out a way to make microversions work in a
-            # way that doesn't raise complaints from duplicated method.
-            @wsgi.Controller.api_version('3.3')  # noqa
+            @index.api_version('3.3')
             def index(self, req):
                 return 'child 3.3'
+
+            @index.api_version('3.4')
+            def index(self, req):
+                return 'child 3.4'
 
             @wsgi.Controller.api_version('3.3')
             def show(self, req, *args, **kwargs):
