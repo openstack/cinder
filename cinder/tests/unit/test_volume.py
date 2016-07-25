@@ -474,6 +474,27 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.volume.delete_volume(self.context, vol0.id)
         self.volume.delete_volume(self.context, vol1.id)
 
+    @mock.patch('cinder.volume.manager.VolumeManager.'
+                '_include_resources_in_cluster')
+    def test_init_host_cluster_not_changed(self, include_in_cluster_mock):
+        self.volume.init_host(False)
+        include_in_cluster_mock.assert_not_called()
+
+    @mock.patch('cinder.objects.volume.VolumeList.include_in_cluster')
+    @mock.patch('cinder.objects.consistencygroup.ConsistencyGroupList.'
+                'include_in_cluster')
+    def test_init_host_added_to_cluster(self, vol_include_mock,
+                                        cg_include_mock):
+        self.mock_object(self.volume, 'cluster', mock.sentinel.cluster)
+        self.volume.init_host(True)
+
+        vol_include_mock.assert_called_once_with(mock.ANY,
+                                                 mock.sentinel.cluster,
+                                                 host=self.volume.host)
+        cg_include_mock.assert_called_once_with(mock.ANY,
+                                                mock.sentinel.cluster,
+                                                host=self.volume.host)
+
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-scheduler': '1.3'})

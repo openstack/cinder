@@ -36,6 +36,8 @@ profiler = importutils.try_import('osprofiler.profiler')
 osprofiler_web = importutils.try_import('osprofiler.web')
 profiler_opts = importutils.try_import('osprofiler.opts')
 
+
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder import context
 from cinder import coordination
 from cinder import exception
@@ -43,7 +45,9 @@ from cinder.i18n import _, _LE, _LI, _LW
 from cinder import objects
 from cinder.objects import base as objects_base
 from cinder import rpc
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import version
+from cinder.volume import rpcapi as volume_rpcapi
 
 
 LOG = logging.getLogger(__name__)
@@ -116,12 +120,14 @@ class Service(service.Service):
 
     def __init__(self, host, binary, topic, manager, report_interval=None,
                  periodic_interval=None, periodic_fuzzy_delay=None,
-                 service_name=None, coordination=False, *args, **kwargs):
+                 service_name=None, coordination=False, cluster=None, *args,
+                 **kwargs):
         super(Service, self).__init__()
 
         if not rpc.initialized():
             rpc.init(CONF)
 
+        self.cluster = cluster
         self.host = host
         self.binary = binary
         self.topic = topic
@@ -133,21 +139,61 @@ class Service(service.Service):
 
         # NOTE(geguileo): We need to create the Service DB entry before we
         # create the manager, otherwise capped versions for serializer and rpc
-        # client would used existing DB entries not including us, which could
+        # client would use existing DB entries not including us, which could
         # result in us using None (if it's the first time the service is run)
         # or an old version (if this is a normal upgrade of a single service).
         ctxt = context.get_admin_context()
+        self.is_upgrading_to_n = self.is_svc_upgrading_to_n(binary)
         try:
             service_ref = objects.Service.get_by_args(ctxt, host, binary)
             service_ref.rpc_current_version = manager_class.RPC_API_VERSION
             obj_version = objects_base.OBJ_VERSIONS.get_current()
             service_ref.object_current_version = obj_version
+            # TODO(geguileo): In O we can remove the service upgrading part on
+            # the next equation, because by then all our services will be
+            # properly setting the cluster during volume migrations since
+            # they'll have the new Volume ORM model.  But until then we can
+            # only set the cluster in the DB and pass added_to_cluster to
+            # init_host when we have completed the rolling upgrade from M to N.
+
+            # added_to_cluster attribute marks when we consider that we have
+            # just added a host to a cluster so we can include resources into
+            # that cluster.  We consider that we have added the host when we
+            # didn't have data in the cluster DB field and our current
+            # configuration has a cluster value.  We don't want to do anything
+            # automatic if the cluster is changed, in those cases we'll want
+            # to use cinder manage command and to it manually.
+            self.added_to_cluster = (not service_ref.cluster_name and cluster
+                                     and not self.is_upgrading_to_n)
+
+            # TODO(geguileo): In O - Remove self.is_upgrading_to_n part
+            if (service_ref.cluster_name != cluster and
+                    not self.is_upgrading_to_n):
+                LOG.info(_LI('This service has been moved from cluster '
+                             '%(cluster_svc)s to %(cluster_cfg)s. Resources '
+                             'will %(opt_no)sbe moved to the new cluster'),
+                         {'cluster_svc': service_ref.cluster_name,
+                          'cluster_cfg': cluster,
+                          'opt_no': '' if self.added_to_cluster else 'NO '})
+
+            if self.added_to_cluster:
+                # We pass copy service's disable status in the cluster if we
+                # have to create it.
+                self._ensure_cluster_exists(ctxt, service_ref.disabled)
+                service_ref.cluster_name = cluster
             service_ref.save()
             self.service_id = service_ref.id
         except exception.NotFound:
+            # We don't want to include cluster information on the service or
+            # create the cluster entry if we are upgrading.
             self._create_service_ref(ctxt, manager_class.RPC_API_VERSION)
+            # TODO(geguileo): In O set added_to_cluster to True
+            # We don't want to include resources in the cluster during the
+            # start while we are still doing the rolling upgrade.
+            self.added_to_cluster = not self.is_upgrading_to_n
 
         self.manager = manager_class(host=self.host,
+                                     cluster=self.cluster,
                                      service_name=service_name,
                                      *args, **kwargs)
         self.report_interval = report_interval
@@ -159,6 +205,18 @@ class Service(service.Service):
 
         setup_profiler(binary, host)
         self.rpcserver = None
+        self.cluster_rpcserver = None
+
+    # TODO(geguileo): Remove method in O since it will no longer be used.
+    @staticmethod
+    def is_svc_upgrading_to_n(binary):
+        """Given an RPC API class determine if the service is upgrading."""
+        rpcapis = {'cinder-scheduler': scheduler_rpcapi.SchedulerAPI,
+                   'cinder-volume': volume_rpcapi.VolumeAPI,
+                   'cinder-backup': backup_rpcapi.BackupAPI}
+        rpc_api = rpcapis[binary]
+        # If we are pinned to 1.3, then we are upgrading from M to N
+        return rpc_api.determine_obj_version_cap() == '1.3'
 
     def start(self):
         version_string = version.version_string()
@@ -169,7 +227,7 @@ class Service(service.Service):
         if self.coordination:
             coordination.COORDINATOR.start()
 
-        self.manager.init_host()
+        self.manager.init_host(added_to_cluster=self.added_to_cluster)
 
         LOG.debug("Creating RPC server for service %s", self.topic)
 
@@ -179,6 +237,18 @@ class Service(service.Service):
         serializer = objects_base.CinderObjectSerializer()
         self.rpcserver = rpc.get_server(target, endpoints, serializer)
         self.rpcserver.start()
+
+        # TODO(geguileo): In O - Remove the is_svc_upgrading_to_n part
+        if self.cluster and not self.is_svc_upgrading_to_n(self.binary):
+            LOG.info(_LI('Starting %(topic)s cluster %(cluster)s (version '
+                         '%(version)s)'),
+                     {'topic': self.topic, 'version': version_string,
+                      'cluster': self.cluster})
+            target = messaging.Target(topic=self.topic, server=self.cluster)
+            serializer = objects_base.CinderObjectSerializer()
+            self.cluster_rpcserver = rpc.get_server(target, endpoints,
+                                                    serializer)
+            self.cluster_rpcserver.start()
 
         self.manager.init_host_with_rpc()
 
@@ -218,6 +288,25 @@ class Service(service.Service):
                      'new_down_time': new_down_time})
                 CONF.set_override('service_down_time', new_down_time)
 
+    def _ensure_cluster_exists(self, context, disabled=None):
+        if self.cluster:
+            try:
+                objects.Cluster.get_by_id(context, None, name=self.cluster,
+                                          binary=self.binary)
+            except exception.ClusterNotFound:
+                cluster = objects.Cluster(context=context, name=self.cluster,
+                                          binary=self.binary)
+                # If disabled has been specified overwrite default value
+                if disabled is not None:
+                    cluster.disabled = disabled
+                try:
+                    cluster.create()
+
+                # Race condition occurred and another service created the
+                # cluster, so we can continue as it already exists.
+                except exception.ClusterExists:
+                    pass
+
     def _create_service_ref(self, context, rpc_version=None):
         zone = CONF.storage_availability_zone
         kwargs = {
@@ -229,9 +318,16 @@ class Service(service.Service):
             'rpc_current_version': rpc_version or self.manager.RPC_API_VERSION,
             'object_current_version': objects_base.OBJ_VERSIONS.get_current(),
         }
+        # TODO(geguileo): In O unconditionally set cluster_name like above
+        # If we are upgrading we have to ignore the cluster value
+        if not self.is_upgrading_to_n:
+            kwargs['cluster_name'] = self.cluster
         service_ref = objects.Service(context=context, **kwargs)
         service_ref.create()
         self.service_id = service_ref.id
+        # TODO(geguileo): In O unconditionally ensure that the cluster exists
+        if not self.is_upgrading_to_n:
+            self._ensure_cluster_exists(context)
 
     def __getattr__(self, key):
         manager = self.__dict__.get('manager', None)
@@ -241,7 +337,7 @@ class Service(service.Service):
     def create(cls, host=None, binary=None, topic=None, manager=None,
                report_interval=None, periodic_interval=None,
                periodic_fuzzy_delay=None, service_name=None,
-               coordination=False):
+               coordination=False, cluster=None):
         """Instantiates class and passes back application object.
 
         :param host: defaults to CONF.host
@@ -251,6 +347,7 @@ class Service(service.Service):
         :param report_interval: defaults to CONF.report_interval
         :param periodic_interval: defaults to CONF.periodic_interval
         :param periodic_fuzzy_delay: defaults to CONF.periodic_fuzzy_delay
+        :param cluster: Defaults to None, as only some services will have it
 
         """
         if not host:
@@ -273,7 +370,8 @@ class Service(service.Service):
                           periodic_interval=periodic_interval,
                           periodic_fuzzy_delay=periodic_fuzzy_delay,
                           service_name=service_name,
-                          coordination=coordination)
+                          coordination=coordination,
+                          cluster=cluster)
 
         return service_obj
 
@@ -282,6 +380,8 @@ class Service(service.Service):
         # errors, go ahead and ignore them.. as we're shutting down anyway
         try:
             self.rpcserver.stop()
+            if self.cluster_rpcserver:
+                self.cluster_rpcserver.stop()
         except Exception:
             pass
 
@@ -309,6 +409,8 @@ class Service(service.Service):
                     pass
         if self.rpcserver:
             self.rpcserver.wait()
+        if self.cluster_rpcserver:
+            self.cluster_rpcserver.wait()
         super(Service, self).wait()
 
     def periodic_tasks(self, raise_on_error=False):

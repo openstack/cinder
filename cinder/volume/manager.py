@@ -355,9 +355,29 @@ class VolumeManager(manager.SchedulerDependentManager):
                             update['id'],
                             {'provider_id': update['provider_id']})
 
-    def init_host(self):
+    def _include_resources_in_cluster(self, ctxt):
+
+        LOG.info(_LI('Including all resources from host %(host)s in cluster '
+                     '%(cluster)s.'),
+                 {'host': self.host, 'cluster': self.cluster})
+        num_vols = objects.VolumeList.include_in_cluster(
+            ctxt, self.cluster, host=self.host)
+        num_cgs = objects.ConsistencyGroupList.include_in_cluster(
+            ctxt, self.cluster, host=self.host)
+        LOG.info(_LI('%(num_vols)s volumes and %(num_cgs)s consistency groups '
+                     'from host %(host)s have been included in cluster '
+                     '%(cluster)s.'),
+                 {'num_vols': num_vols, 'num_cgs': num_cgs,
+                  'host': self.host, 'cluster': self.cluster})
+
+    def init_host(self, added_to_cluster=None):
         """Perform any required initialization."""
         ctxt = context.get_admin_context()
+
+        # If we have just added this host to a cluster we have to include all
+        # our resources in that cluster.
+        if added_to_cluster:
+            self._include_resources_in_cluster(ctxt)
 
         LOG.info(_LI("Starting volume driver %(driver_name)s (%(version)s)"),
                  {'driver_name': self.driver.__class__.__name__,

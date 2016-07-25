@@ -205,7 +205,7 @@ class BackupManager(manager.SchedulerDependentManager):
         backup.fail_reason = err
         backup.save()
 
-    def init_host(self):
+    def init_host(self, **kwargs):
         """Run initialization needed for a standalone service."""
         ctxt = context.get_admin_context()
 
