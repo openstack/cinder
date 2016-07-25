@@ -29,6 +29,7 @@ from oslo_utils import units
 import six
 
 from cinder import compute
+from cinder import coordination
 from cinder import db
 from cinder import exception
 from cinder.objects import fields
@@ -104,6 +105,7 @@ CONF.register_opts(nas_opts)
 CONF.register_opts(volume_opts)
 
 
+# TODO(bluex): remove when drivers stop using it
 def locked_volume_id_operation(f, external=False):
     """Lock decorator for volume operations.
 
@@ -627,7 +629,7 @@ class RemoteFSDriver(driver.LocalVD, driver.TransferVD, driver.BaseVD):
         return nas_option
 
 
-class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
+class RemoteFSSnapDriverBase(RemoteFSDriver, driver.SnapshotVD):
     """Base class for remotefs drivers implementing qcow2 snapshots.
 
        Driver must implement:
@@ -640,10 +642,10 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
         self._remotefsclient = None
         self.base = None
         self._nova = None
-        super(RemoteFSSnapDriver, self).__init__(*args, **kwargs)
+        super(RemoteFSSnapDriverBase, self).__init__(*args, **kwargs)
 
     def do_setup(self, context):
-        super(RemoteFSSnapDriver, self).do_setup(context)
+        super(RemoteFSSnapDriverBase, self).do_setup(context)
 
         self._nova = compute.API()
 
@@ -1440,6 +1442,8 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
             self._local_volume_dir(snapshot.volume), file_to_delete)
         self._execute('rm', '-f', path_to_delete, run_as_root=True)
 
+
+class RemoteFSSnapDriver(RemoteFSSnapDriverBase):
     @locked_volume_id_operation
     def create_snapshot(self, snapshot):
         """Apply locking to the create snapshot operation."""
@@ -1459,13 +1463,43 @@ class RemoteFSSnapDriver(RemoteFSDriver, driver.SnapshotVD):
     @locked_volume_id_operation
     def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
+
         return self._create_cloned_volume(volume, src_vref)
 
     @locked_volume_id_operation
     def copy_volume_to_image(self, context, volume, image_service, image_meta):
         """Copy the volume to the specified image."""
 
-        return self._copy_volume_to_image(context,
-                                          volume,
-                                          image_service,
+        return self._copy_volume_to_image(context, volume, image_service,
+                                          image_meta)
+
+
+class RemoteFSSnapDriverDistributed(RemoteFSSnapDriverBase):
+    @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
+    def create_snapshot(self, snapshot):
+        """Apply locking to the create snapshot operation."""
+
+        return self._create_snapshot(snapshot)
+
+    @coordination.synchronized('{self.driver_prefix}-{snapshot.volume.id}')
+    def delete_snapshot(self, snapshot):
+        """Apply locking to the delete snapshot operation."""
+
+        return self._delete_snapshot(snapshot)
+
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
+    def create_volume_from_snapshot(self, volume, snapshot):
+        return self._create_volume_from_snapshot(volume, snapshot)
+
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
+    def create_cloned_volume(self, volume, src_vref):
+        """Creates a clone of the specified volume."""
+
+        return self._create_cloned_volume(volume, src_vref)
+
+    @coordination.synchronized('{self.driver_prefix}-{volume.id}')
+    def copy_volume_to_image(self, context, volume, image_service, image_meta):
+        """Copy the volume to the specified image."""
+
+        return self._copy_volume_to_image(context, volume, image_service,
                                           image_meta)
