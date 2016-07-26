@@ -10,3 +10,7 @@ features:
   - "HA A-A: Add cluster configuration option to allow grouping hosts that
     share the same backend configurations and should work in Active-Active
     fashion."
+  - "HA A-A: Updated manage command to display cluster information on service
+    listings."
+  - "HA A-A: Added cluster subcommand in manage command to list, remove, and
+    rename clusters."

@@ -15,7 +15,15 @@
 from oslo_utils import timeutils
 from oslo_versionedobjects import fields
 
+from cinder.db.sqlalchemy import models
 from cinder import objects
+
+
+def fake_service_orm(**updates):
+    """Create a fake ORM service instance."""
+    db_service = fake_db_service(**updates)
+    service = models.Service(**db_service)
+    return service
 
 
 def fake_db_service(**updates):

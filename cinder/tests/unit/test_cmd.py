@@ -16,6 +16,7 @@ import sys
 import ddt
 import mock
 from oslo_config import cfg
+from oslo_utils import timeutils
 import six
 
 from cinder import rpc
@@ -38,7 +39,9 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_cluster
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_service
 from cinder.tests.unit import fake_volume
 from cinder import version
 
@@ -722,7 +725,7 @@ class TestCinderManageCmd(test.TestCase):
         service_get_all.return_value = [service]
         service_is_up.return_value = True
         with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
-            format = "%-16s %-36s %-16s %-10s %-5s %-20s %-12s %-15s"
+            format = "%-16s %-36s %-16s %-10s %-5s %-20s %-12s %-15s %-36s"
             print_format = format % ('Binary',
                                      'Host',
                                      'Zone',
@@ -730,13 +733,15 @@ class TestCinderManageCmd(test.TestCase):
                                      'State',
                                      'Updated At',
                                      'RPC Version',
-                                     'Object Version')
+                                     'Object Version',
+                                     'Cluster')
             rpc_version = service['rpc_current_version']
             if not rpc_version:
                 rpc_version = rpc.LIBERTY_RPC_VERSIONS[service['binary']]
             object_version = service['object_current_version']
             if not object_version:
                 object_version = 'liberty'
+            cluster = service.get('cluster_name', '')
             service_format = format % (service['binary'],
                                        service['host'].partition('.')[0],
                                        service['availability_zone'],
@@ -744,7 +749,8 @@ class TestCinderManageCmd(test.TestCase):
                                        ':-)',
                                        service['updated_at'],
                                        rpc_version,
-                                       object_version)
+                                       object_version,
+                                       cluster)
             expected_out = print_format + '\n' + service_format + '\n'
 
             service_cmds = cinder_manage.ServiceCommands()
@@ -761,12 +767,13 @@ class TestCinderManageCmd(test.TestCase):
                    'updated_at': '2014-06-30 11:22:33',
                    'disabled': False,
                    'rpc_current_version': '1.1',
-                   'object_current_version': '1.1'}
+                   'object_current_version': '1.1',
+                   'cluster_name': 'my_cluster'}
         for binary in ('volume', 'scheduler', 'backup'):
             service['binary'] = 'cinder-%s' % binary
             self._test_service_commands_list(service)
 
-    def test_service_commands_list_no_updated_at(self):
+    def test_service_commands_list_no_updated_at_or_cluster(self):
         service = {'binary': 'cinder-binary',
                    'host': 'fake-host.fake-domain',
                    'availability_zone': 'fake-zone',
@@ -800,6 +807,163 @@ class TestCinderManageCmd(test.TestCase):
             mock_conf.category = mock.Mock(**expected)
             self.assertDictEqual(expected,
                                  cinder_manage.fetch_func_args(my_func))
+
+    @mock.patch('cinder.context.get_admin_context')
+    @mock.patch('cinder.db.cluster_get_all')
+    def tests_cluster_commands_list(self, get_all_mock, get_admin_mock,
+                                    ):
+        now = timeutils.utcnow()
+        cluster = fake_cluster.fake_cluster_orm(num_hosts=4, num_down_hosts=2,
+                                                created_at=now,
+                                                last_heartbeat=now)
+        get_all_mock.return_value = [cluster]
+
+        ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
+        get_admin_mock.return_value = ctxt
+
+        with mock.patch('sys.stdout', new=six.StringIO()) as fake_out:
+            format_ = "%-36s %-16s %-10s %-5s %-20s %-7s %-12s %-20s"
+            print_format = format_ % ('Name',
+                                      'Binary',
+                                      'Status',
+                                      'State',
+                                      'Heartbeat',
+                                      'Hosts',
+                                      'Down Hosts',
+                                      'Updated At')
+            cluster_format = format_ % (cluster.name, cluster.binary,
+                                        'enabled', ':-)',
+                                        cluster.last_heartbeat,
+                                        cluster.num_hosts,
+                                        cluster.num_down_hosts,
+                                        None)
+            expected_out = print_format + '\n' + cluster_format + '\n'
+
+            cluster_cmds = cinder_manage.ClusterCommands()
+            cluster_cmds.list()
+
+            self.assertEqual(expected_out, fake_out.getvalue())
+            get_admin_mock.assert_called_with()
+            get_all_mock.assert_called_with(ctxt, is_up=None,
+                                            get_services=False,
+                                            services_summary=True,
+                                            read_deleted='no')
+
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.context.get_admin_context')
+    def test_cluster_commands_remove_not_found(self, admin_ctxt_mock,
+                                               cluster_get_mock):
+        cluster_get_mock.side_effect = exception.ClusterNotFound(id=1)
+        cluster_commands = cinder_manage.ClusterCommands()
+        exit = cluster_commands.remove(False, 'abinary', 'acluster')
+        self.assertEqual(2, exit)
+        cluster_get_mock.assert_called_once_with(admin_ctxt_mock.return_value,
+                                                 None, name='acluster',
+                                                 binary='abinary',
+                                                 get_services=False)
+
+    @mock.patch('cinder.db.sqlalchemy.api.service_destroy', auto_specs=True)
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_destroy', auto_specs=True)
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.context.get_admin_context')
+    def test_cluster_commands_remove_fail_has_hosts(self, admin_ctxt_mock,
+                                                    cluster_get_mock,
+                                                    cluster_destroy_mock,
+                                                    service_destroy_mock):
+        cluster = fake_cluster.fake_cluster_ovo(mock.Mock())
+        cluster_get_mock.return_value = cluster
+        cluster_destroy_mock.side_effect = exception.ClusterHasHosts(id=1)
+        cluster_commands = cinder_manage.ClusterCommands()
+        exit = cluster_commands.remove(False, 'abinary', 'acluster')
+        self.assertEqual(2, exit)
+        cluster_get_mock.assert_called_once_with(admin_ctxt_mock.return_value,
+                                                 None, name='acluster',
+                                                 binary='abinary',
+                                                 get_services=False)
+        cluster_destroy_mock.assert_called_once_with(
+            admin_ctxt_mock.return_value.elevated.return_value, cluster.id)
+        service_destroy_mock.assert_not_called()
+
+    @mock.patch('cinder.db.sqlalchemy.api.service_destroy', auto_specs=True)
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_destroy', auto_specs=True)
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.context.get_admin_context')
+    def test_cluster_commands_remove_success_no_hosts(self, admin_ctxt_mock,
+                                                      cluster_get_mock,
+                                                      cluster_destroy_mock,
+                                                      service_destroy_mock):
+        cluster = fake_cluster.fake_cluster_orm()
+        cluster_get_mock.return_value = cluster
+        cluster_commands = cinder_manage.ClusterCommands()
+        exit = cluster_commands.remove(False, 'abinary', 'acluster')
+        self.assertIsNone(exit)
+        cluster_get_mock.assert_called_once_with(admin_ctxt_mock.return_value,
+                                                 None, name='acluster',
+                                                 binary='abinary',
+                                                 get_services=False)
+        cluster_destroy_mock.assert_called_once_with(
+            admin_ctxt_mock.return_value.elevated.return_value, cluster.id)
+        service_destroy_mock.assert_not_called()
+
+    @mock.patch('cinder.db.sqlalchemy.api.service_destroy', auto_specs=True)
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_destroy', auto_specs=True)
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_get', auto_specs=True)
+    @mock.patch('cinder.context.get_admin_context')
+    def test_cluster_commands_remove_recursive(self, admin_ctxt_mock,
+                                               cluster_get_mock,
+                                               cluster_destroy_mock,
+                                               service_destroy_mock):
+        cluster = fake_cluster.fake_cluster_orm()
+        cluster.services = [fake_service.fake_service_orm()]
+        cluster_get_mock.return_value = cluster
+        cluster_commands = cinder_manage.ClusterCommands()
+        exit = cluster_commands.remove(True, 'abinary', 'acluster')
+        self.assertIsNone(exit)
+        cluster_get_mock.assert_called_once_with(admin_ctxt_mock.return_value,
+                                                 None, name='acluster',
+                                                 binary='abinary',
+                                                 get_services=True)
+        cluster_destroy_mock.assert_called_once_with(
+            admin_ctxt_mock.return_value.elevated.return_value, cluster.id)
+        service_destroy_mock.assert_called_once_with(
+            admin_ctxt_mock.return_value.elevated.return_value,
+            cluster.services[0]['id'])
+
+    @mock.patch('cinder.db.sqlalchemy.api.volume_include_in_cluster',
+                auto_specs=True, return_value=1)
+    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_include_in_cluster',
+                auto_specs=True, return_value=2)
+    @mock.patch('cinder.context.get_admin_context')
+    def test_cluster_commands_rename(self, admin_ctxt_mock,
+                                     volume_include_mock, cg_include_mock):
+        """Test that cluster rename changes volumes and cgs."""
+        current_cluster_name = mock.sentinel.old_cluster_name
+        new_cluster_name = mock.sentinel.new_cluster_name
+        partial = mock.sentinel.partial
+        cluster_commands = cinder_manage.ClusterCommands()
+        exit = cluster_commands.rename(partial, current_cluster_name,
+                                       new_cluster_name)
+
+        self.assertIsNone(exit)
+        volume_include_mock.assert_called_once_with(
+            admin_ctxt_mock.return_value, new_cluster_name, partial,
+            cluster_name=current_cluster_name)
+        cg_include_mock.assert_called_once_with(
+            admin_ctxt_mock.return_value, new_cluster_name, partial,
+            cluster_name=current_cluster_name)
+
+    @mock.patch('cinder.db.sqlalchemy.api.volume_include_in_cluster',
+                auto_specs=True, return_value=0)
+    @mock.patch('cinder.db.sqlalchemy.api.consistencygroup_include_in_cluster',
+                auto_specs=True, return_value=0)
+    @mock.patch('cinder.context.get_admin_context')
+    def test_cluster_commands_rename_no_changes(self, admin_ctxt_mock,
+                                                volume_include_mock,
+                                                cg_include_mock):
+        """Test that we return an error when cluster rename has no effect."""
+        cluster_commands = cinder_manage.ClusterCommands()
+        exit = cluster_commands.rename(False, 'cluster', 'new_cluster')
+        self.assertEqual(2, exit)
 
     @mock.patch('oslo_config.cfg.ConfigOpts.register_cli_opt')
     def test_main_argv_lt_2(self, register_cli_opt):
