@@ -54,7 +54,7 @@ the CLI::
  cinder migrate [--force-host-copy [<True|False>]]
                 [--lock-volume [<True|False>]]
                 <volume> <host>
- 
+
  Mandatory arguments:
    <volume>              ID of volume to migrate.
    <host>                Destination host. The format of host is
@@ -65,7 +65,7 @@ the CLI::
                          back-end. If the back-end does not have specified
                          pools, 'POOL' needs to be set with the same name
                          as 'backend'.
- 
+
  Optional arguments:
    --force-host-copy [<True|False>]
                          Enables or disables generic host-based force-
