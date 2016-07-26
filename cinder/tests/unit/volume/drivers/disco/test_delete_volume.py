@@ -27,12 +27,12 @@ class DeleteVolumeTestCase(disco.TestDISCODriver):
         """Initialise variables and mock functions."""
         super(DeleteVolumeTestCase, self).setUp()
 
-        # Mock volumeDelete function from suds client.
+        # Mock volumeDelete function.
         mock.patch.object(self.requester,
                           'volumeDelete',
                           self.perform_disco_request).start()
 
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['success']
+        self.response = self.FAKE_RESPONSE['standard']['success']
 
     def perform_disco_request(self, *cmd, **kwargs):
         """Mock function to delete a volume."""
@@ -44,6 +44,6 @@ class DeleteVolumeTestCase(disco.TestDISCODriver):
 
     def test_delete_volume_fail(self):
         """Make the API returns an error while deleting."""
-        self.response = self.FAKE_SOAP_RESPONSE['standard']['fail']
+        self.response = self.FAKE_RESPONSE['standard']['fail']
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.test_delete_volume)
