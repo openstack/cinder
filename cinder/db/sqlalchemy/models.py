@@ -700,6 +700,43 @@ class ImageVolumeCacheEntry(BASE, models.ModelBase):
     last_used = Column(DateTime, default=lambda: timeutils.utcnow())
 
 
+class Worker(BASE, CinderBase):
+    """Represents all resources that are being worked on by a node."""
+    __tablename__ = 'workers'
+    __table_args__ = (schema.UniqueConstraint('resource_type', 'resource_id'),
+                      {'mysql_engine': 'InnoDB'})
+
+    # We want to overwrite default updated_at definition so we timestamp at
+    # creation as well
+    updated_at = Column(DateTime, default=timeutils.utcnow,
+                        onupdate=timeutils.utcnow)
+
+    # Id added for convenience and speed on some operations
+    id = Column(Integer, primary_key=True)
+
+    # Type of the resource we are working on (Volume, Snapshot, Backup) it must
+    # match the Versioned Object class name.
+    resource_type = Column(String(40), primary_key=True, nullable=False)
+    # UUID of the resource we are working on
+    resource_id = Column(String(36), primary_key=True, nullable=False)
+
+    # Status that should be cleaned on service failure
+    status = Column(String(255), nullable=False)
+
+    # Service that is currently processing the operation
+    service_id = Column(Integer, nullable=True)
+
+    # This is a flag we don't need to store in the DB as it is only used when
+    # we are doing the cleanup to let decorators know
+    cleaning = False
+
+    service = relationship(
+        'Service',
+        backref="workers",
+        foreign_keys=service_id,
+        primaryjoin='Worker.service_id == Service.id')
+
+
 def register_models():
     """Register Models and create metadata.
 
