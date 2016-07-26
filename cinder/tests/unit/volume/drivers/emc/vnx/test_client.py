@@ -47,9 +47,12 @@ class TestCondition(test.TestCase):
 class TestClient(test.TestCase):
     def setUp(self):
         super(TestClient, self).setUp()
+        self.origin_timeout = vnx_common.DEFAULT_TIMEOUT
+        vnx_common.DEFAULT_TIMEOUT = 0
 
     def tearDown(self):
         super(TestClient, self).tearDown()
+        vnx_common.DEFAULT_TIMEOUT = self.origin_timeout
 
     @res_mock.patch_client
     def test_create_lun(self, client, mocked):
@@ -240,9 +243,9 @@ class TestClient(test.TestCase):
         client.expand_lun('lun', 10)
 
     @unittest.skip("Skip until bug #1578986 is fixed")
-    @utils.patch_no_sleep
+    @utils.patch_sleep
     @res_mock.patch_client
-    def _test_expand_lun_not_ops_ready(self, client, _ignore):
+    def test_expand_lun_not_ops_ready(self, client, _ignore, sleep_mock):
         self.assertRaises(storops_ex.VNXLunPreparingError,
                           client.expand_lun, 'lun', 10)
         lun = client.vnx.get_lun()
@@ -293,22 +296,16 @@ class TestClient(test.TestCase):
     def test_modify_snapshot(self, client, mocked):
         client.modify_snapshot('snap_name', True, True)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
-    @utils.patch_no_sleep
     @res_mock.patch_client
     def test_create_cg_snapshot(self, client, mocked):
         snap = client.create_cg_snapshot('cg_snap_name', 'cg_name')
         self.assertIsNotNone(snap)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
-    @utils.patch_no_sleep
     @res_mock.patch_client
     def test_create_cg_snapshot_already_existed(self, client, mocked):
         snap = client.create_cg_snapshot('cg_snap_name', 'cg_name')
         self.assertIsNotNone(snap)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
-    @utils.patch_no_sleep
     @res_mock.patch_client
     def test_delete_cg_snapshot(self, client, mocked):
         client.delete_cg_snapshot(cg_snap_name='test_snap')

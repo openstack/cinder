@@ -2183,11 +2183,6 @@ class HuaweiTestBase(test.TestCase):
         self.cg = fake_consistencygroup.fake_consistencyobject_obj(
             admin_contex, id=ID, status='available')
 
-        self.patcher = mock.patch(
-            'oslo_service.loopingcall.FixedIntervalLoopingCall',
-            new=utils.ZeroIntervalLoopingCall)
-        self.patcher.start()
-
 
 @ddt.ddt
 class HuaweiISCSIDriverTestCase(HuaweiTestBase):
@@ -3493,6 +3488,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.assertEqual(self.replica_volume.id, v_id)
         self.assertEqual('error', v_update['replication_status'])
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                 new=utils.ZeroIntervalLoopingCall)
     @mock.patch.object(replication.PairOp, 'is_primary',
