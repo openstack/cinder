@@ -402,6 +402,20 @@ class ServiceTooOld(Invalid):
     message = _("Service is too old to fulfil this request.")
 
 
+class WorkerNotFound(NotFound):
+    message = _("Worker with %s could not be found.")
+
+    def __init__(self, message=None, **kwargs):
+        keys_list = ('{0}=%({0})s'.format(key) for key in kwargs)
+        placeholder = ', '.join(keys_list)
+        self.message = self.message % placeholder
+        super(WorkerNotFound, self).__init__(message, **kwargs)
+
+
+class WorkerExists(Duplicate):
+    message = _("Worker for %(type)s %(id)s already exists.")
+
+
 class ClusterNotFound(NotFound):
     message = _('Cluster %(id)s could not be found.')
 

@@ -4985,6 +4985,107 @@ def image_volume_cache_get_all_for_host(context, host):
             all()
 
 
+###################
+
+
+def _worker_query(context, session=None, until=None, db_filters=None,
+                  **filters):
+    # Remove all filters based on the workers table that are set to None
+    filters = _clean_filters(filters)
+
+    if filters and not is_valid_model_filters(models.Worker, filters):
+        return None
+
+    query = model_query(context, models.Worker, session=session)
+
+    if until:
+        db_filters = list(db_filters) if db_filters else []
+        # Since we set updated_at at creation time we don't need to check
+        # created_at field.
+        db_filters.append(models.Worker.updated_at <= until)
+
+    if db_filters:
+        query = query.filter(and_(*db_filters))
+
+    if filters:
+        query = query.filter_by(**filters)
+
+    return query
+
+
+def worker_create(context, **values):
+    """Create a worker entry from optional arguments."""
+    worker = models.Worker(**values)
+    session = get_session()
+    try:
+        with session.begin():
+            worker.save(session)
+    except db_exc.DBDuplicateEntry:
+        raise exception.WorkerExists(type=values.get('resource_type'),
+                                     id=values.get('resource_id'))
+    return worker
+
+
+def worker_get(context, **filters):
+    """Get a worker or raise exception if it does not exist."""
+    query = _worker_query(context, **filters)
+    worker = query.first() if query else None
+    if not worker:
+        raise exception.WorkerNotFound(**filters)
+    return worker
+
+
+def worker_get_all(context, **filters):
+    """Get all workers that match given criteria."""
+    query = _worker_query(context, **filters)
+    return query.all() if query else []
+
+
+def _orm_worker_update(worker, values):
+    if not worker:
+        return
+    for key, value in values.items():
+        setattr(worker, key, value)
+
+
+def worker_update(context, id, filters=None, orm_worker=None, **values):
+    """Update a worker with given values."""
+    filters = filters or {}
+    query = _worker_query(context, id=id, **filters)
+    result = query.update(values)
+    if not result:
+        raise exception.WorkerNotFound(id=id, **filters)
+    _orm_worker_update(orm_worker, values)
+    return result
+
+
+def worker_claim_for_cleanup(context, claimer_id, orm_worker):
+    """Claim a worker entry for cleanup."""
+    # We set updated_at value so we are sure we update the DB entry even if the
+    # service_id is the same in the DB, thus flagging the claim.
+    values = {'service_id': claimer_id,
+              'updated_at': timeutils.utcnow()}
+
+    # We only update the worker entry if it hasn't been claimed by other host
+    # or thread
+    query = _worker_query(context,
+                          status=orm_worker.status,
+                          service_id=orm_worker.service_id,
+                          until=orm_worker.updated_at,
+                          id=orm_worker.id)
+
+    result = query.update(values, synchronize_session=False)
+    if result:
+        _orm_worker_update(orm_worker, values)
+    return result
+
+
+def worker_destroy(context, **filters):
+    """Delete a worker (no soft delete)."""
+    query = _worker_query(context, **filters)
+    return query.delete()
+
+
 ###############################
 
 
@@ -5008,7 +5109,10 @@ def get_model_for_versioned_object(versioned_object):
         'CGSnapshot': models.Cgsnapshot,
     }
 
-    model_name = versioned_object.obj_name()
+    if isinstance(versioned_object, six.string_types):
+        model_name = versioned_object
+    else:
+        model_name = versioned_object.obj_name()
     return (VO_TO_MODEL_EXCEPTIONS.get(model_name) or
             getattr(models, model_name))
 

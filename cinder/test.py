@@ -37,6 +37,7 @@ from oslo_messaging import conffixture as messaging_conffixture
 from oslo_utils import strutils
 from oslo_utils import timeutils
 from oslotest import moxstubout
+import six
 import testtools
 
 from cinder.common import config  # noqa Need to register global_opts
@@ -395,3 +396,43 @@ class TestCase(testtools.TestCase):
 
             self.assertEqual(call[0], posargs[0])
             self.assertEqual(call[1], posargs[2])
+
+
+class ModelsObjectComparatorMixin(object):
+    def _dict_from_object(self, obj, ignored_keys):
+        if ignored_keys is None:
+            ignored_keys = []
+        if isinstance(obj, dict):
+            items = obj.items()
+        else:
+            items = obj.iteritems()
+        return {k: v for k, v in items
+                if k not in ignored_keys}
+
+    def _assertEqualObjects(self, obj1, obj2, ignored_keys=None):
+        obj1 = self._dict_from_object(obj1, ignored_keys)
+        obj2 = self._dict_from_object(obj2, ignored_keys)
+
+        self.assertEqual(
+            len(obj1), len(obj2),
+            "Keys mismatch: %s" % six.text_type(
+                set(obj1.keys()) ^ set(obj2.keys())))
+        for key, value in obj1.items():
+            self.assertEqual(value, obj2[key])
+
+    def _assertEqualListsOfObjects(self, objs1, objs2, ignored_keys=None,
+                                   msg=None):
+        obj_to_dict = lambda o: self._dict_from_object(o, ignored_keys)
+        sort_key = lambda d: [d[k] for k in sorted(d)]
+        conv_and_sort = lambda obj: sorted(map(obj_to_dict, obj), key=sort_key)
+
+        self.assertListEqual(conv_and_sort(objs1), conv_and_sort(objs2),
+                             msg=msg)
+
+    def _assertEqualListsOfPrimitivesAsSets(self, primitives1, primitives2):
+        self.assertEqual(len(primitives1), len(primitives2))
+        for primitive in primitives1:
+            self.assertIn(primitive, primitives2)
+
+        for primitive in primitives2:
+            self.assertIn(primitive, primitives1)

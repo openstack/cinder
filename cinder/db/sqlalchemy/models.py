@@ -759,6 +759,7 @@ def register_models():
               ConsistencyGroup,
               Cgsnapshot,
               Cluster,
+              Worker,
               )
     engine = create_engine(CONF.database.connection, echo=False)
     for model in models:
