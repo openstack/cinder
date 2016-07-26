@@ -35,8 +35,8 @@ from cinder import exception
 from cinder import objects
 from cinder.objects import fields
 from cinder import test
+from cinder.tests import fake_driver
 from cinder.tests.unit.backup import fake_service_with_verify as fake_service
-from cinder.tests.unit import fake_driver
 from cinder.tests.unit import utils
 from cinder.volume import driver
 
@@ -205,11 +205,11 @@ class BaseBackupTest(test.TestCase):
 class BackupTestCase(BaseBackupTest):
     """Test Case for backups."""
 
-    @mock.patch.object(cinder.tests.unit.fake_driver.FakeISCSIDriver,
+    @mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
                        'set_initialized')
-    @mock.patch.object(cinder.tests.unit.fake_driver.FakeISCSIDriver,
+    @mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
                        'do_setup')
-    @mock.patch.object(cinder.tests.unit.fake_driver.FakeISCSIDriver,
+    @mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
                        'check_for_setup_error')
     @mock.patch('cinder.context.get_admin_context')
     def test_init_host(self, mock_get_admin_context, mock_check, mock_setup,

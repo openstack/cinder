@@ -15,9 +15,9 @@
 
 import time
 
+from cinder.tests import fake_driver
 from cinder.tests.functional.api import client
 from cinder.tests.functional import functional_helpers
-from cinder.tests.unit import fake_driver
 
 
 class VolumesTest(functional_helpers._FunctionalTestBase):
@@ -31,7 +31,7 @@ class VolumesTest(functional_helpers._FunctionalTestBase):
     def _get_flags(self):
         f = super(VolumesTest, self)._get_flags()
         f['volume_driver'] = \
-            'cinder.tests.unit.fake_driver.LoggingVolumeDriver'
+            'cinder.tests.fake_driver.LoggingVolumeDriver'
         f['default_volume_type'] = self._vol_type_name
         return f
 
