@@ -24,9 +24,9 @@ from cinder import db
 from cinder import exception
 from cinder import objects
 from cinder.objects import fields
+from cinder.tests import fake_driver
 from cinder.tests.unit.brick import fake_lvm
 from cinder.tests.unit import fake_constants as fake
-from cinder.tests.unit import fake_driver
 from cinder.tests.unit.test_volume import DriverTestCase
 from cinder.tests.unit.test_volume import fake_opt
 from cinder.tests.unit import utils as tests_utils

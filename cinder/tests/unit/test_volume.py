@@ -55,11 +55,11 @@ from cinder.objects import fields
 import cinder.policy
 from cinder import quota
 from cinder import test
+from cinder.tests import fake_driver
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.brick import fake_lvm
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
-from cinder.tests.unit import fake_driver
 from cinder.tests.unit import fake_service
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -2165,7 +2165,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         with mock.patch.object(cinder.volume.volume_types,
                                'get_volume_type_qos_specs') as type_qos, \
-            mock.patch.object(cinder.tests.unit.fake_driver.FakeISCSIDriver,
+            mock.patch.object(cinder.tests.fake_driver.FakeISCSIDriver,
                               'initialize_connection') as driver_init:
             type_qos.return_value = dict(qos_specs=qos_values)
             driver_init.return_value = {'data': {}}
@@ -5921,7 +5921,7 @@ class DriverTestCase(test.TestCase):
 
 class GenericVolumeDriverTestCase(DriverTestCase):
     """Test case for VolumeDriver."""
-    driver_name = "cinder.tests.unit.fake_driver.LoggingVolumeDriver"
+    driver_name = "cinder.tests.fake_driver.LoggingVolumeDriver"
 
     @mock.patch.object(utils, 'temporary_chown')
     @mock.patch('six.moves.builtins.open')
