@@ -452,6 +452,72 @@ class DiscoDriver(driver.VolumeDriver):
         """Return the path to the DISCO volume."""
         return "/dev/dms%s" % volume['name']
 
+    def manage_existing(self, volume, existing_ref):
+        """Manage an existing volume."""
+        if 'source-name' not in existing_ref and'source-id'not in existing_ref:
+            msg = _("No source-id/source-name in existing_ref")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        elif 'source-name' not in existing_ref:
+            src_vol = self.client.volumeDetail(
+                existing_ref['source-id'])
+            if src_vol['status']:
+                vol_id = existing_ref['source-id']
+                msg = (_("Error while getting volume details, "
+                         "[status] %(stat)s - [volume id] %(vol_id)s") %
+                       {'stat': six.text_type(src_vol['status']),
+                        'vol_id': vol_id})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return {'display_name': src_vol['volumeInfoResult']['volumeName'],
+                    'provider_location': existing_ref['source-id']}
+        else:
+            src_vol = self.client.volumeDetailByName(
+                existing_ref['source-name'])
+            if src_vol['status']:
+                vol_name = existing_ref['source-name']
+                msg = (_("Error while getting volume details with the name "
+                         "%(name)s: [status] %(stat)s") % {'name': vol_name,
+                       'stat': src_vol['status']})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return {
+                'provider_location': src_vol['volumeInfoResult']['volumeId']}
+
+    def unmanage(self, volume):
+        """Unmanage an existing volume."""
+        LOG.debug("unmanage is called", resource=volume)
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        """Return size of an existing volume."""
+        if 'source-name' not in existing_ref and'source-id'not in existing_ref:
+            msg = _("No source-id/source-name in existing_ref")
+            LOG.error(msg)
+            raise exception.VolumeBackendAPIException(data=msg)
+        elif 'source-name' not in existing_ref:
+            src_vol = self.client.volumeDetail(
+                existing_ref['source-id'])
+            if src_vol['status']:
+                vol_id = existing_ref['source-id']
+                msg = (_("Error while getting volume details, "
+                         "[status] %(stat)s - [volume id] %(vol_id)s") %
+                       {'stat': six.text_type(src_vol['status']),
+                        'vol_id': vol_id})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return src_vol['volumeInfoResult']['volSizeMb']
+        else:
+            src_vol = self.client.volumeDetailByName(
+                existing_ref['source-name'])
+            if src_vol['status']:
+                vol_name = existing_ref['source-name']
+                msg = (_("Error while getting volume details with the name "
+                         "%(name)s: [status] %(stat)s") % {'name': vol_name,
+                       'stat': src_vol['status']})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+            return src_vol['volumeInfoResult']['volSizeMb']
+
     def ensure_export(self, context, volume):
         """Ensure an export."""
         pass
