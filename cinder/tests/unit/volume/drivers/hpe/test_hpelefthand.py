@@ -24,7 +24,8 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
-from cinder.tests.unit import fake_hpe_lefthand_client as hpelefthandclient
+from cinder.tests.unit.volume.drivers.hpe \
+    import fake_hpe_lefthand_client as hpelefthandclient
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi
 from cinder.volume import volume_types
 

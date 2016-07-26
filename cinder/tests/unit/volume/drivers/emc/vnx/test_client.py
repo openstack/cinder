@@ -13,6 +13,8 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import unittest
+
 from cinder import exception
 from cinder import test
 from cinder.tests.unit.volume.drivers.emc.vnx import fake_exception \
@@ -237,9 +239,10 @@ class TestClient(test.TestCase):
     def test_expand_lun_already_expanded(self, client, _ignore):
         client.expand_lun('lun', 10)
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     @utils.patch_no_sleep
     @res_mock.patch_client
-    def test_expand_lun_not_ops_ready(self, client, _ignore):
+    def _test_expand_lun_not_ops_ready(self, client, _ignore):
         self.assertRaises(storops_ex.VNXLunPreparingError,
                           client.expand_lun, 'lun', 10)
         lun = client.vnx.get_lun()
@@ -290,18 +293,21 @@ class TestClient(test.TestCase):
     def test_modify_snapshot(self, client, mocked):
         client.modify_snapshot('snap_name', True, True)
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     @utils.patch_no_sleep
     @res_mock.patch_client
     def test_create_cg_snapshot(self, client, mocked):
         snap = client.create_cg_snapshot('cg_snap_name', 'cg_name')
         self.assertIsNotNone(snap)
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     @utils.patch_no_sleep
     @res_mock.patch_client
     def test_create_cg_snapshot_already_existed(self, client, mocked):
         snap = client.create_cg_snapshot('cg_snap_name', 'cg_name')
         self.assertIsNotNone(snap)
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     @utils.patch_no_sleep
     @res_mock.patch_client
     def test_delete_cg_snapshot(self, client, mocked):

@@ -19,7 +19,8 @@ import sys
 
 import mock
 
-from cinder.tests.unit import fake_hpe_client_exceptions as hpeexceptions
+from cinder.tests.unit.volume.drivers.hpe \
+    import fake_hpe_client_exceptions as hpeexceptions
 
 hpelefthand = mock.Mock()
 hpelefthand.version = "2.1.0"

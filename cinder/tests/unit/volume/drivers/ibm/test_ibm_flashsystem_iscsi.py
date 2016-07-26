@@ -26,7 +26,8 @@ import random
 from cinder import context
 from cinder import exception
 from cinder import test
-from cinder.tests.unit import test_ibm_flashsystem as fscommon
+from cinder.tests.unit.volume.drivers.ibm \
+    import test_ibm_flashsystem as fscommon
 from cinder import utils
 from cinder.volume import configuration as conf
 from cinder.volume.drivers.ibm import flashsystem_iscsi
