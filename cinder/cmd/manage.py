@@ -117,7 +117,7 @@ class ShellCommands(object):
         """
         self.run('python')
 
-    @args('--shell', dest="shell",
+    @args('--shell',
           metavar='<bpython|ipython|python>',
           help='Python shell')
     def run(self, shell=None):
@@ -539,29 +539,32 @@ category_opt = cfg.SubCommandOpt('category',
 
 
 def get_arg_string(args):
-    arg = None
     if args[0] == '-':
         # (Note)zhiteng: args starts with FLAGS.oparser.prefix_chars
         # is optional args. Notice that cfg module takes care of
         # actual ArgParser so prefix_chars is always '-'.
         if args[1] == '-':
             # This is long optional arg
-            arg = args[2:]
+            args = args[2:]
         else:
-            arg = args[1:]
-    else:
-        arg = args
+            args = args[1:]
 
-    return arg
+    # We convert dashes to underscores so we can have cleaner optional arg
+    # names
+    if args:
+        args = args.replace('-', '_')
+
+    return args
 
 
 def fetch_func_args(func):
-    fn_args = []
+    fn_kwargs = {}
     for args, kwargs in getattr(func, 'args', []):
-        arg = get_arg_string(args[0])
-        fn_args.append(getattr(CONF.category, arg))
+        # Argparser `dest` configuration option takes precedence for the name
+        arg = kwargs.get('dest') or get_arg_string(args[0])
+        fn_kwargs[arg] = getattr(CONF.category, arg)
 
-    return fn_args
+    return fn_kwargs
 
 
 def main():
@@ -600,5 +603,5 @@ def main():
         sys.exit(2)
 
     fn = CONF.category.action_fn
-    fn_args = fetch_func_args(fn)
-    fn(*fn_args)
+    fn_kwargs = fetch_func_args(fn)
+    fn(**fn_kwargs)
