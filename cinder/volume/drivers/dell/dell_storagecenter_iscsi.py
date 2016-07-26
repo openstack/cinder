@@ -29,7 +29,7 @@ LOG = logging.getLogger(__name__)
 class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                                    driver.ISCSIDriver):
 
-    """Implements commands for Dell StorageCenter ISCSI management.
+    """Implements commands for Dell Storage Center ISCSI management.
 
     To enable the driver add the following line to the cinder configuration:
         volume_driver=cinder.volume.drivers.dell.DellStorageCenterISCSIDriver
