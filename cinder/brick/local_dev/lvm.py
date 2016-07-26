@@ -703,6 +703,44 @@ class LVM(executor.Executor):
                 return True
         return False
 
+    def lv_is_snapshot(self, name):
+        """Return True if LV is a snapshot, False otherwise."""
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Attr', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
+        out = out.strip()
+        if out:
+            if (out[0] == 's'):
+                return True
+        return False
+
+    def lv_is_open(self, name):
+        """Return True if LV is currently open, False otherwise."""
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Attr', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
+        out = out.strip()
+        if out:
+            if (out[5] == 'o'):
+                return True
+        return False
+
+    def lv_get_origin(self, name):
+        """Return the origin of an LV that is a snapshot, None otherwise."""
+        cmd = LVM.LVM_CMD_PREFIX + ['lvdisplay', '--noheading', '-C', '-o',
+                                    'Origin', '%s/%s' % (self.vg_name, name)]
+        out, _err = self._execute(*cmd,
+                                  root_helper=self._root_helper,
+                                  run_as_root=True)
+        out = out.strip()
+        if out:
+            return out
+        return None
+
     def extend_volume(self, lv_name, new_size):
         """Extend the size of an existing volume."""
         # Volumes with snaps have attributes 'o' or 'O' and will be
