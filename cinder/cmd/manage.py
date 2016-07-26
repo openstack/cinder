@@ -58,6 +58,7 @@ from __future__ import print_function
 import logging as python_logging
 import os
 import sys
+import time
 
 from oslo_config import cfg
 from oslo_db import exception as db_exc
@@ -228,6 +229,9 @@ class DbCommands(object):
         age_in_days = int(age_in_days)
         if age_in_days <= 0:
             print(_("Must supply a positive, non-zero value for age"))
+            sys.exit(1)
+        if age_in_days >= (int(time.time()) / 86400):
+            print(_("Maximum age is count of days since epoch."))
             sys.exit(1)
         ctxt = context.get_admin_context()
 

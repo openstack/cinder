@@ -4715,10 +4715,6 @@ def purge_deleted_rows(context, age_in_days):
         msg = _('Invalid value for age, %(age)s') % {'age': age_in_days}
         LOG.exception(msg)
         raise exception.InvalidParameterValue(msg)
-    if age_in_days <= 0:
-        msg = _('Must supply a positive value for age')
-        LOG.error(msg)
-        raise exception.InvalidParameterValue(msg)
 
     engine = get_engine()
     session = get_session()
