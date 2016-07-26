@@ -265,6 +265,10 @@ class InvalidGlobalAPIVersion(Invalid):
                 "is %(min_ver)s and maximum is %(max_ver)s.")
 
 
+class MissingRequired(Invalid):
+    message = _("Missing required element '%(element)s' in request body.")
+
+
 class APIException(CinderException):
     message = _("Error while requesting %(service)s API.")
 

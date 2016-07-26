@@ -85,6 +85,11 @@ class ServiceController(wsgi.Controller):
                           'zone': svc.availability_zone,
                           'status': active, 'state': art,
                           'updated_at': updated_at}
+
+            # On V3.7 we added cluster support
+            if req.api_version_request.matches('3.7'):
+                ret_fields['cluster'] = svc.cluster_name
+
             if detailed:
                 ret_fields['disabled_reason'] = svc.disabled_reason
                 if svc.binary == "cinder-volume":
@@ -153,8 +158,7 @@ class ServiceController(wsgi.Controller):
         try:
             host = body['host']
         except (TypeError, KeyError):
-            msg = _("Missing required element 'host' in request body.")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+            raise exception.MissingRequired(element='host')
 
         ret_val['disabled'] = disabled
         if id == "disable-log-reason" and ext_loaded:
