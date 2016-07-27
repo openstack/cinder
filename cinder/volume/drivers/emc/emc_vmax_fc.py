@@ -242,18 +242,38 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
             LOG.debug("Looking for masking views still associated with "
                       "Port Group %s.", portGroupInstanceName)
-            mvInstances = self._get_common_masking_views(
-                portGroupInstanceName, initiatorGroupInstanceName)
-            if len(mvInstances) > 0:
-                LOG.debug("Found %(numViews)lu MaskingViews.",
-                          {'numViews': len(mvInstances)})
-            else:  # No views found.
-                LOG.debug("No MaskingViews were found. Deleting zone.")
+            # check if the initiator group has been deleted
+            checkIgInstanceName = (
+                self.common.check_ig_instance_name(initiatorGroupInstanceName))
+
+            # if it has not been deleted, check for remaining masking views
+            if checkIgInstanceName is not None:
+                mvInstances = self._get_common_masking_views(
+                    portGroupInstanceName, initiatorGroupInstanceName)
+
+                if len(mvInstances) > 0:
+                    LOG.debug("Found %(numViews)lu MaskingViews.",
+                              {'numViews': len(mvInstances)})
+                    data = {'driver_volume_type': 'fibre_channel',
+                            'data': {}}
+                else:  # no masking views found
+                    LOG.debug("No MaskingViews were found. Deleting zone.")
+                    data = {'driver_volume_type': 'fibre_channel',
+                            'data': {'target_wwn': target_wwns,
+                                     'initiator_target_map': init_targ_map}}
+
+                    LOG.debug("Return FC data for zone removal: %(data)s.",
+                              {'data': data})
+
+            else:  # The initiator group has been deleted
+                LOG.debug("Initiator Group has been deleted. Deleting zone.")
                 data = {'driver_volume_type': 'fibre_channel',
                         'data': {'target_wwn': target_wwns,
                                  'initiator_target_map': init_targ_map}}
-            LOG.debug("Return FC data for zone removal: %(data)s.",
-                      {'data': data})
+
+                LOG.debug("Return FC data for zone removal: %(data)s.",
+                          {'data': data})
+
         else:
             LOG.warning(_LW("Volume %(volume)s is not in any masking view."),
                         {'volume': volume['name']})

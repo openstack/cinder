@@ -4710,9 +4710,9 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
                           self.data.connector)
 
     @mock.patch.object(
-        emc_vmax_masking.EMCVMAXMasking,
-        'get_initiator_group_from_masking_view',
-        return_value='myInitGroup')
+        emc_vmax_common.EMCVMAXCommon,
+        'check_ig_instance_name',
+        return_value=None)
     @mock.patch.object(
         emc_vmax_masking.EMCVMAXMasking,
         '_find_initiator_masking_group',
@@ -4726,7 +4726,8 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'FCNoFAST'})
     def test_detach_no_fast_last_volume_success(
-            self, mock_volume_type, mock_mv, mock_ig, mock_igc):
+            self, mock_volume_type, mock_mv, mock_ig, mock_check_ig):
+        # last volume so initiatorGroup will be deleted by terminate connection
         self.driver.terminate_connection(self.data.test_source_volume,
                                          self.data.connector)
 
@@ -5297,6 +5298,10 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
+        'check_ig_instance_name',
+        return_value='myInitGroup')
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
         'get_masking_views_by_port_group',
         return_value=[])
     @mock.patch.object(
@@ -5317,7 +5322,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         return_value={'volume_backend_name': 'FCFAST',
                       'FASTPOLICY': 'FC_GOLD1'})
     def test_detach_fast_success(self, mock_volume_type, mock_maskingview,
-                                 mock_ig, mock_igc, mock_mv):
+                                 mock_ig, mock_igc, mock_mv, mock_check_ig):
         common = self.driver.common
         common.get_target_wwns = mock.Mock(
             return_value=EMCVMAXCommonData.target_wwns)
@@ -6269,6 +6274,10 @@ class EMCV3DriverTestCase(test.TestCase):
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
+        'check_ig_instance_name',
+        return_value='myInitGroup')
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
         'get_masking_views_by_port_group',
         return_value=[])
     @mock.patch.object(
@@ -6288,7 +6297,7 @@ class EMCV3DriverTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'V3_BE'})
     def test_detach_v3_success(self, mock_volume_type, mock_maskingview,
-                               mock_ig, mock_igc, mock_mv):
+                               mock_ig, mock_igc, mock_mv, mock_check_ig):
         common = self.driver.common
         common.get_target_wwns = mock.Mock(
             return_value=EMCVMAXCommonData.target_wwns)
@@ -7605,7 +7614,7 @@ class EMCVMAXFCTest(test.TestCase):
         driver.db = FakeDB()
         self.driver = driver
 
-    def test_terminate_connection(self):
+    def test_terminate_connection_ig_present(self):
         common = self.driver.common
         common.conn = FakeEcomConnection()
         common._unmap_lun = mock.Mock()
@@ -7615,6 +7624,44 @@ class EMCVMAXFCTest(test.TestCase):
             return_value=[])
         common.get_target_wwns = mock.Mock(
             return_value=EMCVMAXCommonData.target_wwns)
+        initiatorGroupInstanceName = (
+            self.driver.common.masking._get_initiator_group_from_masking_view(
+                common.conn, self.data.lunmaskctrl_name,
+                self.data.storage_system))
+        with mock.patch.object(self.driver.common,
+                               'check_ig_instance_name',
+                               return_value=initiatorGroupInstanceName):
+            data = self.driver.terminate_connection(self.data.test_volume_v3,
+                                                    self.data.connector)
+        common.get_target_wwns.assert_called_once_with(
+            EMCVMAXCommonData.storage_system, EMCVMAXCommonData.connector)
+        numTargetWwns = len(EMCVMAXCommonData.target_wwns)
+        self.assertEqual(numTargetWwns, len(data['data']))
+
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        'check_ig_instance_name',
+        return_value=None)
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        'get_target_wwns',
+        return_value=EMCVMAXCommonData.target_wwns)
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        'get_masking_views_by_port_group',
+        return_value=[])
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        'get_masking_view_by_volume',
+        return_value='testMV')
+    @mock.patch.object(
+        emc_vmax_common.EMCVMAXCommon,
+        '_unmap_lun')
+    def test_terminate_connection_no_ig(self, mock_unmap,
+                                        mock_mv_vol, mock_mv_pg,
+                                        mock_wwns, mock_check_ig):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
         data = self.driver.terminate_connection(self.data.test_volume_v3,
                                                 self.data.connector)
         common.get_target_wwns.assert_called_once_with(
@@ -7767,6 +7814,30 @@ class EMCVMAXUtilsTest(test.TestCase):
             emc_vmax_provision.SYNC_CLONE_LOCAL,
             emc_vmax_provision.COPY_ON_WRITE, extraSpecs)
         self.assertIsNotNone(rsdInstance)
+
+    # bug #1605193 - Cleanup of Initiator Group fails
+    def test_check_ig_instance_name_present(self):
+        conn = FakeEcomConnection()
+        initiatorgroup = SE_InitiatorMaskingGroup()
+        initiatorgroup['CreationClassName'] = (
+            self.data.initiatorgroup_creationclass)
+        initiatorgroup['DeviceID'] = self.data.initiatorgroup_id
+        initiatorgroup['SystemName'] = self.data.storage_system
+        initiatorgroup['ElementName'] = self.data.initiatorgroup_name
+        foundIg = self.driver.utils.check_ig_instance_name(
+            conn, initiatorgroup)
+        self.assertEqual(initiatorgroup, foundIg)
+
+    # bug #1605193 - Cleanup of Initiator Group fails
+    def test_check_ig_instance_name_not_present(self):
+        conn = FakeEcomConnection()
+        initiatorgroup = None
+        with mock.patch.object(self.driver.utils,
+                               'get_existing_instance',
+                               return_value=None):
+            foundIg = self.driver.utils.check_ig_instance_name(
+                conn, initiatorgroup)
+            self.assertIsNone(foundIg)
 
 
 class EMCVMAXCommonTest(test.TestCase):

@@ -523,6 +523,15 @@ class EMCVMAXCommon(object):
                 data=exception_message)
         return portGroupName
 
+    def check_ig_instance_name(self, initiatorGroupInstanceName):
+        """Check if an initiator group instance is on the array.
+
+        :param initiatorGroupInstanceName: initiator group instance name
+        :returns: initiator group name, or None if deleted
+        """
+        return self.utils.check_ig_instance_name(
+            self.conn, initiatorGroupInstanceName)
+
     def terminate_connection(self, volume, connector):
         """Disallow connection from connector.
 
