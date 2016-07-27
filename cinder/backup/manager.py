@@ -89,6 +89,14 @@ class BackupManager(manager.SchedulerDependentManager):
         self.service = importutils.import_module(self.driver_name)
         self.az = CONF.storage_availability_zone
         self.volume_managers = {}
+        # TODO(xyang): If backup_use_same_host is True, we'll find
+        # the volume backend on the backup node. This allows us
+        # to use a temp snapshot to backup an in-use volume if the
+        # driver supports it. This code should go away when we add
+        # support for backing up in-use volume using a temp snapshot
+        # on a remote node.
+        if CONF.backup_use_same_host:
+            self._setup_volume_drivers()
         self.backup_rpcapi = backup_rpcapi.BackupAPI()
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         super(BackupManager, self).__init__(service_name='backup',
@@ -111,6 +119,72 @@ class BackupManager(manager.SchedulerDependentManager):
             return
 
         driver.set_initialized()
+
+    def _get_volume_backend(self, host=None, allow_null_host=False):
+        if host is None:
+            if not allow_null_host:
+                msg = _("NULL host not allowed for volume backend lookup.")
+                raise exception.BackupFailedToGetVolumeBackend(msg)
+        else:
+            LOG.debug("Checking hostname '%s' for backend info.", host)
+            # NOTE(xyang): If host='myhost@lvmdriver', backend='lvmdriver'
+            # by the logic below. This is different from extract_host.
+            # vol_utils.extract_host(host, 'backend')='myhost@lvmdriver'.
+            part = host.partition('@')
+            if (part[1] == '@') and (part[2] != ''):
+                backend = part[2]
+                LOG.debug("Got backend '%s'.", backend)
+                return backend
+
+        LOG.info(_LI("Backend not found in hostname (%s) so using default."),
+                 host)
+
+        if 'default' not in self.volume_managers:
+            # For multi-backend we just pick the top of the list.
+            return self.volume_managers.keys()[0]
+
+        return 'default'
+
+    def _get_manager(self, backend):
+        LOG.debug("Manager requested for volume_backend '%s'.",
+                  backend)
+        if backend is None:
+            LOG.debug("Fetching default backend.")
+            backend = self._get_volume_backend(allow_null_host=True)
+        if backend not in self.volume_managers:
+            msg = (_("Volume manager for backend '%s' does not exist.") %
+                   (backend))
+            raise exception.BackupFailedToGetVolumeBackend(msg)
+        return self.volume_managers[backend]
+
+    def _get_driver(self, backend=None):
+        LOG.debug("Driver requested for volume_backend '%s'.",
+                  backend)
+        if backend is None:
+            LOG.debug("Fetching default backend.")
+            backend = self._get_volume_backend(allow_null_host=True)
+        mgr = self._get_manager(backend)
+        mgr.driver.db = self.db
+        return mgr.driver
+
+    def _setup_volume_drivers(self):
+        if CONF.enabled_backends:
+            for backend in CONF.enabled_backends:
+                host = "%s@%s" % (CONF.host, backend)
+                mgr = importutils.import_object(CONF.volume_manager,
+                                                host=host,
+                                                service_name=backend)
+                config = mgr.configuration
+                backend_name = config.safe_get('volume_backend_name')
+                LOG.debug("Registering backend %(backend)s (host=%(host)s "
+                          "backend_name=%(backend_name)s).",
+                          {'backend': backend, 'host': host,
+                           'backend_name': backend_name})
+                self.volume_managers[backend] = mgr
+        else:
+            default = importutils.import_object(CONF.volume_manager)
+            LOG.debug("Registering default backend %s.", default)
+            self.volume_managers['default'] = default
 
     @property
     def driver_name(self):
@@ -829,8 +903,12 @@ class BackupManager(manager.SchedulerDependentManager):
         if not is_snapshot:
             return self._attach_volume(context, backup_device, properties)
         else:
-            msg = _("Can't attach snapshot.")
-            raise NotImplementedError(msg)
+            volume = self.db.volume_get(context, backup_device.volume_id)
+            host = volume_utils.extract_host(volume['host'], 'backend')
+            backend = self._get_volume_backend(host=host)
+            rc = self._get_driver(backend)._attach_snapshot(
+                context, backup_device, properties)
+            return rc
 
     def _attach_volume(self, context, volume, properties):
         """Attach a volume."""
@@ -866,16 +944,24 @@ class BackupManager(manager.SchedulerDependentManager):
 
         return {'conn': conn, 'device': vol_handle, 'connector': connector}
 
-    def _detach_device(self, context, attach_info, volume,
+    def _detach_device(self, context, attach_info, device,
                        properties, is_snapshot=False, force=False):
-        """Disconnect the volume from the host. """
+        """Disconnect the volume or snapshot from the host. """
         connector = attach_info['connector']
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
 
         rpcapi = self.volume_rpcapi
-        rpcapi.terminate_connection(context, volume, properties, force=force)
-        rpcapi.remove_export(context, volume)
+        if not is_snapshot:
+            rpcapi.terminate_connection(context, device, properties,
+                                        force=force)
+            rpcapi.remove_export(context, device)
+        else:
+            volume = self.db.volume_get(context, device.volume_id)
+            host = volume_utils.extract_host(volume['host'], 'backend')
+            backend = self._get_volume_backend(host=host)
+            self._get_driver(backend)._detach_snapshot(
+                context, attach_info, device, properties, force)
 
 
 # TODO(dulek): This goes away immediately in Newton and is just present in
