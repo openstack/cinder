@@ -1612,6 +1612,18 @@ volume_types:
   in: body
   required: true
   type: array
+volume_types_2:
+  description: |
+    The list of volume types separated by commas.  In an environment with
+    multiple-storage back ends, the scheduler determines where to send
+    the volume based on the volume type.  For information about how to
+    use volume types to create multiple-storage back ends, see
+    `Configure multiple-storage back ends
+    <http://docs.openstack.org/admin-
+    guide/blockstorage_multi_backend.html>`_.
+  in: body
+  required: true
+  type: string
 volumes:
   description: |
     A list of ``volume`` objects.
