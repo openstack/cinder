@@ -133,6 +133,9 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
     driver_prefix = 'vzstorage'
     volume_backend_name = 'Virtuozzo_Storage'
     VERSION = VERSION
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Virtuozzo_Storage_CI"
+
     SHARE_FORMAT_REGEX = r'(?:(\S+):\/)?([a-zA-Z0-9_-]+)(?::(\S+))?'
 
     def __init__(self, execute=putils.execute, *args, **kwargs):

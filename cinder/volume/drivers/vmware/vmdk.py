@@ -221,6 +221,9 @@ class VMwareVcVmdkDriver(driver.VolumeDriver):
     # 1.6.0 - support for manage existing
     VERSION = '1.6.0'
 
+    # ThirdaPartySystems wiki page
+    CI_WIKI_NAME = "VMware_CI"
+
     # Minimum supported vCenter version.
     MIN_SUPPORTED_VC_VERSION = dist_version.LooseVersion('5.1')
 

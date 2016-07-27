@@ -77,6 +77,9 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                        Changed the class name to HNASISCSIDriver
     """
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Hitachi_HNAS_CI"
+
     def __init__(self, *args, **kwargs):
         """Initializes and reads different config parameters."""
         self.configuration = kwargs.get('configuration', None)

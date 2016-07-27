@@ -66,6 +66,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriverDistributed,
     volume_backend_name = 'GlusterFS'
     VERSION = '1.3.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     def __init__(self, execute=processutils.execute, *args, **kwargs):
         self._remotefsclient = None
         super(GlusterfsDriver, self).__init__(*args, **kwargs)

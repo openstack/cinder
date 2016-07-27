@@ -49,6 +49,9 @@ CONF.register_opts(volume_opts)
 class HBSDFCDriver(cinder.volume.driver.FibreChannelDriver):
     VERSION = common.VERSION
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = ["Hitachi_HBSD_CI", "Hitachi_HBSD2_CI"]
+
     def __init__(self, *args, **kwargs):
         os.environ['LANG'] = 'C'
         super(HBSDFCDriver, self).__init__(*args, **kwargs)

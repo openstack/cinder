@@ -80,6 +80,9 @@ Volume = collections.namedtuple('Volume', vol_attrs)
 
 class HuaweiBaseDriver(driver.VolumeDriver):
 
+    # ThirdPartySytems wiki page
+    CI_WIKI_NAME = "Huawei_volume_CI"
+
     def __init__(self, *args, **kwargs):
         super(HuaweiBaseDriver, self).__init__(*args, **kwargs)
 

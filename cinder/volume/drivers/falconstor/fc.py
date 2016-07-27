@@ -44,6 +44,9 @@ class FSSFCDriver(fss_common.FalconstorBaseDriver,
 
     VERSION = '1.0.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "FalconStor_CI"
+
     def __init__(self, *args, **kwargs):
         super(FSSFCDriver, self).__init__(*args, **kwargs)
         self.gateway_fc_wwns = []

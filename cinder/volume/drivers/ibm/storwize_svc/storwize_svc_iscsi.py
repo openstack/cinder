@@ -92,6 +92,9 @@ class StorwizeSVCISCSIDriver(storwize_common.StorwizeSVCCommonDriver):
 
     VERSION = "2.1.1"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "IBM_STORWIZE_CI"
+
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCISCSIDriver, self).__init__(*args, **kwargs)
         self.protocol = 'iSCSI'

@@ -157,6 +157,10 @@ class SolidFireDriver(san.SanISCSIDriver):
     """
 
     VERSION = '2.0.6'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "SolidFire_CI"
+
     driver_prefix = 'solidfire'
 
     sf_qos_dict = {'slow': {'minIOPS': 100,

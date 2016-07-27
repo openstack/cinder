@@ -77,6 +77,8 @@ class EMCVNXDriver(driver.TransferVD,
 
     VERSION = '08.00.00'
     VENDOR = 'EMC'
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "EMC_VNX_CI"
 
     def __init__(self, *args, **kwargs):
         super(EMCVNXDriver, self).__init__(*args, **kwargs)

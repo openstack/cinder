@@ -85,6 +85,7 @@ CONF.register_opts(zte_opts)
 
 @interface.volumedriver
 class ZTEVolumeDriver(driver.VolumeDriver):
+
     def __init__(self, *args, **kwargs):
         super(ZTEVolumeDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(zte_opts)

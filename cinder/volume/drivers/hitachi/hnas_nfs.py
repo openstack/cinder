@@ -75,6 +75,8 @@ class HNASNFSDriver(nfs.NfsDriver):
                        Updated to use versioned objects
                        Changed the class name to HNASNFSDriver
     """
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Hitachi_HNAS_CI"
 
     def __init__(self, *args, **kwargs):
         self._execute = None

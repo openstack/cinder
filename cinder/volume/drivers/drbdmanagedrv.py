@@ -130,6 +130,9 @@ class DrbdManageBaseDriver(driver.VolumeDriver):
     drbdmanage_dbus_name = 'org.drbd.drbdmanaged'
     drbdmanage_dbus_interface = '/interface'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     def __init__(self, *args, **kwargs):
         self.empty_list = dbus.Array([], signature="a(s)")
         self.empty_dict = dbus.Array([], signature="a(ss)")

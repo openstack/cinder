@@ -162,6 +162,8 @@ class HPELeftHandISCSIDriver(driver.ISCSIDriver):
 
     VERSION = "2.0.9"
 
+    CI_WIKI_NAME = "HPE_Storage_CI"
+
     device_stats = {}
 
     # v2 replication constants

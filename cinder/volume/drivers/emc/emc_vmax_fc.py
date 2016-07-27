@@ -74,6 +74,9 @@ class EMCVMAXFCDriver(driver.FibreChannelDriver):
 
     VERSION = "2.4.0"
 
+    # ThirdPartySystems wiki
+    CI_WIKI_NAME = "EMC_VMAX_CI"
+
     def __init__(self, *args, **kwargs):
 
         super(EMCVMAXFCDriver, self).__init__(*args, **kwargs)

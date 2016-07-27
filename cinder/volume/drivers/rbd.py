@@ -270,6 +270,9 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
 
     VERSION = '1.2.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     def __init__(self, *args, **kwargs):
         super(RBDDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(RBD_OPTS)

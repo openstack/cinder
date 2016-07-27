@@ -703,6 +703,9 @@ class DPLCOMMONDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
     """Class of dpl storage adapter."""
     VERSION = '2.0.4'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "ProphetStor_CI"
+
     def __init__(self, *args, **kwargs):
         super(DPLCOMMONDriver, self).__init__(*args, **kwargs)
         if self.configuration:

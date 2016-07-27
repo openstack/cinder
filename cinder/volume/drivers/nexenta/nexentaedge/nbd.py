@@ -46,6 +46,9 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
 
     VERSION = '1.0.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Nexenta_Edge_CI"
+
     def __init__(self, vg_obj=None, *args, **kwargs):
         LOG.debug('NexentaEdgeNBDDriver. Trying to initialize.')
         super(NexentaEdgeNBDDriver, self).__init__(*args, **kwargs)

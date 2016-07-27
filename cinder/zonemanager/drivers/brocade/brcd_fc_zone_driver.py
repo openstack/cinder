@@ -76,6 +76,9 @@ class BrcdFCZoneDriver(fc_zone_driver.FCZoneDriver):
 
     VERSION = "1.5"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Brocade_OpenStack_CI"
+
     def __init__(self, **kwargs):
         super(BrcdFCZoneDriver, self).__init__(**kwargs)
         self.sb_conn_map = {}

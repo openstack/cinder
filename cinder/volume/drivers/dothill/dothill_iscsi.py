@@ -50,6 +50,9 @@ class DotHillISCSIDriver(cinder.volume.driver.ISCSIDriver):
 
     VERSION = "1.0"
 
+    # ThirdPartySystems CI wiki
+    CI_WIKI_NAME = "Vedams_DotHillDriver_CI"
+
     def __init__(self, *args, **kwargs):
         super(DotHillISCSIDriver, self).__init__(*args, **kwargs)
         self.common = None

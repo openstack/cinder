@@ -33,6 +33,9 @@ class EMCCoprHDFCDriver(driver.FibreChannelDriver):
     """CoprHD FC Driver."""
     VERSION = "3.0.0.0"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "EMC_CoprHD_CI"
+
     def __init__(self, *args, **kwargs):
         super(EMCCoprHDFCDriver, self).__init__(*args, **kwargs)
         self.common = self._get_common_driver()

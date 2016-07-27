@@ -88,6 +88,7 @@ class DiscoDriver(driver.VolumeDriver):
     """Execute commands related to DISCO Volumes."""
 
     VERSION = "1.0"
+    CI_WIKI_NAME = "ITRI_DISCO_CI"
 
     def __init__(self, *args, **kwargs):
         """Init Disco driver : get configuration, create client."""

@@ -85,6 +85,10 @@ class HGSTDriver(driver.VolumeDriver):
     """
 
     VERSION = '1.0.0'
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "HGST_Solutions_CI"
+
     VGCCLUSTER = 'vgc-cluster'
     SPACEGB = units.G - 16 * units.M  # Workaround for shrinkage Bug 28320
     BLOCKED = "BLOCKED"  # Exit code when a command is blocked

@@ -267,6 +267,9 @@ class ZadaraVPSAISCSIDriver(driver.ISCSIDriver):
 
     VERSION = '15.07'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "ZadaraStorage_VPSA_CI"
+
     def __init__(self, *args, **kwargs):
         super(ZadaraVPSAISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(zadara_opts)

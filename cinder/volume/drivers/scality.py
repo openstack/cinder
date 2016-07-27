@@ -67,6 +67,9 @@ class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
     volume_backend_name = 'Scality_SOFS'
     VERSION = '2.0.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Scality_CI"
+
     def __init__(self, *args, **kwargs):
         super(ScalityDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)

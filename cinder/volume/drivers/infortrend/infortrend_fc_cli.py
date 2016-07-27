@@ -37,6 +37,9 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
         1.0.1 - Support DS4000
     """
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Infortrend_Storage_CI"
+
     def __init__(self, *args, **kwargs):
         super(InfortrendCLIFCDriver, self).__init__(*args, **kwargs)
         self.common = common_cli.InfortrendCommon(

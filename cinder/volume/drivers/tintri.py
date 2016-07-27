@@ -86,6 +86,9 @@ class TintriDriver(driver.ManageableVD,
 
     VENDOR = 'Tintri'
     VERSION = '2.2.0.1'
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Tintri_CI"
+
     REQUIRED_OPTIONS = ['tintri_server_hostname', 'tintri_server_username',
                         'tintri_server_password']
 

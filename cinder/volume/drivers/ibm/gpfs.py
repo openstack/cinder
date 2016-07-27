@@ -124,6 +124,9 @@ class GPFSDriver(driver.ConsistencyGroupVD, driver.ExtendVD,
 
     VERSION = "1.3.1"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "IBM_GPFS_CI"
+
     def __init__(self, *args, **kwargs):
         super(GPFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(gpfs_opts)

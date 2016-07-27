@@ -32,6 +32,9 @@ class NetApp7modeISCSIDriver(driver.BaseVD,
 
     DRIVER_NAME = 'NetApp_iSCSI_7mode_direct'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "NetApp_CI"
+
     def __init__(self, *args, **kwargs):
         super(NetApp7modeISCSIDriver, self).__init__(*args, **kwargs)
         self.library = block_7mode.NetAppBlockStorage7modeLibrary(

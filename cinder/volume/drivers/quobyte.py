@@ -86,6 +86,9 @@ class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
     volume_backend_name = 'Quobyte'
     VERSION = VERSION
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Quobyte_CI"
+
     def __init__(self, execute=processutils.execute, *args, **kwargs):
         super(QuobyteDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)

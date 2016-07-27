@@ -71,6 +71,9 @@ class CiscoFCZoneDriver(fc_zone_driver.FCZoneDriver):
 
     VERSION = "1.1.0"
 
+    # ThirdPartySystems wiki name
+    CI_WIKI_NAME = "Cisco_ZM_CI"
+
     def __init__(self, **kwargs):
         super(CiscoFCZoneDriver, self).__init__(**kwargs)
         self.configuration = kwargs.get('configuration', None)
