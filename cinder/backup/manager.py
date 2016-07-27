@@ -815,17 +815,17 @@ class BackupManager(manager.SchedulerDependentManager):
                  {'backup_id': backup.id,
                   'status': status})
 
-        backup_service = self._map_service_to_driver(backup.service)
-        LOG.info(_LI('Backup service: %s.'), backup_service)
-        if backup_service is not None:
+        backup_service_name = self._map_service_to_driver(backup.service)
+        LOG.info(_LI('Backup service: %s.'), backup_service_name)
+        if backup_service_name is not None:
             configured_service = self.driver_name
-            if backup_service != configured_service:
+            if backup_service_name != configured_service:
                 err = _('Reset backup status aborted, the backup service'
                         ' currently configured [%(configured_service)s] '
                         'is not the backup service that was used to create'
                         ' this backup [%(backup_service)s].') % \
                     {'configured_service': configured_service,
-                     'backup_service': backup_service}
+                     'backup_service': backup_service_name}
                 raise exception.InvalidBackup(reason=err)
             # Verify backup
             try:
@@ -833,6 +833,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 if (status == fields.BackupStatus.AVAILABLE
                         and backup['status'] != fields.BackupStatus.RESTORING):
                     # check whether we could verify the backup is ok or not
+                    backup_service = self.service.get_backup_driver(context)
                     if isinstance(backup_service,
                                   driver.BackupDriverWithVerify):
                         backup_service.verify(backup.id)

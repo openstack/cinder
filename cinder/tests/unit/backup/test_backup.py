@@ -1277,8 +1277,23 @@ class BackupTestCaseWithVerify(BaseBackupTest):
         with mock.patch.object(manager.BackupManager,
                                '_map_service_to_driver') as \
                 mock_map_service_to_driver:
+            # It should works when the service name is a string
+            mock_map_service_to_driver.return_value = 'swift'
+            self.backup_mgr.reset_status(self.ctxt,
+                                         backup,
+                                         fields.BackupStatus.AVAILABLE)
+            mock_clean_temp.assert_called_once_with(self.ctxt, backup)
+            new_backup = db.backup_get(self.ctxt, backup.id)
+            self.assertEqual(fields.BackupStatus.AVAILABLE,
+                             new_backup['status'])
+
             mock_map_service_to_driver.return_value = \
                 fake_service.get_backup_driver(self.ctxt)
+            self.backup_mgr.reset_status(self.ctxt,
+                                         backup,
+                                         fields.BackupStatus.ERROR)
+            mock_clean_temp.reset_mock()
+
             self.backup_mgr.reset_status(self.ctxt,
                                          backup,
                                          fields.BackupStatus.AVAILABLE)
