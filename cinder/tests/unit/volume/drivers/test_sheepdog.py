@@ -107,6 +107,10 @@ class SheepdogDriverTestDataGenerator(object):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'resize', name,
                 size, '-a', SHEEP_ADDR, '-p', SHEEP_PORT)
 
+    def cmd_dog_vdi_list(self, name):
+        return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'vdi', 'list', name,
+                '-r', '-a', SHEEP_ADDR, '-p', SHEEP_PORT)
+
     def cmd_dog_node_info(self):
         return ('env', 'LC_ALL=C', 'LANG=C', 'dog', 'node', 'info',
                 '-a', SHEEP_ADDR, '-p', SHEEP_PORT, '-r')
@@ -159,6 +163,10 @@ Total 107287605248 3623897354 3% 54760833024
 
     COLLIE_NODE_LIST = """
 0 127.0.0.1:7000 128 1
+"""
+
+    COLLIE_VDI_LIST = """
+= testvolume 0 0 0 0 1467037106 fd32fc 3
 """
 
     COLLIE_CLUSTER_INFO_0_5 = """\
@@ -1064,6 +1072,33 @@ class SheepdogClientTestCase(test.TestCase):
         self.assertEqual(expected_msg, ex.msg)
 
     @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    def test_get_vdi_info_success(self, fake_execute):
+
+        expected_cmd = ('vdi', 'list', self._vdiname, '-r')
+        fake_execute.return_value = (self.test_data.COLLIE_VDI_LIST, '')
+        self.client.get_vdi_info(self._vdiname)
+        fake_execute.assert_called_once_with(*expected_cmd)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
+    @mock.patch.object(sheepdog, 'LOG')
+    def test_get_vdi_info_unknown_error(self, fake_logger, fake_execute):
+        cmd = self.test_data.cmd_dog_vdi_list(self._vdiname)
+        exit_code = 2
+        stdout = 'stdout_dummy'
+        stderr = 'stderr_dummy'
+        expected_msg = self.test_data.sheepdog_cmd_error(cmd=cmd,
+                                                         exit_code=exit_code,
+                                                         stdout=stdout,
+                                                         stderr=stderr)
+        fake_execute.side_effect = exception.SheepdogCmdError(
+            cmd=cmd, exit_code=exit_code, stdout=stdout.replace('\n', '\\n'),
+            stderr=stderr.replace('\n', '\\n'))
+        ex = self.assertRaises(exception.SheepdogCmdError,
+                               self.client.get_vdi_info, self._vdiname)
+        self.assertTrue(fake_logger.error.called)
+        self.assertEqual(expected_msg, ex.msg)
+
+    @mock.patch.object(sheepdog.SheepdogClient, '_run_dog')
     def test_update_node_list_success(self, fake_execute):
         expected_cmd = ('node', 'list', '-r')
         fake_execute.return_value = (self.test_data.COLLIE_NODE_LIST, '')
@@ -1278,7 +1313,7 @@ class SheepdogDriverTestCase(test.TestCase):
         image_service = ''
 
         patch = mock.patch.object
-        with patch(self.driver, '_try_execute', return_value=True):
+        with patch(self.driver, '_is_cloneable', return_value=True):
             with patch(self.driver, 'create_cloned_volume'):
                 with patch(self.client, 'resize'):
                     model_updated, cloned = self.driver.clone_image(
@@ -1307,32 +1342,27 @@ class SheepdogDriverTestCase(test.TestCase):
 
     def test_is_cloneable(self):
         uuid = '87f1b01c-f46c-4537-bd5d-23962f5f4316'
-        location = 'sheepdog://ip:port:%s' % uuid
+        location = 'sheepdog://127.0.0.1:7000:%s' % uuid
         image_meta = {'id': uuid, 'size': 1, 'disk_format': 'raw'}
         invalid_image_meta = {'id': uuid, 'size': 1, 'disk_format': 'iso'}
 
-        with mock.patch.object(self.driver, '_try_execute') as try_execute:
+        with mock.patch.object(self.client, 'get_vdi_info') as fake_execute:
+            fake_execute.return_value = self.test_data.COLLIE_VDI_LIST
             self.assertTrue(
                 self.driver._is_cloneable(location, image_meta))
-            expected_cmd = ('collie', 'vdi', 'list',
-                            '--address', 'ip',
-                            '--port', 'port',
-                            uuid)
-            try_execute.assert_called_once_with(*expected_cmd)
 
-            # check returning False without executing a command
+            # Test for invalid location
             self.assertFalse(
                 self.driver._is_cloneable('invalid-location', image_meta))
-            self.assertFalse(
-                self.driver._is_cloneable(location, invalid_image_meta))
-            self.assertEqual(1, try_execute.call_count)
 
-        error = processutils.ProcessExecutionError
-        with mock.patch.object(self.driver, '_try_execute',
-                               side_effect=error) as fail_try_execute:
+            # Test for image not exist in sheepdog cluster
+            fake_execute.return_value = ''
             self.assertFalse(
                 self.driver._is_cloneable(location, image_meta))
-            fail_try_execute.assert_called_once_with(*expected_cmd)
+
+            # Test for invalid image meta
+            self.assertFalse(
+                self.driver._is_cloneable(location, invalid_image_meta))
 
     def test_create_volume_from_snapshot(self):
         dst_volume = self.test_data.TEST_CLONED_VOLUME

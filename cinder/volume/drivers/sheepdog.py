@@ -313,6 +313,15 @@ class SheepdogClient(object):
                 LOG.error(_LE('Failed to get volume status. %s'), e)
         return _stdout
 
+    def get_vdi_info(self, vdiname):
+        # Get info of the specified vdi.
+        try:
+            (_stdout, _stderr) = self._run_dog('vdi', 'list', vdiname, '-r')
+        except exception.SheepdogCmdError as e:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE('Failed to get vdi info. %s'), e)
+        return _stdout
+
     def update_node_list(self):
         try:
             (_stdout, _stderr) = self._run_dog('node', 'list', '-r')
@@ -463,21 +472,19 @@ class SheepdogDriver(driver.VolumeDriver):
                       image_meta['disk_format'])
             return False
 
-        cloneable = False
         # check whether volume is stored in sheepdog
-        try:
-            # The image location would be like
-            # "sheepdog://192.168.10.2:7000:Alice"
-            (ip, port, name) = image_location[len(prefix):].split(":", 2)
+        # The image location would be like
+        # "sheepdog://192.168.10.2:7000:Alice"
+        (ip, port, name) = image_location[len(prefix):].split(":", 2)
 
-            self._try_execute('collie', 'vdi', 'list', '--address', ip,
-                              '--port', port, name)
-            cloneable = True
-        except processutils.ProcessExecutionError as e:
-            LOG.debug("Can not find vdi %(image)s: %(err)s",
-                      {'image': name, 'err': e})
-
-        return cloneable
+        stdout = self.client.get_vdi_info(name)
+        # Dog command return 0 and has a null output if the volume not exists
+        if stdout:
+            return True
+        else:
+            LOG.debug("Can not find vdi %(image)s, is not cloneable",
+                      {'image': name})
+            return False
 
     def clone_image(self, context, volume,
                     image_location, image_meta,
