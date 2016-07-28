@@ -22,7 +22,6 @@ from oslo_config import cfg
 from cinder.brick.local_dev import lvm as brick_lvm
 from cinder import db
 from cinder import exception
-from cinder import objects
 from cinder.objects import fields
 from cinder.tests import fake_driver
 from cinder.tests.unit.brick import fake_lvm
@@ -145,9 +144,8 @@ class LVMVolumeDriverTestCase(DriverTestCase):
         vol = tests_utils.create_volume(self.context)
         self.context.user_id = fake.USER_ID
         self.context.project_id = fake.PROJECT_ID
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        backup_obj = tests_utils.create_backup(self.context,
+                                               vol['id'])
 
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
@@ -233,9 +231,8 @@ class LVMVolumeDriverTestCase(DriverTestCase):
 
         mock_volume_get.return_value = vol
         temp_snapshot = tests_utils.create_snapshot(self.context, vol['id'])
-        backup = tests_utils.create_backup(self.context,
-                                           vol['id'])
-        backup_obj = objects.Backup.get_by_id(self.context, backup.id)
+        backup_obj = tests_utils.create_backup(self.context,
+                                               vol['id'])
         properties = {}
         attach_info = {'device': {'path': '/dev/null'}}
         backup_service = mock.Mock()

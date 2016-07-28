@@ -152,3 +152,16 @@ user documentation.
   Adds the following resources that were previously in extensions:
   - os-volume-manage => /v3/<project_id>/manageable_volumes
   - os-snapshot-manage => /v3/<project_id>/manageable_snapshots
+
+3.9
+---
+  Added backup update interface to change name and description.
+  Returns:
+
+  .. code-block:: json
+
+     "backup": {
+         "id": "backup_id",
+         "name": "backup_name",
+         "links": "backup_link",
+     }

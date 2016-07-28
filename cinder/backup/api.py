@@ -589,3 +589,10 @@ class API(base.Base):
                                          hosts)
 
         return backup
+
+    def update(self, context, backup_id, fields):
+        check_policy(context, 'update')
+        backup = self.get(context, backup_id)
+        backup.update(fields)
+        backup.save()
+        return backup

@@ -208,7 +208,7 @@ def create_cgsnapshot(ctxt,
 
 
 def create_backup(ctxt,
-                  volume_id,
+                  volume_id=fake.VOLUME_ID,
                   display_name='test_backup',
                   display_description='This is a test backup',
                   status=fields.BackupStatus.CREATING,
@@ -216,27 +216,32 @@ def create_backup(ctxt,
                   temp_volume_id=None,
                   temp_snapshot_id=None,
                   snapshot_id=None,
-                  data_timestamp=None):
-    backup = {}
-    backup['volume_id'] = volume_id
-    backup['user_id'] = ctxt.user_id
-    backup['project_id'] = ctxt.project_id
-    backup['host'] = socket.gethostname()
-    backup['availability_zone'] = '1'
-    backup['display_name'] = display_name
-    backup['display_description'] = display_description
-    backup['container'] = 'fake'
-    backup['status'] = status
-    backup['fail_reason'] = ''
-    backup['service'] = 'fake'
-    backup['parent_id'] = parent_id
-    backup['size'] = 5 * 1024 * 1024
-    backup['object_count'] = 22
-    backup['temp_volume_id'] = temp_volume_id
-    backup['temp_snapshot_id'] = temp_snapshot_id
-    backup['snapshot_id'] = snapshot_id
-    backup['data_timestamp'] = data_timestamp
-    return db.backup_create(ctxt, backup)
+                  data_timestamp=None,
+                  **kwargs):
+    """Create a backup object."""
+    values = {
+        'user_id': ctxt.user_id or fake.USER_ID,
+        'project_id': ctxt.project_id or fake.PROJECT_ID,
+        'volume_id': volume_id,
+        'status': status,
+        'display_name': display_name,
+        'display_description': display_description,
+        'container': 'fake',
+        'availability_zone': 'fake',
+        'service': 'fake',
+        'size': 5 * 1024 * 1024,
+        'object_count': 22,
+        'host': socket.gethostname(),
+        'parent_id': parent_id,
+        'temp_volume_id': temp_volume_id,
+        'temp_snapshot_id': temp_snapshot_id,
+        'snapshot_id': snapshot_id,
+        'data_timestamp': data_timestamp, }
+
+    values.update(kwargs)
+    backup = objects.Backup(ctxt, **values)
+    backup.create()
+    return backup
 
 
 def create_message(ctxt,

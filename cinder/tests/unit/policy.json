@@ -97,6 +97,7 @@
     "backup:restore": "",
     "backup:backup-import": "rule:admin_api",
     "backup:backup-export": "rule:admin_api",
+    "backup:update": "rule:admin_or_owner",
 
     "volume_extension:replication:promote": "rule:admin_api",
     "volume_extension:replication:reenable": "rule:admin_api",

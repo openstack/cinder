@@ -91,6 +91,7 @@
     "backup:restore": "rule:admin_or_owner",
     "backup:backup-import": "rule:admin_api",
     "backup:backup-export": "rule:admin_api",
+    "backup:update": "rule:admin_or_owner",
 
     "snapshot_extension:snapshot_actions:update_snapshot_status": "",
     "snapshot_extension:snapshot_manage": "rule:admin_api",
