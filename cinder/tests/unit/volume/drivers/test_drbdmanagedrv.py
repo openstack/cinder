@@ -143,6 +143,17 @@ class DrbdManageFakeDriver(object):
 
     def __init__(self):
         self.calls = []
+        self.cur = -1
+
+    def call_count(self):
+        return len(self.calls)
+
+    def next_call(self):
+        self.cur += 1
+        return self.calls[self.cur][0]
+
+    def call_parm(self, arg_idx):
+        return self.calls[self.cur][arg_idx]
 
     def run_external_plugin(self, name, props):
         self.calls.append(["run_external_plugin", name, props])
@@ -270,6 +281,10 @@ class DrbdManageFakeDriver(object):
         self.calls.append(["set_drbdsetup_props", options])
         return [[mock_dm_exc.DM_SUCCESS, "ack", []]]
 
+    def modify_resource(self, res, ser, props):
+        self.calls.append(["modify_resource", res, ser, props])
+        return [[mock_dm_exc.DM_SUCCESS, "ack", []]]
+
 
 class DrbdManageIscsiTestCase(test.TestCase):
 
@@ -291,6 +306,8 @@ class DrbdManageIscsiTestCase(test.TestCase):
                    '"ko-count": "30"}')
         if key == 'drbdmanage_resource_options':
             return '{"auto-promote-timeout": "300"}'
+        if key == 'drbdmanage_disk_options':
+            return '{"c-min-rate": "4M"}'
 
         return self._fake_safe_get(key)
 
@@ -356,14 +373,15 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd.drbdmanage_devs_on_controller = False
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
-        self.assertEqual("create_resource", dmd.odm.calls[0][0])
-        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[1][0])
-        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[2][0])
-        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
-        self.assertEqual("create_volume", dmd.odm.calls[4][0])
-        self.assertEqual(1048576, dmd.odm.calls[4][2])
-        self.assertEqual("auto_deploy", dmd.odm.calls[5][0])
-        self.assertEqual(7, len(dmd.odm.calls))
+        self.assertEqual(8, dmd.odm.call_count())
+        self.assertEqual("create_resource", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual("create_volume", dmd.odm.next_call())
+        self.assertEqual(1048576, dmd.odm.call_parm(2))
+        self.assertEqual("auto_deploy", dmd.odm.next_call())
 
     def test_create_volume_with_options(self):
         testvol = {'project_id': 'testprjid',
@@ -379,21 +397,28 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
 
-        self.assertEqual("create_resource", dmd.odm.calls[0][0])
+        self.assertEqual(8, dmd.odm.call_count())
 
-        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[1][0])
-        self.assertEqual("reso", dmd.odm.calls[1][1]["type"])
-        self.assertEqual("300", dmd.odm.calls[1][1]["auto-promote-timeout"])
+        self.assertEqual("create_resource", dmd.odm.next_call())
 
-        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[2][0])
-        self.assertEqual("neto", dmd.odm.calls[2][1]["type"])
-        self.assertEqual("30", dmd.odm.calls[2][1]["ko-count"])
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("reso", dmd.odm.call_parm(1)["type"])
+        self.assertEqual("300", dmd.odm.call_parm(1)["auto-promote-timeout"])
 
-        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
-        self.assertEqual("create_volume", dmd.odm.calls[4][0])
-        self.assertEqual(1048576, dmd.odm.calls[4][2])
-        self.assertEqual("auto_deploy", dmd.odm.calls[5][0])
-        self.assertEqual(7, len(dmd.odm.calls))
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("neto", dmd.odm.call_parm(1)["type"])
+        self.assertEqual("30", dmd.odm.call_parm(1)["ko-count"])
+
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("disko", dmd.odm.call_parm(1)["type"])
+        self.assertEqual("4M", dmd.odm.call_parm(1)["c-min-rate"])
+
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+
+        self.assertEqual("create_volume", dmd.odm.next_call())
+        self.assertEqual(1048576, dmd.odm.call_parm(2))
+
+        self.assertEqual("auto_deploy", dmd.odm.next_call())
 
     def test_create_volume_controller_all_vols(self):
         testvol = {'project_id': 'testprjid',
@@ -407,16 +432,17 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd.drbdmanage_devs_on_controller = True
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume(testvol)
-        self.assertEqual(8, len(dmd.odm.calls))
-        self.assertEqual("create_resource", dmd.odm.calls[0][0])
-        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[1][0])
-        self.assertEqual("set_drbdsetup_props", dmd.odm.calls[2][0])
-        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
-        self.assertEqual("create_volume", dmd.odm.calls[4][0])
-        self.assertEqual(1048576, dmd.odm.calls[4][2])
-        self.assertEqual("auto_deploy", dmd.odm.calls[5][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[6][0])
-        self.assertEqual("assign", dmd.odm.calls[7][0])
+        self.assertEqual("create_resource", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual("create_volume", dmd.odm.next_call())
+        self.assertEqual(1048576, dmd.odm.call_parm(2))
+        self.assertEqual("auto_deploy", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("assign", dmd.odm.next_call())
+        self.assertEqual(9, dmd.odm.call_count())
 
     def test_delete_volume(self):
         testvol = {'project_id': 'testprjid',
@@ -429,9 +455,9 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.delete_volume(testvol)
-        self.assertEqual("list_volumes", dmd.odm.calls[0][0])
-        self.assertEqual(testvol['id'], dmd.odm.calls[0][3]["aux:cinder-id"])
-        self.assertEqual("remove_volume", dmd.odm.calls[1][0])
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual(testvol['id'], dmd.odm.call_parm(3)["aux:cinder-id"])
+        self.assertEqual("remove_volume", dmd.odm.next_call())
 
     def test_local_path(self):
         testvol = {'project_id': 'testprjid',
@@ -453,10 +479,10 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_snapshot(testsnap)
-        self.assertEqual("list_volumes", dmd.odm.calls[0][0])
-        self.assertEqual("list_assignments", dmd.odm.calls[1][0])
-        self.assertEqual("create_snapshot", dmd.odm.calls[2][0])
-        self.assertIn('node', dmd.odm.calls[2][3])
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual("list_assignments", dmd.odm.next_call())
+        self.assertEqual("create_snapshot", dmd.odm.next_call())
+        self.assertIn('node', dmd.odm.call_parm(3))
 
     def test_delete_snapshot(self):
         testsnap = {'id': 'ca253fd0-8068-11e4-98c0-5254008ea111'}
@@ -464,8 +490,8 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.delete_snapshot(testsnap)
-        self.assertEqual("list_snapshots", dmd.odm.calls[0][0])
-        self.assertEqual("remove_snapshot", dmd.odm.calls[1][0])
+        self.assertEqual("list_snapshots", dmd.odm.next_call())
+        self.assertEqual("remove_snapshot", dmd.odm.next_call())
 
     def test_extend_volume(self):
         testvol = {'project_id': 'testprjid',
@@ -478,13 +504,13 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.extend_volume(testvol, 5)
-        self.assertEqual("list_volumes", dmd.odm.calls[0][0])
-        self.assertEqual(testvol['id'], dmd.odm.calls[0][3]["aux:cinder-id"])
-        self.assertEqual("resize_volume", dmd.odm.calls[1][0])
-        self.assertEqual("res", dmd.odm.calls[1][1])
-        self.assertEqual(2, dmd.odm.calls[1][2])
-        self.assertEqual(-1, dmd.odm.calls[1][3])
-        self.assertEqual(5242880, dmd.odm.calls[1][4])
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual(testvol['id'], dmd.odm.call_parm(3)["aux:cinder-id"])
+        self.assertEqual("resize_volume", dmd.odm.next_call())
+        self.assertEqual("res", dmd.odm.call_parm(1))
+        self.assertEqual(2, dmd.odm.call_parm(2))
+        self.assertEqual(-1, dmd.odm.call_parm(3))
+        self.assertEqual(5242880, dmd.odm.call_parm(4))
 
     def test_create_cloned_volume(self):
         srcvol = {'project_id': 'testprjid',
@@ -499,15 +525,18 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_cloned_volume(newvol, srcvol)
-        self.assertEqual("list_volumes", dmd.odm.calls[0][0])
-        self.assertEqual("list_assignments", dmd.odm.calls[1][0])
-        self.assertEqual("create_snapshot", dmd.odm.calls[2][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
-        self.assertEqual("list_snapshots", dmd.odm.calls[4][0])
-        self.assertEqual("restore_snapshot", dmd.odm.calls[5][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[6][0])
-        self.assertEqual("list_snapshots", dmd.odm.calls[7][0])
-        self.assertEqual("remove_snapshot", dmd.odm.calls[8][0])
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual("list_assignments", dmd.odm.next_call())
+        self.assertEqual("create_snapshot", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("list_snapshots", dmd.odm.next_call())
+        self.assertEqual("restore_snapshot", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("list_snapshots", dmd.odm.next_call())
+        self.assertEqual("remove_snapshot", dmd.odm.next_call())
 
     def test_create_cloned_volume_larger_size(self):
         srcvol = {'project_id': 'testprjid',
@@ -523,25 +552,30 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_cloned_volume(newvol, srcvol)
-        self.assertEqual("list_volumes", dmd.odm.calls[0][0])
-        self.assertEqual("list_assignments", dmd.odm.calls[1][0])
-        self.assertEqual("create_snapshot", dmd.odm.calls[2][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
-        self.assertEqual("list_snapshots", dmd.odm.calls[4][0])
-        self.assertEqual("restore_snapshot", dmd.odm.calls[5][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[6][0])
-        # resize image checks
-        self.assertEqual("list_volumes", dmd.odm.calls[7][0])
-        self.assertEqual(newvol['id'], dmd.odm.calls[7][3]["aux:cinder-id"])
-        self.assertEqual("resize_volume", dmd.odm.calls[8][0])
-        self.assertEqual("res", dmd.odm.calls[8][1])
-        self.assertEqual(2, dmd.odm.calls[8][2])
-        self.assertEqual(-1, dmd.odm.calls[8][3])
-        self.assertEqual(5242880, dmd.odm.calls[8][4])
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual("list_assignments", dmd.odm.next_call())
+        self.assertEqual("create_snapshot", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("list_snapshots", dmd.odm.next_call())
+        self.assertEqual("restore_snapshot", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
 
-        self.assertEqual("run_external_plugin", dmd.odm.calls[9][0])
-        self.assertEqual("list_snapshots", dmd.odm.calls[10][0])
-        self.assertEqual("remove_snapshot", dmd.odm.calls[11][0])
+        # resize image checks
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual(newvol['id'], dmd.odm.call_parm(3)["aux:cinder-id"])
+        self.assertEqual("resize_volume", dmd.odm.next_call())
+        self.assertEqual("res", dmd.odm.call_parm(1))
+        self.assertEqual(2, dmd.odm.call_parm(2))
+        self.assertEqual(-1, dmd.odm.call_parm(3))
+        self.assertEqual(5242880, dmd.odm.call_parm(4))
+
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+
+        self.assertEqual("list_snapshots", dmd.odm.next_call())
+        self.assertEqual("remove_snapshot", dmd.odm.next_call())
 
     def test_create_volume_from_snapshot(self):
         snap = {'project_id': 'testprjid',
@@ -556,9 +590,12 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume_from_snapshot(newvol, snap)
-        self.assertEqual("list_snapshots", dmd.odm.calls[0][0])
-        self.assertEqual("restore_snapshot", dmd.odm.calls[1][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[2][0])
+        self.assertEqual("list_snapshots", dmd.odm.next_call())
+        self.assertEqual("restore_snapshot", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
 
     def test_create_volume_from_snapshot_larger_size(self):
         snap = {'project_id': 'testprjid',
@@ -574,18 +611,12 @@ class DrbdManageIscsiTestCase(test.TestCase):
         dmd = drv.DrbdManageIscsiDriver(configuration=self.configuration)
         dmd.odm = DrbdManageFakeDriver()
         dmd.create_volume_from_snapshot(newvol, snap)
-        self.assertEqual("list_snapshots", dmd.odm.calls[0][0])
-        self.assertEqual("restore_snapshot", dmd.odm.calls[1][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[2][0])
-
-        # resize image checks
-        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
-        self.assertEqual(newvol['id'], dmd.odm.calls[3][3]["aux:cinder-id"])
-        self.assertEqual("resize_volume", dmd.odm.calls[4][0])
-        self.assertEqual("res", dmd.odm.calls[4][1])
-        self.assertEqual(2, dmd.odm.calls[4][2])
-        self.assertEqual(-1, dmd.odm.calls[4][3])
-        self.assertEqual(5242880, dmd.odm.calls[4][4])
+        self.assertEqual("list_snapshots", dmd.odm.next_call())
+        self.assertEqual("restore_snapshot", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("set_drbdsetup_props", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
 
 
 class DrbdManageDrbdTestCase(DrbdManageIscsiTestCase):
@@ -612,12 +643,12 @@ class DrbdManageDrbdTestCase(DrbdManageIscsiTestCase):
         dmd.odm = DrbdManageFakeDriver()
 
         x = dmd.create_export({}, volume, connector)
-        self.assertEqual("list_volumes", dmd.odm.calls[0][0])
-        self.assertEqual("create_node", dmd.odm.calls[1][0])
-        self.assertEqual("assign", dmd.odm.calls[2][0])
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual("create_node", dmd.odm.next_call())
+        self.assertEqual("assign", dmd.odm.next_call())
         # local_path
-        self.assertEqual("list_volumes", dmd.odm.calls[3][0])
-        self.assertEqual("text_query", dmd.odm.calls[4][0])
+        self.assertEqual("list_volumes", dmd.odm.next_call())
+        self.assertEqual("text_query", dmd.odm.next_call())
         self.assertEqual("local", x["driver_volume_type"])
 
 
@@ -633,11 +664,11 @@ class DrbdManageCommonTestCase(DrbdManageIscsiTestCase):
                                       {'retry': 4,
                                        'run-into-timeout': True})
         self.assertFalse(res)
-        self.assertEqual(4, len(dmd.odm.calls))
-        self.assertEqual("run_external_plugin", dmd.odm.calls[0][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[1][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[2][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
+        self.assertEqual(4, dmd.odm.call_count())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
 
     def test_drbd_policy_loop_success(self):
         dmd = drv.DrbdManageDrbdDriver(configuration=self.configuration)
@@ -648,11 +679,11 @@ class DrbdManageCommonTestCase(DrbdManageIscsiTestCase):
                                        'retry': 4},
                                       {'override': 'xyz'})
         self.assertTrue(res)
-        self.assertEqual(4, len(dmd.odm.calls))
-        self.assertEqual("run_external_plugin", dmd.odm.calls[0][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[1][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[2][0])
-        self.assertEqual("run_external_plugin", dmd.odm.calls[3][0])
+        self.assertEqual(4, dmd.odm.call_count())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
 
     def test_drbd_policy_loop_simple(self):
         dmd = drv.DrbdManageDrbdDriver(configuration=self.configuration)
@@ -665,11 +696,11 @@ class DrbdManageCommonTestCase(DrbdManageIscsiTestCase):
                                        'starttime': 0})
         self.assertTrue(res)
 
-        self.assertEqual(1, len(dmd.odm.calls))
-        self.assertEqual("run_external_plugin", dmd.odm.calls[0][0])
-        self.assertEqual('policy-name', dmd.odm.calls[0][1])
+        self.assertEqual(1, dmd.odm.call_count())
+        self.assertEqual("run_external_plugin", dmd.odm.next_call())
+        self.assertEqual('policy-name', dmd.odm.call_parm(1))
+        incoming = dmd.odm.call_parm(2)
 
-        incoming = dmd.odm.calls[0][2]
         self.assertGreaterEqual(4, abs(float(incoming['starttime']) -
                                        time.time()))
         self.assertEqual('value', incoming['base'])
