@@ -77,17 +77,20 @@ violin_opts = [
                help='Global backend request timeout, in seconds.'),
     cfg.ListOpt('violin_dedup_only_pools',
                 default=[],
-                help='Storage pools to be used to setup dedup luns only.'),
+                help='Storage pools to be used to setup dedup luns only.'
+                     '(Comma separated list)'),
     cfg.ListOpt('violin_dedup_capable_pools',
                 default=[],
-                help='Storage pools capable of dedup and other luns.'),
+                help='Storage pools capable of dedup and other luns.'
+                     '(Comma separated list)'),
     cfg.StrOpt('violin_pool_allocation_method',
                default='random',
                choices=['random', 'largest', 'smallest'],
                help='Method of choosing a storage pool for a lun.'),
     cfg.ListOpt('violin_iscsi_target_ips',
                 default=[],
-                help='List of target iSCSI addresses to use.'),
+                help='Target iSCSI addresses to use.'
+                     '(Comma separated list)'),
 ]
 
 CONF = cfg.CONF
@@ -123,7 +126,7 @@ class V7000Common(object):
             if (self.config.violin_dedup_only_pools == [] and
                     self.config.violin_dedup_capable_pools == []):
 
-                LOG.warning(_LW("Storage pools not configured"))
+                LOG.warning(_LW("Storage pools not configured."))
                 raise exception.InvalidInput(
                     reason=_('Storage pool configuration is '
                              'mandatory for external head'))
@@ -1046,8 +1049,14 @@ class V7000Common(object):
                        'oid': oid,
                        'snap_id': cinder_snapshot_id})
 
-            ans = self.vmem_mg.snapshot.delete_lun_snapshot(
-                snapshot_object_id=oid)
+            try:
+                ans = self.vmem_mg.snapshot.delete_lun_snapshot(
+                    snapshot_object_id=oid)
+            except Exception:
+                msg = (_("Failed to delete snapshot "
+                         "%(snap)s of volume %(vol)s") %
+                       {'snap': cinder_snapshot_id, 'vol': cinder_volume_id})
+                raise exception.ViolinBackendErr(msg)
 
             if ans['success']:
                 LOG.debug("Delete snapshot %(snap_id)s of %(vol)s: "
@@ -1064,11 +1073,7 @@ class V7000Common(object):
         timer = loopingcall.FixedIntervalLoopingCall(_loop_func)
         success = timer.start(interval=1).wait()
 
-        if not success:
-                msg = (_("Failed to delete snapshot "
-                         "%(snap)s of volume %(vol)s") %
-                       {'snap': cinder_snapshot_id, 'vol': cinder_volume_id})
-                raise exception.ViolinBackendErr(msg)
+        return success
 
     def _validate_lun_type_for_copy(self, lun_type):
         """Make sure volume type is thick.

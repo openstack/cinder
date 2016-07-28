@@ -1153,7 +1153,7 @@ class V7000CommonTestCase(test.TestCase):
 
         result = self.driver._delete_lun_snapshot(SNAPSHOT)
 
-        self.assertIsNone(result)
+        self.assertTrue(result)
 
     def test_delete_lun_snapshot_with_retry(self):
         response = [
@@ -1173,7 +1173,7 @@ class V7000CommonTestCase(test.TestCase):
 
         result = self.driver._delete_lun_snapshot(SNAPSHOT)
 
-        self.assertIsNone(result)
+        self.assertTrue(result)
         self.assertEqual(
             len(response),
             self.driver.vmem_mg.snapshot.delete_lun_snapshot.call_count)
