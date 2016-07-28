@@ -759,7 +759,8 @@ class API(base.Base):
                    'project_id': context.project_id,
                    'status': "creating",
                    'name': name,
-                   'description': description}
+                   'description': description,
+                   'group_type_id': group.group_type_id}
 
         group_snapshot = None
         group_snapshot_id = None
