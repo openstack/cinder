@@ -270,9 +270,6 @@ class TestCommonAdapter(test.TestCase):
     def test_update_volume_stats(self, vnx_common, mocked):
         with mock.patch.object(adapter.CommonAdapter, 'get_pool_stats'):
             stats = vnx_common.update_volume_stats()
-        self.assertEqual(
-            adapter.CommonAdapter.VERSION, stats['driver_version'])
-        self.assertEqual(adapter.CommonAdapter.VENDOR, stats['vendor_name'])
         pools_stats = stats['pools']
         for stat in pools_stats:
             self.assertFalse(stat['replication_enabled'])
