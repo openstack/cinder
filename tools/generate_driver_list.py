@@ -15,30 +15,55 @@
 """Generate list of cinder drivers"""
 
 import os
+import sys
 
 from cinder.interface import util
 
 
-def format_description(desc):
+class Output(object):
+
+    def __init__(self, base_dir):
+        # At this point we don't care what was passed in, just a trigger
+        # to write this out to the doc tree for now
+        self.driver_file = None
+        if len(sys.argv) > 1:
+            self.driver_file = open(
+                '%s/doc/source/drivers.rst' % base_dir, 'w+')
+            self.driver_file.write('===================\n')
+            self.driver_file.write('Available Drivers\n')
+            self.driver_file.write('===================\n\n')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.driver_file.close()
+
+    def write(self, text):
+        if self.driver_file:
+            self.driver_file.write('%s\n' % text)
+        else:
+            print(text)
+
+
+def format_description(desc, output):
     desc = desc or '<None>'
     lines = desc.rstrip('\n').split('\n')
     for line in lines:
-        print('    %s' % line)
+        output.write('    %s' % line)
 
 
-def print_drivers(drivers, config_name):
-    # for driver in drivers.sort(key=lambda x: x.class_fqn):
+def print_drivers(drivers, config_name, output):
     for driver in sorted(drivers, key=lambda x: x.class_fqn):
-        print(driver.class_name)
-        print('-' * len(driver.class_name))
+        output.write(driver.class_name)
+        output.write('-' * len(driver.class_name))
         if driver.version:
-            print('* Version: %s' % driver.version)
-        print('* %s=%s' % (config_name, driver.class_fqn))
-        print('* Description::')
-        print('')
-        format_description(driver.desc)
-        print('')
-    print('')
+            output.write('* Version: %s' % driver.version)
+        output.write('* %s=%s' % (config_name, driver.class_fqn))
+        output.write('* Description:')
+        format_description(driver.desc, output)
+        output.write('')
+    output.write('')
 
 
 def main():
@@ -48,17 +73,18 @@ def main():
     os.chdir(cinder_root)
 
     try:
-        print('VOLUME DRIVERS')
-        print('==============')
-        print_drivers(util.get_volume_drivers(), 'volume_driver')
+        with Output(cinder_root) as output:
+            output.write('Volume Drivers')
+            output.write('==============')
+            print_drivers(util.get_volume_drivers(), 'volume_driver', output)
 
-        print('BACKUP DRIVERS')
-        print('==============')
-        print_drivers(util.get_backup_drivers(), 'backup_driver')
+            output.write('Backup Drivers')
+            output.write('==============')
+            print_drivers(util.get_backup_drivers(), 'backup_driver', output)
 
-        print('FC ZONE MANAGER DRIVERS')
-        print('=======================')
-        print_drivers(util.get_fczm_drivers(), 'zone_driver')
+            output.write('FC Zone Manager Drivers')
+            output.write('=======================')
+            print_drivers(util.get_fczm_drivers(), 'zone_driver', output)
     finally:
         os.chdir(cur_dir)
 
