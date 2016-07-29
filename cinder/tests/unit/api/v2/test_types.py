@@ -254,7 +254,7 @@ class VolumeTypesApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' %
                                       (fake.PROJECT_ID,
                                        fake.WILL_NOT_BE_FOUND_ID))
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
+        self.assertRaises(exception.VolumeTypeNotFound, self.controller.show,
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
     def test_get_default(self):
@@ -274,7 +274,7 @@ class VolumeTypesApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.PROJECT_ID)
         req.method = 'GET'
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeTypeNotFound,
                           self.controller.show, req, 'default')
 
     def test_view_builder_show(self):

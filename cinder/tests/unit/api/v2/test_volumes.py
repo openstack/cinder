@@ -96,8 +96,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when type name isn't valid
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
-                          req, body)
+        self.assertRaises(exception.VolumeTypeNotFoundByName,
+                          self.controller.create, req, body)
 
         # Use correct volume type name
         vol.update(dict(volume_type=CONF.default_volume_type))
@@ -261,7 +261,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when snapshot cannot be found.
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+        self.assertRaises(exception.SnapshotNotFound, self.controller.create,
                           req, body)
         context = req.environ['cinder.context']
         get_snapshot.assert_called_once_with(self.controller.volume_api,
@@ -309,7 +309,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when source volume cannot be found.
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+        self.assertRaises(exception.VolumeNotFound, self.controller.create,
                           req, body)
 
         context = req.environ['cinder.context']
@@ -327,7 +327,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when source replica cannot be found.
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
+        self.assertRaises(exception.VolumeNotFound, self.controller.create,
                           req, body)
 
         context = req.environ['cinder.context']
@@ -364,8 +364,8 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": vol}
         req = fakes.HTTPRequest.blank('/v2/volumes')
         # Raise 404 when consistency group is not found.
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.create,
-                          req, body)
+        self.assertRaises(exception.ConsistencyGroupNotFound,
+                          self.controller.create, req, body)
 
         context = req.environ['cinder.context']
         get_cg.assert_called_once_with(self.controller.consistencygroup_api,
@@ -700,7 +700,7 @@ class VolumeApiTest(test.TestCase):
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
         self.assertEqual(0, len(self.notifier.notifications))
-        self.assertRaises(exc.HTTPBadRequest,
+        self.assertRaises(exception.InvalidVolumeMetadata,
                           self.controller.update, req, fake.VOLUME_ID, body)
 
     @mock.patch(
@@ -779,7 +779,7 @@ class VolumeApiTest(test.TestCase):
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller.update,
                           req, fake.VOLUME_ID, body)
 
@@ -1279,7 +1279,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
+        self.assertRaises(exception.VolumeNotFound, self.controller.show,
                           req, 1)
         # Finally test that nothing was cached
         self.assertIsNone(req.cached_resource_by_id(fake.VOLUME_ID))
@@ -1372,7 +1372,7 @@ class VolumeApiTest(test.TestCase):
         self.stubs.Set(volume_api.API, "get", stubs.stub_volume_get_notfound)
 
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
+        self.assertRaises(exception.VolumeNotFound, self.controller.delete,
                           req, 1)
 
     def test_admin_list_volumes_limited_to_project(self):

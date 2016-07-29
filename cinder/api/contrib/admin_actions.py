@@ -102,12 +102,10 @@ class AdminController(wsgi.Controller):
         notifier.info(context, self.collection + '.reset_status.start',
                       notifier_info)
 
-        try:
-            self._update(context, id, update)
-            if update.get('attach_status') == 'detached':
-                _clean_volume_attachment(context, id)
-        except exception.VolumeNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
+        # Not found exception will be handled at the wsgi level
+        self._update(context, id, update)
+        if update.get('attach_status') == 'detached':
+            _clean_volume_attachment(context, id)
 
         notifier.info(context, self.collection + '.reset_status.end',
                       notifier_info)
@@ -119,10 +117,8 @@ class AdminController(wsgi.Controller):
         """Delete a resource, bypassing the check that it must be available."""
         context = req.environ['cinder.context']
         self.authorize(context, 'force_delete')
-        try:
-            resource = self._get(context, id)
-        except exception.VolumeNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
+        # Not found exception will be handled at the wsgi level
+        resource = self._get(context, id)
         self._delete(context, resource, force=True)
         return webob.Response(status_int=202)
 
@@ -193,10 +189,8 @@ class VolumeAdminController(AdminController):
         """Roll back a bad detach after the volume been disconnected."""
         context = req.environ['cinder.context']
         self.authorize(context, 'force_detach')
-        try:
-            volume = self._get(context, id)
-        except exception.VolumeNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self._get(context, id)
         try:
             connector = body['os-force_detach'].get('connector', None)
         except KeyError:
@@ -232,10 +226,8 @@ class VolumeAdminController(AdminController):
         """Migrate a volume to the specified host."""
         context = req.environ['cinder.context']
         self.authorize(context, 'migrate_volume')
-        try:
-            volume = self._get(context, id)
-        except exception.VolumeNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self._get(context, id)
         params = body['os-migrate_volume']
         try:
             host = params['host']
@@ -252,20 +244,16 @@ class VolumeAdminController(AdminController):
         """Complete an in-progress migration."""
         context = req.environ['cinder.context']
         self.authorize(context, 'migrate_volume_completion')
-        try:
-            volume = self._get(context, id)
-        except exception.VolumeNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self._get(context, id)
         params = body['os-migrate_volume_completion']
         try:
             new_volume_id = params['new_volume']
         except KeyError:
             raise exc.HTTPBadRequest(
                 explanation=_("Must specify 'new_volume'"))
-        try:
-            new_volume = self._get(context, new_volume_id)
-        except exception.VolumeNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
+        # Not found exception will be handled at the wsgi level
+        new_volume = self._get(context, new_volume_id)
         error = params.get('error', False)
         ret = self.volume_api.migrate_volume_completion(context, volume,
                                                         new_volume, error)
@@ -323,11 +311,9 @@ class BackupAdminController(AdminController):
         notifier.info(context, self.collection + '.reset_status.start',
                       notifier_info)
 
-        try:
-            self.backup_api.reset_status(context=context, backup_id=id,
-                                         status=update['status'])
-        except exception.BackupNotFound as e:
-            raise exc.HTTPNotFound(explanation=e.msg)
+        # Not found exception will be handled at the wsgi level
+        self.backup_api.reset_status(context=context, backup_id=id,
+                                     status=update['status'])
         return webob.Response(status_int=202)
 
 

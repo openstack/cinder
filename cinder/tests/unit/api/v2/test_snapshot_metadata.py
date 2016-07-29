@@ -169,7 +169,7 @@ class SnapshotMetaDataTest(test.TestCase):
             exception.SnapshotNotFound(snapshot_id=self.req_id)
 
         req = fakes.HTTPRequest.blank(self.url)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.index, req, self.url)
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -209,7 +209,7 @@ class SnapshotMetaDataTest(test.TestCase):
             exception.SnapshotNotFound(snapshot_id=self.req_id)
 
         req = fakes.HTTPRequest.blank(self.url + '/key2')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.show, req, self.req_id, 'key2')
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -223,7 +223,7 @@ class SnapshotMetaDataTest(test.TestCase):
         snapshot_get_by_id.return_value = snapshot_obj
 
         req = fakes.HTTPRequest.blank(self.url + '/key6')
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotMetadataNotFound,
                           self.controller.show, req, self.req_id, 'key6')
 
     @mock.patch('cinder.db.snapshot_metadata_delete')
@@ -249,7 +249,7 @@ class SnapshotMetaDataTest(test.TestCase):
                        return_snapshot_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'DELETE'
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.delete, req, self.req_id, 'key1')
 
     @mock.patch('cinder.objects.Snapshot.get_by_id')
@@ -264,7 +264,7 @@ class SnapshotMetaDataTest(test.TestCase):
 
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         req.method = 'DELETE'
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotMetadataNotFound,
                           self.controller.delete, req, self.req_id, 'key6')
 
     @mock.patch('cinder.db.snapshot_update')
@@ -375,7 +375,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.content_type = "application/json"
         body = {"metadata": {"key9": "value9"}}
         req.body = jsonutils.dump_as_bytes(body)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.create, req, self.req_id, body)
 
     @mock.patch('cinder.db.snapshot_update')
@@ -503,7 +503,7 @@ class SnapshotMetaDataTest(test.TestCase):
         body = {'metadata': {'key10': 'value10'}}
         req.body = jsonutils.dump_as_bytes(body)
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.update_all, req, '100', body)
 
     @mock.patch('cinder.db.snapshot_metadata_update', return_value=dict())
@@ -538,7 +538,7 @@ class SnapshotMetaDataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.update, req, self.req_id, 'key1',
                           body)
 

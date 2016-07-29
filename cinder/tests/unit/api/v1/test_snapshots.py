@@ -202,7 +202,7 @@ class SnapshotApiTest(test.TestCase):
         }
         body = {"snapshot": updates}
         req = fakes.HTTPRequest.blank('/v1/snapshots/not-the-uuid')
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.update, req,
+        self.assertRaises(exception.NotFound, self.controller.update, req,
                           'not-the-uuid', body)
 
     @mock.patch.object(volume.api.API, "delete_snapshot",
@@ -236,7 +236,7 @@ class SnapshotApiTest(test.TestCase):
         self.stubs.Set(volume.api.API, "delete_snapshot", stub_snapshot_delete)
         snapshot_id = INVALID_UUID
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % snapshot_id)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.delete,
                           req,
                           snapshot_id)
@@ -270,7 +270,7 @@ class SnapshotApiTest(test.TestCase):
     def test_snapshot_show_invalid_id(self):
         snapshot_id = INVALID_UUID
         req = fakes.HTTPRequest.blank('/v1/snapshots/%s' % snapshot_id)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.SnapshotNotFound,
                           self.controller.show,
                           req,
                           snapshot_id)

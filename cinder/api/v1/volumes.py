@@ -24,7 +24,6 @@ from webob import exc
 
 from cinder.api import common
 from cinder.api.openstack import wsgi
-from cinder import exception
 from cinder.i18n import _, _LI
 from cinder import utils
 from cinder import volume as cinder_volume
@@ -137,11 +136,9 @@ class VolumeController(wsgi.Controller):
         """Return data about the given volume."""
         context = req.environ['cinder.context']
 
-        try:
-            vol = self.volume_api.get(context, id, viewable_admin_meta=True)
-            req.cache_db_volume(vol)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        # Not found exception will be handled at the wsgi level
+        vol = self.volume_api.get(context, id, viewable_admin_meta=True)
+        req.cache_db_volume(vol)
 
         utils.add_visible_admin_metadata(vol)
 
@@ -153,11 +150,9 @@ class VolumeController(wsgi.Controller):
 
         LOG.info(_LI("Delete volume with id: %s"), id, context=context)
 
-        try:
-            volume = self.volume_api.get(context, id)
-            self.volume_api.delete(context, volume)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id)
+        self.volume_api.delete(context, volume)
         return webob.Response(status_int=202)
 
     def index(self, req):
@@ -230,41 +225,30 @@ class VolumeController(wsgi.Controller):
 
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:
-            try:
-                if not uuidutils.is_uuid_like(req_volume_type):
-                    kwargs['volume_type'] = \
-                        volume_types.get_volume_type_by_name(
-                            context, req_volume_type)
-                else:
-                    kwargs['volume_type'] = volume_types.get_volume_type(
+            # Not found exception will be handled at the wsgi level
+            if not uuidutils.is_uuid_like(req_volume_type):
+                kwargs['volume_type'] = \
+                    volume_types.get_volume_type_by_name(
                         context, req_volume_type)
-            except exception.VolumeTypeNotFound:
-                explanation = 'Volume type not found.'
-                raise exc.HTTPNotFound(explanation=explanation)
+            else:
+                kwargs['volume_type'] = volume_types.get_volume_type(
+                    context, req_volume_type)
 
         kwargs['metadata'] = volume.get('metadata', None)
 
         snapshot_id = volume.get('snapshot_id')
         if snapshot_id is not None:
-            try:
-                kwargs['snapshot'] = self.volume_api.get_snapshot(context,
-                                                                  snapshot_id)
-            except exception.NotFound:
-                explanation = _('snapshot id:%s not found') % snapshot_id
-                raise exc.HTTPNotFound(explanation=explanation)
-
+            # Not found exception will be handled at the wsgi level
+            kwargs['snapshot'] = self.volume_api.get_snapshot(context,
+                                                              snapshot_id)
         else:
             kwargs['snapshot'] = None
 
         source_volid = volume.get('source_volid')
         if source_volid is not None:
-            try:
-                kwargs['source_volume'] = \
-                    self.volume_api.get_volume(context,
-                                               source_volid)
-            except exception.NotFound:
-                explanation = _('source vol id:%s not found') % source_volid
-                raise exc.HTTPNotFound(explanation=explanation)
+            # Not found exception will be handled at the wsgi level
+            kwargs['source_volume'] = self.volume_api.get_volume(context,
+                                                                 source_volid)
         else:
             kwargs['source_volume'] = None
 
@@ -326,13 +310,11 @@ class VolumeController(wsgi.Controller):
             if key in volume:
                 update_dict[key] = volume[key]
 
-        try:
-            volume = self.volume_api.get(context, id, viewable_admin_meta=True)
-            volume_utils.notify_about_volume_usage(context, volume,
-                                                   'update.start')
-            self.volume_api.update(context, volume, update_dict)
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, id, viewable_admin_meta=True)
+        volume_utils.notify_about_volume_usage(context, volume,
+                                               'update.start')
+        self.volume_api.update(context, volume, update_dict)
 
         volume.update(update_dict)
 

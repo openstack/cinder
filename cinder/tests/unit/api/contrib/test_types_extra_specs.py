@@ -104,8 +104,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                        return_empty_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6')
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.show,
-                          req, fake.VOLUME_ID, 'key6')
+        self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
+                          self.controller.show, req, fake.VOLUME_ID, 'key6')
 
     def test_delete(self):
         self.stubs.Set(cinder.db, 'volume_type_extra_specs_delete',
@@ -121,8 +121,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                        delete_volume_type_extra_specs_not_found)
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6')
-        self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
-                          req, fake.VOLUME_ID, 'key6')
+        self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
+                          self.controller.delete, req, fake.VOLUME_ID, 'key6')
 
     @mock.patch('cinder.utils.check_string_length')
     def test_create(self, mock_check):

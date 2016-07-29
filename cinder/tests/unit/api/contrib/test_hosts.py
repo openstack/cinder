@@ -21,6 +21,7 @@ import webob.exc
 
 from cinder.api.contrib import hosts as os_hosts
 from cinder import context
+from cinder import exception
 from cinder import test
 
 
@@ -134,7 +135,7 @@ class HostTestCase(test.TestCase):
                           self.req, 'test.host.1', body=body)
 
     def test_bad_host(self):
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.HostNotFound,
                           self.controller.update,
                           self.req,
                           'bogus_host_name',
@@ -152,6 +153,6 @@ class HostTestCase(test.TestCase):
         """A host given as an argument does not exists."""
         self.req.environ['cinder.context'].is_admin = True
         dest = 'dummydest'
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.ServiceNotFound,
                           self.controller.show,
                           self.req, dest)

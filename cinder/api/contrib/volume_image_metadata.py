@@ -37,12 +37,9 @@ class VolumeImageMetadataController(wsgi.Controller):
         self.volume_api = volume.API()
 
     def _get_image_metadata(self, context, volume_id):
-        try:
-            volume = self.volume_api.get(context, volume_id)
-            meta = self.volume_api.get_volume_image_metadata(context, volume)
-        except exception.VolumeNotFound:
-            msg = _('Volume with volume id %s does not exist.') % volume_id
-            raise webob.exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, volume_id)
+        meta = self.volume_api.get_volume_image_metadata(context, volume)
         return (volume, meta)
 
     def _add_image_metadata(self, context, resp_volume_list, image_metas=None):
@@ -113,9 +110,7 @@ class VolumeImageMetadataController(wsgi.Controller):
                 metadata,
                 delete=False,
                 meta_type=common.METADATA_TYPES.image)
-        except exception.VolumeNotFound:
-            msg = _('Volume with volume id %s does not exist.') % volume_id
-            raise webob.exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
         except (ValueError, AttributeError):
             msg = _("Malformed request body.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
@@ -143,8 +138,7 @@ class VolumeImageMetadataController(wsgi.Controller):
             if key:
                 vol, metadata = self._get_image_metadata(context, id)
                 if key not in metadata:
-                    msg = _("Metadata item was not found.")
-                    raise webob.exc.HTTPNotFound(explanation=msg)
+                    raise exception.GlanceMetadataNotFound(id=id)
 
                 self.volume_api.delete_volume_metadata(
                     context, vol, key,

@@ -255,7 +255,7 @@ class VolumeImageMetadataTest(test.TestCase):
             "metadata": {"image_name": "fake"}}
         }
         req.body = jsonutils.dump_as_bytes(body)
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeNotFound,
                           self.controller.create, req, fake.VOLUME_ID, body)
 
     def test_invalid_metadata_items_on_create(self):
@@ -318,7 +318,7 @@ class VolumeImageMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(data)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.GlanceMetadataNotFound,
                           self.controller.delete, req, fake.VOLUME_ID, data)
 
     def test_delete_nonexistent_volume(self):
@@ -334,7 +334,7 @@ class VolumeImageMetadataTest(test.TestCase):
         req.body = jsonutils.dump_as_bytes(body)
         req.headers["content-type"] = "application/json"
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.GlanceMetadataNotFound,
                           self.controller.delete, req, fake.VOLUME_ID, body)
 
     def test_show_image_metadata(self):

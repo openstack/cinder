@@ -288,8 +288,9 @@ class QoSSpecManageApiTest(test.TestCase):
             req = fakes.HTTPRequest.blank('/v2/%s/qos-specs/%s' %
                                           (fake.PROJECT_ID,
                                            fake.WILL_NOT_BE_FOUND_ID))
-            self.assertRaises(webob.exc.HTTPNotFound, self.controller.delete,
-                              req, fake.WILL_NOT_BE_FOUND_ID)
+            self.assertRaises(exception.QoSSpecsNotFound,
+                              self.controller.delete, req,
+                              fake.WILL_NOT_BE_FOUND_ID)
             self.assertEqual(1, notifier.get_notification_count())
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
@@ -355,7 +356,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
         notifier = fake_notifier.get_fake_notifier()
         with mock.patch('cinder.rpc.get_notifier', return_value=notifier):
-            self.assertRaises(webob.exc.HTTPNotFound,
+            self.assertRaises(exception.QoSSpecsNotFound,
                               self.controller.delete_keys,
                               req, fake.WILL_NOT_BE_FOUND_ID, body)
             self.assertEqual(1, notifier.get_notification_count())
@@ -369,7 +370,7 @@ class QoSSpecManageApiTest(test.TestCase):
 
         notifier = fake_notifier.get_fake_notifier()
         with mock.patch('cinder.rpc.get_notifier', return_value=notifier):
-            self.assertRaises(webob.exc.HTTPBadRequest,
+            self.assertRaises(exception.QoSSpecsKeyNotFound,
                               self.controller.delete_keys,
                               req, fake.IN_USE_ID, body)
             self.assertEqual(1, notifier.get_notification_count())
@@ -490,7 +491,8 @@ class QoSSpecManageApiTest(test.TestCase):
                                            fake.WILL_NOT_BE_FOUND_ID))
             body = {'qos_specs': {'key1': 'value1',
                                   'key2': 'value2'}}
-            self.assertRaises(webob.exc.HTTPNotFound, self.controller.update,
+            self.assertRaises(exception.QoSSpecsNotFound,
+                              self.controller.update,
                               req, fake.WILL_NOT_BE_FOUND_ID, body)
             self.assertEqual(1, notifier.get_notification_count())
 
@@ -503,7 +505,7 @@ class QoSSpecManageApiTest(test.TestCase):
                                           (fake.PROJECT_ID, fake.INVALID_ID))
             body = {'qos_specs': {'key1': 'value1',
                                   'key2': 'value2'}}
-            self.assertRaises(webob.exc.HTTPBadRequest,
+            self.assertRaises(exception.InvalidQoSSpecs,
                               self.controller.update,
                               req, fake.INVALID_ID, body)
             self.assertEqual(1, notifier.get_notification_count())
@@ -553,7 +555,7 @@ class QoSSpecManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/v2/%s/qos-specs/%s/associations' %
             (fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.QoSSpecsNotFound,
                           self.controller.associations,
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
@@ -598,7 +600,7 @@ class QoSSpecManageApiTest(test.TestCase):
             '/v2/%s/qos-specs/%s/associate?vol_type_id=%s' % (
                 fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID,
                 fake.VOLUME_TYPE_ID))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.QoSSpecsNotFound,
                           self.controller.associate, req,
                           fake.WILL_NOT_BE_FOUND_ID)
 
@@ -606,7 +608,7 @@ class QoSSpecManageApiTest(test.TestCase):
             '/v2/%s/qos-specs/%s/associate?vol_type_id=%s' %
             (fake.PROJECT_ID, fake.QOS_SPEC_ID, fake.WILL_NOT_BE_FOUND_ID))
 
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeTypeNotFound,
                           self.controller.associate, req, fake.QOS_SPEC_ID)
 
     @mock.patch('cinder.volume.qos_specs.get_qos_specs',
@@ -653,14 +655,14 @@ class QoSSpecManageApiTest(test.TestCase):
             '/v2/%s/qos-specs/%s/disassociate?vol_type_id=%s' % (
                 fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID,
                 fake.VOLUME_TYPE_ID))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.QoSSpecsNotFound,
                           self.controller.disassociate, req,
                           fake.WILL_NOT_BE_FOUND_ID)
 
         req = fakes.HTTPRequest.blank(
             '/v2/%s/qos-specs/%s/disassociate?vol_type_id=%s' %
             (fake.PROJECT_ID, fake.VOLUME_TYPE_ID, fake.WILL_NOT_BE_FOUND_ID))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.VolumeTypeNotFound,
                           self.controller.disassociate, req,
                           fake.VOLUME_TYPE_ID)
 
@@ -695,7 +697,7 @@ class QoSSpecManageApiTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
             '/v2/%s/qos-specs/%s/disassociate_all' % (
                 fake.PROJECT_ID, fake.WILL_NOT_BE_FOUND_ID))
-        self.assertRaises(webob.exc.HTTPNotFound,
+        self.assertRaises(exception.QoSSpecsNotFound,
                           self.controller.disassociate_all, req,
                           fake.WILL_NOT_BE_FOUND_ID)
 

@@ -45,15 +45,13 @@ class VolumeTypeAccessController(object):
         context = req.environ['cinder.context']
         authorize(context)
 
-        try:
-            vol_type = volume_types.get_volume_type(
-                context, type_id, expected_fields=['projects'])
-        except exception.VolumeTypeNotFound as error:
-            raise webob.exc.HTTPNotFound(explanation=error.msg)
+        # Not found exception will be handled at the wsgi level
+        vol_type = volume_types.get_volume_type(
+            context, type_id, expected_fields=['projects'])
 
         if vol_type['is_public']:
             expl = _("Access list not available for public volume types.")
-            raise webob.exc.HTTPNotFound(explanation=expl)
+            raise exception.VolumeTypeAccessNotFound(message=expl)
 
         return _marshall_volume_type_access(vol_type)
 
@@ -117,10 +115,9 @@ class VolumeTypeActionController(wsgi.Controller):
 
         try:
             volume_types.add_volume_type_access(context, id, project)
+        # Not found exception will be handled at the wsgi level
         except exception.VolumeTypeAccessExists as err:
             raise webob.exc.HTTPConflict(explanation=six.text_type(err))
-        except exception.VolumeTypeNotFound as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
         return webob.Response(status_int=202)
 
     @wsgi.action('removeProjectAccess')
@@ -130,11 +127,8 @@ class VolumeTypeActionController(wsgi.Controller):
         self._check_body(body, 'removeProjectAccess')
         project = body['removeProjectAccess']['project']
 
-        try:
-            volume_types.remove_volume_type_access(context, id, project)
-        except (exception.VolumeTypeNotFound,
-                exception.VolumeTypeAccessNotFound) as err:
-            raise webob.exc.HTTPNotFound(explanation=six.text_type(err))
+        # Not found exception will be handled at the wsgi level
+        volume_types.remove_volume_type_access(context, id, project)
         return webob.Response(status_int=202)
 
 

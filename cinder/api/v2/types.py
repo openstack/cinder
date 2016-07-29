@@ -47,14 +47,12 @@ class VolumeTypesController(wsgi.Controller):
             vol_type = volume_types.get_default_volume_type()
             if not vol_type:
                 msg = _("Default volume type can not be found.")
-                raise exc.HTTPNotFound(explanation=msg)
+                raise exception.VolumeTypeNotFound(message=msg)
             req.cache_resource(vol_type, name='types')
         else:
-            try:
-                vol_type = volume_types.get_volume_type(context, id)
-                req.cache_resource(vol_type, name='types')
-            except exception.VolumeTypeNotFound as error:
-                raise exc.HTTPNotFound(explanation=error.msg)
+            # Not found  exception will be handled at wsgi level
+            vol_type = volume_types.get_volume_type(context, id)
+            req.cache_resource(vol_type, name='types')
 
         return self._view_builder.show(req, vol_type)
 

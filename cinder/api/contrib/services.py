@@ -153,7 +153,7 @@ class ServiceController(wsgi.Controller):
             )
             return webob.Response(status_int=202)
         else:
-            raise webob.exc.HTTPNotFound(explanation=_("Unknown action"))
+            raise exception.InvalidInput(reason=_("Unknown action"))
 
         try:
             host = body['host']
@@ -177,17 +177,13 @@ class ServiceController(wsgi.Controller):
         if not binary_key:
             raise webob.exc.HTTPBadRequest()
 
-        try:
-            svc = objects.Service.get_by_args(context, host, binary_key)
-            if not svc:
-                raise webob.exc.HTTPNotFound(explanation=_('Unknown service'))
+        # Not found exception will be handled at the wsgi level
+        svc = objects.Service.get_by_args(context, host, binary_key)
 
-            svc.disabled = ret_val['disabled']
-            if 'disabled_reason' in ret_val:
-                svc.disabled_reason = ret_val['disabled_reason']
-            svc.save()
-        except exception.ServiceNotFound:
-            raise webob.exc.HTTPNotFound(explanation=_("service not found"))
+        svc.disabled = ret_val['disabled']
+        if 'disabled_reason' in ret_val:
+            svc.disabled_reason = ret_val['disabled_reason']
+        svc.save()
 
         ret_val.update({'host': host, 'service': service,
                         'binary': binary, 'status': status})

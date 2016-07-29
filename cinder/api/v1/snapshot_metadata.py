@@ -30,12 +30,9 @@ class Controller(wsgi.Controller):
         super(Controller, self).__init__()
 
     def _get_metadata(self, context, snapshot_id):
-        try:
-            snapshot = self.volume_api.get_snapshot(context, snapshot_id)
-            meta = self.volume_api.get_snapshot_metadata(context, snapshot)
-        except exception.SnapshotNotFound:
-            msg = _('snapshot does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        snapshot = self.volume_api.get_snapshot(context, snapshot_id)
+        meta = self.volume_api.get_snapshot_metadata(context, snapshot)
         return meta
 
     def index(self, req, snapshot_id):
@@ -106,10 +103,7 @@ class Controller(wsgi.Controller):
                                                             snapshot,
                                                             metadata,
                                                             delete)
-        except exception.SnapshotNotFound:
-            msg = _('snapshot does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
-
+        # Not found exception will be handled at the wsgi level
         except (ValueError, AttributeError):
             msg = _("Malformed request body")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -128,8 +122,8 @@ class Controller(wsgi.Controller):
         try:
             return {'meta': {id: data[id]}}
         except KeyError:
-            msg = _("Metadata item was not found")
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exception.SnapshotMetadataNotFound(snapshot_id=snapshot_id,
+                                                     metadata_key=id)
 
     def delete(self, req, snapshot_id, id):
         """Deletes an existing metadata."""
@@ -138,15 +132,12 @@ class Controller(wsgi.Controller):
         metadata = self._get_metadata(context, snapshot_id)
 
         if id not in metadata:
-            msg = _("Metadata item was not found")
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exception.SnapshotMetadataNotFound(snapshot_id=snapshot_id,
+                                                     metadata_key=id)
 
-        try:
-            snapshot = self.volume_api.get_snapshot(context, snapshot_id)
-            self.volume_api.delete_snapshot_metadata(context, snapshot, id)
-        except exception.SnapshotNotFound:
-            msg = _('snapshot does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        snapshot = self.volume_api.get_snapshot(context, snapshot_id)
+        self.volume_api.delete_snapshot_metadata(context, snapshot, id)
         return webob.Response(status_int=200)
 
 

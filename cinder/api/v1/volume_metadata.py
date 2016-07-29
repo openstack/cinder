@@ -30,12 +30,9 @@ class Controller(wsgi.Controller):
         super(Controller, self).__init__()
 
     def _get_metadata(self, context, volume_id):
-        try:
-            volume = self.volume_api.get(context, volume_id)
-            meta = self.volume_api.get_volume_metadata(context, volume)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, volume_id)
+        meta = self.volume_api.get_volume_metadata(context, volume)
         return meta
 
     def index(self, req, volume_id):
@@ -106,10 +103,7 @@ class Controller(wsgi.Controller):
                                                           volume,
                                                           metadata,
                                                           delete)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
-
+        # Not found exception will be handled at the wsgi level
         except (ValueError, AttributeError):
             msg = _("Malformed request body")
             raise exc.HTTPBadRequest(explanation=msg)
@@ -128,8 +122,8 @@ class Controller(wsgi.Controller):
         try:
             return {'meta': {id: data[id]}}
         except KeyError:
-            msg = _("Metadata item was not found")
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exception.VolumeMetadataNotFound(volume_id=volume_id,
+                                                   metadata_key=id)
 
     def delete(self, req, volume_id, id):
         """Deletes an existing metadata."""
@@ -138,15 +132,12 @@ class Controller(wsgi.Controller):
         metadata = self._get_metadata(context, volume_id)
 
         if id not in metadata:
-            msg = _("Metadata item was not found")
-            raise exc.HTTPNotFound(explanation=msg)
+            raise exception.VolumeMetadataNotFound(volume_id=volume_id,
+                                                   metadata_key=id)
 
-        try:
-            volume = self.volume_api.get(context, volume_id)
-            self.volume_api.delete_volume_metadata(context, volume, id)
-        except exception.VolumeNotFound:
-            msg = _('volume does not exist')
-            raise exc.HTTPNotFound(explanation=msg)
+        # Not found exception will be handled at the wsgi level
+        volume = self.volume_api.get(context, volume_id)
+        self.volume_api.delete_volume_metadata(context, volume, id)
         return webob.Response(status_int=200)
 
 

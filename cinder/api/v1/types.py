@@ -15,11 +15,8 @@
 
 """The volume type & volume types extra specs extension."""
 
-from webob import exc
-
 from cinder.api.openstack import wsgi
 from cinder.api.views import types as views_types
-from cinder import exception
 from cinder.volume import volume_types
 
 
@@ -40,11 +37,9 @@ class VolumeTypesController(wsgi.Controller):
         """Return a single volume type item."""
         context = req.environ['cinder.context']
 
-        try:
-            vol_type = volume_types.get_volume_type(context, id)
-            req.cache_resource(vol_type, name='types')
-        except exception.NotFound:
-            raise exc.HTTPNotFound()
+        # Not found exception will be handled at the wsgi level
+        vol_type = volume_types.get_volume_type(context, id)
+        req.cache_resource(vol_type, name='types')
 
         return self._view_builder.show(req, vol_type)
 
