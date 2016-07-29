@@ -1,0 +1,4 @@
+---
+features:
+  - Support Force backup of in-use cinder volumes
+    for Nimble Storage.
