@@ -35,9 +35,6 @@ patch_sleep = mock.patch('time.sleep')
 patch_vnxsystem = mock.patch('storops.VNXSystem')
 
 
-patch_no_sleep = mock.patch('time.sleep', new=lambda x: None)
-
-
 def load_yaml(file_name):
     yaml_file = '{}/{}'.format(path.dirname(
         path.abspath(__file__)), file_name)
