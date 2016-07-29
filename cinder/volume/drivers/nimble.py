@@ -22,6 +22,7 @@ import functools
 import random
 import re
 import six
+import ssl
 import string
 import sys
 
@@ -38,7 +39,7 @@ from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
 
 
-DRIVER_VERSION = '2.0.2'
+DRIVER_VERSION = '2.0.3'
 AES_256_XTS_CIPHER = 2
 DEFAULT_CIPHER = 3
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
@@ -60,6 +61,12 @@ SM_SUBNET_DATA = 3
 SM_SUBNET_MGMT_PLUS_DATA = 4
 LUN_ID = '0'
 WARN_LEVEL = 0.8
+
+# Work around for ubuntu_openssl_bug_965371. Python soap client suds
+# throws the error ssl-certificate-verify-failed-error, workaround to disable
+# ssl check for now
+if hasattr(ssl, '_create_unverified_context'):
+    ssl._create_default_https_context = ssl._create_unverified_context
 
 LOG = logging.getLogger(__name__)
 
@@ -97,6 +104,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
                 Added Manage/Unmanage volume support
         2.0.1 - Added multi-initiator support through extra-specs
         2.0.2 - Fixed supporting extra specs while cloning vols
+        2.0.3 - Support for Force Backup
     """
 
     VERSION = DRIVER_VERSION
@@ -211,13 +219,56 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
             self.configuration.nimble_pool_name, reserve)
         return self._get_model_info(volume['name'])
 
+    def is_volume_backup_clone(self, volume):
+        """Check if the volume is created through cinder-backup workflow.
+
+        :param volume: reference to volume from delete_volume()
+        """
+        vol_info = self.APIExecutor.get_vol_info(volume.name)
+        if vol_info['clone'] and vol_info['base-snap'] and vol_info[
+           'parent-vol']:
+            LOG.debug("Nimble base-snap exists for volume :%s", volume['name'])
+            volume_name_prefix = volume.name.replace(volume.id, "")
+            LOG.debug("volume_name_prefix : %s", volume_name_prefix)
+            snap_info = self.APIExecutor.get_snap_info(vol_info['base-snap'],
+                                                       vol_info['parent-vol'])
+            if snap_info['description'] and "backup-vol-" in snap_info[
+                    'description']:
+                parent_vol_id = vol_info['parent-vol'
+                                         ].replace(volume_name_prefix, "")
+                if "backup-vol-" + parent_vol_id in snap_info['description']:
+                    LOG.info(_LI("nimble backup-snapshot exists name: %s"),
+                             snap_info['name'])
+                    return snap_info['name'], snap_info['vol']
+        return "", ""
+
     def delete_volume(self, volume):
         """Delete the specified volume."""
+        snap_name, vol_name = self.is_volume_backup_clone(volume)
         self.APIExecutor.online_vol(volume['name'], False,
                                     ignore_list=['SM-enoent'])
         self.APIExecutor.dissociate_volcoll(volume['name'],
                                             ignore_list=['SM-enoent'])
         self.APIExecutor.delete_vol(volume['name'], ignore_list=['SM-enoent'])
+
+        # Nimble backend does not delete the snapshot from the parent volume
+        # if there is a dependent clone. So the deletes need to be in reverse
+        # order i.e.
+        # 1. First delete the clone volume used for backup
+        # 2. Delete the base snapshot used for clone from the parent volume.
+        # This is only done for the force backup clone operation as it is
+        # a temporary operation in which we are certain that the snapshot does
+        # not need to be preserved after the backup is completed.
+
+        if snap_name and vol_name:
+            self.APIExecutor.online_snap(vol_name,
+                                         False,
+                                         snap_name,
+                                         ignore_list=['SM-ealready',
+                                                      'SM-enoent'])
+            self.APIExecutor.delete_snap(vol_name,
+                                         snap_name,
+                                         ignore_list=['SM-enoent'])
 
     def _generate_random_string(self, length):
         """Generates random_string."""
@@ -252,7 +303,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         snapshot = {'volume_name': src_vref['name'],
                     'name': snapshot_name,
                     'volume_size': src_vref['size'],
-                    'display_name': '',
+                    'display_name': volume.display_name,
                     'display_description': ''}
         self.APIExecutor.snap_vol(snapshot)
         self._clone_volume_from_snapshot(volume, snapshot)
@@ -479,7 +530,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         properties['target_discovered'] = False  # whether discovery was used
         properties['target_portal'] = iscsi_portal
         properties['target_iqn'] = iqn
-        properties['target_lun'] = lun_num
+        properties['target_lun'] = int(lun_num)
         properties['volume_id'] = volume['id']  # used by xen currently
         return {
             'driver_volume_type': 'iscsi',
@@ -752,6 +803,31 @@ class NimbleAPIExecutor(object):
 
     @_connection_checker
     @_response_checker
+    def _execute_get_snap_info(self, snap_name, vol_name):
+        LOG.info(_LI('Getting snapshot information for %(vol_name)s '
+                     '%(snap_name)s'), {'vol_name': vol_name,
+                                        'snap_name': snap_name})
+        return self.client.service.getSnapInfo(request={'sid': self.sid,
+                                                        'vol': vol_name,
+                                                        'name': snap_name})
+
+    def get_snap_info(self, snap_name, vol_name):
+        """Get snapshot information.
+
+        :param snap_name: snapshot name
+        :param vol_name: volume name
+        :return: response object
+        """
+
+        response = self._execute_get_snap_info(snap_name, vol_name)
+        LOG.info(_LI('Successfully got snapshot information for snapshot '
+                     '%(snap)s and %(volume)s'),
+                 {'snap': snap_name,
+                  'volume': vol_name})
+        return response['snap']
+
+    @_connection_checker
+    @_response_checker
     def online_vol(self, vol_name, online_flag, *args, **kwargs):
         """Execute onlineVol API."""
         LOG.info(_LI('Setting volume %(vol)s to online_flag %(flag)s'),
@@ -795,10 +871,12 @@ class NimbleAPIExecutor(object):
         volume_name = snapshot['volume_name']
         snap_name = snapshot['name']
         # Set snapshot description
-        display_list = [getattr(snapshot, 'display_name', ''),
+        display_list = [getattr(snapshot, 'display_name', snapshot[
+                        'display_name']),
                         getattr(snapshot, 'display_description', '')]
         snap_description = ':'.join(filter(None, display_list))
         # Limit to 254 characters
+        LOG.debug("snap_description %s", snap_description)
         snap_description = snap_description[:254]
         LOG.info(_LI('Creating snapshot for volume_name=%(vol)s'
                      ' snap_name=%(name)s snap_description=%(desc)s'),
