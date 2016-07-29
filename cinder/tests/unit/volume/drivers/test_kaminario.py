@@ -157,8 +157,16 @@ class TestKaminarioISCSI(test.TestCase):
 
     def test_create_snapshot(self):
         """Test create_snapshot."""
+        self.snap.id = "253b2878-ec60-4793-ad19-e65496ec7aab"
+        self.driver.client.new = mock.Mock()
         result = self.driver.create_snapshot(self.snap)
         self.assertIsNone(result)
+        fake_object = self.driver.client.search().hits[0]
+        self.driver.client.new.assert_called_once_with(
+            "snapshots",
+            short_name='cs-253b2878-ec60-4793-ad19-e65496ec7aab',
+            source=fake_object, retention_policy=fake_object,
+            is_auto_deleteable=False)
 
     def test_create_snapshot_with_exception(self):
         """Test create_snapshot_with_exception."""
