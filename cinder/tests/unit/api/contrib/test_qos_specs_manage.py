@@ -457,14 +457,25 @@ class QoSSpecManageApiTest(test.TestCase):
 
     @ddt.data({'name': 'fake_name', 'a' * 256: 'a'},
               {'name': 'fake_name', 'a': 'a' * 256},
-              {'name': 'fake_name' * 256, 'a': 'a'},
-              {'name': 'fake_name' * 256, '': 'a'})
+              {'name': 'fake_name', '': 'a'})
     def test_create_qos_with_invalid_specs(self, value):
         body = {'qos_specs': value}
         req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID,
                                       use_admin_context=True)
         req.method = 'POST'
         self.assertRaises(exception.InvalidInput,
+                          self.controller.create, req, body)
+
+    @ddt.data({'name': None},
+              {'name': 'n' * 256},
+              {'name': ''},
+              {'name': '  '})
+    def test_create_qos_with_invalid_spec_name(self, value):
+        body = {'qos_specs': value}
+        req = fakes.HTTPRequest.blank('/v2/%s/qos-specs' % fake.PROJECT_ID,
+                                      use_admin_context=True)
+        req.method = 'POST'
+        self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.create, req, body)
 
     @mock.patch('cinder.volume.qos_specs.update',

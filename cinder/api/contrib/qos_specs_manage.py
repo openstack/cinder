@@ -85,10 +85,15 @@ class QoSSpecsController(wsgi.Controller):
             msg = _("Please specify a name for QoS specs.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        utils.validate_dictionary_string_length(specs)
+        self.validate_string_length(name, 'name', min_length=1,
+                                    max_length=255, remove_whitespaces=True)
         name = name.strip()
         # Remove name from 'specs' since passing it in as separate param
         del specs['name']
+
+        # Validate the key-value pairs in the qos spec.
+        utils.validate_dictionary_string_length(specs)
+
         try:
             spec = qos_specs.create(context, name, specs)
             notifier_info = dict(name=name, specs=specs)
