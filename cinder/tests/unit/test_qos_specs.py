@@ -231,6 +231,8 @@ class QoSSpecsTestCase(test.TestCase):
             }
             self.assertIn(expected_type, res)
 
+        e = exception.QoSSpecsNotFound(specs_id='Trouble')
+        mock_qos_specs_associations_get.side_effect = e
         self.assertRaises(exception.CinderException,
                           qos_specs.get_associations, self.ctxt,
                           'Trouble')

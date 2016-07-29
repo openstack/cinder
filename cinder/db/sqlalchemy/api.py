@@ -3089,9 +3089,11 @@ def volume_type_qos_associations_get(context, qos_specs_id, inactive=False):
                            models.QualityOfServiceSpecs,
                            qos_specs_id):
         raise exception.QoSSpecsNotFound(specs_id=qos_specs_id)
-    return model_query(context, models.VolumeTypes,
-                       read_deleted=read_deleted). \
-        filter_by(qos_specs_id=qos_specs_id).all()
+    vts = (model_query(context, models.VolumeTypes, read_deleted=read_deleted).
+           options(joinedload('extra_specs')).
+           options(joinedload('projects')).
+           filter_by(qos_specs_id=qos_specs_id).all())
+    return vts
 
 
 @require_admin_context
