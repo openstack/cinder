@@ -403,6 +403,49 @@ class TestKaminarioISCSI(test.TestCase):
         result = self.driver._get_is_replica(self.vol.volume_type)
         self.assertTrue(result)
 
+    def test_after_volume_copy(self):
+        """Test after_volume_copy."""
+        result = self.driver.after_volume_copy(None, self.vol,
+                                               self.vol.volume_type)
+        self.assertIsNone(result)
+
+    def test_retype(self):
+        """Test retype."""
+        replica_status = self.driver._get_replica_status('test')
+        self.assertTrue(replica_status)
+        replica = self.driver._get_is_replica(self.vol.volume_type)
+        self.assertFalse(replica)
+        self.driver.replica = Replication()
+        result = self.driver._add_replication(self.vol)
+        self.assertIsNone(result)
+        self.driver.target = FakeKrest()
+        self.driver._check_for_status = mock.Mock()
+        result = self.driver._delete_replication(self.vol)
+        self.assertIsNone(result)
+        self.driver._delete_volume_replica = mock.Mock()
+        result = self.driver.retype(None, self.vol,
+                                    self.vol.volume_type, None, None)
+        self.assertTrue(result)
+        new_vol_type = fake_volume.fake_volume_type_obj(self.context)
+        new_vol_type.extra_specs = {'kaminario:thin_prov_type': 'nodedup'}
+        result2 = self.driver.retype(None, self.vol,
+                                     new_vol_type, None, None)
+        self.assertFalse(result2)
+
+    def test_add_replication(self):
+        """"Test _add_replication."""
+        self.driver.replica = Replication()
+        result = self.driver._add_replication(self.vol)
+        self.assertIsNone(result)
+
+    def test_delete_replication(self):
+        """Test _delete_replication."""
+        self.driver.replica = Replication()
+        self.driver.target = FakeKrest()
+        self.driver._check_for_status = mock.Mock()
+        result = self.driver._delete_replication(self.vol)
+        self.assertIsNone(result)
+
 
 class TestKaminarioFC(TestKaminarioISCSI):
 

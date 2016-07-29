@@ -41,9 +41,11 @@ kaminario1_opts = [
                default='K2-nodedup',
                help="If volume-type name contains this substring "
                     "nodedup volume will be created, otherwise "
-                    "dedup volume wil be created. Note: this option is "
-                    "deprecated in favour of 'kaminario:thin_prov_type' in "
-                    "extra-specs and will be removed in the Ocata release.")]
+                    "dedup volume wil be created.",
+               deprecated_for_removal=True,
+               deprecated_reason="This option is deprecated in favour of "
+                                 "'kaminario:thin_prov_type' in extra-specs "
+                                 "and will be removed in the next release.")]
 kaminario2_opts = [
     cfg.BoolOpt('auto_calc_max_oversubscription_ratio',
                 default=False,
@@ -562,7 +564,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         All other characters are replaced with '_'.
         Total characters in initiator host name: 32
         """
-        return re.sub('[^0-9a-zA-Z-_]', '_', connector['host'])[:32]
+        return re.sub('[^0-9a-zA-Z-_]', '_', connector.get('host', ''))[:32]
 
     @kaminario_logger
     def get_volume_group_name(self, vid):
@@ -715,7 +717,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 LOG.info(_LI("'kaminario_nodedup_substring' option is "
                              "deprecated in favour of 'kaminario:thin_prov_"
                              "type' in extra-specs and will be removed in "
-                             "the Ocata release."))
+                             "the 10.0.0 release."))
                 return False
             else:
                 return True
@@ -789,3 +791,58 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_ref,
                 reason=_('Unable to get size of manage volume.'))
+
+    def after_volume_copy(self, ctxt, volume, new_volume, remote=None):
+        self.delete_volume(volume)
+        vg_name_old = self.get_volume_group_name(volume.id)
+        vol_name_old = self.get_volume_name(volume.id)
+        vg_name_new = self.get_volume_group_name(new_volume.id)
+        vol_name_new = self.get_volume_name(new_volume.id)
+        vg_new = self.client.search("volume_groups", name=vg_name_new).hits[0]
+        vg_new.name = vg_name_old
+        vg_new.save()
+        vol_new = self.client.search("volumes", name=vol_name_new).hits[0]
+        vol_new.name = vol_name_old
+        vol_new.save()
+
+    def retype(self, ctxt, volume, new_type, diff, host):
+        old_type = volume.get('volume_type')
+        vg_name = self.get_volume_group_name(volume.id)
+        old_rep_type = self._get_replica_status(vg_name)
+        new_rep_type = self._get_is_replica(new_type)
+        new_prov_type = self._get_is_dedup(new_type)
+        old_prov_type = self._get_is_dedup(old_type)
+        # Change dedup<->nodedup with add/remove replication is complex in K2
+        # since K2 does not have api to change dedup<->nodedup.
+        if new_prov_type == old_prov_type:
+            if not old_rep_type and new_rep_type:
+                self._add_replication(volume)
+                return True
+            elif old_rep_type and not new_rep_type:
+                self._delete_replication(volume)
+                return True
+        elif not new_rep_type and not old_rep_type:
+            LOG.debug("Use '--migration-policy on-demand' to change 'dedup "
+                      "without replication'<->'nodedup without replication'.")
+            return False
+        else:
+            LOG.error(_LE('Change from type1: %(type1)s to type2: %(type2)s '
+                          'is not supported directly in K2.'),
+                      {'type1': old_type, 'type2': new_type})
+            return False
+
+    def _add_replication(self, volume):
+        vg_name = self.get_volume_group_name(volume.id)
+        vol_name = self.get_volume_name(volume.id)
+        LOG.debug("Searching volume group with name: %(name)s",
+                  {'name': vg_name})
+        vg = self.client.search("volume_groups", name=vg_name).hits[0]
+        LOG.debug("Searching volume with name: %(name)s",
+                  {'name': vol_name})
+        vol = self.client.search("volumes", name=vol_name).hits[0]
+        self._create_volume_replica(volume, vg, vol, 500)
+
+    def _delete_replication(self, volume):
+        vg_name = self.get_volume_group_name(volume.id)
+        vol_name = self.get_volume_name(volume.id)
+        self._delete_volume_replica(volume, vg_name, vol_name)

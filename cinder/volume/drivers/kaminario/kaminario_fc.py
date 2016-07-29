@@ -34,9 +34,10 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         1.0 - Initial driver
         1.1 - Added manage/unmanage and extra-specs support for nodedup
         1.2 - Added replication support
+        1.3 - Added retype support
     """
 
-    VERSION = '1.2'
+    VERSION = '1.3'
 
     @kaminario_logger
     def __init__(self, *args, **kwargs):
@@ -49,7 +50,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
     def initialize_connection(self, volume, connector):
         """Attach K2 volume to host."""
         # Check wwpns in host connector.
-        if not connector['wwpns']:
+        if not connector.get('wwpns'):
             msg = _("No wwpns found in host connector.")
             LOG.error(msg)
             raise exception.KaminarioCinderDriverException(reason=msg)
@@ -153,7 +154,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         if self.lookup_service is not None:
             # use FC san lookup.
             dev_map = self.lookup_service.get_device_mapping_from_network(
-                connector['wwpns'],
+                connector.get('wwpns'),
                 all_target_wwns)
 
             for fabric_name in dev_map:
@@ -167,7 +168,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                         init_targ_map[initiator]))
             target_wwns = list(set(target_wwns))
         else:
-            initiator_wwns = connector['wwpns']
+            initiator_wwns = connector.get('wwpns', [])
             target_wwns = all_target_wwns
 
             for initiator in initiator_wwns:
