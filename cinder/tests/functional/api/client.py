@@ -22,40 +22,37 @@ from cinder.tests.unit import fake_constants as fake
 
 
 class OpenStackApiException(Exception):
-    def __init__(self, message=None, response=None):
+    message = 'Unspecified error'
+
+    def __init__(self, response=None, msg=None):
         self.response = response
-        if not message:
-            message = 'Unspecified error'
+        # Give chance to override default message
+        if msg:
+            self.message = msg
 
         if response:
-            message = _('%(message)s\nStatus Code: %(_status)s\n'
-                        'Body: %(_body)s') % {'_status': response.status_code,
-                                              '_body': response.text}
+            self.message = _(
+                '%(message)s\nStatus Code: %(_status)s\nBody: %(_body)s') % {
+                '_status': response.status_code, '_body': response.text,
+                'message': self.message}
 
-        super(OpenStackApiException, self).__init__(message)
-
-
-class OpenStackApiAuthenticationException(OpenStackApiException):
-    def __init__(self, response=None, message=None):
-        if not message:
-            message = _("Authentication error")
-        super(OpenStackApiAuthenticationException, self).__init__(message,
-                                                                  response)
+        super(OpenStackApiException, self).__init__(self.message)
 
 
-class OpenStackApiAuthorizationException(OpenStackApiException):
-    def __init__(self, response=None, message=None):
-        if not message:
-            message = _("Authorization error")
-        super(OpenStackApiAuthorizationException, self).__init__(message,
-                                                                 response)
+class OpenStackApiException401(OpenStackApiException):
+    message = _("401 Unauthorized Error")
 
 
-class OpenStackApiNotFoundException(OpenStackApiException):
-    def __init__(self, response=None, message=None):
-        if not message:
-            message = _("Item not found")
-        super(OpenStackApiNotFoundException, self).__init__(message, response)
+class OpenStackApiException404(OpenStackApiException):
+    message = _("404 Not Found Error")
+
+
+class OpenStackApiException413(OpenStackApiException):
+    message = _("413 Request entity too large")
+
+
+class OpenStackApiException400(OpenStackApiException):
+    message = _("400 Bad Request")
 
 
 class TestOpenStackClient(object):
@@ -102,8 +99,8 @@ class TestOpenStackClient(object):
 
         return response
 
-    def _authenticate(self):
-        if self.auth_result:
+    def _authenticate(self, reauthenticate=False):
+        if self.auth_result and not reauthenticate:
             return self.auth_result
 
         auth_uri = self.auth_uri
@@ -116,10 +113,14 @@ class TestOpenStackClient(object):
         http_status = response.status_code
 
         if http_status == 401:
-            raise OpenStackApiAuthenticationException(response=response)
+            raise OpenStackApiException401(response=response)
 
         self.auth_result = response.headers
         return self.auth_result
+
+    def update_project(self, new_project_id):
+        self.project_id = new_project_id
+        self._authenticate(True)
 
     def api_request(self, relative_uri, check_response_status=None, **kwargs):
         auth_result = self._authenticate()
@@ -135,17 +136,15 @@ class TestOpenStackClient(object):
         response = self.request(full_uri, **kwargs)
 
         http_status = response.status_code
-
         if check_response_status:
             if http_status not in check_response_status:
-                if http_status == 404:
-                    raise OpenStackApiNotFoundException(response=response)
-                elif http_status == 401:
-                    raise OpenStackApiAuthorizationException(response=response)
-                else:
-                    raise OpenStackApiException(
-                        message=_("Unexpected status code"),
-                        response=response)
+                message = None
+                try:
+                    exc = globals()["OpenStackApiException%s" % http_status]
+                except KeyError:
+                    exc = OpenStackApiException
+                    message = _("Unexpected status code")
+                raise exc(response, message)
 
         return response
 
@@ -203,6 +202,16 @@ class TestOpenStackClient(object):
 
     def put_volume(self, volume_id, volume):
         return self.api_put('/volumes/%s' % volume_id, volume)['volume']
+
+    def quota_set(self, project_id, quota_update):
+        return self.api_put(
+            'os-quota-sets/%s' % project_id,
+            {'quota_set': quota_update})['quota_set']
+
+    def quota_get(self, project_id, usage=True):
+
+        return self.api_get('os-quota-sets/%s?usage=%s'
+                            % (project_id, usage))['quota_set']
 
     def create_type(self, type_name, extra_specs=None):
         type = {"volume_type": {"name": type_name}}
