@@ -29,7 +29,7 @@ from cinder.i18n import _
 from cinder.objects import fields
 from cinder import test
 from cinder.volume import configuration as conf
-from cinder.volume.drivers.ibm import xiv_ds8k
+from cinder.volume.drivers.ibm import ibm_storage
 from cinder.volume import volume_types
 
 FAKE = "fake"
@@ -81,30 +81,37 @@ CG_SNAPSHOT = {'id': CG_SNAPSHOT_ID,
 
 CONNECTOR = {'initiator': "iqn.2012-07.org.fake:01:948f189c4695", }
 
+FAKE_PROXY = 'cinder.tests.unit.volume.drivers.ibm.test_ibm_storage' \
+    '.IBMStorageFakeProxyDriver'
 
-class XIVDS8KFakeProxyDriver(object):
-    """Fake IBM XIV and DS8K Proxy Driver."""
 
-    def __init__(self, xiv_ds8k_info, logger, expt,
+class IBMStorageFakeProxyDriver(object):
+    """Fake IBM Storage driver
+
+    Fake IBM Storage driver for IBM XIV, Spectrum Accelerate,
+    FlashSystem A9000, FlashSystem A9000R and DS8000 storage systems.
+    """
+
+    def __init__(self, ibm_storage_info, logger, expt,
                  driver=None, active_backend_id=None):
         """Initialize Proxy."""
 
-        self.xiv_ds8k_info = xiv_ds8k_info
+        self.ibm_storage_info = ibm_storage_info
         self.logger = logger
         self.exception = expt
-        self.xiv_ds8k_portal = \
-            self.xiv_ds8k_iqn = FAKE
+        self.storage_portal = \
+            self.storage_iqn = FAKE
 
         self.volumes = {}
         self.snapshots = {}
         self.driver = driver
 
     def setup(self, context):
-        if self.xiv_ds8k_info['xiv_ds8k_user'] != self.driver\
+        if self.ibm_storage_info['user'] != self.driver\
                 .configuration.san_login:
             raise self.exception.NotAuthorized()
 
-        if self.xiv_ds8k_info['xiv_ds8k_address'] != self.driver\
+        if self.ibm_storage_info['address'] != self.driver\
                 .configuration.san_ip:
             raise self.exception.HostNotFound(host='fake')
 
@@ -143,14 +150,14 @@ class XIVDS8KFakeProxyDriver(object):
 
         return {'driver_volume_type': 'iscsi',
                 'data': {'target_discovered': True,
-                         'target_portal': self.xiv_ds8k_portal,
-                         'target_iqn': self.xiv_ds8k_iqn,
+                         'target_portal': self.storage_portal,
+                         'target_iqn': self.storage_iqn,
                          'target_lun': lun_id,
                          'volume_id': volume['id'],
                          'multipath': True,
                          'provider_location': "%s,1 %s %s" % (
-                             self.xiv_ds8k_portal,
-                             self.xiv_ds8k_iqn,
+                             self.storage_portal,
+                             self.storage_iqn,
                              lun_id), },
                 }
 
@@ -284,20 +291,22 @@ class XIVDS8KFakeProxyDriver(object):
         return target_id, volume_update_list
 
 
-class XIVDS8KVolumeDriverTest(test.TestCase):
-    """Test IBM XIV and DS8K volume driver."""
+class IBMStorageVolumeDriverTest(test.TestCase):
+    """Test IBM Storage driver
+
+    Test IBM Storage driver for IBM XIV, Spectrum Accelerate,
+    FlashSystem A9000, FlashSystem A9000R and DS8000 storage Systems.
+    """
 
     def setUp(self):
-        """Initialize IBM XIV and DS8K Driver."""
-        super(XIVDS8KVolumeDriverTest, self).setUp()
+        """Initialize IBM Storage Driver."""
+        super(IBMStorageVolumeDriverTest, self).setUp()
 
         configuration = mock.Mock(conf.Configuration)
         configuration.san_is_local = False
-        configuration.xiv_ds8k_proxy = (
-            'cinder.tests.unit.volume.drivers.ibm.' +
-            'test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver')
-        configuration.xiv_ds8k_connection_type = 'iscsi'
-        configuration.xiv_chap = 'disabled'
+        configuration.proxy = FAKE_PROXY
+        configuration.connection_type = 'iscsi'
+        configuration.chap = 'disabled'
         configuration.san_ip = FAKE
         configuration.management_ips = FAKE
         configuration.san_login = FAKE
@@ -305,35 +314,35 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         configuration.san_password = FAKE
         configuration.append_config_values(mock.ANY)
 
-        self.driver = xiv_ds8k.XIVDS8KDriver(
+        self.driver = ibm_storage.IBMStorageDriver(
             configuration=configuration)
 
-    def test_initialized_should_set_xiv_ds8k_info(self):
+    def test_initialized_should_set_ibm_storage_info(self):
         """Test that the san flags are passed to the IBM proxy."""
 
         self.assertEqual(
-            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_user'],
+            self.driver.proxy.ibm_storage_info['user'],
             self.driver.configuration.san_login)
         self.assertEqual(
-            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_pass'],
+            self.driver.proxy.ibm_storage_info['password'],
             self.driver.configuration.san_password)
         self.assertEqual(
-            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_address'],
+            self.driver.proxy.ibm_storage_info['address'],
             self.driver.configuration.san_ip)
         self.assertEqual(
-            self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_vol_pool'],
+            self.driver.proxy.ibm_storage_info['vol_pool'],
             self.driver.configuration.san_clustername)
 
     def test_setup_should_fail_if_credentials_are_invalid(self):
-        """Test that the xiv_ds8k_proxy validates credentials."""
+        """Test that the proxy validates credentials."""
 
-        self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_user'] = 'invalid'
+        self.driver.proxy.ibm_storage_info['user'] = 'invalid'
         self.assertRaises(exception.NotAuthorized, self.driver.do_setup, None)
 
     def test_setup_should_fail_if_connection_is_invalid(self):
-        """Test that the xiv_ds8k_proxy validates connection."""
+        """Test that the proxy validates connection."""
 
-        self.driver.xiv_ds8k_proxy.xiv_ds8k_info['xiv_ds8k_address'] = \
+        self.driver.proxy.ibm_storage_info['address'] = \
             'invalid'
         self.assertRaises(exception.HostNotFound, self.driver.do_setup, None)
 
@@ -342,7 +351,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
 
         self.driver.do_setup(None)
         self.driver.create_volume(VOLUME)
-        has_volume = self.driver.xiv_ds8k_proxy.volume_exists(VOLUME)
+        has_volume = self.driver.proxy.volume_exists(VOLUME)
         self.assertTrue(has_volume)
         self.driver.delete_volume(VOLUME)
 
@@ -352,7 +361,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.do_setup(None)
 
         self.assertFalse(
-            self.driver.xiv_ds8k_proxy.volume_exists({'name': FAKE})
+            self.driver.proxy.volume_exists({'name': FAKE})
         )
 
     def test_delete_volume(self):
@@ -361,7 +370,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.do_setup(None)
         self.driver.create_volume(VOLUME)
         self.driver.delete_volume(VOLUME)
-        has_volume = self.driver.xiv_ds8k_proxy.volume_exists(VOLUME)
+        has_volume = self.driver.proxy.volume_exists(VOLUME)
         self.assertFalse(has_volume)
 
     def test_delete_volume_should_fail_for_not_existing_volume(self):
@@ -371,7 +380,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.delete_volume(VOLUME)
 
     def test_create_volume_should_fail_if_no_pool_space_left(self):
-        """Verify that the xiv_ds8k_proxy validates volume pool space."""
+        """Verify that the proxy validates volume pool space."""
 
         self.driver.do_setup(None)
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -388,7 +397,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.initialize_connection(VOLUME, CONNECTOR)
 
         self.assertTrue(
-            self.driver.xiv_ds8k_proxy.is_volume_attached(VOLUME, CONNECTOR))
+            self.driver.proxy.is_volume_attached(VOLUME, CONNECTOR))
 
         self.driver.terminate_connection(VOLUME, CONNECTOR)
         self.driver.delete_volume(VOLUME)
@@ -410,7 +419,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         self.driver.initialize_connection(VOLUME, CONNECTOR)
         self.driver.terminate_connection(VOLUME, CONNECTOR)
 
-        self.assertFalse(self.driver.xiv_ds8k_proxy.is_volume_attached(
+        self.assertFalse(self.driver.proxy.is_volume_attached(
             VOLUME,
             CONNECTOR))
 
@@ -519,7 +528,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         host = {
             'host': 'foo',
             'capabilities': {
-                'location_info': 'xiv_ds8k_fake_1',
+                'location_info': 'ibm_storage_fake_1',
                 'extent_size': '1024'
             }
         }
@@ -557,7 +566,7 @@ class XIVDS8KVolumeDriverTest(test.TestCase):
         host = {
             'host': 'foo',
             'capabilities': {
-                'location_info': 'xiv_ds8k_fake_1',
+                'location_info': 'ibm_storage_fake_1',
                 'extent_size': '1024'
             }
         }

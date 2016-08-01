@@ -1,0 +1,15 @@
+---
+features:
+  - The xiv_ds8k driver now supports IBM XIV, Spectrum
+    Accelerate, FlashSystem A9000, FlashSystem A9000R
+    and DS8000 storage systems, and was renamed to IBM
+    Storage Driver for OpenStack. The changes include text
+    changes, file names, names of cinder.conf flags, and
+    names of the proxy classes.
+upgrade:
+  - Users of the IBM Storage Driver, previously known as
+    the IBM XIV/DS8K driver, upgrading from Mitaka or
+    previous releases, need to reconfigure the relevant
+    cinder.conf entries. In most cases the change is just
+    removal of the xiv-ds8k field prefix, but for details
+    use the driver documentation.

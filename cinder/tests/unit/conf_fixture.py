@@ -23,8 +23,6 @@ CONF = cfg.CONF
 
 CONF.import_opt('policy_file', 'cinder.policy', group='oslo_policy')
 CONF.import_opt('volume_driver', 'cinder.volume.manager')
-CONF.import_opt('xiv_ds8k_proxy',
-                'cinder.volume.drivers.ibm.xiv_ds8k')
 CONF.import_opt('backup_driver', 'cinder.backup.manager')
 CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='keymgr')
 CONF.import_opt('scheduler_driver', 'cinder.scheduler.manager')
@@ -42,9 +40,6 @@ def set_defaults(conf):
     conf.set_default('sqlite_synchronous', False, group='database')
     conf.set_default('policy_file', 'cinder.tests.unit/policy.json',
                      group='oslo_policy')
-    conf.set_default(
-        'xiv_ds8k_proxy',
-        'cinder.tests.unit.test_ibm_xiv_ds8k.XIVDS8KFakeProxyDriver')
     conf.set_default('backup_driver', 'cinder.tests.unit.backup.fake_service')
     conf.set_default('fixed_key', default='0' * 64, group='keymgr')
     conf.set_default('scheduler_driver',

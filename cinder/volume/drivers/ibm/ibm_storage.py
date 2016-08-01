@@ -19,7 +19,8 @@
 #   Avishay Traeger <avishay@il.ibm.com>
 
 """
-Unified Volume driver for IBM XIV and DS8K Storage Systems.
+IBM Storage driver is a unified Volume driver for IBM XIV, Spectrum Accelerate,
+FlashSystem A9000, FlashSystem A9000R and DS8000 storage systems.
 """
 
 from oslo_config import cfg
@@ -27,22 +28,21 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 
 from cinder import exception
-from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.san import san
 
-xiv_ds8k_opts = [
+driver_opts = [
     cfg.StrOpt(
-        'xiv_ds8k_proxy',
-        default='xiv_ds8k_openstack.nova_proxy.XIVDS8KNovaProxy',
+        'proxy',
+        default='storage.proxy.IBMStorageProxy',
         help='Proxy driver that connects to the IBM Storage Array'),
     cfg.StrOpt(
-        'xiv_ds8k_connection_type',
+        'connection_type',
         default='iscsi',
         choices=['fibre_channel', 'iscsi'],
         help='Connection type to the IBM Storage Array'),
     cfg.StrOpt(
-        'xiv_chap',
+        'chap',
         default='disabled',
         choices=['disabled', 'enabled'],
         help='CHAP authentication mode, effective only for iscsi'
@@ -54,47 +54,48 @@ xiv_ds8k_opts = [
 ]
 
 CONF = cfg.CONF
-CONF.register_opts(xiv_ds8k_opts)
+CONF.register_opts(driver_opts)
 
 LOG = logging.getLogger(__name__)
 
 
-@interface.volumedriver
-class XIVDS8KDriver(san.SanDriver,
-                    driver.ManageableVD,
-                    driver.ExtendVD,
-                    driver.SnapshotVD,
-                    driver.MigrateVD,
-                    driver.ConsistencyGroupVD,
-                    driver.CloneableImageVD,
-                    driver.TransferVD):
-    """Unified IBM XIV and DS8K volume driver."""
+class IBMStorageDriver(san.SanDriver,
+                       driver.ManageableVD,
+                       driver.ExtendVD,
+                       driver.SnapshotVD,
+                       driver.MigrateVD,
+                       driver.ConsistencyGroupVD,
+                       driver.CloneableImageVD,
+                       driver.TransferVD):
+    """IBM Storage driver
+
+    IBM Storage driver is a unified Volume driver for IBM XIV, Spectrum
+    Accelerate, FlashSystem A9000, FlashSystem A9000R and DS8000 storage
+    systems.
+    """
 
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
 
-        super(XIVDS8KDriver, self).__init__(*args, **kwargs)
+        super(IBMStorageDriver, self).__init__(*args, **kwargs)
 
-        self.configuration.append_config_values(xiv_ds8k_opts)
+        self.configuration.append_config_values(driver_opts)
 
-        proxy = importutils.import_class(self.configuration.xiv_ds8k_proxy)
+        proxy = importutils.import_class(self.configuration.proxy)
 
         active_backend_id = kwargs.get('active_backend_id', None)
 
-        # NOTE: All Array specific configurations are prefixed with:
-        # "xiv_ds8k_array_"
-        # These additional flags should be specified in the cinder.conf
+        # Driver additional flags should be specified in the cinder.conf
         # preferably in each backend configuration.
 
-        self.xiv_ds8k_proxy = proxy(
+        self.proxy = proxy(
             {
-                "xiv_ds8k_user": self.configuration.san_login,
-                "xiv_ds8k_pass": self.configuration.san_password,
-                "xiv_ds8k_address": self.configuration.san_ip,
-                "xiv_ds8k_vol_pool": self.configuration.san_clustername,
-                "xiv_ds8k_connection_type":
-                self.configuration.xiv_ds8k_connection_type,
-                "xiv_chap": self.configuration.xiv_chap,
+                "user": self.configuration.san_login,
+                "password": self.configuration.san_password,
+                "address": self.configuration.san_ip,
+                "vol_pool": self.configuration.san_clustername,
+                "connection_type": self.configuration.connection_type,
+                "chap": self.configuration.chap,
                 "management_ips": self.configuration.management_ips
             },
             LOG,
@@ -103,81 +104,81 @@ class XIVDS8KDriver(san.SanDriver,
             active_backend_id=active_backend_id)
 
     def do_setup(self, context):
-        """Setup and verify IBM XIV and DS8K Storage connection."""
+        """Setup and verify connection to IBM Storage."""
 
-        self.xiv_ds8k_proxy.setup(context)
+        self.proxy.setup(context)
 
     def ensure_export(self, context, volume):
         """Ensure an export."""
 
-        return self.xiv_ds8k_proxy.ensure_export(context, volume)
+        return self.proxy.ensure_export(context, volume)
 
     def create_export(self, context, volume, connector):
         """Create an export."""
 
-        return self.xiv_ds8k_proxy.create_export(context, volume)
+        return self.proxy.create_export(context, volume)
 
     def create_volume(self, volume):
-        """Create a volume on the IBM XIV and DS8K Storage system."""
+        """Create a volume on the IBM Storage system."""
 
-        return self.xiv_ds8k_proxy.create_volume(volume)
+        return self.proxy.create_volume(volume)
 
     def delete_volume(self, volume):
-        """Delete a volume on the IBM XIV and DS8K Storage system."""
+        """Delete a volume on the IBM Storage system."""
 
-        self.xiv_ds8k_proxy.delete_volume(volume)
+        self.proxy.delete_volume(volume)
 
     def remove_export(self, context, volume):
         """Disconnect a volume from an attached instance."""
 
-        return self.xiv_ds8k_proxy.remove_export(context, volume)
+        return self.proxy.remove_export(context, volume)
 
     def initialize_connection(self, volume, connector):
         """Map the created volume."""
 
-        return self.xiv_ds8k_proxy.initialize_connection(volume, connector)
+        return self.proxy.initialize_connection(volume, connector)
 
     def terminate_connection(self, volume, connector, **kwargs):
         """Terminate a connection to a volume."""
 
-        return self.xiv_ds8k_proxy.terminate_connection(volume, connector)
+        return self.proxy.terminate_connection(volume, connector)
 
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
 
-        return self.xiv_ds8k_proxy.create_volume_from_snapshot(
+        return self.proxy.create_volume_from_snapshot(
             volume,
             snapshot)
 
     def create_snapshot(self, snapshot):
         """Create a snapshot."""
 
-        return self.xiv_ds8k_proxy.create_snapshot(snapshot)
+        return self.proxy.create_snapshot(snapshot)
 
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
 
-        return self.xiv_ds8k_proxy.delete_snapshot(snapshot)
+        return self.proxy.delete_snapshot(snapshot)
 
     def get_volume_stats(self, refresh=False):
         """Get volume stats."""
 
-        return self.xiv_ds8k_proxy.get_volume_stats(refresh)
+        return self.proxy.get_volume_stats(refresh)
 
     def create_cloned_volume(self, tgt_volume, src_volume):
         """Create Cloned Volume."""
 
-        return self.xiv_ds8k_proxy.create_cloned_volume(tgt_volume, src_volume)
+        return self.proxy.create_cloned_volume(tgt_volume, src_volume)
 
     def extend_volume(self, volume, new_size):
         """Extend Created Volume."""
 
-        self.xiv_ds8k_proxy.extend_volume(volume, new_size)
+        self.proxy.extend_volume(volume, new_size)
 
     def migrate_volume(self, context, volume, host):
         """Migrate the volume to the specified host."""
 
-        return self.xiv_ds8k_proxy.migrate_volume(context, volume, host)
+        return self.proxy.migrate_volume(context, volume, host)
 
     def manage_existing(self, volume, existing_ref):
         """Brings an existing backend storage object under Cinder management.
@@ -187,8 +188,9 @@ class XIVDS8KDriver(san.SanDriver,
         be interpreted.  It should be sufficient to identify a storage object
         that the driver should somehow associate with the newly-created cinder
         volume structure.
-        In the case of XIV, the existing_ref consists of a single field named
-        'existing_ref' representing the name of the volume on the storage.
+        In the case of XIV family and FlashSystem A9000 family, the
+        existing_ref consists of a single field named 'existing_ref'
+        representing the name of the volume on the storage.
 
         There are two ways to do this:
 
@@ -209,72 +211,72 @@ class XIVDS8KDriver(san.SanDriver,
         object.  If they are incompatible, raise a
         ManageExistingVolumeTypeMismatch, specifying a reason for the failure.
         """
-        return self.xiv_ds8k_proxy.manage_volume(volume, existing_ref)
+        return self.proxy.manage_volume(volume, existing_ref)
 
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume to be managed by manage_existing."""
 
-        return self.xiv_ds8k_proxy.manage_volume_get_size(volume, existing_ref)
+        return self.proxy.manage_volume_get_size(volume, existing_ref)
 
     def unmanage(self, volume):
         """Removes the specified volume from Cinder management."""
 
-        return self.xiv_ds8k_proxy.unmanage_volume(volume)
+        return self.proxy.unmanage_volume(volume)
 
     def freeze_backend(self, context):
         """Notify the backend that it's frozen. """
 
-        return self.xiv_ds8k_proxy.freeze_backend(context)
+        return self.proxy.freeze_backend(context)
 
     def thaw_backend(self, context):
         """Notify the backend that it's unfrozen/thawed. """
 
-        return self.xiv_ds8k_proxy.thaw_backend(context)
+        return self.proxy.thaw_backend(context)
 
     def failover_host(self, context, volumes, secondary_id=None):
         """Failover a backend to a secondary replication target. """
 
-        return self.xiv_ds8k_proxy.failover_host(
+        return self.proxy.failover_host(
             context, volumes, secondary_id)
 
     def get_replication_status(self, context, volume):
         """Return replication status."""
 
-        return self.xiv_ds8k_proxy.get_replication_status(context, volume)
+        return self.proxy.get_replication_status(context, volume)
 
     def retype(self, ctxt, volume, new_type, diff, host):
         """Convert the volume to be of the new type."""
 
-        return self.xiv_ds8k_proxy.retype(ctxt, volume, new_type, diff, host)
+        return self.proxy.retype(ctxt, volume, new_type, diff, host)
 
     def create_consistencygroup(self, context, group):
         """Creates a consistency group."""
 
-        return self.xiv_ds8k_proxy.create_consistencygroup(context, group)
+        return self.proxy.create_consistencygroup(context, group)
 
     def delete_consistencygroup(self, context, group, volumes):
         """Deletes a consistency group."""
 
-        return self.xiv_ds8k_proxy.delete_consistencygroup(
+        return self.proxy.delete_consistencygroup(
             context, group, volumes)
 
     def create_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Creates a consistency group snapshot."""
 
-        return self.xiv_ds8k_proxy.create_cgsnapshot(
+        return self.proxy.create_cgsnapshot(
             context, cgsnapshot, snapshots)
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a consistency group snapshot."""
 
-        return self.xiv_ds8k_proxy.delete_cgsnapshot(
+        return self.proxy.delete_cgsnapshot(
             context, cgsnapshot, snapshots)
 
     def update_consistencygroup(self, context, group,
                                 add_volumes, remove_volumes):
         """Adds or removes volume(s) to/from an existing consistency group."""
 
-        return self.xiv_ds8k_proxy.update_consistencygroup(
+        return self.proxy.update_consistencygroup(
             context, group, add_volumes, remove_volumes)
 
     def create_consistencygroup_from_src(
@@ -282,6 +284,6 @@ class XIVDS8KDriver(san.SanDriver,
             source_cg=None, source_vols=None):
         """Creates a consistencygroup from source."""
 
-        return self.xiv_ds8k_proxy.create_consistencygroup_from_src(
+        return self.proxy.create_consistencygroup_from_src(
             context, group, volumes, cgsnapshot, snapshots,
             source_cg, source_vols)

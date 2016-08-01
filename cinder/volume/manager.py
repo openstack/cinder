@@ -151,6 +151,8 @@ MAPPING = {
     'cinder.volume.drivers.hpe.hpe_lefthand_iscsi.HPELeftHandISCSIDriver',
     'cinder.volume.drivers.san.hp.hp_xp_fc.HPXPFCDriver':
     'cinder.volume.drivers.hpe.hpe_xp_fc.HPEXPFCDriver',
+    'cinder.volume.drivers.ibm.xiv_ds8k':
+    'cinder.volume.drivers.ibm.ibm_storage',
 }
 
 
