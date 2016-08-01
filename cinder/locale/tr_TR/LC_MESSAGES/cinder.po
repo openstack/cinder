@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -406,12 +406,6 @@ msgstr ""
 msgid "Auth user details not found in CloudByte storage."
 msgstr ""
 "CloudByte depolamada kimlik doğrulama kullanıcı ayrıntıları bulunamadı."
-
-msgid "Authentication error"
-msgstr "Kimlik doğrulama hatası"
-
-msgid "Authorization error"
-msgstr "Yetkilendirme hatası"
 
 msgid "Available categories:"
 msgstr "Kullanılabilir kategoriler:"
@@ -2046,9 +2040,6 @@ msgstr "Metadata mantıksal sürücüye kopyalanamadı: %(reason)s"
 msgid "Failed to create IG, %s"
 msgstr "IG oluşturma başarısız, %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "SolidFire İmaj-Mantıksal Sürücü oluşturulamadı"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Mantıksal Sürücü Grubu oluşturulamadı: %(vg_name)s"
@@ -2984,19 +2975,12 @@ msgid "Host %s has no FC initiators"
 msgstr "%s istemcisinin FC başlatıcısı yok"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "'%s' istemcisi bulunamadı."
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "%s isimli istemci grubu bulunamadı"
 
 #, python-format
 msgid "Host group with ref %s not found"
 msgstr "%s başvurusuna sahip istemci grubu bulunamadı"
-
-msgid "Host not found"
-msgstr "İstemci bulunamadı"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -3419,9 +3403,6 @@ msgstr "İş için beklenirken durumla karşılaşıldı."
 msgid "Issue encountered waiting for synchronization."
 msgstr "Eşzamanlama için beklenirken durumla karşılaşıldı."
 
-msgid "Item not found"
-msgstr "Öğe bulunamadı"
-
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods, "
 "colons and hyphens."
@@ -3586,12 +3567,6 @@ msgstr "Bu mantıksal sürücü için metadata yedeği zaten var"
 msgid "Metadata backup object '%s' already exists"
 msgstr "Metadata yedek nesnesi '%s' zaten var"
 
-msgid "Metadata item was not found"
-msgstr "İçerik özelliği bilgisi bulunamadı"
-
-msgid "Metadata item was not found."
-msgstr "Metadata öğesi bulunamadı."
-
 msgid "Metadata property key blank."
 msgstr "Metadata özellik anahtarı boş."
 
@@ -3627,9 +3602,6 @@ msgstr "İstek gövdesinde gerekli öge '%s' eksik."
 
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr "İstek gövdesinde gerekli öge 'consistencygroup' eksik."
-
-msgid "Missing required element 'host' in request body."
-msgstr "İstek gövdesinde gerekli 'host' ögesi eksik."
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "İstek gövdesinde gerekli quota_class_set ögesi eksik."
@@ -3722,9 +3694,6 @@ msgstr "İstekte salt okunur belirtilmelidir."
 
 msgid "Must specify storage pool name or id."
 msgstr "Depolama havuzu ismi veya id'si belirtmeli."
-
-msgid "Must supply a positive value for age"
-msgstr "Devir için pozitif bir değer verilmelidir"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "Yaş için pozitif, sıfırdan farklı bir değer sağlanmalı"
@@ -4500,10 +4469,6 @@ msgstr "host %(host)s üzerindeki servis %(service)s silindi.  "
 msgid "Service %(service_id)s could not be found."
 msgstr "%(service_id)s servisi bulunamadı."
 
-#, python-format
-msgid "Service %s not found."
-msgstr "Servis %s bulunamadı."
-
 msgid "Service is unavailable at this time."
 msgstr "Şu anda servis kullanılamıyor."
 
@@ -4729,10 +4694,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Hedef mantıksal sürücü türü hala kullanımda."
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "Tenant ID: %s  bulunmuyor."
 
 msgid "Terminate connection failed"
 msgstr "Bağlantı sonlandırma başarısız oldu"
@@ -5436,9 +5397,6 @@ msgstr "Bilinmeyen iletişim kuralı: %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "%(unknown)s bilinmeyen kota kaynakları."
 
-msgid "Unknown service"
-msgstr "Bilinmeyen servis"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "Bilinmeyen sıralama yönü, 'desc' ya da 'asc'"
 
@@ -5704,12 +5662,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "Mantıksal Sürücü Türü %(id)s zaten var."
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr ""
-"%(type_id)s Mantıksal Sürücü Türü, %(id)s anahtarlı hiçbir ek özelliğe sahip "
-"değil."
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -5930,10 +5882,6 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "%(volume_type_name)s adında mantıksal sürücü türü bulunamadı."
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "%s numaralı disk bölümü mevcut değildir."
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -5941,10 +5889,6 @@ msgstr ""
 "Mantıksal sürücü: %(volumeName)s bitiştirilmiş bir mantıksal sürücü değil. "
 "Büyütmeyi ancak bitiştirilmiş mantıksal sürücü üzerinde yapabilirsiniz. "
 "Çıkılıyor..."
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "Disk bölümü:  %s bulunamadı."
 
 #, python-format
 msgid ""
@@ -6576,20 +6520,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve() sadece bir kez çağrılabilir"
 
-msgid "service not found"
-msgstr "servis bulunamadı"
-
-msgid "snapshot does not exist"
-msgstr "anlık sistem görüntüsü yok"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "anlık sistem görüntü kimliği:%s bulunamadı"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "kaynak mantıksal sürücü kimliği:%s bulunamadı"
-
 #, python-format
 msgid "source volume id:%s is not replicated"
 msgstr "kaynak mantıksal sürücü kimliği:%s çoğaltılmamıştır"
@@ -6662,9 +6592,6 @@ msgstr "mantıksal sürücü atandı"
 
 msgid "volume changed"
 msgstr "mantıksal sürücü değiştirildi"
-
-msgid "volume does not exist"
-msgstr "mantıksal sürücü yok"
 
 msgid "volume is already attached"
 msgstr "mantıksal sürücü zaten ekli"

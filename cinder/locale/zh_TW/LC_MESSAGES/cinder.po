@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -496,15 +496,9 @@ msgstr "在 CloudByte 儲存體中找不到鑑別群組 [%s] 詳細資料。"
 msgid "Auth user details not found in CloudByte storage."
 msgstr "在 CloudByte 儲存體中找不到鑑別使用者詳細資料。"
 
-msgid "Authentication error"
-msgstr "鑑別錯誤"
-
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr "鑑別失敗，請驗證交換器認證，錯誤碼：%s。"
-
-msgid "Authorization error"
-msgstr "授權錯誤"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -2885,9 +2879,6 @@ msgstr "無法從 Snapshot %(cgSnapshot)s 建立 CG %(cgName)s。"
 msgid "Failed to create IG, %s"
 msgstr "無法建立 IG %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "無法建立 SolidFire 映像檔磁區"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "無法建立磁區群組：%(vg_name)s"
@@ -4090,10 +4081,6 @@ msgid "Host %s has no FC initiators"
 msgstr "主機 %s 沒有 FC 起始器"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "找不到主機 '%s'。"
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "找不到名稱為 %s 的主機群組"
 
@@ -4106,9 +4093,6 @@ msgstr "主機未處於「凍結」狀態。"
 
 msgid "Host is already Frozen."
 msgstr "主機已經處於「凍結」狀態。"
-
-msgid "Host not found"
-msgstr "找不到主機"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -4645,9 +4629,6 @@ msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr "發出失效接手失敗，因為未正確配置抄寫。"
 
-msgid "Item not found"
-msgstr "找不到項目"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr "在 CloudByte 的建立磁區 [%s] 回應中找不到工作 ID。"
@@ -4853,12 +4834,6 @@ msgstr "此磁區已存在 meta 資料備份"
 msgid "Metadata backup object '%s' already exists"
 msgstr "meta 資料備份物件 '%s' 已存在"
 
-msgid "Metadata item was not found"
-msgstr "找不到 meta 資料項目"
-
-msgid "Metadata item was not found."
-msgstr "找不到 meta 資料項目。"
-
 msgid "Metadata property key blank."
 msgstr "meta 資料內容索引鍵空白。"
 
@@ -4892,9 +4867,6 @@ msgstr "要求內文遺漏了必要元素 '%s'。"
 
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr "要求內文中遺漏了必要元素 'consistencygroup'。"
-
-msgid "Missing required element 'host' in request body."
-msgstr "要求內文中遺漏了必要元素 'host'。"
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "要求內文中遺漏了必要元素 quota_class_set。"
@@ -5007,9 +4979,6 @@ msgstr "必須指定儲存區名稱或 ID。"
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "必須指定儲存區。選項：sio_storage_pools。"
-
-msgid "Must supply a positive value for age"
-msgstr "必須為經歷時間提供正數值"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "必須為經歷時間提供非零正數值"
@@ -6028,10 +5997,6 @@ msgstr "在主機 %(host)s 上找不到服務 %(service_id)s。"
 msgid "Service %(service_id)s could not be found."
 msgstr "找不到服務 %(service_id)s。"
 
-#, python-format
-msgid "Service %s not found."
-msgstr "找不到服務 %s。"
-
 msgid "Service is too old to fulfil this request."
 msgstr "服務太舊，無法滿足此要求。"
 
@@ -6329,10 +6294,6 @@ msgstr "在帳戶 [%(account)s] 的 CloudByte 儲存體中找不到 TSM [%(tsm)s
 
 msgid "Target volume type is still in use."
 msgstr "目標磁區類型仍在使用中。"
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "租戶 ID %s 不存在。"
 
 msgid "Terminate connection failed"
 msgstr "終止連線失敗"
@@ -7333,9 +7294,6 @@ msgstr "不明的通訊協定：%(protocol)s。"
 msgid "Unknown quota resources %(unknown)s."
 msgstr "不明的配額資源 %(unknown)s。"
 
-msgid "Unknown service"
-msgstr "不明的服務"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "不明的排序方向，必須為 'desc' 或 'asc'"
 
@@ -7681,10 +7639,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "磁區類型 %(id)s 已存在。"
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr "磁區類型 %(type_id)s 沒有索引鍵為 %(id)s 的額外規格。"
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -7939,10 +7893,6 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "找不到名稱為 %(volume_type_name)s 的磁區類型。"
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "磁區 ID 為 %s 的磁區不存在。"
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -7953,10 +7903,6 @@ msgstr ""
 #, python-format
 msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
 msgstr "未將磁區 %(volumeName)s 新增至儲存體群組 %(sgGroupName)s。"
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "找不到磁區 %s。"
 
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
@@ -9075,16 +9021,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "只能呼叫 serve() 一次"
 
-msgid "service not found"
-msgstr "找不到服務"
-
-msgid "snapshot does not exist"
-msgstr "Snapshot 不存在"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "找不到 Snapshot ID：%s"
-
 #, python-format
 msgid "snapshot-%s"
 msgstr "snapshot-%s"
@@ -9094,10 +9030,6 @@ msgstr "已指派 Snapshot"
 
 msgid "snapshots changed"
 msgstr "已變更 Snapshot"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "找不到來源磁區 ID：%s"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -9192,9 +9124,6 @@ msgstr "已指派磁區"
 
 msgid "volume changed"
 msgstr "已變更磁區"
-
-msgid "volume does not exist"
-msgstr "磁區不存在"
 
 msgid "volume is already attached"
 msgstr "已連接磁區"

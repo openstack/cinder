@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -530,16 +530,10 @@ msgid "Auth user details not found in CloudByte storage."
 msgstr ""
 "В хранилище CloudByte не найдена информация о пользователе для идентификации."
 
-msgid "Authentication error"
-msgstr "Ошибка аутентификации"
-
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr ""
 "Ошибка идентификации. Проверьте идентификационные данные. Код ошибки %s."
-
-msgid "Authorization error"
-msgstr "Ошибка авторизации"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3119,9 +3113,6 @@ msgstr ""
 msgid "Failed to create IG, %s"
 msgstr "Не удалось создать группу инициаторов, %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "Не удалось создать образ-том SolidFire"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Не удалось создать группу тома %(vg_name)s"
@@ -4441,10 +4432,6 @@ msgid "Host %s has no FC initiators"
 msgstr "У хоста %s нет инициаторов FC"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "Не удалось найти хост '%s'."
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "Не найдена группа хостов с именем %s"
 
@@ -4457,9 +4444,6 @@ msgstr "Хост не заморожен."
 
 msgid "Host is already Frozen."
 msgstr "Хост уже заморожен."
-
-msgid "Host not found"
-msgstr "Узел не найден"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -5034,9 +5018,6 @@ msgid ""
 msgstr ""
 "Переключение после сбоя невозможно, так как репликация настроена неверно."
 
-msgid "Item not found"
-msgstr "объект не найден"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr "Не найден ИД задания в ответе на запрос создания тома CloudByte [%s]."
@@ -5262,12 +5243,6 @@ msgstr "Резервная копия метаданных уже существ
 msgid "Metadata backup object '%s' already exists"
 msgstr "Объект резервной копии метаданных %s уже существует"
 
-msgid "Metadata item was not found"
-msgstr "Элемент метаданных не найден"
-
-msgid "Metadata item was not found."
-msgstr "Элемент метаданных не найден."
-
 msgid "Metadata property key blank."
 msgstr "Пустой ключ свойства метаданных."
 
@@ -5303,9 +5278,6 @@ msgstr "В теле запроса отсутствует обязательны
 
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr "В теле запроса отсутствует обязательный элемент 'consistencygroup'."
-
-msgid "Missing required element 'host' in request body."
-msgstr "В теле запроса отсутствует обязательный элемент 'host'."
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "Отсутствует требуемый параметр quota_class_set в теле запроса."
@@ -5429,9 +5401,6 @@ msgstr "Необходимо указать имя или ИД пула памя
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "Необходимо указать пулы памяти. Опция: sio_storage_pools."
-
-msgid "Must supply a positive value for age"
-msgstr "Должно быть указано положительное значение возраста"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr ""
@@ -6515,10 +6484,6 @@ msgstr "Служба %(service_id)s не найдена на хосте %(host)s
 msgid "Service %(service_id)s could not be found."
 msgstr "Служба %(service_id)s не найдена."
 
-#, python-format
-msgid "Service %s not found."
-msgstr "Служба %s не найдена."
-
 msgid "Service is too old to fulfil this request."
 msgstr "Служба устарела и не поддерживает этот запрос."
 
@@ -6847,10 +6812,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Тип целевого тома еще используется."
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "ИД арендатора %s не существует."
 
 msgid "Terminate connection failed"
 msgstr "Завершение соединения не выполнено"
@@ -7952,9 +7913,6 @@ msgstr "Неизвестный протокол: %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Неизвестные ресурсы квоты: %(unknown)s."
 
-msgid "Unknown service"
-msgstr "Неизвестная служба"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "Неизвестное направление сортировки, должно быть 'desc' или 'asc'"
 
@@ -8327,11 +8285,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "Тип тома %(id)s уже существует."
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr ""
-"Тип тома %(type_id)s не имеет дополнительных спецификаций с ключом %(id)s."
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -8607,10 +8560,6 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "Тип тома под названием %(volume_type_name)s не может быть найден."
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "Том с ИД тома %s не существует."
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -8622,10 +8571,6 @@ msgstr ""
 msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
 msgstr ""
 "Том %(volumeName)s не был добавлен в группу носителей %(sgGroupName)s. "
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "Не найден том %s."
 
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
@@ -9813,16 +9758,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve() может быть вызван только один раз"
 
-msgid "service not found"
-msgstr "служба не найдена"
-
-msgid "snapshot does not exist"
-msgstr "моментальная копия не существует"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "Не найден ИД моментальной копии %s"
-
 #, python-format
 msgid "snapshot-%s"
 msgstr "snapshot-%s"
@@ -9832,10 +9767,6 @@ msgstr "моментальные копии присвоены"
 
 msgid "snapshots changed"
 msgstr "моментальные копии изменены"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "Не найден ИД исходного тома %s"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -9935,9 +9866,6 @@ msgstr "том присвоен"
 
 msgid "volume changed"
 msgstr "том изменен"
-
-msgid "volume does not exist"
-msgstr "Том не существует"
 
 msgid "volume is already attached"
 msgstr "том уже подключен"

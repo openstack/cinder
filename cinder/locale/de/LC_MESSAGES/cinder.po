@@ -10,9 +10,9 @@
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -555,17 +555,11 @@ msgid "Auth user details not found in CloudByte storage."
 msgstr ""
 "Details des Authentifizierungsbenutzers nicht im CloudByte-Speicher gefunden."
 
-msgid "Authentication error"
-msgstr "Authentifizierungsfehler"
-
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr ""
 "Authentifizierung fehlgeschlagen. Überprüfen Sie die Berechtigungsnachweise "
 "für den Switch. Fehlercode %s."
-
-msgid "Authorization error"
-msgstr "Autorisierungsfehler"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3257,9 +3251,6 @@ msgstr ""
 msgid "Failed to create IG, %s"
 msgstr "IG konnte nicht erstellt werden. %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "SolidFire-Abbilddatenträger konnte nicht erstellt werden."
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Erstellen der Datenträgergruppe fehlgeschlagen: %(vg_name)s"
@@ -4641,10 +4632,6 @@ msgid "Host %s has no FC initiators"
 msgstr "Host %s hat keine iSCSI-Initiatoren."
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "Der Host '%s' wurde nicht gefunden."
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "Hostgruppe mit dem Namen %s nicht gefunden."
 
@@ -4657,9 +4644,6 @@ msgstr "Der Host ist nicht gesperrt."
 
 msgid "Host is already Frozen."
 msgstr "Der Host ist bereits gesperrt."
-
-msgid "Host not found"
-msgstr "Host nicht gefunden"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -5248,9 +5232,6 @@ msgstr ""
 "Ausgabe eines Failovers fehlgeschlagen, weil die Replikation nicht "
 "ordnungsgemäß konfiguriert wurde. "
 
-msgid "Item not found"
-msgstr "Element nicht gefunden"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr ""
@@ -5481,12 +5462,6 @@ msgstr "Für diesen Datenträger ist bereits eine Metadatensicherung vorhanden."
 msgid "Metadata backup object '%s' already exists"
 msgstr "Metadatensicherungsobjekt '%s' ist bereits vorhanden."
 
-msgid "Metadata item was not found"
-msgstr "Metadatenelement wurde nicht gefunden"
-
-msgid "Metadata item was not found."
-msgstr "Metadatenelement wurde nicht gefunden."
-
 msgid "Metadata property key blank."
 msgstr "Metadateneigenschaftenschlüssel leer."
 
@@ -5527,9 +5502,6 @@ msgstr "Fehlendes erforderliches Element '%s' im Anforderungshauptteil."
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr ""
 "Fehlendes erforderliches Element 'consistencygroup' im Anforderungshauptteil."
-
-msgid "Missing required element 'host' in request body."
-msgstr "Fehlendes erforderliches Element 'host' im Anforderungshauptteil."
 
 msgid "Missing required element quota_class_set in request body."
 msgstr ""
@@ -5655,9 +5627,6 @@ msgstr "Speicherpoolname oder Speicherpool-ID muss angegeben werden."
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "Speicherpools müssen angegeben werden. Option: sio_storage_pools."
-
-msgid "Must supply a positive value for age"
-msgstr "Für age muss ein positiver Wert angegeben werden."
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "Für age muss ein positiver Wert ungleich null angegeben werden."
@@ -6805,10 +6774,6 @@ msgstr "Der Dienst %(service_id)s wurde auf dem Host %(host)s nicht gefunden."
 msgid "Service %(service_id)s could not be found."
 msgstr "Der Dienst %(service_id)s wurde nicht gefunden."
 
-#, python-format
-msgid "Service %s not found."
-msgstr "Der Dienst %s wurde nicht gefunden."
-
 msgid "Service is too old to fulfil this request."
 msgstr "Der Dienst ist zu alt, um diese Anforderung zu erfüllen."
 
@@ -7159,10 +7124,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Zieldatenträgertyp ist noch im Gebrauch."
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "Mandanten-ID %s ist nicht vorhanden."
 
 msgid "Terminate connection failed"
 msgstr "Beenden der Verbindung fehlgeschlagen"
@@ -8339,9 +8300,6 @@ msgstr "Unbekanntes Protokoll: %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Unbekannte Kontingentressourcen %(unknown)s."
 
-msgid "Unknown service"
-msgstr "Unbekannter Dienst"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr ""
 "Unbekannte Sortierrichtung: Muss 'desc' (absteigend) oder "
@@ -8746,12 +8704,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "Datenträgertyp %(id)s ist bereits vorhanden."
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr ""
-"Der Datenträgertyp %(type_id)s hat keine zusätzliche Spezifikation mit "
-"Schlüssel %(id)s."
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -9043,10 +8995,6 @@ msgstr ""
 "Datenträgertyp mit dem Namen %(volume_type_name)s wurde nicht gefunden."
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "Datenträger mit Datenträger-ID %s ist nicht vorhanden."
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -9060,10 +9008,6 @@ msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
 msgstr ""
 "Der Datenträger %(volumeName)s wurde der Speichergruppe %(sgGroupName)s "
 "nicht hinzugefügt."
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "Datenträger: %s wurde nicht gefunden."
 
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
@@ -10290,16 +10234,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve() kann nur einmal aufgerufen werden."
 
-msgid "service not found"
-msgstr "Dienst nicht gefunden"
-
-msgid "snapshot does not exist"
-msgstr "Schattenkopie ist nicht vorhanden"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "Schattenkopie-ID %s nicht gefunden"
-
 #, python-format
 msgid "snapshot-%s"
 msgstr "snapshot-%s"
@@ -10309,10 +10243,6 @@ msgstr "Schattenkopien zugeordnet"
 
 msgid "snapshots changed"
 msgstr "Schattenkopien geändert"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "Quellendatenträger-ID %s nicht gefunden"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -10412,9 +10342,6 @@ msgstr "Datenträger zugeordnet"
 
 msgid "volume changed"
 msgstr "Datenträger geändert"
-
-msgid "volume does not exist"
-msgstr "Datenträger ist nicht vorhanden."
 
 msgid "volume is already attached"
 msgstr "Datenträger ist bereits angehängt."

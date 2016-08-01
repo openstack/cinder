@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -536,17 +536,11 @@ msgstr ""
 "Detalhes do usuário de autenticação não localizados no armazenamento do "
 "CloudByte."
 
-msgid "Authentication error"
-msgstr "Erro de Autenticação"
-
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr ""
 "A autenticação falhou, verifique as credenciais do comutador, código de erro "
 "%s."
-
-msgid "Authorization error"
-msgstr "Erro de autorização"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3163,9 +3157,6 @@ msgstr "Falha ao criar CG %(cgName)s da captura instantânea %(cgSnapshot)s."
 msgid "Failed to create IG, %s"
 msgstr "Falha ao criar IG, %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "Falha ao criar imagem SolidFire-Volume"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Falha ao criar Grupo de Volumes: %(vg_name)s"
@@ -4482,10 +4473,6 @@ msgid "Host %s has no FC initiators"
 msgstr "Host %s não possui inicializadores do FC"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "O host '%s' não pôde ser localizado."
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "Grupo de hosts com o nome %s não localizado"
 
@@ -4498,9 +4485,6 @@ msgstr "O Host NÃO está Paralisado"
 
 msgid "Host is already Frozen."
 msgstr "O Host já está Paralisado"
-
-msgid "Host not found"
-msgstr "Host não localizado"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -5077,9 +5061,6 @@ msgstr ""
 "Falha ao emitir um failover porque a replicação não está configurada "
 "corretamente."
 
-msgid "Item not found"
-msgstr "Item não localizado"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr ""
@@ -5316,12 +5297,6 @@ msgstr "Backup de metadados já existe para esse volume"
 msgid "Metadata backup object '%s' already exists"
 msgstr "Objeto de backup de metadados '%s' já existe"
 
-msgid "Metadata item was not found"
-msgstr "O item de metadados não foi localizado"
-
-msgid "Metadata item was not found."
-msgstr "Item de metadados não foi localizado."
-
 msgid "Metadata property key blank."
 msgstr "A chave da propriedade de metadados está em branco."
 
@@ -5358,9 +5333,6 @@ msgstr "Elemento obrigatório '%s' ausente no corpo da solicitação."
 
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr "Elemento requerido ausente 'consistencygroup' no corpo da solicitação."
-
-msgid "Missing required element 'host' in request body."
-msgstr "Elemento necessário ausente 'host' no corpo da solicitação."
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "Faltando elemento obrigatório quota_class_set no corpo da requisição."
@@ -5487,9 +5459,6 @@ msgstr "Deve especificar um nome ou ID do conjunto de armazenamentos."
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr ""
 "Deve-se especificar conjuntos de armazenamentos. Opções: sio_storage_pools."
-
-msgid "Must supply a positive value for age"
-msgstr "Deve fornecer um valor positivo para a idade"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "Deve fornecer um número positivo, diferente de zero para a idade"
@@ -6593,10 +6562,6 @@ msgstr "O serviço %(service_id)s não pôde ser localizado no host %(host)s."
 msgid "Service %(service_id)s could not be found."
 msgstr "O serviço %(service_id)s não pôde ser localizado."
 
-#, python-format
-msgid "Service %s not found."
-msgstr "Serviço %s não localizado."
-
 msgid "Service is too old to fulfil this request."
 msgstr "O serviço é muito antigo para preencher essa solicitação."
 
@@ -6938,10 +6903,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Tipo de volume de destino ainda está em uso."
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "ID do locatário: %s não existe."
 
 msgid "Terminate connection failed"
 msgstr "Finalização da conexão com falha"
@@ -8077,9 +8038,6 @@ msgstr "Protocolo desconhecido: %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Recursos da cota desconhecidos %(unknown)s."
 
-msgid "Unknown service"
-msgstr "Serviço desconhecido"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "Direção de classificação desconhecida; deve ser 'desc' ou 'asc'"
 
@@ -8462,11 +8420,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "O Tipo de Volume %(id)s já existe."
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr ""
-"Tipo de volume %(type_id)s não possui especificação extra com a chave %(id)s."
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -8750,10 +8703,6 @@ msgstr ""
 "O tipo de volume com o nome %(volume_type_name)s não pôde ser localizado."
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "O volume com o ID do volume %s não existe."
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -8766,10 +8715,6 @@ msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
 msgstr ""
 "O volume: %(volumeName)s não foi incluído no grupo de armazenamentos "
 "%(sgGroupName)s. "
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "Volume: %s não pôde ser localizado."
 
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
@@ -9957,16 +9902,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve() pode ser chamado apenas uma vez"
 
-msgid "service not found"
-msgstr "serviço não encontrado"
-
-msgid "snapshot does not exist"
-msgstr "a captura instantânea não existe"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "ID da captura instantânea:%s não localizado"
-
 #, python-format
 msgid "snapshot-%s"
 msgstr "captura instantânea-%s"
@@ -9976,10 +9911,6 @@ msgstr "capturas instantâneas designadas"
 
 msgid "snapshots changed"
 msgstr "capturas instantâneas alteradas"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "ID do vol. de origem:%s não localizado"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -10078,9 +10009,6 @@ msgstr "volume designado"
 
 msgid "volume changed"
 msgstr "volume alterado"
-
-msgid "volume does not exist"
-msgstr "o volume não existe"
 
 msgid "volume is already attached"
 msgstr "o volume já está conectado"

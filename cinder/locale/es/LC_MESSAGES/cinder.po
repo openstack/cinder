@@ -7,16 +7,17 @@
 # FIRST AUTHOR <EMAIL@ADDRESS>, 2011
 # Jose Enrique Ruiz Navarro <joseenriquernavarro@gmail.com>, 2014
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
+# Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-03-27 07:57+0000\n"
-"Last-Translator: Eugènia Torrella <tester03@es.ibm.com>\n"
+"PO-Revision-Date: 2016-07-28 05:39+0000\n"
+"Last-Translator: Jose Porrua <jose.porrua@netapp.com>\n"
 "Language: es\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Generated-By: Babel 2.0\n"
@@ -130,6 +131,10 @@ msgstr ""
 "%(port)d en la IP %(ip)s no lo esté utilizando otro servicio."
 
 #, python-format
+msgid "%(name)s cannot be all spaces."
+msgstr "%(name)s no puede estar vacío."
+
+#, python-format
 msgid ""
 "%(op)s: backup %(bck_id)s, volume %(vol_id)s failed. Backup object has "
 "unexpected mode. Image or file backups supported, actual mode is "
@@ -241,6 +246,10 @@ msgstr "%s no está definido en cinder.conf"
 #, python-format
 msgid "%s not set."
 msgstr "%s no establecido."
+
+#, python-format
+msgid "'%(key)s = %(value)s'"
+msgstr "'%(key)s = %(value)s'"
 
 #, python-format
 msgid ""
@@ -475,6 +484,9 @@ msgstr ""
 "No se ha podido suprimir un destino de iSCSI. (puerto: %(port)s, tno: "
 "%(tno)s, alias: %(alias)s)"
 
+msgid "An unknown error occurred."
+msgstr "Se ha producido un error desconocido."
+
 msgid "An unknown exception occurred."
 msgstr "Una excepción desconocida ha ocurrido"
 
@@ -541,17 +553,11 @@ msgstr ""
 "No se han encontrado detalles del usuario de autenticación en el "
 "almacenamiento CloudByte."
 
-msgid "Authentication error"
-msgstr "Error de autenticación"
-
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr ""
 "Ha fallado la autenticación, compruebe las credenciales del conmutador, "
 "código de error %s."
-
-msgid "Authorization error"
-msgstr "Error de autorización"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3227,9 +3233,6 @@ msgstr ""
 msgid "Failed to create IG, %s"
 msgstr "No se ha podido crear IG, %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "No se ha podido crear SolidFire Image-Volume"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "No se ha podido crear el grupo de volumen: %(vg_name)s"
@@ -3303,6 +3306,9 @@ msgstr ""
 
 msgid "Failed to create iqn."
 msgstr "No se ha podido crear el iqn."
+
+msgid "Failed to create iscsi client"
+msgstr "No se ha podido crear el cliente iSCSI"
 
 #, python-format
 msgid "Failed to create iscsi target for volume %(volume_id)s."
@@ -3499,6 +3505,9 @@ msgstr ""
 
 msgid "Failed to establish SSC connection."
 msgstr "No se ha podido establecer la conexión SSC."
+
+msgid "Failed to establish a stable connection"
+msgstr "No se ha podido establecer una conexión estable."
 
 msgid "Failed to establish connection with Coho cluster"
 msgstr "No se ha podido establecer conexión con el clúster Coho."
@@ -4606,10 +4615,6 @@ msgid "Host %s has no FC initiators"
 msgstr "El host %s no tiene ningún iniciador FC"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "El host '%s' no se ha encontrado."
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "No se ha encontrado el grupo de host con el nombre %s."
 
@@ -4622,9 +4627,6 @@ msgstr "El host NO está inmovilizado."
 
 msgid "Host is already Frozen."
 msgstr "El host ya está inmovilizado."
-
-msgid "Host not found"
-msgstr "Host no encontrado"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -4645,6 +4647,9 @@ msgstr "El tipo de host %s no se soporta."
 #, python-format
 msgid "Host with ports %(ports)s not found."
 msgstr "No se ha encontrado el host con los puertos %(ports)s."
+
+msgid "Hosts"
+msgstr "Hosts"
 
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr "No se puede utilizar Hipermetro y Replicación en el mismo volume_type."
@@ -4709,6 +4714,9 @@ msgstr "La imagen %(image_id)s es inaceptable: %(reason)s"
 
 msgid "Image location not present."
 msgstr "Ubicación de imagen no presente."
+
+msgid "Image quota exceeded"
+msgstr "Se ha excedido la cuota de la imágen"
 
 #, python-format
 msgid ""
@@ -5214,9 +5222,6 @@ msgstr ""
 "Se está emitiendo un mensaje de migración tras error fallida porque la "
 "replicación no está configurada correctamente."
 
-msgid "Item not found"
-msgstr "Elemento no encontrado"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr ""
@@ -5248,6 +5253,9 @@ msgstr ""
 #, python-format
 msgid "LU does not exist for volume: %s"
 msgstr "No existe ningún LU para el volumen: %s"
+
+msgid "LUN doesn't exist."
+msgstr "El LUN no existe."
 
 msgid "LUN export failed!"
 msgstr "Error al exportar LUN."
@@ -5421,6 +5429,9 @@ msgid "Masking view %(maskingViewName)s was not deleted successfully"
 msgstr ""
 "La vista de máscara %(maskingViewName)s no se ha suprimido correctamente"
 
+msgid "Maximum age is count of days since epoch."
+msgstr "La edad máxima es el recuento de días desde epoch."
+
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
 msgstr ""
@@ -5443,6 +5454,10 @@ msgstr ""
 msgid "May specify only one of %s"
 msgstr "Puede especificar solo uno de %s"
 
+#, python-format
+msgid "Message %(message_id)s could not be found."
+msgstr "No se ha podido encontrar el mensaje %(message_id)s."
+
 msgid "Metadata backup already exists for this volume"
 msgstr "La copia de seguridad de metadatos ya existe para este volumen"
 
@@ -5450,11 +5465,13 @@ msgstr "La copia de seguridad de metadatos ya existe para este volumen"
 msgid "Metadata backup object '%s' already exists"
 msgstr "El objeto de copia de seguridad de metadatos '%s' ya existe"
 
-msgid "Metadata item was not found"
-msgstr "No se ha encontrado el elemento metadatos"
+#, python-format
+msgid "Metadata property key %s greater than 255 characters."
+msgstr "Clave de propiedad de metadatos %s mayor que 255 caracteres."
 
-msgid "Metadata item was not found."
-msgstr "No se ha encontrado el elemento de metadatos."
+#, python-format
+msgid "Metadata property key %s value greater than 255 characters."
+msgstr "Valor de clave de propiedad de metadatos %s mayor que 255 caracteres."
 
 msgid "Metadata property key blank."
 msgstr "Clave de propiedad de metadatos en blanco"
@@ -5485,6 +5502,11 @@ msgid "Missing request body."
 msgstr "No se ha hallado el cuerpo de la solicitud."
 
 #, python-format
+msgid "Missing required element '%(element)s' in request body."
+msgstr ""
+"Falta el elemento obligatorio '%(element)s' en el cuerpo de la solicitud."
+
+#, python-format
 msgid "Missing required element '%s' in request body"
 msgstr "Falta el elemento requerido '%s' en el cuerpo de la solicitud"
 
@@ -5496,9 +5518,6 @@ msgid "Missing required element 'consistencygroup' in request body."
 msgstr ""
 "Falta el elemento obligatorio 'consistencygroup' en el cuerpo de la "
 "solicitud."
-
-msgid "Missing required element 'host' in request body."
-msgstr "Falta el elemento obligatorio 'host' en el cuerpo de la solicitud."
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "Falta el elemento necesario quota_class_set en cuerpo de solicitud."
@@ -5629,9 +5648,6 @@ msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr ""
 "Se deben especificar las agrupaciones de almacenamiento. Opción: "
 "sio_storage_pools."
-
-msgid "Must supply a positive value for age"
-msgstr "Debe proporcionar un valor positivo para la edad"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "Debe proporcionar un valor positivo distinto de cero para la edad"
@@ -5950,6 +5966,9 @@ msgstr "No se ha encontrado ningún host válido. %(reason)s"
 msgid "No valid hosts for volume %(id)s with type %(type)s"
 msgstr "No hay hosts válidos para el volumen %(id)s con el tipo %(type)s"
 
+msgid "No valid ports."
+msgstr "No hay puertos válidos."
+
 #, python-format
 msgid "No vdisk with the UID specified by ref %s."
 msgstr "No hay ningún vdisk con el UID especificado en ref %s."
@@ -6127,6 +6146,12 @@ msgstr "La opción gpfs_mount_point_base no se ha establecido correctamente."
 msgid "Originating %(res)s %(prop)s must be one of '%(vals)s' values"
 msgstr "%(res)s %(prop)s de origen debe ser uno de los valores '%(vals)s'"
 
+msgid "Param [identifier] is invalid."
+msgstr "El parámetro [identifier] no es válido."
+
+msgid "Param [lun_name] is invalid."
+msgstr "El parámetro [lun_name] no es válido."
+
 #, python-format
 msgid "ParseException: %s"
 msgstr "ParseException: %s"
@@ -6221,6 +6246,10 @@ msgstr "No se ha establecido el nombre de agrupaciones."
 #, python-format
 msgid "Primary copy status: %(status)s and synchronized: %(sync)s."
 msgstr "Estado de copia primaria: %(status)s y sincronizado: %(sync)s."
+
+#, python-format
+msgid "Programming error in Cinder: %(reason)s"
+msgstr "Error de programación en Cinder: %(reason)s"
 
 msgid "Project ID"
 msgstr "ID del proyecto"
@@ -6667,6 +6696,12 @@ msgstr ""
 msgid "Retry count exceeded for command: %s"
 msgstr "Se ha superado el recuento de reintentos para el mandato: %s"
 
+msgid "Retryable Dell Exception encountered"
+msgstr "Se ha detectado una excepción reintentable de Dell"
+
+msgid "Retryable Pure Storage Exception encountered"
+msgstr "Se ha detectado una excepción reintentable de Pure Storage"
+
 msgid "Retryable SolidFire Exception encountered"
 msgstr "Se ha detectado una excepción reintentable de SolidFire"
 
@@ -6785,15 +6820,14 @@ msgstr ""
 msgid "Service %(service_id)s could not be found."
 msgstr "No se ha podido encontrar el servicio %(service_id)s."
 
-#, python-format
-msgid "Service %s not found."
-msgstr "El servicio %s no se ha encontrado."
-
 msgid "Service is too old to fulfil this request."
 msgstr "El servicio es demasiado antiguo para cumplir esta solicitud."
 
 msgid "Service is unavailable at this time."
 msgstr "El servicio no esta disponible en este momento"
+
+msgid "Session might have expired."
+msgstr "La sesión pudo haber expirado."
 
 msgid "Set pair secondary access error."
 msgstr "Error al definir el acceso secundario del par."
@@ -7130,10 +7164,6 @@ msgstr ""
 msgid "Target volume type is still in use."
 msgstr "El tipo de volumen de destino aún se está utilizando."
 
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "ID de arrendatario: %s no existe."
-
 msgid "Terminate connection failed"
 msgstr "No se ha podido terminar la conexión"
 
@@ -7375,6 +7405,10 @@ msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr ""
 "La instantánea no se puede crear cuando el volumen está en modalidad de "
 "mantenimiento."
+
+#, python-format
+msgid "The snapshot is unavailable: %(data)s"
+msgstr "La instantánea no está disponible: %(data)s"
 
 msgid "The source volume for this WebDAV operation not found."
 msgstr "No se ha encontrado el volumen de origen para esta operación WebDAV."
@@ -8126,6 +8160,9 @@ msgstr "No se puede renombrar el volumen %(existing)s a %(newname)s"
 msgid "Unable to retrieve snapshot group with id of %s."
 msgstr "No se ha podido recuperar el grupo de instantáneas con el id %s."
 
+msgid "Unable to retrieve volume stats."
+msgstr "No e ha podido recuperar las estadísticas del volumen. "
+
 #, python-format
 msgid ""
 "Unable to retype %(specname)s, expected to receive current and requested "
@@ -8150,6 +8187,10 @@ msgstr ""
 "No se ha podido volver a escribir: la acción requiere una copia de volumen "
 "(volume-copy), que no se permite cuando el nuevo tipo es replicación. "
 "Volumen = %s"
+
+#, python-format
+msgid "Unable to send requests: %s"
+msgstr "No se han podido enviar peticiones: %s"
 
 #, python-format
 msgid ""
@@ -8291,9 +8332,6 @@ msgstr "Protocolo desconocido: %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Recursos de cuota desconocidos %(unknown)s."
 
-msgid "Unknown service"
-msgstr "Servicio desconocido"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "Dirección de clasificación desconocida, debe ser 'desc' o ' asc'"
 
@@ -8358,6 +8396,10 @@ msgstr ""
 
 msgid "Unsupported backup verify driver"
 msgstr "Controlador de verificación de copia de seguridad no admitido"
+
+#, python-format
+msgid "Unsupported fields %s."
+msgstr "Campos no soportados: %s."
 
 #, python-format
 msgid ""
@@ -8661,6 +8703,10 @@ msgid "Volume %s must not be part of a consistency group."
 msgstr "El volumen %s no debe formar parte de un grupo de consistencia."
 
 #, python-format
+msgid "Volume %s not found"
+msgstr "No se ha encontrado el volumen %s"
+
+#, python-format
 msgid "Volume %s not found."
 msgstr "No se ha encontrado el volumen %s."
 
@@ -8683,12 +8729,6 @@ msgstr "El grupo de volúmenes %s no existe"
 #, python-format
 msgid "Volume Type %(id)s already exists."
 msgstr "El tipo de volumen %(id)s ya existe. "
-
-#, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr ""
-"El tipo de volumen %(type_id)s no tiene una especificación adicional con la "
-"clave %(id)s."
 
 #, python-format
 msgid ""
@@ -8748,6 +8788,10 @@ msgstr "La vía de acceso de archivo de dispositivo de volumen %s no existe."
 #, python-format
 msgid "Volume device not found at %(device)s."
 msgstr "Dispositivo de volumen no encontrado en: %(device)s"
+
+#, python-format
+msgid "Volume does not exists %s."
+msgstr "El volumen %s no existe."
 
 #, python-format
 msgid "Volume driver %s not initialized."
@@ -8976,8 +9020,8 @@ msgstr ""
 "%(volume_type_name)s."
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "El volumen con el ID de volumen %s no existe."
+msgid "Volume%s: not found"
+msgstr "Volumen %s: no encontrado"
 
 #, python-format
 msgid ""
@@ -8992,10 +9036,6 @@ msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
 msgstr ""
 "El volumen %(volumeName)s no se ha añadido al grupo de almacenamiento "
 "%(sgGroupName)s."
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "Volumen: %s no se ha encontrado."
 
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
@@ -9598,6 +9638,9 @@ msgstr ""
 msgid "check_hypermetro_exist error."
 msgstr "Error de check_hypermetro_exist."
 
+msgid "cinder-all is deprecated in Newton and will be removed in Ocata."
+msgstr "cinder-all está en desuso en Mitaka y se eliminará en Ocata."
+
 #, python-format
 msgid "clone depth exceeds limit of %s"
 msgstr "la profundidad de clon excede el límite de %s"
@@ -9768,6 +9811,9 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: el tamaño del volumen es distinto al volumen "
 "basado en la instantánea."
+
+msgid "data not found"
+msgstr "No se han encontrado datos"
 
 #, python-format
 msgid ""
@@ -10083,6 +10129,12 @@ msgstr "el nombre no puede ser None"
 msgid "no REPLY but %r"
 msgstr "ninguna RESPUESTA, sino %r"
 
+msgid "no data found"
+msgstr "No se han encontrado datos"
+
+msgid "no error code found"
+msgstr "No se ha encontrado ningún código de error."
+
 #, python-format
 msgid "no snapshot with id %s found in drbdmanage"
 msgstr "no se ha encontrado ninguna instantánea con el id %s en drbdmanage"
@@ -10212,15 +10264,11 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve() sólo se puede llamar una vez "
 
-msgid "service not found"
-msgstr "no se ha encontrado el servicio"
+msgid "size not found"
+msgstr "No se ha encontrado el tamaño"
 
-msgid "snapshot does not exist"
-msgstr "la instantánea no existe"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "id:%s de instantánea no encontrado"
+msgid "snapshot info not found"
+msgstr "No se ha encontrado información de la instantánea"
 
 #, python-format
 msgid "snapshot-%s"
@@ -10231,10 +10279,6 @@ msgstr "instantáneas asignadas"
 
 msgid "snapshots changed"
 msgstr "instantáneas modificadas"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "id:%s de volumen de origen no encontrado"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -10252,6 +10296,9 @@ msgstr "el estado debe ser %s y"
 
 msgid "status must be available"
 msgstr "el estado debe ser available"
+
+msgid "status not found"
+msgstr "No se ha encontrado el estado"
 
 msgid "stop_hypermetro error."
 msgstr "Error de stop_hypermetro."
@@ -10332,9 +10379,6 @@ msgstr "volumen asignado"
 
 msgid "volume changed"
 msgstr "volumen modificado"
-
-msgid "volume does not exist"
-msgstr "el volumen no existe"
 
 msgid "volume is already attached"
 msgstr "El volumen ya está conectado"

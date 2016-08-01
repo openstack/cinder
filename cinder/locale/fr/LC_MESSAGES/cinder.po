@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -545,17 +545,11 @@ msgstr ""
 "Informations d'utilisateur de l'authentification introuvables dans le "
 "stockage CloudByte."
 
-msgid "Authentication error"
-msgstr "Erreur d'authentification"
-
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr ""
 "L'authentification a échoué, vérifiez les données d'identification du "
 "commutateur, code d'erreur : %s."
-
-msgid "Authorization error"
-msgstr "Erreur d'autorisation"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3255,9 +3249,6 @@ msgstr ""
 msgid "Failed to create IG, %s"
 msgstr "Echec de la création du groupe demandeur, %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "Echec de la création de l'entité (image-volume) SolidFire"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Impossible de créer le groupe de volumes : %(vg_name)s"
@@ -4659,10 +4650,6 @@ msgid "Host %s has no FC initiators"
 msgstr "L'hôte %s n'a aucun demandeur FC"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "L'hôte '%s' est introuvable."
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "Le groupe d'hôtes nommé %s est introuvable"
 
@@ -4675,9 +4662,6 @@ msgstr "L'hôte N'EST PAS figé."
 
 msgid "Host is already Frozen."
 msgstr "L'hôte est déjà figé."
-
-msgid "Host not found"
-msgstr "Hôte introuvable"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -5263,9 +5247,6 @@ msgstr ""
 "Le lancement d'un basculement a échoué car la réplication n'a pas été "
 "configurée correctement."
 
-msgid "Item not found"
-msgstr "Élément introuvable"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr ""
@@ -5503,12 +5484,6 @@ msgstr "Une sauvegarde de métadonnées existe déjà pour ce volume"
 msgid "Metadata backup object '%s' already exists"
 msgstr "L'objet de sauvegarde des métadonnées '%s' existe déjà"
 
-msgid "Metadata item was not found"
-msgstr "Elément de métadonnées introuvable"
-
-msgid "Metadata item was not found."
-msgstr "L'élément Metadata est introuvable."
-
 msgid "Metadata property key blank."
 msgstr "Clé de propriété de métadonnées à blanc."
 
@@ -5547,9 +5522,6 @@ msgstr "L'élément requis '%s' est manquant dans le corps de demande."
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr ""
 "L'élément requis 'consistencygroup' est manquant dans le corps de demande."
-
-msgid "Missing required element 'host' in request body."
-msgstr "L'élément requis 'host' est manquant dans le corps de la demande."
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "Elément quota_class_set requis manquant dans le corps de demande."
@@ -5674,9 +5646,6 @@ msgstr "Vous devez spécifier le nom ou l'ID du pool de stockage."
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr ""
 "Vous devez spécifier des pools de stockage. Option : sio_storage_pools."
-
-msgid "Must supply a positive value for age"
-msgstr "Vous devez indiquer un entier positif pour 'age'"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "Une valeur positive différente de zéro doit être indiquée pour age"
@@ -6798,10 +6767,6 @@ msgstr "Service %(service_id)s introuvable sur l'hôte %(host)s."
 msgid "Service %(service_id)s could not be found."
 msgstr "Le service %(service_id)s est introuvable."
 
-#, python-format
-msgid "Service %s not found."
-msgstr "Service %s non trouvé."
-
 msgid "Service is too old to fulfil this request."
 msgstr "Service trop ancien pour satisfaire cette demande."
 
@@ -7140,10 +7105,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Le type de volume cible est toujours utilisé."
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "L'ID titulaire %s n'existe pas."
 
 msgid "Terminate connection failed"
 msgstr "Echec de fin de la connexion"
@@ -8304,9 +8265,6 @@ msgstr "Protocole inconnu : %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Ressources de quota inconnues %(unknown)s."
 
-msgid "Unknown service"
-msgstr "Service inconnu"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "Sens de tri inconnu, doit être 'desc' ou 'asc'"
 
@@ -8698,12 +8656,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "Le type de volume %(id)s existe déjà."
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr ""
-"Le type de volume %(type_id)s n'a pas de spécifications supplémentaires avec "
-"la clé %(id)s."
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -8988,10 +8940,6 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "Le type de volume portant le nom %(volume_type_name)s est introuvable."
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "Le volume avec le volume_id %s n'existe pas."
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -9004,10 +8952,6 @@ msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
 msgstr ""
 "Le volume : %(volumeName)s n'a pas été ajouté au groupe de stockage "
 "%(sgGroupName)s."
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "Volume: %s introuvable"
 
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
@@ -10215,16 +10159,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve() ne peut être appelé qu'une seule fois"
 
-msgid "service not found"
-msgstr "service introuvable"
-
-msgid "snapshot does not exist"
-msgstr "L'instantané n'existe pas"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "ID d'instantané :%s introuvable"
-
 #, python-format
 msgid "snapshot-%s"
 msgstr "instantané %s"
@@ -10234,10 +10168,6 @@ msgstr "instantanés affectés"
 
 msgid "snapshots changed"
 msgstr "instantanés modifiés"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "ID de volume source :%s introuvable"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -10337,9 +10267,6 @@ msgstr "volume affecté"
 
 msgid "volume changed"
 msgstr "volume modifié"
-
-msgid "volume does not exist"
-msgstr "Le volume n'existe pas"
 
 msgid "volume is already attached"
 msgstr "le volume est déjà connecté"

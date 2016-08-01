@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -526,15 +526,9 @@ msgstr "CloudByte 스토리지에서 인증 그룹 [%s] 세부사항을 찾을 �
 msgid "Auth user details not found in CloudByte storage."
 msgstr "CloudByte 스토리지에서 인증 사용자 세부사항을 찾을 수 없습니다. "
 
-msgid "Authentication error"
-msgstr "인증 오류"
-
 #, python-format
 msgid "Authentication failed, verify the switch credentials, error code %s."
 msgstr "인증 실패, 스위치 자격 증명 확인, 오류 코드 %s."
-
-msgid "Authorization error"
-msgstr "권한 부여 오류"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -3029,9 +3023,6 @@ msgstr "스냅샷 %(cgSnapshot)s에서 CG %(cgName)s을(를) 작성하지 못했
 msgid "Failed to create IG, %s"
 msgstr "IG를 작성하지 못함, %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "SolidFire 이미지 볼륨 작성 실패"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "볼륨 그룹을 작성할 수 없음: %(vg_name)s"
@@ -4297,10 +4288,6 @@ msgid "Host %s has no FC initiators"
 msgstr "%s 호스트에 FC 개시자가 없음"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "'%s' 호스트를 찾을 수 없습니다. "
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "이름이 %s인 호스트 그룹을 찾을 수 없음"
 
@@ -4313,9 +4300,6 @@ msgstr "호스트가 동결되지 않았습니다."
 
 msgid "Host is already Frozen."
 msgstr "호스트가 이미 동결되었습니다."
-
-msgid "Host not found"
-msgstr "호스트를 찾을 수 없음"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -4876,9 +4860,6 @@ msgid ""
 "Issuing a fail-over failed because replication is not properly configured."
 msgstr "복제가 적절하게 구성되지 않았으므로 장애 복구 실행에 실패했습니다."
 
-msgid "Item not found"
-msgstr "항목을 찾을 수 없음"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr "CloudByte의 볼륨 작성[%s] 응답에서 작업 ID를 찾을 수 없습니다. "
@@ -5096,12 +5077,6 @@ msgstr "이 볼륨에 대한 메타데이터 백업이 이미 존재함"
 msgid "Metadata backup object '%s' already exists"
 msgstr "메타데이터 백업 오브젝트 '%s'이(가) 이미 존재함"
 
-msgid "Metadata item was not found"
-msgstr "메타데이터 항목이 없음"
-
-msgid "Metadata item was not found."
-msgstr "메타데이터 항목을 찾을 수 없습니다. "
-
 msgid "Metadata property key blank."
 msgstr "메타데이터 특성 키가 공백입니다. "
 
@@ -5137,9 +5112,6 @@ msgstr "요청 본문에서 필수 요소 '%s'이(가) 누락되었습니다. "
 
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr "요청 본문에 필수 요소 'consistencygroup'이 누락되었습니다. "
-
-msgid "Missing required element 'host' in request body."
-msgstr "요청 본문에 필수 요소 '호스트'가 누락되었습니다. "
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "요청 본문에서 필수 요소 quota_class_set가 누락되었습니다."
@@ -5262,9 +5234,6 @@ msgstr "스토리지 풀 이름 또는 ID를 지정해야 합니다. "
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "스토리지 풀을 지정해야 합니다. 옵션: sio_storage_pools."
-
-msgid "Must supply a positive value for age"
-msgstr "연령에 대해 양수 값을 제공해야 함"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "기간에 0이 아닌 양수 값을 제공해야 함"
@@ -6328,10 +6297,6 @@ msgstr "호스트 %(host)s에서 서비스 %(service_id)s을(를) 찾을 수 없
 msgid "Service %(service_id)s could not be found."
 msgstr "%(service_id)s 서비스를 찾을 수 없습니다. "
 
-#, python-format
-msgid "Service %s not found."
-msgstr "%s 서비스를 찾을 수 없음"
-
 msgid "Service is too old to fulfil this request."
 msgstr "서비스가 너무 오래되어 이 요청을 이행할 수 없습니다."
 
@@ -6652,10 +6617,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "대상 볼륨 유형이 아직 사용 중입니다."
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "테넌트 ID: %s이(가) 존재하지 않습니다. "
 
 msgid "Terminate connection failed"
 msgstr "연결 종료 실패"
@@ -7729,9 +7690,6 @@ msgstr "알 수 없는 프로토콜: %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "알 수 없는 할당량 자원 %(unknown)s."
 
-msgid "Unknown service"
-msgstr "알 수 없는 서비스"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "알 수 없는 정렬 방향입니다. 'desc' 또는 'asc'여야 함"
 
@@ -8103,10 +8061,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "%(id)s 볼륨 유형이 이미 존재합니다. "
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr "볼륨 유형 %(type_id)s에 키 %(id)s을(를) 가진 추가 스펙이 없습니다. "
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -8373,10 +8327,6 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "이름이 %(volume_type_name)s인 볼륨 유형을 찾을 수 없습니다. "
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "볼륨 ID가 %s인 볼륨이 존재하지 않습니다. "
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
@@ -8389,10 +8339,6 @@ msgid "Volume: %(volumeName)s was not added to storage group %(sgGroupName)s."
 msgstr ""
 "볼륨: %(volumeName)s이(가) 스토리지 그룹 %(sgGroupName)s에 추가되지 않았습니"
 "다."
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "볼륨: %s을(를) 찾을 수 없습니다. "
 
 #, python-format
 msgid "Volume: %s is already being managed by Cinder."
@@ -9553,16 +9499,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve()는 한 번만 호출할 수 있음"
 
-msgid "service not found"
-msgstr "서비스를 찾을 수 없음"
-
-msgid "snapshot does not exist"
-msgstr "스냅샷이 없음"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "스냅샷 id:%s을(를) 찾을 수 없음"
-
 #, python-format
 msgid "snapshot-%s"
 msgstr "스냅샷-%s"
@@ -9572,10 +9508,6 @@ msgstr "스냅샷이 지정됨"
 
 msgid "snapshots changed"
 msgstr "스냅샷이 변경됨"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "소스 볼륨 id:%s을(를) 찾을 수 없음"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -9673,9 +9605,6 @@ msgstr "볼륨 지정됨"
 
 msgid "volume changed"
 msgstr "볼륨 변경됨"
-
-msgid "volume does not exist"
-msgstr "볼륨이 없음"
 
 msgid "volume is already attached"
 msgstr "볼륨이 이미 접속됨"

@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2937,10 +2937,6 @@ msgstr "볼륨이 성공적으로 업데이트되었습니다."
 msgid "Volume with given ref %s need not be renamed during manage operation."
 msgstr ""
 "지정된 ref %s이(가) 있는 볼륨은 관리 조작 중에 이름을 바꾸지 않아도 됩니다."
-
-#, python-format
-msgid "Volume with the name %s wasn't found, can't unmanage"
-msgstr "이름이 %s인 볼륨을 찾을 수 없음. 관리 취소할 수 없음"
 
 #, python-format
 msgid ""

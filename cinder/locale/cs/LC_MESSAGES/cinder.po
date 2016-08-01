@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev42\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-20 21:45+0000\n"
+"POT-Creation-Date: 2016-07-30 03:40+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -480,12 +480,6 @@ msgstr "Údaje ověřovací skupiny [%s] nebyly nalezeny v úložišti CloudByte
 
 msgid "Auth user details not found in CloudByte storage."
 msgstr "Přihlašovací údaje uživatele nebyly nalezeny v úložišti CloudByte."
-
-msgid "Authentication error"
-msgstr "Chyba ověření"
-
-msgid "Authorization error"
-msgstr "Chyba oprávnění"
 
 #, python-format
 msgid "Availability zone '%(s_az)s' is invalid."
@@ -2606,9 +2600,6 @@ msgstr ""
 msgid "Failed to create IG, %s"
 msgstr "Nelze vytvořit IG, %s"
 
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "Nelze vytvořit obraz-svazek SolidFire"
-
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
 msgstr "Nelze vytvořit skupinu svazku: %(vg_name)s"
@@ -3706,19 +3697,12 @@ msgid "Host %s has no FC initiators"
 msgstr "Hostitel %s nemá žádné zavaděče FC"
 
 #, python-format
-msgid "Host '%s' could not be found."
-msgstr "Hostitel '%s' nemohl být nalezen."
-
-#, python-format
 msgid "Host group with name %s not found"
 msgstr "Skupina hostitele s názvem %s nebyla nalezena"
 
 #, python-format
 msgid "Host group with ref %s not found"
 msgstr "Skupina hostitele mající odkaz %s nebyla nalezena"
-
-msgid "Host not found"
-msgstr "Hostitel nenalezen"
 
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
@@ -4247,9 +4231,6 @@ msgstr ""
 "Vyvolání zavedení záložního systému, protože replikace není správně "
 "nastavena."
 
-msgid "Item not found"
-msgstr "Položka nenalezena"
-
 #, python-format
 msgid "Job id not found in CloudByte's create volume [%s] response."
 msgstr "Úkol nebyl nalezen v CloudByte odpovědi pro vytvoření svazku [%s]."
@@ -4445,12 +4426,6 @@ msgstr "Záloha popisných dat je pro tento svazek již vytvořena"
 msgid "Metadata backup object '%s' already exists"
 msgstr "Object zálohy popisných dat '%s' již existuje"
 
-msgid "Metadata item was not found"
-msgstr "Položka popisných dat nenalezena"
-
-msgid "Metadata item was not found."
-msgstr "Položka popisných dat nebyla nalezena."
-
 msgid "Metadata property key blank."
 msgstr "Klíč vlastnosti popisných dat je prázdný."
 
@@ -4486,9 +4461,6 @@ msgstr "V těle žádosti chybí povinný prvek '%s'."
 
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr "V těle žádosti chybí povinný prvek 'consistencygroup'."
-
-msgid "Missing required element 'host' in request body."
-msgstr "V těle žádosti chybí povinný prvek 'host'."
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "V těle žádosti chybí povinný prvek quota_class_set."
@@ -4595,9 +4567,6 @@ msgstr "Název nebo id zásoby úložiště musí být zadáno."
 
 msgid "Must specify storage pools. Option: sio_storage_pools."
 msgstr "Musíte zadat zásoby úložiště. Volba: sio_storage_pools."
-
-msgid "Must supply a positive value for age"
-msgstr "Věk musí být zadán pomocí kladné hodnoty"
 
 msgid "Must supply a positive, non-zero value for age"
 msgstr "Musíte zadat kladnou, nenulovou hodnotu pro věk"
@@ -5527,10 +5496,6 @@ msgstr "Služba %(service)s odstraněna na hostiteli %(host)s."
 msgid "Service %(service_id)s could not be found."
 msgstr "Služba %(service_id)s nemohla být nalezena."
 
-#, python-format
-msgid "Service %s not found."
-msgstr "Služba %s nenalezena."
-
 msgid "Service is unavailable at this time."
 msgstr "Služba je v tuto chvíli nedostupná."
 
@@ -5784,10 +5749,6 @@ msgstr ""
 
 msgid "Target volume type is still in use."
 msgstr "Cílový typ svazku se stále používá."
-
-#, python-format
-msgid "Tenant ID: %s does not exist."
-msgstr "ID nájemníka: %s neexistuje."
 
 msgid "Terminate connection failed"
 msgstr "Ukončení připojení selhalo"
@@ -6641,9 +6602,6 @@ msgstr "Neznámý protokol: %(protocol)s."
 msgid "Unknown quota resources %(unknown)s."
 msgstr "Neznámý zdroj kvóty %(unknown)s."
 
-msgid "Unknown service"
-msgstr "Neznámá služba"
-
 msgid "Unknown sort direction, must be 'desc' or 'asc'"
 msgstr "Neznámý směr řazení, musí být 'desc' nebo 'asc'"
 
@@ -6949,11 +6907,6 @@ msgid "Volume Type %(id)s already exists."
 msgstr "Typ svazku %(id)s již existuje."
 
 #, python-format
-msgid "Volume Type %(type_id)s has no extra spec with key %(id)s."
-msgstr ""
-"Typ svazku %(type_id)s nemá žádné dodatečné specifikace s klíčem %(id)s."
-
-#, python-format
 msgid ""
 "Volume Type %(volume_type_id)s deletion is not allowed with volumes present "
 "with the type."
@@ -7208,20 +7161,12 @@ msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "Typ svazku s názvem %(volume_type_name)s nemohl být nalezen."
 
 #, python-format
-msgid "Volume with volume id %s does not exist."
-msgstr "Svazek s id %s neexistuje."
-
-#, python-format
 msgid ""
 "Volume: %(volumeName)s is not a concatenated volume. You can only perform "
 "extend on concatenated volume. Exiting..."
 msgstr ""
 "Svazek: %(volumeName)s není zřetězený svazek. Rozšíření lze provádět pouze "
 "na zřetězeném svazku. Ukončování..."
-
-#, python-format
-msgid "Volume: %s could not be found."
-msgstr "Svazek: %s nemohlo být nalezeno."
 
 #, python-format
 msgid ""
@@ -7950,16 +7895,6 @@ msgstr ""
 msgid "serve() can only be called once"
 msgstr "serve() může být voláno pouze jednou"
 
-msgid "service not found"
-msgstr "služba nenalezena"
-
-msgid "snapshot does not exist"
-msgstr "snímek neexistuje"
-
-#, python-format
-msgid "snapshot id:%s not found"
-msgstr "id snímku:%s nenalezeno"
-
 #, python-format
 msgid "snapshot-%s"
 msgstr "snímek-%s"
@@ -7969,10 +7904,6 @@ msgstr "snímky přiděleny"
 
 msgid "snapshots changed"
 msgstr "snímek změněn"
-
-#, python-format
-msgid "source vol id:%s not found"
-msgstr "id zdrojového svazku:%s nenalezeno"
 
 #, python-format
 msgid "source volume id:%s is not replicated"
@@ -8051,9 +7982,6 @@ msgstr "svazek přidělen"
 
 msgid "volume changed"
 msgstr "svazek změněn"
-
-msgid "volume does not exist"
-msgstr "svazek neexistuje"
 
 msgid "volume is already attached"
 msgstr "svazek již je připojen"
