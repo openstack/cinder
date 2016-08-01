@@ -55,6 +55,17 @@ CONF = cfg.CONF
 CONF.register_opts(image_helper_opts)
 
 
+# NOTE(abhishekk): qemu-img convert command supports raw, qcow2, qed,
+# vdi, vmdk and vhd disk-formats but glance doesn't support qed and
+# vhd(vpc) disk-formats.
+# Ref: http://docs.openstack.org/image-guide/convert-images.html
+VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2')
+
+
+def validate_disk_format(disk_format):
+    return disk_format in VALID_DISK_FORMATS
+
+
 def qemu_img_info(path, run_as_root=True):
     """Return an object containing the parsed output from qemu-img info."""
     cmd = ('env', 'LC_ALL=C', 'qemu-img', 'info', path)
