@@ -30,24 +30,26 @@ SSC = {
         'thick_provisioning_support': True,
         'thin_provisioning_support': False,
         'netapp_thin_provisioned': 'false',
-        'aggregate': 'aggr1',
+        'netapp_aggregate': 'aggr1',
         'netapp_compression': 'false',
         'netapp_dedup': 'true',
         'netapp_mirrored': 'false',
         'netapp_raid_type': 'raid_dp',
         'netapp_disk_type': 'SSD',
+        'netapp_hybrid_aggregate': False,
         'pool_name': 'volume1',
     },
     'volume2': {
         'thick_provisioning_support': False,
         'thin_provisioning_support': True,
         'netapp_thin_provisioned': 'true',
-        'aggregate': 'aggr2',
+        'netapp_aggregate': 'aggr2',
         'netapp_compression': 'true',
         'netapp_dedup': 'true',
         'netapp_mirrored': 'true',
         'netapp_raid_type': 'raid_dp',
         'netapp_disk_type': 'FCAL',
+        'netapp_hybrid_aggregate': True,
         'pool_name': 'volume2',
     },
 }
@@ -57,13 +59,13 @@ SSC_FLEXVOL_INFO = {
         'thick_provisioning_support': True,
         'thin_provisioning_support': False,
         'netapp_thin_provisioned': 'false',
-        'aggregate': 'aggr1',
+        'netapp_aggregate': 'aggr1',
     },
     'volume2': {
         'thick_provisioning_support': False,
         'thin_provisioning_support': True,
         'netapp_thin_provisioned': 'true',
-        'aggregate': 'aggr2',
+        'netapp_aggregate': 'aggr2',
     },
 }
 
@@ -91,9 +93,11 @@ SSC_AGGREGATE_INFO = {
     'volume1': {
         'netapp_disk_type': 'SSD',
         'netapp_raid_type': 'raid_dp',
+        'netapp_hybrid_aggregate': False,
     },
     'volume2': {
         'netapp_disk_type': 'FCAL',
         'netapp_raid_type': 'raid_dp',
+        'netapp_hybrid_aggregate': True,
     },
 }

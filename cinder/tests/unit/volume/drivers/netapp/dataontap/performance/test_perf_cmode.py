@@ -45,13 +45,13 @@ class PerformanceCmodeLibraryTestCase(test.TestCase):
 
         self.fake_volumes = {
             'pool1': {
-                'aggregate': 'aggr1',
+                'netapp_aggregate': 'aggr1',
             },
             'pool2': {
-                'aggregate': 'aggr2',
+                'netapp_aggregate': 'aggr2',
             },
             'pool3': {
-                'aggregate': 'aggr2',
+                'netapp_aggregate': 'aggr2',
             },
         }
 

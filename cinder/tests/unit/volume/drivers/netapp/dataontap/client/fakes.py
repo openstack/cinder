@@ -622,7 +622,7 @@ AGGR_GET_NODE_RESPONSE = etree.XML("""
     'node': NODE_NAME,
 })
 
-AGGR_RAID_TYPE = 'raid_dp'
+AGGREGATE_RAID_TYPE = 'raid_dp'
 AGGR_GET_ITER_SSC_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
@@ -639,17 +639,19 @@ AGGR_GET_ITER_SSC_RESPONSE = etree.XML("""
             </plex-attributes>
           </plexes>
           <raid-type>%(raid)s</raid-type>
+          <is-hybrid>true</is-hybrid>
         </aggr-raid-attributes>
         <aggregate-name>%(aggr)s</aggregate-name>
       </aggr-attributes>
     </attributes-list>
     <num-records>1</num-records>
   </results>
-""" % {'aggr': VOLUME_AGGREGATE_NAME, 'raid': AGGR_RAID_TYPE})
+""" % {'aggr': VOLUME_AGGREGATE_NAME, 'raid': AGGREGATE_RAID_TYPE})
 
 AGGR_INFO_SSC = {
     'name': VOLUME_AGGREGATE_NAME,
-    'raid-type': AGGR_RAID_TYPE,
+    'raid-type': AGGREGATE_RAID_TYPE,
+    'is-hybrid': True,
 }
 
 AGGR_SIZE_TOTAL = 107374182400
@@ -911,20 +913,41 @@ STORAGE_DISK_GET_ITER_RESPONSE_PAGE_3 = etree.XML("""
   </results>
 """)
 
-AGGR_DISK_TYPE = 'FCAL'
+AGGREGATE_DISK_TYPES = ['SATA', 'SSD']
 STORAGE_DISK_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">
     <attributes-list>
       <storage-disk-info>
         <disk-name>cluster3-01:v5.19</disk-name>
         <disk-raid-info>
-          <effective-disk-type>%s</effective-disk-type>
+          <effective-disk-type>%(type0)s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.20</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%(type0)s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.20</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%(type1)s</effective-disk-type>
+        </disk-raid-info>
+      </storage-disk-info>
+      <storage-disk-info>
+        <disk-name>cluster3-01:v5.20</disk-name>
+        <disk-raid-info>
+          <effective-disk-type>%(type1)s</effective-disk-type>
         </disk-raid-info>
       </storage-disk-info>
     </attributes-list>
-    <num-records>1</num-records>
+    <num-records>4</num-records>
   </results>
-""" % AGGR_DISK_TYPE)
+""" % {
+    'type0': AGGREGATE_DISK_TYPES[0],
+    'type1': AGGREGATE_DISK_TYPES[1],
+})
 
 SYSTEM_USER_CAPABILITY_GET_ITER_RESPONSE = etree.XML("""
   <results status="passed">

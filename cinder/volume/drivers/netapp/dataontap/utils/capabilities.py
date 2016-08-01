@@ -98,8 +98,8 @@ class CapabilitiesLibrary(object):
 
         aggregates = set()
         for __, flexvol_info in self.ssc.items():
-            if 'aggregate' in flexvol_info:
-                aggregates.add(flexvol_info['aggregate'])
+            if 'netapp_aggregate' in flexvol_info:
+                aggregates.add(flexvol_info['netapp_aggregate'])
         return list(aggregates)
 
     def update_ssc(self, flexvol_map):
@@ -126,7 +126,7 @@ class CapabilitiesLibrary(object):
             ssc_volume.update(self._get_ssc_mirror_info(flexvol_name))
 
             # Get aggregate info
-            aggregate_name = ssc_volume.get('aggregate')
+            aggregate_name = ssc_volume.get('netapp_aggregate')
             ssc_volume.update(self._get_ssc_aggregate_info(aggregate_name))
 
             ssc[flexvol_name] = ssc_volume
@@ -147,7 +147,7 @@ class CapabilitiesLibrary(object):
             'netapp_thin_provisioned': six.text_type(not netapp_thick).lower(),
             'thick_provisioning_support': thick,
             'thin_provisioning_support': not thick,
-            'aggregate': volume_info.get('aggregate'),
+            'netapp_aggregate': volume_info.get('aggregate'),
         }
 
     def _get_thick_provisioning_support(self, netapp_thick):
@@ -190,14 +190,15 @@ class CapabilitiesLibrary(object):
     def _get_ssc_aggregate_info(self, aggregate_name):
         """Gather aggregate info and recast into SSC-style volume stats."""
 
-        disk_type = self.zapi_client.get_aggregate_disk_type(aggregate_name)
-        aggr_info = self.zapi_client.get_aggregate(aggregate_name)
-
-        raid_type = aggr_info.get('raid-type')
+        aggregate = self.zapi_client.get_aggregate(aggregate_name)
+        hybrid = (six.text_type(aggregate.get('is-hybrid')).lower()
+                  if 'is-hybrid' in aggregate else None)
+        disk_types = self.zapi_client.get_aggregate_disk_types(aggregate_name)
 
         return {
-            'netapp_disk_type': disk_type,
-            'netapp_raid_type': raid_type,
+            'netapp_raid_type': aggregate.get('raid-type'),
+            'netapp_hybrid_aggregate': hybrid,
+            'netapp_disk_type': disk_types,
         }
 
     def get_matching_flexvols_for_extra_specs(self, extra_specs):
