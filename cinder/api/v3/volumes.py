@@ -43,8 +43,7 @@ class VolumeController(volumes_v2.VolumeController):
             sort_keys[sort_keys.index('name')] = 'display_name'
 
         if 'name' in filters:
-            filters['display_name'] = filters['name']
-            del filters['name']
+            filters['display_name'] = filters.pop('name')
 
         strict = req.api_version_request.matches("3.2", None)
         self.volume_api.check_volume_filters(filters, strict)

@@ -105,8 +105,7 @@ class VolumeController(wsgi.Controller):
             sort_keys[sort_keys.index('name')] = 'display_name'
 
         if 'name' in filters:
-            filters['display_name'] = filters['name']
-            del filters['name']
+            filters['display_name'] = filters.pop('name')
 
         self.volume_api.check_volume_filters(filters)
         volumes = self.volume_api.get_all(context, marker, limit,
@@ -192,8 +191,7 @@ class VolumeController(wsgi.Controller):
             volume['display_description'] = volume.pop('description')
 
         if 'image_id' in volume:
-            volume['imageRef'] = volume.get('image_id')
-            del volume['image_id']
+            volume['imageRef'] = volume.pop('image_id')
 
         req_volume_type = volume.get('volume_type', None)
         if req_volume_type:

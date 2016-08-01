@@ -94,8 +94,7 @@ class BackupsController(wsgi.Controller):
                                             self._get_backup_filter_options())
 
         if 'name' in filters:
-            filters['display_name'] = filters['name']
-            del filters['name']
+            filters['display_name'] = filters.pop('name')
 
         backups = self.backup_api.get_all(context, search_opts=filters,
                                           marker=marker,
