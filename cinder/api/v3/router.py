@@ -24,7 +24,6 @@ import cinder.api.openstack
 from cinder.api.v2 import limits
 from cinder.api.v2 import snapshot_metadata
 from cinder.api.v2 import types
-from cinder.api.v2 import volume_metadata
 from cinder.api.v3 import backups
 from cinder.api.v3 import clusters
 from cinder.api.v3 import consistencygroups
@@ -36,6 +35,7 @@ from cinder.api.v3 import messages
 from cinder.api.v3 import snapshot_manage
 from cinder.api.v3 import snapshots
 from cinder.api.v3 import volume_manage
+from cinder.api.v3 import volume_metadata
 from cinder.api.v3 import volumes
 from cinder.api import versions
 
