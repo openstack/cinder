@@ -15,7 +15,6 @@ import mock
 import uuid
 
 from cinder import quota
-from cinder.tests import fake_driver
 from cinder.tests.functional.api import client
 from cinder.tests.functional import functional_helpers
 
@@ -26,7 +25,6 @@ class NestedQuotasTest(functional_helpers._FunctionalTestBase):
     def setUp(self):
         super(NestedQuotasTest, self).setUp()
         self.api.create_type(self._vol_type_name)
-        fake_driver.LoggingVolumeDriver.clear_logs()
         self._create_project_hierarchy()
         # Need to mock out Keystone so the functional tests don't require other
         # services
@@ -54,7 +52,7 @@ class NestedQuotasTest(functional_helpers._FunctionalTestBase):
     def _get_flags(self):
         f = super(NestedQuotasTest, self)._get_flags()
         f['volume_driver'] = \
-            'cinder.tests.fake_driver.LoggingVolumeDriver'
+            'cinder.tests.fake_driver.FakeLoggingVolumeDriver'
         f['default_volume_type'] = self._vol_type_name
         return f
 

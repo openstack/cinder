@@ -23,11 +23,16 @@ from cinder.volume.drivers import lvm
 from cinder.zonemanager import utils as fczm_utils
 
 
-class FakeISCSIDriver(lvm.LVMVolumeDriver):
+# TODO(e0ne): add logging to FakeLoggingVolumeDriver and remove this one.
+# TODO(e0ne): inherit from driver.VolumeDriver and fix unit-tests
+class FakeLoggingVolumeDriver(lvm.LVMVolumeDriver):
     """Logs calls instead of executing."""
     def __init__(self, *args, **kwargs):
-        super(FakeISCSIDriver, self).__init__(execute=self.fake_execute,
-                                              *args, **kwargs)
+        super(FakeLoggingVolumeDriver, self).__init__(
+            execute=self.fake_execute, *args, **kwargs)
+
+        self.backend_name = 'fake'
+        self.protocol = 'fake'
         self.vg = fake_lvm.FakeBrickLVM('cinder-volumes', False,
                                         None, 'default',
                                         self.fake_execute)
@@ -37,6 +42,36 @@ class FakeISCSIDriver(lvm.LVMVolumeDriver):
         pass
 
     def create_volume(self, volume):
+        pass
+
+    def delete_volume(self, volume):
+        pass
+
+    def create_snapshot(self, snapshot):
+        pass
+
+    def delete_snapshot(self, snapshot):
+        pass
+
+    def ensure_export(self, context, volume):
+        pass
+
+    def create_export(self, context, volume, connector):
+        pass
+
+    def remove_export(self, context, volume):
+        pass
+
+    def create_export_snapshot(self, context, snapshot):
+        pass
+
+    def remove_export_snapshot(self, context, snapshot):
+        pass
+
+    def terminate_connection_snapshot(self, snapshot, connector):
+        pass
+
+    def create_cloned_volume(self, volume, src_vol):
         pass
 
     def initialize_connection(self, volume, connector):
@@ -68,19 +103,25 @@ class FakeISCSIDriver(lvm.LVMVolumeDriver):
     def terminate_connection(self, volume, connector, **kwargs):
         pass
 
-    def _update_pools_and_stats(self, data):
-        fake_pool = {}
-        fake_pool.update(dict(
-            pool_name=data["volume_backend_name"],
-            total_capacity_gb='infinite',
-            free_capacity_gb='infinite',
-            provisioned_capacity_gb=0,
-            reserved_percentage=100,
-            QoS_support=False,
-            filter_function=self.get_filter_function(),
-            goodness_function=self.get_goodness_function()
-        ))
-        data["pools"].append(fake_pool)
+    def _update_volume_stats(self):
+        data = {'volume_backend_name': self.backend_name,
+                'vendor_name': 'Open Source',
+                'driver_version': self.VERSION,
+                'storage_protocol': self.protocol,
+                'pools': []}
+
+        fake_pool = {'pool_name': data['volume_backend_name'],
+                     'total_capacity_gb': 'infinite',
+                     'free_capacity_gb': 'infinite',
+                     'provisioned_capacity_gb': 0,
+                     'reserved_percentage': 100,
+                     'QoS_support': False,
+                     'filter_function': self.get_filter_function(),
+                     'goodness_function': self.get_goodness_function(),
+                     'consistencygroup_support': False,
+                     'replication_enabled': False}
+
+        data['pools'].append(fake_pool)
         self._stats = data
 
     @staticmethod
@@ -89,7 +130,7 @@ class FakeISCSIDriver(lvm.LVMVolumeDriver):
         return (None, None)
 
 
-class FakeISERDriver(FakeISCSIDriver):
+class FakeISERDriver(FakeLoggingVolumeDriver):
     def __init__(self, *args, **kwargs):
         super(FakeISERDriver, self).__init__(execute=self.fake_execute,
                                              *args, **kwargs)
@@ -135,99 +176,6 @@ class FakeFibreChannelDriver(driver.FibreChannelDriver):
             'data': {
                 'initiator_target_map': {'fake_wwn': ['fake_wwn2']},
             }}
-
-
-class LoggingVolumeDriver(driver.VolumeDriver):
-    """Logs and records calls, for unit tests."""
-
-    def check_for_setup_error(self):
-        pass
-
-    def create_volume(self, volume):
-        self.log_action('create_volume', volume)
-
-    def delete_volume(self, volume):
-        self.clear_volume(volume)
-        self.log_action('delete_volume', volume)
-
-    def clear_volume(self, volume):
-        self.log_action('clear_volume', volume)
-
-    def local_path(self, volume):
-        raise NotImplementedError()
-
-    def ensure_export(self, context, volume):
-        self.log_action('ensure_export', volume)
-
-    def create_export(self, context, volume):
-        self.log_action('create_export', volume)
-
-    def remove_export(self, context, volume):
-        self.log_action('remove_export', volume)
-
-    def initialize_connection(self, volume, connector):
-        self.log_action('initialize_connection', volume)
-
-    def terminate_connection(self, volume, connector):
-        self.log_action('terminate_connection', volume)
-
-    def create_export_snapshot(self, context, snapshot):
-        self.log_action('create_export_snapshot', snapshot)
-
-    def remove_export_snapshot(self, context, snapshot):
-        self.log_action('remove_export_snapshot', snapshot)
-
-    def initialize_connection_snapshot(self, snapshot, connector):
-        self.log_action('initialize_connection_snapshot', snapshot)
-
-    def terminate_connection_snapshot(self, snapshot, connector):
-        self.log_action('terminate_connection_snapshot', snapshot)
-
-    def create_cloned_volume(self, volume, src_vol):
-        self.log_action('create_cloned_volume', volume)
-
-    _LOGS = []
-
-    @staticmethod
-    def clear_logs():
-        LoggingVolumeDriver._LOGS = []
-
-    @staticmethod
-    def log_action(action, parameters):
-        """Logs the command."""
-        log_dictionary = {}
-        if parameters:
-            log_dictionary = dict(parameters)
-        log_dictionary['action'] = action
-        LoggingVolumeDriver._LOGS.append(log_dictionary)
-
-    @staticmethod
-    def all_logs():
-        return LoggingVolumeDriver._LOGS
-
-    @staticmethod
-    def logs_like(action, **kwargs):
-        matches = []
-        for entry in LoggingVolumeDriver._LOGS:
-            if entry['action'] != action:
-                continue
-            match = True
-            for k, v in kwargs.items():
-                if entry.get(k) != v:
-                    match = False
-                    break
-            if match:
-                matches.append(entry)
-        return matches
-
-    def get_volume_stats(self, refresh=False):
-        return {
-            'volume_backend_name': self.configuration.safe_get(
-                'volume_backend_name'),
-            'vendor_name': 'LoggingVolumeDriver',
-            'total_capacity_gb': 'infinite',
-            'free_capacity_gb': 'infinite',
-        }
 
 
 class FakeGateDriver(lvm.LVMVolumeDriver):
