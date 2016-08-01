@@ -43,7 +43,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
                                                        **kwargs)
         self.db_api = db_api
 
-    def _populate_request_spec(self, context, volume, snapshot_id,
+    def _populate_request_spec(self, volume, snapshot_id,
                                image_id):
         # Create the full request spec using the volume object.
         #
@@ -69,7 +69,7 @@ class ExtractSchedulerSpecTask(flow_utils.CinderTask):
                 image_id):
         # For RPC version < 1.2 backward compatibility
         if request_spec is None:
-            request_spec = self._populate_request_spec(context, volume.id,
+            request_spec = self._populate_request_spec(volume.id,
                                                        snapshot_id, image_id)
         return {
             'request_spec': request_spec,

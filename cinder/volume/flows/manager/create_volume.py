@@ -92,7 +92,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
     def execute(self, **kwargs):
         pass
 
-    def _pre_reschedule(self, context, volume):
+    def _pre_reschedule(self, volume):
         """Actions that happen before the rescheduling attempt occur here."""
 
         try:
@@ -179,7 +179,7 @@ class OnFailureRescheduleTask(flow_utils.CinderTask):
             cause = list(flow_failures.values())[0]
             context = self.reschedule_context
             try:
-                self._pre_reschedule(context, volume_ref)
+                self._pre_reschedule(volume_ref)
                 self._reschedule(context, cause, volume=volume_ref, **kwargs)
                 self._post_reschedule(volume_ref)
                 return True
