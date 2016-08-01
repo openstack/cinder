@@ -18,11 +18,13 @@
 """Starter script for Cinder Volume Backup."""
 
 import logging as python_logging
+import shlex
 import sys
 
 import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_privsep import priv_context
 from oslo_reports import guru_meditation_report as gmr
 from oslo_reports import opts as gmr_opts
 
@@ -49,6 +51,7 @@ def main():
          version=version.version_string())
     logging.setup(CONF, "cinder")
     python_logging.captureWarnings(True)
+    priv_context.init(root_helper=shlex.split(utils.get_root_helper()))
     utils.monkey_patch()
     gmr.TextGuruMeditation.setup_autorun(version, conf=CONF)
     server = service.Service.create(binary='cinder-backup')
