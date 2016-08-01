@@ -53,8 +53,7 @@ class RequestContext(context.RequestContext):
                  roles=None, project_name=None, remote_address=None,
                  timestamp=None, request_id=None, auth_token=None,
                  overwrite=True, quota_class=None, service_catalog=None,
-                 domain=None, user_domain=None, project_domain=None,
-                 **kwargs):
+                 domain=None, user_domain=None, project_domain=None):
         """Initialize RequestContext.
 
         :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
@@ -63,9 +62,6 @@ class RequestContext(context.RequestContext):
 
         :param overwrite: Set to False to ensure that the greenthread local
             copy of the index is not overwritten.
-
-        :param kwargs: Extra arguments that might be present, but we ignore
-            because they possibly came in from older rpc messages.
         """
 
         super(RequestContext, self).__init__(auth_token=auth_token,
@@ -137,7 +133,21 @@ class RequestContext(context.RequestContext):
 
     @classmethod
     def from_dict(cls, values):
-        return cls(**values)
+        return cls(user_id=values.get('user_id'),
+                   project_id=values.get('project_id'),
+                   project_name=values.get('project_name'),
+                   domain=values.get('domain'),
+                   read_deleted=values.get('read_deleted'),
+                   remote_address=values.get('remote_address'),
+                   timestamp=values.get('timestamp'),
+                   quota_class=values.get('quota_class'),
+                   service_catalog=values.get('service_catalog'),
+                   request_id=values.get('request_id'),
+                   is_admin=values.get('is_admin'),
+                   roles=values.get('roles'),
+                   auth_token=values.get('auth_token'),
+                   user_domain=values.get('user_domain'),
+                   project_domain=values.get('project_domain'))
 
     def elevated(self, read_deleted=None, overwrite=False):
         """Return a version of this context with admin flag set."""
