@@ -17,6 +17,7 @@ import six
 
 from oslo_log import log as logging
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder.objects import fields
@@ -47,6 +48,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
 
     @fczm_utils.AddFCZone
     @kaminario_logger
+    @coordination.synchronized('{self.k2_lock_name}')
     def initialize_connection(self, volume, connector):
         """Attach K2 volume to host."""
         # Check wwpns in host connector.
@@ -69,6 +71,8 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                          "initiator_target_map": init_target_map}}
 
     @fczm_utils.RemoveFCZone
+    @kaminario_logger
+    @coordination.synchronized('{self.k2_lock_name}')
     def terminate_connection(self, volume, connector, **kwargs):
         super(KaminarioFCDriver, self).terminate_connection(volume, connector)
         properties = {"driver_volume_type": "fibre_channel", "data": {}}
