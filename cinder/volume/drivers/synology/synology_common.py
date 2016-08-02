@@ -53,7 +53,7 @@ cinder_opts = [
                help='Administrator of Synology storage.'),
     cfg.StrOpt('password',
                default='',
-               help='Password of administator for logging in '
+               help='Password of administrator for logging in '
                     'Synology storage.',
                secret=True),
     cfg.BoolOpt('ssl_verify',
@@ -62,7 +62,7 @@ cinder_opts = [
                      '$driver_use_ssl is True'),
     cfg.StrOpt('one_time_pass',
                default=None,
-               help='One time password of administator for logging in '
+               help='One time password of administrator for logging in '
                     'Synology storage if OTP is enabled.',
                secret=True),
     cfg.StrOpt('device_id',
