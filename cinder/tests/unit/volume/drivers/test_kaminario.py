@@ -14,6 +14,7 @@
 #    under the License.
 """Unit tests for kaminario driver."""
 import mock
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
@@ -46,6 +47,9 @@ class FakeSaveObject(FakeK2Obj):
         self.snapshot = FakeK2Obj()
         self.name = 'test'
         self.pwwn = '50024f4053300300'
+        self.volume_group = self
+        self.is_dedup = True
+        self.size = units.Mi
 
     def save(self):
         return FakeSaveObject()
@@ -103,6 +107,7 @@ class TestKaminarioISCSI(test.TestCase):
         self.context = context.get_admin_context()
         self.vol = fake_volume.fake_volume_obj(self.context)
         self.vol.volume_type = fake_volume.fake_volume_type_obj(self.context)
+        self.vol.volume_type.extra_specs = {'foo': None}
         self.snap = fake_snapshot.fake_snapshot_obj(self.context)
         self.snap.volume = self.vol
 
@@ -264,6 +269,42 @@ class TestKaminarioISCSI(test.TestCase):
         """Test k2_initialize_connection."""
         result = self.driver.k2_initialize_connection(self.vol, CONNECTOR)
         self.assertEqual(548, result)
+
+    def test_manage_existing(self):
+        """Test manage_existing."""
+        self.driver._get_replica_status = mock.Mock(return_value=False)
+        result = self.driver.manage_existing(self.vol, {'source-name': 'test'})
+        self.assertIsNone(result)
+
+    def test_manage_existing_exp(self):
+        self.driver._get_replica_status = mock.Mock(return_value=True)
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, self.vol,
+                          {'source-name': 'test'})
+
+    def test_manage_existing_get_size(self):
+        """Test manage_existing_get_size."""
+        self.driver.client.search().hits[0].size = units.Mi
+        result = self.driver.manage_existing_get_size(self.vol,
+                                                      {'source-name': 'test'})
+        self.assertEqual(1, result)
+
+    def test_get_is_dedup(self):
+        """Test _get_is_dedup."""
+        result = self.driver._get_is_dedup(self.vol.volume_type)
+        self.assertTrue(result)
+
+    def test_get_is_dedup_false(self):
+        """Test _get_is_dedup_false."""
+        specs = {'kaminario:thin_prov_type': 'nodedup'}
+        self.vol.volume_type.extra_specs = specs
+        result = self.driver._get_is_dedup(self.vol.volume_type)
+        self.assertFalse(result)
+
+    def test_get_replica_status(self):
+        """Test _get_replica_status."""
+        result = self.driver._get_replica_status(self.vol)
+        self.assertTrue(result)
 
 
 class TestKaminarioFC(TestKaminarioISCSI):

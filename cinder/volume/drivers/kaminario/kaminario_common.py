@@ -14,6 +14,7 @@
 #    under the License.
 """Volume driver for Kaminario K2 all-flash arrays."""
 
+import math
 import re
 import six
 
@@ -25,7 +26,7 @@ from oslo_utils import versionutils
 
 import cinder
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE, _LW, _LI
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
@@ -38,7 +39,9 @@ kaminario1_opts = [
                default='K2-nodedup',
                help="If volume-type name contains this substring "
                     "nodedup volume will be created, otherwise "
-                    "dedup volume wil be created.")]
+                    "dedup volume wil be created. Note: this option is "
+                    "deprecated in favour of 'kaminario:thin_prov_type' in "
+                    "extra-specs and will be removed in the Ocata release.")]
 kaminario2_opts = [
     cfg.BoolOpt('auto_calc_max_oversubscription_ratio',
                 default=False,
@@ -73,7 +76,6 @@ def kaminario_logger(func):
 
 class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     VENDOR = "Kaminario"
-    VERSION = "1.0"
     stats = {}
 
     def __init__(self, *args, **kwargs):
@@ -132,10 +134,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         """
         vg_name = self.get_volume_group_name(volume.id)
         vol_name = self.get_volume_name(volume.id)
-        if CONF.kaminario_nodedup_substring in volume.volume_type.name:
-            prov_type = False
-        else:
-            prov_type = True
+        prov_type = self._get_is_dedup(volume.get('volume_type'))
         try:
             LOG.debug("Creating volume group with name: %(name)s, "
                       "quota: unlimited and dedup_support: %(dedup)s",
@@ -375,7 +374,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                       'total_volumes': total_volumes,
                       'thick_provisioning_support': False,
                       'provisioned_capacity_gb': provisioned_vol / units.Mi,
-                      'max_oversubscription_ratio': ratio}
+                      'max_oversubscription_ratio': ratio,
+                      'kaminario:thin_prov_type': 'dedup/nodedup'}
 
     @kaminario_logger
     def get_initiator_host_name(self, connector):
@@ -511,3 +511,79 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
 
     def _get_host_object(self, connector):
         pass
+
+    def _get_is_dedup(self, vol_type):
+        if vol_type:
+            specs_val = vol_type.get('extra_specs', {}).get(
+                'kaminario:thin_prov_type')
+            if specs_val == 'nodedup':
+                return False
+            elif CONF.kaminario_nodedup_substring in vol_type.name:
+                LOG.info(_LI("'kaminario_nodedup_substring' option is "
+                             "deprecated in favour of 'kaminario:thin_prov_"
+                             "type' in extra-specs and will be removed in "
+                             "the Ocata release."))
+                return False
+            else:
+                return True
+        else:
+            return True
+
+    def _get_replica_status(self, vg_name):
+        status = False
+        rvg = self.client.search("replication/peer_volume_groups",
+                                 name=vg_name)
+        if rvg.total != 0:
+            status = True
+        return status
+
+    def manage_existing(self, volume, existing_ref):
+        vol_name = existing_ref['source-name']
+        new_name = self.get_volume_name(volume.id)
+        vg_new_name = self.get_volume_group_name(volume.id)
+        vg_name = None
+        is_dedup = self._get_is_dedup(volume.get('volume_type'))
+        try:
+            LOG.debug("Searching volume: %s in K2.", vol_name)
+            vol = self.client.search("volumes", name=vol_name).hits[0]
+            vg = vol.volume_group
+            vg_replica = self._get_replica_status(vg.name)
+            vol_map = False
+            if self.client.search("mappings", volume=vol).total != 0:
+                vol_map = True
+            if is_dedup != vg.is_dedup or vg_replica or vol_map:
+                raise exception.ManageExistingInvalidReference(
+                    existing_ref=existing_ref,
+                    reason=_('Manage volume type invalid.'))
+            vol.name = new_name
+            vg_name = vg.name
+            LOG.debug("Manage new volume name: %s", new_name)
+            vg.name = vg_new_name
+            LOG.debug("Manage volume group name: %s", vg_new_name)
+            vg.save()
+            LOG.debug("Manage volume: %s in K2.", vol_name)
+            vol.save()
+        except Exception as ex:
+            vg_rs = self.client.search("volume_groups", name=vg_new_name)
+            if hasattr(vg_rs, 'hits') and vg_rs.total != 0:
+                vg = vg_rs.hits[0]
+                if vg_name and vg.name == vg_new_name:
+                    vg.name = vg_name
+                    LOG.debug("Updating vg new name to old name: %s ", vg_name)
+                    vg.save()
+            LOG.exception(_LE("manage volume: %s failed."), vol_name)
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=six.text_type(ex.message))
+
+    def manage_existing_get_size(self, volume, existing_ref):
+        vol_name = existing_ref['source-name']
+        v_rs = self.client.search("volumes", name=vol_name)
+        if hasattr(v_rs, 'hits') and v_rs.total != 0:
+            vol = v_rs.hits[0]
+            size = vol.size / units.Mi
+            return math.ceil(size)
+        else:
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref,
+                reason=_('Unable to get size of manage volume.'))

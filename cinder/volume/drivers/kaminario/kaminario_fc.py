@@ -27,7 +27,14 @@ kaminario_logger = common.kaminario_logger
 
 
 class KaminarioFCDriver(common.KaminarioCinderDriver):
-    """Kaminario K2 FC Volume Driver."""
+    """Kaminario K2 FC Volume Driver.
+
+    Version history:
+        1.0 - Initial driver
+        1.1 - Added manage/unmanage and extra-specs support for nodedup
+    """
+
+    VERSION = '1.1'
 
     @kaminario_logger
     def __init__(self, *args, **kwargs):
