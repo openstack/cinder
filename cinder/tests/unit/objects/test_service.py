@@ -147,6 +147,21 @@ class TestService(test_objects.BaseObjectsTestCase):
                           objects.Service.get_minimum_obj_version,
                           self.context, 'foo')
 
+    @mock.patch('cinder.db.service_get_all')
+    def test_get_minimum_version_no_binary(self, service_get_all):
+        services_update = [
+            {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
+            {'rpc_current_version': '1.1', 'object_current_version': '1.2'},
+            {'rpc_current_version': '2.0', 'object_current_version': '2.5'},
+        ]
+        services = [fake_service.fake_db_service(**s) for s in services_update]
+        service_get_all.return_value = services
+
+        min_obj = objects.Service.get_minimum_obj_version(self.context)
+        self.assertEqual('1.2', min_obj)
+        service_get_all.assert_called_once_with(self.context, binary=None,
+                                                disabled=None)
+
 
 class TestServiceList(test_objects.BaseObjectsTestCase):
     @mock.patch('cinder.db.service_get_all')

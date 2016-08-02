@@ -183,7 +183,7 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         return cls._get_minimum_version('rpc_current_version', context, binary)
 
     @classmethod
-    def get_minimum_obj_version(cls, context, binary):
+    def get_minimum_obj_version(cls, context, binary=None):
         return cls._get_minimum_version('object_current_version', context,
                                         binary)
 
