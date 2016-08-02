@@ -821,6 +821,10 @@ class VolumeGroupCreationFailed(CinderException):
     message = _('Failed to create Volume Group: %(vg_name)s')
 
 
+class VolumeNotDeactivated(CinderException):
+    message = _('Volume %(name)s was not deactivated in time.')
+
+
 class VolumeDeviceNotFound(CinderException):
     message = _('Volume device not found at %(device)s.')
 
