@@ -2250,9 +2250,14 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._helpers.delete_vdisk(snapshot['name'], False)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        if volume['size'] != snapshot['volume_size']:
-            msg = (_('create_volume_from_snapshot: Source and destination '
-                     'size differ.'))
+        if snapshot['volume_size'] > volume['size']:
+            msg = (_("create_volume_from_snapshot: snapshot %(snapshot_name)s "
+                     "size is %(snapshot_size)dGB and doesn't fit in target "
+                     "volume %(volume_name)s of size %(volume_size)dGB.") %
+                   {'snapshot_name': snapshot['name'],
+                    'snapshot_size': snapshot['volume_size'],
+                    'volume_name': volume['name'],
+                    'volume_size': volume['size']})
             LOG.error(msg)
             raise exception.InvalidInput(message=msg)
 
@@ -2263,6 +2268,17 @@ class StorwizeSVCCommonDriver(san.SanDriver,
         self._helpers.create_copy(snapshot['name'], volume['name'],
                                   snapshot['id'], self.configuration,
                                   opts, True, pool=pool)
+        # The volume size is equal to the snapshot size in most
+        # of the cases. But in some scenario, the volume size
+        # may be bigger than the source volume size.
+        # SVC does not support flashcopy between two volumes
+        # with two different size. So use the snapshot size to
+        # create volume first and then extend the volume to-
+        # the target size.
+        if volume['size'] > snapshot['volume_size']:
+            # extend the new created target volume to expected size.
+            self._extend_volume_op(volume, volume['size'],
+                                   snapshot['volume_size'])
         if opts['qos']:
             self._helpers.add_vdisk_qos(volume['name'], opts['qos'])
 
