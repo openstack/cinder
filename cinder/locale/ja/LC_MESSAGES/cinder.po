@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev136\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-30 03:40+0000\n"
+"POT-Creation-Date: 2016-08-02 03:59+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-07-31 02:39+0000\n"
+"PO-Revision-Date: 2016-08-01 03:14+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -115,7 +115,7 @@ msgid ""
 "Body: %(_body)s"
 msgstr ""
 "%(message)s\n"
-"状況コード: %(_status)s\n"
+"ステータスコード: %(_status)s\n"
 "本体: %(_body)s"
 
 #, python-format
@@ -366,7 +366,7 @@ msgstr "読み取り専用ボリュームは、読み取り専用として接続
 
 #, python-format
 msgid "A snapshot status is invalid. (status: %(status)s)"
-msgstr "スナップショット状況が無効です。(状況: %(status)s)"
+msgstr "スナップショットの状態況が無効です。(状況: %(status)s)"
 
 msgid "A valid secondary target MUST be specified in order to failover."
 msgstr ""
@@ -378,7 +378,7 @@ msgstr "ボリューム ID またはシェアが指定されませんでした�
 
 #, python-format
 msgid "A volume status is invalid. (status: %(status)s)"
-msgstr "ボリューム状況が無効です。(状況: %(status)s)"
+msgstr "ボリュームの状態が無効です。(状況: %(status)s)"
 
 #, python-format
 msgid "API %(name)s failed with error string %(err)s"
@@ -685,14 +685,14 @@ msgstr ""
 "個含まれています"
 
 msgid "Backup status must be available"
-msgstr "バックアップ状況は「使用可能」でなければなりません。"
+msgstr "バックアップの状態は「使用可能」でなければなりません。"
 
 #, python-format
 msgid "Backup status must be available and not %s."
-msgstr "バックアップ状況は %s ではなく「使用可能」でなければなりません。"
+msgstr "バックアップの状態は %s ではなく「使用可能」でなければなりません。"
 
 msgid "Backup status must be available or error"
-msgstr "バックアップ状況は「使用可能」または「エラー」でなければなりません。"
+msgstr "バックアップの状態は「使用可能」または「エラー」でなければなりません。"
 
 msgid "Backup to be restored has invalid size"
 msgstr "復元するバックアップのサイズが無効です。"
@@ -703,7 +703,7 @@ msgstr "不正な HTTP レスポンスステータス : %(status)s"
 
 #, python-format
 msgid "Bad Status line returned: %(arg)s."
-msgstr "正しくない状況表示行が返されました: %(arg)s。"
+msgstr "正しくないステータス表示行が返されました: %(arg)s。"
 
 #, python-format
 msgid "Bad key(s) in quota set: %s"
@@ -1759,7 +1759,7 @@ msgid ""
 "Create backup aborted, expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"バックアップの作成が中止しました。予期していたバックアップ状況は "
+"バックアップの作成が中止しました。予期していたバックアップの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
 
 #, python-format
@@ -1767,7 +1767,7 @@ msgid ""
 "Create backup aborted, expected volume status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"バックアップの作成が中止しました。予期していたボリューム状況は "
+"バックアップの作成が中止しました。予期していたボリュームの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
 
 msgid "Create consistency group failed."
@@ -2025,11 +2025,17 @@ msgid ""
 "Delete_backup aborted, expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"バックアップの削除が中止しました。予期していたバックアップ状況は "
+"バックアップの削除が中止しました。予期していたバックアップの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
 
 msgid "Deleting volume from database and skipping rpc."
 msgstr "データベースからボリュームを作成中。rpc をスキップします。"
+
+#, python-format
+msgid "Deleting volume metadata is not allowed for volumes in %s status."
+msgstr ""
+"ボリュームの状態が %s である場合は、ボリュームメタデータの削除は許可されませ"
+"ん。"
 
 #, python-format
 msgid "Deleting zones failed: (command=%(cmd)s error=%(err)s)."
@@ -2907,7 +2913,7 @@ msgstr "ファームウェアバージョン %s の検査中にエラーが発�
 
 #, python-format
 msgid "Error while checking transaction status: %s"
-msgstr "トランザクション状況の検査中にエラーが発生しました: %s"
+msgstr "トランザクション状態の検査中にエラーが発生しました: %s"
 
 #, python-format
 msgid "Error while checking whether VF is available for management %s."
@@ -3102,7 +3108,7 @@ msgid ""
 "Export backup aborted, expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"バックアップのエクスポートが中止しました。予期していたバックアップ状況は "
+"バックアップのエクスポートが中止しました。予期していたバックアップの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
 
 #, python-format
@@ -3559,8 +3565,8 @@ msgid ""
 "Failed to execute CloudByte API [%(cmd)s]. Http status: %(status)s, Error: "
 "%(error)s."
 msgstr ""
-"CloudByte API [%(cmd)s] の実行に失敗しました。HTTP 状況: %(status)s、エラー: "
-"%(error)s。"
+"CloudByte API [%(cmd)s] の実行に失敗しました。HTTP ステータス: %(status)s、エ"
+"ラー: %(error)s。"
 
 msgid "Failed to execute common command."
 msgstr "共通のコマンドの実行に失敗しました。"
@@ -5106,7 +5112,7 @@ msgstr "無効なソートキーが渡されました : %s"
 
 #, python-format
 msgid "Invalid status: '%s'"
-msgstr "無効な状況: '%s'"
+msgstr "無効な状態: '%s'"
 
 #, python-format
 msgid "Invalid storage pool %s requested.  Retype failed."
@@ -5650,10 +5656,10 @@ msgstr ""
 "必要があります。"
 
 msgid "Must specify a valid attach status"
-msgstr "有効な接続状況を指定してください。"
+msgstr "有効な接続状態を指定してください。"
 
 msgid "Must specify a valid migration status"
-msgstr "有効なマイグレーション状況を指定してください。"
+msgstr "有効なマイグレーション状態を指定してください。"
 
 #, python-format
 msgid "Must specify a valid persona %(valid)s,value '%(persona)s' is invalid."
@@ -5669,7 +5675,7 @@ msgstr ""
 "'%(prov)s' は無効です。"
 
 msgid "Must specify a valid status"
-msgstr "有効な状況を指定してください。"
+msgstr "有効な状態を指定してください。"
 
 msgid "Must specify an ExtensionManager class"
 msgstr "ExtensionManager クラスを指定する必要があります"
@@ -6078,7 +6084,8 @@ msgid "Not stored in rbd"
 msgstr "rbd 内に保管されていません"
 
 msgid "Nova returned \"error\" status while creating snapshot."
-msgstr "スナップショットの作成時に Nova から「エラー」状況が返されました。"
+msgstr ""
+"スナップショットの作成時に Nova から「エラー」ステータスが返されました。"
 
 msgid "Null response received from CloudByte's list filesystem."
 msgstr ""
@@ -6159,7 +6166,7 @@ msgstr "非管理に設定できるのは、OpenStack が管理するボリュ�
 
 #, python-format
 msgid "Operation failed with status=%(status)s. Full dump: %(data)s"
-msgstr "状況=%(status)s で操作が失敗しました。フルダンプ: %(data)s"
+msgstr "状態=%(status)s で操作が失敗しました。フルダンプ: %(data)s"
 
 #, python-format
 msgid "Operation not supported: %(operation)s."
@@ -6570,16 +6577,16 @@ msgid ""
 "Replication status for volume must be active or active-stopped, but current "
 "status is: %s"
 msgstr ""
-"ボリュームの複製状況は「アクティブ」または「アクティブ - 停止」でなければなり"
-"ませんが、現在の状況は %s です"
+"ボリュームの複製の状態は「アクティブ」または「アクティブ - 停止」でなければな"
+"りませんが、現在の状態は %s です。"
 
 #, python-format
 msgid ""
 "Replication status for volume must be inactive, active-stopped, or error, "
 "but current status is: %s"
 msgstr ""
-"ボリュームの複製状況は「非アクティブ」、「アクティブ - 停止」、または「エ"
-"ラー」でなければなりませんが、現在の状況は %s です"
+"ボリュームの複製の状態は「非アクティブ」、「アクティブ - 停止」、または「エ"
+"ラー」でなければなりませんが、現在の状態は %s です。"
 
 msgid "Request body and URI mismatch"
 msgstr "要求本体と URI の不一致"
@@ -6596,7 +6603,7 @@ msgstr "要求本体が空です"
 #, python-format
 msgid "Request to Datera cluster returned bad status: %(status)s | %(reason)s"
 msgstr ""
-"Datera クラスターに対する要求から、正しくない状況が返されました: %(status)s "
+"Datera クラスターに対する要求から、正しくない状態が返されました: %(status)s "
 "| %(reason)s"
 
 #, python-format
@@ -6637,9 +6644,9 @@ msgid ""
 "[%(configured_service)s] is not the backup service that was used to create "
 "this backup [%(backup_service)s]."
 msgstr ""
-"バックアップ状況のリセットが中止しました。現在構成されているバックアップサー"
-"ビス [%(configured_service)s] は、このバックアップの作成に使用されたバック"
-"アップサービス [%(backup_service)s] ではありません。"
+"バックアップの状態のリセットを中止しました。現在構成されているバックアップ"
+"サービス [%(configured_service)s] は、このバックアップの作成に使用されたバッ"
+"クアップサービス [%(backup_service)s] ではありません。"
 
 #, python-format
 msgid "Resizing clone %s failed."
@@ -6673,7 +6680,7 @@ msgid ""
 "Restore backup aborted, expected volume status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"バックアップのリストアが中止しました。予期していたボリューム状況は "
+"バックアップのリストアが中止しました。予期していたボリュームの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
 
 #, python-format
@@ -6691,7 +6698,7 @@ msgid ""
 "Restore backup aborted: expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
-"バックアップのリストアが中止しました。予期していたバックアップ状況は "
+"バックアップのリストアが中止しました。予期していたバックアップの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
 
 #, python-format
@@ -6942,7 +6949,7 @@ msgid ""
 "current volume status: %(vol_status)s."
 msgstr ""
 "ボリューム %(vol_id)s が「使用可能」ではないため、スナップショットを作成でき"
-"ません。現在のボリューム状況は %(vol_status)s です。"
+"ません。現在のボリュームの状態は %(vol_status)s です。"
 
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr ""
@@ -6965,11 +6972,11 @@ msgstr "スナップショットのサイズは 1 GB の倍数である必要が
 #, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr ""
-"スナップショット状況 %(cur)s は update_snapshot_status には許可されません"
+"スナップショットの状態 %(cur)s は update_snapshot_status には許可されません。"
 
 msgid "Snapshot status must be \"available\" to clone."
 msgstr ""
-"複製を行うには、スナップショット状況が「使用可能」でなければなりません。"
+"複製を行うには、スナップショットの状態が「使用可能」でなければなりません。"
 
 #, python-format
 msgid ""
@@ -7160,7 +7167,7 @@ msgstr "正しくない状態 - %(pass_status)s のシステム %(id)s が見つ
 
 #, python-format
 msgid "System %(id)s found with bad status - %(status)s."
-msgstr "システム %(id)s で正しくない状況 %(status)s が見つかりました。"
+msgstr "システム %(id)s で正しくない状態 %(status)s が見つかりました。"
 
 msgid "System does not support compression."
 msgstr "システムは圧縮をサポートしません。"
@@ -7401,6 +7408,10 @@ msgstr "結果が無効です。"
 #, python-format
 msgid "The retention count must be %s or less."
 msgstr "保存数は %s 以下でなければなりません。"
+
+msgid "The snapshot cannot be created when the volume is in error status."
+msgstr ""
+"ボリュームの状態が「エラー」である場合は、スナップショットを作成できません。"
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr ""
@@ -7853,7 +7864,7 @@ msgstr "整合性グループ %s を削除できません"
 
 #, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
-msgstr "スナップショット %(id)s を削除できません。状況: %(status)s。"
+msgstr "スナップショット %(id)s を削除できません。状態: %(status)s。"
 
 #, python-format
 msgid "Unable to delete snapshot policy on volume %s."
@@ -7869,7 +7880,7 @@ msgid ""
 "Unable to detach volume. Volume status must be 'in-use' and attach_status "
 "must be 'attached' to detach."
 msgstr ""
-"ボリュームを切り離すことができません。切り離すには、ボリューム状況が「使用"
+"ボリュームを切り離すことができません。切り離すには、ボリュームの状態が「使用"
 "中」で、attach_status が「接続済み」でなければなりません。"
 
 #, python-format
@@ -8248,7 +8259,7 @@ msgid "Unexpected response from Tegile IntelliFlash API"
 msgstr "Tegile IntelliFlash API からの予期しない応答"
 
 msgid "Unexpected status code"
-msgstr "予期しない状況コード"
+msgstr "予期しないステータスコード"
 
 #, python-format
 msgid ""
@@ -8256,7 +8267,7 @@ msgid ""
 "%(protocol)s for url %(page)s. Error: %(error)s"
 msgstr ""
 "URL %(page)s 用にプロトコル %(protocol)s を指定したスイッチ%(switch_id)s から"
-"返された予期しない状況コード。エラー: %(error)s"
+"返された予期しないステータスコード。エラー: %(error)s"
 
 msgid "Unknown Gluster exception"
 msgstr "不明な Gluster 例外"
@@ -8566,15 +8577,15 @@ msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
 msgstr ""
-"読み取り専用フラグを更新するには、ボリューム %(vol_id)s の状況が「使用可能」"
-"でなければなりませんが、現在の状況は %(vol_status)s です。"
+"読み取り専用フラグを更新するには、ボリューム %(vol_id)s の状態が「使用可能」"
+"でなければなりませんが、現在の状態は %(vol_status)s です。"
 
 #, python-format
 msgid ""
 "Volume %(vol_id)s status must be available, but current status is: "
 "%(vol_status)s."
 msgstr ""
-"ボリューム %(vol_id)s の状況は「使用可能」でなければなりませんが、現在の状況"
+"ボリューム %(vol_id)s の状態は「使用可能」でなければなりませんが、現在の状態"
 "は %(vol_status)s です。"
 
 #, python-format
@@ -8924,24 +8935,23 @@ msgstr "ボリュームサイズは 1 GB の倍数である必要があります
 #, python-format
 msgid "Volume status for volume must be available, but current status is: %s"
 msgstr ""
-"ボリュームのボリューム状況は「使用可能」でなければなりませんが、現在の状況は "
-"%s です"
+"ボリュームの状態は「使用可能」でなければなりませんが、現在の状態は %s です。"
 
 #, python-format
 msgid "Volume status must be \"available\" or \"in-use\" for snapshot. (is %s)"
 msgstr ""
-"スナップショットに関しては、ボリューム状況が「使用可能」または「使用中」でな"
-"ければなりません (現在は %s です)"
+"スナップショットに関しては、ボリュームの状態が「使用可能」または「使用中」で"
+"なければなりません (現在は %s です)"
 
 msgid "Volume status must be \"available\" or \"in-use\"."
-msgstr "ボリューム状況は「使用可能」または「使用中」でなければなりません。"
+msgstr "ボリュームの状態は「使用可能」または「使用中」でなければなりません。"
 
 #, python-format
 msgid "Volume status must be %s to reserve."
 msgstr "ボリュームを予約するにはボリューム状態が %s である必要があります。"
 
 msgid "Volume status must be 'available'."
-msgstr "ボリューム状況は「使用可能」でなければなりません。"
+msgstr "ボリュームの状態は「使用可能」でなければなりません。"
 
 msgid "Volume to Initiator Group mapping already exists"
 msgstr "ボリュームからイニシエーターグループへのマッピングは既に存在します。"
@@ -8952,7 +8962,7 @@ msgid ""
 "is \"%s\"."
 msgstr ""
 "バックアップ対象のボリュームが利用可能か使用中である必要がありますが、現在の"
-"状況は \"%s\" です。"
+"状態は \"%s\" です。"
 
 msgid "Volume to be restored to must be available"
 msgstr "復元するボリュームは「使用可能」でなければなりません。"
@@ -9727,8 +9737,8 @@ msgid ""
 "create_snapshot: Volume status must be \"available\" or \"in-use\" for "
 "snapshot. The invalid status is %s."
 msgstr ""
-"create_snapshot: スナップショットのボリューム状況は「使用可能」または「使用"
-"中」でなければなりません。無効な状況は %s です。"
+"create_snapshot: スナップショットのボリュームの状態は「使用可能」または「使用"
+"中」でなければなりません。無効な状態は %s です。"
 
 msgid "create_snapshot: get source volume failed."
 msgstr "create_snapshot: ソースボリュームの取得に失敗しました。"
@@ -9779,8 +9789,8 @@ msgid ""
 "create_volume_from_snapshot: Snapshot status must be \"available\" for "
 "creating volume. The invalid status is: %s."
 msgstr ""
-"create_volume_from_snapshot: ボリュームを作成するには、スナップショット状況が"
-"「使用可能」でなければなりません。無効な状況は %s です。"
+"create_volume_from_snapshot: ボリュームを作成するには、スナップショットの状態"
+"が「使用可能」でなければなりません。無効な状態は %s です。"
 
 msgid "create_volume_from_snapshot: Source and destination size differ."
 msgstr "create_volume_from_snapshot: ソースと宛先のサイズが異なっています。"
@@ -10121,7 +10131,7 @@ msgid "open_access_enabled is not off."
 msgstr "open_access_enabled がオフになっていません。"
 
 msgid "progress must be an integer percentage"
-msgstr "進行状況は整数のパーセンテージでなければなりません"
+msgstr "進行状況は整数のパーセンテージでなければなりません。"
 
 msgid "promote_replica not implemented."
 msgstr "promote_replica が実装されていません。"
@@ -10262,7 +10272,7 @@ msgid "status must be %s and"
 msgstr "状態は %s である必要があります"
 
 msgid "status must be available"
-msgstr "状況は「使用可能」でなければなりません"
+msgstr "状態は「使用可能」でなければなりません。"
 
 msgid "stop_hypermetro error."
 msgstr "stop_hypermetro エラー。"
