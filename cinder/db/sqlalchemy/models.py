@@ -735,32 +735,3 @@ class Worker(BASE, CinderBase):
         backref="workers",
         foreign_keys=service_id,
         primaryjoin='Worker.service_id == Service.id')
-
-
-def register_models():
-    """Register Models and create metadata.
-
-    Called from cinder.db.sqlalchemy.__init__ as part of loading the driver,
-    it will never need to be called explicitly elsewhere unless the
-    connection is lost and needs to be reestablished.
-    """
-    from sqlalchemy import create_engine
-    models = (Backup,
-              Service,
-              Volume,
-              VolumeMetadata,
-              VolumeAdminMetadata,
-              VolumeAttachment,
-              SnapshotMetadata,
-              Transfer,
-              VolumeTypeExtraSpecs,
-              VolumeTypes,
-              VolumeGlanceMetadata,
-              ConsistencyGroup,
-              Cgsnapshot,
-              Cluster,
-              Worker,
-              )
-    engine = create_engine(CONF.database.connection, echo=False)
-    for model in models:
-        model.metadata.create_all(engine)
