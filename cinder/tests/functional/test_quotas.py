@@ -15,9 +15,9 @@ import mock
 import uuid
 
 from cinder import quota
+from cinder.tests import fake_driver
 from cinder.tests.functional.api import client
 from cinder.tests.functional import functional_helpers
-from cinder.tests.unit import fake_driver
 
 
 class NestedQuotasTest(functional_helpers._FunctionalTestBase):
