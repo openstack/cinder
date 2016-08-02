@@ -286,7 +286,7 @@ LOG = logging.getLogger(__name__)
 coho_opts = [
     cfg.IntOpt('coho_rpc_port',
                default=2049,
-               help='RPC port to connect to Coha Data MicroArray')
+               help='RPC port to connect to Coho Data MicroArray')
 ]
 
 CONF = cfg.CONF
