@@ -40,6 +40,7 @@ Programming HowTos and Tutorials
     migration
     api.apache
     rolling.upgrades
+    groups
 
 Background Concepts for Cinder
 ------------------------------
