@@ -20,8 +20,6 @@ from oslo_config import cfg
 from oslo_utils import timeutils
 import six
 
-from cinder import rpc
-
 try:
     import rtslib_fb
 except ImportError:
@@ -772,11 +770,7 @@ class TestCinderManageCmd(test.TestCase):
                                      'Object Version',
                                      'Cluster')
             rpc_version = service['rpc_current_version']
-            if not rpc_version:
-                rpc_version = rpc.LIBERTY_RPC_VERSIONS[service['binary']]
             object_version = service['object_current_version']
-            if not object_version:
-                object_version = 'liberty'
             cluster = service.get('cluster_name', '')
             service_format = format % (service['binary'],
                                        service['host'].partition('.')[0],
@@ -815,8 +809,8 @@ class TestCinderManageCmd(test.TestCase):
                    'availability_zone': 'fake-zone',
                    'updated_at': None,
                    'disabled': False,
-                   'rpc_current_version': None,
-                   'object_current_version': None}
+                   'rpc_current_version': '1.1',
+                   'object_current_version': '1.1'}
         for binary in ('volume', 'scheduler', 'backup'):
             service['binary'] = 'cinder-%s' % binary
             self._test_service_commands_list(service)

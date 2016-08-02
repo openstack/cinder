@@ -470,9 +470,8 @@ class ServiceCommands(BaseCommand):
             art = self._state_repr(utils.service_is_up(svc))
             status = 'disabled' if svc.disabled else 'enabled'
             updated_at = self._normalize_time(svc.updated_at)
-            rpc_version = (svc.rpc_current_version or
-                           rpc.LIBERTY_RPC_VERSIONS.get(svc.binary, ''))
-            object_version = (svc.object_current_version or 'liberty')
+            rpc_version = svc.rpc_current_version
+            object_version = svc.object_current_version
             cluster = svc.cluster_name or ''
             print(print_format % (svc.binary, svc.host.partition('.')[0],
                                   svc.availability_zone, status, art,
