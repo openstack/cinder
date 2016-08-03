@@ -120,7 +120,7 @@ class HttpClient(object):
     def _get_header(self, async):
         if async:
             header = self.header.copy()
-            header['async'] = True
+            header['async'] = 'True'
             return header
         return self.header
 
@@ -432,7 +432,7 @@ class StorageCenterApi(object):
         :param rest_response: The result from a REST API call.
         :returns: ``True`` if success, ``False`` otherwise.
         """
-        if rest_response:
+        if rest_response is not None:
             if 200 <= rest_response.status_code < 300:
                 # API call was a normal success
                 return True
@@ -1080,7 +1080,28 @@ class StorageCenterApi(object):
         # succeeded. It might be an empty list.
         return result
 
-    def find_volume(self, name, provider_id):
+    def _autofailback(self, lv):
+        # if we have a working replication state.
+        ret = False
+        if (lv['ReplicationState'] == 'Up' and
+           lv['failoverState'] == 'AutoFailedOver'):
+            ret = self.swap_roles_live_volume(lv)
+        return ret
+
+    def _find_volume_primary(self, provider_id):
+        # if there is no live volume then we return our provider_id.
+        primary_id = provider_id
+        lv, swapped = self.get_live_volume(provider_id)
+        # if we swapped see if we can autofailback. Unless the admin
+        # failed us over, that is.
+        if swapped and not self.failed_over:
+            if self._autofailback(lv):
+                ls, swapped = self.get_live_volume(provider_id)
+        if lv:
+            primary_id = lv['primaryVolume']['instanceId']
+        return primary_id
+
+    def find_volume(self, name, provider_id, islivevol=False):
         """Find the volume by name or instanceId.
 
         We check if we can use provider_id before using it. If so then
@@ -1091,12 +1112,17 @@ class StorageCenterApi(object):
 
         :param name: Volume name.
         :param provider_id: instanceId of the volume if known.
+        :param islivevol: Is this a live volume.
         :return: sc volume object or None.
         :raises VolumeBackendAPIException: if unable to import.
         """
         scvolume = None
-        # If we have a provided_id just go get it.
-        if self._use_provider_id(provider_id):
+        if islivevol:
+            # Just get the primary from the sc live vol.
+            primary_id = self._find_volume_primary(provider_id)
+            scvolume = self.get_volume(primary_id)
+        elif self._use_provider_id(provider_id):
+            # just get our volume
             scvolume = self.get_volume(provider_id)
             # if we are failed over we need to check if we
             # need to import the failed over volume.
@@ -1104,7 +1130,8 @@ class StorageCenterApi(object):
                 if scvolume['name'] == self._repl_name(name):
                     scvolume = self._import_one(scvolume, name)
                     if not scvolume:
-                        msg = _('Unable to complete failover of %s.') % name
+                        msg = (_('Unable to complete failover of %s.')
+                               % name)
                         raise exception.VolumeBackendAPIException(data=msg)
                     LOG.info(_LI('Imported %(fail)s to %(guid)s.'),
                              {'fail': self._repl_name(name),
@@ -2832,6 +2859,9 @@ class StorageCenterApi(object):
             return self._check_result(r)
         return False
 
+    def find_replication_dest(self, instance_id, destssn):
+        pass
+
     def break_replication(self, volumename, instance_id, destssn):
         """This just breaks the replication.
 
@@ -2846,10 +2876,12 @@ class StorageCenterApi(object):
         """
         replinstanceid = None
         scvolume = self.find_volume(volumename, instance_id)
-        screplication = self.get_screplication(scvolume, destssn)
-        # if we got our replication volume we can do this nicely.
-        if screplication:
-            replinstanceid = screplication['destinationVolume']['instanceId']
+        if scvolume:
+            screplication = self.get_screplication(scvolume, destssn)
+            # if we got our replication volume we can do this nicely.
+            if screplication:
+                replinstanceid = (
+                    screplication['destinationVolume']['instanceId'])
         screplvol = self.find_repl_volume(self._repl_name(volumename),
                                           destssn, replinstanceid)
         # delete_replication fails to delete replication without also
@@ -3011,16 +3043,20 @@ class StorageCenterApi(object):
         """Get's the live ScLiveVolume object for the vol with primaryid.
 
         :param primaryid: InstanceId of the primary volume.
-        :return: ScLiveVolume object or None.
+        :return: ScLiveVolume object or None, swapped True/False.
         """
         if primaryid:
             r = self.client.get('StorageCenter/ScLiveVolume')
             if self._check_result(r):
                 lvs = self._get_json(r)
                 for lv in lvs:
-                    if lv['primaryVolume']['instanceId'] == primaryid:
-                        return lv
-        return None
+                    if (lv.get('primaryVolume') and
+                       lv['primaryVolume']['instanceId'] == primaryid):
+                        return lv, False
+                    if (lv.get('secondaryVolume') and
+                       lv['secondaryVolume']['instanceId'] == primaryid):
+                        return lv, True
+        return None, False
 
     def _get_hbas(self, serverid):
         # Helper to get the hba's of a given server.
@@ -3046,7 +3082,8 @@ class StorageCenterApi(object):
         return None
 
     def create_live_volume(self, scvolume, remotessn, active=False, sync=False,
-                           primaryqos='CinderQOS', secondaryqos='CinderQOS'):
+                           autofailover=False, primaryqos='CinderQOS',
+                           secondaryqos='CinderQOS'):
         """This create's a live volume instead of a replication.
 
         Servers are not created at this point so we cannot map up a remote
@@ -3056,6 +3093,7 @@ class StorageCenterApi(object):
         :param remotessn: Destination SSN.
         :param active: Replicate the active replay boolean.
         :param sync: Sync replication boolean.
+        :param autofailover: enable autofailover and failback boolean.
         :param primaryqos: QOS node name for the primary side.
         :param secondaryqos: QOS node name for the remote side.
         :return: ScLiveVolume object or None on failure.
@@ -3081,16 +3119,19 @@ class StorageCenterApi(object):
             payload['SecondaryStorageCenter'] = destssn
             payload['StorageCenter'] = self.ssn
             # payload['Dedup'] = False
-            payload['FailoverAutomaticallyEnabled'] = False
-            payload['RestoreAutomaticallyEnabled'] = False
+            payload['FailoverAutomaticallyEnabled'] = autofailover
+            payload['RestoreAutomaticallyEnabled'] = autofailover
             payload['SwapRolesAutomaticallyEnabled'] = False
-            payload['ReplicateActiveReplay'] = active
-            payload['Type'] = 'Synchronous' if sync else 'Asynchronous'
+            payload['ReplicateActiveReplay'] = (active or autofailover)
+            if sync or autofailover:
+                payload['Type'] = 'Synchronous'
+                payload['SyncMode'] = 'HighAvailability'
+            else:
+                payload['Type'] = 'Asynchronous'
             secondaryvolumeattributes = {}
             secondaryvolumeattributes['CreateSourceVolumeFolderPath'] = True
             secondaryvolumeattributes['Notes'] = self.notes
-            secondaryvolumeattributes['Name'] = self._repl_name(
-                scvolume['name'])
+            secondaryvolumeattributes['Name'] = scvolume['name']
             payload[
                 'SecondaryVolumeAttributes'] = secondaryvolumeattributes
 

@@ -135,9 +135,9 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                 'replication_device %s not found') % replssn
                         raise exception.InvalidHost(reason=msg)
 
-    def _get_volume_extra_specs(self, volume):
-        """Gets extra specs for the given volume."""
-        type_id = volume.get('volume_type_id')
+    def _get_volume_extra_specs(self, obj):
+        """Gets extra specs for the given object."""
+        type_id = obj.get('volume_type_id')
         if type_id:
             return volume_types.get_volume_type_extra_specs(type_id)
 
@@ -157,19 +157,20 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             if profile:
                 api.update_cg_volumes(profile, [volume])
 
-    def _get_replication_specs(self, volume):
+    def _get_replication_specs(self, obj):
         """Checks if we can do replication.
 
         Need the extra spec set and we have to be talking to EM.
 
-        :param volume: Cinder Volume object.
+        :param obj: Cinder Volume or snapshot object.
         :return: rinfo dict.
         """
         rinfo = {'enabled': False, 'sync': False,
-                 'live': False, 'active': False}
+                 'live': False, 'active': False,
+                 'autofailover': False}
         # Repl does not work with direct connect.
         if not self.is_direct_connect:
-            specs = self._get_volume_extra_specs(volume)
+            specs = self._get_volume_extra_specs(obj)
             if (not self.failed_over and
                specs.get('replication_enabled') == '<is> True'):
                 rinfo['enabled'] = True
@@ -177,6 +178,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 rinfo['sync'] = True
             if specs.get('replication:livevolume') == '<is> True':
                 rinfo['live'] = True
+            if specs.get('replication:livevolume:autofailover') == '<is> True':
+                rinfo['autofailover'] = True
             if specs.get('replication:activereplay') == '<is> True':
                 rinfo['active'] = True
 
@@ -199,13 +202,9 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         # Got this far. Life is good. Return our data.
         return rinfo
 
-    def _is_live_vol(self, api, volume):
-        sclivevolume = None
-        rspecs = self._get_replication_specs(volume)
-        if rspecs['enabled'] and rspecs['live']:
-            # Find our volume and server.
-            sclivevolume = api.get_live_volume(volume['provider_id'])
-        return sclivevolume
+    def _is_live_vol(self, obj):
+        rspecs = self._get_replication_specs(obj)
+        return rspecs['enabled'] and rspecs['live']
 
     def _create_replications(self, api, volume, scvolume):
         """Creates any appropriate replications for a given volume.
@@ -232,6 +231,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                     obj = api.create_live_volume(scvolume, targetdeviceid,
                                                  rspecs['active'],
                                                  rspecs['sync'],
+                                                 rspecs['autofailover'],
                                                  primaryqos, secondaryqos)
                 else:
                     # Else a regular replication.
@@ -254,8 +254,9 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         # If we did something return model update.
         model_update = {}
         if replication_driver_data:
-            model_update = {'replication_status': 'enabled',
-                            'replication_driver_data': replication_driver_data}
+            model_update = {
+                'replication_status': fields.ReplicationStatus.ENABLED,
+                'replication_driver_data': replication_driver_data}
         return model_update
 
     @staticmethod
@@ -352,7 +353,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             ssnstrings = self._split_driver_data(replication_driver_data)
             if ssnstrings:
                 ssn = int(ssnstrings[0])
-                sclivevolume = api.get_live_volume(volume.get('provider_id'))
+                sclivevolume, swapped = api.get_live_volume(
+                    volume.get('provider_id'))
                 # Have we found the live volume?
                 if (sclivevolume and
                    sclivevolume.get('secondaryScSerialNumber') == ssn and
@@ -429,25 +431,24 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         """Create snapshot"""
         # our volume name is the volume id
         volume_name = snapshot.get('volume_id')
-        # TODO(tswanson): Is there any reason to think this will be set
-        # before I create the snapshot? Doesn't hurt to try to get it.
         provider_id = snapshot.get('provider_id')
         snapshot_id = snapshot.get('id')
         LOG.debug('Creating snapshot %(snap)s on volume %(vol)s',
                   {'snap': snapshot_id,
                    'vol': volume_name})
         with self._client.open_connection() as api:
-            scvolume = api.find_volume(volume_name, provider_id)
+            scvolume = api.find_volume(volume_name, provider_id,
+                                       self._is_live_vol(snapshot))
             if scvolume is not None:
                 replay = api.create_replay(scvolume, snapshot_id, 0)
                 if replay:
-                    return {'status': 'available',
+                    return {'status': fields.SnapshotStatus.AVAILABLE,
                             'provider_id': scvolume['instanceId']}
             else:
                 LOG.warning(_LW('Unable to locate volume:%s'),
                             volume_name)
 
-        snapshot['status'] = 'error_creating'
+        snapshot['status'] = fields.SnapshotStatus.ERROR
         msg = _('Failed to create snapshot %s') % snapshot_id
         raise exception.VolumeBackendAPIException(data=msg)
 
@@ -601,7 +602,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             if scvolume and api.delete_replay(scvolume, snapshot_id):
                 return
         # if we are here things went poorly.
-        snapshot['status'] = 'error_deleting'
+        snapshot['status'] = fields.SnapshotStatus.ERROR_DELETING
         msg = _('Failed to delete snapshot %s') % snapshot_id
         raise exception.VolumeBackendAPIException(data=msg)
 
@@ -625,7 +626,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         LOG.debug('Checking existence of volume %s', volume_name)
         with self._client.open_connection() as api:
             try:
-                scvolume = api.find_volume(volume_name, provider_id)
+                scvolume = api.find_volume(volume_name, provider_id,
+                                           self._is_live_vol(volume))
             except Exception:
                 with excutils.save_and_reraise_exception():
                     LOG.error(_LE('Failed to ensure export of volume %s'),
@@ -853,7 +855,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                             'status': fields.SnapshotStatus.AVAILABLE
                         })
 
-                    model_update = {'status': 'available'}
+                    model_update = {'status': fields.SnapshotStatus.AVAILABLE}
 
                     return model_update, snapshot_updates
 
@@ -893,7 +895,7 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             for snapshot in snapshots:
                 snapshot.status = fields.SnapshotStatus.DELETED
 
-            model_update = {'status': 'deleted'}
+            model_update = {'status': fields.SnapshotStatus.DELETED}
 
             return model_update, snapshots
 
@@ -1084,7 +1086,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                                                                      scvolume)
                         elif current == '<is> True':
                             self._delete_replications(api, volume)
-                            model_update = {'replication_status': 'disabled',
+                            model_update = {'replication_status':
+                                            fields.ReplicationStatus.DISABLED,
                                             'replication_driver_data': ''}
 
                     # Active Replay
@@ -1310,10 +1313,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
             # be good. Else error/error.
             if item['status'] == 'available':
                 model_update['status'] = 'available'
-                model_update['replication_status'] = 'enabled'
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.ENABLED)
             else:
                 model_update['status'] = 'error'
-                model_update['replication_status'] = 'error'
+                model_update['replication_status'] = (
+                    fields.ReplicationStatus.ERROR)
             volume_updates.append({'volume_id': item['volume']['id'],
                                    'updates': model_update})
         return volume_updates
@@ -1376,12 +1381,12 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         :return: model_update dict
         """
         model_update = {}
-        sclivevolume = api.get_live_volume(provider_id)
+        sclivevolume, swapped = api.get_live_volume(provider_id)
         if sclivevolume and api.swap_roles_live_volume(sclivevolume):
             LOG.info(_LI('Success swapping sclivevolume roles %s'), id)
             model_update = {
                 'status': 'available',
-                'replication_status': 'enabled',
+                'replication_status': fields.ReplicationStatus.ENABLED,
                 'provider_id':
                     sclivevolume['secondaryVolume']['instanceId']}
         else:
@@ -1456,7 +1461,8 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
         model_update = {}
         if rvol:
             LOG.info(_LI('Success failing over volume %s'), id)
-            model_update = {'replication_status': 'failed-over',
+            model_update = {'replication_status':
+                            fields.ReplicationStatus.FAILED_OVER,
                             'provider_id': rvol['instanceId']}
         else:
             LOG.info(_LI('Failed failing over volume %s'), id)
@@ -1466,16 +1472,23 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
     def _failover_live_volume(self, api, id, provider_id):
         model_update = {}
-        sclivevolume = api.get_live_volume(provider_id)
-        if sclivevolume and api.swap_roles_live_volume(sclivevolume):
-            LOG.info(_LI('Success swapping sclivevolume roles %s'), id)
-            model_update = {'replication_status': 'failed-over',
-                            'provider_id':
-                                sclivevolume['secondaryVolume']['instanceId']}
-        else:
-            LOG.info(_LI('Failure swapping roles  %s'), id)
-            model_update = {'status': 'error'}
+        sclivevolume, swapped = api.get_live_volume(provider_id)
+        if sclivevolume:
+            # If we aren't swapped try it. If fail error out.
+            if not swapped and not api.swap_roles_live_volume(sclivevolume):
+                LOG.info(_LI('Failure swapping roles  %s'), id)
+                model_update = {'status': 'error'}
+                return model_update
 
+            LOG.info(_LI('Success swapping sclivevolume roles %s'), id)
+            sclivevolume, swapped = api.get_live_volume(provider_id)
+            model_update = {
+                'replication_status':
+                    fields.ReplicationStatus.FAILED_OVER,
+                'provider_id':
+                    sclivevolume['primaryVolume']['instanceId']}
+
+        # Error and leave.
         return model_update
 
     def failover_host(self, context, volumes, secondary_id=None):

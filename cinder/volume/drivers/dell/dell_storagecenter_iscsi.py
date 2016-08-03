@@ -82,6 +82,7 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         # known unique name.
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
+        islivevol = self._is_live_vol(volume)
         initiator_name = connector.get('initiator')
         multipath = connector.get('multipath', False)
         LOG.info(_LI('initialize_ connection: %(vol)s:%(pid)s:'
@@ -126,18 +127,21 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
 
                         # If this is a live volume we need to map up our
                         # secondary volume.
-                        sclivevolume = self._is_live_vol(api, volume)
-                        if sclivevolume:
-                            secondaryprops = self.initialize_secondary(
-                                api, sclivevolume, initiator_name)
-                            # Combine with iscsiprops
-                            iscsiprops['target_iqns'] += (
-                                secondaryprops['target_iqns'])
-                            iscsiprops['target_portals'] += (
-                                secondaryprops['target_portals'])
-                            iscsiprops['target_luns'] += (
-                                secondaryprops['target_luns'])
-                        # TODO(tswanson): Get non multipath info from primary.
+                        if islivevol:
+                            sclivevolume, swapped = api.get_live_volume(
+                                provider_id)
+                            # Only map if we are not swapped.
+                            if sclivevolume and not swapped:
+                                secondaryprops = self.initialize_secondary(
+                                    api, sclivevolume, initiator_name)
+                                # Combine with iscsiprops
+                                iscsiprops['target_iqns'] += (
+                                    secondaryprops['target_iqns'])
+                                iscsiprops['target_portals'] += (
+                                    secondaryprops['target_portals'])
+                                iscsiprops['target_luns'] += (
+                                    secondaryprops['target_luns'])
+
                         # Return our iscsi properties.
                         iscsiprops['discard'] = True
                         return {'driver_volume_type': 'iscsi',
@@ -200,6 +204,7 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         initiator_name = connector.get('initiator')
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
+        islivevol = self._is_live_vol(volume)
         LOG.debug('Terminate connection: %(vol)s:%(initiator)s',
                   {'vol': volume_name,
                    'initiator': initiator_name})
@@ -209,9 +214,12 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                 # Find the volume on the storage center.
                 scvolume = api.find_volume(volume_name, provider_id)
 
-                sclivevolume = self._is_live_vol(api, volume)
-                if sclivevolume:
-                    self.terminate_secondary(api, sclivevolume, initiator_name)
+                # Unmap our secondary if it isn't swapped.
+                if islivevol:
+                    sclivevolume, swapped = api.get_live_volume(provider_id)
+                    if sclivevolume and not swapped:
+                        self.terminate_secondary(api, sclivevolume,
+                                                 initiator_name)
 
                 # If we have a server and a volume lets pull them apart.
                 if (scserver is not None and
