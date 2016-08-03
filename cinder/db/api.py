@@ -1408,6 +1408,11 @@ def group_volume_type_mapping_create(context, group_id, volume_type_id):
                                                  volume_type_id)
 
 
+def migrate_consistencygroups_to_groups(context, max_count, force=False):
+    """Migrage CGs to generic volume groups"""
+    return IMPL.migrate_consistencygroups_to_groups(context, max_count, force)
+
+
 ###################
 
 

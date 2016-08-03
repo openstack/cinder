@@ -32,6 +32,7 @@ import sqlalchemy
 
 from cinder.db import migration
 import cinder.db.sqlalchemy.migrate_repo
+from cinder.volume import group_types as volume_group_types
 
 
 class MigrationsMixin(test_migrations.WalkVersionsMixin):
@@ -1043,6 +1044,24 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
                               self.VARCHAR_TYPE)
         self.assertIsInstance(groups.c.source_group_id.type,
                               self.VARCHAR_TYPE)
+
+    def _check_086(self, engine, data):
+        """Test inserting default cgsnapshot group type."""
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "group_types"))
+        group_types = db_utils.get_table(engine, 'group_types')
+        t1 = (group_types.select(group_types.c.name ==
+                                 volume_group_types.DEFAULT_CGSNAPSHOT_TYPE).
+              execute().first())
+        self.assertIsNotNone(t1)
+
+        group_specs = db_utils.get_table(engine, 'group_type_specs')
+        specs = group_specs.select(
+            group_specs.c.group_type_id == t1.id and
+            group_specs.c.key == 'consistent_group_snapshot_enabled'
+        ).execute().first()
+        self.assertIsNotNone(specs)
+        self.assertEqual('<is> True', specs.value)
 
     def test_walk_versions(self):
         self.walk_versions(False, False)
