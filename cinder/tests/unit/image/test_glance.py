@@ -17,6 +17,7 @@
 import datetime
 import itertools
 
+import ddt
 import glanceclient.exc
 import mock
 from oslo_config import cfg
@@ -71,6 +72,7 @@ class TestGlanceSerializer(test.TestCase):
         self.assertEqual(metadata, glance._convert_from_string(converted))
 
 
+@ddt.ddt
 class TestGlanceImageService(test.TestCase):
     """Tests the Glance image service.
 
@@ -390,15 +392,45 @@ class TestGlanceImageService(test.TestCase):
         fixture = self._make_fixture(name='test image')
         image = self.service.create(self.context, fixture)
         image_id = image['id']
+        fixture['name'] = 'new image name'
         data = '*' * 256
         self.service.update(self.context, image_id, fixture, data=data)
 
         new_image_data = self.service.show(self.context, image_id)
         self.assertEqual(256, new_image_data['size'])
+        self.assertEqual('new image name', new_image_data['name'])
 
     def test_update_with_data_v2(self):
         self.flags(glance_api_version=2)
         self.test_update_with_data()
+
+    @mock.patch.object(glance.GlanceImageService, '_translate_from_glance')
+    @mock.patch.object(glance.GlanceImageService, 'show')
+    @ddt.data(1, 2)
+    def test_update_purge_props(self, ver, show, translate_from_glance):
+        self.flags(glance_api_version=ver)
+
+        image_id = mock.sentinel.image_id
+        client = mock.Mock(call=mock.Mock())
+        service = glance.GlanceImageService(client=client)
+
+        image_meta = {'properties': {'k1': 'v1'}}
+        client.call.return_value = {'k1': 'v1'}
+        if ver == 2:
+            show.return_value = {'properties': {'k2': 'v2'}}
+        translate_from_glance.return_value = image_meta.copy()
+
+        ret = service.update(self.context, image_id, image_meta)
+        self.assertDictMatch(image_meta, ret)
+        if ver == 2:
+            client.call.assert_called_once_with(
+                self.context, 'update', image_id, k1='v1', remove_props=['k2'])
+        else:
+            client.call.assert_called_once_with(
+                self.context, 'update', image_id, properties={'k1': 'v1'},
+                purge_props=True)
+        translate_from_glance.assert_called_once_with(self.context,
+                                                      {'k1': 'v1'})
 
     def test_delete(self):
         fixture1 = self._make_fixture(name='test image 1')
