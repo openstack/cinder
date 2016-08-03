@@ -176,7 +176,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                        'find_server',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'create_server_multiple_hbas',
+                       'create_server',
                        return_value=SCSERVER)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
@@ -237,6 +237,69 @@ class DellSCSanFCDriverTestCase(test.TestCase):
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'map_volume',
                        return_value=MAPPING)
+    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+                       '_is_live_vol')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_wwns')
+    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+                       'initialize_secondary')
+    def test_initialize_connection_live_vol(self,
+                                            mock_initialize_secondary,
+                                            mock_find_wwns,
+                                            mock_is_live_volume,
+                                            mock_map_volume,
+                                            mock_get_volume,
+                                            mock_find_volume,
+                                            mock_find_server,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        volume = {'id': fake.VOLUME_ID}
+        connector = self.connector
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+        mock_is_live_volume.return_value = sclivevol
+        mock_find_wwns.return_value = (
+            1, [u'5000D31000FCBE3D', u'5000D31000FCBE35'],
+            {u'21000024FF30441C': [u'5000D31000FCBE35'],
+             u'21000024FF30441D': [u'5000D31000FCBE3D']})
+        mock_initialize_secondary.return_value = (
+            1, [u'5000D31000FCBE3E', u'5000D31000FCBE36'],
+            {u'21000024FF30441E': [u'5000D31000FCBE36'],
+             u'21000024FF30441F': [u'5000D31000FCBE3E']})
+        res = self.driver.initialize_connection(volume, connector)
+        expected = {'data':
+                    {'discard': True,
+                     'initiator_target_map':
+                     {u'21000024FF30441C': [u'5000D31000FCBE35'],
+                      u'21000024FF30441D': [u'5000D31000FCBE3D'],
+                      u'21000024FF30441E': [u'5000D31000FCBE36'],
+                      u'21000024FF30441F': [u'5000D31000FCBE3E']},
+                     'target_discovered': True,
+                     'target_lun': 1,
+                     'target_wwn': [u'5000D31000FCBE3D', u'5000D31000FCBE35',
+                                    u'5000D31000FCBE3E', u'5000D31000FCBE36']},
+                    'driver_volume_type': 'fibre_channel'}
+
+        self.assertEqual(expected, res, 'Unexpected return data')
+        # verify find_volume has been called and that is has been called twice
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None)
+        mock_get_volume.assert_called_once_with(self.VOLUME[u'instanceId'])
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_server',
+                       return_value=SCSERVER)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'map_volume',
+                       return_value=MAPPING)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_wwns',
                        return_value=(None, [], {}))
@@ -260,7 +323,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                        'find_server',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
-                       'create_server_multiple_hbas',
+                       'create_server',
                        return_value=None)
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_volume',
@@ -342,6 +405,101 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                           volume,
                           connector)
 
+    def test_initialize_secondary(self,
+                                  mock_close_connection,
+                                  mock_open_connection,
+                                  mock_init):
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+
+        mock_api = mock.MagicMock()
+        mock_api.find_server = mock.MagicMock(return_value=self.SCSERVER)
+        mock_api.map_secondary_volume = mock.MagicMock(
+            return_value=self.VOLUME)
+        find_wwns_ret = (1, [u'5000D31000FCBE3D', u'5000D31000FCBE35'],
+                         {u'21000024FF30441C': [u'5000D31000FCBE35'],
+                          u'21000024FF30441D': [u'5000D31000FCBE3D']})
+        mock_api.find_wwns = mock.MagicMock(return_value=find_wwns_ret)
+        mock_api.get_volume = mock.MagicMock(return_value=self.VOLUME)
+        ret = self.driver.initialize_secondary(mock_api, sclivevol,
+                                               ['wwn1', 'wwn2'])
+
+        self.assertEqual(find_wwns_ret, ret)
+
+    def test_initialize_secondary_create_server(self,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+        mock_api = mock.MagicMock()
+        mock_api.find_server = mock.MagicMock(return_value=None)
+        mock_api.create_server = mock.MagicMock(return_value=self.SCSERVER)
+        mock_api.map_secondary_volume = mock.MagicMock(
+            return_value=self.VOLUME)
+        find_wwns_ret = (1, [u'5000D31000FCBE3D', u'5000D31000FCBE35'],
+                         {u'21000024FF30441C': [u'5000D31000FCBE35'],
+                          u'21000024FF30441D': [u'5000D31000FCBE3D']})
+        mock_api.find_wwns = mock.MagicMock(return_value=find_wwns_ret)
+        mock_api.get_volume = mock.MagicMock(return_value=self.VOLUME)
+        ret = self.driver.initialize_secondary(mock_api, sclivevol,
+                                               ['wwn1', 'wwn2'])
+        self.assertEqual(find_wwns_ret, ret)
+
+    def test_initialize_secondary_no_server(self,
+                                            mock_close_connection,
+                                            mock_open_connection,
+                                            mock_init):
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+        mock_api = mock.MagicMock()
+        mock_api.find_server = mock.MagicMock(return_value=None)
+        mock_api.create_server = mock.MagicMock(return_value=None)
+        ret = self.driver.initialize_secondary(mock_api, sclivevol,
+                                               ['wwn1', 'wwn2'])
+        expected = (None, [], {})
+        self.assertEqual(expected, ret)
+
+    def test_initialize_secondary_map_fail(self,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+        mock_api = mock.MagicMock()
+        mock_api.find_server = mock.MagicMock(return_value=self.SCSERVER)
+        mock_api.map_secondary_volume = mock.MagicMock(return_value=None)
+        ret = self.driver.initialize_secondary(mock_api, sclivevol,
+                                               ['wwn1', 'wwn2'])
+        expected = (None, [], {})
+        self.assertEqual(expected, ret)
+
+    def test_initialize_secondary_vol_not_found(self,
+                                                mock_close_connection,
+                                                mock_open_connection,
+                                                mock_init):
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+        mock_api = mock.MagicMock()
+        mock_api.find_server = mock.MagicMock(return_value=self.SCSERVER)
+        mock_api.map_secondary_volume = mock.MagicMock(
+            return_value=self.VOLUME)
+        mock_api.get_volume = mock.MagicMock(return_value=None)
+        ret = self.driver.initialize_secondary(mock_api, sclivevol,
+                                               ['wwn1', 'wwn2'])
+        expected = (None, [], {})
+        self.assertEqual(expected, ret)
+
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'find_server',
                        return_value=SCSERVER)
@@ -374,6 +532,56 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                   mock_init):
         volume = {'id': fake.VOLUME_ID}
         connector = self.connector
+        res = self.driver.terminate_connection(volume, connector)
+        mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
+        expected = {'driver_volume_type': 'fibre_channel',
+                    'data': {}}
+        self.assertEqual(expected, res, 'Unexpected return data')
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_server',
+                       return_value=SCSERVER)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume',
+                       return_value=VOLUME)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'unmap_volume',
+                       return_value=True)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_wwns',
+                       return_value=(1,
+                                     [u'5000D31000FCBE3D',
+                                      u'5000D31000FCBE35'],
+                                     {u'21000024FF30441C':
+                                      [u'5000D31000FCBE35'],
+                                      u'21000024FF30441D':
+                                      [u'5000D31000FCBE3D']}))
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume_count',
+                       return_value=1)
+    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+                       '_is_live_vol')
+    @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
+                       'terminate_secondary')
+    def test_terminate_connection_live_vol(self,
+                                           mock_terminate_secondary,
+                                           mock_is_live_vol,
+                                           mock_get_volume_count,
+                                           mock_find_wwns,
+                                           mock_unmap_volume,
+                                           mock_find_volume,
+                                           mock_find_server,
+                                           mock_close_connection,
+                                           mock_open_connection,
+                                           mock_init):
+        volume = {'id': fake.VOLUME_ID}
+        connector = self.connector
+        mock_terminate_secondary.return_value = (None, [], {})
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+        mock_is_live_vol.return_value = sclivevol
         res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
         expected = {'driver_volume_type': 'fibre_channel',
@@ -482,10 +690,6 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                                           mock_init):
         volume = {'id': fake.VOLUME_ID}
         connector = self.connector
-        # self.assertRaises(exception.VolumeBackendAPIException,
-        #                  self.driver.terminate_connection,
-        #                  volume,
-        #                  connector)
         res = self.driver.terminate_connection(volume, connector)
         expected = {'driver_volume_type': 'fibre_channel',
                     'data': {}}
@@ -571,6 +775,24 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                      [u'5000D31000FCBE3D', u'5000D31000FCBE35']},
                     'driver_volume_type': 'fibre_channel'}
         self.assertEqual(expected, res, 'Unexpected return data')
+
+    def test_terminate_secondary(self,
+                                 mock_close_connection,
+                                 mock_open_connection,
+                                 mock_init):
+        mock_api = mock.MagicMock()
+        mock_api.find_server = mock.MagicMock(return_value=self.SCSERVER)
+        mock_api.get_volume = mock.MagicMock(return_value=self.VOLUME)
+        mock_api.find_wwns = mock.MagicMock(return_value=(None, [], {}))
+        mock_api.unmap_volume = mock.MagicMock(return_value=True)
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102}
+        ret = self.driver.terminate_secondary(mock_api, sclivevol,
+                                              ['wwn1', 'wwn2'])
+        expected = (None, [], {})
+        self.assertEqual(expected, ret)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
                        'get_storage_usage',

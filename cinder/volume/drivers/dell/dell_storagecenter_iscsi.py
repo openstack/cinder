@@ -18,7 +18,7 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
 from cinder.volume import driver
 from cinder.volume.drivers.dell import dell_storagecenter_common
@@ -53,10 +53,11 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         2.5.0 - ManageableSnapshotsVD implemented.
         3.0.0 - ProviderID utilized.
         3.1.0 - Failback Supported.
+        3.2.0 - Live Volume support.
 
     """
 
-    VERSION = '3.1.0'
+    VERSION = '3.2.0'
 
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterISCSIDriver, self).__init__(*args, **kwargs)
@@ -83,39 +84,32 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         provider_id = volume.get('provider_id')
         initiator_name = connector.get('initiator')
         multipath = connector.get('multipath', False)
-        LOG.info(_LI('initialize_ connection: %(vol)s:%(initiator)s'),
+        LOG.info(_LI('initialize_ connection: %(vol)s:%(pid)s:'
+                     '%(intr)s. Multipath is %(mp)r'),
                  {'vol': volume_name,
-                  'initiator': initiator_name})
+                  'pid': provider_id,
+                  'intr': initiator_name,
+                  'mp': multipath})
 
         with self._client.open_connection() as api:
             try:
                 # Find our server.
-                server = api.find_server(initiator_name)
+                scserver = api.find_server(initiator_name)
                 # No? Create it.
-                if server is None:
-                    server = api.create_server(initiator_name)
+                if scserver is None:
+                    scserver = api.create_server([initiator_name])
                 # Find the volume on the storage center.
                 scvolume = api.find_volume(volume_name, provider_id)
 
                 # if we have a server and a volume lets bring them together.
-                if server is not None and scvolume is not None:
-                    mapping = api.map_volume(scvolume,
-                                             server)
+                if scserver is not None and scvolume is not None:
+                    mapping = api.map_volume(scvolume, scserver)
                     if mapping is not None:
                         # Since we just mapped our volume we had best update
                         # our sc volume object.
                         scvolume = api.get_volume(provider_id)
                         # Our return.
                         iscsiprops = {}
-                        ip = None
-                        port = None
-                        if not multipath:
-                            # We want to make sure we point to the specified
-                            # ip address for our target_portal return.  This
-                            # isn't an issue with multipath since it should
-                            # try all the alternate portal.
-                            ip = self.configuration.iscsi_ip_address
-                            port = self.configuration.iscsi_port
 
                         # Three cases that should all be satisfied with the
                         # same return of Target_Portal and Target_Portals.
@@ -128,10 +122,22 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                         # 3. OS brick is calling us in single path mode so
                         #    we want to return Target_Portal and
                         #    Target_Portals as alternates.
-                        iscsiprops = (api.find_iscsi_properties(scvolume,
-                                                                ip,
-                                                                port))
+                        iscsiprops = api.find_iscsi_properties(scvolume)
 
+                        # If this is a live volume we need to map up our
+                        # secondary volume.
+                        sclivevolume = self._is_live_vol(api, volume)
+                        if sclivevolume:
+                            secondaryprops = self.initialize_secondary(
+                                api, sclivevolume, initiator_name)
+                            # Combine with iscsiprops
+                            iscsiprops['target_iqns'] += (
+                                secondaryprops['target_iqns'])
+                            iscsiprops['target_portals'] += (
+                                secondaryprops['target_portals'])
+                            iscsiprops['target_luns'] += (
+                                secondaryprops['target_luns'])
+                        # TODO(tswanson): Get non multipath info from primary.
                         # Return our iscsi properties.
                         iscsiprops['discard'] = True
                         return {'driver_volume_type': 'iscsi',
@@ -151,6 +157,44 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
         raise exception.VolumeBackendAPIException(
             _('Unable to map volume'))
 
+    def initialize_secondary(self, api, sclivevolume, initiatorname):
+        """Initialize the secondary connection of a live volume pair.
+
+        :param api: Dell SC api.
+        :param sclivevolume: Dell SC live volume object.
+        :param initiatorname: Cinder iscsi initiator from the connector.
+        :return: ISCSI properties.
+        """
+
+        # Find our server.
+        secondary = api.find_server(initiatorname,
+                                    sclivevolume['secondaryScSerialNumber'])
+        # No? Create it.
+        if secondary is None:
+            secondary = api.create_server(
+                [initiatorname], sclivevolume['secondaryScSerialNumber'])
+        if secondary:
+            if api.map_secondary_volume(sclivevolume, secondary):
+                # Get our volume and get our properties.
+                secondaryvol = api.get_volume(
+                    sclivevolume['secondaryVolume']['instanceId'])
+                if secondaryvol:
+                    return api.find_iscsi_properties(secondaryvol)
+        # Dummy return on failure.
+        data = {'target_discovered': False,
+                'target_iqn': None,
+                'target_iqns': [],
+                'target_portal': None,
+                'target_portals': [],
+                'target_lun': None,
+                'target_luns': [],
+                }
+        LOG.warning(_LW('Unable to map live volume secondary volume'
+                        ' %(vol)s to secondary server intiator: %(init)r'),
+                    {'vol': sclivevolume['secondaryVolume']['instanceName'],
+                     'init': initiatorname})
+        return data
+
     def terminate_connection(self, volume, connector, force=False, **kwargs):
         # Grab some initial info.
         initiator_name = connector.get('initiator')
@@ -164,6 +208,10 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                 scserver = api.find_server(initiator_name)
                 # Find the volume on the storage center.
                 scvolume = api.find_volume(volume_name, provider_id)
+
+                sclivevolume = self._is_live_vol(api, volume)
+                if sclivevolume:
+                    self.terminate_secondary(api, sclivevolume, initiator_name)
 
                 # If we have a server and a volume lets pull them apart.
                 if (scserver is not None and
@@ -179,3 +227,11 @@ class DellStorageCenterISCSIDriver(dell_storagecenter_common.DellCommonDriver,
                                'vol': volume_name})
         raise exception.VolumeBackendAPIException(
             _('Terminate connection failed'))
+
+    def terminate_secondary(self, api, sclivevolume, initiatorname):
+        # Find our server.
+        secondary = api.find_server(initiatorname,
+                                    sclivevolume['secondaryScSerialNumber'])
+        secondaryvol = api.get_volume(
+            sclivevolume['secondaryVolume']['instanceId'])
+        return api.unmap_volume(secondaryvol, secondary)

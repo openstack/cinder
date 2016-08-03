@@ -200,11 +200,12 @@ class HttpClient(object):
 
     @utils.retry(exceptions=(requests.ConnectionError,
                              exception.DellDriverRetryableException))
-    def get(self, url, async=False):
+    def get(self, url):
         LOG.debug('get: %(url)s', {'url': url})
-        rest_response = self._rest_ret(self.session.get(
-            self.__formatUrl(url), headers=self._get_header(async),
-            verify=self.verify), async)
+        rest_response = self.session.get(self.__formatUrl(url),
+                                         headers=self.header,
+                                         verify=self.verify)
+
         if rest_response and rest_response.status_code == 400 and (
                 'Unhandled Exception' in rest_response.text):
             raise exception.DellDriverRetryableException()
@@ -381,7 +382,8 @@ class StorageCenterApi(object):
         2.4.1 - Updated Replication support to V2.1.
         2.5.0 - ManageableSnapshotsVD implemented.
         3.0.0 - ProviderID utilized.
-        3.1.0 - Failback Supported.
+        3.1.0 - Failback supported.
+        3.2.0 - Live Volume support.
         3.3.0 - Support for a secondary DSM.
     """
 
@@ -664,8 +666,7 @@ class StorageCenterApi(object):
         """
         # We might be looking for another ssn.  If not then
         # look for our default.
-        if ssn == -1:
-            ssn = self.ssn
+        ssn = self._vet_ssn(ssn)
 
         r = self.client.get('StorageCenter/StorageCenter')
         result = self._get_result(r, 'scSerialNumber', ssn)
@@ -680,7 +681,7 @@ class StorageCenterApi(object):
 
     # Folder functions
 
-    def _create_folder(self, url, parent, folder):
+    def _create_folder(self, url, parent, folder, ssn=-1):
         """Creates folder under parent.
 
         This can create both to server and volume folders.  The REST url
@@ -693,10 +694,12 @@ class StorageCenterApi(object):
         :param folder: The folder name to be created.  This is one level deep.
         :returns: The REST folder object.
         """
+        ssn = self._vet_ssn(ssn)
+
         scfolder = None
         payload = {}
         payload['Name'] = folder
-        payload['StorageCenter'] = self.ssn
+        payload['StorageCenter'] = ssn
         if parent != '':
             payload['Parent'] = parent
         payload['Notes'] = self.notes
@@ -706,7 +709,7 @@ class StorageCenterApi(object):
             scfolder = self._first_result(r)
         return scfolder
 
-    def _create_folder_path(self, url, foldername):
+    def _create_folder_path(self, url, foldername, ssn=-1):
         """Creates a folder path from a fully qualified name.
 
         The REST url sent in defines the folder type being created on the Dell
@@ -718,6 +721,8 @@ class StorageCenterApi(object):
         :param foldername: The full folder name with path.
         :returns: The REST folder object.
         """
+        ssn = self._vet_ssn(ssn)
+
         path = self._path_to_array(foldername)
         folderpath = ''
         instanceId = ''
@@ -729,12 +734,12 @@ class StorageCenterApi(object):
             # If the last was found see if this part of the path exists too
             if found:
                 listurl = url + '/GetList'
-                scfolder = self._find_folder(listurl, folderpath)
+                scfolder = self._find_folder(listurl, folderpath, ssn)
                 if scfolder is None:
                     found = False
             # We didn't find it so create it
             if found is False:
-                scfolder = self._create_folder(url, instanceId, folder)
+                scfolder = self._create_folder(url, instanceId, folder, ssn)
             # If we haven't found a folder or created it then leave
             if scfolder is None:
                 LOG.error(_LE('Unable to create folder path %s'), folderpath)
@@ -744,7 +749,7 @@ class StorageCenterApi(object):
             folderpath = folderpath + '/'
         return scfolder
 
-    def _find_folder(self, url, foldername):
+    def _find_folder(self, url, foldername, ssn=-1):
         """Find a folder on the SC using the specified url.
 
         Most of the time the folder will already have been created so
@@ -761,8 +766,10 @@ class StorageCenterApi(object):
         :param foldername: Full path to the folder we are looking for.
         :returns: Dell folder object.
         """
+        ssn = self._vet_ssn(ssn)
+
         pf = self._get_payload_filter()
-        pf.append('scSerialNumber', self.ssn)
+        pf.append('scSerialNumber', ssn)
         basename = os.path.basename(foldername)
         pf.append('Name', basename)
         # If we have any kind of path we throw it into the filters.
@@ -777,7 +784,7 @@ class StorageCenterApi(object):
             folder = self._get_result(r, 'folderPath', folderpath)
         return folder
 
-    def _find_volume_folder(self, create=False):
+    def _find_volume_folder(self, create=False, ssn=-1):
         """Looks for the volume folder where backend volumes will be created.
 
         Volume folder is specified in the cindef.conf.  See __init.
@@ -786,11 +793,11 @@ class StorageCenterApi(object):
         :returns: Folder object.
         """
         folder = self._find_folder('StorageCenter/ScVolumeFolder/GetList',
-                                   self.vfname)
+                                   self.vfname, ssn)
         # Doesn't exist?  make it
         if folder is None and create is True:
             folder = self._create_folder_path('StorageCenter/ScVolumeFolder',
-                                              self.vfname)
+                                              self.vfname, ssn)
         return folder
 
     def _init_volume(self, scvolume):
@@ -1051,8 +1058,7 @@ class StorageCenterApi(object):
         :param ssn: SSN to search on.
         :return: Returns the scvolume list or None.
         """
-        if ssn == -1:
-            ssn = self.ssn
+        ssn = self._vet_ssn(ssn)
         result = None
         # We need a name or a device ID to find a volume.
         if name or deviceid:
@@ -1194,7 +1200,7 @@ class StorageCenterApi(object):
                         'provider_id: %s'), provider_id)
         return True
 
-    def _find_server_folder(self, create=False):
+    def _find_server_folder(self, create=False, ssn=-1):
         """Looks for the server folder on the Dell Storage Center.
 
          This is the folder where a server objects for mapping volumes will be
@@ -1203,11 +1209,13 @@ class StorageCenterApi(object):
         :param create: If True will create the folder if not found.
         :return: Folder object.
         """
+        ssn = self._vet_ssn(ssn)
+
         folder = self._find_folder('StorageCenter/ScServerFolder/GetList',
-                                   self.sfname)
+                                   self.sfname, ssn)
         if folder is None and create is True:
             folder = self._create_folder_path('StorageCenter/ScServerFolder',
-                                              self.sfname)
+                                              self.sfname, ssn)
         return folder
 
     def _add_hba(self, scserver, wwnoriscsiname):
@@ -1235,7 +1243,7 @@ class StorageCenterApi(object):
             return False
         return True
 
-    def _find_serveros(self, osname='Red Hat Linux 6.x'):
+    def _find_serveros(self, osname='Red Hat Linux 6.x', ssn=-1):
         """Returns the serveros instance id of the specified osname.
 
         Required to create a Dell server object.
@@ -1246,8 +1254,9 @@ class StorageCenterApi(object):
         :param osname: The name of the OS to look for.
         :returns: InstanceId of the ScServerOperatingSystem object.
         """
+        ssn = self._vet_ssn(ssn)
         pf = self._get_payload_filter()
-        pf.append('scSerialNumber', self.ssn)
+        pf.append('scSerialNumber', ssn)
         r = self.client.post('StorageCenter/ScServerOperatingSystem/GetList',
                              pf.payload)
         if self._check_result(r):
@@ -1262,55 +1271,47 @@ class StorageCenterApi(object):
 
         return None
 
-    def create_server_multiple_hbas(self, wwns):
+    def create_server(self, wwnlist, ssn=-1):
         """Creates a server with multiple WWNS associated with it.
 
         Same as create_server except it can take a list of HBAs.
 
-        :param wwns: A list of FC WWNs or iSCSI IQNs associated with this
-                     server.
+        :param wwnlist: A list of FC WWNs or iSCSI IQNs associated with this
+                        server.
         :returns: Dell server object.
         """
-        scserver = None
-        # Our instance names
-        for wwn in wwns:
-            if scserver is None:
-                # Use the fist wwn to create the server.
-                scserver = self.create_server(wwn)
-            else:
-                # Add the wwn to our server
-                self._add_hba(scserver, wwn)
+        # Find our folder or make it
+        folder = self._find_server_folder(True, ssn)
+        # Create our server.
+        scserver = self._create_server('Server_' + wwnlist[0], folder, ssn)
+        if not scserver:
+            return None
+        # Add our HBAs.
+        if scserver:
+            for wwn in wwnlist:
+                if not self._add_hba(scserver, wwn):
+                    # We failed so log it. Delete our server and return None.
+                    LOG.error(_LE('Error adding HBA %s to server'), wwn)
+                    self._delete_server(scserver)
+                    return None
         return scserver
 
-    def create_server(self, wwnoriscsiname):
-        """Creates a Dell server object on the the Storage Center.
+    def _create_server(self, servername, folder, ssn):
+        ssn = self._vet_ssn(ssn)
 
-        Adds the first HBA identified by wwnoriscsiname to it.
-
-        :param wwnoriscsiname: FC WWN or iSCSI IQN associated with
-                               this Dell server object.
-        :returns: Dell server object.
-        """
-
-        LOG.info(_LI('Creating server %s'), wwnoriscsiname)
-
-        scserver = None
+        LOG.info(_LI('Creating server %s'), servername)
         payload = {}
-        payload['Name'] = 'Server_' + wwnoriscsiname
-        payload['StorageCenter'] = self.ssn
+        payload['Name'] = servername
+        payload['StorageCenter'] = ssn
         payload['Notes'] = self.notes
         # We pick Red Hat Linux 6.x because it supports multipath and
         # will attach luns to paths as they are found.
-        scserveros = self._find_serveros('Red Hat Linux 6.x')
+        scserveros = self._find_serveros('Red Hat Linux 6.x', ssn)
         if scserveros is not None:
             payload['OperatingSystem'] = scserveros
 
-        # Find our folder or make it
-        folder = self._find_server_folder(True)
-
-        # At this point it doesn't matter if the folder was created or not.
-        # We just attempt to create the server.  Let it be in the root if
-        # the folder creation fails.
+        # At this point it doesn't matter if we have a folder or not.
+        # Let it be in the root if the folder creation fails.
         if folder is not None:
             payload['ServerFolder'] = self._get_id(folder)
 
@@ -1320,19 +1321,24 @@ class StorageCenterApi(object):
             # Server was created
             scserver = self._first_result(r)
             LOG.info(_LI('SC server created %s'), scserver)
+            return scserver
+        LOG.error(_LE('Unable to create SC server %s'), servername)
+        return None
 
-            # Add hba to our server
-            if scserver is not None:
-                if not self._add_hba(scserver, wwnoriscsiname):
-                    LOG.error(_LE('Error adding HBA to server'))
-                    # Can't have a server without an HBA
-                    self._delete_server(scserver)
-                    scserver = None
+    def _vet_ssn(self, ssn):
+        """Returns the default if a ssn was not set.
 
-        # Success or failure is determined by the caller
-        return scserver
+        Added to support live volume as we aren't always on the primary ssn
+        anymore
 
-    def find_server(self, instance_name):
+        :param ssn: ssn to check.
+        :return: Current ssn or the ssn sent down.
+        """
+        if ssn == -1:
+            return self.ssn
+        return ssn
+
+    def find_server(self, instance_name, ssn=-1):
         """Hunts for a server on the Dell backend by instance_name.
 
         The instance_name is the same as the server's HBA.  This is the  IQN or
@@ -1342,17 +1348,20 @@ class StorageCenterApi(object):
         :param instance_name: instance_name is a FC WWN or iSCSI IQN from
                               the connector.  In cinder a server is identified
                               by its HBA.
+        :param ssn: Storage center to search.
         :returns: Dell server object or None.
         """
+        ssn = self._vet_ssn(ssn)
+
         scserver = None
         # We search for our server by first finding our HBA
-        hba = self._find_serverhba(instance_name)
+        hba = self._find_serverhba(instance_name, ssn)
         # Once created hbas stay in the system.  So it isn't enough
         # that we found one it actually has to be attached to a
         # server.
         if hba is not None and hba.get('server') is not None:
             pf = self._get_payload_filter()
-            pf.append('scSerialNumber', self.ssn)
+            pf.append('scSerialNumber', ssn)
             pf.append('instanceId', self._get_id(hba['server']))
             r = self.client.post('StorageCenter/ScServer/GetList', pf.payload)
             if self._check_result(r):
@@ -1362,7 +1371,7 @@ class StorageCenterApi(object):
             LOG.debug('Server (%s) not found.', instance_name)
         return scserver
 
-    def _find_serverhba(self, instance_name):
+    def _find_serverhba(self, instance_name, ssn):
         """Hunts for a server HBA on the Dell backend by instance_name.
 
         Instance_name is the same as the IQN or WWN specified in the
@@ -1370,12 +1379,13 @@ class StorageCenterApi(object):
 
         :param instance_name: Instance_name is a FC WWN or iSCSI IQN from
                               the connector.
+        :param ssn: Storage center to search.
         :returns: Dell server HBA object.
         """
         scserverhba = None
         # We search for our server by first finding our HBA
         pf = self._get_payload_filter()
-        pf.append('scSerialNumber', self.ssn)
+        pf.append('scSerialNumber', ssn)
         pf.append('instanceName', instance_name)
         r = self.client.post('StorageCenter/ScServerHba/GetList', pf.payload)
         if self._check_result(r):
@@ -1449,6 +1459,7 @@ class StorageCenterApi(object):
         LOG.info(_LI('Volume mappings for %(name)s: %(mappings)s'),
                  {'name': scvolume.get('name'),
                   'mappings': mappings})
+
         return mappings
 
     def _find_mapping_profiles(self, scvolume):
@@ -1599,23 +1610,19 @@ class StorageCenterApi(object):
                           'Error finding configuration: %s'), cportid)
         return controllerport
 
-    def find_iscsi_properties(self, scvolume, ip=None, port=None):
+    def find_iscsi_properties(self, scvolume):
         """Finds target information for a given Dell scvolume object mapping.
 
         The data coming back is both the preferred path and all the paths.
 
         :param scvolume: The dell sc volume object.
-        :param ip: The preferred target portal ip.
-        :param port: The preferred target portal port.
         :returns: iSCSI property dictionary.
         :raises: VolumeBackendAPIException
         """
         LOG.debug('find_iscsi_properties: scvolume: %s', scvolume)
         # Our mutable process object.
         pdata = {'active': -1,
-                 'up': -1,
-                 'ip': ip,
-                 'port': port}
+                 'up': -1}
         # Our output lists.
         portals = []
         luns = []
@@ -1640,22 +1647,15 @@ class StorageCenterApi(object):
             iqns.append(iqn)
             luns.append(lun)
 
-            # We've all the information.  We need to find
-            # the best single portal to return.  So check
-            # this one if it is on the right IP, port and
-            # if the access and status are correct.
-            if ((pdata['ip'] is None or pdata['ip'] == address) and
-                    (pdata['port'] is None or pdata['port'] == port)):
-
-                # We need to point to the best link.
-                # So state active and status up is preferred
-                # but we don't actually need the state to be
-                # up at this point.
-                if pdata['up'] == -1:
-                    if active:
-                        pdata['active'] = len(iqns) - 1
-                        if status == 'Up':
-                            pdata['up'] = pdata['active']
+            # We need to point to the best link.
+            # So state active and status up is preferred
+            # but we don't actually need the state to be
+            # up at this point.
+            if pdata['up'] == -1:
+                if active:
+                    pdata['active'] = len(iqns) - 1
+                    if status == 'Up':
+                        pdata['up'] = pdata['active']
 
         # Start by getting our mappings.
         mappings = self._find_mappings(scvolume)
@@ -1672,6 +1672,11 @@ class StorageCenterApi(object):
             isvpmode = self._is_virtualport_mode()
             # Trundle through our mappings.
             for mapping in mappings:
+                # Don't return remote sc links.
+                msrv = mapping.get('server')
+                if msrv and msrv.get('objectType') == 'ScRemoteStorageCenter':
+                    continue
+
                 # The lun, ro mode and status are in the mapping.
                 LOG.debug('find_iscsi_properties: mapping: %s', mapping)
                 lun = mapping.get('lun')
@@ -2605,8 +2610,7 @@ class StorageCenterApi(object):
         :param ssn: SSN to search on.
         :return: scqos node object.
         """
-        if ssn == -1:
-            ssn = self.ssn
+        ssn = self._vet_ssn(ssn)
         pf = self._get_payload_filter()
         pf.append('scSerialNumber', ssn)
         pf.append('name', qosnode)
@@ -3002,3 +3006,128 @@ class StorageCenterApi(object):
                                     ' progress information returned: %s'),
                                 progress)
         return None, None
+
+    def get_live_volume(self, primaryid):
+        """Get's the live ScLiveVolume object for the vol with primaryid.
+
+        :param primaryid: InstanceId of the primary volume.
+        :return: ScLiveVolume object or None.
+        """
+        if primaryid:
+            r = self.client.get('StorageCenter/ScLiveVolume')
+            if self._check_result(r):
+                lvs = self._get_json(r)
+                for lv in lvs:
+                    if lv['primaryVolume']['instanceId'] == primaryid:
+                        return lv
+        return None
+
+    def _get_hbas(self, serverid):
+        # Helper to get the hba's of a given server.
+        r = self.client.get('StorageCenter/ScServer/%s/HbaList' % serverid)
+        if self._check_result(r):
+            return self._get_json(r)
+        return None
+
+    def map_secondary_volume(self, sclivevol, scdestsrv):
+        """Map's the secondary volume or a LiveVolume to destsrv.
+
+        :param sclivevol: ScLiveVolume object.
+        :param scdestsrv: ScServer object for the destination.
+        :return: ScMappingProfile object or None on failure.
+        """
+        payload = {}
+        payload['Server'] = self._get_id(scdestsrv)
+        payload['Advanced'] = {'MapToDownServerHbas': True}
+        r = self.client.post('StorageCenter/ScLiveVolume/%s/MapSecondaryVolume'
+                             % self._get_id(sclivevol), payload, True)
+        if self._check_result(r):
+            return self._get_json(r)
+        return None
+
+    def create_live_volume(self, scvolume, remotessn, active=False, sync=False,
+                           primaryqos='CinderQOS', secondaryqos='CinderQOS'):
+        """This create's a live volume instead of a replication.
+
+        Servers are not created at this point so we cannot map up a remote
+        server immediately.
+
+        :param scvolume: Source SC Volume
+        :param remotessn: Destination SSN.
+        :param active: Replicate the active replay boolean.
+        :param sync: Sync replication boolean.
+        :param primaryqos: QOS node name for the primary side.
+        :param secondaryqos: QOS node name for the remote side.
+        :return: ScLiveVolume object or None on failure.
+        """
+        destssn = self.find_sc(int(remotessn))
+        pscqos = self._find_qos(primaryqos)
+        sscqos = self._find_qos(secondaryqos, destssn)
+        if not destssn:
+            LOG.error(_LE('create_live_volume: Unable to find remote %s'),
+                      remotessn)
+        elif not pscqos:
+            LOG.error(_LE('create_live_volume: Unable to find or create '
+                          'qos node %s'), primaryqos)
+        elif not sscqos:
+            LOG.error(_LE('create_live_volume: Unable to find or create remote'
+                          ' qos node %(qos)s on %(ssn)s'),
+                      {'qos': secondaryqos, 'ssn': destssn})
+        else:
+            payload = {}
+            payload['PrimaryVolume'] = self._get_id(scvolume)
+            payload['PrimaryQosNode'] = self._get_id(pscqos)
+            payload['SecondaryQosNode'] = self._get_id(sscqos)
+            payload['SecondaryStorageCenter'] = destssn
+            payload['StorageCenter'] = self.ssn
+            # payload['Dedup'] = False
+            payload['FailoverAutomaticallyEnabled'] = False
+            payload['RestoreAutomaticallyEnabled'] = False
+            payload['SwapRolesAutomaticallyEnabled'] = False
+            payload['ReplicateActiveReplay'] = active
+            payload['Type'] = 'Synchronous' if sync else 'Asynchronous'
+            secondaryvolumeattributes = {}
+            secondaryvolumeattributes['CreateSourceVolumeFolderPath'] = True
+            secondaryvolumeattributes['Notes'] = self.notes
+            secondaryvolumeattributes['Name'] = self._repl_name(
+                scvolume['name'])
+            payload[
+                'SecondaryVolumeAttributes'] = secondaryvolumeattributes
+
+            r = self.client.post('StorageCenter/ScLiveVolume', payload, True)
+            if self._check_result(r):
+                LOG.info(_LI('create_live_volume: Live Volume created from'
+                             '%(svol)s to %(ssn)s'),
+                         {'svol': self._get_id(scvolume), 'ssn': remotessn})
+                return self._get_json(r)
+        LOG.error(_LE('create_live_volume: Failed to create Live Volume from'
+                      '%(svol)s to %(ssn)s'),
+                  {'svol': self._get_id(scvolume), 'ssn': remotessn})
+        return None
+
+    def delete_live_volume(self, sclivevolume, deletesecondaryvolume):
+        """Deletes the live volume.
+
+        :param sclivevolume: ScLiveVolume object to be whacked.
+        :return: Boolean on success/fail.
+        """
+        payload = {}
+        payload['DeleteSecondaryVolume'] = deletesecondaryvolume
+        payload['RecycleSecondaryVolume'] = False
+        r = self.client.delete('StorageCenter/ScLiveVolume/%s' %
+                               self._get_id(sclivevolume), payload, True)
+        if self._check_result(r):
+            return True
+        return False
+
+    def swap_roles_live_volume(self, sclivevolume):
+        """Swap live volume roles.
+
+        :param sclivevolume: Dell SC live volume object.
+        :return: True/False on success/failure.
+        """
+        r = self.client.post('StorageCenter/ScLiveVolume/%s/SwapRoles' %
+                             self._get_id(sclivevolume), {}, True)
+        if self._check_result(r):
+            return True
+        return False
