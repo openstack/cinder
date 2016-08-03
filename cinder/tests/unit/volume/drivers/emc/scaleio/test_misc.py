@@ -75,6 +75,13 @@ class TestMisc(scaleio.TestScaleIODriver):
             self.RESPONSE_MODE.BadStatus: {
                 'types/Domain/instances/getByName::' +
                 self.domain_name_enc: self.BAD_STATUS_RESPONSE,
+                'instances/Volume::{}/action/setVolumeName'.format(
+                    self.volume['provider_id']): mocks.MockHTTPSResponse(
+                    {
+                        'message': 'Invalid volume.',
+                        'httpStatusCode': 400,
+                        'errorCode': self.VOLUME_NOT_FOUND_ERROR
+                    }, 400),
             },
             self.RESPONSE_MODE.Invalid: {
                 'types/Domain/instances/getByName::' +
@@ -191,6 +198,12 @@ class TestMisc(scaleio.TestScaleIODriver):
             self.volume,
             self.new_volume['id']
         )
+
+    def test_rename_volume_non_sio(self):
+        self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
+        rc = self.driver._rename_volume(
+            self.volume, self.new_volume['id'])
+        self.assertIsNone(rc)
 
     def test_default_provisioning_type_unspecified(self):
         empty_storage_type = {}

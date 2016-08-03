@@ -63,14 +63,14 @@ class TestDeleteSnapShot(scaleio.TestScaleIODriver):
                 'types/Volume/instances/getByName::' +
                 self.snapshot_name_2x_enc: mocks.MockHTTPSResponse(
                     {
-                        'errorCode': self.VOLUME_NOT_FOUND_ERROR,
+                        'errorCode': self.OLD_VOLUME_NOT_FOUND_ERROR,
                         'message': 'Test Delete Invalid Snapshot',
                     }, 400
                 ),
                 'instances/Volume::{}/action/removeVolume'.format(
                     self.snapshot.provider_id): mocks.MockHTTPSResponse(
                     {
-                        'errorCode': self.VOLUME_NOT_FOUND_ERROR,
+                        'errorCode': self.OLD_VOLUME_NOT_FOUND_ERROR,
                         'message': 'Test Delete Invalid Snapshot',
                     }, 400,
                 )

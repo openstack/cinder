@@ -88,6 +88,8 @@ QOS_BANDWIDTH_PER_GB = 'maxBWSperGB'
 BLOCK_SIZE = 8
 OK_STATUS_CODE = 200
 VOLUME_NOT_FOUND_ERROR = 79
+# This code belongs to older versions of ScaleIO
+OLD_VOLUME_NOT_FOUND_ERROR = 78
 VOLUME_NOT_MAPPED_ERROR = 84
 VOLUME_ALREADY_MAPPED_ERROR = 81
 MIN_BWS_SCALING_SIZE = 128
@@ -1078,10 +1080,16 @@ class ScaleIODriver(driver.VolumeDriver):
 
         if r.status_code != OK_STATUS_CODE:
             response = r.json()
-            msg = (_("Error renaming volume %(vol)s: %(err)s.") %
-                   {'vol': vol_id, 'err': response['message']})
-            LOG.error(msg)
-            raise exception.VolumeBackendAPIException(data=msg)
+            if ((response['errorCode'] == VOLUME_NOT_FOUND_ERROR or
+                 response['errorCode'] == OLD_VOLUME_NOT_FOUND_ERROR)):
+                LOG.info(_LI("Ignoring renaming action because the volume "
+                             "%(vol)s is not a ScaleIO volume."),
+                         {'vol': vol_id})
+            else:
+                msg = (_("Error renaming volume %(vol)s: %(err)s.") %
+                       {'vol': vol_id, 'err': response['message']})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
         else:
             LOG.info(_LI("ScaleIO volume %(vol)s was renamed to "
                          "%(new_name)s."),

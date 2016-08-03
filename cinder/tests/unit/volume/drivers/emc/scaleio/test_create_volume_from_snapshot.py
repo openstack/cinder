@@ -68,7 +68,7 @@ class TestCreateVolumeFromSnapShot(scaleio.TestScaleIODriver):
                 'instances/System/action/snapshotVolumes':
                     mocks.MockHTTPSResponse(
                         {
-                            'errorCode': self.VOLUME_NOT_FOUND_ERROR,
+                            'errorCode': self.OLD_VOLUME_NOT_FOUND_ERROR,
                             'message': 'BadStatus Volume Test',
                         }, 400
                     ),
