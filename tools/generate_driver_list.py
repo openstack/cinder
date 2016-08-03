@@ -37,7 +37,8 @@ class Output(object):
         return self
 
     def __exit__(self, type, value, traceback):
-        self.driver_file.close()
+        if self.driver_file:
+            self.driver_file.close()
 
     def write(self, text):
         if self.driver_file:
