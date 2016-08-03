@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev136\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev159\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-02 03:59+0000\n"
+"POT-Creation-Date: 2016-08-03 08:57+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-01 03:14+0000\n"
+"PO-Revision-Date: 2016-08-02 02:22+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -262,6 +262,10 @@ msgstr "%s が cinder.conf に設定されていません"
 #, python-format
 msgid "%s not set."
 msgstr "%s が設定されていません。"
+
+#, python-format
+msgid "'%(key)s = %(value)s'"
+msgstr "'%(key)s = %(value)s'"
 
 #, python-format
 msgid ""
@@ -3557,6 +3561,9 @@ msgstr ""
 msgid "Failed to establish SSC connection."
 msgstr "SSC 接続の確立に失敗しました。"
 
+msgid "Failed to establish a stable connection"
+msgstr "安定した接続の確立に失敗しました。"
+
 msgid "Failed to establish connection with Coho cluster"
 msgstr "Coho クラスターとの接続に失敗しました"
 
@@ -4509,6 +4516,12 @@ msgstr "LUN ID による LUN グループ ID 取得のエラー。"
 
 msgid "Get lungroup information error."
 msgstr "LUN グループの情報取得のエラー。"
+
+msgid "Get manageable snapshots not implemented."
+msgstr "管理可能スナップショットの取得は実装されていません。"
+
+msgid "Get manageable volumes not implemented."
+msgstr "管理可能ボリュームの取得は実装されていません。"
 
 msgid "Get migration task error."
 msgstr "マイグレーションタスク取得のエラー。"
@@ -6730,6 +6743,17 @@ msgstr "再試行可能な Pure Storage 例外が発生しました"
 msgid "Retryable SolidFire Exception encountered"
 msgstr "再試行可能な SolidFire 例外が発生しました"
 
+msgid ""
+"Retype needs volume to be in available or in-use state, have same encryption "
+"requirements, not be part of an active migration or a consistency group, "
+"requested type has to be different that the one from the volume, and for in-"
+"use volumes front-end qos specs cannot change."
+msgstr ""
+"タイプ変更では、ボリュームが利用可能か使用中の状態であること、同じ暗号要求を"
+"持つこと、アクティブマイグレーションや整合性グループの一部ではないこと、要求"
+"したタイプが現在のボリュームの一つと異なることが必要です。また、使用中のボ"
+"リュームのフロントエンド qos 仕様は変更できません。"
+
 msgid "Retype requires migration but is not allowed."
 msgstr "タイプ変更するにはマイグレーションが必要ですが、許可されていません。"
 
@@ -8187,6 +8211,10 @@ msgstr ""
 "タイプが複製の場合は許可されません。ボリューム = %s"
 
 #, python-format
+msgid "Unable to send requests: %s"
+msgstr "リクエストを送信できません: %s"
+
+#, python-format
 msgid ""
 "Unable to set up mirror mode replication for %(vol)s. Exception: %(err)s."
 msgstr ""
@@ -8440,6 +8468,12 @@ msgstr "リストを更新します。volume_id が含まれません。"
 msgid "Updated At"
 msgstr "最終更新"
 
+#, python-format
+msgid "Updating volume metadata is not allowed for volumes in %s status."
+msgstr ""
+"ボリュームの状態が %s である場合は、ボリュームメタデータの更新は許可されませ"
+"ん。"
+
 msgid "Upload to glance of attached volume is not supported."
 msgstr ""
 "接続されたボリュームの glance へのアップロードはサポートされていません。"
@@ -8565,12 +8599,26 @@ msgid "Volume %(name)s was created in VNX, but in %(state)s state."
 msgstr "ボリューム %(name)s は VNX で作成されましたが、%(state)s 状態です。"
 
 #, python-format
+msgid "Volume %(name)s was not deactivated in time."
+msgstr "ボリューム %(name)s は時間内に非アクティブになりませんでした。"
+
+#, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
 msgstr "ボリューム %(vol)s をプール %(pool)s に作成できませんでした。"
 
 #, python-format
 msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
 msgstr "ボリューム%(vol1)s が snapshot.volume_id %(vol2)s と一致しません。"
+
+#, python-format
+msgid "Volume %(vol_id)s status must be %(statuses)s"
+msgstr "ボリューム %(vol_id)s の状態は %(statuses)s でなければいけません。"
+
+#, python-format
+msgid "Volume %(vol_id)s status must be available to extend."
+msgstr ""
+"ボリューム %(vol_id)s を拡張するには、状態が「利用可能」でなければいけませ"
+"ん。"
 
 #, python-format
 msgid ""
@@ -8707,6 +8755,17 @@ msgid "Volume %s not found."
 msgstr "ボリューム %s が見つかりません。"
 
 #, python-format
+msgid ""
+"Volume %s status must be available or in-use, must not be migrating, have "
+"snapshots, be replicated, be part of a consistency group and destination "
+"host must be different than the current host"
+msgstr ""
+"ボリューム %s の状態は「利用可能」もしくは「使用中」である必要があります。ま"
+"た、マイグレーション中でないこと、スナップショットを持たないこと、複製されて"
+"いないこと、整合性グループの一部ではないことも必要で、移行先ホストは現在とは"
+"異なるホストでなければいけません。"
+
+#, python-format
 msgid "Volume %s: Error trying to extend volume"
 msgstr "ボリューム %s: ボリュームの拡張を試行中にエラーが発生しました"
 
@@ -8781,6 +8840,10 @@ msgstr "ボリュームデバイスのファイルパス %s が存在しませ�
 #, python-format
 msgid "Volume device not found at %(device)s."
 msgstr "%(device)s でボリュームデバイスが見つかりません。"
+
+#, python-format
+msgid "Volume does not exists %s."
+msgstr "ボリュームが存在しません: %s"
 
 #, python-format
 msgid "Volume driver %s not initialized."
@@ -9890,7 +9953,7 @@ msgstr "偽"
 
 #, python-format
 msgid "file already exists at %s"
-msgstr "ファイルは %s に既に存在します"
+msgstr "ファイルは %s に既に存在します。"
 
 msgid "fileno is not supported by SheepdogIOWrapper"
 msgstr "SheepdogIOWrapper は fileno をサポートしません"
@@ -10074,6 +10137,10 @@ msgstr ""
 #, python-format
 msgid "marker [%s] not found"
 msgstr "マーカー [%s] が見つかりません。"
+
+#, python-format
+msgid "marker not found: %s"
+msgstr "マーカーが見つかりません: %s"
 
 #, python-format
 msgid "mdiskgrp missing quotes %s"
