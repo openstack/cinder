@@ -160,7 +160,6 @@ from cinder.volume.drivers import smbfs as cinder_volume_drivers_smbfs
 from cinder.volume.drivers import solidfire as cinder_volume_drivers_solidfire
 from cinder.volume.drivers.synology import synology_common as \
     cinder_volume_drivers_synology_synologycommon
-from cinder.volume.drivers import tegile as cinder_volume_drivers_tegile
 from cinder.volume.drivers import tintri as cinder_volume_drivers_tintri
 from cinder.volume.drivers.violin import v7000_common as \
     cinder_volume_drivers_violin_v7000common
@@ -348,7 +347,6 @@ def list_opts():
                 cinder_volume_manager.volume_manager_opts,
                 cinder_volume_drivers_ibm_flashsystemiscsi.
                 flashsystem_iscsi_opts,
-                cinder_volume_drivers_tegile.tegile_opts,
                 cinder_volume_drivers_ibm_flashsystemcommon.flashsystem_opts,
                 [cinder_volume_api.allow_force_upload_opt],
                 [cinder_volume_api.volume_host_opt],
