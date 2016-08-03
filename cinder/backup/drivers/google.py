@@ -91,6 +91,10 @@ gcsbackup_service_opts = [
                      'progress notifications to Ceilometer when backing '
                      'up the volume to the GCS backend storage. The '
                      'default value is True to enable the timer.'),
+    cfg.URIOpt('backup_gcs_proxy_url',
+               help='URL for http proxy access.',
+               secret=True),
+
 ]
 
 CONF = cfg.CONF
@@ -134,13 +138,20 @@ class GoogleBackupDriver(chunkeddriver.ChunkedBackupDriver):
         self.bucket_location = CONF.backup_gcs_bucket_location
         self.storage_class = CONF.backup_gcs_storage_class
         self.num_retries = CONF.backup_gcs_num_retries
-        http_user_agent = http.set_user_agent(httplib2.Http(),
-                                              CONF.backup_gcs_user_agent)
+        http_user_agent = http.set_user_agent(
+            httplib2.Http(proxy_info=self.get_gcs_proxy_info()),
+            CONF.backup_gcs_user_agent)
         self.conn = discovery.build('storage',
                                     'v1',
                                     http=http_user_agent,
                                     credentials=credentials)
         self.resumable = self.writer_chunk_size != -1
+
+    def get_gcs_proxy_info(self):
+        if CONF.backup_gcs_proxy_url:
+            return httplib2.proxy_info_from_url(CONF.backup_gcs_proxy_url)
+        else:
+            return httplib2.proxy_info_from_environment()
 
     def check_gcs_options(self):
         required_options = ('backup_gcs_bucket', 'backup_gcs_credential_file',
