@@ -735,8 +735,8 @@ class TintriDriver(driver.ManageableVD,
 
         try:
             volume_path = os.path.join(nfs_mount, volume_name)
-            vol_size = math.ceil(float(utils.get_file_size(volume_path)) /
-                                 units.Gi)
+            vol_size = int(math.ceil(float(utils.get_file_size(volume_path)) /
+                                     units.Gi))
         except OSError:
             msg = (_('Failed to get size of volume %s') %
                    existing_ref['source-name'])
