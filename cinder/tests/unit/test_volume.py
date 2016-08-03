@@ -127,7 +127,7 @@ class FakeImageService(object):
 class BaseVolumeTestCase(test.TestCase):
     """Test Case for volumes."""
 
-    FAKE_UUID = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa'
+    FAKE_UUID = fake.IMAGE_ID
 
     def setUp(self):
         super(BaseVolumeTestCase, self).setUp()
@@ -1082,11 +1082,13 @@ class VolumeTestCase(BaseVolumeTestCase):
 
     @mock.patch.object(keymgr, 'API', new=fake_keymgr.fake_api)
     def test_create_delete_volume_with_encrypted_volume_type(self):
-        db_vol_type = db.volume_type_create(
-            self.context, {'id': fake.VOLUME_TYPE_ID, 'name': 'LUKS'})
+        db.volume_type_create(self.context,
+                              {'id': fake.VOLUME_TYPE_ID, 'name': 'LUKS'})
         db.volume_type_encryption_create(
             self.context, fake.VOLUME_TYPE_ID,
             {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+
+        db_vol_type = db.volume_type_get_by_name(self.context, 'LUKS')
 
         volume = self.volume_api.create(self.context,
                                         1,
@@ -3671,7 +3673,7 @@ class VolumeTestCase(BaseVolumeTestCase):
             volume_api = cinder.volume.api.API(
                 image_service=FakeImageService())
             volume = volume_api.create(self.context, 2, 'name', 'description',
-                                       image_id=1)
+                                       image_id=self.FAKE_UUID)
             volume_id = volume['id']
             self.assertEqual('creating', volume['status'])
 

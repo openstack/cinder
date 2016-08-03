@@ -130,7 +130,11 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_sched_create.side_effect = exception.NoValidHost(reason="")
         volume = fake_volume.fake_volume_obj(self.context)
         topic = 'fake_topic'
-        request_spec = {'volume_id': volume.id}
+        request_spec = {'volume_id': volume.id,
+                        'volume': {'id': volume.id, '_name_id': None,
+                                   'metadata': {}, 'admin_metadata': {},
+                                   'glance_metadata': {}}}
+        request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
         self.manager.create_volume(self.context, topic, volume.id,
                                    request_spec=request_spec,
@@ -139,8 +143,8 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_volume_update.assert_called_once_with(self.context,
                                                     volume.id,
                                                     {'status': 'error'})
-        _mock_sched_create.assert_called_once_with(self.context, request_spec,
-                                                   {})
+        _mock_sched_create.assert_called_once_with(self.context,
+                                                   request_spec_obj, {})
 
         _mock_message_create.assert_called_once_with(
             self.context, defined_messages.UNABLE_TO_ALLOCATE,
@@ -154,13 +158,14 @@ class SchedulerManagerTestCase(test.TestCase):
         topic = 'fake_topic'
 
         request_spec = {'volume_id': volume.id}
+        request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
         self.manager.create_volume(self.context, topic, volume.id,
                                    request_spec=request_spec,
                                    filter_properties={},
                                    volume=volume)
-        _mock_sched_create.assert_called_once_with(self.context, request_spec,
-                                                   {})
+        _mock_sched_create.assert_called_once_with(self.context,
+                                                   request_spec_obj, {})
         self.assertFalse(_mock_sleep.called)
 
     @mock.patch('cinder.scheduler.driver.Scheduler.schedule_create_volume')
@@ -174,6 +179,7 @@ class SchedulerManagerTestCase(test.TestCase):
         topic = 'fake_topic'
 
         request_spec = {'volume_id': volume.id}
+        request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
         _mock_is_ready.side_effect = [False, False, True]
 
@@ -181,8 +187,8 @@ class SchedulerManagerTestCase(test.TestCase):
                                    request_spec=request_spec,
                                    filter_properties={},
                                    volume=volume)
-        _mock_sched_create.assert_called_once_with(self.context, request_spec,
-                                                   {})
+        _mock_sched_create.assert_called_once_with(self.context,
+                                                   request_spec_obj, {})
         calls = [mock.call(1)] * 2
         _mock_sleep.assert_has_calls(calls)
         self.assertEqual(2, _mock_sleep.call_count)
@@ -198,6 +204,7 @@ class SchedulerManagerTestCase(test.TestCase):
         topic = 'fake_topic'
 
         request_spec = {'volume_id': volume.id}
+        request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
         _mock_is_ready.return_value = True
 
@@ -205,8 +212,8 @@ class SchedulerManagerTestCase(test.TestCase):
                                    request_spec=request_spec,
                                    filter_properties={},
                                    volume=volume)
-        _mock_sched_create.assert_called_once_with(self.context, request_spec,
-                                                   {})
+        _mock_sched_create.assert_called_once_with(self.context,
+                                                   request_spec_obj, {})
         self.assertFalse(_mock_sleep.called)
 
     @mock.patch('cinder.db.volume_get')

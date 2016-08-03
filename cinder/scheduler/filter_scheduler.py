@@ -22,6 +22,7 @@ Weighing Functions.
 
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_serialization import jsonutils
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
@@ -257,27 +258,26 @@ class FilterScheduler(driver.Scheduler):
         """
         elevated = context.elevated()
 
-        volume_properties = request_spec['volume_properties']
         # Since Cinder is using mixed filters from Oslo and it's own, which
         # takes 'resource_XX' and 'volume_XX' as input respectively, copying
         # 'volume_XX' to 'resource_XX' will make both filters happy.
-        resource_properties = volume_properties.copy()
-        volume_type = request_spec.get("volume_type", None)
-        resource_type = request_spec.get("volume_type", None)
-        request_spec.update({'resource_properties': resource_properties})
+        volume_type = resource_type = request_spec.get("volume_type")
 
         config_options = self._get_configuration_options()
 
         if filter_properties is None:
             filter_properties = {}
-        self._populate_retry(filter_properties, resource_properties)
+        self._populate_retry(filter_properties,
+                             request_spec['volume_properties'])
 
         if resource_type is None:
             msg = _("volume_type cannot be None")
             raise exception.InvalidVolumeType(reason=msg)
 
+        request_spec_dict = jsonutils.to_primitive(request_spec)
+
         filter_properties.update({'context': context,
-                                  'request_spec': request_spec,
+                                  'request_spec': request_spec_dict,
                                   'config_options': config_options,
                                   'volume_type': volume_type,
                                   'resource_type': resource_type})
@@ -288,7 +288,8 @@ class FilterScheduler(driver.Scheduler):
         # If multiattach is enabled on a volume, we need to add
         # multiattach to extra specs, so that the capability
         # filtering is enabled.
-        multiattach = volume_properties.get('multiattach', False)
+        multiattach = request_spec['volume_properties'].get('multiattach',
+                                                            False)
         if multiattach and 'multiattach' not in resource_type.get(
                 'extra_specs', {}):
             if 'extra_specs' not in resource_type:

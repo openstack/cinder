@@ -29,6 +29,7 @@ def register_all():
     __import__('cinder.objects.cluster')
     __import__('cinder.objects.consistencygroup')
     __import__('cinder.objects.qos_specs')
+    __import__('cinder.objects.request_spec')
     __import__('cinder.objects.service')
     __import__('cinder.objects.snapshot')
     __import__('cinder.objects.volume')

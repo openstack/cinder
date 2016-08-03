@@ -53,9 +53,10 @@ class SchedulerAPI(rpc.RPCAPI):
 
         2.0 - Remove 1.x compatibility
         2.1 - Adds support for sending objects over RPC in manage_existing()
+        2.2 - Sends request_spec as object in create_volume()
     """
 
-    RPC_API_VERSION = '2.1'
+    RPC_API_VERSION = '2.2'
     TOPIC = CONF.scheduler_topic
     BINARY = 'cinder-scheduler'
 
@@ -87,7 +88,11 @@ class SchedulerAPI(rpc.RPCAPI):
                     'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = '2.0'
+        version = '2.2'
+        if not self.client.can_send_version('2.2'):
+            # Send request_spec as dict
+            version = '2.0'
+            msg_args['request_spec'] = jsonutils.to_primitive(request_spec)
 
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'create_volume', **msg_args)

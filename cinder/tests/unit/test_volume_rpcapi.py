@@ -245,7 +245,8 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('delete_cgsnapshot', rpc_method='cast',
                               cgsnapshot=self.fake_cgsnap, version='2.0')
 
-    def test_create_volume(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version', return_value=True)
+    def test_create_volume(self, can_send_version):
         self._test_volume_api('create_volume',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
@@ -253,9 +254,12 @@ class VolumeRpcAPITestCase(test.TestCase):
                               request_spec='fake_request_spec',
                               filter_properties='fake_properties',
                               allow_reschedule=True,
-                              version='2.0')
+                              version='2.4')
+        can_send_version.assert_has_calls([mock.call('2.4')])
 
-    def test_create_volume_serialization(self):
+    @mock.patch('oslo_messaging.RPCClient.can_send_version',
+                return_value=False)
+    def test_create_volume_serialization(self, can_send_version):
         request_spec = {"metadata": self.fake_volume_metadata}
         self._test_volume_api('create_volume',
                               rpc_method='cast',
@@ -265,6 +269,7 @@ class VolumeRpcAPITestCase(test.TestCase):
                               filter_properties='fake_properties',
                               allow_reschedule=True,
                               version='2.0')
+        can_send_version.assert_has_calls([mock.call('2.4')])
 
     def test_delete_volume(self):
         self._test_volume_api('delete_volume',

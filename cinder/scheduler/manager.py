@@ -136,6 +136,11 @@ class SchedulerManager(manager.Manager):
             # volume by its volume_id.
             volume = objects.Volume.get_by_id(context, volume_id)
 
+        # FIXME(dulek): Remove this in v3.0 of RPC API.
+        if isinstance(request_spec, dict):
+            # We may receive request_spec as dict from older clients.
+            request_spec = objects.RequestSpec.from_primitives(request_spec)
+
         try:
             flow_engine = create_volume.get_flow(context,
                                                  db, self.driver,
