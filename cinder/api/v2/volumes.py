@@ -68,7 +68,7 @@ class VolumeController(wsgi.Controller):
 
         cascade = utils.get_bool_param('cascade', req.params)
 
-        LOG.info(_LI("Delete volume with id: %s"), id, context=context)
+        LOG.info(_LI("Delete volume with id: %s"), id)
 
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
@@ -253,7 +253,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_replica'] is not None:
             size = kwargs['source_replica']['size']
 
-        LOG.info(_LI("Create volume of %s GB"), size, context=context)
+        LOG.info(_LI("Create volume of %s GB"), size)
 
         if self.ext_mgr.is_loaded('os-image-create'):
             image_ref = volume.get('imageRef')

@@ -48,7 +48,7 @@ class SnapshotUnmanageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.info(_LI("Unmanage snapshot with id: %s"), id, context=context)
+        LOG.info(_LI("Unmanage snapshot with id: %s"), id)
 
         try:
             snapshot = self.volume_api.get_snapshot(context, id)

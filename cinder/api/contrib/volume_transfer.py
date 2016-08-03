@@ -95,8 +95,7 @@ class VolumeTransferController(wsgi.Controller):
             name = name.strip()
 
         LOG.info(_LI("Creating transfer of volume %s"),
-                 volume_id,
-                 context=context)
+                 volume_id)
 
         try:
             new_transfer = self.transfer_api.create(context, volume_id, name)
@@ -124,8 +123,7 @@ class VolumeTransferController(wsgi.Controller):
             msg = _("Incorrect request body format")
             raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI("Accepting transfer %s"), transfer_id,
-                 context=context)
+        LOG.info(_LI("Accepting transfer %s"), transfer_id)
 
         try:
             accepted_transfer = self.transfer_api.accept(context, transfer_id,
@@ -145,7 +143,7 @@ class VolumeTransferController(wsgi.Controller):
         """Delete a transfer."""
         context = req.environ['cinder.context']
 
-        LOG.info(_LI("Delete transfer with id: %s"), id, context=context)
+        LOG.info(_LI("Delete transfer with id: %s"), id)
 
         # Not found exception will be handled at the wsgi level
         self.transfer_api.delete(context, transfer_id=id)

@@ -71,8 +71,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                 msg = _("Invalid value '%s' for force.") % force
                 raise exc.HTTPBadRequest(explanation=msg)
 
-        LOG.info(_LI('Delete consistency group with id: %s'), id,
-                 context=context)
+        LOG.info(_LI('Delete consistency group with id: %s'), id)
 
         try:
             group = self.consistencygroup_api.get(context, id)
@@ -129,8 +128,7 @@ class ConsistencyGroupsController(wsgi.Controller):
         availability_zone = consistencygroup.get('availability_zone', None)
 
         LOG.info(_LI("Creating consistency group %(name)s."),
-                 {'name': name},
-                 context=context)
+                 {'name': name})
 
         try:
             new_consistencygroup = self.consistencygroup_api.create(
@@ -178,13 +176,11 @@ class ConsistencyGroupsController(wsgi.Controller):
         if cgsnapshot_id:
             LOG.info(_LI("Creating consistency group %(name)s from "
                          "cgsnapshot %(snap)s."),
-                     {'name': name, 'snap': cgsnapshot_id},
-                     context=context)
+                     {'name': name, 'snap': cgsnapshot_id})
         elif source_cgid:
             LOG.info(_LI("Creating consistency group %(name)s from "
                          "source consistency group %(source_cgid)s."),
-                     {'name': name, 'source_cgid': source_cgid},
-                     context=context)
+                     {'name': name, 'source_cgid': source_cgid})
 
         try:
             new_consistencygroup = self.consistencygroup_api.create_from_src(
@@ -217,8 +213,7 @@ class ConsistencyGroupsController(wsgi.Controller):
                   'name': name,
                   'description': description,
                   'add_volumes': add_volumes,
-                  'remove_volumes': remove_volumes},
-                 context=context)
+                  'remove_volumes': remove_volumes})
 
         # Handle relevant exceptions at wsgi level
         group = self.consistencygroup_api.get(context, id)

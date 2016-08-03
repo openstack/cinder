@@ -57,7 +57,7 @@ class CgsnapshotsController(wsgi.Controller):
         LOG.debug('delete called for member %s', id)
         context = req.environ['cinder.context']
 
-        LOG.info(_LI('Delete cgsnapshot with id: %s'), id, context=context)
+        LOG.info(_LI('Delete cgsnapshot with id: %s'), id)
 
         try:
             cgsnapshot = self.cgsnapshot_api.get_cgsnapshot(

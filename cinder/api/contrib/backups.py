@@ -58,7 +58,7 @@ class BackupsController(wsgi.Controller):
         LOG.debug('Delete called for member %s.', id)
         context = req.environ['cinder.context']
 
-        LOG.info(_LI('Delete backup with id: %s'), id, context=context)
+        LOG.info(_LI('Delete backup with id: %s'), id)
 
         try:
             backup = self.backup_api.get(context, id)

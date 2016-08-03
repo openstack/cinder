@@ -58,7 +58,7 @@ class SnapshotsController(wsgi.Controller):
         """Delete a snapshot."""
         context = req.environ['cinder.context']
 
-        LOG.info(_LI("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_LI("Delete snapshot with id: %s"), id)
 
         # Not found exception will be handled at the wsgi level
         snapshot = self.volume_api.get_snapshot(context, id)
@@ -128,7 +128,7 @@ class SnapshotsController(wsgi.Controller):
         volume = self.volume_api.get(context, volume_id)
         force = snapshot.get('force', False)
         msg = _LI("Create snapshot from volume %s")
-        LOG.info(msg, volume_id, context=context)
+        LOG.info(msg, volume_id)
         self.validate_name_and_description(snapshot)
 
         # NOTE(thingee): v2 API allows name instead of display_name

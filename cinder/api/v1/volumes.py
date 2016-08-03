@@ -114,7 +114,7 @@ def _translate_volume_summary_view(context, vol, image_id=None):
     if image_id:
         d['image_id'] = image_id
 
-    LOG.info(_LI("vol=%s"), vol, context=context)
+    LOG.info(_LI("vol=%s"), vol)
 
     if vol.metadata:
         d['metadata'] = vol.metadata
@@ -148,7 +148,7 @@ class VolumeController(wsgi.Controller):
         """Delete a volume."""
         context = req.environ['cinder.context']
 
-        LOG.info(_LI("Delete volume with id: %s"), id, context=context)
+        LOG.info(_LI("Delete volume with id: %s"), id)
 
         # Not found exception will be handled at the wsgi level
         volume = self.volume_api.get(context, id)
@@ -258,7 +258,7 @@ class VolumeController(wsgi.Controller):
         elif size is None and kwargs['source_volume'] is not None:
             size = kwargs['source_volume']['size']
 
-        LOG.info(_LI("Create volume of %s GB"), size, context=context)
+        LOG.info(_LI("Create volume of %s GB"), size)
         multiattach = volume.get('multiattach', False)
         kwargs['multiattach'] = multiattach
 

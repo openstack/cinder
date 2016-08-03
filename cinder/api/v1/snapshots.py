@@ -82,7 +82,7 @@ class SnapshotsController(wsgi.Controller):
         """Delete a snapshot."""
         context = req.environ['cinder.context']
 
-        LOG.info(_LI("Delete snapshot with id: %s"), id, context=context)
+        LOG.info(_LI("Delete snapshot with id: %s"), id)
 
         # Not found exception will be handled at the wsgi level
         snapshot = self.volume_api.get_snapshot(context, id)
@@ -140,7 +140,7 @@ class SnapshotsController(wsgi.Controller):
 
         force = snapshot.get('force', False)
         msg = _LI("Create snapshot from volume %s")
-        LOG.info(msg, volume_id, context=context)
+        LOG.info(msg, volume_id)
 
         if not utils.is_valid_boolstr(force):
             msg = _("Invalid value '%s' for force. ") % force

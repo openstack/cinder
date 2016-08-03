@@ -49,7 +49,7 @@ class VolumeUnmanageController(wsgi.Controller):
         context = req.environ['cinder.context']
         authorize(context)
 
-        LOG.info(_LI("Unmanage volume with id: %s"), id, context=context)
+        LOG.info(_LI("Unmanage volume with id: %s"), id)
 
         # Not found exception will be handled at the wsgi level
         vol = self.volume_api.get(context, id)
