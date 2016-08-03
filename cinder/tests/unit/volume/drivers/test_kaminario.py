@@ -18,6 +18,7 @@ from oslo_utils import units
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -50,6 +51,8 @@ class FakeSaveObject(FakeK2Obj):
         self.volume_group = self
         self.is_dedup = True
         self.size = units.Mi
+        self.replication_status = None
+        self.state = 'in_sync'
 
     def save(self):
         return FakeSaveObject()
@@ -94,6 +97,13 @@ class FakeKrestException(object):
 
     def new(self, *args, **argv):
         return FakeSaveObjectExp()
+
+
+class Replication(object):
+    backend_id = '10.0.0.1'
+    login = 'login'
+    password = 'password'
+    rpo = 500
 
 
 class TestKaminarioISCSI(test.TestCase):
@@ -261,7 +271,7 @@ class TestKaminarioISCSI(test.TestCase):
 
     def test_get_target_info(self):
         """Test get_target_info."""
-        iscsi_portal, target_iqn = self.driver.get_target_info()
+        iscsi_portal, target_iqn = self.driver.get_target_info(self.vol)
         self.assertEqual('10.0.0.1:3260', iscsi_portal)
         self.assertEqual('xyztlnxyz', target_iqn)
 
@@ -306,6 +316,93 @@ class TestKaminarioISCSI(test.TestCase):
         result = self.driver._get_replica_status(self.vol)
         self.assertTrue(result)
 
+    def test_create_volume_replica(self):
+        """Test _create_volume_replica."""
+        vg = FakeSaveObject()
+        rep = Replication()
+        self.driver.replica = rep
+        session_name = self.driver.get_session_name('1234567890987654321')
+        self.assertEqual('ssn-1234567890987654321', session_name)
+        rsession_name = self.driver.get_rep_name(session_name)
+        self.assertEqual('rssn-1234567890987654321', rsession_name)
+        src_ssn = self.driver.client.new("replication/sessions").save()
+        self.assertEqual('in_sync', src_ssn.state)
+        result = self.driver._create_volume_replica(self.vol, vg, vg, rep.rpo)
+        self.assertIsNone(result)
+
+    def test_create_volume_replica_exp(self):
+        """Test _create_volume_replica_exp."""
+        vg = FakeSaveObject()
+        rep = Replication()
+        self.driver.replica = rep
+        self.driver.client = FakeKrestException()
+        self.assertRaises(exception.KaminarioCinderDriverException,
+                          self.driver._create_volume_replica, self.vol,
+                          vg, vg, rep.rpo)
+
+    def test_delete_by_ref(self):
+        """Test _delete_by_ref."""
+        result = self.driver._delete_by_ref(self.driver.client, 'volume',
+                                            'name', 'message')
+        self.assertIsNone(result)
+
+    def test_failover_volume(self):
+        """Test _failover_volume."""
+        self.driver.target = FakeKrest()
+        session_name = self.driver.get_session_name('1234567890987654321')
+        self.assertEqual('ssn-1234567890987654321', session_name)
+        rsession_name = self.driver.get_rep_name(session_name)
+        self.assertEqual('rssn-1234567890987654321', rsession_name)
+        result = self.driver._failover_volume(self.vol)
+        self.assertIsNone(result)
+
+    def test_failover_host(self):
+        """Test failover_host."""
+        volumes = [self.vol, self.vol]
+        self.driver.replica = Replication()
+        self.driver.target = FakeKrest()
+        backend_ip, res_volumes = self.driver.failover_host(None, volumes)
+        self.assertEqual('10.0.0.1', backend_ip)
+        status = res_volumes[0]['updates']['replication_status']
+        self.assertEqual(fields.ReplicationStatus.FAILED_OVER, status)
+
+    def test_delete_volume_replica(self):
+        """Test _delete_volume_replica."""
+        self.driver.replica = Replication()
+        self.driver.target = FakeKrest()
+        session_name = self.driver.get_session_name('1234567890987654321')
+        self.assertEqual('ssn-1234567890987654321', session_name)
+        rsession_name = self.driver.get_rep_name(session_name)
+        self.assertEqual('rssn-1234567890987654321', rsession_name)
+        res = self.driver._delete_by_ref(self.driver.client, 'volumes',
+                                         'test', 'test')
+        self.assertIsNone(res)
+        result = self.driver._delete_volume_replica(self.vol, 'test', 'test')
+        self.assertIsNone(result)
+        src_ssn = self.driver.client.search("replication/sessions").hits[0]
+        self.assertEqual('idle', src_ssn.state)
+
+    def test_delete_volume_replica_exp(self):
+        """Test _delete_volume_replica_exp."""
+        self.driver.replica = Replication()
+        self.driver.target = FakeKrestException()
+        self.driver._check_for_status = mock.Mock()
+        self.assertRaises(exception.KaminarioCinderDriverException,
+                          self.driver._delete_volume_replica, self.vol,
+                          'test', 'test')
+
+    def test_get_is_replica(self):
+        """Test get_is_replica."""
+        result = self.driver._get_is_replica(self.vol.volume_type)
+        self.assertFalse(result)
+
+    def test_get_is_replica_true(self):
+        """Test get_is_replica_true."""
+        self.driver.replica = Replication()
+        self.vol.volume_type.extra_specs = {'kaminario:replication': 'enabled'}
+        result = self.driver._get_is_replica(self.vol.volume_type)
+        self.assertTrue(result)
+
 
 class TestKaminarioFC(TestKaminarioISCSI):
 
@@ -325,7 +422,7 @@ class TestKaminarioFC(TestKaminarioISCSI):
 
     def test_get_target_info(self):
         """Test get_target_info."""
-        target_wwpn = self.driver.get_target_info()
+        target_wwpn = self.driver.get_target_info(self.vol)
         self.assertEqual(['50024f4053300300'], target_wwpn)
 
     def test_terminate_connection(self):

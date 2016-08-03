@@ -20,6 +20,7 @@ from oslo_log import log as logging
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder import interface
+from cinder.objects import fields
 from cinder.volume.drivers.kaminario import kaminario_common as common
 
 ISCSI_TCP_PORT = "3260"
@@ -34,9 +35,10 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
     Version history:
         1.0 - Initial driver
         1.1 - Added manage/unmanage and extra-specs support for nodedup
+        1.2 - Added replication support
     """
 
-    VERSION = '1.1'
+    VERSION = '1.2'
 
     @kaminario_logger
     def __init__(self, *args, **kwargs):
@@ -47,7 +49,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
     def initialize_connection(self, volume, connector):
         """Attach K2 volume to host."""
         # Get target_portal and target iqn.
-        iscsi_portal, target_iqn = self.get_target_info()
+        iscsi_portal, target_iqn = self.get_target_info(volume)
         # Map volume.
         lun = self.k2_initialize_connection(volume, connector)
         # Return target volume information.
@@ -58,7 +60,11 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
                          "target_discovered": True}}
 
     @kaminario_logger
-    def get_target_info(self):
+    def get_target_info(self, volume):
+        rep_status = fields.ReplicationStatus.FAILED_OVER
+        if (hasattr(volume, 'replication_status') and
+                volume.replication_status == rep_status):
+            self.client = self.target
         LOG.debug("Searching first iscsi port ip without wan in K2.")
         iscsi_ip_rs = self.client.search("system/net_ips", wan_port="")
         iscsi_ip = target_iqn = None

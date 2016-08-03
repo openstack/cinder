@@ -18,6 +18,7 @@ import math
 import re
 import six
 
+import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import importutils
@@ -27,6 +28,7 @@ from oslo_utils import versionutils
 import cinder
 from cinder import exception
 from cinder.i18n import _, _LE, _LW, _LI
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
@@ -74,6 +76,14 @@ def kaminario_logger(func):
     return func_wrapper
 
 
+class Replication(object):
+    def __init__(self, config, *args, **kwargs):
+        self.backend_id = config.get('backend_id')
+        self.login = config.get('login')
+        self.password = config.get('password')
+        self.rpo = config.get('rpo')
+
+
 class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     VENDOR = "Kaminario"
     stats = {}
@@ -82,6 +92,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         super(KaminarioCinderDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(san.san_opts)
         self.configuration.append_config_values(kaminario2_opts)
+        self.replica = None
         self._protocol = None
 
     def check_for_setup_error(self):
@@ -95,6 +106,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                               conf.san_login,
                                               conf.san_password,
                                               ssl_validate=False)
+            if self.replica:
+                self.target = self.krest.EndPoint(self.replica.backend_id,
+                                                  self.replica.login,
+                                                  self.replica.password,
+                                                  ssl_validate=False)
             v_rs = self.client.search("system/state")
             if hasattr(v_rs, 'hits') and v_rs.total != 0:
                 ver = v_rs.hits[0].rest_api_version
@@ -118,6 +134,15 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         for attr in required_ops:
             if not getattr(self.configuration, attr, None):
                 raise exception.InvalidInput(reason=_('%s is not set.') % attr)
+
+        replica = self.configuration.safe_get('replication_device')
+        if replica and isinstance(replica, list):
+            replica_ops = ['backend_id', 'login', 'password', 'rpo']
+            for attr in replica_ops:
+                if attr not in replica[0]:
+                    msg = _('replication_device %s is not set.') % attr
+                    raise exception.InvalidInput(reason=msg)
+            self.replica = Replication(replica[0])
 
     @kaminario_logger
     def do_setup(self, context):
@@ -145,9 +170,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.debug("Creating volume with name: %(name)s, size: %(size)s "
                       "GB, volume_group: %(vg)s",
                       {'name': vol_name, 'size': volume.size, 'vg': vg_name})
-            self.client.new("volumes", name=vol_name,
-                            size=volume.size * units.Mi,
-                            volume_group=vg).save()
+            vol = self.client.new("volumes", name=vol_name,
+                                  size=volume.size * units.Mi,
+                                  volume_group=vg).save()
         except Exception as ex:
             vg_rs = self.client.search("volume_groups", name=vg_name)
             if vg_rs.total != 0:
@@ -156,6 +181,113 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.exception(_LE("Creation of volume %s failed."), vol_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
+
+        if self._get_is_replica(volume.volume_type) and self.replica:
+            self._create_volume_replica(volume, vg, vol, self.replica.rpo)
+
+    @kaminario_logger
+    def _create_volume_replica(self, volume, vg, vol, rpo):
+        """Volume replica creation in K2 needs session and remote volume.
+
+        - create a session
+        - create a volume in the volume group
+
+        """
+        session_name = self.get_session_name(volume.id)
+        rsession_name = self.get_rep_name(session_name)
+
+        rvg_name = self.get_rep_name(vg.name)
+        rvol_name = self.get_rep_name(vol.name)
+
+        k2peer_rs = self.client.search("replication/peer_k2arrays",
+                                       mgmt_host=self.replica.backend_id)
+        if hasattr(k2peer_rs, 'hits') and k2peer_rs.total != 0:
+            k2peer = k2peer_rs.hits[0]
+        else:
+            msg = _("Unable to find K2peer in source K2:")
+            LOG.error(msg)
+            raise exception.KaminarioCinderDriverException(reason=msg)
+        try:
+            LOG.debug("Creating source session with name: %(sname)s and "
+                      " target session name: %(tname)s",
+                      {'sname': session_name, 'tname': rsession_name})
+            src_ssn = self.client.new("replication/sessions")
+            src_ssn.replication_peer_k2array = k2peer
+            src_ssn.auto_configure_peer_volumes = "False"
+            src_ssn.local_volume_group = vg
+            src_ssn.replication_peer_volume_group_name = rvg_name
+            src_ssn.remote_replication_session_name = rsession_name
+            src_ssn.name = session_name
+            src_ssn.rpo = rpo
+            src_ssn.save()
+            LOG.debug("Creating remote volume with name: %s",
+                      rvol_name)
+            self.client.new("replication/peer_volumes",
+                            local_volume=vol,
+                            name=rvol_name,
+                            replication_session=src_ssn).save()
+            src_ssn.state = "in_sync"
+            src_ssn.save()
+        except Exception as ex:
+            LOG.exception(_LE("Replication for the volume %s has "
+                              "failed."), vol.name)
+            self._delete_by_ref(self.client, "replication/sessions",
+                                session_name, 'session')
+            self._delete_by_ref(self.target, "replication/sessions",
+                                rsession_name, 'remote session')
+            self._delete_by_ref(self.target, "volumes",
+                                rvol_name, 'remote volume')
+            self._delete_by_ref(self.client, "volumes", vol.name, "volume")
+            self._delete_by_ref(self.target, "volume_groups",
+                                rvg_name, "remote vg")
+            self._delete_by_ref(self.client, "volume_groups", vg.name, "vg")
+            raise exception.KaminarioCinderDriverException(
+                reason=six.text_type(ex.message))
+
+    def _delete_by_ref(self, device, url, name, msg):
+        rs = device.search(url, name=name)
+        for result in rs.hits:
+            result.delete()
+            LOG.debug("Deleting %(msg)s: %(name)s", {'msg': msg, 'name': name})
+
+    @kaminario_logger
+    def _failover_volume(self, volume):
+        """Promoting a secondary volume to primary volume."""
+        session_name = self.get_session_name(volume.id)
+        rsession_name = self.get_rep_name(session_name)
+        tgt_ssn = self.target.search("replication/sessions",
+                                     name=rsession_name).hits[0]
+        if tgt_ssn.state == 'in_sync':
+            tgt_ssn.state = 'failed_over'
+            tgt_ssn.save()
+            LOG.debug("The target session: %s state is "
+                      "changed to failed_over ", rsession_name)
+
+    @kaminario_logger
+    def failover_host(self, context, volumes, secondary_id=None):
+        """Failover to replication target."""
+        volume_updates = []
+        if secondary_id and secondary_id != self.replica.backend_id:
+            LOG.error(_LE("Kaminario driver received failover_host "
+                          "request, But backend is non replicated device"))
+            raise exception.UnableToFailOver(reason=_("Failover requested "
+                                                      "on non replicated "
+                                                      "backend."))
+        for v in volumes:
+            vol_name = self.get_volume_name(v['id'])
+            rv = self.get_rep_name(vol_name)
+            if self.target.search("volumes", name=rv).total:
+                self._failover_volume(v)
+                volume_updates.append(
+                    {'volume_id': v['id'],
+                     'updates':
+                     {'replication_status':
+                      fields.ReplicationStatus.FAILED_OVER}})
+            else:
+                volume_updates.append({'volume_id': v['id'],
+                                       'updates': {'status': 'error', }})
+
+        return self.replica.backend_id, volume_updates
 
     @kaminario_logger
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -271,6 +403,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         vg_name = self.get_volume_group_name(volume.id)
         vol_name = self.get_volume_name(volume.id)
         try:
+            if self._get_is_replica(volume.volume_type) and self.replica:
+                self._delete_volume_replica(volume, vg_name, vol_name)
+
             LOG.debug("Searching and deleting volume: %s in K2.", vol_name)
             vol_rs = self.client.search("volumes", name=vol_name)
             if vol_rs.total != 0:
@@ -283,6 +418,46 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.exception(_LE("Deletion of volume %s failed."), vol_name)
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
+
+    @kaminario_logger
+    def _delete_volume_replica(self, volume, vg_name, vol_name):
+        rvg_name = self.get_rep_name(vg_name)
+        rvol_name = self.get_rep_name(vol_name)
+        session_name = self.get_session_name(volume.id)
+        rsession_name = self.get_rep_name(session_name)
+        src_ssn = self.client.search('replication/sessions',
+                                     name=session_name).hits[0]
+        tgt_ssn = self.target.search('replication/sessions',
+                                     name=rsession_name).hits[0]
+        src_ssn.state = 'suspended'
+        src_ssn.save()
+        self._check_for_status(tgt_ssn, 'suspended')
+        src_ssn.state = 'idle'
+        src_ssn.save()
+        self._check_for_status(tgt_ssn, 'idle')
+        tgt_ssn.delete()
+        src_ssn.delete()
+
+        LOG.debug("Searching and deleting snapshots for volume groups:"
+                  "%(vg1)s, %(vg2)s in K2.", {'vg1': vg_name, 'vg2': rvg_name})
+        vg = self.target.search('volume_groups', name=vg_name).hits
+        rvg = self.target.search('volume_groups', name=rvg_name).hits
+        snaps = self.client.search('snapshots', volume_group=vg).hits
+        for s in snaps:
+            s.delete()
+        rsnaps = self.target.search('snapshots', volume_group=rvg).hits
+        for s in rsnaps:
+            s.delete()
+
+        self._delete_by_ref(self.target, "volumes", rvol_name, 'remote volume')
+        self._delete_by_ref(self.target, "volume_groups",
+                            rvg_name, "remote vg")
+
+    @kaminario_logger
+    def _check_for_status(self, obj, status):
+        while obj.state != status:
+            obj.refresh()
+            eventlet.sleep(1)
 
     @kaminario_logger
     def get_volume_stats(self, refresh=False):
@@ -375,7 +550,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                       'thick_provisioning_support': False,
                       'provisioned_capacity_gb': provisioned_vol / units.Mi,
                       'max_oversubscription_ratio': ratio,
-                      'kaminario:thin_prov_type': 'dedup/nodedup'}
+                      'kaminario:thin_prov_type': 'dedup/nodedup',
+                      'replication_enabled': True,
+                      'kaminario:replication': True}
 
     @kaminario_logger
     def get_initiator_host_name(self, connector):
@@ -398,6 +575,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         return "cv-{0}".format(vid)
 
     @kaminario_logger
+    def get_session_name(self, vid):
+        """Return the volume name."""
+        return "ssn-{0}".format(vid)
+
+    @kaminario_logger
     def get_snap_name(self, sid):
         """Return the snapshot name."""
         return "cs-{0}".format(sid)
@@ -406,6 +588,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def get_view_name(self, vid):
         """Return the view name."""
         return "cview-{0}".format(vid)
+
+    @kaminario_logger
+    def get_rep_name(self, sname):
+        """Return the replication session name."""
+        return "r{0}".format(sname)
 
     @kaminario_logger
     def _delete_host_by_name(self, name):
@@ -430,6 +617,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     @kaminario_logger
     def _get_volume_object(self, volume):
         vol_name = self.get_volume_name(volume.id)
+        if volume.replication_status == 'failed-over':
+            vol_name = self.get_rep_name(vol_name)
+            self.client = self.target
         LOG.debug("Searching volume : %s in K2.", vol_name)
         vol_rs = self.client.search("volumes", name=vol_name)
         if not hasattr(vol_rs, 'hits') or vol_rs.total == 0:
@@ -459,6 +649,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         # Get volume object
         if type(volume).__name__ != 'RestObject':
             vol_name = self.get_volume_name(volume.id)
+            if volume.replication_status == 'failed-over':
+                vol_name = self.get_rep_name(vol_name)
+                self.client = self.target
             LOG.debug("Searching volume: %s in K2.", vol_name)
             volume_rs = self.client.search("volumes", name=vol_name)
             if hasattr(volume_rs, "hits") and volume_rs.total != 0:
@@ -528,6 +721,15 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 return True
         else:
             return True
+
+    def _get_is_replica(self, vol_type):
+        replica = False
+        if vol_type and vol_type.get('extra_specs'):
+            specs = vol_type.get('extra_specs')
+            if (specs.get('kaminario:replication') == 'enabled' and
+               self.replica):
+                replica = True
+        return replica
 
     def _get_replica_status(self, vg_name):
         status = False

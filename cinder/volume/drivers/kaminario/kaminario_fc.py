@@ -19,6 +19,7 @@ from oslo_log import log as logging
 
 from cinder import exception
 from cinder.i18n import _, _LE
+from cinder.objects import fields
 from cinder.volume.drivers.kaminario import kaminario_common as common
 from cinder.zonemanager import utils as fczm_utils
 
@@ -32,9 +33,10 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
     Version history:
         1.0 - Initial driver
         1.1 - Added manage/unmanage and extra-specs support for nodedup
+        1.2 - Added replication support
     """
 
-    VERSION = '1.1'
+    VERSION = '1.2'
 
     @kaminario_logger
     def __init__(self, *args, **kwargs):
@@ -52,7 +54,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
             LOG.error(msg)
             raise exception.KaminarioCinderDriverException(reason=msg)
         # Get target wwpns.
-        target_wwpns = self.get_target_info()
+        target_wwpns = self.get_target_info(volume)
         # Map volume.
         lun = self.k2_initialize_connection(volume, connector)
         # Create initiator-target mapping.
@@ -75,7 +77,7 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         # is not attached to any volume
         if host_rs.total == 0:
             # Get target wwpns.
-            target_wwpns = self.get_target_info()
+            target_wwpns = self.get_target_info(volume)
             target_wwpns, init_target_map = self._build_initiator_target_map(
                 connector, target_wwpns)
             properties["data"] = {"target_wwn": target_wwpns,
@@ -83,7 +85,11 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
         return properties
 
     @kaminario_logger
-    def get_target_info(self):
+    def get_target_info(self, volume):
+        rep_status = fields.ReplicationStatus.FAILED_OVER
+        if (hasattr(volume, 'replication_status') and
+                volume.replication_status == rep_status):
+            self.client = self.target
         LOG.debug("Searching target wwpns in K2.")
         fc_ports_rs = self.client.search("system/fc_ports")
         target_wwpns = []
