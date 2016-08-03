@@ -54,7 +54,7 @@ class NestedQuotasTest(functional_helpers._FunctionalTestBase):
     def _get_flags(self):
         f = super(NestedQuotasTest, self)._get_flags()
         f['volume_driver'] = \
-            'cinder.tests.unit.fake_driver.LoggingVolumeDriver'
+            'cinder.tests.fake_driver.LoggingVolumeDriver'
         f['default_volume_type'] = self._vol_type_name
         return f
 
