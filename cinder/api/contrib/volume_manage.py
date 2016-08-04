@@ -135,6 +135,9 @@ class VolumeManageController(wsgi.Controller):
         kwargs['metadata'] = volume.get('metadata', None)
         kwargs['availability_zone'] = volume.get('availability_zone', None)
         kwargs['bootable'] = utils.get_bool_param('bootable', volume)
+
+        utils.check_metadata_properties(kwargs['metadata'])
+
         # Not found exception will be handled at wsgi level
         new_volume = self.volume_api.manage_existing(context,
                                                      volume['host'],

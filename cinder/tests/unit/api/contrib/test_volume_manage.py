@@ -13,6 +13,7 @@
 #   License for the specific language governing permissions and limitations
 #   under the License.
 
+import ddt
 import mock
 from oslo_config import cfg
 from oslo_serialization import jsonutils
@@ -126,6 +127,7 @@ def api_get_manageable_volumes(*args, **kwargs):
     return vols
 
 
+@ddt.ddt
 @mock.patch('cinder.objects.service.Service.get_by_host_and_topic',
             service_get_by_host_and_topic)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',
@@ -322,3 +324,14 @@ class VolumeManageTest(test.TestCase):
             self._admin_ctxt, 'fakehost', limit=CONF.osapi_max_limit,
             marker=None, offset=0, sort_dirs=['desc'],
             sort_keys=['reference'])
+
+    @ddt.data({'a' * 256: 'a'},
+              {'a': 'a' * 256},
+              {'': 'a'},
+              )
+    def test_manage_volume_with_invalid_metadata(self, value):
+        body = {'volume': {'host': 'host_ok',
+                           'ref': 'fake_ref',
+                           "metadata": value}}
+        res = self._get_resp_post(body)
+        self.assertEqual(400, res.status_int)
