@@ -1,0 +1,5 @@
+---
+features:
+  - Added support for querying volumes filtered by group_id
+    using 'group_id' optional URL parameter.
+    For example, "volumes/detail?group_id={consistency_group_id}".

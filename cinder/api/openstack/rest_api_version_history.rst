@@ -165,3 +165,8 @@ user documentation.
          "name": "backup_name",
          "links": "backup_link",
      }
+
+3.10
+----
+  Added the filter parameters ``group_id`` to
+  list/detail volumes requests.
