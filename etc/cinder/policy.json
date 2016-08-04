@@ -116,5 +116,5 @@
 
     "clusters:get": "rule:admin_api",
     "clusters:get_all": "rule:admin_api",
-    "clusters:update": "rule:admin_api",
+    "clusters:update": "rule:admin_api"
 }
