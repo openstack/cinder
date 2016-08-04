@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-30 03:40+0000\n"
+"POT-Creation-Date: 2016-08-04 04:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -46,10 +46,6 @@ msgstr " mais la taille est maintenant %d."
 
 msgid " or "
 msgstr " ou "
-
-#, python-format
-msgid "%(attr)s is not set."
-msgstr "%(attr)s n'est pas défini."
 
 #, python-format
 msgid ""
@@ -362,10 +358,6 @@ msgstr ""
 
 msgid "API key is missing for CloudByte driver."
 msgstr "Clé d'API manquante pour le pilote CloudByte."
-
-#, python-format
-msgid "API response: %(response)s"
-msgstr "Réponse de l'API : %(response)s"
 
 #, python-format
 msgid "API response: %s"
@@ -8188,9 +8180,6 @@ msgstr "Sortie inattendue. [%(expected)s] attendu mais  [%(output)s] reçu"
 
 msgid "Unexpected response from Nimble API"
 msgstr "Code de réponse inattendu de l'API Nimble"
-
-msgid "Unexpected response from Tegile IntelliFlash API"
-msgstr "Réponse inattendue de l'API Tegile IntelliFlash"
 
 msgid "Unexpected status code"
 msgstr "Code de statut inattendu"

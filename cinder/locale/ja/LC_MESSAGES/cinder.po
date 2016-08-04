@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev159\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-03 08:57+0000\n"
+"POT-Creation-Date: 2016-08-04 04:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-02 02:22+0000\n"
+"PO-Revision-Date: 2016-08-03 02:21+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -47,10 +47,6 @@ msgstr "しかし、現在のサイズは %d です。"
 
 msgid " or "
 msgstr "または"
-
-#, python-format
-msgid "%(attr)s is not set."
-msgstr "%(attr)s が設定されていません。"
 
 #, python-format
 msgid ""
@@ -400,10 +396,6 @@ msgid "API key is missing for CloudByte driver."
 msgstr "CloudByte ドライバーの API キーがありません。"
 
 #, python-format
-msgid "API response: %(response)s"
-msgstr "API レスポンス: %(response)s"
-
-#, python-format
 msgid "API response: %s"
 msgstr "API 応答: %s"
 
@@ -486,6 +478,10 @@ msgstr ""
 #, python-format
 msgid "An error occurred while reading volume \"%s\"."
 msgstr "ボリューム \"%s\" の読み取り中にエラーが発生しました。"
+
+#, python-format
+msgid "An error occurred while seeking for volume \"%s\"."
+msgstr "ボリューム \"%s\" のシーク中にエラーが発生しました。"
 
 #, python-format
 msgid "An error occurred while writing to volume \"%s\"."
@@ -571,6 +567,10 @@ msgstr "有効な iSCSI IP アドレスを 1 つ以上設定する必要があ�
 #, python-format
 msgid "Attempt to transfer %s with invalid auth key."
 msgstr "無効な認証キーを使用して %s を転送しようとしています。"
+
+#, python-format
+msgid "Attribute: %s not found."
+msgstr "属性 %s が見つかりません。"
 
 #, python-format
 msgid "Auth group [%s] details not found in CloudByte storage."
@@ -6893,6 +6893,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Share %s ignored due to invalid format. Must be of form address:/export. "
+"Please check the nas_host and nas_share_path settings."
+msgstr ""
+"形式が無効であるため、共有 %s は無視されました。address:/export 形式でなけれ"
+"ばなりません。nas_host および nas_share_path の設定を確認してください。"
+
+#, python-format
+msgid ""
 "Share at %(dir)s is not writable by the Cinder volume service. Snapshot "
 "operations will not be supported."
 msgstr ""
@@ -8282,9 +8290,6 @@ msgstr "%(name)s で、予期せずクォータを超過しました。"
 
 msgid "Unexpected response from Nimble API"
 msgstr "Nimble API からの予期しない応答"
-
-msgid "Unexpected response from Tegile IntelliFlash API"
-msgstr "Tegile IntelliFlash API からの予期しない応答"
 
 msgid "Unexpected status code"
 msgstr "予期しないステータスコード"
