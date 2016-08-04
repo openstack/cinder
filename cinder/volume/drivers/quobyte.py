@@ -35,7 +35,7 @@ VERSION = '1.1'
 LOG = logging.getLogger(__name__)
 
 volume_opts = [
-    cfg.StrOpt('quobyte_volume_url',
+    cfg.URIOpt('quobyte_volume_url',
                help=('URL to the Quobyte volume e.g.,'
                      ' quobyte://<DIR host>/<volume name>')),
     cfg.StrOpt('quobyte_client_cfg',
