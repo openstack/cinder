@@ -32,7 +32,7 @@ class CapacityWeigherTestCase(test.TestCase):
     def setUp(self):
         super(CapacityWeigherTestCase, self).setUp()
         self.host_manager = fakes.FakeHostManager()
-        self.weight_handler = weights.HostWeightHandler(
+        self.weight_handler = weights.OrderedHostWeightHandler(
             'cinder.scheduler.weights')
 
     def _get_weighed_hosts(self, hosts, weight_properties=None):
