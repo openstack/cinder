@@ -495,6 +495,33 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
                           self.driver.client.handle_errors,
                           response, '', '')
 
+    def test_update_migrated_volume(self, req):
+        original = self.data.test_volume
+        new = self.data.test_volume2
+        update = (self.driver.
+                  update_migrated_volume({},
+                                         original, new, 'available'))
+        req.assert_called_once_with('volumes', 'PUT',
+                                    {'name': original['id']}, new['id'],
+                                    None, 'v2')
+        self.assertEqual({'_name_id': None,
+                          'provider_location': None}, update)
+
+    def test_update_migrated_volume_failed_rename(self, req):
+        req.side_effect = exception.VolumeBackendAPIException(
+            data='failed rename')
+        original = self.data.test_volume
+        new = copy.deepcopy(self.data.test_volume2)
+        fake_provider = '__provider'
+        new['provider_location'] = fake_provider
+        new['_name_id'] = None
+        update = (self.driver.
+                  update_migrated_volume({},
+                                         original, new, 'available'))
+        self.assertEqual({'_name_id': new['id'],
+                          'provider_location': fake_provider},
+                         update)
+
 # ##### Connection #####
     def test_no_portals_configured(self, req):
         req.side_effect = xms_request
