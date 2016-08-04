@@ -36,9 +36,10 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
         1.0 - Initial driver
         1.1 - Added manage/unmanage and extra-specs support for nodedup
         1.2 - Added replication support
+        1.3 - Added retype support
     """
 
-    VERSION = '1.2'
+    VERSION = '1.3'
 
     @kaminario_logger
     def __init__(self, *args, **kwargs):
