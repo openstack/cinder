@@ -31,6 +31,32 @@ from cinder.tests.unit import fake_objects
 from cinder.tests.unit import objects as test_objects
 
 
+class TestCinderObjectVersionHistory(test_objects.BaseObjectsTestCase):
+    def test_add(self):
+        history = test_objects.obj_base.CinderObjectVersionsHistory()
+        v10 = {'Backup': '2.0'}
+        v11 = {'Backup': '2.1'}
+        history.add('1.0', v10)
+        history.add('1.1', v11)
+        # We have 3 elements because we have the liberty version by default
+        self.assertEqual(2 + 1, len(history))
+
+        expected_v10 = history['liberty'].copy()
+        expected_v10.update(v10)
+        expected_v11 = history['liberty'].copy()
+        expected_v11.update(v11)
+
+        self.assertEqual('1.1', history.get_current())
+        self.assertEqual(expected_v11, history.get_current_versions())
+        self.assertEqual(expected_v10, history['1.0'])
+
+    def test_add_existing(self):
+        history = test_objects.obj_base.CinderObjectVersionsHistory()
+        history.add('1.0', {'Backup': '1.0'})
+        self.assertRaises(exception.ProgrammingError,
+                          history.add, '1.0', {'Backup': '1.0'})
+
+
 class TestCinderObject(test_objects.BaseObjectsTestCase):
     """Tests methods from CinderObject."""
 

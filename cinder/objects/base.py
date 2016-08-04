@@ -79,6 +79,10 @@ class CinderObjectVersionsHistory(dict):
         return self[self.get_current()]
 
     def add(self, ver, updates):
+        if ver in self.versions:
+            msg = 'Version %s already exists in history.' % ver
+            raise exception.ProgrammingError(reason=msg)
+
         self[ver] = self[self.get_current()].copy()
         self.versions.append(ver)
         self[ver].update(updates)
