@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev124\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-30 03:40+0000\n"
+"POT-Creation-Date: 2016-08-04 04:43+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -46,10 +46,6 @@ msgstr " 그러나 현재 크기는 %d입니다."
 
 msgid " or "
 msgstr "또는"
-
-#, python-format
-msgid "%(attr)s is not set."
-msgstr "%(attr)s이(가) 설정되지 않았습니다."
 
 #, python-format
 msgid ""
@@ -354,10 +350,6 @@ msgstr ""
 
 msgid "API key is missing for CloudByte driver."
 msgstr "CloudByte 드라이버의 API 키가 누락되었습니다."
-
-#, python-format
-msgid "API response: %(response)s"
-msgstr "API 응답: %(response)s"
 
 #, python-format
 msgid "API response: %s"
@@ -7615,9 +7607,6 @@ msgstr ""
 
 msgid "Unexpected response from Nimble API"
 msgstr "Nimble API로부터의 예기치 않은 응답"
-
-msgid "Unexpected response from Tegile IntelliFlash API"
-msgstr "Tegile IntelliFlash API에서 예상치 못한 응답"
 
 msgid "Unexpected status code"
 msgstr "예기치 않은 상태 코드"
