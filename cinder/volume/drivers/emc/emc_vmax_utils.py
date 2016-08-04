@@ -41,6 +41,8 @@ except ImportError:
 STORAGEGROUPTYPE = 4
 POSTGROUPTYPE = 3
 CLONE_REPLICATION_TYPE = 10
+SYNC_SNAPSHOT_LOCAL = 6
+ASYNC_SNAPSHOT_LOCAL = 7
 MAX_POOL_LENGTH = 16
 MAX_FASTPOLICY_LENGTH = 14
 
@@ -1692,7 +1694,7 @@ class EMCVMAXUtils(object):
 
         return foundRepServCapability
 
-    def is_clone_licensed(self, conn, capabilityInstanceName):
+    def is_clone_licensed(self, conn, capabilityInstanceName, isV3):
         """Check if the clone feature is licensed and enabled.
 
         :param conn: the connection to the ecom server
@@ -1709,10 +1711,19 @@ class EMCVMAXUtils(object):
                 LOG.debug("Found supported replication types: "
                           "%(repTypes)s",
                           {'repTypes': repTypes})
-                if CLONE_REPLICATION_TYPE in repTypes:
-                    # Clone is a supported replication type.
-                    LOG.debug("Clone is licensed and enabled.")
-                    return True
+                if isV3:
+                    if (SYNC_SNAPSHOT_LOCAL in repTypes or
+                            ASYNC_SNAPSHOT_LOCAL in repTypes):
+                        # Snapshot is a supported replication type.
+                        LOG.debug("Snapshot for VMAX3 is licensed and "
+                                  "enabled.")
+                        return True
+                else:
+                    if CLONE_REPLICATION_TYPE in repTypes:
+                        # Clone is a supported replication type.
+                        LOG.debug("Clone for VMAX2 is licensed and "
+                                  "enabled.")
+                        return True
         return False
 
     def create_storage_hardwareId_instance_name(

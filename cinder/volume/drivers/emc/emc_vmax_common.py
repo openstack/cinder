@@ -2068,7 +2068,7 @@ class EMCVMAXCommon(object):
             self.utils.find_replication_service_capabilities(self.conn,
                                                              storageSystem))
         is_clone_license = self.utils.is_clone_licensed(
-            self.conn, repServCapabilityInstanceName)
+            self.conn, repServCapabilityInstanceName, extraSpecs[ISV3])
 
         if is_clone_license is False:
             exceptionMessage = (_(
