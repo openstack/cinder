@@ -894,7 +894,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         """
 
         volume_info = self._validate_manage_existing_ref(existing_ref)
-        size = int(math.ceil(float(volume_info["size"]) / units.Gi))
+        size = self._round_bytes_to_gib(volume_info['size'])
 
         return size
 
@@ -970,7 +970,7 @@ class PureBaseVolumeDriver(san.SanDriver):
         self._verify_manage_snap_api_requirements()
         snap_info = self._validate_manage_existing_ref(existing_ref,
                                                        is_snap=True)
-        size = int(math.ceil(float(snap_info["size"]) / units.Gi))
+        size = self._round_bytes_to_gib(snap_info['size'])
         return size
 
     def unmanage_snapshot(self, snapshot):
@@ -988,6 +988,100 @@ class PureBaseVolumeDriver(san.SanDriver):
                      "%(new_name)s"), {"ref_name": snap_name,
                                        "new_name": unmanaged_snap_name})
         self._rename_volume_object(snap_name, unmanaged_snap_name)
+
+    def get_manageable_volumes(self, cinder_volumes, marker, limit, offset,
+                               sort_keys, sort_dirs):
+        """List volumes on the backend available for management by Cinder.
+
+        Rule out volumes that are attached to a Purity host or that
+        are already in the list of cinder_volumes. We return references
+        of the volume names for any others.
+        """
+        array = self._get_current_array()
+        pure_vols = array.list_volumes()
+        hosts_with_connections = array.list_hosts(all=True)
+
+        # Put together a map of volumes that are connected to hosts
+        connected_vols = {}
+        for host in hosts_with_connections:
+            vol = host.get('vol')
+            if vol:
+                connected_vols[vol] = host['name']
+
+        # Put together a map of existing cinder volumes on the array
+        # so we can lookup cinder id's by purity volume names
+        existing_vols = {}
+        for cinder_vol in cinder_volumes:
+            existing_vols[self._get_vol_name(cinder_vol)] = cinder_vol.name_id
+
+        manageable_vols = []
+        for pure_vol in pure_vols:
+            vol_name = pure_vol['name']
+            cinder_id = existing_vols.get(vol_name)
+            is_safe = True
+            reason_not_safe = None
+            host = connected_vols.get(vol_name)
+
+            if host:
+                is_safe = False
+                reason_not_safe = _('Volume connected to host %s.') % host
+
+            if cinder_id:
+                is_safe = False
+                reason_not_safe = _('Volume already managed.')
+
+            manageable_vols.append({
+                'reference': {'name': vol_name},
+                'size': self._round_bytes_to_gib(pure_vol['size']),
+                'safe_to_manage': is_safe,
+                'reason_not_safe': reason_not_safe,
+                'cinder_id': cinder_id,
+                'extra_info': None,
+            })
+
+        return volume_utils.paginate_entries_list(
+            manageable_vols, marker, limit, offset, sort_keys, sort_dirs)
+
+    def get_manageable_snapshots(self, cinder_snapshots, marker, limit, offset,
+                                 sort_keys, sort_dirs):
+        """List snapshots on the backend available for management by Cinder."""
+        array = self._get_current_array()
+        pure_snapshots = array.list_volumes(snap=True)
+
+        # Put together a map of existing cinder snapshots on the array
+        # so we can lookup cinder id's by purity snapshot names
+        existing_snapshots = {}
+        for cinder_snap in cinder_snapshots:
+            name = self._get_snap_name(cinder_snap)
+            existing_snapshots[name] = cinder_snap.id
+
+        manageable_snaps = []
+        for pure_snap in pure_snapshots:
+            snap_name = pure_snap['name']
+            cinder_id = existing_snapshots.get(snap_name)
+            is_safe = True
+            reason_not_safe = None
+
+            if cinder_id:
+                is_safe = False
+                reason_not_safe = _("Snapshot already managed.")
+
+            manageable_snaps.append({
+                'reference': {'name': snap_name},
+                'size': self._round_bytes_to_gib(pure_snap['size']),
+                'safe_to_manage': is_safe,
+                'reason_not_safe': reason_not_safe,
+                'cinder_id': cinder_id,
+                'extra_info': None,
+                'source_reference': {'name': pure_snap['source']},
+            })
+
+        return volume_utils.paginate_entries_list(
+            manageable_snaps, marker, limit, offset, sort_keys, sort_dirs)
+
+    @staticmethod
+    def _round_bytes_to_gib(size):
+        return int(math.ceil(float(size) / units.Gi))
 
     def _get_flasharray(self, san_ip, api_token, rest_version=None,
                         verify_https=None, ssl_cert_path=None):
