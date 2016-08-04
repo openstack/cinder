@@ -60,8 +60,8 @@ class ExtractSnapshotRefTask(flow_utils.CinderTask):
         if isinstance(result, ft.Failure):
             return
 
-        flow_common.error_out_snapshot(context, self.db, snapshot_id)
-        LOG.error(_LE("Snapshot %s: create failed"), snapshot_id)
+        flow_common.error_out(result)
+        LOG.error(_LE("Snapshot %s: create failed"), result.id)
 
 
 class NotifySnapshotActionTask(flow_utils.CinderTask):
@@ -104,16 +104,14 @@ class PrepareForQuotaReservationTask(flow_utils.CinderTask):
         self.driver = driver
 
     def execute(self, context, snapshot_ref, manage_existing_ref):
-        snapshot_id = snapshot_ref['id']
         if not self.driver.initialized:
             driver_name = (self.driver.configuration.
                            safe_get('volume_backend_name'))
             LOG.error(_LE("Unable to manage existing snapshot. "
                           "Volume driver %s not initialized."), driver_name)
-            flow_common.error_out_snapshot(context, self.db, snapshot_id,
-                                           reason=_("Volume driver %s "
-                                                    "not initialized.") %
-                                           driver_name)
+            flow_common.error_out(snapshot_ref, reason=_("Volume driver %s "
+                                                         "not initialized.") %
+                                  driver_name)
             raise exception.DriverNotInitialized()
 
         size = self.driver.manage_existing_snapshot_get_size(
