@@ -13,9 +13,12 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 #
-import time
 
 import mock
+import os
+import paramiko
+import time
+
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 
@@ -23,41 +26,37 @@ from cinder import exception
 from cinder import test
 from cinder import utils
 from cinder.volume.drivers.hitachi import hnas_backend
-from cinder.volume.drivers.hitachi import hnas_nfs as nfs
 
 CONF = cfg.CONF
 
-HNAS_RESULT1 = "\n\
+evsfs_list = "\n\
 FS ID        FS Label        FS Permanent ID     EVS ID     EVS Label\n\
 -----     -----------     ------------------     ------     ---------\n\
- 1026            gold     0xaadee0e035cfc0b7          1      EVSTest1\n\
- 1025      fs01-husvm     0xaada5dff78668800          1      EVSTest1\n\
- 1027     large-files     0xaadee0ef012a0d54          1      EVSTest1\n\
- 1028        platinun     0xaadee1ea49d1a32c          1      EVSTest1\n\
- 1029        test_hdp     0xaadee09634acfcac          1      EVSTest1\n\
- 1030         cinder1     0xaadfcf742fba644e          1      EVSTest1\n\
- 1031         cinder2     0xaadfcf7e0769a6bc          1      EVSTest1\n\
- 1024      fs02-husvm     0xaac8715e2e9406cd          2      EVSTest2\n\
+ 1026            gold     0xaadee0e035cfc0b7          1      EVS-Manila\n\
+ 1029        test_hdp     0xaadee09634acfcac          1      EVS-Manila\n\
+ 1030       fs-cinder     0xaadfcf742fba644e          2      EVS-Cinder\n\
+ 1031         cinder2     0xaadfcf7e0769a6bc          3      EVS-Test\n\
+ 1024      fs02-husvm     0xaac8715e2e9406cd          3      EVS-Test\n\
 \n"
 
-HNAS_RESULT2 = "cluster MAC: 83-68-96-AA-DA-5D"
+cluster_getmac = "cluster MAC: 83-68-96-AA-DA-5D"
 
-HNAS_RESULT3 = "\n\
-Model: HNAS 4040                                             \n\
-Software: 11.2.3319.14 (built 2013-09-19 12:34:24+01:00)     \n\
-Hardware: NAS Platform (M2SEKW1339109)                       \n\
+version = "\n\
+Model: HNAS 4040                                             \n\n\
+Software: 11.2.3319.14 (built 2013-09-19 12:34:24+01:00)     \n\n\
+Hardware: NAS Platform (M2SEKW1339109)                       \n\n\
 board        MMB1                                            \n\
-mmb          11.2.3319.14 release (2013-09-19 12:34:24+01:00)\n\
+mmb          11.2.3319.14 release (2013-09-19 12:34:24+01:00)\n\n\
 board        MFB1                                            \n\
 mfb1hw       MB v0883 WL v002F TD v002F FD v002F TC v0059      \
     RY v0059 TY v0059 IC v0059 WF v00E2 FS v00E2 OS v00E2      \
     WD v00E2 DI v001A FC v0002                               \n\
-Serial no    B1339745 (Thu Jan  1 00:00:50 2009)             \n\
+Serial no    B1339745 (Thu Jan  1 00:00:50 2009)             \n\n\
 board        MCP                                             \n\
 Serial no    B1339109 (Thu Jan  1 00:00:49 2009)             \n\
 \n"
 
-HNAS_RESULT4 = "\n\
+evsipaddr = "\n\
 EVS Type    Label            IP Address          Mask             Port  \n\
 ----------  ---------------  ------------------  ---------------  ------\n\
 admin       hnas4040         192.0.2.2           255.255.255.0    eth1  \n\
@@ -67,60 +66,19 @@ evs 1       EVSTest1         10.0.0.20           255.255.255.0    ag1   \n\
 evs 2       EVSTest2         172.24.44.21        255.255.255.0    ag1   \n\
 \n"
 
-HNAS_RESULT5 = "\n\
- ID         Label  EVS     Size     Used       Snapshots  Deduped\
-     Avail        Thin  ThinSize  ThinAvail                      \
-            FS Type \n\
-----  -----------  ---  ------- -------------  ---------  -------\
-- -------------  ----  --------  ---------  ---------------------\
-------------- \n\
-1025   fs01-husvm    1   250 GB 21.4 GB (9%)  0 B (0%)   NA      \
-   228 GB (91%)   No                                       32 KB,\
-   WFS-2,128 DSBs\n\
-1026         gold    1  19.9 GB 2.30 GB (12%    NA       0 B (0%)\
-   17.6 GB (88%)  No                         4 KB,WFS-2,128 DSBs,\
-   dedupe enabled\n\
-1027  large-files    1  19.8 GB 2.43 GB (12%) 0 B (0%)   NA      \
-   17.3 GB (88%)  No                                       32 KB,\
-   WFS-2,128 DSBs\n\
-1028     platinun    1  19.9 GB 2.30 GB (12%)   NA       0 B (0%)\
-   17.6 GB (88%)  No                         4 KB,WFS-2,128 DSBs,\
-   dedupe enabled\n\
-1029       silver    1  19.9 GB 3.19 GB (16%) 0 B (0%)   NA      \
-   6.7 GB (84%)   No                                        4 KB,\
-   WFS-2,128 DSBs\n\
-1030      cinder1    1  40.8 GB 2.24 GB (5%)  0 B (0%)   NA      \
-   38.5 GB (95%)  No                                        4 KB,\
-   WFS-2,128 DSBs\n\
-1031      cinder2    1  39.8 GB 2.23 GB (6%)  0 B (0%)   NA      \
-   37.6 GB (94%)  No                                        4 KB,\
-   WFS-2,128 DSBs\n\
-1024   fs02-husvm    2  49.8 GB 3.54 GB (7%)  0 B (0%)   NA      \
-   46.2 GB (93%)  No                                       32 KB,\
-   WFS-2,128 DSBs\n\
-1032         test    2  3.97 GB 2.12 GB (53%) 0 B (0%)   NA      \
-   1.85 GB (47%)  No                                        4 KB,\
-   WFS-2,128 DSBs\n\
-1058         huge_FS    7  1.50 TB  Not determined\n\
-1053              fs-unmounted    4   108 GB     Not mounted \
-   NA  943 MB (18%)  39.2 GB (36%)    No                    4 KB,\
-   WFS-2,128 DSBs,dedupe enabled\n\
-\n"
-
-HNAS_RESULT6 = "\n\
+df_f = "\n\
 ID       Label   EVS    Size          Used  Snapshots  Deduped         Avail  \
 Thin  ThinSize  ThinAvail               FS Type\n\
 ----  ---------- ---  ------  ------------  ---------  -------  ------------  \
 ----  --------  ---------  --------------------\n\
-1025  fs01-husvm   1  250 GB  21.4 GB (9%)   0 B (0%)       NA  228 GB (91%)  \
+1025  fs-cinder   2  250 GB  21.4 GB (9%)   0 B (0%)       NA  228 GB (91%)  \
   No                       32 KB,WFS-2,128 DSBs\n\
 \n"
 
-HNAS_RESULT7 = "\n\
-Export configuration:                       \n\
+nfs_export = "\n\
 Export name: /export01-husvm                \n\
 Export path: /export01-husvm                \n\
-File system label: test_hdp                 \n\
+File system label: fs-cinder                \n\
 File system size: 250 GB                    \n\
 File system free space: 228 GB              \n\
 File system state:                          \n\
@@ -133,79 +91,83 @@ Display snapshots: Yes                      \n\
 Read Caching: Disabled                      \n\
 Disaster recovery setting:                  \n\
 Recovered = No                              \n\
-Transfer setting = Use file system default  \n\
+Transfer setting = Use file system default  \n\n\
+Export configuration:                       \n\
+127.0.0.1                                   \n\
 \n"
 
-HNAS_RESULT8 = "Logical unit creation started at 2014-12-24 00:38:30+00:00."
-HNAS_RESULT9 = "Logical unit deleted successfully."
-HNAS_RESULT10 = ""
-HNAS_RESULT11 = "Logical unit expansion started at 2014-12-24 01:25:03+00:00."
-
-HNAS_RESULT12 = "\n\
-Alias               : test_iqn                                       \n\
-Globally unique name: iqn.2014-12.10.10.10.10:evstest1.cinder-silver \n\
-Comment             :                                                \n\
-Secret              : test_secret                                    \n\
-Authentication      : Enabled                                        \n\
-Logical units       : No logical units.                              \n\
-\n"
-
-HNAS_RESULT13 = "Logical unit added successfully."
-HNAS_RESULT14 = "Logical unit removed successfully."
-HNAS_RESULT15 = "Target created successfully."
-HNAS_RESULT16 = ""
-
-HNAS_RESULT17 = "\n\
-EVS Type    Label            IP Address          Mask             Port  \n\
-----------  ---------------  ------------------  ---------------  ------\n\
-evs 1       EVSTest1         172.24.44.20        255.255.255.0    ag1   \n\
-evs 2       EVSTest1         10.0.0.20           255.255.255.0    ag1   \n\
-\n"
-
-HNAS_RESULT18 = "Version: 11.1.3225.01\n\
-Directory: /u/u60/_Eng_Axalon_SMU/OfficialBuilds/fish/angel/3225.01/main/bin/\
-x86_64_linux-bart_libc-2.7_release\n\
-Date: Feb 22 2013, 04:10:09\n\
-\n"
-
-HNAS_RESULT19 = "  ID          Label     Size           Used  Snapshots  \
-Deduped          Avail  Thin  ThinSize  ThinAvail              FS Type\n\
-----  -------------  -------  -------------  ---------  -------  -------------\
-----  --------  ---------  -------------------\n\
-1025     fs01-husvm   250 GB  47.1 GB (19%)   0 B (0%)       NA   203 GB (81%)\
-  No                       4 KB,WFS-2,128 DSBs\n\
-1047  manage_test02  19.9 GB  9.29 GB (47%)   0 B (0%)       NA  10.6 GB (53%)\
-  No                       4 KB,WFS-2,128 DSBs\n\
-1058         huge_FS    7  1.50 TB  Not determined\n\
-1053              fs-unmounted    4   108 GB     Not mounted \
-   NA  943 MB (18%)  39.2 GB (36%)    No                 4 KB,\
-   WFS-2,128 DSBs,dedupe enabled\n\
-\n"
-
-HNAS_RESULT20 = "\n\
-Alias               : test_iqn                                       \n\
-Globally unique name: iqn.2014-12.10.10.10.10:evstest1.cinder-silver \n\
-Comment             :                                                \n\
-Secret              :                                                \n\
-Authentication      : Enabled                                        \n\
-Logical units       : No logical units.                              \n\
-\n"
-
-HNAS_RESULT20 = "Target does not exist."
-
-HNAS_RESULT21 = "Target created successfully."
-
-HNAS_RESULT22 = "Failed to establish SSC connection"
-
-HNAS_RESULT23 = "\n\
-Alias               : cinder-Gold\n\
-Globally unique name: iqn.2015-06.10.10.10.10:evstest1.cinder-gold\n\
-Comment             :\n\
-Secret              : None\n\
-Authentication      : Enabled\n\
-Logical units       : No logical units.\n\
-Access configuration :\n\
+iscsi_one_target = "\n\
+Alias               : cinder-default                                  \n\
+Globally unique name: iqn.2014-12.10.10.10.10:evstest1.cinder-default \n\
+Comment             :                                                 \n\
+Secret              : pxr6U37LZZJBoMc                                 \n\
+Authentication      : Enabled                                         \n\
+Logical units       : No logical units.                               \n\
 \n\
+  LUN   Logical Unit                                                  \n\
+  ----  --------------------------------                              \n\
+  0     cinder-lu                                                     \n\
+  1     volume-99da7ae7-1e7f-4d57-8bf...                              \n\
+\n\
+Access configuration:                                                 \n\
+"
+
+df_f_single_evs = "\n\
+ID       Label      Size          Used  Snapshots  Deduped         Avail  \
+Thin  ThinSize  ThinAvail               FS Type\n\
+----  ----------  ------  ------------  ---------  -------  ------------  \
+----  --------  ---------  --------------------\n\
+1025  fs-cinder  250 GB  21.4 GB (9%)   0 B (0%)       NA  228 GB (91%)  \
+  No                       32 KB,WFS-2,128 DSBs\n\
+\n"
+
+nfs_export_tb = "\n\
+Export name: /export01-husvm                \n\
+Export path: /export01-husvm                \n\
+File system label: fs-cinder                \n\
+File system size: 250 TB                    \n\
+File system free space: 228 TB              \n\
+\n"
+
+nfs_export_not_available = "\n\
+Export name: /export01-husvm                \n\
+Export path: /export01-husvm                \n\
+File system label: fs-cinder                \n\
+        *** not available ***               \n\
+\n"
+
+evs_list = "\n\
+Node EVS ID    Type           Label Enabled Status          IP Address Port \n\
+---- ------ ------- --------------- ------- ------ ------------------- ---- \n\
+   1        Cluster        hnas4040     Yes Online     192.0.2.200     eth1 \n\
+   1      0   Admin        hnas4040     Yes Online       192.0.2.2     eth1 \n\
+                                                      172.24.44.15     eth0 \n\
+                                                     172.24.49.101      ag2 \n\
+   1      1 Service      EVS-Manila     Yes Online    172.24.49.32      ag2 \n\
+                                                      172.24.48.32      ag4 \n\
+   1      2 Service      EVS-Cinder     Yes Online    172.24.49.21      ag2 \n\
+   1      3 Service        EVS-Test     Yes Online 192.168.100.100      ag2 \n\
+\n"
+
+iscsilu_list = "Name   : cinder-lu    \n\
+Comment:                              \n\
+Path   : /.cinder/cinder-lu.iscsi     \n\
+Size   : 2 GB                         \n\
+File System : fs-cinder               \n\
+File System Mounted : YES             \n\
+Logical Unit Mounted: No"
+
+iscsilu_list_tb = "Name   : test-lu   \n\
+Comment:                              \n\
+Path   : /.cinder/test-lu.iscsi     \n\
+Size   : 2 TB                         \n\
+File System : fs-cinder               \n\
+File System Mounted : YES             \n\
+Logical Unit Mounted: No"
+
+add_targetsecret = "Target created successfully."
+
+iscsi_target_list = "\n\
 Alias               : cinder-GoldIsh\n\
 Globally unique name: iqn.2015-06.10.10.10.10:evstest1.cinder-goldish\n\
 Comment             :\n\
@@ -218,462 +180,607 @@ Alias               : cinder-default\n\
 Globally unique name: iqn.2014-12.10.10.10.10:evstest1.cinder-default\n\
 Comment             :\n\
 Secret              : pxr6U37LZZJBoMc\n\
-Authentication      : Disabled\n\
+Authentication      : Enabled\n\
 Logical units       : Logical units       :\n\
 \n\
   LUN   Logical Unit\n\
   ----  --------------------------------\n\
-  0     volume-8ddd1a54-9daf-4fa5-842...\n\
+  0     cinder-lu\n\
   1     volume-99da7ae7-1e7f-4d57-8bf...\n\
 \n\
 Access configuration :\n\
 "
-HNAS_RESULT24 = "Logical unit modified successfully."
 
-HNAS_RESULT25 = "Current selected file system: HNAS-iSCSI-TEST, number(32)."
+backend_opts = {'mgmt_ip0': '0.0.0.0',
+                'cluster_admin_ip0': None,
+                'ssh_port': '22',
+                'username': 'supervisor',
+                'password': 'supervisor',
+                'ssh_private_key': 'test_key'}
 
-HNAS_RESULT26 = "Name   : volume-test \n\
-Comment:                              \n\
-Path   : /.cinder/volume-test.iscsi   \n\
-Size   : 2 GB                         \n\
-File System : fs1                     \n\
-File System Mounted : YES             \n\
-Logical Unit Mounted: No"
-
-HNAS_RESULT27 = "Connection reset"
-
-
-HNAS_CMDS = {
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsfs', 'list'):
-        ["%s" % HNAS_RESULT1, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'cluster-getmac',):
-        ["%s" % HNAS_RESULT2, ""],
-    ('ssh', '-version',): ["%s" % HNAS_RESULT18, ""],
-    ('ssh', '-u', 'supervisor', '-p', 'supervisor', '0.0.0.0', 'ver',):
-    ["%s" % HNAS_RESULT3, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'ver',):
-        ["%s" % HNAS_RESULT3, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsipaddr', '-l'):
-        ["%s" % HNAS_RESULT4, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'df', '-a'):
-        ["%s" % HNAS_RESULT5, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'df', '-f', 'test_hdp'):
-        ["%s" % HNAS_RESULT6, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'for-each-evs', '-q',
-     'nfs-export', 'list'):
-        ["%s" % HNAS_RESULT7, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-lu', 'add', '-e', 'test_name',
-     'test_hdp', '/.cinder/test_name.iscsi',
-     '1M'):
-        ["%s" % HNAS_RESULT8, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-lu', 'del', '-d', '-f',
-     'test_lun'):
-        ["%s" % HNAS_RESULT9, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'file-clone-create', '-f', 'fs01-husvm',
-     '/.cinder/test_lu.iscsi', 'cloned_lu'):
-        ["%s" % HNAS_RESULT10, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-lu', 'expand', 'expanded_lu',
-     '1M'):
-        ["%s" % HNAS_RESULT11, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-target', 'list', 'test_iqn'):
-        ["%s" % HNAS_RESULT12, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-target', 'addlu', 'test_iqn',
-     'test_lun', '0'):
-        ["%s" % HNAS_RESULT13, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-target', 'dellu', 'test_iqn',
-     0):
-        ["%s" % HNAS_RESULT14, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-target', 'add', 'myTarget',
-     'secret'):
-        ["%s" % HNAS_RESULT15, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-target', 'mod', '-s',
-     'test_secret', '-a', 'enable', 'test_iqn'): ["%s" % HNAS_RESULT15, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-lu', 'clone', '-e', 'test_lu',
-     'test_clone',
-     '/.cinder/test_clone.iscsi'):
-        ["%s" % HNAS_RESULT16, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'evsipaddr', '-e', '1'):
-        ["%s" % HNAS_RESULT17, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor',
-     'console-context', '--evs', '1', 'iscsi-target', 'list'):
-        ["%s" % HNAS_RESULT23, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
-     '1', 'iscsi-target', 'addlu', 'cinder-default',
-     'volume-8ddd1a54-0000-0000-0000', '2'):
-        ["%s" % HNAS_RESULT13, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
-     '1', 'selectfs', 'fs01-husvm'):
-        ["%s" % HNAS_RESULT25, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
-     '1', 'iscsi-lu', 'list', 'test_lun'):
-        ["%s" % HNAS_RESULT26, ""],
-    ('ssh', '0.0.0.0', 'supervisor', 'supervisor', 'console-context', '--evs',
-     '1', 'iscsi-lu', 'mod', '-n', 'vol_test', 'new_vol_test'):
-        ["%s" % HNAS_RESULT24, ""]
-}
-
-DRV_CONF = {'ssh_enabled': 'True',
-            'mgmt_ip0': '0.0.0.0',
-            'cluster_admin_ip0': None,
-            'ssh_port': '22',
-            'ssh_private_key': 'test_key',
-            'username': 'supervisor',
-            'password': 'supervisor'}
-
-UTILS_EXEC_OUT = ["output: test_cmd", ""]
+target_chap_disable = "\n\
+Alias               : cinder-default                                  \n\
+Globally unique name: iqn.2014-12.10.10.10.10:evstest1.cinder-default \n\
+Comment             :                                                 \n\
+Secret              :                                                 \n\
+Authentication      : Disabled                                        \n\
+Logical units       : No logical units.                               \n\
+\n\
+  LUN   Logical Unit                                                  \n\
+  ----  --------------------------------                              \n\
+  0     cinder-lu                                                     \n\
+  1     volume-99da7ae7-1e7f-4d57-8bf...                              \n\
+\n\
+Access configuration:                                                 \n\
+"
 
 
-def m_run_cmd(*args, **kargs):
-    return HNAS_CMDS.get(args)
-
-
-class HDSHNASBendTest(test.TestCase):
+class HDSHNASBackendTest(test.TestCase):
 
     def __init__(self, *args, **kwargs):
-        super(HDSHNASBendTest, self).__init__(*args, **kwargs)
+        super(HDSHNASBackendTest, self).__init__(*args, **kwargs)
 
-    @mock.patch.object(nfs, 'factory_bend')
-    def setUp(self, m_factory_bend):
-        super(HDSHNASBendTest, self).setUp()
-        self.hnas_bend = hnas_backend.HnasBackend(DRV_CONF)
+    def setUp(self):
+        super(HDSHNASBackendTest, self).setUp()
+        self.hnas_backend = hnas_backend.HNASSSHBackend(backend_opts)
 
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch('os.path.isfile', return_value=True)
-    @mock.patch('paramiko.RSAKey.from_private_key_file')
-    @mock.patch('paramiko.SSHClient')
-    @mock.patch.object(putils, 'ssh_execute',
-                       return_value=(HNAS_RESULT5, ''))
-    @mock.patch.object(utils, 'execute')
-    @mock.patch.object(time, 'sleep')
-    def test_run_cmd(self, m_sleep, m_utl, m_ssh, m_ssh_cli, m_pvt_key,
-                     m_file, m_open):
-        self.flags(ssh_hosts_key_file='/var/lib/cinder/ssh_known_hosts',
-                   state_path='/var/lib/cinder')
+    def test_run_cmd(self):
+        self.mock_object(os.path, 'isfile',
+                         mock.Mock(return_value=True))
+        self.mock_object(utils, 'execute')
+        self.mock_object(time, 'sleep')
+        self.mock_object(paramiko, 'SSHClient')
+        self.mock_object(paramiko.RSAKey, 'from_private_key_file')
+        self.mock_object(putils, 'ssh_execute',
+                         mock.Mock(return_value=(df_f, '')))
 
-        # Test main flow
-        self.hnas_bend.drv_configs['ssh_enabled'] = 'True'
-        out, err = self.hnas_bend.run_cmd('ssh', '0.0.0.0',
-                                          'supervisor', 'supervisor',
-                                          'df', '-a')
-        self.assertIn('fs01-husvm', out)
+        out, err = self.hnas_backend._run_cmd('ssh', '0.0.0.0',
+                                              'supervisor', 'supervisor',
+                                              'df', '-a')
+
+        self.assertIn('fs-cinder', out)
         self.assertIn('WFS-2,128 DSBs', out)
 
-        # Test exception throwing when not using SSH
-        m_utl.side_effect = putils.ProcessExecutionError(stdout='',
-                                                         stderr=HNAS_RESULT22,
-                                                         exit_code=255)
-        self.hnas_bend.drv_configs['ssh_enabled'] = 'False'
-        self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
-                          'ssh', '0.0.0.0', 'supervisor', 'supervisor',
-                          'df', '-a')
+    def test_run_cmd_retry_exception(self):
+        self.hnas_backend.cluster_admin_ip0 = '172.24.44.11'
 
-        m_utl.side_effect = putils.ProcessExecutionError(stdout='',
-                                                         stderr=HNAS_RESULT27,
-                                                         exit_code=255)
-        self.hnas_bend.drv_configs['ssh_enabled'] = 'False'
-        self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
-                          'ssh', '0.0.0.0', 'supervisor', 'supervisor',
-                          'df', '-a')
+        exceptions = [putils.ProcessExecutionError(stderr='Connection reset'),
+                      putils.ProcessExecutionError(stderr='Failed to establish'
+                                                          ' SSC connection'),
+                      putils.ProcessExecutionError(stderr='Connection reset'),
+                      putils.ProcessExecutionError(stderr='Connection reset'),
+                      putils.ProcessExecutionError(stderr='Connection reset')]
 
-        # Test exception throwing when using SSH
-        m_ssh.side_effect = putils.ProcessExecutionError(stdout='',
-                                                         stderr=HNAS_RESULT22,
-                                                         exit_code=255)
-        self.hnas_bend.drv_configs['ssh_enabled'] = 'True'
-        self.assertRaises(exception.HNASConnError, self.hnas_bend.run_cmd,
-                          'ssh', '0.0.0.0', 'supervisor', 'supervisor',
-                          'df', '-a')
+        self.mock_object(os.path, 'isfile',
+                         mock.Mock(return_value=True))
+        self.mock_object(utils, 'execute')
+        self.mock_object(time, 'sleep')
+        self.mock_object(paramiko, 'SSHClient')
+        self.mock_object(paramiko.RSAKey, 'from_private_key_file')
+        self.mock_object(putils, 'ssh_execute',
+                         mock.Mock(side_effect=exceptions))
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    @mock.patch.object(utils, 'execute', return_value=UTILS_EXEC_OUT)
-    def test_get_version(self, m_cmd, m_exec):
-        out = self.hnas_bend.get_version("ssh", "1.0", "0.0.0.0", "supervisor",
-                                         "supervisor")
-        self.assertIn('11.2.3319.14', out)
-        self.assertIn('83-68-96-AA-DA-5D', out)
+        self.assertRaises(exception.HNASConnError, self.hnas_backend._run_cmd,
+                          'ssh', '0.0.0.0', 'supervisor', 'supervisor', 'df',
+                          '-a')
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_get_version_ssh_cluster(self, m_cmd):
-        self.hnas_bend.drv_configs['ssh_enabled'] = 'True'
-        self.hnas_bend.drv_configs['cluster_admin_ip0'] = '1.1.1.1'
-        out = self.hnas_bend.get_version("ssh", "1.0", "0.0.0.0", "supervisor",
-                                         "supervisor")
-        self.assertIn('11.2.3319.14', out)
-        self.assertIn('83-68-96-AA-DA-5D', out)
+    def test_run_cmd_exception_without_retry(self):
+        self.mock_object(os.path, 'isfile',
+                         mock.Mock(return_value=True))
+        self.mock_object(utils, 'execute')
+        self.mock_object(time, 'sleep')
+        self.mock_object(paramiko, 'SSHClient')
+        self.mock_object(paramiko.RSAKey, 'from_private_key_file')
+        self.mock_object(putils, 'ssh_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError
+                                   (stderr='Error')))
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    @mock.patch.object(utils, 'execute', return_value=UTILS_EXEC_OUT)
-    def test_get_version_ssh_disable(self, m_cmd, m_exec):
-        self.hnas_bend.drv_configs['ssh_enabled'] = 'False'
-        out = self.hnas_bend.get_version("ssh", "1.0", "0.0.0.0", "supervisor",
-                                         "supervisor")
-        self.assertIn('11.2.3319.14', out)
-        self.assertIn('83-68-96-AA-DA-5D', out)
-        self.assertIn('Utility_version', out)
+        self.assertRaises(putils.ProcessExecutionError,
+                          self.hnas_backend._run_cmd, 'ssh', '0.0.0.0',
+                          'supervisor', 'supervisor', 'df', '-a')
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_get_iscsi_info(self, m_execute):
-        out = self.hnas_bend.get_iscsi_info("ssh", "0.0.0.0", "supervisor",
-                                            "supervisor")
+    def test_get_targets_empty_list(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=('No targets', '')))
 
-        self.assertIn('172.24.44.20', out)
-        self.assertIn('172.24.44.21', out)
-        self.assertIn('10.0.0.20', out)
-        self.assertEqual(4, len(out.split('\n')))
+        out = self.hnas_backend._get_targets('2')
+        self.assertEqual([], out)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
-    def test_get_hdp_info(self, m_run_cmd):
-        # tests when there is two or more evs
-        m_run_cmd.return_value = (HNAS_RESULT5, "")
-        out = self.hnas_bend.get_hdp_info("ssh", "0.0.0.0", "supervisor",
-                                          "supervisor")
+    def test_get_targets_not_found(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(iscsi_target_list, '')))
 
-        self.assertEqual(10, len(out.split('\n')))
-        self.assertIn('gold', out)
-        self.assertIn('silver', out)
-        line1 = out.split('\n')[0]
-        self.assertEqual(12, len(line1.split()))
+        out = self.hnas_backend._get_targets('2', 'fake-volume')
+        self.assertEqual([], out)
 
-        # test when there is only one evs
-        m_run_cmd.return_value = (HNAS_RESULT19, "")
-        out = self.hnas_bend.get_hdp_info("ssh", "0.0.0.0", "supervisor",
-                                          "supervisor")
-        self.assertEqual(3, len(out.split('\n')))
-        self.assertIn('fs01-husvm', out)
-        self.assertIn('manage_test02', out)
-        line1 = out.split('\n')[0]
-        self.assertEqual(12, len(line1.split()))
+    def test__get_unused_luid_number_0(self):
+        tgt_info = {
+            'alias': 'cinder-default',
+            'secret': 'pxr6U37LZZJBoMc',
+            'iqn': 'iqn.2014-12.10.10.10.10:evstest1.cinder-default',
+            'lus': [
+                {'id': '1',
+                 'name': 'cinder-lu2'},
+                {'id': '2',
+                 'name': 'volume-test2'}
+            ],
+            'auth': 'Enabled'
+        }
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_get_nfs_info(self, m_run_cmd):
-        out = self.hnas_bend.get_nfs_info("ssh", "0.0.0.0", "supervisor",
-                                          "supervisor")
+        out = self.hnas_backend._get_unused_luid(tgt_info)
 
-        self.assertEqual(2, len(out.split('\n')))
-        self.assertIn('/export01-husvm', out)
-        self.assertIn('172.24.44.20', out)
-        self.assertIn('10.0.0.20', out)
+        self.assertEqual(0, out)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_create_lu(self, m_cmd):
-        out = self.hnas_bend.create_lu("ssh", "0.0.0.0", "supervisor",
-                                       "supervisor", "test_hdp", "1",
-                                       "test_name")
+    def test__get_unused_no_luns(self):
+        tgt_info = {
+            'alias': 'cinder-default',
+            'secret': 'pxr6U37LZZJBoMc',
+            'iqn': 'iqn.2014-12.10.10.10.10:evstest1.cinder-default',
+            'lus': [],
+            'auth': 'Enabled'
+        }
 
-        self.assertIn('successfully created', out)
+        out = self.hnas_backend._get_unused_luid(tgt_info)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_delete_lu(self, m_cmd):
-        out = self.hnas_bend.delete_lu("ssh", "0.0.0.0", "supervisor",
-                                       "supervisor", "test_hdp", "test_lun")
+        self.assertEqual(0, out)
 
-        self.assertIn('deleted successfully', out)
+    def test_get_version(self):
+        expected_out = {
+            'hardware': 'NAS Platform (M2SEKW1339109)',
+            'mac': '83-68-96-AA-DA-5D',
+            'version': '11.2.3319.14',
+            'model': 'HNAS 4040',
+            'serial': 'B1339745'
+        }
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_create_dup(self, m_cmd):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[
+                             (cluster_getmac, ''),
+                             (version, '')]))
 
-        out = self.hnas_bend.create_dup("ssh", "0.0.0.0", "supervisor",
-                                        "supervisor", "test_lu", "test_hdp",
-                                        "1", "test_clone")
+        out = self.hnas_backend.get_version()
 
-        self.assertIn('successfully created', out)
+        self.assertEqual(expected_out, out)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_file_clone(self, m_cmd):
-        out = self.hnas_bend.file_clone("ssh", "0.0.0.0", "supervisor",
-                                        "supervisor", "fs01-husvm",
-                                        "/.cinder/test_lu.iscsi", "cloned_lu")
+    def test_get_evs(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
 
-        self.assertIn('LUN cloned_lu HDP', out)
+        out = self.hnas_backend.get_evs('fs-cinder')
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_extend_vol(self, m_cmd):
-        out = self.hnas_bend.extend_vol("ssh", "0.0.0.0", "supervisor",
-                                        "supervisor", "test_hdp", "test_lun",
-                                        "1", "expanded_lu")
+        self.assertEqual('2', out)
 
-        self.assertIn('successfully extended', out)
+    def test_get_export_list(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(nfs_export, ''),
+                                                (evsfs_list, ''),
+                                                (evs_list, '')]))
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_add_iscsi_conn(self, m_cmd):
-        out = self.hnas_bend.add_iscsi_conn("ssh", "0.0.0.0", "supervisor",
-                                            "supervisor",
-                                            "volume-8ddd1a54-0000-0000-0000",
-                                            "test_hdp", "test_port",
-                                            "cinder-default", "test_init")
+        out = self.hnas_backend.get_export_list()
 
-        self.assertIn('successfully paired', out)
+        self.assertEqual('fs-cinder', out[0]['fs'])
+        self.assertEqual(250.0, out[0]['size'])
+        self.assertEqual(228.0, out[0]['free'])
+        self.assertEqual('/export01-husvm', out[0]['path'])
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_del_iscsi_conn(self, m_cmd):
-        out = self.hnas_bend.del_iscsi_conn("ssh", "0.0.0.0", "supervisor",
-                                            "supervisor", "1", "test_iqn", 0)
+    def test_get_export_list_data_not_available(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(nfs_export_not_available, ''),
+                                                (evsfs_list, ''),
+                                                (evs_list, '')]))
 
-        self.assertIn('already deleted', out)
+        out = self.hnas_backend.get_export_list()
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'get_evs', return_value=0)
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
-    def test_get_targetiqn(self, m_cmd, m_get_evs):
+        self.assertEqual('fs-cinder', out[0]['fs'])
+        self.assertEqual('/export01-husvm', out[0]['path'])
+        self.assertEqual(-1, out[0]['size'])
+        self.assertEqual(-1, out[0]['free'])
 
-        m_cmd.side_effect = [[HNAS_RESULT12, '']]
-        out = self.hnas_bend.get_targetiqn("ssh", "0.0.0.0", "supervisor",
-                                           "supervisor", "test_iqn",
-                                           "test_hdp", "test_secret")
+    def test_get_export_list_tb(self):
+        size = float(250 * 1024)
+        free = float(228 * 1024)
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(nfs_export_tb, ''),
+                                                (evsfs_list, ''),
+                                                (evs_list, '')]))
 
-        self.assertEqual('test_iqn', out)
+        out = self.hnas_backend.get_export_list()
 
-        m_cmd.side_effect = [[HNAS_RESULT20, ''], [HNAS_RESULT21, '']]
-        out = self.hnas_bend.get_targetiqn("ssh", "0.0.0.0", "supervisor",
-                                           "supervisor", "test_iqn2",
-                                           "test_hdp", "test_secret")
+        self.assertEqual('fs-cinder', out[0]['fs'])
+        self.assertEqual(size, out[0]['size'])
+        self.assertEqual(free, out[0]['free'])
+        self.assertEqual('/export01-husvm', out[0]['path'])
 
-        self.assertEqual('test_iqn2', out)
+    def test_file_clone(self):
+        path1 = '/.cinder/path1'
+        path2 = '/.cinder/path2'
 
-        m_cmd.side_effect = [[HNAS_RESULT20, ''], [HNAS_RESULT21, '']]
-        out = self.hnas_bend.get_targetiqn("ssh", "0.0.0.0", "supervisor",
-                                           "supervisor", "test_iqn3",
-                                           "test_hdp", "")
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
 
-        self.assertEqual('test_iqn3', out)
+        self.hnas_backend.file_clone('fs-cinder', path1, path2)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       side_effect=m_run_cmd)
-    def test_set_targetsecret(self, m_execute):
-        self.hnas_bend.set_targetsecret("ssh", "0.0.0.0", "supervisor",
-                                        "supervisor", "test_iqn",
-                                        "test_hdp", "test_secret")
+        calls = [mock.call('evsfs', 'list'), mock.call('console-context',
+                                                       '--evs', '2',
+                                                       'file-clone-create',
+                                                       '-f', 'fs-cinder',
+                                                       path1, path2)]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
-    def test_get_targetsecret(self, m_run_cmd):
-        # test when target has secret
-        m_run_cmd.return_value = (HNAS_RESULT12, "")
-        out = self.hnas_bend.get_targetsecret("ssh", "0.0.0.0", "supervisor",
-                                              "supervisor", "test_iqn",
-                                              "test_hdp")
+    def test_file_clone_wrong_fs(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
 
-        self.assertEqual('test_secret', out)
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.hnas_backend.file_clone, 'fs-fake', 'src',
+                          'dst')
 
-        # test when target don't have secret
-        m_run_cmd.return_value = (HNAS_RESULT20, "")
-        out = self.hnas_bend.get_targetsecret("ssh", "0.0.0.0", "supervisor",
-                                              "supervisor", "test_iqn",
-                                              "test_hdp")
+    def test_get_evs_info(self):
+        expected_out = {'evs_number': '1'}
+        expected_out2 = {'evs_number': '2'}
+
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsipaddr, '')))
+
+        out = self.hnas_backend.get_evs_info()
+
+        self.hnas_backend._run_cmd.assert_called_with('evsipaddr', '-l')
+        self.assertEqual(expected_out, out['10.0.0.20'])
+        self.assertEqual(expected_out, out['172.24.44.20'])
+        self.assertEqual(expected_out2, out['172.24.44.21'])
+
+    def test_get_fs_info(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(df_f, '')))
+
+        out = self.hnas_backend.get_fs_info('fs-cinder')
+
+        self.assertEqual('2', out['evs_id'])
+        self.assertEqual('fs-cinder', out['label'])
+        self.assertEqual('228', out['available_size'])
+        self.assertEqual('250', out['total_size'])
+        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+
+    def test_get_fs_empty_return(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=('Not mounted', '')))
+
+        out = self.hnas_backend.get_fs_info('fs-cinder')
+        self.assertEqual({}, out)
+
+    def test_get_fs_info_single_evs(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(df_f_single_evs, '')))
+
+        out = self.hnas_backend.get_fs_info('fs-cinder')
+
+        self.assertEqual('fs-cinder', out['label'])
+        self.assertEqual('228', out['available_size'])
+        self.assertEqual('250', out['total_size'])
+        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+
+    def test_get_fs_tb(self):
+        available_size = float(228 * 1024 ** 2)
+        total_size = float(250 * 1024 ** 2)
+
+        df_f_tb = "\n\
+ID       Label   EVS    Size          Used  Snapshots  Deduped         Avail  \
+Thin  ThinSize  ThinAvail               FS Type\n\
+----  ---------- ---  ------  ------------  ---------  -------  ------------  \
+----  --------  ---------  --------------------\n\
+1025  fs-cinder   2  250 TB  21.4 TB (9%)   0 B (0%)       NA  228 TB (91%)  \
+  No                       32 KB,WFS-2,128 DSBs\n\
+\n"
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(df_f_tb, '')))
+
+        out = self.hnas_backend.get_fs_info('fs-cinder')
+
+        self.assertEqual('2', out['evs_id'])
+        self.assertEqual('fs-cinder', out['label'])
+        self.assertEqual(str(available_size), out['available_size'])
+        self.assertEqual(str(total_size), out['total_size'])
+        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+
+    def test_get_fs_single_evs_tb(self):
+        available_size = float(228 * 1024 ** 2)
+        total_size = float(250 * 1024 ** 2)
+
+        df_f_tb = "\n\
+ID       Label      Size          Used  Snapshots  Deduped         Avail  \
+Thin  ThinSize  ThinAvail               FS Type\n\
+----  ----------  ------  ------------  ---------  -------  ------------  \
+----  --------  ---------  --------------------\n\
+1025  fs-cinder  250 TB  21.4 TB (9%)   0 B (0%)       NA  228 TB (91%)  \
+  No                       32 KB,WFS-2,128 DSBs\n\
+\n"
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(df_f_tb, '')))
+
+        out = self.hnas_backend.get_fs_info('fs-cinder')
+
+        self.assertEqual('fs-cinder', out['label'])
+        self.assertEqual(str(available_size), out['available_size'])
+        self.assertEqual(str(total_size), out['total_size'])
+        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+
+    def test_create_lu(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
+
+        self.hnas_backend.create_lu('fs-cinder', '128', 'cinder-lu')
+
+        calls = [mock.call('evsfs', 'list'), mock.call('console-context',
+                                                       '--evs', '2',
+                                                       'iscsi-lu', 'add',
+                                                       '-e', 'cinder-lu',
+                                                       'fs-cinder',
+                                                       '/.cinder/cinder-lu.'
+                                                       'iscsi', '128G')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_delete_lu(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
+
+        self.hnas_backend.delete_lu('fs-cinder', 'cinder-lu')
+
+        calls = [mock.call('evsfs', 'list'), mock.call('console-context',
+                                                       '--evs', '2',
+                                                       'iscsi-lu', 'del', '-d',
+                                                       '-f', 'cinder-lu')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_extend_lu(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
+
+        self.hnas_backend.extend_lu('fs-cinder', '128', 'cinder-lu')
+
+        calls = [mock.call('evsfs', 'list'), mock.call('console-context',
+                                                       '--evs', '2',
+                                                       'iscsi-lu', 'expand',
+                                                       'cinder-lu', '128G')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_cloned_lu(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
+
+        self.hnas_backend.create_cloned_lu('cinder-lu', 'fs-cinder', 'snap')
+
+        calls = [mock.call('evsfs', 'list'), mock.call('console-context',
+                                                       '--evs', '2',
+                                                       'iscsi-lu', 'clone',
+                                                       '-e', 'cinder-lu',
+                                                       'snap',
+                                                       '/.cinder/snap.iscsi')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_get_existing_lu_info(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsilu_list, '')]))
+
+        out = self.hnas_backend.get_existing_lu_info('cinder-lu', None, None)
+
+        self.assertEqual('cinder-lu', out['name'])
+        self.assertEqual('fs-cinder', out['filesystem'])
+        self.assertEqual(2.0, out['size'])
+
+    def test_get_existing_lu_info_tb(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsilu_list_tb, '')]))
+
+        out = self.hnas_backend.get_existing_lu_info('test-lu', None, None)
+
+        self.assertEqual('test-lu', out['name'])
+        self.assertEqual('fs-cinder', out['filesystem'])
+        self.assertEqual(2048.0, out['size'])
+
+    def test_rename_existing_lu(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
+        self.hnas_backend.rename_existing_lu('fs-cinder', 'cinder-lu',
+                                             'new-lu-name')
+
+        calls = [mock.call('evsfs', 'list'), mock.call('console-context',
+                                                       '--evs', '2',
+                                                       'iscsi-lu', 'mod', '-n',
+                                                       "'new-lu-name'",
+                                                       'cinder-lu')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_check_lu(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_target_list, '')]))
+
+        out = self.hnas_backend.check_lu('cinder-lu', 'fs-cinder')
+
+        self.assertEqual('cinder-lu', out['tgt']['lus'][0]['name'])
+        self.assertEqual('pxr6U37LZZJBoMc', out['tgt']['secret'])
+        self.assertTrue(out['mapped'])
+        calls = [mock.call('evsfs', 'list'), mock.call('console-context',
+                                                       '--evs', '2',
+                                                       'iscsi-target', 'list')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_check_lu_not_found(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_target_list, '')]))
+
+        # passing a volume fake-volume not mapped
+        out = self.hnas_backend.check_lu('fake-volume', 'fs-cinder')
+        self.assertFalse(out['mapped'])
+        self.assertEqual(0, out['id'])
+        self.assertIsNone(out['tgt'])
+
+    def test_add_iscsi_conn(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_target_list, ''),
+                                                (evsfs_list, '')]))
+
+        out = self.hnas_backend.add_iscsi_conn('cinder-lu', 'fs-cinder', 3260,
+                                               'cinder-default', 'initiator')
+
+        self.assertEqual('cinder-lu', out['lu_name'])
+        self.assertEqual('fs-cinder', out['fs'])
+        self.assertEqual('0', out['lu_id'])
+        self.assertEqual(3260, out['port'])
+        calls = [mock.call('evsfs', 'list'),
+                 mock.call('console-context', '--evs', '2', 'iscsi-target',
+                           'list')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_add_iscsi_conn_not_mapped_volume(self):
+        not_mapped = {'mapped': False,
+                      'id': 0,
+                      'tgt': None}
+
+        self.mock_object(self.hnas_backend, 'check_lu',
+                         mock.Mock(return_value=not_mapped))
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_target_list, ''),
+                                                ('', '')]))
+
+        out = self.hnas_backend.add_iscsi_conn('cinder-lu', 'fs-cinder', 3260,
+                                               'cinder-default', 'initiator')
+
+        self.assertEqual('cinder-lu', out['lu_name'])
+        self.assertEqual('fs-cinder', out['fs'])
+        self.assertEqual(2, out['lu_id'])
+        self.assertEqual(3260, out['port'])
+        calls = [mock.call('evsfs', 'list'),
+                 mock.call('console-context', '--evs', '2', 'iscsi-target',
+                           'list')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_del_iscsi_conn(self):
+        iqn = 'iqn.2014-12.10.10.10.10:evstest1.cinder-default'
+
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(iscsi_one_target, '')))
+
+        self.hnas_backend.del_iscsi_conn('2', iqn, '0')
+
+        calls = [mock.call('console-context', '--evs', '2', 'iscsi-target',
+                           'list', iqn),
+                 mock.call('console-context', '--evs', '2', 'iscsi-target',
+                           'dellu', '-f', iqn, '0')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_del_iscsi_conn_volume_not_found(self):
+        iqn = 'iqn.2014-12.10.10.10.10:evstest1.cinder-fake'
+
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(iscsi_one_target, '')))
+
+        self.hnas_backend.del_iscsi_conn('2', iqn, '10')
+
+        self.hnas_backend._run_cmd.assert_called_with('console-context',
+                                                      '--evs', '2',
+                                                      'iscsi-target', 'list',
+                                                      iqn)
+
+    def test_check_target(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_target_list, '')]))
+
+        out = self.hnas_backend.check_target('fs-cinder', 'cinder-default')
+
+        self.assertTrue(out['found'])
+        self.assertEqual('cinder-lu', out['tgt']['lus'][0]['name'])
+        self.assertEqual('cinder-default', out['tgt']['alias'])
+        self.assertEqual('pxr6U37LZZJBoMc', out['tgt']['secret'])
+
+    def test_check_target_not_found(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_target_list, '')]))
+
+        out = self.hnas_backend.check_target('fs-cinder', 'cinder-fake')
+
+        self.assertFalse(out['found'])
+        self.assertIsNone(out['tgt'])
+
+    def test_set_target_secret(self):
+        targetalias = 'cinder-default'
+        secret = 'pxr6U37LZZJBoMc'
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
+
+        self.hnas_backend.set_target_secret(targetalias, 'fs-cinder', secret)
+
+        calls = [mock.call('evsfs', 'list'),
+                 mock.call('console-context', '--evs', '2', 'iscsi-target',
+                           'mod', '-s', 'pxr6U37LZZJBoMc', '-a', 'enable',
+                           'cinder-default')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_set_target_secret_empty_target_list(self):
+        targetalias = 'cinder-default'
+        secret = 'pxr6U37LZZJBoMc'
+
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                ('does not exist', ''),
+                                                ('', '')]))
+
+        self.hnas_backend.set_target_secret(targetalias, 'fs-cinder', secret)
+
+        calls = [mock.call('console-context', '--evs', '2', 'iscsi-target',
+                           'mod', '-s', 'pxr6U37LZZJBoMc', '-a', 'enable',
+                           'cinder-default')]
+        self.hnas_backend._run_cmd.assert_has_calls(calls, any_order=False)
+
+    def test_get_target_secret(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_one_target, '')]))
+        out = self.hnas_backend.get_target_secret('cinder-default',
+                                                  'fs-cinder')
+
+        self.assertEqual('pxr6U37LZZJBoMc', out)
+
+        self.hnas_backend._run_cmd.assert_called_with('console-context',
+                                                      '--evs', '2',
+                                                      'iscsi-target', 'list',
+                                                      'cinder-default')
+
+    def test_get_target_secret_chap_disabled(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (target_chap_disable, '')]))
+        out = self.hnas_backend.get_target_secret('cinder-default',
+                                                  'fs-cinder')
+
         self.assertEqual('', out)
 
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd')
-    def test_get_targets(self, m_run_cmd):
-        # Test normal behaviour
-        m_run_cmd.return_value = (HNAS_RESULT23, "")
-        tgt_list = self.hnas_bend._get_targets("ssh", "0.0.0.0", "supervisor",
-                                               "supervisor", 1)
-        self.assertEqual(3, len(tgt_list))
-        self.assertEqual(2, len(tgt_list[2]['luns']))
+        self.hnas_backend._run_cmd.assert_called_with('console-context',
+                                                      '--evs', '2',
+                                                      'iscsi-target', 'list',
+                                                      'cinder-default')
 
-        # Test calling with parameter
-        tgt_list = self.hnas_bend._get_targets("ssh", "0.0.0.0", "supervisor",
-                                               "supervisor", 1,
-                                               'cinder-default')
-        self.assertEqual(1, len(tgt_list))
-        self.assertEqual(2, len(tgt_list[0]['luns']))
+    def test_get_target_iqn(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (iscsi_one_target, ''),
+                                                (add_targetsecret, '')]))
 
-        # Test error in BE command
-        m_run_cmd.side_effect = putils.ProcessExecutionError
-        tgt_list = self.hnas_bend._get_targets("ssh", "0.0.0.0", "supervisor",
-                                               "supervisor", 1)
-        self.assertEqual(0, len(tgt_list))
+        out = self.hnas_backend.get_target_iqn('cinder-default', 'fs-cinder')
 
-    @mock.patch.object(hnas_backend.HnasBackend,
-                       'run_cmd', side_effect=m_run_cmd)
-    def test_check_targets(self, m_run_cmd):
-        result, tgt = self.hnas_bend.check_target("ssh", "0.0.0.0",
-                                                  "supervisor",
-                                                  "supervisor", "test_hdp",
-                                                  "cinder-default")
-        self.assertTrue(result)
-        self.assertEqual('cinder-default', tgt['alias'])
+        self.assertEqual('iqn.2014-12.10.10.10.10:evstest1.cinder-default',
+                         out)
 
-        result, tgt = self.hnas_bend.check_target("ssh", "0.0.0.0",
-                                                  "supervisor",
-                                                  "supervisor", "test_hdp",
-                                                  "cinder-no-target")
-        self.assertFalse(result)
-        self.assertIsNone(tgt)
+    def test_create_target(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(return_value=(evsfs_list, '')))
 
-    @mock.patch.object(hnas_backend.HnasBackend,
-                       'run_cmd', side_effect=m_run_cmd)
-    def test_check_lu(self, m_run_cmd):
-        ret = self.hnas_bend.check_lu("ssh", "0.0.0.0", "supervisor",
-                                      "supervisor",
-                                      "volume-8ddd1a54-9daf-4fa5-842",
-                                      "test_hdp")
-        result, lunid, tgt = ret
-        self.assertTrue(result)
-        self.assertEqual('0', lunid)
-
-        ret = self.hnas_bend.check_lu("ssh", "0.0.0.0", "supervisor",
-                                      "supervisor",
-                                      "volume-8ddd1a54-0000-0000-000",
-                                      "test_hdp")
-        result, lunid, tgt = ret
-        self.assertFalse(result)
-
-    @mock.patch.object(hnas_backend.HnasBackend, 'get_evs', return_value=1)
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       return_value = (HNAS_RESULT26, ""))
-    def test_get_existing_lu_info(self, m_run_cmd, m_get_evs):
-
-        out = self.hnas_bend.get_existing_lu_info("ssh", "0.0.0.0",
-                                                  "supervisor",
-                                                  "supervisor", "fs01-husvm",
-                                                  "test_lun")
-
-        m_get_evs.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
-                                          'supervisor', 'fs01-husvm')
-        m_run_cmd.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
-                                          'supervisor', 'console-context',
-                                          '--evs', 1, 'iscsi-lu', 'list',
-                                          'test_lun')
-
-        self.assertEqual(HNAS_RESULT26, out)
-
-    @mock.patch.object(hnas_backend.HnasBackend, 'get_evs', return_value=1)
-    @mock.patch.object(hnas_backend.HnasBackend, 'run_cmd',
-                       return_value=(HNAS_RESULT24, ""))
-    def test_rename_existing_lu(self, m_run_cmd, m_get_evs):
-
-        out = self.hnas_bend.rename_existing_lu("ssh", "0.0.0.0",
-                                                "supervisor",
-                                                "supervisor", "fs01-husvm",
-                                                "vol_test",
-                                                "new_vol_test")
-
-        m_get_evs.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
-                                          'supervisor', 'fs01-husvm')
-        m_run_cmd.assert_called_once_with('ssh', '0.0.0.0', 'supervisor',
-                                          'supervisor', 'console-context',
-                                          '--evs', 1, 'iscsi-lu', 'mod',
-                                          '-n', 'vol_test', 'new_vol_test')
-
-        self.assertEqual(HNAS_RESULT24, out)
+        self.hnas_backend.create_target('cinder-default', 'fs-cinder',
+                                        'pxr6U37LZZJBoMc')

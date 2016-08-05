@@ -17,34 +17,31 @@
 """
 iSCSI Cinder Volume driver for Hitachi Unified Storage (HUS-HNAS) platform.
 """
-import os
-import re
-import six
-from xml.etree import ElementTree as ETree
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
 from oslo_log import log as logging
-from oslo_utils import units
-
+import six
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LI, _LW
+from cinder.i18n import _, _LE, _LI
 from cinder import interface
+
 from cinder import utils as cinder_utils
 from cinder.volume import driver
 from cinder.volume.drivers.hitachi import hnas_backend
+from cinder.volume.drivers.hitachi import hnas_utils
 from cinder.volume import utils
-from cinder.volume import volume_types
 
-HDS_HNAS_ISCSI_VERSION = '4.3.0'
+
+HNAS_ISCSI_VERSION = '5.0.0'
 
 LOG = logging.getLogger(__name__)
 
 iSCSI_OPTS = [
     cfg.StrOpt('hds_hnas_iscsi_config_file',
                default='/opt/hds/hnas/cinder_iscsi_conf.xml',
-               help='Configuration file for HDS iSCSI cinder plugin')]
+               help='Configuration file for HNAS iSCSI cinder plugin')]
 
 CONF = cfg.CONF
 CONF.register_opts(iSCSI_OPTS)
@@ -53,277 +50,123 @@ HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc',
                        'chap_enabled': 'True',
                        'ssh_port': '22'}
 MAX_HNAS_ISCSI_TARGETS = 32
-
-
-def factory_bend(drv_configs):
-    return hnas_backend.HnasBackend(drv_configs)
-
-
-def _loc_info(loc):
-    """Parse info from location string."""
-
-    LOG.info(_LI("Parse_loc: %s"), loc)
-    info = {}
-    tup = loc.split(',')
-    if len(tup) < 5:
-        info['id_lu'] = tup[0].split('.')
-        return info
-    info['id_lu'] = tup[2].split('.')
-    info['tgt'] = tup
-    return info
-
-
-def _xml_read(root, element, check=None):
-    """Read an xml element."""
-
-    val = root.findtext(element)
-
-    # mandatory parameter not found
-    if val is None and check:
-        raise exception.ParameterNotFound(param=element)
-
-    # tag not found
-    if val is None:
-        return None
-
-    svc_tag_pattern = re.compile("svc_[0-3]$")
-    # tag found but empty parameter.
-    if not val.strip():
-        # Service tags are empty
-        if svc_tag_pattern.search(element):
-            return ""
-        else:
-            raise exception.ParameterNotFound(param=element)
-
-    LOG.debug(_LI("%(element)s: %(val)s"),
-              {'element': element,
-               'val': val if element != 'password' else '***'})
-
-    return val.strip()
-
-
-def _read_config(xml_config_file):
-    """Read hds driver specific xml config file."""
-
-    if not os.access(xml_config_file, os.R_OK):
-        msg = (_("Can't open config file: %s") % xml_config_file)
-        raise exception.NotFound(message=msg)
-
-    try:
-        root = ETree.parse(xml_config_file).getroot()
-    except Exception:
-        msg = (_("Error parsing config file: %s") % xml_config_file)
-        raise exception.ConfigNotFound(message=msg)
-
-    # mandatory parameters
-    config = {}
-    arg_prereqs = ['mgmt_ip0', 'username']
-    for req in arg_prereqs:
-        config[req] = _xml_read(root, req, True)
-
-    # optional parameters
-    opt_parameters = ['hnas_cmd', 'ssh_enabled', 'chap_enabled',
-                      'cluster_admin_ip0']
-    for req in opt_parameters:
-        config[req] = _xml_read(root, req)
-
-    if config['chap_enabled'] is None:
-        config['chap_enabled'] = HNAS_DEFAULT_CONFIG['chap_enabled']
-
-    if config['ssh_enabled'] == 'True':
-        config['ssh_private_key'] = _xml_read(root, 'ssh_private_key', True)
-        config['ssh_port'] = _xml_read(root, 'ssh_port')
-        config['password'] = _xml_read(root, 'password')
-        if config['ssh_port'] is None:
-            config['ssh_port'] = HNAS_DEFAULT_CONFIG['ssh_port']
-    else:
-        # password is mandatory when not using SSH
-        config['password'] = _xml_read(root, 'password', True)
-
-    if config['hnas_cmd'] is None:
-        config['hnas_cmd'] = HNAS_DEFAULT_CONFIG['hnas_cmd']
-
-    config['hdp'] = {}
-    config['services'] = {}
-
-    # min one needed
-    for svc in ['svc_0', 'svc_1', 'svc_2', 'svc_3']:
-        if _xml_read(root, svc) is None:
-            continue
-        service = {'label': svc}
-
-        # none optional
-        for arg in ['volume_type', 'hdp', 'iscsi_ip']:
-            service[arg] = _xml_read(root, svc + '/' + arg, True)
-        config['services'][service['volume_type']] = service
-        config['hdp'][service['hdp']] = service['hdp']
-
-    # at least one service required!
-    if config['services'].keys() is None:
-        raise exception.ParameterNotFound(param="No service found")
-
-    return config
+MAX_HNAS_LUS_PER_TARGET = 32
 
 
 @interface.volumedriver
-class HDSISCSIDriver(driver.ISCSIDriver):
-    """HDS HNAS volume driver.
+class HNASISCSIDriver(driver.ISCSIDriver):
+    """HNAS iSCSI volume driver.
 
     Version history:
 
-    .. code-block:: none
+        code-block:: none
 
-        1.0.0: Initial driver version
-        2.2.0: Added support to SSH authentication
-        3.2.0: Added pool aware scheduling
-               Fixed concurrency errors
-        3.3.0: Fixed iSCSI target limitation error
-        4.0.0: Added manage/unmanage features
-        4.1.0: Fixed XML parser checks on blank options
-        4.2.0: Fixed SSH and cluster_admin_ip0 verification
-        4.3.0: Fixed attachment with os-brick 1.0.0
-
+        Version 1.0.0: Initial driver version
+        Version 2.2.0: Added support to SSH authentication
+        Version 3.2.0: Added pool aware scheduling
+                       Fixed concurrency errors
+        Version 3.3.0: Fixed iSCSI target limitation error
+        Version 4.0.0: Added manage/unmanage features
+        Version 4.1.0: Fixed XML parser checks on blank options
+        Version 4.2.0: Fixed SSH and cluster_admin_ip0 verification
+        Version 4.3.0: Fixed attachment with os-brick 1.0.0
+        Version 5.0.0: Code cleaning up
+                       New communication interface between the driver and HNAS
+                       Removed the option to use local SSC (ssh_enabled=False)
+                       Updated to use versioned objects
+                       Changed the class name to HNASISCSIDriver
     """
 
     def __init__(self, *args, **kwargs):
-        """Initialize, read different config parameters."""
+        """Initializes and reads different config parameters."""
+        self.configuration = kwargs.get('configuration', None)
 
-        super(HDSISCSIDriver, self).__init__(*args, **kwargs)
-        self.driver_stats = {}
         self.context = {}
-        self.configuration.append_config_values(iSCSI_OPTS)
-        self.config = _read_config(
-            self.configuration.hds_hnas_iscsi_config_file)
-        self.type = 'HNAS'
+        service_parameters = ['volume_type', 'hdp', 'iscsi_ip']
+        optional_parameters = ['hnas_cmd', 'cluster_admin_ip0',
+                               'chap_enabled']
 
-        self.platform = self.type.lower()
-        LOG.info(_LI("Backend type: %s"), self.type)
-        self.bend = factory_bend(self.config)
+        if self.configuration:
+            self.configuration.append_config_values(iSCSI_OPTS)
+            self.config = hnas_utils.read_config(
+                self.configuration.hds_hnas_iscsi_config_file,
+                service_parameters,
+                optional_parameters)
 
-    def _array_info_get(self):
-        """Get array parameters."""
-
-        out = self.bend.get_version(self.config['hnas_cmd'],
-                                    HDS_HNAS_ISCSI_VERSION,
-                                    self.config['mgmt_ip0'],
-                                    self.config['username'],
-                                    self.config['password'])
-        inf = out.split()
-
-        return inf[1], 'hnas_' + inf[1], inf[6]
-
-    def _get_iscsi_info(self):
-        """Validate array iscsi parameters."""
-
-        out = self.bend.get_iscsi_info(self.config['hnas_cmd'],
-                                       self.config['mgmt_ip0'],
-                                       self.config['username'],
-                                       self.config['password'])
-        lines = out.split('\n')
-
-        # dict based on iSCSI portal ip addresses
-        conf = {}
-        for line in lines:
-            # only record up links
-            if 'CTL' in line and 'Up' in line:
-                inf = line.split()
-                (ctl, port, ip, ipp) = (inf[1], inf[3], inf[5], inf[7])
-                conf[ip] = {}
-                conf[ip]['ctl'] = ctl
-                conf[ip]['port'] = port
-                conf[ip]['iscsi_port'] = ipp
-                LOG.debug("portal: %(ip)s:%(ipp)s, CTL: %(ctl)s, port: %(pt)s",
-                          {'ip': ip, 'ipp': ipp, 'ctl': ctl, 'pt': port})
-
-        return conf
+        super(HNASISCSIDriver, self).__init__(*args, **kwargs)
+        self.backend = hnas_backend.HNASSSHBackend(self.config)
 
     def _get_service(self, volume):
-        """Get the available service parameters
+        """Gets the available service parameters.
 
-           Get the available service parametersfor a given volume using its
-           type.
-           :param volume: dictionary volume reference
-           :returns: HDP related to the service
+        Get the available service parameters for a given volume using its
+        type.
+
+        :param volume: dictionary volume reference
+        :returns: HDP (file system) related to the service or error if no
+        configuration is found.
+        :raises: ParameterNotFound
         """
-
-        label = utils.extract_host(volume['host'], level='pool')
-        LOG.info(_LI("Using service label: %s"), label)
+        label = utils.extract_host(volume.host, level='pool')
+        LOG.info(_LI("Using service label: %(lbl)s."), {'lbl': label})
 
         if label in self.config['services'].keys():
             svc = self.config['services'][label]
             return svc['hdp']
         else:
-            LOG.info(_LI("Available services: %s."),
-                     self.config['services'].keys())
-            LOG.error(_LE("No configuration found for service: %s."), label)
+            LOG.info(_LI("Available services: %(svc)s."),
+                     {'svc': self.config['services'].keys()})
+            LOG.error(_LE("No configuration found for service: %(lbl)s."),
+                      {'lbl': label})
             raise exception.ParameterNotFound(param=label)
 
     def _get_service_target(self, volume):
-        """Get the available service parameters
+        """Gets the available service parameters
 
-           Get the available service parameters for a given volume using
-           its type.
-           :param volume: dictionary volume reference
+        Gets the available service parameters for a given volume using its
+        type.
+        :param volume: dictionary volume reference
+        :returns: service target information or raises error
+        :raises: NoMoreTargets
         """
+        fs_label = self._get_service(volume)
+        evs_id = self.backend.get_evs(fs_label)
 
-        hdp = self._get_service(volume)
-        info = _loc_info(volume['provider_location'])
-        (arid, lun_name) = info['id_lu']
-
-        evsid = self.bend.get_evs(self.config['hnas_cmd'],
-                                  self.config['mgmt_ip0'],
-                                  self.config['username'],
-                                  self.config['password'],
-                                  hdp)
-        svc_label = utils.extract_host(volume['host'], level='pool')
+        svc_label = utils.extract_host(volume.host, level='pool')
         svc = self.config['services'][svc_label]
 
-        LOG.info(_LI("_get_service_target hdp: %s."), hdp)
-        LOG.info(_LI("config[services]: %s."), self.config['services'])
+        lu_info = self.backend.check_lu(volume.name, fs_label)
 
-        mapped, lunid, tgt = self.bend.check_lu(self.config['hnas_cmd'],
-                                                self.config['mgmt_ip0'],
-                                                self.config['username'],
-                                                self.config['password'],
-                                                lun_name, hdp)
-
-        LOG.info(_LI("Target is %(map)s! Targetlist = %(tgtl)s."),
-                 {'map': "mapped" if mapped else "not mapped", 'tgtl': tgt})
-
-        # The volume is already mapped to a LUN, so no need to create any
+        # The volume is already mapped to a LU, so no need to create any
         # targets
-        if mapped:
-            service = (svc['iscsi_ip'], svc['iscsi_port'], svc['ctl'],
-                       svc['port'], hdp, tgt['alias'], tgt['secret'])
+        if lu_info['mapped']:
+            service = (
+                svc['iscsi_ip'], svc['iscsi_port'], svc['evs'], svc['port'],
+                fs_label, lu_info['tgt']['alias'], lu_info['tgt']['secret'])
             return service
 
         # Each EVS can have up to 32 targets. Each target can have up to 32
-        # LUNs attached and have the name format 'evs<id>-tgt<0-N>'. We run
+        # LUs attached and have the name format 'evs<id>-tgt<0-N>'. We run
         # from the first 'evs1-tgt0' until we find a target that is not already
-        # created in the BE or is created but have slots to place new targets.
-        found_tgt = False
+        # created in the BE or is created but have slots to place new LUs.
+        tgt_alias = ''
         for i in range(0, MAX_HNAS_ISCSI_TARGETS):
-            tgt_alias = 'evs' + evsid + '-tgt' + six.text_type(i)
-            # TODO(erlon): we need to go to the BE 32 times here
-            tgt_exist, tgt = self.bend.check_target(self.config['hnas_cmd'],
-                                                    self.config['mgmt_ip0'],
-                                                    self.config['username'],
-                                                    self.config['password'],
-                                                    hdp, tgt_alias)
-            if tgt_exist and len(tgt['luns']) < 32 or not tgt_exist:
+            tgt_alias = 'evs' + evs_id + '-tgt' + six.text_type(i)
+            tgt = self.backend.check_target(fs_label, tgt_alias)
+
+            if (tgt['found'] and
+                    len(tgt['tgt']['lus']) < MAX_HNAS_LUS_PER_TARGET or
+                    not tgt['found']):
                 # Target exists and has free space or, target does not exist
                 # yet. Proceed and use the target or create a target using this
                 # name.
-                found_tgt = True
                 break
-
-        # If we've got here and found_tgt is not True, we run out of targets,
-        # raise and go away.
-        if not found_tgt:
+        else:
+            # If we've got here, we run out of targets, raise and go away.
             LOG.error(_LE("No more targets available."))
             raise exception.NoMoreTargets(param=tgt_alias)
 
-        LOG.info(_LI("Using target label: %s."), tgt_alias)
+        LOG.info(_LI("Using target label: %(tgt)s."), {'tgt': tgt_alias})
 
         # Check if we have a secret stored for this target so we don't have to
         # go to BE on every query
@@ -340,526 +183,102 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         # iscsi_secret has already been set, retrieve the secret if
         # available, otherwise generate and store
         if self.config['chap_enabled'] == 'True':
-            # It may not exist, create and set secret.
+            # CHAP support is enabled. Tries to get the target secret.
             if 'iscsi_secret' not in tgt_info.keys():
-                LOG.info(_LI("Retrieving secret for service: %s."),
-                         tgt_alias)
-
-                out = self.bend.get_targetsecret(self.config['hnas_cmd'],
-                                                 self.config['mgmt_ip0'],
-                                                 self.config['username'],
-                                                 self.config['password'],
-                                                 tgt_alias, hdp)
+                LOG.info(_LI("Retrieving secret for service: %(tgt)s."),
+                         {'tgt': tgt_alias})
+                out = self.backend.get_target_secret(tgt_alias, fs_label)
                 tgt_info['iscsi_secret'] = out
-                if tgt_info['iscsi_secret'] == "":
-                    randon_secret = utils.generate_password()[0:15]
-                    tgt_info['iscsi_secret'] = randon_secret
-                    self.bend.set_targetsecret(self.config['hnas_cmd'],
-                                               self.config['mgmt_ip0'],
-                                               self.config['username'],
-                                               self.config['password'],
-                                               tgt_alias, hdp,
-                                               tgt_info['iscsi_secret'])
 
-                    LOG.info(_LI("Set tgt CHAP secret for service: %s."),
-                             tgt_alias)
+                # CHAP supported and the target has no secret yet. So, the
+                # secret is created for the target
+                if tgt_info['iscsi_secret'] == "":
+                    random_secret = utils.generate_password()[0:15]
+                    tgt_info['iscsi_secret'] = random_secret
+
+                    LOG.info(_LI("Set tgt CHAP secret for service: %(tgt)s."),
+                             {'tgt': tgt_alias})
         else:
             # We set blank password when the client does not
             # support CHAP. Later on, if the client tries to create a new
-            # target that does not exists in the backend, we check for this
+            # target that does not exist in the backend, we check for this
             # value and use a temporary dummy password.
             if 'iscsi_secret' not in tgt_info.keys():
                 # Warns in the first time
                 LOG.info(_LI("CHAP authentication disabled."))
 
-            tgt_info['iscsi_secret'] = ""
+            tgt_info['iscsi_secret'] = "''"
+
+        # If the target does not exist, it should be created
+        if not tgt['found']:
+            self.backend.create_target(tgt_alias, fs_label,
+                                       tgt_info['iscsi_secret'])
+        elif (tgt['tgt']['secret'] == "" and
+                self.config['chap_enabled'] == 'True'):
+            # The target exists, has no secret and chap is enabled
+            self.backend.set_target_secret(tgt_alias, fs_label,
+                                           tgt_info['iscsi_secret'])
 
         if 'tgt_iqn' not in tgt_info:
-            LOG.info(_LI("Retrieving target for service: %s."), tgt_alias)
+            LOG.info(_LI("Retrieving IQN for service: %(tgt)s."),
+                     {'tgt': tgt_alias})
 
-            out = self.bend.get_targetiqn(self.config['hnas_cmd'],
-                                          self.config['mgmt_ip0'],
-                                          self.config['username'],
-                                          self.config['password'],
-                                          tgt_alias, hdp,
-                                          tgt_info['iscsi_secret'])
+            out = self.backend.get_target_iqn(tgt_alias, fs_label)
             tgt_info['tgt_iqn'] = out
 
         self.config['targets'][tgt_alias] = tgt_info
 
-        service = (svc['iscsi_ip'], svc['iscsi_port'], svc['ctl'],
-                   svc['port'], hdp, tgt_alias, tgt_info['iscsi_secret'])
+        service = (svc['iscsi_ip'], svc['iscsi_port'], svc['evs'], svc['port'],
+                   fs_label, tgt_alias, tgt_info['iscsi_secret'])
 
         return service
 
     def _get_stats(self):
-        """Get HDP stats from HNAS."""
+        """Get FS stats from HNAS.
 
+        :returns: dictionary with the stats from HNAS
+        """
         hnas_stat = {}
         be_name = self.configuration.safe_get('volume_backend_name')
-        hnas_stat["volume_backend_name"] = be_name or 'HDSISCSIDriver'
-        hnas_stat["vendor_name"] = 'HDS'
-        hnas_stat["driver_version"] = HDS_HNAS_ISCSI_VERSION
+        hnas_stat["volume_backend_name"] = be_name or 'HNASISCSIDriver'
+        hnas_stat["vendor_name"] = 'Hitachi'
+        hnas_stat["driver_version"] = HNAS_ISCSI_VERSION
         hnas_stat["storage_protocol"] = 'iSCSI'
         hnas_stat['reserved_percentage'] = 0
 
         for pool in self.pools:
-            out = self.bend.get_hdp_info(self.config['hnas_cmd'],
-                                         self.config['mgmt_ip0'],
-                                         self.config['username'],
-                                         self.config['password'],
-                                         pool['hdp'])
+            fs_info = self.backend.get_fs_info(pool['fs'])
 
-            LOG.debug('Query for pool %(pool)s: %(out)s.',
-                      {'pool': pool['pool_name'], 'out': out})
-
-            (hdp, size, _ign, used) = out.split()[1:5]  # in MB
-            pool['total_capacity_gb'] = int(size) / units.Ki
-            pool['free_capacity_gb'] = (int(size) - int(used)) / units.Ki
-            pool['allocated_capacity_gb'] = int(used) / units.Ki
+            pool['total_capacity_gb'] = (float(fs_info['total_size']))
+            pool['free_capacity_gb'] = (
+                float(fs_info['total_size']) - float(fs_info['used_size']))
+            pool['allocated_capacity_gb'] = (float(fs_info['total_size']))
             pool['QoS_support'] = 'False'
             pool['reserved_percentage'] = 0
 
         hnas_stat['pools'] = self.pools
 
-        LOG.info(_LI("stats: stats: %s."), hnas_stat)
+        LOG.info(_LI("stats: %(stat)s."), {'stat': hnas_stat})
         return hnas_stat
 
-    def _get_hdp_list(self):
-        """Get HDPs from HNAS."""
+    def _check_fs_list(self):
+        """Verifies the FSs in HNAS array.
 
-        out = self.bend.get_hdp_info(self.config['hnas_cmd'],
-                                     self.config['mgmt_ip0'],
-                                     self.config['username'],
-                                     self.config['password'])
-
-        hdp_list = []
-        for line in out.split('\n'):
-            if 'HDP' in line:
-                inf = line.split()
-                if int(inf[1]) >= units.Ki:
-                    # HDP fsids start at units.Ki (1024)
-                    hdp_list.append(inf[11])
-                else:
-                    # HDP pools are 2-digits max
-                    hdp_list.extend(inf[1:2])
-
-        # returns a list of HDP IDs
-        LOG.info(_LI("HDP list: %s"), hdp_list)
-        return hdp_list
-
-    def _check_hdp_list(self):
-        """Verify HDPs in HNAS array.
-
-        Verify that all HDPs specified in the configuration files actually
+        Verify that all FSs specified in the configuration files actually
         exists on the storage.
         """
-
-        hdpl = self._get_hdp_list()
-        lst = self.config['hdp'].keys()
-
-        for hdp in lst:
-            if hdp not in hdpl:
-                LOG.error(_LE("HDP not found: %s"), hdp)
-                err = "HDP not found: " + hdp
-                raise exception.ParameterNotFound(param=err)
-            # status, verify corresponding status is Normal
-
-    def _id_to_vol(self, volume_id):
-        """Given the volume id, retrieve the volume object from database.
-
-        :param volume_id: volume id string
-        """
-
-        vol = self.db.volume_get(self.context, volume_id)
-
-        return vol
-
-    def _update_vol_location(self, volume_id, loc):
-        """Update the provider location.
-
-        :param volume_id: volume id string
-        :param loc: string provider location value
-        """
-
-        update = {'provider_location': loc}
-        self.db.volume_update(self.context, volume_id, update)
-
-    def check_for_setup_error(self):
-        """Returns an error if prerequisites aren't met."""
-
-        pass
-
-    def do_setup(self, context):
-        """Setup and verify HDS HNAS storage connection."""
-
-        self.context = context
-        (self.arid, self.hnas_name, self.lumax) = self._array_info_get()
-        self._check_hdp_list()
-
-        service_list = self.config['services'].keys()
-        for svc in service_list:
-            svc = self.config['services'][svc]
-            pool = {}
-            pool['pool_name'] = svc['volume_type']
-            pool['service_label'] = svc['volume_type']
-            pool['hdp'] = svc['hdp']
-
-            self.pools.append(pool)
-
-        LOG.info(_LI("Configured pools: %s"), self.pools)
-
-        iscsi_info = self._get_iscsi_info()
-        LOG.info(_LI("do_setup: %s"), iscsi_info)
-        for svc in self.config['services'].keys():
-            svc_ip = self.config['services'][svc]['iscsi_ip']
-            if svc_ip in iscsi_info.keys():
-                LOG.info(_LI("iSCSI portal found for service: %s"), svc_ip)
-                self.config['services'][svc]['port'] = \
-                    iscsi_info[svc_ip]['port']
-                self.config['services'][svc]['ctl'] = iscsi_info[svc_ip]['ctl']
-                self.config['services'][svc]['iscsi_port'] = \
-                    iscsi_info[svc_ip]['iscsi_port']
-            else:          # config iscsi address not found on device!
-                LOG.error(_LE("iSCSI portal not found "
-                              "for service: %s"), svc_ip)
-                raise exception.ParameterNotFound(param=svc_ip)
-
-    def ensure_export(self, context, volume):
-        pass
-
-    def create_export(self, context, volume, connector):
-        """Create an export. Moved to initialize_connection.
-
-        :param context:
-        :param volume: volume reference
-        """
-
-        name = volume['name']
-        LOG.debug("create_export %s", name)
-
-        pass
-
-    def remove_export(self, context, volume):
-        """Disconnect a volume from an attached instance.
-
-        :param context: context
-        :param volume: dictionary volume reference
-        """
-
-        provider = volume['provider_location']
-        name = volume['name']
-        LOG.debug("remove_export provider %(provider)s on %(name)s",
-                  {'provider': provider, 'name': name})
-
-        pass
-
-    def create_volume(self, volume):
-        """Create a LU on HNAS.
-
-        :param volume: dictionary volume reference
-        """
-
-        hdp = self._get_service(volume)
-        out = self.bend.create_lu(self.config['hnas_cmd'],
-                                  self.config['mgmt_ip0'],
-                                  self.config['username'],
-                                  self.config['password'],
-                                  hdp,
-                                  '%s' % (int(volume['size']) * units.Ki),
-                                  volume['name'])
-
-        LOG.info(_LI("create_volume: create_lu returns %s"), out)
-
-        lun = self.arid + '.' + out.split()[1]
-        sz = int(out.split()[5])
-
-        # Example: 92210013.volume-44d7e29b-2aa4-4606-8bc4-9601528149fd
-        LOG.info(_LI("LUN %(lun)s of size %(sz)s MB is created."),
-                 {'lun': lun, 'sz': sz})
-        return {'provider_location': lun}
-
-    def create_cloned_volume(self, dst, src):
-        """Create a clone of a volume.
-
-        :param dst: ditctionary destination volume reference
-        :param src: ditctionary source volume reference
-        """
-
-        if src['size'] > dst['size']:
-            msg = 'Clone volume size must not be smaller than source volume'
-            raise exception.VolumeBackendAPIException(data=msg)
-
-        hdp = self._get_service(dst)
-        size = int(src['size']) * units.Ki
-        source_vol = self._id_to_vol(src['id'])
-        (arid, slun) = _loc_info(source_vol['provider_location'])['id_lu']
-        out = self.bend.create_dup(self.config['hnas_cmd'],
-                                   self.config['mgmt_ip0'],
-                                   self.config['username'],
-                                   self.config['password'],
-                                   slun, hdp, '%s' % size,
-                                   dst['name'])
-
-        lun = self.arid + '.' + out.split()[1]
-
-        if src['size'] < dst['size']:
-            size = dst['size']
-            self.extend_volume(dst, size)
-        else:
-            size = int(out.split()[5])
-
-        LOG.debug("LUN %(lun)s of size %(size)s MB is cloned.",
-                  {'lun': lun, 'size': size})
-        return {'provider_location': lun}
-
-    def extend_volume(self, volume, new_size):
-        """Extend an existing volume.
-
-       :param volume: dictionary volume reference
-       :param new_size: int size in GB to extend
-       """
-
-        hdp = self._get_service(volume)
-        (arid, lun) = _loc_info(volume['provider_location'])['id_lu']
-        self.bend.extend_vol(self.config['hnas_cmd'],
-                             self.config['mgmt_ip0'],
-                             self.config['username'],
-                             self.config['password'],
-                             hdp, lun,
-                             '%s' % (new_size * units.Ki),
-                             volume['name'])
-
-        LOG.info(_LI("LUN %(lun)s extended to %(size)s GB."),
-                 {'lun': lun, 'size': new_size})
-
-    def delete_volume(self, volume):
-        """Delete an LU on HNAS.
-
-        :param volume: dictionary volume reference
-        """
-
-        prov_loc = volume['provider_location']
-        if prov_loc is None:
-            LOG.error(_LE("delete_vol: provider location empty."))
-            return
-        info = _loc_info(prov_loc)
-        (arid, lun) = info['id_lu']
-        if 'tgt' in info.keys():  # connected?
-            LOG.info(_LI("delete lun loc %s"), info['tgt'])
-            # loc = id.lun
-            (_portal, iqn, loc, ctl, port, hlun) = info['tgt']
-            self.bend.del_iscsi_conn(self.config['hnas_cmd'],
-                                     self.config['mgmt_ip0'],
-                                     self.config['username'],
-                                     self.config['password'],
-                                     ctl, iqn, hlun)
-
-        name = self.hnas_name
-
-        LOG.debug("delete lun %(lun)s on %(name)s", {'lun': lun, 'name': name})
-
-        hdp = self._get_service(volume)
-        self.bend.delete_lu(self.config['hnas_cmd'],
-                            self.config['mgmt_ip0'],
-                            self.config['username'],
-                            self.config['password'],
-                            hdp, lun)
-
-    @cinder_utils.synchronized('volume_mapping')
-    def initialize_connection(self, volume, connector):
-        """Map the created volume to connector['initiator'].
-
-           :param volume: dictionary volume reference
-           :param connector: dictionary connector reference
-        """
-
-        LOG.info(_LI("initialize volume %(vol)s connector %(conn)s"),
-                 {'vol': volume, 'conn': connector})
-
-        # connector[ip, host, wwnns, unititator, wwp/
-
-        service_info = self._get_service_target(volume)
-        (ip, ipp, ctl, port, _hdp, tgtalias, secret) = service_info
-        info = _loc_info(volume['provider_location'])
-
-        if 'tgt' in info.keys():  # spurious repeat connection
-            # print info.keys()
-            LOG.debug("initiate_conn: tgt already set %s", info['tgt'])
-        (arid, lun_name) = info['id_lu']
-        loc = arid + '.' + lun_name
-        # sps, use target if provided
-        try:
-            out = self.bend.add_iscsi_conn(self.config['hnas_cmd'],
-                                           self.config['mgmt_ip0'],
-                                           self.config['username'],
-                                           self.config['password'],
-                                           lun_name, _hdp, port, tgtalias,
-                                           connector['initiator'])
-        except processutils.ProcessExecutionError:
-            msg = _("Error attaching volume %s. "
-                    "Target limit might be reached!") % volume['id']
-            raise exception.ISCSITargetAttachFailed(message=msg)
-
-        hnas_portal = ip + ':' + ipp
-        # sps need hlun, fulliqn
-        hlun = out.split()[1]
-        fulliqn = out.split()[13]
-        tgt = hnas_portal + ',' + tgtalias + ',' + loc + ',' + ctl + ','
-        tgt += port + ',' + hlun
-
-        LOG.info(_LI("initiate: connection %s"), tgt)
-
-        properties = {}
-        properties['provider_location'] = tgt
-        self._update_vol_location(volume['id'], tgt)
-        properties['target_discovered'] = False
-        properties['target_portal'] = hnas_portal
-        properties['target_iqn'] = fulliqn
-        properties['target_lun'] = int(hlun)
-        properties['volume_id'] = volume['id']
-        properties['auth_username'] = connector['initiator']
-
-        if self.config['chap_enabled'] == 'True':
-            properties['auth_method'] = 'CHAP'
-            properties['auth_password'] = secret
-
-        conn_info = {'driver_volume_type': 'iscsi', 'data': properties}
-        LOG.debug("initialize_connection: conn_info: %s.", conn_info)
-        return conn_info
-
-    @cinder_utils.synchronized('volume_mapping')
-    def terminate_connection(self, volume, connector, **kwargs):
-        """Terminate a connection to a volume.
-
-        :param volume: dictionary volume reference
-        :param connector: dictionary connector reference
-        """
-
-        info = _loc_info(volume['provider_location'])
-        if 'tgt' not in info.keys():  # spurious disconnection
-            LOG.warning(_LW("terminate_conn: provider location empty."))
-            return
-        (arid, lun) = info['id_lu']
-        (_portal, tgtalias, loc, ctl, port, hlun) = info['tgt']
-        LOG.info(_LI("terminate: connection %s"), volume['provider_location'])
-        self.bend.del_iscsi_conn(self.config['hnas_cmd'],
-                                 self.config['mgmt_ip0'],
-                                 self.config['username'],
-                                 self.config['password'],
-                                 ctl, tgtalias, hlun)
-        self._update_vol_location(volume['id'], loc)
-
-        return {'provider_location': loc}
-
-    def create_volume_from_snapshot(self, volume, snapshot):
-        """Create a volume from a snapshot.
-
-        :param volume: dictionary volume reference
-        :param snapshot: dictionary snapshot reference
-        """
-
-        size = int(snapshot['volume_size']) * units.Ki
-        (arid, slun) = _loc_info(snapshot['provider_location'])['id_lu']
-        hdp = self._get_service(volume)
-        out = self.bend.create_dup(self.config['hnas_cmd'],
-                                   self.config['mgmt_ip0'],
-                                   self.config['username'],
-                                   self.config['password'],
-                                   slun, hdp, '%s' % (size),
-                                   volume['name'])
-        lun = self.arid + '.' + out.split()[1]
-        sz = int(out.split()[5])
-
-        LOG.debug("LUN %(lun)s of size %(sz)s MB is created from snapshot.",
-                  {'lun': lun, 'sz': sz})
-        return {'provider_location': lun}
-
-    def create_snapshot(self, snapshot):
-        """Create a snapshot.
-
-        :param snapshot: dictionary snapshot reference
-        """
-
-        source_vol = self._id_to_vol(snapshot['volume_id'])
-        hdp = self._get_service(source_vol)
-        size = int(snapshot['volume_size']) * units.Ki
-        (arid, slun) = _loc_info(source_vol['provider_location'])['id_lu']
-        out = self.bend.create_dup(self.config['hnas_cmd'],
-                                   self.config['mgmt_ip0'],
-                                   self.config['username'],
-                                   self.config['password'],
-                                   slun, hdp,
-                                   '%s' % (size),
-                                   snapshot['name'])
-        lun = self.arid + '.' + out.split()[1]
-        size = int(out.split()[5])
-
-        LOG.debug("LUN %(lun)s of size %(size)s MB is created.",
-                  {'lun': lun, 'size': size})
-        return {'provider_location': lun}
-
-    def delete_snapshot(self, snapshot):
-        """Delete a snapshot.
-
-       :param snapshot: dictionary snapshot reference
-       """
-
-        loc = snapshot['provider_location']
-
-        # to take care of spurious input
-        if loc is None:
-            # which could cause exception.
-            return
-
-        (arid, lun) = loc.split('.')
-        source_vol = self._id_to_vol(snapshot['volume_id'])
-        hdp = self._get_service(source_vol)
-        myid = self.arid
-
-        if arid != myid:
-            LOG.error(_LE("Array mismatch %(myid)s vs %(arid)s"),
-                      {'myid': myid, 'arid': arid})
-            msg = 'Array id mismatch in delete snapshot'
-            raise exception.VolumeBackendAPIException(data=msg)
-        self.bend.delete_lu(self.config['hnas_cmd'],
-                            self.config['mgmt_ip0'],
-                            self.config['username'],
-                            self.config['password'],
-                            hdp, lun)
-
-        LOG.debug("LUN %s is deleted.", lun)
-        return
-
-    def get_volume_stats(self, refresh=False):
-        """Get volume stats. If 'refresh', run update the stats first."""
-
-        if refresh:
-            self.driver_stats = self._get_stats()
-
-        return self.driver_stats
-
-    def get_pool(self, volume):
-
-        if not volume['volume_type']:
-            return 'default'
-        else:
-            metadata = {}
-            type_id = volume['volume_type_id']
-            if type_id is not None:
-                metadata = volume_types.get_volume_type_extra_specs(type_id)
-            if not metadata.get('service_label'):
-                return 'default'
-            else:
-                if metadata['service_label'] not in \
-                        self.config['services'].keys():
-                    return 'default'
-                else:
-                    pass
-                return metadata['service_label']
+        fs_list = self.config['fs'].keys()
+
+        for fs in fs_list:
+            if not self.backend.get_fs_info(fs):
+                msg = (
+                    _("File system not found or not mounted: %(fs)s") %
+                    {'fs': fs})
+                LOG.error(msg)
+                raise exception.ParameterNotFound(param=msg)
 
     def _check_pool_and_fs(self, volume, fs_label):
-        """Validation of the pool and filesystem.
+        """Validates pool and file system of a volume being managed.
 
         Checks if the file system for the volume-type chosen matches the
         one passed in the volume reference. Also, checks if the pool
@@ -867,10 +286,11 @@ class HDSISCSIDriver(driver.ISCSIDriver):
 
         :param volume: Reference to the volume.
         :param fs_label: Label of the file system.
+        :raises: ManageExistingVolumeTypeMismatch
         """
-        pool_from_vol_type = self.get_pool(volume)
+        pool_from_vol_type = hnas_utils.get_pool(self.config, volume)
 
-        pool_from_host = utils.extract_host(volume['host'], level='pool')
+        pool_from_host = utils.extract_host(volume.host, level='pool')
 
         if self.config['services'][pool_from_vol_type]['hdp'] != fs_label:
             msg = (_("Failed to manage existing volume because the pool of "
@@ -896,6 +316,8 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         the volume reference.
 
         :param vol_ref: existing volume to take under management
+        :returns: the file system label and the volume name or raises error
+        :raises: ManageExistingInvalidReference
         """
         vol_info = vol_ref.strip().split('/')
 
@@ -911,44 +333,260 @@ class HDSISCSIDriver(driver.ISCSIDriver):
             raise exception.ManageExistingInvalidReference(
                 existing_ref=vol_ref, reason=msg)
 
+    def check_for_setup_error(self):
+        pass
+
+    def do_setup(self, context):
+        """Sets up and verify Hitachi HNAS storage connection."""
+        self.context = context
+        self._check_fs_list()
+
+        service_list = self.config['services'].keys()
+        for svc in service_list:
+            svc = self.config['services'][svc]
+            pool = {}
+            pool['pool_name'] = svc['volume_type']
+            pool['service_label'] = svc['volume_type']
+            pool['fs'] = svc['hdp']
+
+            self.pools.append(pool)
+
+        LOG.info(_LI("Configured pools: %(pool)s"), {'pool': self.pools})
+
+        evs_info = self.backend.get_evs_info()
+        LOG.info(_LI("Configured EVSs: %(evs)s"), {'evs': evs_info})
+
+        for svc in self.config['services'].keys():
+            svc_ip = self.config['services'][svc]['iscsi_ip']
+            if svc_ip in evs_info.keys():
+                LOG.info(_LI("iSCSI portal found for service: %s"), svc_ip)
+                self.config['services'][svc]['evs'] = (
+                    evs_info[svc_ip]['evs_number'])
+                self.config['services'][svc]['iscsi_port'] = '3260'
+                self.config['services'][svc]['port'] = '0'
+            else:
+                LOG.error(_LE("iSCSI portal not found "
+                              "for service: %(svc)s"), {'svc': svc_ip})
+                raise exception.InvalidParameterValue(err=svc_ip)
+
+    def ensure_export(self, context, volume):
+        pass
+
+    def create_export(self, context, volume, connector):
+        pass
+
+    def remove_export(self, context, volume):
+        pass
+
+    def create_volume(self, volume):
+        """Creates a LU on HNAS.
+
+        :param volume: dictionary volume reference
+        :returns: the volume provider location
+        """
+        fs = self._get_service(volume)
+        size = six.text_type(volume.size)
+
+        self.backend.create_lu(fs, size, volume.name)
+
+        LOG.info(_LI("LU %(lu)s of size %(sz)s GB is created."),
+                 {'lu': volume.name, 'sz': volume.size})
+
+        return {'provider_location': self._get_provider_location(volume)}
+
+    def create_cloned_volume(self, dst, src):
+        """Creates a clone of a volume.
+
+        :param dst: dictionary destination volume reference
+        :param src: dictionary source volume reference
+        :returns: the provider location of the extended volume
+        """
+        fs_label = self._get_service(dst)
+
+        self.backend.create_cloned_lu(src.name, fs_label, dst.name)
+
+        if src.size < dst.size:
+            size = dst.size
+            self.extend_volume(dst, size)
+
+        LOG.debug("LU %(lu)s of size %(size)d GB is cloned.",
+                  {'lu': src.name, 'size': src.size})
+
+        return {'provider_location': self._get_provider_location(dst)}
+
+    def extend_volume(self, volume, new_size):
+        """Extends an existing volume.
+
+       :param volume: dictionary volume reference
+       :param new_size: int size in GB to extend
+       """
+        fs = self._get_service(volume)
+        self.backend.extend_lu(fs, new_size, volume.name)
+
+        LOG.info(_LI("LU %(lu)s extended to %(size)s GB."),
+                 {'lu': volume.name, 'size': new_size})
+
+    def delete_volume(self, volume):
+        """Deletes the volume on HNAS.
+
+        :param volume: dictionary volume reference
+        """
+        fs = self._get_service(volume)
+        self.backend.delete_lu(fs, volume.name)
+
+        LOG.debug("Delete LU %(lu)s", {'lu': volume.name})
+
+    @cinder_utils.synchronized('volume_mapping')
+    def initialize_connection(self, volume, connector):
+        """Maps the created volume to connector['initiator'].
+
+        :param volume: dictionary volume reference
+        :param connector: dictionary connector reference
+        :returns: The connection information
+        :raises: ISCSITargetAttachFailed
+        """
+        LOG.info(_LI("initialize volume %(vol)s connector %(conn)s"),
+                 {'vol': volume, 'conn': connector})
+
+        service_info = self._get_service_target(volume)
+        (ip, ipp, evs, port, _fs, tgtalias, secret) = service_info
+
+        try:
+            conn = self.backend.add_iscsi_conn(volume.name, _fs, port,
+                                               tgtalias,
+                                               connector['initiator'])
+
+        except processutils.ProcessExecutionError:
+            msg = (_("Error attaching volume %(vol)s. "
+                     "Target limit might be reached!") % {'vol': volume.id})
+            raise exception.ISCSITargetAttachFailed(message=msg)
+
+        hnas_portal = ip + ':' + ipp
+        lu_id = six.text_type(conn['lu_id'])
+        fulliqn = conn['iqn']
+        tgt = (hnas_portal + ',' + tgtalias + ',' +
+               volume.provider_location + ',' + evs + ',' +
+               port + ',' + lu_id)
+
+        LOG.info(_LI("initiate: connection %s"), tgt)
+
+        properties = {}
+        properties['provider_location'] = tgt
+        properties['target_discovered'] = False
+        properties['target_portal'] = hnas_portal
+        properties['target_iqn'] = fulliqn
+        properties['target_lu'] = int(lu_id)
+        properties['volume_id'] = volume.id
+        properties['auth_username'] = connector['initiator']
+
+        if self.config['chap_enabled'] == 'True':
+            properties['auth_method'] = 'CHAP'
+            properties['auth_password'] = secret
+
+        conn_info = {'driver_volume_type': 'iscsi', 'data': properties}
+        LOG.debug("initialize_connection: conn_info: %(conn)s.",
+                  {'conn': conn_info})
+
+        return conn_info
+
+    @cinder_utils.synchronized('volume_mapping')
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Terminate a connection to a volume.
+
+        :param volume: dictionary volume reference
+        :param connector: dictionary connector reference
+        """
+        service_info = self._get_service_target(volume)
+        (ip, ipp, evs, port, fs, tgtalias, secret) = service_info
+        lu_info = self.backend.check_lu(volume.name, fs)
+
+        self.backend.del_iscsi_conn(evs, tgtalias, lu_info['id'])
+
+        LOG.info(_LI("terminate_connection: %(vol)s"),
+                 {'vol': volume.provider_location})
+
+    def create_volume_from_snapshot(self, volume, snapshot):
+        """Creates a volume from a snapshot.
+
+        :param volume: dictionary volume reference
+        :param snapshot: dictionary snapshot reference
+        :returns: the provider location of the snapshot
+        """
+        fs = self._get_service(volume)
+
+        self.backend.create_cloned_lu(snapshot.name, fs, volume.name)
+
+        LOG.info(_LI("LU %(lu)s of size %(sz)d MB is created."),
+                 {'lu': snapshot.name, 'sz': snapshot.volume_size})
+
+        return {'provider_location': self._get_provider_location(snapshot)}
+
+    def create_snapshot(self, snapshot):
+        """Creates a snapshot.
+
+        :param snapshot: dictionary snapshot reference
+        :returns: the provider location of the snapshot
+        """
+        fs = self._get_service(snapshot.volume)
+
+        self.backend.create_cloned_lu(snapshot.volume_name, fs, snapshot.name)
+
+        LOG.debug("LU %(lu)s of size %(size)d GB is created.",
+                  {'lu': snapshot.name, 'size': snapshot.volume_size})
+
+        return {'provider_location': self._get_provider_location(snapshot)}
+
+    def delete_snapshot(self, snapshot):
+        """Deletes a snapshot.
+
+       :param snapshot: dictionary snapshot reference
+       """
+        fs = self._get_service(snapshot.volume)
+        self.backend.delete_lu(fs, snapshot.name)
+
+        LOG.debug("Delete lu %(lu)s", {'lu': snapshot.name})
+
+    def get_volume_stats(self, refresh=False):
+        """Gets the volume driver stats.
+
+        :param refresh: if refresh is True, the driver_stats is updated
+        :returns: the driver stats
+        """
+        if refresh:
+            self.driver_stats = self._get_stats()
+
+        return self.driver_stats
+
     def manage_existing_get_size(self, volume, existing_vol_ref):
         """Gets the size to manage_existing.
 
         Returns the size of volume to be managed by manage_existing.
 
-        :param volume:           cinder volume to manage
+        :param volume: cinder volume to manage
         :param existing_vol_ref: existing volume to take under management
+        :returns: the size of the volume to be managed or raises error
+        :raises: ManageExistingInvalidReference
         """
-        # Check that the reference is valid.
+        # Check if the reference is valid.
         if 'source-name' not in existing_vol_ref:
             reason = _('Reference must contain source-name element.')
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_vol_ref, reason=reason)
 
-        ref_name = existing_vol_ref['source-name']
-        fs_label, vol_name = self._get_info_from_vol_ref(ref_name)
+        fs_label, vol_name = (
+            self._get_info_from_vol_ref(existing_vol_ref['source-name']))
 
         LOG.debug("File System: %(fs_label)s "
                   "Volume name: %(vol_name)s.",
                   {'fs_label': fs_label, 'vol_name': vol_name})
 
-        vol_name = "'{}'".format(vol_name)
+        if utils.check_already_managed_volume(vol_name):
+            raise exception.ManageExistingAlreadyManaged(volume_ref=vol_name)
 
-        lu_info = self.bend.get_existing_lu_info(self.config['hnas_cmd'],
-                                                 self.config['mgmt_ip0'],
-                                                 self.config['username'],
-                                                 self.config['password'],
-                                                 fs_label, vol_name)
+        lu_info = self.backend.get_existing_lu_info(vol_name, fs_label)
 
-        if fs_label in lu_info:
-            aux = lu_info.split('\n')[3]
-            size = aux.split(':')[1]
-            size_unit = size.split(' ')[2]
-
-            if size_unit == 'TB':
-                return int(size.split(' ')[1]) * units.k
-            else:
-                return int(size.split(' ')[1])
+        if lu_info != {}:
+            return lu_info['size']
         else:
             raise exception.ManageExistingInvalidReference(
                 existing_ref=existing_vol_ref,
@@ -966,54 +604,51 @@ class HDSISCSIDriver(driver.ISCSIDriver):
         e.g., openstack/vol_to_manage
 
         :param volume:           cinder volume to manage
-        :param existing_vol_ref: driver-specific information used to identify a
+        :param existing_vol_ref: driver specific information used to identify a
                                  volume
+        :returns: the provider location of the volume managed
         """
-        ref_name = existing_vol_ref['source-name']
-        fs_label, vol_name = self._get_info_from_vol_ref(ref_name)
+        fs_label, vol_name = (
+            self._get_info_from_vol_ref(existing_vol_ref['source-name']))
 
         LOG.debug("Asked to manage ISCSI volume %(vol)s, with vol "
-                  "ref %(ref)s.", {'vol': volume['id'],
+                  "ref %(ref)s.", {'vol': volume.id,
                                    'ref': existing_vol_ref['source-name']})
 
-        self._check_pool_and_fs(volume, fs_label)
+        if volume.volume_type is not None:
+            self._check_pool_and_fs(volume, fs_label)
 
-        vol_name = "'{}'".format(vol_name)
-
-        self.bend.rename_existing_lu(self.config['hnas_cmd'],
-                                     self.config['mgmt_ip0'],
-                                     self.config['username'],
-                                     self.config['password'], fs_label,
-                                     volume['name'], vol_name)
+        self.backend.rename_existing_lu(fs_label, vol_name, volume.name)
 
         LOG.info(_LI("Set newly managed Cinder volume name to %(name)s."),
-                 {'name': volume['name']})
+                 {'name': volume.name})
 
-        lun = self.arid + '.' + volume['name']
-
-        return {'provider_location': lun}
+        return {'provider_location': self._get_provider_location(volume)}
 
     def unmanage(self, volume):
         """Unmanages a volume from cinder.
 
         Removes the specified volume from Cinder management.
         Does not delete the underlying backend storage object. A log entry
-        will be made to notify the Admin that the volume is no longer being
+        will be made to notify the admin that the volume is no longer being
         managed.
 
         :param volume: cinder volume to unmanage
         """
-        svc = self._get_service(volume)
+        fslabel = self._get_service(volume)
+        new_name = 'unmanage-' + volume.name
+        vol_path = fslabel + '/' + volume.name
 
-        new_name = 'unmanage-' + volume['name']
-        vol_path = svc + '/' + volume['name']
-
-        self.bend.rename_existing_lu(self.config['hnas_cmd'],
-                                     self.config['mgmt_ip0'],
-                                     self.config['username'],
-                                     self.config['password'], svc, new_name,
-                                     volume['name'])
+        self.backend.rename_existing_lu(fslabel, volume.name, new_name)
 
         LOG.info(_LI("Cinder ISCSI volume with current path %(path)s is "
                      "no longer being managed. The new name is %(unm)s."),
                  {'path': vol_path, 'unm': new_name})
+
+    def _get_provider_location(self, volume):
+        """Gets the provider location of a given volume
+
+        :param volume: dictionary volume reference
+        :returns: the provider_location related to the volume
+        """
+        return self.backend.get_version()['mac'] + '.' + volume.name

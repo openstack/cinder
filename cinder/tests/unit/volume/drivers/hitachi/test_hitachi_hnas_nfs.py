@@ -14,550 +14,490 @@
 #    under the License.
 #
 
-import os
-import tempfile
-
 import mock
-import six
+import os
 
+from oslo_concurrency import processutils as putils
+import socket
+
+from cinder import context
 from cinder import exception
+from cinder.image import image_utils
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_snapshot
+from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume import configuration as conf
+from cinder.volume.drivers.hitachi import hnas_backend as backend
 from cinder.volume.drivers.hitachi import hnas_nfs as nfs
-from cinder.volume.drivers import nfs as drivernfs
-from cinder.volume.drivers import remotefs
-from cinder.volume import volume_types
+from cinder.volume.drivers.hitachi import hnas_utils
+from cinder.volume.drivers import nfs as base_nfs
 
-SHARESCONF = """172.17.39.132:/cinder
-172.17.39.133:/cinder"""
-
-HNASCONF = """<?xml version="1.0" encoding="UTF-8" ?>
-<config>
-  <hnas_cmd>ssc</hnas_cmd>
-  <mgmt_ip0>172.17.44.15</mgmt_ip0>
-  <username>supervisor</username>
-  <password>supervisor</password>
-  <svc_0>
-    <volume_type>default</volume_type>
-    <hdp>172.17.39.132:/cinder</hdp>
-  </svc_0>
-  <svc_1>
-    <volume_type>silver</volume_type>
-    <hdp>172.17.39.133:/cinder</hdp>
-  </svc_1>
-</config>
-"""
-
-HNAS_WRONG_CONF1 = """<?xml version="1.0" encoding="UTF-8" ?>
-<config>
-  <hnas_cmd>ssc</hnas_cmd>
-  <mgmt_ip0>172.17.44.15</mgmt_ip0>
-  <username>supervisor</username>
-  <password>supervisor</password>
-    <volume_type>default</volume_type>
-    <hdp>172.17.39.132:/cinder</hdp>
-  </svc_0>
-</config>
-"""
-
-HNAS_WRONG_CONF2 = """<?xml version="1.0" encoding="UTF-8" ?>
-<config>
-  <hnas_cmd>ssc</hnas_cmd>
-  <mgmt_ip0>172.17.44.15</mgmt_ip0>
-  <username>supervisor</username>
-  <password>supervisor</password>
-  <svc_0>
-    <volume_type>default</volume_type>
-  </svc_0>
-  <svc_1>
-    <volume_type>silver</volume_type>
-  </svc_1>
-</config>
-"""
-
-HNAS_WRONG_CONF3 = """<?xml version="1.0" encoding="UTF-8" ?>
-<config>
-  <hnas_cmd>ssc</hnas_cmd>
-  <mgmt_ip0>172.17.44.15</mgmt_ip0>
-  <username> </username>
-  <password>supervisor</password>
-  <svc_0>
-    <volume_type>default</volume_type>
-    <hdp>172.17.39.132:/cinder</hdp>
-  </svc_0>
-  <svc_1>
-    <volume_type>silver</volume_type>
-    <hdp>172.17.39.133:/cinder</hdp>
-  </svc_1>
-</config>
-"""
-
-HNAS_WRONG_CONF4 = """<?xml version="1.0" encoding="UTF-8" ?>
-<config>
-  <hnas_cmd>ssc</hnas_cmd>
-  <mgmt_ip0>172.17.44.15</mgmt_ip0>
-  <username>super</username>
-  <password>supervisor</password>
-  <svc_0>
-    <volume_type>default</volume_type>
-    <hdp>172.17.39.132:/cinder</hdp>
-  </svc_0>
-  <svc_4>
-    <volume_type>silver</volume_type>
-    <hdp>172.17.39.133:/cinder</hdp>
-  </svc_4>
-</config>
-"""
-
-HNAS_FULL_CONF = """<?xml version="1.0" encoding="UTF-8" ?>
-<config>
-  <hnas_cmd>ssc</hnas_cmd>
-  <mgmt_ip0>172.17.44.15</mgmt_ip0>
-  <username>super</username>
-  <password>supervisor</password>
-  <ssh_enabled>True</ssh_enabled>
-  <ssh_port>2222</ssh_port>
-  <chap_enabled>True</chap_enabled>
-  <ssh_private_key>/etc/cinder/ssh_priv</ssh_private_key>
-  <cluster_admin_ip0>10.0.0.1</cluster_admin_ip0>
-  <svc_0>
-    <volume_type>default</volume_type>
-    <hdp>172.17.39.132:/cinder</hdp>
-  </svc_0>
-  <svc_1>
-    <volume_type>silver</volume_type>
-    <hdp>172.17.39.133:/cinder/silver </hdp>
-  </svc_1>
-  <svc_2>
-    <volume_type>gold</volume_type>
-    <hdp>172.17.39.133:/cinder/gold</hdp>
-  </svc_2>
-  <svc_3>
-    <volume_type>platinum</volume_type>
-    <hdp>172.17.39.133:/cinder/platinum</hdp>
-  </svc_3>
-</config>
-"""
-
-
-# The following information is passed on to tests, when creating a volume
-_SERVICE = ('Test_hdp', 'Test_path', 'Test_label')
-_SHARE = '172.17.39.132:/cinder'
-_SHARE2 = '172.17.39.133:/cinder'
-_EXPORT = '/cinder'
-_VOLUME = {'name': 'volume-bcc48c61-9691-4e5f-897c-793686093190',
-           'volume_id': 'bcc48c61-9691-4e5f-897c-793686093190',
+_VOLUME = {'name': 'cinder-volume',
+           'id': fake.VOLUME_ID,
            'size': 128,
-           'volume_type': 'silver',
-           'volume_type_id': 'test',
-           'metadata': [{'key': 'type',
-                         'service_label': 'silver'}],
-           'provider_location': None,
-           'id': 'bcc48c61-9691-4e5f-897c-793686093190',
-           'status': 'available',
-           'host': 'host1@hnas-iscsi-backend#silver'}
-_SNAPVOLUME = {'name': 'snapshot-51dd4-8d8a-4aa9-9176-086c9d89e7fc',
-               'id': '51dd4-8d8a-4aa9-9176-086c9d89e7fc',
-               'size': 128,
-               'volume_type': None,
-               'provider_location': None,
-               'volume_size': 128,
-               'volume_name': 'volume-bcc48c61-9691-4e5f-897c-793686093190',
-               'volume_id': 'bcc48c61-9691-4e5f-897c-793686093191',
-               'host': 'host1@hnas-iscsi-backend#silver'}
+           'host': 'host1@hnas-nfs-backend#default',
+           'volume_type': 'default',
+           'provider_location': 'hnas'}
 
-_VOLUME_NFS = {'name': 'volume-61da3-8d23-4bb9-3136-ca819d89e7fc',
-               'id': '61da3-8d23-4bb9-3136-ca819d89e7fc',
-               'size': 4,
-               'metadata': [{'key': 'type',
-                             'service_label': 'silver'}],
-               'volume_type': 'silver',
-               'volume_type_id': 'silver',
-               'provider_location': '172.24.44.34:/silver/',
-               'volume_size': 128,
-               'host': 'host1@hnas-nfs#silver'}
-
-GET_ID_VOL = {
-    ("bcc48c61-9691-4e5f-897c-793686093190"): [_VOLUME],
-    ("bcc48c61-9691-4e5f-897c-793686093191"): [_SNAPVOLUME]
+_SNAPSHOT = {
+    'name': 'snapshot-51dd4-8d8a-4aa9-9176-086c9d89e7fc',
+    'id': fake.SNAPSHOT_ID,
+    'size': 128,
+    'volume_type': None,
+    'provider_location': None,
+    'volume_size': 128,
+    'volume': _VOLUME,
+    'volume_name': _VOLUME['name'],
+    'host': 'host1@hnas-iscsi-backend#silver',
+    'volume_type_id': fake.VOLUME_TYPE_ID,
 }
 
 
-def id_to_vol(arg):
-    return GET_ID_VOL.get(arg)
-
-
-class SimulatedHnasBackend(object):
-    """Simulation Back end. Talks to HNAS."""
-
-    # these attributes are shared across object instances
-    start_lun = 0
-
-    def __init__(self):
-        self.type = 'HNAS'
-        self.out = ''
-
-    def file_clone(self, cmd, ip0, user, pw, fslabel, source_path,
-                   target_path):
-        return ""
-
-    def get_version(self, ver, cmd, ip0, user, pw):
-        self.out = "Array_ID: 18-48-A5-A1-80-13 (3080-G2) " \
-                   "version: 11.2.3319.09 LU: 256 " \
-                   "RG: 0 RG_LU: 0 Utility_version: 11.1.3225.01"
-        return self.out
-
-    def get_hdp_info(self, ip0, user, pw):
-        self.out = "HDP: 1024  272384 MB    33792 MB  12 %  LUs:   70 " \
-                   "Normal  fs1\n" \
-                   "HDP: 1025  546816 MB    73728 MB  13 %  LUs:  194 " \
-                   "Normal  fs2"
-        return self.out
-
-    def get_nfs_info(self, cmd, ip0, user, pw):
-        self.out = "Export: /cinder Path: /volumes HDP: fs1 FSID: 1024 " \
-                   "EVS: 1 IPS: 172.17.39.132\n" \
-                   "Export: /cinder Path: /volumes HDP: fs2 FSID: 1025 " \
-                   "EVS: 1 IPS: 172.17.39.133"
-        return self.out
-
-
-class HDSNFSDriverTest(test.TestCase):
+class HNASNFSDriverTest(test.TestCase):
     """Test HNAS NFS volume driver."""
 
     def __init__(self, *args, **kwargs):
-        super(HDSNFSDriverTest, self).__init__(*args, **kwargs)
+        super(HNASNFSDriverTest, self).__init__(*args, **kwargs)
 
-    @mock.patch.object(nfs, 'factory_bend')
-    def setUp(self, m_factory_bend):
-        super(HDSNFSDriverTest, self).setUp()
+    def instantiate_snapshot(self, snap):
+        snap = snap.copy()
+        snap['volume'] = fake_volume.fake_volume_obj(
+            None, **snap['volume'])
+        snapshot = fake_snapshot.fake_snapshot_obj(
+            None, expected_attrs=['volume'], **snap)
+        return snapshot
 
-        self.backend = SimulatedHnasBackend()
-        m_factory_bend.return_value = self.backend
+    def setUp(self):
+        super(HNASNFSDriverTest, self).setUp()
+        self.context = context.get_admin_context()
 
-        self.config_file = tempfile.NamedTemporaryFile("w+", suffix='.xml')
-        self.addCleanup(self.config_file.close)
-        self.config_file.write(HNASCONF)
-        self.config_file.flush()
+        self.volume = fake_volume.fake_volume_obj(
+            self.context,
+            **_VOLUME)
 
-        self.shares_file = tempfile.NamedTemporaryFile("w+", suffix='.xml')
-        self.addCleanup(self.shares_file.close)
-        self.shares_file.write(SHARESCONF)
-        self.shares_file.flush()
+        self.snapshot = self.instantiate_snapshot(_SNAPSHOT)
+
+        self.volume_type = fake_volume.fake_volume_type_obj(
+            None,
+            **{'name': 'silver'}
+        )
+        self.clone = fake_volume.fake_volume_obj(
+            None,
+            **{'id': fake.VOLUME2_ID,
+               'size': 128,
+               'host': 'host1@hnas-nfs-backend#default',
+               'volume_type': 'default',
+               'provider_location': 'hnas'})
+
+        # xml parsed from utils
+        self.parsed_xml = {
+            'username': 'supervisor',
+            'password': 'supervisor',
+            'hnas_cmd': 'ssc',
+            'ssh_port': '22',
+            'services': {
+                'default': {
+                    'hdp': '172.24.49.21:/fs-cinder',
+                    'volume_type': 'default',
+                    'label': 'svc_0',
+                    'ctl': '1',
+                    'export': {
+                        'fs': 'fs-cinder',
+                        'path': '/export-cinder/volume'
+                    }
+                },
+            },
+            'cluster_admin_ip0': None,
+            'ssh_private_key': None,
+            'chap_enabled': 'True',
+            'mgmt_ip0': '172.17.44.15',
+            'ssh_enabled': None
+        }
+
+        self.configuration = mock.Mock(spec=conf.Configuration)
+        self.configuration.hds_hnas_nfs_config_file = 'fake.xml'
+
+        self.mock_object(hnas_utils, 'read_config',
+                         mock.Mock(return_value=self.parsed_xml))
 
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.max_over_subscription_ratio = 20.0
         self.configuration.reserved_percentage = 0
-        self.configuration.hds_hnas_nfs_config_file = self.config_file.name
-        self.configuration.nfs_shares_config = self.shares_file.name
-        self.configuration.nfs_mount_point_base = '/opt/stack/cinder/mnt'
-        self.configuration.nfs_mount_options = None
-        self.configuration.nas_host = None
-        self.configuration.nas_share_path = None
-        self.configuration.nas_mount_options = None
+        self.configuration.hds_hnas_nfs_config_file = 'fake_config.xml'
+        self.configuration.nfs_shares_config = 'fake_nfs_share.xml'
+        self.configuration.num_shell_tries = 2
 
-        self.driver = nfs.HDSNFSDriver(configuration=self.configuration)
-        self.driver.do_setup("")
+        self.driver = nfs.HNASNFSDriver(configuration=self.configuration)
 
-    @mock.patch('six.moves.builtins.open')
-    @mock.patch.object(os, 'access')
-    def test_read_config(self, m_access, m_open):
-        # Test exception when file is not found
-        m_access.return_value = False
-        m_open.return_value = six.StringIO(HNASCONF)
-        self.assertRaises(exception.NotFound, nfs._read_config, '')
+    def test_check_pool_and_share_mismatch_exception(self):
+        # passing a share that does not exists in config should raise an
+        # exception
+        nfs_shares = '172.24.49.21:/nfs_share'
 
-        # Test exception when config file has parsing errors
-        # due to missing <svc> tag
-        m_access.return_value = True
-        m_open.return_value = six.StringIO(HNAS_WRONG_CONF1)
-        self.assertRaises(exception.ConfigNotFound, nfs._read_config, '')
-
-        # Test exception when config file has parsing errors
-        # due to missing <hdp> tag
-        m_open.return_value = six.StringIO(HNAS_WRONG_CONF2)
-        self.configuration.hds_hnas_iscsi_config_file = ''
-        self.assertRaises(exception.ParameterNotFound, nfs._read_config, '')
-
-        # Test exception when config file has parsing errors
-        # due to blank tag
-        m_open.return_value = six.StringIO(HNAS_WRONG_CONF3)
-        self.configuration.hds_hnas_iscsi_config_file = ''
-        self.assertRaises(exception.ParameterNotFound, nfs._read_config, '')
-
-        # Test when config file has parsing errors due invalid svc_number
-        m_open.return_value = six.StringIO(HNAS_WRONG_CONF4)
-        self.configuration.hds_hnas_iscsi_config_file = ''
-        config = nfs._read_config('')
-        self.assertEqual(1, len(config['services']))
-
-        # Test config with full options
-        # due invalid svc_number
-        m_open.return_value = six.StringIO(HNAS_FULL_CONF)
-        self.configuration.hds_hnas_iscsi_config_file = ''
-        config = nfs._read_config('')
-        self.assertEqual(4, len(config['services']))
-
-    @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_export_path')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_volume_location')
-    def test_create_snapshot(self, m_get_volume_location, m_get_export_path,
-                             m_get_provider_location, m_id_to_vol):
-        svol = _SNAPVOLUME.copy()
-        m_id_to_vol.return_value = svol
-
-        m_get_provider_location.return_value = _SHARE
-        m_get_volume_location.return_value = _SHARE
-        m_get_export_path.return_value = _EXPORT
-
-        loc = self.driver.create_snapshot(svol)
-        out = "{'provider_location': \'" + _SHARE + "'}"
-        self.assertEqual(out, str(loc))
-
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_service')
-    @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_volume_location')
-    def test_create_cloned_volume(self, m_get_volume_location,
-                                  m_get_provider_location, m_id_to_vol,
-                                  m_get_service):
-        vol = _VOLUME.copy()
-        svol = _SNAPVOLUME.copy()
-
-        m_get_service.return_value = _SERVICE
-        m_get_provider_location.return_value = _SHARE
-        m_get_volume_location.return_value = _SHARE
-
-        loc = self.driver.create_cloned_volume(vol, svol)
-
-        out = "{'provider_location': \'" + _SHARE + "'}"
-        self.assertEqual(out, str(loc))
-
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_service')
-    @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_volume_location')
-    @mock.patch.object(nfs.HDSNFSDriver, 'extend_volume')
-    def test_create_cloned_volume_larger(self, m_extend_volume,
-                                         m_get_volume_location,
-                                         m_get_provider_location,
-                                         m_id_to_vol, m_get_service):
-        vol = _VOLUME.copy()
-        svol = _SNAPVOLUME.copy()
-
-        m_get_service.return_value = _SERVICE
-        m_get_provider_location.return_value = _SHARE
-        m_get_volume_location.return_value = _SHARE
-
-        svol['size'] = 256
-
-        loc = self.driver.create_cloned_volume(svol, vol)
-
-        out = "{'provider_location': \'" + _SHARE + "'}"
-        self.assertEqual(out, str(loc))
-        m_extend_volume.assert_called_once_with(svol, svol['size'])
-
-    @mock.patch.object(nfs.HDSNFSDriver, '_ensure_shares_mounted')
-    @mock.patch.object(nfs.HDSNFSDriver, '_do_create_volume')
-    @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_volume_location')
-    def test_create_volume(self, m_get_volume_location,
-                           m_get_provider_location, m_id_to_vol,
-                           m_do_create_volume, m_ensure_shares_mounted):
-
-        vol = _VOLUME.copy()
-
-        m_get_provider_location.return_value = _SHARE2
-        m_get_volume_location.return_value = _SHARE2
-
-        loc = self.driver.create_volume(vol)
-
-        out = "{'provider_location': \'" + _SHARE2 + "'}"
-        self.assertEqual(str(loc), out)
-
-    @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
-    @mock.patch.object(nfs.HDSNFSDriver, '_volume_not_present')
-    def test_delete_snapshot(self, m_volume_not_present,
-                             m_get_provider_location, m_id_to_vol):
-        svol = _SNAPVOLUME.copy()
-
-        m_id_to_vol.return_value = svol
-        m_get_provider_location.return_value = _SHARE
-
-        m_volume_not_present.return_value = True
-
-        self.driver.delete_snapshot(svol)
-        self.assertIsNone(svol['provider_location'])
-
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_service')
-    @mock.patch.object(nfs.HDSNFSDriver, '_id_to_vol', side_effect=id_to_vol)
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_provider_location')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_export_path')
-    @mock.patch.object(nfs.HDSNFSDriver, '_get_volume_location')
-    def test_create_volume_from_snapshot(self, m_get_volume_location,
-                                         m_get_export_path,
-                                         m_get_provider_location, m_id_to_vol,
-                                         m_get_service):
-        vol = _VOLUME.copy()
-        svol = _SNAPVOLUME.copy()
-
-        m_get_service.return_value = _SERVICE
-        m_get_provider_location.return_value = _SHARE
-        m_get_export_path.return_value = _EXPORT
-        m_get_volume_location.return_value = _SHARE
-
-        loc = self.driver.create_volume_from_snapshot(vol, svol)
-        out = "{'provider_location': \'" + _SHARE + "'}"
-        self.assertEqual(out, str(loc))
-
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs',
-                       return_value={'key': 'type', 'service_label': 'silver'})
-    def test_get_pool(self, m_ext_spec):
-        vol = _VOLUME.copy()
-
-        self.assertEqual('silver', self.driver.get_pool(vol))
-
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    @mock.patch.object(os.path, 'isfile', return_value=True)
-    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
-                       return_value='/mnt/gold')
-    @mock.patch.object(utils, 'resolve_hostname', return_value='172.24.44.34')
-    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
-    def test_manage_existing(self, m_ensure_shares, m_resolve, m_mount_point,
-                             m_isfile, m_get_extra_specs):
-        vol = _VOLUME_NFS.copy()
-
-        m_get_extra_specs.return_value = {'key': 'type',
-                                          'service_label': 'silver'}
-        self.driver._mounted_shares = ['172.17.39.133:/cinder']
-        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
-
-        with mock.patch.object(self.driver, '_execute'):
-            out = self.driver.manage_existing(vol, existing_vol_ref)
-
-            loc = {'provider_location': '172.17.39.133:/cinder'}
-            self.assertEqual(loc, out)
-
-        m_get_extra_specs.assert_called_once_with('silver')
-        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
-        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
-        m_resolve.assert_called_with('172.17.39.133')
-        m_ensure_shares.assert_called_once_with()
-
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    @mock.patch.object(os.path, 'isfile', return_value=True)
-    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
-                       return_value='/mnt/gold')
-    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
-    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
-    def test_manage_existing_move_fails(self, m_ensure_shares, m_resolve,
-                                        m_mount_point, m_isfile,
-                                        m_get_extra_specs):
-        vol = _VOLUME_NFS.copy()
-
-        m_get_extra_specs.return_value = {'key': 'type',
-                                          'service_label': 'silver'}
-        self.driver._mounted_shares = ['172.17.39.133:/cinder']
-        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
-        self.driver._execute = mock.Mock(side_effect=OSError)
-
-        self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.manage_existing, vol, existing_vol_ref)
-        m_get_extra_specs.assert_called_once_with('silver')
-        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
-        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
-        m_resolve.assert_called_with('172.17.39.133')
-        m_ensure_shares.assert_called_once_with()
-
-    @mock.patch.object(volume_types, 'get_volume_type_extra_specs')
-    @mock.patch.object(os.path, 'isfile', return_value=True)
-    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
-                       return_value='/mnt/gold')
-    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
-    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
-    def test_manage_existing_invalid_pool(self, m_ensure_shares, m_resolve,
-                                          m_mount_point, m_isfile,
-                                          m_get_extra_specs):
-        vol = _VOLUME_NFS.copy()
-        m_get_extra_specs.return_value = {'key': 'type',
-                                          'service_label': 'gold'}
-        self.driver._mounted_shares = ['172.17.39.133:/cinder']
-        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
-        self.driver._execute = mock.Mock(side_effect=OSError)
+        self.mock_object(hnas_utils, 'get_pool',
+                         mock.Mock(return_value='default'))
 
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
-                          self.driver.manage_existing, vol, existing_vol_ref)
-        m_get_extra_specs.assert_called_once_with('silver')
-        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
-        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
-        m_resolve.assert_called_with('172.17.39.133')
-        m_ensure_shares.assert_called_once_with()
+                          self.driver._check_pool_and_share, self.volume,
+                          nfs_shares)
 
-    @mock.patch.object(utils, 'get_file_size', return_value=4000000000)
-    @mock.patch.object(os.path, 'isfile', return_value=True)
-    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
-                       return_value='/mnt/gold')
-    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
-    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
-    def test_manage_existing_get_size(self, m_ensure_shares, m_resolve,
-                                      m_mount_point,
-                                      m_isfile, m_file_size):
+    def test_check_pool_and_share_type_mismatch_exception(self):
+        nfs_shares = '172.24.49.21:/fs-cinder'
+        self.volume.host = 'host1@hnas-nfs-backend#gold'
 
-        vol = _VOLUME_NFS.copy()
+        # returning a pool different from 'default' should raise an exception
+        self.mock_object(hnas_utils, 'get_pool',
+                         mock.Mock(return_value='default'))
 
-        self.driver._mounted_shares = ['172.17.39.133:/cinder']
-        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
+        self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
+                          self.driver._check_pool_and_share, self.volume,
+                          nfs_shares)
 
-        out = self.driver.manage_existing_get_size(vol, existing_vol_ref)
+    def test_do_setup(self):
+        version_info = {
+            'mac': '83-68-96-AA-DA-5D',
+            'model': 'HNAS 4040',
+            'version': '12.4.3924.11',
+            'hardware': 'NAS Platform',
+            'serial': 'B1339109',
+        }
+        export_list = [
+            {'fs': 'fs-cinder',
+             'name': '/fs-cinder',
+             'free': 228.0,
+             'path': '/fs-cinder',
+             'evs': ['172.24.49.21'],
+             'size': 250.0}
+        ]
 
-        self.assertEqual(vol['size'], out)
-        m_file_size.assert_called_once_with('/mnt/gold/volume-test')
-        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
-        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
-        m_resolve.assert_called_with('172.17.39.133')
-        m_ensure_shares.assert_called_once_with()
+        showmount = "Export list for 172.24.49.21:                  \n\
+/fs-cinder                                 *                        \n\
+/shares/9bcf0bcc-8cc8-437e38bcbda9 127.0.0.1,10.1.0.5,172.24.44.141 \n\
+"
 
-    @mock.patch.object(utils, 'get_file_size', return_value='badfloat')
-    @mock.patch.object(os.path, 'isfile', return_value=True)
-    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
-                       return_value='/mnt/gold')
-    @mock.patch.object(utils, 'resolve_hostname', return_value='172.17.39.133')
-    @mock.patch.object(remotefs.RemoteFSDriver, '_ensure_shares_mounted')
-    def test_manage_existing_get_size_error(self, m_ensure_shares, m_resolve,
-                                            m_mount_point,
-                                            m_isfile, m_file_size):
-        vol = _VOLUME_NFS.copy()
+        self.mock_object(backend.HNASSSHBackend, 'get_version',
+                         mock.Mock(return_value=version_info))
+        self.mock_object(self.driver, '_load_shares_config')
+        self.mock_object(backend.HNASSSHBackend, 'get_export_list',
+                         mock.Mock(return_value=export_list))
+        self.mock_object(self.driver, '_execute',
+                         mock.Mock(return_value=(showmount, '')))
 
-        self.driver._mounted_shares = ['172.17.39.133:/cinder']
-        existing_vol_ref = {'source-name': '172.17.39.133:/cinder/volume-test'}
+        self.driver.do_setup(None)
+
+        self.driver._execute.assert_called_with('showmount', '-e',
+                                                '172.24.49.21')
+        self.assertTrue(backend.HNASSSHBackend.get_export_list.called)
+
+    def test_do_setup_execute_exception(self):
+        version_info = {
+            'mac': '83-68-96-AA-DA-5D',
+            'model': 'HNAS 4040',
+            'version': '12.4.3924.11',
+            'hardware': 'NAS Platform',
+            'serial': 'B1339109',
+        }
+
+        export_list = [
+            {'fs': 'fs-cinder',
+             'name': '/fs-cinder',
+             'free': 228.0,
+             'path': '/fs-cinder',
+             'evs': ['172.24.49.21'],
+             'size': 250.0}
+        ]
+
+        self.mock_object(backend.HNASSSHBackend, 'get_version',
+                         mock.Mock(return_value=version_info))
+        self.mock_object(self.driver, '_load_shares_config')
+        self.mock_object(backend.HNASSSHBackend, 'get_export_list',
+                         mock.Mock(return_value=export_list))
+        self.mock_object(self.driver, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.assertRaises(putils.ProcessExecutionError, self.driver.do_setup,
+                          None)
+
+    def test_do_setup_missing_export(self):
+        version_info = {
+            'mac': '83-68-96-AA-DA-5D',
+            'model': 'HNAS 4040',
+            'version': '12.4.3924.11',
+            'hardware': 'NAS Platform',
+            'serial': 'B1339109',
+        }
+        export_list = [
+            {'fs': 'fs-cinder',
+             'name': '/wrong-fs',
+             'free': 228.0,
+             'path': '/fs-cinder',
+             'evs': ['172.24.49.21'],
+             'size': 250.0}
+        ]
+
+        showmount = "Export list for 172.24.49.21:                  \n\
+/fs-cinder                                 *                        \n\
+"
+
+        self.mock_object(backend.HNASSSHBackend, 'get_version',
+                         mock.Mock(return_value=version_info))
+        self.mock_object(self.driver, '_load_shares_config')
+        self.mock_object(backend.HNASSSHBackend, 'get_export_list',
+                         mock.Mock(return_value=export_list))
+        self.mock_object(self.driver, '_execute',
+                         mock.Mock(return_value=(showmount, '')))
+
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.driver.do_setup, None)
+
+    def test_create_volume(self):
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(self.driver, '_do_create_volume')
+
+        out = self.driver.create_volume(self.volume)
+
+        self.assertEqual('172.24.49.21:/fs-cinder', out['provider_location'])
+        self.assertTrue(self.driver._ensure_shares_mounted.called)
+
+    def test_create_volume_exception(self):
+        # pool 'original' doesnt exists in services
+        self.volume.host = 'host1@hnas-nfs-backend#original'
+
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+
+        self.assertRaises(exception.ParameterNotFound,
+                          self.driver.create_volume, self.volume)
+
+    def test_create_cloned_volume(self):
+        self.volume.size = 150
+
+        self.mock_object(self.driver, 'extend_volume')
+        self.mock_object(backend.HNASSSHBackend, 'file_clone')
+
+        out = self.driver.create_cloned_volume(self.volume, self.clone)
+
+        self.assertEqual('hnas', out['provider_location'])
+
+    def test_get_volume_stats(self):
+        self.driver.pools = [{'pool_name': 'default',
+                              'service_label': 'default',
+                              'fs': '172.24.49.21:/easy-stack'},
+                             {'pool_name': 'cinder_svc',
+                              'service_label': 'cinder_svc',
+                              'fs': '172.24.49.26:/MNT-CinderTest2'}]
+
+        self.mock_object(self.driver, '_update_volume_stats')
+        self.mock_object(self.driver, '_get_capacity_info',
+                         mock.Mock(return_value=(150, 50, 100)))
+
+        out = self.driver.get_volume_stats()
+
+        self.assertEqual('5.0.0', out['driver_version'])
+        self.assertEqual('Hitachi', out['vendor_name'])
+        self.assertEqual('NFS', out['storage_protocol'])
+
+    def test_create_volume_from_snapshot(self):
+        self.mock_object(backend.HNASSSHBackend, 'file_clone')
+
+        self.driver.create_volume_from_snapshot(self.volume, self.snapshot)
+
+    def test_create_snapshot(self):
+        self.mock_object(backend.HNASSSHBackend, 'file_clone')
+        self.driver.create_snapshot(self.snapshot)
+
+    def test_delete_snapshot(self):
+        self.mock_object(self.driver, '_execute')
+
+        self.driver.delete_snapshot(self.snapshot)
+
+    def test_delete_snapshot_execute_exception(self):
+        self.mock_object(self.driver, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
+
+        self.driver.delete_snapshot(self.snapshot)
+
+    def test_extend_volume(self):
+        share_mount_point = '/fs-cinder'
+        data = image_utils.imageutils.QemuImgInfo
+        data.virtual_size = 200 * 1024 ** 3
+
+        self.mock_object(self.driver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=share_mount_point))
+        self.mock_object(image_utils, 'qemu_img_info',
+                         mock.Mock(return_value=data))
+
+        self.driver.extend_volume(self.volume, 200)
+
+        self.driver._get_mount_point_for_share.assert_called_with('hnas')
+
+    def test_extend_volume_resizing_exception(self):
+        share_mount_point = '/fs-cinder'
+        data = image_utils.imageutils.QemuImgInfo
+        data.virtual_size = 2048 ** 3
+
+        self.mock_object(self.driver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=share_mount_point))
+        self.mock_object(image_utils, 'qemu_img_info',
+                         mock.Mock(return_value=data))
+
+        self.mock_object(image_utils, 'resize_image')
+
+        self.assertRaises(exception.InvalidResults,
+                          self.driver.extend_volume, self.volume, 200)
+
+    def test_manage_existing(self):
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+        existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
+
+        self.mock_object(os.path, 'isfile', mock.Mock(return_value=True))
+        self.mock_object(self.driver, '_get_mount_point_for_share',
+                         mock.Mock(return_value='/fs-cinder/cinder-volume'))
+        self.mock_object(utils, 'resolve_hostname',
+                         mock.Mock(return_value='172.24.49.21'))
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(self.driver, '_execute')
+
+        out = self.driver.manage_existing(self.volume, existing_vol_ref)
+
+        loc = {'provider_location': '172.24.49.21:/fs-cinder'}
+        self.assertEqual(loc, out)
+
+        os.path.isfile.assert_called_once_with('/fs-cinder/cinder-volume/')
+        self.driver._get_mount_point_for_share.assert_called_once_with(
+            '172.24.49.21:/fs-cinder')
+        utils.resolve_hostname.assert_called_with('172.24.49.21')
+        self.driver._ensure_shares_mounted.assert_called_once_with()
+
+    def test_manage_existing_name_matches(self):
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+        existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
+
+        self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
+                         mock.Mock(return_value=('172.24.49.21:/fs-cinder',
+                                                 '/mnt/silver',
+                                                 self.volume.name)))
+
+        out = self.driver.manage_existing(self.volume, existing_vol_ref)
+
+        loc = {'provider_location': '172.24.49.21:/fs-cinder'}
+        self.assertEqual(loc, out)
+
+    def test_manage_existing_exception(self):
+        existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
+
+        self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
+                         mock.Mock(return_value=('172.24.49.21:/fs-cinder',
+                                                 '/mnt/silver',
+                                                 'cinder-volume')))
+        self.mock_object(self.driver, '_execute',
+                         mock.Mock(side_effect=putils.ProcessExecutionError))
 
         self.assertRaises(exception.VolumeBackendAPIException,
-                          self.driver.manage_existing_get_size, vol,
+                          self.driver.manage_existing, self.volume,
                           existing_vol_ref)
-        m_file_size.assert_called_once_with('/mnt/gold/volume-test')
-        m_isfile.assert_called_once_with('/mnt/gold/volume-test')
-        m_mount_point.assert_called_once_with('172.17.39.133:/cinder')
-        m_resolve.assert_called_with('172.17.39.133')
-        m_ensure_shares.assert_called_once_with()
 
-    def test_manage_existing_get_size_without_source_name(self):
-        vol = _VOLUME.copy()
-        existing_vol_ref = {
-            'source-id': 'bcc48c61-9691-4e5f-897c-793686093190'}
+    def test_manage_existing_missing_source_name(self):
+        # empty source-name should raise an exception
+        existing_vol_ref = {}
 
         self.assertRaises(exception.ManageExistingInvalidReference,
-                          self.driver.manage_existing_get_size, vol,
+                          self.driver.manage_existing, self.volume,
                           existing_vol_ref)
 
-    @mock.patch.object(drivernfs.NfsDriver, '_get_mount_point_for_share',
-                       return_value='/mnt/gold')
-    def test_unmanage(self, m_mount_point):
-        with mock.patch.object(self.driver, '_execute'):
-            vol = _VOLUME_NFS.copy()
-            self.driver.unmanage(vol)
+    def test_manage_existing_missing_volume_in_backend(self):
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+        existing_vol_ref = {'source-name': '172.24.49.21:/fs-cinder'}
 
-        m_mount_point.assert_called_once_with('172.24.44.34:/silver/')
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(utils, 'resolve_hostname',
+                         mock.Mock(side_effect=['172.24.49.21',
+                                                '172.24.49.22']))
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, self.volume,
+                          existing_vol_ref)
+
+    def test_manage_existing_get_size(self):
+        existing_vol_ref = {
+            'source-name': '172.24.49.21:/fs-cinder/cinder-volume',
+        }
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+        expected_size = 1
+
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(utils, 'resolve_hostname',
+                         mock.Mock(return_value='172.24.49.21'))
+        self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
+                         mock.Mock(return_value='/mnt/silver'))
+        self.mock_object(os.path, 'isfile',
+                         mock.Mock(return_value=True))
+        self.mock_object(utils, 'get_file_size',
+                         mock.Mock(return_value=expected_size))
+
+        out = self.driver.manage_existing_get_size(self.volume,
+                                                   existing_vol_ref)
+
+        self.assertEqual(1, out)
+        utils.get_file_size.assert_called_once_with(
+            '/mnt/silver/cinder-volume')
+        utils.resolve_hostname.assert_called_with('172.24.49.21')
+
+    def test_manage_existing_get_size_exception(self):
+        existing_vol_ref = {
+            'source-name': '172.24.49.21:/fs-cinder/cinder-volume',
+        }
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+
+        self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
+                         mock.Mock(return_value=('172.24.49.21:/fs-cinder',
+                                                 '/mnt/silver',
+                                                 'cinder-volume')))
+
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.manage_existing_get_size, self.volume,
+                          existing_vol_ref)
+
+    def test_manage_existing_get_size_resolving_hostname_exception(self):
+        existing_vol_ref = {
+            'source-name': '172.24.49.21:/fs-cinder/cinder-volume',
+        }
+
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(utils, 'resolve_hostname',
+                         mock.Mock(side_effect=socket.gaierror))
+
+        self.assertRaises(socket.gaierror,
+                          self.driver.manage_existing_get_size, self.volume,
+                          existing_vol_ref)
+
+    def test_unmanage(self):
+        path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
+        vol_str = 'volume-' + self.volume.id
+        vol_path = os.path.join(path, vol_str)
+        new_path = os.path.join(path, 'unmanage-' + vol_str)
+
+        self.mock_object(self.driver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=path))
+        self.mock_object(self.driver, '_execute')
+
+        self.driver.unmanage(self.volume)
+
+        self.driver._execute.assert_called_with('mv', vol_path, new_path,
+                                                run_as_root=False,
+                                                check_exit_code=True)
+        self.driver._get_mount_point_for_share.assert_called_with(
+            self.volume.provider_location)
+
+    def test_unmanage_volume_exception(self):
+        path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
+
+        self.mock_object(self.driver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=path))
+        self.mock_object(self.driver, '_execute',
+                         mock.Mock(side_effect=ValueError))
+
+        self.driver.unmanage(self.volume)
