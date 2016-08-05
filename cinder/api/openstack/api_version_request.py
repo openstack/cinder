@@ -122,8 +122,10 @@ class APIVersionRequest(utils.ComparableMixin):
         return ("API Version Request Major: %(major)s, Minor: %(minor)s"
                 % {'major': self._ver_major, 'minor': self._ver_minor})
 
-    def is_null(self):
-        return self._ver_major is None and self._ver_minor is None
+    def __bool__(self):
+        return (self._ver_major or self._ver_minor) is not None
+
+    __nonzero__ = __bool__
 
     def _cmpkey(self):
         """Return the value used by ComparableMixin for rich comparisons."""
@@ -158,7 +160,7 @@ class APIVersionRequest(utils.ComparableMixin):
         :returns: boolean
         """
 
-        if self.is_null():
+        if not self:
             raise ValueError
 
         if isinstance(min_version, str):
@@ -168,16 +170,12 @@ class APIVersionRequest(utils.ComparableMixin):
 
         if not min_version and not max_version:
             return True
-        elif ((min_version and max_version) and
-              max_version.is_null() and min_version.is_null()):
-            return True
 
-        elif not max_version or max_version.is_null():
+        if not max_version:
             return min_version <= self
-        elif not min_version or min_version.is_null():
+        if not min_version:
             return self <= max_version
-        else:
-            return min_version <= self <= max_version
+        return min_version <= self <= max_version
 
     def get_string(self):
         """Returns a string representation of this object.
@@ -185,7 +183,7 @@ class APIVersionRequest(utils.ComparableMixin):
         If this method is used to create an APIVersionRequest,
         the resulting object will be an equivalent request.
         """
-        if self.is_null():
+        if not self:
             raise ValueError
         return ("%(major)s.%(minor)s" %
                 {'major': self._ver_major, 'minor': self._ver_minor})
