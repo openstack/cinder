@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev200\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-04 21:03+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-03 02:21+0000\n"
+"PO-Revision-Date: 2016-08-04 02:19+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -28,6 +28,22 @@ msgstr ""
 #, python-format
 msgid "\t%s"
 msgstr "\t%s"
+
+#, python-format
+msgid ""
+"\n"
+"CoprHD Exception: %(msg)s\n"
+msgstr ""
+"\n"
+"CoprHD の例外: %(msg)s\n"
+
+#, python-format
+msgid ""
+"\n"
+"General Exception: %(exec_info)s\n"
+msgstr ""
+"\n"
+"一般的な例外: %(exec_info)s\n"
 
 #, python-format
 msgid ""
@@ -3596,7 +3612,7 @@ msgid "Failed to find a vdisk copy in the expected pool."
 msgstr "予期されるプールに vdisk コピーが見つかりませんでした。"
 
 msgid "Failed to find account for volume."
-msgstr "ボリュームのアカウントが見つかりませんでした"
+msgstr "ボリュームのアカウントが見つかりませんでした。"
 
 #, python-format
 msgid "Failed to find fileset for path %(path)s, command output: %(cmdout)s."
@@ -3606,7 +3622,7 @@ msgstr ""
 
 #, python-format
 msgid "Failed to find group snapshot named: %s"
-msgstr "%s という名前のグループスナップショットが見つかりませんでした"
+msgstr "%s という名前のグループスナップショットが見つかりませんでした。"
 
 #, python-format
 msgid "Failed to find host %s."
@@ -3704,7 +3720,7 @@ msgid "Failed to get migration task."
 msgstr "マイグレーションタスクの取得に失敗しました。"
 
 msgid "Failed to get model update from clone"
-msgstr "複製からのモデル更新の取得に失敗しました"
+msgstr "複製からのモデル更新の取得に失敗しました。"
 
 msgid "Failed to get name server info."
 msgstr "ネームサーバー情報の取得に失敗しました。"
@@ -4142,6 +4158,10 @@ msgid ""
 msgstr ""
 "指定の %(src_type)s %(src_id)s メタデータを使用してボリューム %(vol_id)s メタ"
 "データを更新することができませんでした"
+
+msgid "Failover requested on non replicated backend."
+msgstr ""
+"複製されていないバックエンド上でフェイルオーバーがリクエストされました。"
 
 #, python-format
 msgid "Failure creating volume %s."
@@ -5561,6 +5581,10 @@ msgstr "バージョンの非互換のため、メタデータのリストアに
 msgid "Metadata restore failed due to incompatible version."
 msgstr "バージョンの非互換のため、メタデータのリストアに失敗しました。"
 
+#, python-format
+msgid "Method %(method)s is not defined"
+msgstr "メソッド  %(method)s は定義されていません。"
+
 msgid ""
 "Missing 'purestorage' python module, ensure the library is installed and "
 "available."
@@ -6728,7 +6752,7 @@ msgid ""
 "volumes. Retrieved: %(ret)s Desired: %(des)s"
 msgstr ""
 "指定された Cinder ボリュームについて異なる量の SolidFire ボリュームを検出しま"
-"した。%(ret)s を検出しましたが、%(des)s を期待していました"
+"した。%(ret)s を検出しましたが、%(des)s を期待していました。"
 
 #, python-format
 msgid "Retry count exceeded for command: %s"
@@ -7303,6 +7327,9 @@ msgid "The decorated method must accept either a volume or a snapshot object"
 msgstr ""
 "装飾されたメソッドは、ボリュームとスナップショットオブジェクトのいずれもを受"
 "け付けることができません。"
+
+msgid "The decorated method must accept image_meta."
+msgstr "装飾されたメソッドは、 image_meta を受け入れる必要があります。"
 
 #, python-format
 msgid "The device in the path %(path)s is unavailable: %(reason)s"
@@ -8447,6 +8474,10 @@ msgstr ""
 "v6.4 以上が実行されていることを確認してください"
 
 #, python-format
+msgid "Unsupported volume format %s"
+msgstr "ボリューム形式はサポートされていません: %s "
+
+#, python-format
 msgid "Unsupported volume format: %s "
 msgstr "ボリューム形式はサポートされていません: %s "
 
@@ -8590,6 +8621,16 @@ msgstr "宛先 %s のボリュームコピージョブが失敗しました。"
 #, python-format
 msgid "Volume %(deviceID)s not found."
 msgstr "ボリューム %(deviceID)s が見つかりません。"
+
+#, python-format
+msgid "Volume %(name)s could not be found. It might be already deleted"
+msgstr ""
+"ボリューム %(name)s が見つかりませんでした。すでに削除されている可能性があり"
+"ます。"
+
+#, python-format
+msgid "Volume %(name)s not found"
+msgstr "ボリューム %(name)s が見つかりません。"
 
 #, python-format
 msgid ""
@@ -9715,6 +9756,27 @@ msgstr "変更された整合性グループ"
 msgid "control_location must be defined"
 msgstr "control_location を定義する必要があります"
 
+msgid "coprhd_hostname is not set in cinder configuration"
+msgstr "cinder 設定で coprhd_hostname が設定されていません。"
+
+msgid "coprhd_password is not set in cinder configuration"
+msgstr "cinder 設定で coprhd_password が設定されていません。"
+
+msgid "coprhd_port is not set in cinder configuration"
+msgstr "cinder 設定で coprhd_port が設定されていません。"
+
+msgid "coprhd_project is not set in cinder configuration"
+msgstr "cinder 設定で coprhd_project が設定されていません。"
+
+msgid "coprhd_tenant is not set in cinder configuration"
+msgstr "cinder 設定で coprhd_tenant が設定されていません。"
+
+msgid "coprhd_username is not set in cinder configuration"
+msgstr "cinder 設定で coprhd_username が設定されていません。"
+
+msgid "coprhd_varray is not set in cinder configuration"
+msgstr "cinder 設定で coprhd_varray が設定されていません。"
+
 msgid "create_cloned_volume, Source Volume does not exist in ETERNUS."
 msgstr "create_cloned_volume、ETERNUS にソースボリュームが存在しません。"
 
@@ -10179,6 +10241,12 @@ msgstr "スナップショット ID %s を持つ複数のリソースが見つ�
 msgid "name cannot be None"
 msgstr "名前を None に設定することはできません"
 
+msgid "no \"access-key\" field"
+msgstr " \"access-key\" フィールドがありません。"
+
+msgid "no \"user\" field"
+msgstr " \"user\" フィールドがありません。"
+
 #, python-format
 msgid "no REPLY but %r"
 msgstr "REPLY がないものの %r があります"
@@ -10357,6 +10425,10 @@ msgstr "sync_hypermetro エラー。"
 
 msgid "sync_replica not implemented."
 msgstr "sync_replica が実装されていません。"
+
+#, python-format
+msgid "target=%(target)s, lun=%(lun)s"
+msgstr "target=%(target)s, lun=%(lun)s"
 
 #, python-format
 msgid ""
