@@ -495,7 +495,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             LOG.debug("Creating a snapshot: %(snap)s from vg: %(vg)s",
                       {'snap': snap_name, 'vg': vg_name})
             self.client.new("snapshots", short_name=snap_name,
-                            source=vg, retention_policy=rpolicy).save()
+                            source=vg, retention_policy=rpolicy,
+                            is_auto_deleteable=False).save()
         except Exception as ex:
             LOG.exception(_LE("Creation of snapshot: %s failed."), snap_name)
             raise exception.KaminarioCinderDriverException(
