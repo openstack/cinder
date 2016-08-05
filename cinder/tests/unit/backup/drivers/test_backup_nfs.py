@@ -73,7 +73,8 @@ class BackupNFSShareTestCase(test.TestCase):
         self.assertRaises(exception.ConfigNotFound,
                           driver._check_configuration)
 
-    def test_init_backup_repo_path(self):
+    @mock.patch.object(remotefs_brick, 'RemoteFsClient')
+    def test_init_backup_repo_path(self, mock_remotefs_client_class):
         self.override_config('backup_share', FAKE_BACKUP_SHARE)
         self.override_config('backup_mount_point_base',
                              FAKE_BACKUP_MOUNT_POINT_BASE)
@@ -81,8 +82,7 @@ class BackupNFSShareTestCase(test.TestCase):
         mock_remotefsclient.get_mount_point = mock.Mock(
             return_value=FAKE_BACKUP_PATH)
         self.mock_object(nfs.NFSBackupDriver, '_check_configuration')
-        self.mock_object(remotefs_brick, 'RemoteFsClient',
-                         mock.Mock(return_value=mock_remotefsclient))
+        mock_remotefs_client_class.return_value = mock_remotefsclient
         self.mock_object(utils, 'get_root_helper')
         with mock.patch.object(nfs.NFSBackupDriver, '_init_backup_repo_path'):
             driver = nfs.NFSBackupDriver(self.ctxt)
@@ -91,6 +91,12 @@ class BackupNFSShareTestCase(test.TestCase):
 
         self.assertEqual(FAKE_BACKUP_PATH, path)
         utils.get_root_helper.called_once()
+        mock_remotefs_client_class.assert_called_once_with(
+            'nfs',
+            utils.get_root_helper(),
+            nfs_mount_point_base=FAKE_BACKUP_MOUNT_POINT_BASE,
+            nfs_mount_options=None
+        )
         mock_remotefsclient.mount.assert_called_once_with(FAKE_BACKUP_SHARE)
         mock_remotefsclient.get_mount_point.assert_called_once_with(
             FAKE_BACKUP_SHARE)
