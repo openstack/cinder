@@ -41,8 +41,7 @@ LOG = logging.getLogger(__name__)
 
 class CommonAdapter(object):
 
-    VERSION = '08.00.00'
-    VENDOR = 'EMC'
+    VERSION = None
 
     def __init__(self, configuration, active_backend_id):
         self.config = configuration
@@ -716,8 +715,6 @@ class CommonAdapter(object):
         stats = self.get_enabler_stats()
         stats['pools'] = self.get_pool_stats(stats)
         stats['storage_protocol'] = self.config.storage_protocol
-        stats['driver_version'] = self.VERSION
-        stats['vendor_name'] = self.VENDOR
         self.append_replication_stats(stats)
         return stats
 

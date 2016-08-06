@@ -75,6 +75,9 @@ class EMCVNXDriver(driver.TransferVD,
         8.0.0 - New VNX Cinder driver
     """
 
+    VERSION = '08.00.00'
+    VENDOR = 'EMC'
+
     def __init__(self, *args, **kwargs):
         super(EMCVNXDriver, self).__init__(*args, **kwargs)
         utils.init_ops(self.configuration)
@@ -89,6 +92,7 @@ class EMCVNXDriver(driver.TransferVD,
         else:
             self.adapter = adapter.ISCSIAdapter(self.configuration,
                                                 self.active_backend_id)
+        self.adapter.VERSION = self.VERSION
         self.adapter.do_setup()
 
     def check_for_setup_error(self):
@@ -220,6 +224,8 @@ class EMCVNXDriver(driver.TransferVD,
         """Retrieve stats info from volume group."""
         LOG.debug("Updating volume stats.")
         self._stats = self.adapter.update_volume_stats()
+        self._stats['driver_version'] = self.VERSION
+        self._stats['vendor_name'] = self.VENDOR
 
     def manage_existing(self, volume, existing_ref):
         """Manage an existing lun in the array.

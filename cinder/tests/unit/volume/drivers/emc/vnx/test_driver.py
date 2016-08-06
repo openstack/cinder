@@ -47,11 +47,13 @@ class TestEMCVNXDriver(test.TestCase):
         _driver = self._get_driver('iscsi')
         driver_name = str(_driver.adapter)
         self.assertIn('ISCSIAdapter', driver_name)
+        self.assertEqual(driver.EMCVNXDriver.VERSION, _driver.VERSION)
 
     def test_init_fc_driver(self):
         _driver = self._get_driver('FC')
         driver_name = str(_driver.adapter)
         self.assertIn('FCAdapter', driver_name)
+        self.assertEqual(driver.EMCVNXDriver.VERSION, _driver.VERSION)
 
     def test_create_volume(self):
         _driver = self._get_driver('iscsi')
