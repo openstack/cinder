@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -815,13 +815,6 @@ msgstr "Nelze se připojit k serveru ECOM."
 
 #, python-format
 msgid ""
-"Cannot create clone of size %(vol_size)s from volume of size %(src_vol_size)s"
-msgstr ""
-"Nelze vytvořit klon s velikostí %(vol_size)s ze svazku s velikostí "
-"%(src_vol_size)s"
-
-#, python-format
-msgid ""
 "Cannot create consistency group %(group)s because snapshot %(snap)s is not "
 "in a valid state. Valid states are: %(valid)s."
 msgstr ""
@@ -864,13 +857,6 @@ msgstr ""
 #, python-format
 msgid "Cannot create or find an storage group with name %(sgGroupName)s."
 msgstr "Nelze vytvořit nebo najít skupinu úložiště s názvem %(sgGroupName)s."
-
-#, python-format
-msgid ""
-"Cannot create volume of size %(vol_size)s from snapshot of size %(snap_size)s"
-msgstr ""
-"Nelze vytvořit svazek o velikosti %(vol_size)s ze snímku s velikostí "
-"%(snap_size)s"
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -2098,12 +2084,6 @@ msgid ""
 msgstr ""
 "Chyba při přidružování skupiny úložiště: %(storageGroupName)s k zásadě FAST: "
 "%(fastPolicyName)s. Popis chyby: %(errordesc)s."
-
-#, python-format
-msgid "Error attaching volume %s. Target limit might be reached!"
-msgstr ""
-"Chyba při připojování svazku %s. Možná bylo dosaženo limitu v cílovém "
-"zařízení!"
 
 #, python-format
 msgid ""

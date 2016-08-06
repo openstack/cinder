@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:44+0000\n"
+"POT-Creation-Date: 2016-08-06 02:59+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -86,10 +86,6 @@ msgid ""
 msgstr ""
 "unmanage işlemi denenirken SolidFire Kümesinde Mantıksal Sürücü Kimliği %s "
 "için hesap bulunamadı!"
-
-#, python-format
-msgid "Array mismatch %(myid)s vs %(arid)s"
-msgstr "Dizi uyuşmazlığı %(myid)s ve %(arid)s"
 
 #, python-format
 msgid "Authorizing request: %(zfssaurl)s retry: %(retry)d ."
@@ -1449,10 +1445,6 @@ msgid "Get replication status for volume failed."
 msgstr "Mantıksal sürücü için kopyalama durumu alma başarısız oldu."
 
 #, python-format
-msgid "HDP not found: %s"
-msgstr "HDP bulunamadı: %s"
-
-#, python-format
 msgid "ISCSI discovery attempt failed for:%s"
 msgstr "ISCSI keşif girişimi başarısız oldu:%s"
 
@@ -1547,12 +1539,6 @@ msgstr "%(share)s için bağlama hatası."
 msgid "Multiple replay profiles under name %s"
 msgstr "%s adı altında birden fazla tekrar profilleri"
 
-#, python-format
-msgid "NFS share %(share)s has no service entry: %(svc)s -> %(hdp)s"
-msgstr ""
-"NFS paylaşımı %(share)s hiçbir servis girdisine sahip değil: %(svc)s -> "
-"%(hdp)s"
-
 msgid "No CLI output for firmware version check"
 msgstr "Donanım yazılımı sürüm kontrolü için hiçbir CLI çıktısı yok"
 
@@ -1570,10 +1556,6 @@ msgid ""
 msgstr ""
 "Hiçbir eylem gerekmez. Mantıksal sürücü: %(volumeName)s zaten slo/workload "
 "birleşiminin parçasıdır: %(targetCombination)s."
-
-#, python-format
-msgid "No configuration found for service: %s"
-msgstr "Servis için hiçbir yapılandırma bulunamadı: %s"
 
 #, python-format
 msgid ""
@@ -2210,9 +2192,6 @@ msgstr ""
 "sil: %(vol_id)s stdout ile başarısız oldu: %(out)s\n"
 " stderr: %(err)s"
 
-msgid "delete_vol: provider location empty."
-msgstr "delete_vol: sağlayıcı konumu boş."
-
 #, python-format
 msgid "ensure_export: Volume %s not found on storage."
 msgstr "ensure_export: Mantıksal sürücü %s depolama üzerinde bulunamadı."
@@ -2226,10 +2205,6 @@ msgstr "mantıksal sürücü durum bilgisi tazeleme hatası"
 
 msgid "horcm command timeout."
 msgstr "horcm komutu zaman aşımı."
-
-#, python-format
-msgid "iSCSI portal not found for service: %s"
-msgstr "Servis için iSCSI kapısı bulunamadı: %s"
 
 #, python-format
 msgid ""

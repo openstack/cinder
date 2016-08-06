@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -185,20 +185,8 @@ msgid "Availability Zones retrieved successfully."
 msgstr "가용 구역이 성공적으로 검색되었습니다."
 
 #, python-format
-msgid "Available services: %s"
-msgstr "사용 가능한 서비스: %s"
-
-#, python-format
-msgid "Available services: %s."
-msgstr "사용 가능한 서비스: %s."
-
-#, python-format
 msgid "Backend name is %s."
 msgstr "백엔드 이름이 %s입니다."
-
-#, python-format
-msgid "Backend type: %s"
-msgstr "백엔드 유형: %s"
 
 #, python-format
 msgid "Backing VM: %(backing)s renamed to %(new_name)s."
@@ -400,12 +388,6 @@ msgstr ""
 "%(encryption)s 암호=%(cipher)s 다중 개시자r=%(multi-initiator)s에서 볼륨 복제"
 
 #, python-format
-msgid ""
-"Cloning with volume_name %(vname)s clone_name %(cname)s export_path %(epath)s"
-msgstr ""
-"volume_name %(vname)s clone_name %(cname)s export_path %(epath)s(으)로 복제"
-
-#, python-format
 msgid "CloudByte API executed successfully for command [%s]."
 msgstr "명령 [%s]에 대해 CloudByte API가 성공적으로 실행되었습니다."
 
@@ -421,10 +403,6 @@ msgstr "볼륨 전체 마이그레이션이 성공적으로 완료되었습니�
 #, python-format
 msgid "Completed: convert_to_base_volume: id=%s."
 msgstr "완료됨: convert_to_base_volume: id=%s."
-
-#, python-format
-msgid "Configured pools: %s"
-msgstr "구성된 풀: %s"
 
 #, python-format
 msgid ""
@@ -1020,10 +998,6 @@ msgid "Driver post RPC initialization completed successfully."
 msgstr "드라이버 post RPC 초기화가 성공적으로 완료되었습니다."
 
 #, python-format
-msgid "Driver stats: %s"
-msgstr "드라이버 통계: %s"
-
-#, python-format
 msgid ""
 "E-series proxy API version %(version)s does not support full set of SSC "
 "extra specs. The proxy version must be at at least %(min_version)s."
@@ -1258,10 +1232,6 @@ msgstr "모든 볼륨 가져오기가 성공적으로 완료되었습니다."
 msgid "Get domain by name response: %s"
 msgstr "이름별 도메인 가져오기 응답: %s"
 
-#, python-format
-msgid "Get service: %(lbl)s->%(svc)s"
-msgstr "서비스 가져오기: %(lbl)s->%(svc)s"
-
 msgid "Get snapshot metadata completed successfully."
 msgstr "스냅샷 메타데이터 가져오기가 성공적으로 완료되었습니다."
 
@@ -1291,10 +1261,6 @@ msgstr "vol_name=%s의 볼륨 정보 가져오기"
 #, python-format
 msgid "Going to perform request again %s with valid token."
 msgstr "올바른 토큰으로 %s 요청을 다시 수행합니다."
-
-#, python-format
-msgid "HDP list: %s"
-msgstr "HDP 목록: %s"
 
 #, python-format
 msgid "HPE3PARCommon %(common_ver)s,hpe3parclient %(rest_ver)s"
@@ -1424,14 +1390,6 @@ msgstr "개시자  %(iname)s의 개시자 그룹 이름이 %(grp)s입니다."
 #, python-format
 msgid "LUN %(id)s extended to %(size)s GB."
 msgstr "LUN %(id)s이(가) %(size)sGB로 확장되었습니다."
-
-#, python-format
-msgid "LUN %(lun)s extended to %(size)s GB."
-msgstr "LUN %(lun)s이(가) %(size)sGB로 확장되었습니다."
-
-#, python-format
-msgid "LUN %(lun)s of size %(sz)s MB is created."
-msgstr "크기가 %(sz)sMB인 LUN %(lun)s이(가) 작성되었습니다."
 
 #, python-format
 msgid "LUN with given ref %s need not be renamed during manage operation."
@@ -1650,10 +1608,6 @@ msgstr "%(volume_id)s 볼륨을 %(backup_id)s 백업의 복원으로 겹쳐씀"
 #, python-format
 msgid "Params for add volume request: %s."
 msgstr "볼륨 요청 추가 매개 변수: %s."
-
-#, python-format
-msgid "Parse_loc: %s"
-msgstr "Parse_loc: %s"
 
 #, python-format
 msgid "Performing post clone for %s"
@@ -1905,14 +1859,6 @@ msgid "Resuming delete on backup: %s."
 msgstr "백업에서 삭제 재개: %s."
 
 #, python-format
-msgid "Retrieving secret for service: %s."
-msgstr "서비스의 시크릿 검색: %s."
-
-#, python-format
-msgid "Retrieving target for service: %s."
-msgstr "서비스의 대상 검색: %s."
-
-#, python-format
 msgid "Return FC info is: %s."
 msgstr "리턴 FC 정보: %s."
 
@@ -1987,10 +1933,6 @@ msgstr "볼륨 다시 입력 요청이 성공적으로 실행되었습니다."
 msgid "Retype was to same Storage Profile."
 msgstr "동일한 스토리지 프로파일에 다시 입력되었습니다."
 
-#, python-format
-msgid "Review shares: %s"
-msgstr "공유 검토: %s"
-
 msgid "Roll detaching of volume completed successfully."
 msgstr "볼륨 연결 해제가 성공적으로 롤링되었습니다."
 
@@ -2001,10 +1943,6 @@ msgstr "vmemclient 버전으로 실행: %s"
 #, python-format
 msgid "SC server created %s"
 msgstr "SC 서버 작성 %s"
-
-#, python-format
-msgid "Save service info for %(svc)s -> %(hdp)s, %(path)s"
-msgstr "%(svc)s의 서비스 저장 -> %(hdp)s, %(path)s"
 
 #, python-format
 msgid ""
@@ -2090,10 +2028,6 @@ msgstr "백엔드 상태가 동결로 설정되었습니다."
 #, python-format
 msgid "Set newly managed Cinder volume name to %(name)s."
 msgstr "새로 관리된 Cinder 볼륨 이름을 %(name)s(으)로 설정합니다."
-
-#, python-format
-msgid "Set tgt CHAP secret for service: %s."
-msgstr "서비스의 tgt CHAP 시크릿 설정: %s."
 
 #, python-format
 msgid "Setting host %(host)s to %(state)s."
@@ -2446,10 +2380,6 @@ msgid ""
 msgstr "제어기 주소가 [%s]인 시스템이 웹 서비스에 등록되지 않았습니다."
 
 #, python-format
-msgid "Target is %(map)s! Targetlist = %(tgtl)s."
-msgstr "대상은 %(map)s입니다. Targetlist = %(tgtl)s."
-
-#, python-format
 msgid "Target wwns in masking view %(maskingView)s: %(targetWwns)s."
 msgstr "마스킹 보기 %(maskingView)s의 wwns: %(targetWwns)s."
 
@@ -2750,14 +2680,6 @@ msgstr "구성에서 겹쳐쓴 vmware_host_version 사용: %s"
 msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr "%(cpg)s 대신 풀 %(pool)s 사용"
 
-#, python-format
-msgid "Using service label: %s"
-msgstr "서비스 레이블 사용: %s"
-
-#, python-format
-msgid "Using target label: %s."
-msgstr "대상 레이블 사용: %s."
-
 msgid "VF context is changed in the session."
 msgstr "VF 컨텍스트가 세션에서 변경되었습니다."
 
@@ -3041,10 +2963,6 @@ msgstr ""
 "다. "
 
 #, python-format
-msgid "_get_service_target hdp: %s."
-msgstr "_get_service_target hdp: %s."
-
-#, python-format
 msgid "_get_tgt_ip_from_portgroup: Get ip: %s."
 msgstr "_get_tgt_ip_from_portgroup: ip 가져오기: %s."
 
@@ -3087,10 +3005,6 @@ msgstr "cgsnapshot %s: 성공적으로 삭제됨"
 #, python-format
 msgid "cgsnapshot %s: deleting"
 msgstr "cgsnapshot %s: 삭제"
-
-#, python-format
-msgid "config[services]: %s."
-msgstr "config[services]: %s."
 
 #, python-format
 msgid "create_cloned_volume, info: %s, Exit method."
@@ -3136,10 +3050,6 @@ msgid "create_volume, volume id: %s, Enter method."
 msgstr "create_volume, 볼륨 id: %s, 메소드를 입력합니다."
 
 #, python-format
-msgid "create_volume: create_lu returns %s"
-msgstr "create_volume: create_lu에서%s을(를) 리턴"
-
-#, python-format
 msgid "create_volume_from_snapshot, info: %s, Exit method."
 msgstr "create_volume_from_snapshot, 정보: %s, 메소드를 종료합니다."
 
@@ -3158,14 +3068,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: src_lun_id: %(src_lun_id)s, tgt_lun_id: "
 "%(tgt_lun_id)s, copy_name: %(copy_name)s."
-
-#, python-format
-msgid "del_iscsi_conn: hlun not found %s."
-msgstr "del_iscsi_conn: hlun을 찾을 수 없음 %s."
-
-#, python-format
-msgid "delete lun loc %s"
-msgstr "lun loc %s 삭제"
 
 #, python-format
 msgid "delete_snapshot, delete: %s, Exit method."
@@ -3191,10 +3093,6 @@ msgid ""
 msgstr ""
 "do_mapping, lun_group: %(lun_group)s, view_id: %(view_id)s, lun_id: "
 "%(lun_id)s."
-
-#, python-format
-msgid "do_setup: %s"
-msgstr "do_setup: %s"
 
 #, python-format
 msgid "extend_volume, used pool name: %s, Exit method."
@@ -3308,10 +3206,6 @@ msgid "new cloned volume: %s"
 msgstr "새로 복제된 볼륨: %s"
 
 #, python-format
-msgid "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-msgstr "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-
-#, python-format
 msgid "open_connection to %(ssn)s at %(ip)s"
 msgstr "%(ip)s에서 %(ssn)s에 대한 open_connection"
 
@@ -3328,14 +3222,6 @@ msgid "setting volume %s to error_restoring (was restoring-backup)."
 msgstr "볼륨 %s을(를) error_restoring(으)로 설정(복원-백업)."
 
 #, python-format
-msgid "share: %(share)s -> %(info)s"
-msgstr "공유: %(share)s -> %(info)s"
-
-#, python-format
-msgid "share: %s incorrect entry"
-msgstr "공유: %s 올바르지 않은 항목"
-
-#, python-format
 msgid "smis_do_iscsi_discovery is: %(out)s."
 msgstr "smis_do_iscsi_discovery: %(out)s."
 
@@ -3348,20 +3234,8 @@ msgid "source volume for cloning: %s"
 msgstr "복제할 소스 볼륨: %s"
 
 #, python-format
-msgid "stats: stats: %s."
-msgstr "통계: 통계: %s."
-
-#, python-format
 msgid "stop_snapshot: snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr "stop_snapshot: 스냅샷 이름: %(snapshot)s, 볼륨 이름: %(volume)s."
-
-#, python-format
-msgid "targetlist: %s"
-msgstr "targetlist: %s"
-
-#, python-format
-msgid "terminate: connection %s"
-msgstr "종료: 연결 %s"
 
 #, python-format
 msgid "terminate_connection volume: %(volume)s, connector: %(con)s"

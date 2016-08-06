@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -158,16 +158,8 @@ msgid "Availability Zones retrieved successfully."
 msgstr "Kullanılabilir Bölgeler başarıyla alındı."
 
 #, python-format
-msgid "Available services: %s"
-msgstr "Kullanılabilir servisler: %s"
-
-#, python-format
 msgid "Backend name is %s."
 msgstr "Arka uç ismi %s."
-
-#, python-format
-msgid "Backend type: %s"
-msgstr "Arka uç türü: %s"
 
 #, python-format
 msgid "Backing VM: %(backing)s renamed to %(new_name)s."
@@ -309,13 +301,6 @@ msgid "Cloning volume %(src)s to volume %(dst)s"
 msgstr "Mantıksal sürücü %(src)s %(dst)s mantıksal sürücüsüne klonlanıyor"
 
 #, python-format
-msgid ""
-"Cloning with volume_name %(vname)s clone_name %(cname)s export_path %(epath)s"
-msgstr ""
-"volume_name %(vname)s clone_name %(cname)s export_path %(epath)s ile "
-"klonlanıyor"
-
-#, python-format
 msgid "CloudByte API executed successfully for command [%s]."
 msgstr "CloudByte API'si [%s] komutu için başarıyla çalıştırıldı."
 
@@ -325,10 +310,6 @@ msgstr "Mantıksal sürücü göçü-tamamlama başarıyla tamamlandı."
 #, python-format
 msgid "Completed: convert_to_base_volume: id=%s."
 msgstr "Tamamlandı: convert_to_base_volume: id=%s."
-
-#, python-format
-msgid "Configured pools: %s"
-msgstr "Yapılandırılan havuzlar: %s"
 
 #, python-format
 msgid ""
@@ -806,10 +787,6 @@ msgid "Driver initialization completed successfully."
 msgstr "Sürücü ilklendirme başarıyla tamamlandı."
 
 #, python-format
-msgid "Driver stats: %s"
-msgstr "Sürücü istatistikleri: %s"
-
-#, python-format
 msgid "EQL-driver: Setup is complete, group IP is \"%s\"."
 msgstr "EQL-sürücüsü: Kurulum tamamlandı, grup IP'si \"%s\"."
 
@@ -963,10 +940,6 @@ msgstr "Tüm mantıksal sürücülerin getirilmesi başarıyla bitti."
 msgid "Get domain by name response: %s"
 msgstr "İsimle alan adı alma yanıtı: %s"
 
-#, python-format
-msgid "Get service: %(lbl)s->%(svc)s"
-msgstr "Servis getir: %(lbl)s->%(svc)s"
-
 msgid "Get snapshot metadata completed successfully."
 msgstr "Anlık görüntü metadata'sı getir başarıyla tamamlandı."
 
@@ -992,10 +965,6 @@ msgstr "vol_name=%s için mantıksal sürücü bilgisi alınıyor"
 #, python-format
 msgid "Going to perform request again %s with valid token."
 msgstr "İstek %s geçerli jetonla tekrar gerçekleşecek."
-
-#, python-format
-msgid "HDP list: %s"
-msgstr "HDP listesi: %s"
 
 #, python-format
 msgid "HTTP exception thrown: %s"
@@ -1071,14 +1040,6 @@ msgstr "%(iname)s başlatıcısı için başlatıcı grup ismi %(grp)s"
 #, python-format
 msgid "LUN %(id)s extended to %(size)s GB."
 msgstr "LUN %(id)s %(size)s GB'ye büyütüldü."
-
-#, python-format
-msgid "LUN %(lun)s extended to %(size)s GB."
-msgstr "LUN %(lun)s %(size)s GB boyutuna büyütüldü."
-
-#, python-format
-msgid "LUN %(lun)s of size %(sz)s MB is created."
-msgstr "%(sz)s MB boyutunda LUN %(lun)s oluşturuldu."
 
 #, python-format
 msgid "LUN with given ref %s need not be renamed during manage operation."
@@ -1245,10 +1206,6 @@ msgstr ""
 #, python-format
 msgid "Params for add volume request: %s."
 msgstr "Mantıksal sürücü ekleme isteği için parametreler: %s."
-
-#, python-format
-msgid "Parse_loc: %s"
-msgstr "Parse_loc: %s"
 
 #, python-format
 msgid "Performing post clone for %s"
@@ -1470,20 +1427,12 @@ msgstr "Mantıksal sürücü rtype başarıyla tamamlandı."
 msgid "Retype volume request issued successfully."
 msgstr "Mantıksal sürücü retype isteği başarıyla yapıldı."
 
-#, python-format
-msgid "Review shares: %s"
-msgstr "Paylaşımları gözden geçir: %s"
-
 msgid "Roll detaching of volume completed successfully."
 msgstr "Mantıksal sürücünün ayrılmasının yuvarlanması başarıyla tamamlandı."
 
 #, python-format
 msgid "Running with vmemclient version: %s"
 msgstr "vmemclient sürüm: %s ile çalışıyor"
-
-#, python-format
-msgid "Save service info for %(svc)s -> %(hdp)s, %(path)s"
-msgstr " %(svc)s -> %(hdp)s, %(path)s için servis bilgisi kaydet"
 
 #, python-format
 msgid ""
@@ -1975,10 +1924,6 @@ msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr "%(cpg)s yerine %(pool)s havuzu kullanılıyor"
 
 #, python-format
-msgid "Using service label: %s"
-msgstr "Servis etiketi kullanılıyor: %s"
-
-#, python-format
 msgid "Value with type=%s is not serializable"
 msgstr "type=%s sahip değer serileştirilemez"
 
@@ -2181,18 +2126,6 @@ msgid "cgsnapshot %s: deleting"
 msgstr "cgsnapshot %s: siliniyor"
 
 #, python-format
-msgid "create_volume: create_lu returns %s"
-msgstr "create_volume: create_lu %s döndürüyor"
-
-#, python-format
-msgid "delete lun loc %s"
-msgstr "lun loc %s sil"
-
-#, python-format
-msgid "do_setup: %s"
-msgstr "do_setup: %s"
-
-#, python-format
 msgid "free capacity of pool %(pool)s is: %(free)s, total capacity: %(total)s."
 msgstr ""
 "%(pool)s havuzu için boş kapasite: %(free)s, toplam kapasite: %(total)s."
@@ -2235,10 +2168,6 @@ msgid "new cloned volume: %s"
 msgstr "yeni klonlanan mantıksal sürücü: %s"
 
 #, python-format
-msgid "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-msgstr "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-
-#, python-format
 msgid "open_connection to %(ssn)s at %(ip)s"
 msgstr "%(ip)s ye %(ssn)s open_connection"
 
@@ -2247,14 +2176,6 @@ msgid "setting volume %s to error_restoring (was restoring-backup)."
 msgstr ""
 "%s mantıksal sürücüsü error_restoring olarak ayarlanıyor (yedek geri "
 "yükleniyordu)."
-
-#, python-format
-msgid "share: %(share)s -> %(info)s"
-msgstr "paylaşım: %(share)s -> %(info)s"
-
-#, python-format
-msgid "share: %s incorrect entry"
-msgstr "paylaşım: %s geçersiz girdi"
 
 #, python-format
 msgid "smis_do_iscsi_discovery is: %(out)s."
@@ -2267,14 +2188,6 @@ msgstr "anlık görüntü %s mevcut değil"
 #, python-format
 msgid "source volume for cloning: %s"
 msgstr "klon için kaynak mantıksal sürücü: %s"
-
-#, python-format
-msgid "targetlist: %s"
-msgstr "hedeflistesi: %s"
-
-#, python-format
-msgid "terminate: connection %s"
-msgstr "sonlandır: bağlantı %s"
 
 #, python-format
 msgid "terminate_connection volume: %(volume)s, connector: %(con)s"

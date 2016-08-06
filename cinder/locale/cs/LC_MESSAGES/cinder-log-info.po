@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -158,20 +158,8 @@ msgid "Availability Zones retrieved successfully."
 msgstr "Zóny dostupnosti úspěšně získány."
 
 #, python-format
-msgid "Available services: %s"
-msgstr "Dostupné služby: %s"
-
-#, python-format
-msgid "Available services: %s."
-msgstr "Dostupné služby: %s."
-
-#, python-format
 msgid "Backend name is %s."
 msgstr "Název podpůrné vrstvy je %s."
-
-#, python-format
-msgid "Backend type: %s"
-msgstr "Typ podpůrné vrstvy: %s"
 
 #, python-format
 msgid "Backing VM: %(backing)s renamed to %(new_name)s."
@@ -359,13 +347,6 @@ msgstr ""
 "%(cipher)s, vícenásobný zavaděč %(multi-initiator)s"
 
 #, python-format
-msgid ""
-"Cloning with volume_name %(vname)s clone_name %(cname)s export_path %(epath)s"
-msgstr ""
-"Klonování svazku s názvem %(vname)s, název klonu %(cname)s, cesta pro export "
-"%(epath)s"
-
-#, python-format
 msgid "CloudByte API executed successfully for command [%s]."
 msgstr "CloudByte API úspěšně provedeno pro příkaz [%s]."
 
@@ -382,10 +363,6 @@ msgstr "Dokončení přenosu svazku úspěšně provedeno."
 #, python-format
 msgid "Completed: convert_to_base_volume: id=%s."
 msgstr "Dokončeno: Převod na základní svazek: id=%s."
-
-#, python-format
-msgid "Configured pools: %s"
-msgstr "Nastavené zásoby: %s"
 
 #, python-format
 msgid ""
@@ -954,10 +931,6 @@ msgid "Driver initialization completed successfully."
 msgstr "Zavedení ovladače úspěšně dokončeno."
 
 #, python-format
-msgid "Driver stats: %s"
-msgstr "Statistiky ovladače: %s"
-
-#, python-format
 msgid ""
 "E-series proxy API version %(version)s does not support full set of SSC "
 "extra specs. The proxy version must be at at least %(min_version)s."
@@ -1161,10 +1134,6 @@ msgstr "Získání všech svazků úspěšně dokončeno."
 msgid "Get domain by name response: %s"
 msgstr "Získání domény pomocí odpovědi názvem: %s"
 
-#, python-format
-msgid "Get service: %(lbl)s->%(svc)s"
-msgstr "Získání služby: %(lbl)s->%(svc)s"
-
 msgid "Get snapshot metadata completed successfully."
 msgstr "Získání popisných dat snímku úspěšně dokončeno."
 
@@ -1194,10 +1163,6 @@ msgstr "Získávání informací o svazku s názvem %s"
 #, python-format
 msgid "Going to perform request again %s with valid token."
 msgstr "Žádost %s bude znovu vytvořena s novou známkou."
-
-#, python-format
-msgid "HDP list: %s"
-msgstr "Seznam HDP: %s"
 
 #, python-format
 msgid "HPE3PARCommon %(common_ver)s,hpe3parclient %(rest_ver)s"
@@ -1290,14 +1255,6 @@ msgstr "Název skupiny zavaděče je %(grp)s pro zavaděč %(iname)s"
 #, python-format
 msgid "LUN %(id)s extended to %(size)s GB."
 msgstr "LUN %(id)s rozšířen na %(size)s GB."
-
-#, python-format
-msgid "LUN %(lun)s extended to %(size)s GB."
-msgstr "LUN %(lun)s rozšířen na %(size)s GB."
-
-#, python-format
-msgid "LUN %(lun)s of size %(sz)s MB is created."
-msgstr "Vytvořen LUn %(lun)s o velikosti %(sz)s MB."
 
 #, python-format
 msgid "LUN with given ref %s need not be renamed during manage operation."
@@ -1498,10 +1455,6 @@ msgstr "Přepisování svazku %(volume_id)s obnovou zálohy %(backup_id)s"
 #, python-format
 msgid "Params for add volume request: %s."
 msgstr "Parametry pro žádost o přidání svazku: %s."
-
-#, python-format
-msgid "Parse_loc: %s"
-msgstr "Zpracování umístění: %s"
 
 #, python-format
 msgid "Performing post clone for %s"
@@ -1732,14 +1685,6 @@ msgid "Resuming delete on backup: %s."
 msgstr "Pokračování ve smazání zálohy: %s."
 
 #, python-format
-msgid "Retrieving secret for service: %s."
-msgstr "Získávání tajného klíče pro službu: %s."
-
-#, python-format
-msgid "Retrieving target for service: %s."
-msgstr "Získávání cílů pro službu: %s."
-
-#, python-format
 msgid "Return FC info is: %s."
 msgstr "Informace o FC vrátily: %s."
 
@@ -1815,20 +1760,12 @@ msgstr "Žádost o přetypování svazku úspěšně vytvořena."
 msgid "Retype was to same Storage Profile."
 msgstr "Přetypování bylo na stejný profil úložiště."
 
-#, python-format
-msgid "Review shares: %s"
-msgstr "Kontrola sdílení: %s"
-
 msgid "Roll detaching of volume completed successfully."
 msgstr "Provedení odpojení svazku úspěšně dokončeno."
 
 #, python-format
 msgid "Running with vmemclient version: %s"
 msgstr "Spuštěno s vmemclient verze %s"
-
-#, python-format
-msgid "Save service info for %(svc)s -> %(hdp)s, %(path)s"
-msgstr "Uložit informace o službě pro %(svc)s -> %(hdp)s, %(path)s"
 
 #, python-format
 msgid ""
@@ -1898,10 +1835,6 @@ msgstr "Sezení mohlo vypršet. Bude proveden pokus o další přihlášení"
 #, python-format
 msgid "Set newly managed Cinder volume name to %(name)s."
 msgstr "Nastavit název nově spravovaného svazku Cinder na %(name)s."
-
-#, python-format
-msgid "Set tgt CHAP secret for service: %s."
-msgstr "Nastavování tajného klíče cíle CHAP pro službu: %s."
 
 #, python-format
 msgid "Setting host %(host)s to %(state)s."
@@ -2211,10 +2144,6 @@ msgstr ""
 "Systém s adresami kontroléru [%s] není zaregistrován u internetové služby."
 
 #, python-format
-msgid "Target is %(map)s! Targetlist = %(tgtl)s."
-msgstr "Cíl je %(map)s! Seznam cílů = %(tgtl)s."
-
-#, python-format
 msgid "Target wwns in masking view %(maskingView)s: %(targetWwns)s."
 msgstr "Cílové wwns v zamaskování %(maskingView)s: %(targetWwns)s."
 
@@ -2489,14 +2418,6 @@ msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr "Používání zásoby %(pool)s místo %(cpg)s"
 
 #, python-format
-msgid "Using service label: %s"
-msgstr "Použita jmenovka služby: %s"
-
-#, python-format
-msgid "Using target label: %s."
-msgstr "Použita jmenovka cíle: %s."
-
-#, python-format
 msgid "Value with type=%s is not serializable"
 msgstr "Hodnota typ=%s není serializovatelná"
 
@@ -2729,10 +2650,6 @@ msgstr ""
 "kopírování virtuálního disku: původní=%(orig)s, nové=%(new)s."
 
 #, python-format
-msgid "_get_service_target hdp: %s."
-msgstr "Získávání cíle služby hdp: %s"
-
-#, python-format
 msgid "_get_tgt_ip_from_portgroup: Get ip: %s."
 msgstr "Získání cílové iup adrey ze skupiny portů: Získaná IP adresa: %s."
 
@@ -2770,10 +2687,6 @@ msgid "cgsnapshot %s: deleting"
 msgstr "Snímek skupiny jednotnosti %s: mazání"
 
 #, python-format
-msgid "config[services]: %s."
-msgstr "nastavení[služby]: %s."
-
-#, python-format
 msgid ""
 "create_hostgroup_with_check. Create hostgroup success. hostgroup name: "
 "%(name)s, hostgroup id: %(id)s"
@@ -2789,10 +2702,6 @@ msgstr ""
 "id skupiny hostitele: %(id)s"
 
 #, python-format
-msgid "create_volume: create_lu returns %s"
-msgstr "Vytvoření svazku: Vytvoření LU vrátilo %s"
-
-#, python-format
 msgid ""
 "create_volume_from_snapshot: src_lun_id: %(src_lun_id)s, tgt_lun_id: "
 "%(tgt_lun_id)s, copy_name: %(copy_name)s."
@@ -2801,24 +2710,12 @@ msgstr ""
 "lun: %(tgt_lun_id)s, název kopie: %(copy_name)s."
 
 #, python-format
-msgid "del_iscsi_conn: hlun not found %s."
-msgstr "Smazání připojení iSCSI: hlun nenalezen %s."
-
-#, python-format
-msgid "delete lun loc %s"
-msgstr "Smazání umístění lun %s"
-
-#, python-format
 msgid ""
 "do_mapping, lun_group: %(lun_group)s, view_id: %(view_id)s, lun_id: "
 "%(lun_id)s."
 msgstr ""
 "Provést mapování, skupina lun: %(lun_group)s, id zobrazení: %(view_id)s, id "
 "lun: %(lun_id)s."
-
-#, python-format
-msgid "do_setup: %s"
-msgstr "Zavedení: %s"
 
 #, python-format
 msgid "free capacity of pool %(pool)s is: %(free)s, total capacity: %(total)s."
@@ -2890,24 +2787,12 @@ msgid "new cloned volume: %s"
 msgstr "Nový klonovaný svazek: %s"
 
 #, python-format
-msgid "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-msgstr "Informace NFS: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-
-#, python-format
 msgid "open_connection to %(ssn)s at %(ip)s"
 msgstr "Připojení otevřeno do %(ssn)s na adrese %(ip)s"
 
 #, python-format
 msgid "setting volume %s to error_restoring (was restoring-backup)."
 msgstr "Nastavování svazku %s na error_restoring (stav byl restoring-backup)."
-
-#, python-format
-msgid "share: %(share)s -> %(info)s"
-msgstr "Sdílení: %(share)s -> %(info)s"
-
-#, python-format
-msgid "share: %s incorrect entry"
-msgstr "Sdílení: Nesprávná položka %s"
 
 #, python-format
 msgid "smis_do_iscsi_discovery is: %(out)s."
@@ -2922,21 +2807,9 @@ msgid "source volume for cloning: %s"
 msgstr "Zdrojový svazek pro klonování: %s"
 
 #, python-format
-msgid "stats: stats: %s."
-msgstr "Statistiky: %s."
-
-#, python-format
 msgid "stop_snapshot: snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr ""
 "Zastavení snímku: Název snímku: %(snapshot)s, název svazku: %(volume)s."
-
-#, python-format
-msgid "targetlist: %s"
-msgstr "seznam cílů: %s"
-
-#, python-format
-msgid "terminate: connection %s"
-msgstr "Ukončení: Spojení %s"
 
 #, python-format
 msgid "terminate_connection volume: %(volume)s, connector: %(con)s"

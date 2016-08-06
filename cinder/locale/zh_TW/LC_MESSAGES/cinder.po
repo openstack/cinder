@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -904,11 +904,6 @@ msgstr "無法連接至 ECOM 伺服器。"
 
 #, python-format
 msgid ""
-"Cannot create clone of size %(vol_size)s from volume of size %(src_vol_size)s"
-msgstr "無法從大小為 %(src_vol_size)s 的磁區建立大小為 %(vol_size)s 的複本"
-
-#, python-format
-msgid ""
 "Cannot create consistency group %(group)s because snapshot %(snap)s is not "
 "in a valid state. Valid states are: %(valid)s."
 msgstr ""
@@ -950,11 +945,6 @@ msgstr ""
 #, python-format
 msgid "Cannot create or find an storage group with name %(sgGroupName)s."
 msgstr "無法建立或找不到名稱為 %(sgGroupName)s 的儲存體群組。"
-
-#, python-format
-msgid ""
-"Cannot create volume of size %(vol_size)s from snapshot of size %(snap_size)s"
-msgstr "無法從大小為 %(snap_size)s 的 Snapshot 建立大小為 %(vol_size)s 的磁區"
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -2258,10 +2248,6 @@ msgid ""
 msgstr ""
 "將儲存體群組 %(storageGroupName)s 與下列 FAST 原則建立關聯時發生錯誤："
 "%(fastPolicyName)s，錯誤說明：%(errordesc)s。"
-
-#, python-format
-msgid "Error attaching volume %s. Target limit might be reached!"
-msgstr "連接磁區 %s 時發生錯誤。可能已達到目標限制！"
 
 #, python-format
 msgid ""

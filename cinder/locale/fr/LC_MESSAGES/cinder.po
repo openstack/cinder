@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1023,13 +1023,6 @@ msgstr "Connexion au serveur ECOM impossible."
 
 #, python-format
 msgid ""
-"Cannot create clone of size %(vol_size)s from volume of size %(src_vol_size)s"
-msgstr ""
-"Impossible de créer un clone d'une taille de %(vol_size)s depuis un volume "
-"d'une taille de %(src_vol_size)s"
-
-#, python-format
-msgid ""
 "Cannot create consistency group %(group)s because snapshot %(snap)s is not "
 "in a valid state. Valid states are: %(valid)s."
 msgstr ""
@@ -1077,13 +1070,6 @@ msgid "Cannot create or find an storage group with name %(sgGroupName)s."
 msgstr ""
 "Impossible de créer ou de trouver un groupe de stockage dénommé "
 "%(sgGroupName)s."
-
-#, python-format
-msgid ""
-"Cannot create volume of size %(vol_size)s from snapshot of size %(snap_size)s"
-msgstr ""
-"Impossible de créer un volume d'une taille de %(vol_size)s depuis un "
-"instantané d'une taille de %(snap_size)s"
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -2550,12 +2536,6 @@ msgid ""
 msgstr ""
 "Erreur d'association du groupe de stockage : %(storageGroupName)s. A la "
 "règle FAST : %(fastPolicyName)s avec la description d'erreur : %(errordesc)s."
-
-#, python-format
-msgid "Error attaching volume %s. Target limit might be reached!"
-msgstr ""
-"Erreur lors du rattachement du volume %s. Il se peut que la limite des "
-"cibles ait été atteinte. "
 
 #, python-format
 msgid ""
