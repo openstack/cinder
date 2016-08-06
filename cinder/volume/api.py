@@ -1485,6 +1485,11 @@ class API(base.Base):
                           'service.'), resource)
             raise exception.ServiceUnavailable()
 
+        if not utils.service_is_up(service):
+            LOG.error(_LE('Unable to manage existing %s on a service that is '
+                          'down.'), resource)
+            raise exception.ServiceUnavailable()
+
         return service
 
     def manage_existing(self, context, host, ref, name=None, description=None,

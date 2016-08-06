@@ -41,7 +41,7 @@ def app():
     return mapper
 
 
-def service_get_by_host_and_topic(context, host, topic):
+def service_get(context, host, binary):
     """Replacement for Service.service_get_by_host_and_topic.
 
     We mock the Service.service_get_by_host_and_topic method to return
@@ -50,7 +50,9 @@ def service_get_by_host_and_topic(context, host, topic):
     check for existence of a host, so the content returned doesn't matter.
     """
     if host == 'host_ok':
-        return {}
+        return {'disabled': False}
+    if host == 'host_disabled':
+        return {'disabled': True}
     raise exception.ServiceNotFound(service_id=host)
 
 # Some of the tests check that volume types are correctly validated during a
@@ -128,8 +130,7 @@ def api_get_manageable_volumes(*args, **kwargs):
 
 
 @ddt.ddt
-@mock.patch('cinder.objects.service.Service.get_by_host_and_topic',
-            service_get_by_host_and_topic)
+@mock.patch('cinder.db.service_get', service_get)
 @mock.patch('cinder.volume.volume_types.get_volume_type_by_name',
             vt_get_volume_type_by_name)
 @mock.patch('cinder.volume.volume_types.get_volume_type',
@@ -209,6 +210,26 @@ class VolumeManageTest(test.TestCase):
                            'bootable': 'InvalidBool'}}
         res = self._get_resp_post(body)
         self.assertEqual(400, res.status_int)
+
+    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    def test_manage_volume_disabled(self, mock_is_up):
+        """Test manage volume failure due to disabled service."""
+        body = {'volume': {'host': 'host_disabled', 'ref': 'fake_ref'}}
+        res = self._get_resp_post(body)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        mock_is_up.assert_not_called()
+
+    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    def test_manage_volume_is_down(self, mock_is_up):
+        """Test manage volume failure due to down service."""
+        body = {'volume': {'host': 'host_ok', 'ref': 'fake_ref'}}
+        res = self._get_resp_post(body)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        self.assertTrue(mock_is_up.called)
 
     @mock.patch('cinder.volume.api.API.manage_existing', api_manage)
     @mock.patch(
@@ -335,3 +356,19 @@ class VolumeManageTest(test.TestCase):
                            "metadata": value}}
         res = self._get_resp_post(body)
         self.assertEqual(400, res.status_int)
+
+    @mock.patch('cinder.utils.service_is_up', return_value=True)
+    def test_get_manageable_volumes_disabled(self, mock_is_up):
+        res = self._get_resp_get('host_disabled', False, True)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        mock_is_up.assert_not_called()
+
+    @mock.patch('cinder.utils.service_is_up', return_value=False)
+    def test_get_manageable_volumes_is_down(self, mock_is_up):
+        res = self._get_resp_get('host_ok', False, True)
+        self.assertEqual(400, res.status_int, res)
+        self.assertEqual(exception.ServiceUnavailable.message,
+                         res.json['badRequest']['message'])
+        self.assertTrue(mock_is_up.called)
