@@ -198,8 +198,8 @@ class SwiftBackupDriver(chunkeddriver.ChunkedBackupDriver):
                         'endpoints')[0].get(endpoint_type)
                     break
         else:
-            self.auth_url = '%s%s' % (CONF.backup_swift_auth_url,
-                                      context.project_id)
+            self.auth_url = CONF.backup_swift_auth_url
+
         if self.auth_url is None:
             raise exception.BackupDriverException(_(
                 "Could not determine which Keystone endpoint to use. This can "

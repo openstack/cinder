@@ -178,13 +178,12 @@ class BackupSwiftTestCase(test.TestCase):
                                       u'endpoints': [{
                                           u'adminURL':
                                               u'http://example.com'}]}]
+
         self.ctxt.project_id = fake.PROJECT_ID
         self.override_config("backup_swift_auth_url",
-                             "http://public.example.com/")
+                             "http://public.example.com")
         backup = swift_dr.SwiftBackupDriver(self.ctxt)
-        self.assertEqual("%s%s" % (CONF.backup_swift_auth_url,
-                                   self.ctxt.project_id),
-                         backup.auth_url)
+        self.assertEqual(CONF.backup_swift_auth_url, backup.auth_url)
 
     def test_backup_swift_info(self):
         self.override_config("swift_catalog_info", "dummy")
