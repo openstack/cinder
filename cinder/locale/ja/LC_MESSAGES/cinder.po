@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev200\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 21:03+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-04 02:19+0000\n"
+"PO-Revision-Date: 2016-08-05 02:57+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1077,13 +1077,6 @@ msgstr "ECOM サーバーに接続できません。"
 
 #, python-format
 msgid ""
-"Cannot create clone of size %(vol_size)s from volume of size %(src_vol_size)s"
-msgstr ""
-"サイズ %(src_vol_size)s のボリュームからサイズ %(vol_size)s の複製を作成でき"
-"ません"
-
-#, python-format
-msgid ""
 "Cannot create consistency group %(group)s because snapshot %(snap)s is not "
 "in a valid state. Valid states are: %(valid)s."
 msgstr ""
@@ -1128,13 +1121,6 @@ msgstr ""
 msgid "Cannot create or find an storage group with name %(sgGroupName)s."
 msgstr ""
 "名前が %(sgGroupName)s のストレージグループを作成または検出できません。"
-
-#, python-format
-msgid ""
-"Cannot create volume of size %(vol_size)s from snapshot of size %(snap_size)s"
-msgstr ""
-"サイズ %(snap_size)s のスナップショットからサイズ %(vol_size)s のボリュームを"
-"作成できません"
 
 #, python-format
 msgid "Cannot create volume of size %s: not multiple of 8GB."
@@ -1558,6 +1544,30 @@ msgstr "コネクターが %s を提供しません"
 #, python-format
 msgid "Connector doesn't have required information: %(missing)s"
 msgstr "コネクターは必要な情報を持っていません: %(missing)s"
+
+#, python-format
+msgid ""
+"Consistency Group %(cg_uri)s: update failed\n"
+"%(err)s"
+msgstr ""
+"整合性グループ %(cg_uri)s: 更新に失敗しました。\n"
+"%(err)s"
+
+#, python-format
+msgid ""
+"Consistency Group %(name)s: create failed\n"
+"%(err)s"
+msgstr ""
+"整合性グループ %(name)s: 作成に失敗しました。\n"
+"%(err)s"
+
+#, python-format
+msgid ""
+"Consistency Group %(name)s: delete failed\n"
+"%(err)s"
+msgstr ""
+"整合性グループ %(name)s: 削除に失敗しました。\n"
+"%(err)s"
 
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "整合性グループが空です。cgsnapshot は作成されません。"
@@ -2637,10 +2647,6 @@ msgid ""
 msgstr ""
 "ストレージグループ %(storageGroupName)s の FAST ポリシー %(fastPolicyName)sへ"
 "の関連付けエラーです。エラーの説明: %(errordesc)s。"
-
-#, python-format
-msgid "Error attaching volume %s. Target limit might be reached!"
-msgstr "ボリューム %s の接続エラー。ターゲットの制限に達します。"
 
 #, python-format
 msgid ""
@@ -6967,6 +6973,16 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Snapshot %(cgsnapshot_id)s: for Consistency Group %(cg_name)s: delete "
+"failed\n"
+"%(err)s"
+msgstr ""
+"整合性グループ %(cg_name)s のスナップショット %(cgsnapshot_id)s: 作成に失敗し"
+"ました。\n"
+"%(err)s"
+
+#, python-format
+msgid ""
 "Snapshot %(id)s has been asked to be deleted while waiting for it to become "
 "available. Perhaps a concurrent request was made."
 msgstr ""
@@ -7010,6 +7026,14 @@ msgstr ""
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr ""
 "ボリュームのマイグレーション中にスナップショットを作成することはできません。"
+
+#, python-format
+msgid ""
+"Snapshot for Consistency Group %(cg_name)s: create failed\n"
+"%(err)s"
+msgstr ""
+"整合性グループ %(cg_name)s のスナップショット: 作成に失敗しました。\n"
+"%(err)s"
 
 msgid "Snapshot of secondary replica is not allowed."
 msgstr "2 次レプリカのスナップショットは許可されません。"
@@ -8647,6 +8671,14 @@ msgstr "ボリューム %(name)s は VNX で作成されましたが、%(state)s
 #, python-format
 msgid "Volume %(name)s was not deactivated in time."
 msgstr "ボリューム %(name)s は時間内に非アクティブになりませんでした。"
+
+#, python-format
+msgid ""
+"Volume %(name)s: create failed\n"
+"%(err)s"
+msgstr ""
+"ボリューム %(name)s: 作成に失敗しました。\n"
+"%(err)s"
 
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."

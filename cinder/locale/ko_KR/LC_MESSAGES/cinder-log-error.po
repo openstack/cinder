@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:44+0000\n"
+"POT-Creation-Date: 2016-08-06 02:59+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -99,10 +99,6 @@ msgstr ""
 #, python-format
 msgid "Array Serial Number must be in the file %(fileName)s."
 msgstr "배열 일련 번호가 %(fileName)s 파일에 있어야 합니다."
-
-#, python-format
-msgid "Array mismatch %(myid)s vs %(arid)s"
-msgstr "%(myid)s과(와) %(arid)s 배열 불일치"
 
 #, python-format
 msgid "Array query failed - No response (%d)!"
@@ -817,10 +813,6 @@ msgstr "배열, 풀, SLO 및 워크로드를 가져오는 중 오류가 발생�
 
 msgid "Error getting chap record."
 msgstr "chap 레코드를 가져오는 중에 오류가 발생했습니다."
-
-#, python-format
-msgid "Error getting iSCSI target info from EVS %(evs)s."
-msgstr "EVS %(evs)s에서 iSCSI 대상을 가져오는 중에 오류가 발생했습니다."
 
 msgid "Error getting key."
 msgstr "키 가져오기 오류."
@@ -2114,10 +2106,6 @@ msgid "Get replication status for volume failed."
 msgstr "볼륨의 복제본 상태를 가져오는 데 실패했습니다."
 
 #, python-format
-msgid "HDP not found: %s"
-msgstr "HDP를 찾을 수 없음: %s"
-
-#, python-format
 msgid "Host PUT failed (%s)."
 msgstr "호스트 PUT 실패(%s)."
 
@@ -2282,10 +2270,6 @@ msgstr "%(share)s의 마운트 실패."
 msgid "Multiple replay profiles under name %s"
 msgstr "%s(이)라는 이름의 여러 재생 프로파일"
 
-#, python-format
-msgid "NFS share %(share)s has no service entry: %(svc)s -> %(hdp)s"
-msgstr "NFS 공유 %(share)s에 서비스 항목이 없음: %(svc)s -> %(hdp)s"
-
 msgid "No CLI output for firmware version check"
 msgstr "펌웨어 버전 확인을 위한 CLI 출력이 없음"
 
@@ -2307,14 +2291,6 @@ msgid ""
 msgstr ""
 "작업이 필요하지 않습니다. 볼륨: %(volumeName)s이(가) 이미 slo/워크로드 조합: "
 "%(targetCombination)s의 일부입니다."
-
-#, python-format
-msgid "No configuration found for service: %s"
-msgstr "서비스의 구성을 찾을 수 없음: %s"
-
-#, python-format
-msgid "No configuration found for service: %s."
-msgstr "서비스의 구성을 찾을 수 없음: %s."
 
 #, python-format
 msgid ""
@@ -3259,9 +3235,6 @@ msgstr ""
 "삭제: %(vol_id)s이(가) stdout에 실패함. stdout: %(out)s\n"
 " stderr: %(err)s"
 
-msgid "delete_vol: provider location empty."
-msgstr "delete_vol: 제공자 위치가 비어 있습니다."
-
 #, python-format
 msgid "ensure_export: Volume %s not found on storage."
 msgstr "ensure_export: 스토리지에 볼륨 %s을(를) 찾을 수 없습니다."
@@ -3275,10 +3248,6 @@ msgstr "볼륨 상태를 새로 고치는 중 오류 발생"
 
 msgid "horcm command timeout."
 msgstr "horcm 명령의 제한시간이 초과되었습니다."
-
-#, python-format
-msgid "iSCSI portal not found for service: %s"
-msgstr "서비스의 iSCSI 포털을 찾을 수 없음: %s"
 
 msgid "import pywbem failed!! pywbem is necessary for this volume driver."
 msgstr ""

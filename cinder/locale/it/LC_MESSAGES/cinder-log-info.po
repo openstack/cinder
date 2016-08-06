@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev182\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-04 04:43+0000\n"
+"POT-Creation-Date: 2016-08-06 02:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -188,20 +188,8 @@ msgid "Availability Zones retrieved successfully."
 msgstr "Zone di disponibilità richiamate correttamente."
 
 #, python-format
-msgid "Available services: %s"
-msgstr "Servizi disponibili: %s"
-
-#, python-format
-msgid "Available services: %s."
-msgstr "Servizi disponibili: %s."
-
-#, python-format
 msgid "Backend name is %s."
 msgstr "Il nome backend è %s."
-
-#, python-format
-msgid "Backend type: %s"
-msgstr "Tipo di backend: %s"
 
 #, python-format
 msgid "Backing VM: %(backing)s renamed to %(new_name)s."
@@ -412,13 +400,6 @@ msgstr ""
 "cipher=%(cipher)s multi-initiator=%(multi-initiator)s"
 
 #, python-format
-msgid ""
-"Cloning with volume_name %(vname)s clone_name %(cname)s export_path %(epath)s"
-msgstr ""
-"Clonazione con volume_name %(vname)s clone_name %(cname)s export_path "
-"%(epath)s"
-
-#, python-format
 msgid "CloudByte API executed successfully for command [%s]."
 msgstr "API CloudByte eseguito correttamente per il comando [%s]."
 
@@ -435,10 +416,6 @@ msgstr "Completamento-migrazione del volume completati correttamente."
 #, python-format
 msgid "Completed: convert_to_base_volume: id=%s."
 msgstr "Completato: convert_to_base_volume: id=%s."
-
-#, python-format
-msgid "Configured pools: %s"
-msgstr "Pool configurati: %s"
 
 #, python-format
 msgid ""
@@ -1066,10 +1043,6 @@ msgid "Driver post RPC initialization completed successfully."
 msgstr "Post-inizializzazione RPC del driver completata correttamente."
 
 #, python-format
-msgid "Driver stats: %s"
-msgstr "Statistiche driver: %s"
-
-#, python-format
 msgid ""
 "E-series proxy API version %(version)s does not support full set of SSC "
 "extra specs. The proxy version must be at at least %(min_version)s."
@@ -1327,10 +1300,6 @@ msgstr "Richiamo di tutti i volumi completato correttamente."
 msgid "Get domain by name response: %s"
 msgstr "Ottieni dominio dalla risposta del nome: %s"
 
-#, python-format
-msgid "Get service: %(lbl)s->%(svc)s"
-msgstr "Richiama servizio: %(lbl)s->%(svc)s"
-
 msgid "Get snapshot metadata completed successfully."
 msgstr "Richiamo dei metadati dell'istantanea completato correttamente."
 
@@ -1361,10 +1330,6 @@ msgstr "Richiamo delle informazioni sul volume per vol_name=%s"
 #, python-format
 msgid "Going to perform request again %s with valid token."
 msgstr "Eseguire di nuovo la richiesta %s con un token valido."
-
-#, python-format
-msgid "HDP list: %s"
-msgstr "Elenco HDP: %s"
 
 #, python-format
 msgid "HPE3PARCommon %(common_ver)s,hpe3parclient %(rest_ver)s"
@@ -1505,14 +1470,6 @@ msgstr "Il nome del gruppo iniziatore è %(grp)s per l'iniziatore %(iname)s"
 #, python-format
 msgid "LUN %(id)s extended to %(size)s GB."
 msgstr "LUN %(id)s estesa a %(size)s GB."
-
-#, python-format
-msgid "LUN %(lun)s extended to %(size)s GB."
-msgstr "LUN %(lun)s estesa a %(size)s GB."
-
-#, python-format
-msgid "LUN %(lun)s of size %(sz)s MB is created."
-msgstr "La LUN %(lun)s di dimensione %(sz)s MB viene creata."
 
 #, python-format
 msgid "LUN with given ref %s need not be renamed during manage operation."
@@ -1748,10 +1705,6 @@ msgstr ""
 #, python-format
 msgid "Params for add volume request: %s."
 msgstr "Parametri per la richiesta di aggiunta del volume: %s."
-
-#, python-format
-msgid "Parse_loc: %s"
-msgstr "Parse_loc: %s"
 
 #, python-format
 msgid "Performing post clone for %s"
@@ -2017,14 +1970,6 @@ msgid "Resuming delete on backup: %s."
 msgstr "Ripresa dell'eliminazione al backup: %s."
 
 #, python-format
-msgid "Retrieving secret for service: %s."
-msgstr "Richiamo del segreto per il servizio: %s."
-
-#, python-format
-msgid "Retrieving target for service: %s."
-msgstr "Richiamo della destinazione per il servizio: %s."
-
-#, python-format
 msgid "Return FC info is: %s."
 msgstr "Le informazioni FC restituite sono: %s."
 
@@ -2099,10 +2044,6 @@ msgstr "Richiesta di riscrittura del volume eseguita correttamente. "
 msgid "Retype was to same Storage Profile."
 msgstr "La riscrittura è stata eseguita nello stesso profilo di archiviazione."
 
-#, python-format
-msgid "Review shares: %s"
-msgstr "Rivedi condivisioni: %s"
-
 msgid "Roll detaching of volume completed successfully."
 msgstr "Esecuzione dello scollegamento del volume completata correttamente."
 
@@ -2113,10 +2054,6 @@ msgstr "Esecuzione con versione vmemclient: %s"
 #, python-format
 msgid "SC server created %s"
 msgstr "Server SC creato %s"
-
-#, python-format
-msgid "Save service info for %(svc)s -> %(hdp)s, %(path)s"
-msgstr "Salva informazioni sul servizio per %(svc)s -> %(hdp)s, %(path)s"
 
 #, python-format
 msgid ""
@@ -2206,10 +2143,6 @@ msgstr ""
 #, python-format
 msgid "Set newly managed Cinder volume name to %(name)s."
 msgstr "Impostare il nome volume Cinder appena gestito su %(name)s."
-
-#, python-format
-msgid "Set tgt CHAP secret for service: %s."
-msgstr "Impostare il segreto tgt CHAP per il servizio: %s."
 
 #, python-format
 msgid "Setting host %(host)s to %(state)s."
@@ -2579,10 +2512,6 @@ msgstr ""
 "web."
 
 #, python-format
-msgid "Target is %(map)s! Targetlist = %(tgtl)s."
-msgstr "La destinazione è %(map)s! Targetlist = %(tgtl)s."
-
-#, python-format
 msgid "Target wwns in masking view %(maskingView)s: %(targetWwns)s."
 msgstr ""
 "wwns di destinazione nella vista di mascheramento %(maskingView)s: "
@@ -2910,14 +2839,6 @@ msgstr "Utilizzo della versione vmware_host_version sovrascritta da config: %s"
 msgid "Using pool %(pool)s instead of %(cpg)s"
 msgstr "Utilizzo del pool %(pool)s anziché %(cpg)s"
 
-#, python-format
-msgid "Using service label: %s"
-msgstr "Utilizzo dell'etichetta di servizio: %s"
-
-#, python-format
-msgid "Using target label: %s."
-msgstr "Utilizzo dell'etichetta di destinazione: %s."
-
 msgid "VF context is changed in the session."
 msgstr "Il contesto VF viene modificato nella sessione."
 
@@ -3206,10 +3127,6 @@ msgstr ""
 "ETERNUS. "
 
 #, python-format
-msgid "_get_service_target hdp: %s."
-msgstr "_get_service_target hdp: %s."
-
-#, python-format
 msgid "_get_tgt_ip_from_portgroup: Get ip: %s."
 msgstr "_get_tgt_ip_from_portgroup: Richiamare ip: %s."
 
@@ -3252,10 +3169,6 @@ msgstr "cgsnapshot %s: eliminata correttamente"
 #, python-format
 msgid "cgsnapshot %s: deleting"
 msgstr "Eliminazione di cgsnapshot %s:."
-
-#, python-format
-msgid "config[services]: %s."
-msgstr "config[services]: %s."
 
 #, python-format
 msgid "create_cloned_volume, info: %s, Exit method."
@@ -3302,10 +3215,6 @@ msgid "create_volume, volume id: %s, Enter method."
 msgstr "create_volume, volume id: %s, Metodo di errore."
 
 #, python-format
-msgid "create_volume: create_lu returns %s"
-msgstr "create_volume: create_lu restituisce %s"
-
-#, python-format
 msgid "create_volume_from_snapshot, info: %s, Exit method."
 msgstr "create_volume_from_snapshot, info: %s, Metodo di uscita."
 
@@ -3324,14 +3233,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: src_lun_id: %(src_lun_id)s, tgt_lun_id: "
 "%(tgt_lun_id)s, copy_name: %(copy_name)s."
-
-#, python-format
-msgid "del_iscsi_conn: hlun not found %s."
-msgstr "del_iscsi_conn: hlun non trovato %s."
-
-#, python-format
-msgid "delete lun loc %s"
-msgstr "elimina loc lun %s"
 
 #, python-format
 msgid "delete_snapshot, delete: %s, Exit method."
@@ -3357,10 +3258,6 @@ msgid ""
 msgstr ""
 "do_mapping, lun_group: %(lun_group)s, view_id: %(view_id)s, lun_id: "
 "%(lun_id)s."
-
-#, python-format
-msgid "do_setup: %s"
-msgstr "do_setup: %s"
 
 #, python-format
 msgid "extend_volume, used pool name: %s, Exit method."
@@ -3480,10 +3377,6 @@ msgid "new cloned volume: %s"
 msgstr "nuovo volume clonato: %s"
 
 #, python-format
-msgid "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-msgstr "nfs_info: %(key)s: %(path)s, HDP: %(fslabel)s FSID: %(hdp)s"
-
-#, python-format
 msgid "open_connection to %(ssn)s at %(ip)s"
 msgstr "open_connection a %(ssn)s su %(ip)s"
 
@@ -3502,14 +3395,6 @@ msgstr ""
 "backup)."
 
 #, python-format
-msgid "share: %(share)s -> %(info)s"
-msgstr "condivisione: %(share)s -> %(info)s"
-
-#, python-format
-msgid "share: %s incorrect entry"
-msgstr "condivisione: %s voce non corretta"
-
-#, python-format
 msgid "smis_do_iscsi_discovery is: %(out)s."
 msgstr "smis_do_iscsi_discovery è: %(out)s."
 
@@ -3522,20 +3407,8 @@ msgid "source volume for cloning: %s"
 msgstr "volume di origine per la clonazione: %s"
 
 #, python-format
-msgid "stats: stats: %s."
-msgstr "stats: stats: %s."
-
-#, python-format
 msgid "stop_snapshot: snapshot name: %(snapshot)s, volume name: %(volume)s."
 msgstr "stop_snapshot: nome istantanea: %(snapshot)s, nome volume: %(volume)s."
-
-#, python-format
-msgid "targetlist: %s"
-msgstr "targetlist: %s"
-
-#, python-format
-msgid "terminate: connection %s"
-msgstr "termina: connessione %s"
 
 #, python-format
 msgid "terminate_connection volume: %(volume)s, connector: %(con)s"
