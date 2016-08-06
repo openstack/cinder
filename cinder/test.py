@@ -24,7 +24,6 @@ inline callbacks.
 import copy
 import logging
 import os
-import shutil
 import uuid
 
 import fixtures
@@ -64,11 +63,8 @@ class TestingException(Exception):
 
 class Database(fixtures.Fixture):
 
-    def __init__(self, db_api, db_migrate, sql_connection,
-                 sqlite_db, sqlite_clean_db):
+    def __init__(self, db_api, db_migrate, sql_connection):
         self.sql_connection = sql_connection
-        self.sqlite_db = sqlite_db
-        self.sqlite_clean_db = sqlite_clean_db
 
         # Suppress logging for test runs
         migrate_logger = logging.getLogger('migrate')
@@ -78,26 +74,15 @@ class Database(fixtures.Fixture):
         self.engine.dispose()
         conn = self.engine.connect()
         db_migrate.db_sync()
-        if sql_connection == "sqlite://":
-            conn = self.engine.connect()
-            self._DB = "".join(line for line in conn.connection.iterdump())
-            self.engine.dispose()
-        else:
-            cleandb = os.path.join(CONF.state_path, sqlite_clean_db)
-            testdb = os.path.join(CONF.state_path, sqlite_db)
-            shutil.copyfile(testdb, cleandb)
+        self._DB = "".join(line for line in conn.connection.iterdump())
+        self.engine.dispose()
 
     def setUp(self):
         super(Database, self).setUp()
 
-        if self.sql_connection == "sqlite://":
-            conn = self.engine.connect()
-            conn.connection.executescript(self._DB)
-            self.addCleanup(self.engine.dispose)
-        else:
-            shutil.copyfile(
-                os.path.join(CONF.state_path, self.sqlite_clean_db),
-                os.path.join(CONF.state_path, self.sqlite_db))
+        conn = self.engine.connect()
+        conn.connection.executescript(self._DB)
+        self.addCleanup(self.engine.dispose)
 
 
 class TestCase(testtools.TestCase):
@@ -181,9 +166,7 @@ class TestCase(testtools.TestCase):
         global _DB_CACHE
         if not _DB_CACHE:
             _DB_CACHE = Database(sqla_api, migration,
-                                 sql_connection=CONF.database.connection,
-                                 sqlite_db=CONF.database.sqlite_db,
-                                 sqlite_clean_db='clean.sqlite')
+                                 sql_connection=CONF.database.connection)
         self.useFixture(_DB_CACHE)
 
         # NOTE(danms): Make sure to reset us back to non-remote objects

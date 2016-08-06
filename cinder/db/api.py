@@ -62,7 +62,6 @@ db_opts = [
 CONF = cfg.CONF
 CONF.register_opts(db_opts)
 db_options.set_defaults(CONF)
-CONF.set_default('sqlite_db', 'cinder.sqlite', group='database')
 
 _BACKEND_MAPPING = {'sqlalchemy': 'cinder.db.sqlalchemy.api'}
 
