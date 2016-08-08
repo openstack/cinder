@@ -32,6 +32,7 @@ import cinder.policy
 CONF = cfg.CONF
 
 LOG = logging.getLogger(__name__)
+FILES_TO_SKIP = ['resource_common_manage.py']
 
 
 class ExtensionDescriptor(object):
@@ -267,7 +268,7 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
             root, ext = os.path.splitext(fname)
 
             # Skip __init__ and anything that's not .py
-            if ext != '.py' or root == '__init__':
+            if ext != '.py' or root == '__init__' or fname in FILES_TO_SKIP:
                 continue
 
             # Try loading it
