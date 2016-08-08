@@ -1822,14 +1822,14 @@ class VolumeManager(manager.SchedulerDependentManager):
                    'previous_status': volume.status,
                    'migration_status': 'success'}
 
-        if orig_volume_status == 'in-use':
-            attachments = volume.volume_attachment
+        if orig_volume_status == 'in-use' and len(attachments) > 0:
             for attachment in attachments:
                 rpcapi.attach_volume(ctxt, volume,
                                      attachment['instance_uuid'],
                                      attachment['attached_host'],
                                      attachment['mountpoint'],
                                      'rw')
+			updates.update({'attach_status': 'attached'})
         volume.update(updates)
         volume.save()
 
