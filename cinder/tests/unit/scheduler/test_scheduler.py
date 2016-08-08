@@ -146,7 +146,7 @@ class SchedulerManagerTestCase(test.TestCase):
                                                    request_spec_obj, {})
 
         _mock_message_create.assert_called_once_with(
-            self.context, defined_messages.UNABLE_TO_ALLOCATE,
+            self.context, defined_messages.EventIds.UNABLE_TO_ALLOCATE,
             self.context.project_id, resource_type='VOLUME',
             resource_uuid=volume.id)
 

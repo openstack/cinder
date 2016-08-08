@@ -1023,7 +1023,7 @@ class VolumeManager(manager.CleanableManager,
                 fields.VolumeAttachStatus.ERROR_ATTACHING)
             attachment.save()
             self.message_api.create(
-                context, defined_messages.ATTACH_READONLY_VOLUME,
+                context, defined_messages.EventIds.ATTACH_READONLY_VOLUME,
                 context.project_id, resource_type=resource_types.VOLUME,
                 resource_uuid=volume.id)
             raise exception.InvalidVolumeAttachMode(mode=mode,
@@ -1344,7 +1344,8 @@ class VolumeManager(manager.CleanableManager,
                 payload['message'] = six.text_type(error)
                 if isinstance(error, exception.ImageLimitExceeded):
                     self.message_api.create(
-                        context, defined_messages.IMAGE_FROM_VOLUME_OVER_QUOTA,
+                        context,
+                        defined_messages.EventIds.IMAGE_FROM_VOLUME_OVER_QUOTA,
                         context.project_id,
                         resource_type=resource_types.VOLUME,
                         resource_uuid=volume_id)

@@ -131,7 +131,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                 if isinstance(e, exception.NoValidBackend):
                     self.message_api.create(
                         context,
-                        defined_messages.UNABLE_TO_ALLOCATE,
+                        defined_messages.EventIds.UNABLE_TO_ALLOCATE,
                         context.project_id,
                         resource_type=resource_types.VOLUME,
                         resource_uuid=request_spec['volume_id'])
