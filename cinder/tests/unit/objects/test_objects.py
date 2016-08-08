@@ -46,6 +46,8 @@ object_data = {
     'VolumeProperties': '1.0-42f00cf1f6c657377a3e2a7efbed0bca',
     'VolumeType': '1.2-02ecb0baac87528d041f4ddd95b95579',
     'VolumeTypeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
+    'GroupType': '1.0-d4a7b272199d0b0d6fc3ceed58539d30',
+    'GroupTypeList': '1.0-1b54e51ad0fc1f3a8878f5010e7e16dc',
 }
 
 

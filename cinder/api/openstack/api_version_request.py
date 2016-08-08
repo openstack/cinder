@@ -58,6 +58,7 @@ REST_API_VERSION_HISTORY = """
     * 3.8 - Adds resources from volume_manage and snapshot_manage extensions.
     * 3.9 - Add backup update interface.
     * 3.10 - Add group_id filter to list/detail volumes in _get_volumes.
+    * 3.11 - Add group types and group specs API.
 
 """
 
@@ -66,7 +67,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.10"
+_MAX_API_VERSION = "3.11"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

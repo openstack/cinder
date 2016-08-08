@@ -709,6 +709,37 @@ def _dict_with_extra_specs_if_authorized(context, inst_type_query):
 ###################
 
 
+def _dict_with_group_specs_if_authorized(context, inst_type_query):
+    """Convert group type query result to dict with spec and rate_limit.
+
+    Takes a group type query returned by sqlalchemy and returns it
+    as a dictionary, converting the extra_specs entry from a list
+    of dicts.  NOTE the contents of extra-specs are admin readable
+    only.  If the context passed in for this request is not admin
+    then we will return an empty extra-specs dict rather than
+    providing the admin only details.
+
+    Example response with admin context:
+
+    'group_specs' : [{'key': 'k1', 'value': 'v1', ...}, ...]
+    to a single dict:
+    'group_specs' : {'k1': 'v1'}
+
+    """
+
+    inst_type_dict = dict(inst_type_query)
+    if not is_admin_context(context):
+        del(inst_type_dict['group_specs'])
+    else:
+        group_specs = {x['key']: x['value']
+                       for x in inst_type_query['group_specs']}
+        inst_type_dict['group_specs'] = group_specs
+    return inst_type_dict
+
+
+###################
+
+
 @require_context
 def _quota_get(context, project_id, resource, session=None):
     result = model_query(context, models.Quota, session=session,
@@ -2819,6 +2850,48 @@ def volume_type_create(context, values, projects=None):
         return volume_type_ref
 
 
+@handle_db_data_error
+@require_admin_context
+def group_type_create(context, values, projects=None):
+    """Create a new group type.
+
+    In order to pass in group specs, the values dict should contain a
+    'group_specs' key/value pair:
+    {'group_specs' : {'k1': 'v1', 'k2': 'v2', ...}}
+    """
+    if not values.get('id'):
+        values['id'] = six.text_type(uuid.uuid4())
+
+    projects = projects or []
+
+    session = get_session()
+    with session.begin():
+        try:
+            _group_type_get_by_name(context, values['name'], session)
+            raise exception.GroupTypeExists(id=values['name'])
+        except exception.GroupTypeNotFoundByName:
+            pass
+        try:
+            _group_type_get(context, values['id'], session)
+            raise exception.GroupTypeExists(id=values['id'])
+        except exception.GroupTypeNotFound:
+            pass
+        try:
+            values['group_specs'] = _metadata_refs(values.get('group_specs'),
+                                                   models.GroupTypeSpecs)
+            group_type_ref = models.GroupTypes()
+            group_type_ref.update(values)
+            session.add(group_type_ref)
+        except Exception as e:
+            raise db_exc.DBError(e)
+        for project in set(projects):
+            access_ref = models.GroupTypeProjects()
+            access_ref.update({"group_type_id": group_type_ref.id,
+                               "project_id": project})
+            access_ref.save(session=session)
+        return group_type_ref
+
+
 def _volume_type_get_query(context, session=None, read_deleted='no',
                            expected_fields=None):
     expected_fields = expected_fields or []
@@ -2827,6 +2900,29 @@ def _volume_type_get_query(context, session=None, read_deleted='no',
                         session=session,
                         read_deleted=read_deleted).\
         options(joinedload('extra_specs'))
+
+    if 'projects' in expected_fields:
+        query = query.options(joinedload('projects'))
+
+    if not context.is_admin:
+        the_filter = [models.VolumeTypes.is_public == true()]
+        projects_attr = getattr(models.VolumeTypes, 'projects')
+        the_filter.extend([
+            projects_attr.any(project_id=context.project_id)
+        ])
+        query = query.filter(or_(*the_filter))
+
+    return query
+
+
+def _group_type_get_query(context, session=None, read_deleted='no',
+                          expected_fields=None):
+    expected_fields = expected_fields or []
+    query = model_query(context,
+                        models.GroupTypes,
+                        session=session,
+                        read_deleted=read_deleted).\
+        options(joinedload('group_specs'))
 
     if 'projects' in expected_fields:
         query = query.options(joinedload('projects'))
@@ -2877,6 +2973,41 @@ def _process_volume_types_filters(query, filters):
     return query
 
 
+def _process_group_types_filters(query, filters):
+    context = filters.pop('context', None)
+    if 'is_public' in filters and filters['is_public'] is not None:
+        the_filter = [models.GroupTypes.is_public == filters['is_public']]
+        if filters['is_public'] and context.project_id is not None:
+            projects_attr = getattr(models.GroupTypes, 'projects')
+            the_filter.extend([
+                projects_attr.any(project_id=context.project_id, deleted=0)
+            ])
+        if len(the_filter) > 1:
+            query = query.filter(or_(*the_filter))
+        else:
+            query = query.filter(the_filter[0])
+    if 'is_public' in filters:
+        del filters['is_public']
+    if filters:
+        # Ensure that filters' keys exist on the model
+        if not is_valid_model_filters(models.GroupTypes, filters):
+            return
+        if filters.get('group_specs') is not None:
+            the_filter = []
+            searchdict = filters.get('group_specs')
+            group_specs = getattr(models.GroupTypes, 'group_specs')
+            for k, v in searchdict.items():
+                the_filter.extend([group_specs.any(key=k, value=v,
+                                                   deleted=False)])
+            if len(the_filter) > 1:
+                query = query.filter(and_(*the_filter))
+            else:
+                query = query.filter(the_filter[0])
+            del filters['group_specs']
+        query = query.filter_by(**filters)
+    return query
+
+
 @handle_db_data_error
 @require_admin_context
 def volume_type_update(context, volume_type_id, values):
@@ -2919,6 +3050,50 @@ def volume_type_update(context, volume_type_id, values):
         volume_type_ref.save(session=session)
 
         return volume_type_ref
+
+
+@handle_db_data_error
+@require_admin_context
+def group_type_update(context, group_type_id, values):
+    session = get_session()
+    with session.begin():
+        # Check it exists
+        group_type_ref = _group_type_ref_get(context,
+                                             group_type_id,
+                                             session)
+        if not group_type_ref:
+            raise exception.GroupTypeNotFound(type_id=group_type_id)
+
+        # No description change
+        if values['description'] is None:
+            del values['description']
+
+        # No is_public change
+        if values['is_public'] is None:
+            del values['is_public']
+
+        # No name change
+        if values['name'] is None:
+            del values['name']
+        else:
+            # Group type name is unique. If change to a name that belongs to
+            # a different group_type , it should be prevented.
+            check_grp_type = None
+            try:
+                check_grp_type = \
+                    _group_type_get_by_name(context,
+                                            values['name'],
+                                            session=session)
+            except exception.GroupTypeNotFoundByName:
+                pass
+            else:
+                if check_grp_type.get('id') != group_type_id:
+                    raise exception.GroupTypeExists(id=values['name'])
+
+        group_type_ref.update(values)
+        group_type_ref.save(session=session)
+
+        return group_type_ref
 
 
 @require_context
@@ -2973,10 +3148,69 @@ def volume_type_get_all(context, inactive=False, filters=None, marker=None,
         return result
 
 
+@require_context
+def group_type_get_all(context, inactive=False, filters=None, marker=None,
+                       limit=None, sort_keys=None, sort_dirs=None,
+                       offset=None, list_result=False):
+    """Returns a dict describing all group_types with name as key.
+
+    If no sort parameters are specified then the returned group types are
+    sorted first by the 'created_at' key and then by the 'id' key in descending
+    order.
+
+    :param context: context to query under
+    :param marker: the last item of the previous page, used to determine the
+                   next page of results to return
+    :param limit: maximum number of items to return
+    :param sort_keys: list of attributes by which results should be sorted,
+                      paired with corresponding item in sort_dirs
+    :param sort_dirs: list of directions in which results should be sorted,
+                      paired with corresponding item in sort_keys
+    :param filters: dictionary of filters; values that are in lists, tuples,
+                    or sets cause an 'IN' operation, while exact matching
+                    is used for other values, see _process_volume_type_filters
+                    function for more information
+    :param list_result: For compatibility, if list_result = True, return a list
+                        instead of dict.
+    :returns: list/dict of matching group types
+    """
+    session = get_session()
+    with session.begin():
+        # Add context for _process_group_types_filters
+        filters = filters or {}
+        filters['context'] = context
+        # Generate the query
+        query = _generate_paginate_query(context, session, marker, limit,
+                                         sort_keys, sort_dirs, filters, offset,
+                                         models.GroupTypes)
+        # No group types would match, return empty dict or list
+        if query is None:
+            if list_result:
+                return []
+            return {}
+
+        rows = query.all()
+        if list_result:
+            result = [_dict_with_group_specs_if_authorized(context, row)
+                      for row in rows]
+            return result
+        result = {row['name']: _dict_with_group_specs_if_authorized(context,
+                                                                    row)
+                  for row in rows}
+        return result
+
+
 def _volume_type_get_id_from_volume_type_query(context, id, session=None):
     return model_query(
         context, models.VolumeTypes.id, read_deleted="no",
         session=session, base_model=models.VolumeTypes).\
+        filter_by(id=id)
+
+
+def _group_type_get_id_from_group_type_query(context, id, session=None):
+    return model_query(
+        context, models.GroupTypes.id, read_deleted="no",
+        session=session, base_model=models.GroupTypes).\
         filter_by(id=id)
 
 
@@ -2988,10 +3222,28 @@ def _volume_type_get_id_from_volume_type(context, id, session=None):
     return result[0]
 
 
+def _group_type_get_id_from_group_type(context, id, session=None):
+    result = _group_type_get_id_from_group_type_query(
+        context, id, session=session).first()
+    if not result:
+        raise exception.GroupTypeNotFound(group_type_id=id)
+    return result[0]
+
+
 def _volume_type_get_db_object(context, id, session=None, inactive=False,
                                expected_fields=None):
     read_deleted = "yes" if inactive else "no"
     result = _volume_type_get_query(
+        context, session, read_deleted, expected_fields).\
+        filter_by(id=id).\
+        first()
+    return result
+
+
+def _group_type_get_db_object(context, id, session=None, inactive=False,
+                              expected_fields=None):
+    read_deleted = "yes" if inactive else "no"
+    result = _group_type_get_query(
         context, session, read_deleted, expected_fields).\
         filter_by(id=id).\
         first()
@@ -3016,6 +3268,23 @@ def _volume_type_get(context, id, session=None, inactive=False,
 
 
 @require_context
+def _group_type_get(context, id, session=None, inactive=False,
+                    expected_fields=None):
+    expected_fields = expected_fields or []
+    result = _group_type_get_db_object(context, id, session, inactive,
+                                       expected_fields)
+    if not result:
+        raise exception.GroupTypeNotFound(group_type_id=id)
+
+    gtype = _dict_with_group_specs_if_authorized(context, result)
+
+    if 'projects' in expected_fields:
+        gtype['projects'] = [p['project_id'] for p in result['projects']]
+
+    return gtype
+
+
+@require_context
 def volume_type_get(context, id, inactive=False, expected_fields=None):
     """Return a dict describing specific volume_type."""
 
@@ -3025,10 +3294,26 @@ def volume_type_get(context, id, inactive=False, expected_fields=None):
                             expected_fields=expected_fields)
 
 
+@require_context
+def group_type_get(context, id, inactive=False, expected_fields=None):
+    """Return a dict describing specific group_type."""
+
+    return _group_type_get(context, id,
+                           session=None,
+                           inactive=inactive,
+                           expected_fields=expected_fields)
+
+
 def _volume_type_get_full(context, id):
     """Return dict for a specific volume_type with extra_specs and projects."""
     return _volume_type_get(context, id, session=None, inactive=False,
                             expected_fields=('extra_specs', 'projects'))
+
+
+def _group_type_get_full(context, id):
+    """Return dict for a specific group_type with group_specs and projects."""
+    return _group_type_get(context, id, session=None, inactive=False,
+                           expected_fields=('group_specs', 'projects'))
 
 
 @require_context
@@ -3049,6 +3334,23 @@ def _volume_type_ref_get(context, id, session=None, inactive=False):
 
 
 @require_context
+def _group_type_ref_get(context, id, session=None, inactive=False):
+    read_deleted = "yes" if inactive else "no"
+    result = model_query(context,
+                         models.GroupTypes,
+                         session=session,
+                         read_deleted=read_deleted).\
+        options(joinedload('group_specs')).\
+        filter_by(id=id).\
+        first()
+
+    if not result:
+        raise exception.GroupTypeNotFound(group_type_id=id)
+
+    return result
+
+
+@require_context
 def _volume_type_get_by_name(context, name, session=None):
     result = model_query(context, models.VolumeTypes, session=session).\
         options(joinedload('extra_specs')).\
@@ -3062,10 +3364,30 @@ def _volume_type_get_by_name(context, name, session=None):
 
 
 @require_context
+def _group_type_get_by_name(context, name, session=None):
+    result = model_query(context, models.GroupTypes, session=session).\
+        options(joinedload('group_specs')).\
+        filter_by(name=name).\
+        first()
+
+    if not result:
+        raise exception.GroupTypeNotFoundByName(group_type_name=name)
+
+    return _dict_with_group_specs_if_authorized(context, result)
+
+
+@require_context
 def volume_type_get_by_name(context, name):
     """Return a dict describing specific volume_type."""
 
     return _volume_type_get_by_name(context, name)
+
+
+@require_context
+def group_type_get_by_name(context, name):
+    """Return a dict describing specific group_type."""
+
+    return _group_type_get_by_name(context, name)
 
 
 @require_context
@@ -3079,6 +3401,19 @@ def volume_types_get_by_name_or_id(context, volume_type_list):
             vol_type = _volume_type_get(context, vol_t)
         req_volume_types.append(vol_type)
     return req_volume_types
+
+
+@require_context
+def group_types_get_by_name_or_id(context, group_type_list):
+    """Return a dict describing specific group_type."""
+    req_group_types = []
+    for grp_t in group_type_list:
+        if not uuidutils.is_uuid_like(grp_t):
+            grp_type = _group_type_get_by_name(context, grp_t)
+        else:
+            grp_type = _group_type_get(context, grp_t)
+        req_group_types.append(grp_type)
+    return req_group_types
 
 
 @require_admin_context
@@ -3205,6 +3540,31 @@ def volume_type_destroy(context, id):
     return updated_values
 
 
+@require_admin_context
+@_retry_on_deadlock
+def group_type_destroy(context, id):
+    session = get_session()
+    with session.begin():
+        _group_type_get(context, id, session)
+        # TODO(xyang): Uncomment the following after groups table is added.
+        # results = model_query(context, models.Group, session=session). \
+        #     filter_by(group_type_id=id).all()
+        # if results:
+        #     LOG.error(_LE('GroupType %s deletion failed, '
+        #                   'GroupType in use.'), id)
+        #     raise exception.GroupTypeInUse(group_type_id=id)
+        model_query(context, models.GroupTypes, session=session).\
+            filter_by(id=id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+        model_query(context, models.GroupTypeSpecs, session=session).\
+            filter_by(group_type_id=id).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
 @require_context
 def volume_get_active_by_window(context,
                                 begin,
@@ -3235,11 +3595,23 @@ def _volume_type_access_query(context, session=None):
                        read_deleted="int_no")
 
 
+def _group_type_access_query(context, session=None):
+    return model_query(context, models.GroupTypeProjects, session=session,
+                       read_deleted="int_no")
+
+
 @require_admin_context
 def volume_type_access_get_all(context, type_id):
     volume_type_id = _volume_type_get_id_from_volume_type(context, type_id)
     return _volume_type_access_query(context).\
         filter_by(volume_type_id=volume_type_id).all()
+
+
+@require_admin_context
+def group_type_access_get_all(context, type_id):
+    group_type_id = _group_type_get_id_from_group_type(context, type_id)
+    return _group_type_access_query(context).\
+        filter_by(group_type_id=group_type_id).all()
 
 
 @require_admin_context
@@ -3262,6 +3634,25 @@ def volume_type_access_add(context, type_id, project_id):
 
 
 @require_admin_context
+def group_type_access_add(context, type_id, project_id):
+    """Add given tenant to the group type access list."""
+    group_type_id = _group_type_get_id_from_group_type(context, type_id)
+
+    access_ref = models.GroupTypeProjects()
+    access_ref.update({"group_type_id": group_type_id,
+                       "project_id": project_id})
+
+    session = get_session()
+    with session.begin():
+        try:
+            access_ref.save(session=session)
+        except db_exc.DBDuplicateEntry:
+            raise exception.GroupTypeAccessExists(group_type_id=type_id,
+                                                  project_id=project_id)
+        return access_ref
+
+
+@require_admin_context
 def volume_type_access_remove(context, type_id, project_id):
     """Remove given tenant from the volume type access list."""
     volume_type_id = _volume_type_get_id_from_volume_type(context, type_id)
@@ -3273,6 +3664,20 @@ def volume_type_access_remove(context, type_id, project_id):
     if count == 0:
         raise exception.VolumeTypeAccessNotFound(
             volume_type_id=type_id, project_id=project_id)
+
+
+@require_admin_context
+def group_type_access_remove(context, type_id, project_id):
+    """Remove given tenant from the group type access list."""
+    group_type_id = _group_type_get_id_from_group_type(context, type_id)
+
+    count = (_group_type_access_query(context).
+             filter_by(group_type_id=group_type_id).
+             filter_by(project_id=project_id).
+             soft_delete(synchronize_session=False))
+    if count == 0:
+        raise exception.GroupTypeAccessNotFound(
+            group_type_id=type_id, project_id=project_id)
 
 
 ####################
@@ -3340,6 +3745,77 @@ def volume_type_extra_specs_update_or_create(context, volume_type_id,
                 spec_ref = models.VolumeTypeExtraSpecs()
             spec_ref.update({"key": key, "value": value,
                              "volume_type_id": volume_type_id,
+                             "deleted": False})
+            spec_ref.save(session=session)
+
+        return specs
+
+
+####################
+
+
+def _group_type_specs_query(context, group_type_id, session=None):
+    return model_query(context, models.GroupTypeSpecs, session=session,
+                       read_deleted="no").\
+        filter_by(group_type_id=group_type_id)
+
+
+@require_context
+def group_type_specs_get(context, group_type_id):
+    rows = _group_type_specs_query(context, group_type_id).\
+        all()
+
+    result = {}
+    for row in rows:
+        result[row['key']] = row['value']
+
+    return result
+
+
+@require_context
+def group_type_specs_delete(context, group_type_id, key):
+    session = get_session()
+    with session.begin():
+        _group_type_specs_get_item(context, group_type_id, key,
+                                   session)
+        _group_type_specs_query(context, group_type_id, session).\
+            filter_by(key=key).\
+            update({'deleted': True,
+                    'deleted_at': timeutils.utcnow(),
+                    'updated_at': literal_column('updated_at')})
+
+
+@require_context
+def _group_type_specs_get_item(context, group_type_id, key,
+                               session=None):
+    result = _group_type_specs_query(
+        context, group_type_id, session=session).\
+        filter_by(key=key).\
+        first()
+
+    if not result:
+        raise exception.GroupTypeSpecsNotFound(
+            group_specs_key=key,
+            group_type_id=group_type_id)
+
+    return result
+
+
+@handle_db_data_error
+@require_context
+def group_type_specs_update_or_create(context, group_type_id,
+                                      specs):
+    session = get_session()
+    with session.begin():
+        spec_ref = None
+        for key, value in specs.items():
+            try:
+                spec_ref = _group_type_specs_get_item(
+                    context, group_type_id, key, session)
+            except exception.GroupTypeSpecsNotFound:
+                spec_ref = models.GroupTypeSpecs()
+            spec_ref.update({"key": key, "value": value,
+                             "group_type_id": group_type_id,
                              "deleted": False})
             spec_ref.save(session=session)
 
@@ -4921,7 +5397,9 @@ PAGINATION_HELPERS = {
                               _process_consistencygroups_filters,
                               _consistencygroup_get),
     models.Message: (_messages_get_query, _process_messages_filters,
-                     _message_get)
+                     _message_get),
+    models.GroupTypes: (_group_type_get_query, _process_group_types_filters,
+                        _group_type_get_db_object),
 }
 
 
@@ -5109,6 +5587,7 @@ def get_model_for_versioned_object(versioned_object):
         'BackupImport': models.Backup,
         'VolumeType': models.VolumeTypes,
         'CGSnapshot': models.Cgsnapshot,
+        'GroupType': models.GroupTypes,
     }
 
     if isinstance(versioned_object, six.string_types):
@@ -5127,6 +5606,7 @@ def _get_get_method(model):
         models.ConsistencyGroup: consistencygroup_get,
         models.VolumeTypes: _volume_type_get_full,
         models.QualityOfServiceSpecs: qos_specs_get,
+        models.GroupTypes: _group_type_get_full,
     }
 
     if model in GET_EXCEPTIONS:

@@ -109,6 +109,11 @@
     "consistencygroup:get_cgsnapshot": "group:nobody",
     "consistencygroup:get_all_cgsnapshots": "group:nobody",
 
+    "group:group_types_manage": "rule:admin_api",
+    "group:group_types_specs": "rule:admin_api",
+    "group:access_group_types_specs": "rule:admin_api",
+    "group:group_type_access": "rule:admin_or_owner",
+
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
     "message:delete": "rule:admin_or_owner",
     "message:get": "rule:admin_or_owner",

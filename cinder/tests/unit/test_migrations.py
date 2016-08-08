@@ -878,6 +878,69 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(columns.status.type, self.VARCHAR_TYPE)
         self.assertIsInstance(columns.service_id.type, self.INTEGER_TYPE)
 
+    def _check_077(self, engine, data):
+        """Test adding group types and specs tables."""
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "group_types"))
+        group_types = db_utils.get_table(engine, 'group_types')
+
+        self.assertIsInstance(group_types.c.id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_types.c.name.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_types.c.description.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_types.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_types.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_types.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_types.c.deleted.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(group_types.c.is_public.type,
+                              self.BOOL_TYPE)
+
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "group_type_specs"))
+        group_specs = db_utils.get_table(engine, 'group_type_specs')
+
+        self.assertIsInstance(group_specs.c.id.type,
+                              self.INTEGER_TYPE)
+        self.assertIsInstance(group_specs.c.key.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_specs.c.value.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_specs.c.group_type_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_specs.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_specs.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_specs.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_specs.c.deleted.type,
+                              self.BOOL_TYPE)
+
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "group_type_projects"))
+        type_projects = db_utils.get_table(engine, 'group_type_projects')
+
+        self.assertIsInstance(type_projects.c.id.type,
+                              self.INTEGER_TYPE)
+        self.assertIsInstance(type_projects.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(type_projects.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(type_projects.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(type_projects.c.deleted.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(type_projects.c.group_type_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(type_projects.c.project_id.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 
