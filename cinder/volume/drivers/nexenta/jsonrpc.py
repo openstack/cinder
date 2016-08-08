@@ -30,6 +30,7 @@ from cinder.utils import retry
 
 LOG = logging.getLogger(__name__)
 socket.setdefaulttimeout(100)
+session = requests.Session()
 
 
 class NexentaJSONProxy(object):
@@ -77,14 +78,17 @@ class NexentaJSONProxy(object):
             'params': args
         })
         auth = ('%s:%s' % (self.user, self.password)).encode('base64')[:-1]
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': 'Basic %s' % auth
-        }
+        headers = {'Content-Type': 'application/json'}
         LOG.debug('Sending JSON data: %s', data)
-        req = requests.post(self.url, data=data, headers=headers)
-        response = req.json()
-        req.close()
+        r = session.post(self.url, data=data, headers=headers)
+        if r.status_code == 403:
+            LOG.debug('Response returned 403, logging in')
+            headers = {
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic %s' % auth
+            }
+            r = session.post(self.url, data=data, headers=headers)
+        response = r.json()
 
         LOG.debug('Got response: %s', response)
         if response.get('error') is not None:
