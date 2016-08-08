@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev225\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-06 02:58+0000\n"
+"POT-Creation-Date: 2016-08-08 03:22+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-05 02:57+0000\n"
+"PO-Revision-Date: 2016-08-07 02:47+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -87,6 +87,14 @@ msgstr ""
 #, python-format
 msgid "%(error_message)s"
 msgstr "%(error_message)s"
+
+#, python-format
+msgid "%(error_msg)s Error description: %(error_description)s"
+msgstr "%(error_msg)s エラーの説明: %(error_description)s"
+
+#, python-format
+msgid "%(error_msg)s Error details: %(error_details)s"
+msgstr "%(error_msg)s エラー詳細: %(error_details)s"
 
 #, python-format
 msgid "%(exception)s: %(explanation)s"
@@ -429,6 +437,14 @@ msgstr ""
 "ゼロでないクォータを持つ子プロジェクトを削除しようとしています。これは実施す"
 "べきではありません。"
 
+msgid "Access forbidden: Authentication required"
+msgstr "アクセス不許可: 認証が必要です。"
+
+msgid ""
+"Access forbidden: You don't have sufficient privileges to perform this "
+"operation"
+msgstr "アクセス不許可: このオペレーションを行うための十分な権限がありません。"
+
 msgid "Access list not available for public volume types."
 msgstr "パブリックボリュームタイプではアクセスリストを使用できません。"
 
@@ -579,6 +595,16 @@ msgstr "マッピングビューへのポートグループの関連付けのエ
 
 msgid "At least one valid iSCSI IP address must be set."
 msgstr "有効な iSCSI IP アドレスを 1 つ以上設定する必要があります。"
+
+#, python-format
+msgid ""
+"Attach volume (%(name)s) to host (%(hostname)s) initiator "
+"(%(initiatorport)s) failed:\n"
+"%(err)s"
+msgstr ""
+"ホスト  (%(hostname)s)  、イニシエーター  (%(initiatorport)s)  へのボリュー"
+"ム (%(name)s) の接続が失敗しました。\n"
+"%(err)s"
 
 #, python-format
 msgid "Attempt to transfer %s with invalid auth key."
@@ -782,6 +808,10 @@ msgstr ""
 msgid "Blockbridge user not configured (required for auth scheme 'password')"
 msgstr ""
 "Blockbridge のユーザーが設定されていません ('password' の認証スキームに必要)"
+
+#, fuzzy
+msgid "Bourne internal server error"
+msgstr "Bourne 内部サーバーエラー"
 
 #, python-format
 msgid "Brocade Fibre Channel Zoning CLI error: %(reason)s"
@@ -1436,6 +1466,16 @@ msgid "Cisco Fibre Channel Zoning CLI error: %(reason)s"
 msgstr "CiscoファイバーチャネルゾーニングCLIエラー:%(reason)s"
 
 #, python-format
+msgid "Client with ip %s wasn't found "
+msgstr "IP %s のクライアントが見つかりませんでした。"
+
+msgid ""
+"Clone can't be taken individually on a volume that is part of a Consistency "
+"Group"
+msgstr ""
+"整合性グループの一部のボリュームのクローンを個別に取得することはできません。"
+
+#, python-format
 msgid "Clone feature is not licensed on %(storageSystem)s."
 msgstr "%(storageSystem)s では複製フィーチャーはライセンス交付されていません。"
 
@@ -1569,6 +1609,10 @@ msgstr ""
 "整合性グループ %(name)s: 削除に失敗しました。\n"
 "%(err)s"
 
+#, python-format
+msgid "Consistency Group %s not found"
+msgstr "整合性グループ %s が見つかりません。"
+
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "整合性グループが空です。cgsnapshot は作成されません。"
 
@@ -1633,6 +1677,10 @@ msgstr "ローに変換されましたが、現在の形式は %s です。"
 
 msgid "Coordinator uninitialized."
 msgstr "初期化されていないコーディネーター。"
+
+#, python-format
+msgid "CoprHD internal server error. Error details: %s"
+msgstr "CoprHD 内部サーバーエラー。エラー詳細: %s"
 
 #, python-format
 msgid ""
@@ -2105,6 +2153,12 @@ msgstr ""
 
 msgid "Detach volume from instance and then try again."
 msgstr "ボリュームをインスタンスから切り離して、再試行してください。"
+
+#, python-format
+msgid "Detaching volume %(volumename)s from host %(hostname)s failed: %(err)s"
+msgstr ""
+"ホスト %(hostname)s からの ボリューム%(volumename)s の切断に失敗しました : "
+"%(err)s"
 
 #, python-format
 msgid "Detected more than one volume with name %(vol_name)s"
@@ -2786,6 +2840,11 @@ msgid ""
 msgstr ""
 "レプリケーションターゲットの詳細の取得中にエラーが発生しました。戻りコード: "
 "%(ret.status)d メッセージ: %(ret.data)s。"
+
+#, python-format
+msgid "Error getting sdc id from ip %(sdc_ip)s: %(sdc_id_message)s"
+msgstr ""
+"IP %(sdc_ip)s からの sdc id の取得でエラーが発生しました: %(sdc_id_message)s"
 
 #, python-format
 msgid ""
@@ -4016,6 +4075,14 @@ msgstr ""
 "%(reason)s)"
 
 #, python-format
+msgid ""
+"Failed to recognize JSON payload:\n"
+"[%s]"
+msgstr ""
+"JSON ペイロードの認識に失敗しました:\n"
+"[%s]"
+
+#, python-format
 msgid "Failed to remove export for volume %(volume)s: %(reason)s"
 msgstr "ボリューム %(volume)s のエクスポートを削除できませんでした: %(reason)s"
 
@@ -4461,6 +4528,10 @@ msgid "Folder %s does not exist in Nexenta Store appliance"
 msgstr "フォルダー %s は Nexenta Store アプライアンスに存在しません"
 
 #, python-format
+msgid "GET method is not supported by resource: %s"
+msgstr "GET メソッドはリソースではサポートされていません: %s"
+
+#, python-format
 msgid "GPFS is not running, state: %s."
 msgstr "GPFS が実行されていません。状態: %s。"
 
@@ -4646,6 +4717,14 @@ msgid "HPELeftHand url not found"
 msgstr "HPELeftHand url が見つかりません"
 
 #, python-format
+msgid "HTTP code: %(status_code)s, %(reason)s [%(error_msg)s]"
+msgstr "HTTP コード: %(status_code)s, %(reason)s [%(error_msg)s]"
+
+#, python-format
+msgid "HTTP code: %(status_code)s, response: %(reason)s [%(error_msg)s]"
+msgstr "HTTP コード: %(status_code)s 、レスポンス: %(reason)s [%(error_msg)s]"
+
+#, python-format
 msgid "HTTP exit code: [%(code)s]"
 msgstr "HTTP 終了コード : [%(code)s]"
 
@@ -4821,6 +4900,14 @@ msgid ""
 msgstr ""
 "レコードのインポートに失敗しました。インポートを実行するバックアップサービス"
 "が見つかりません。要求サービス %(service)s"
+
+#, python-format
+msgid ""
+"Incorrect port number. Load balanced port is: %(lb_api_port)s, api service "
+"port is: %(apisvc_port)s"
+msgstr ""
+"正しくないポート番号です。ロードバランス用ポート: %(lb_api_port)s 、APIサービ"
+"ス用ポート: %(apisvc_port)s"
 
 msgid "Incorrect request body format"
 msgstr "要求本体の形式が正しくありません。"
@@ -5402,6 +5489,10 @@ msgstr ""
 
 msgid "Lock acquisition failed."
 msgstr "ロックの取得に失敗しました。"
+
+#, python-format
+msgid "Login failure code: %(statuscode)s Error: %(responsetext)s"
+msgstr "ログイン失敗 コード: %(statuscode)s エラー: %(responsetext)s"
 
 msgid "Logout session error."
 msgstr "ログアウトセッションのエラー。"
@@ -6657,6 +6748,9 @@ msgstr ""
 "要求されたバックアップが許容バックアップクォータ (ギガバイト) を超えていま"
 "す。要求量 %(requested)s G、クォータ %(quota)s G、消費量 %(consumed)s. G。"
 
+msgid "Requested resource is currently unavailable"
+msgstr "要求されたリソースは現在利用できません。"
+
 #, python-format
 msgid ""
 "Requested volume or snapshot exceeds allowed %(name)s quota. Requested "
@@ -6901,6 +6995,13 @@ msgstr "サービスが古すぎるため、このリクエストに対応でき
 msgid "Service is unavailable at this time."
 msgstr "現在サービスは使用できません。"
 
+msgid ""
+"Service temporarily unavailable: The server is temporarily unable to service "
+"your request"
+msgstr ""
+"サービス一時利用不可: サーバーは一時的にリクエストに対するサービスを提供でき"
+"ません。"
+
 msgid "Set pair secondary access error."
 msgstr "ペアのセカンダリーアクセス設定のエラー。"
 
@@ -7008,12 +7109,31 @@ msgstr ""
 "ありません。"
 
 #, python-format
+msgid ""
+"Snapshot %(src_snapshot_name)s: clone failed\n"
+"%(err)s"
+msgstr ""
+"スナップショット %(src_snapshot_name)s: クローンが失敗しました。\n"
+"%(err)s"
+
+#, python-format
+msgid "Snapshot %s : Delete Failed\n"
+msgstr "スナップショット %s : 削除が失敗しました。\n"
+
+#, python-format
 msgid "Snapshot %s must not be part of a consistency group."
 msgstr "スナップショット %s は整合性グループの一部であってはなりません。"
 
 #, python-format
 msgid "Snapshot '%s' doesn't exist on array."
 msgstr "スナップショット '%s' はアレイに存在しません。"
+
+msgid ""
+"Snapshot can't be taken individually on a volume that is part of a "
+"Consistency Group"
+msgstr ""
+"整合性グループの一部のボリュームのスナップショットを個別に取得することはでき"
+"ません。"
 
 #, python-format
 msgid ""
@@ -7026,6 +7146,13 @@ msgstr ""
 msgid "Snapshot cannot be created while volume is migrating."
 msgstr ""
 "ボリュームのマイグレーション中にスナップショットを作成することはできません。"
+
+msgid ""
+"Snapshot delete can't be done individually on a volume that is part of a "
+"Consistency Group"
+msgstr ""
+"整合性グループの一部のボリュームのスナップショットを個別に削除することはでき"
+"ません。"
 
 #, python-format
 msgid ""
@@ -7068,6 +7195,14 @@ msgstr ""
 #, python-format
 msgid "Snapshot with id of %s could not be found."
 msgstr "%s の ID を持つスナップショットを見つけることができませんでした。"
+
+#, python-format
+msgid ""
+"Snapshot: %(snapshotname)s, create failed\n"
+"%(err)s"
+msgstr ""
+"スナップショット  %(snapshotname)s:  作成が失敗しました。\n"
+"%(err)s"
 
 #, python-format
 msgid ""
@@ -7327,6 +7462,16 @@ msgstr ""
 "トしません。配列で有効な SLO とワークロードを確認してください。"
 
 msgid ""
+"The authentication service failed to provide the location of the service URI "
+"when redirecting back"
+msgstr ""
+"Authentication サービスで、リダイレクトで戻るサービス URI の提供に失敗しまし"
+"た。"
+
+msgid "The authentication service failed to reply with 401"
+msgstr "Authentication サービスが失敗し、 401 エラーが返されました。"
+
+msgid ""
 "The back-end where the volume is created does not have replication enabled."
 msgstr ""
 "ボリュームが作成されるバックエンドに有効になっているレプリケーションがありま"
@@ -7448,6 +7593,9 @@ msgid "The provided snapshot '%s' is not a snapshot of the provided volume."
 msgstr ""
 "指定されたスナップショット '%s' は指定されたボリュームのスナップショットでは"
 "ありません。"
+
+msgid "The redirect location of the authentication service is not provided"
+msgstr "Authentication サービスのリダイレクトの場所が指定されていません。"
 
 msgid ""
 "The reference to the volume in the backend should have the format "
@@ -7601,6 +7749,14 @@ msgid ""
 msgstr ""
 "%(memberCount)s のストライプメタ数がボリュームに対して小さすぎます: "
 "%(volumeSize)s のサイズを持つ %(volumeName)s。"
+
+#, python-format
+msgid "The token is not generated by authentication service. %s"
+msgstr "トークンが authentication サービスで生成されませんでした。 %s"
+
+#, python-format
+msgid "The token is not generated by authentication service.%s"
+msgstr "トークンが authentication サービスで生成されませんでした。 %s"
 
 #, python-format
 msgid ""
@@ -8421,6 +8577,10 @@ msgstr "ソート方向が不明です。'desc' または 'asc' でなければ�
 msgid "Unknown sort direction, must be 'desc' or 'asc'."
 msgstr "ソート方向が不明です。'desc' または 'asc' でなければなりません。"
 
+#, python-format
+msgid "Unknown/Unsupported HTTP method: %s"
+msgstr "未知/未サポートの HTTP メソッド: %s"
+
 msgid "Unmanage and cascade delete options are mutually exclusive."
 msgstr "削除オプションの非管理とカスケーディングを同時に行うことはできません。"
 
@@ -8674,10 +8834,26 @@ msgstr "ボリューム %(name)s は時間内に非アクティブになりま�
 
 #, python-format
 msgid ""
+"Volume %(name)s: clone failed\n"
+"%(err)s"
+msgstr ""
+"ボリューム %(name)s: クローンが失敗しました。\n"
+"%(err)s"
+
+#, python-format
+msgid ""
 "Volume %(name)s: create failed\n"
 "%(err)s"
 msgstr ""
 "ボリューム %(name)s: 作成に失敗しました。\n"
+"%(err)s"
+
+#, python-format
+msgid ""
+"Volume %(name)s: delete failed\n"
+"%(err)s"
+msgstr ""
+"ボリューム %(name)s: 削除が失敗しました。\n"
 "%(err)s"
 
 #, python-format
@@ -8759,6 +8935,22 @@ msgid "Volume %(volume_name)s is busy."
 msgstr "ボリューム %(volume_name)s は使用中です。"
 
 #, python-format
+msgid ""
+"Volume %(volume_name)s: expand failed\n"
+"%(err)s"
+msgstr ""
+"ボリューム %(volume_name)s: 拡張が失敗しました。\n"
+"%(err)s"
+
+#, python-format
+msgid ""
+"Volume %(volume_name)s: update failed\n"
+"%(err)s"
+msgstr ""
+"ボリューム %(volume_name)s: 更新が失敗しました。\n"
+"%(err)s"
+
+#, python-format
 msgid "Volume %s could not be created from source volume."
 msgstr "ボリューム %s をソースボリュームから作成できませんでした。"
 
@@ -8827,6 +9019,10 @@ msgstr ""
 #, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "ボリューム %s は整合性グループの一部であってはなりません。"
+
+#, python-format
+msgid "Volume %s not found"
+msgstr "ボリューム %s が見つかりません。"
 
 #, python-format
 msgid "Volume %s not found."
@@ -10411,6 +10607,13 @@ msgstr ""
 "san_login と san_password のいずれかまたは両方が cinder.conf の Dateraドライ"
 "バーに設定されていません。この情報を設定して、cinder-volume サービスを再開し"
 "てください。"
+
+msgid ""
+"scaleio_verify_server_certificate is True but "
+"scaleio_server_certificate_path is not provided in cinder configuration"
+msgstr ""
+"scaleio_verify_server_certificate が True ですが、Cinder設定で "
+"scaleio_server_certificate_path が指定されていません。"
 
 msgid "serve() can only be called once"
 msgstr "serve() は一度しか呼び出せません。"
