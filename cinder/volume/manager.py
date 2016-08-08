@@ -1829,7 +1829,7 @@ class VolumeManager(manager.SchedulerDependentManager):
                                      attachment['attached_host'],
                                      attachment['mountpoint'],
                                      'rw')
-			updates.update({'attach_status': 'attached'})
+            updates.update({'attach_status': 'attached'})
         volume.update(updates)
         volume.save()
 
