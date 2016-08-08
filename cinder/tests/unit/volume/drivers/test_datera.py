@@ -23,8 +23,10 @@ from cinder.volume.drivers import datera
 from cinder.volume import volume_types
 
 
-DEFAULT_STORAGE_NAME = datera.DEFAULT_STORAGE_NAME
-DEFAULT_VOLUME_NAME = datera.DEFAULT_VOLUME_NAME
+datera.DEFAULT_SI_SLEEP = 0.01
+URL_TEMPLATES = datera.URL_TEMPLATES
+OS_PREFIX = datera.OS_PREFIX
+UNMANAGE_PREFIX = datera.UNMANAGE_PREFIX
 
 
 class DateraVolumeTestCase(test.TestCase):
@@ -52,6 +54,7 @@ class DateraVolumeTestCase(test.TestCase):
         self.driver = datera.DateraDriver(execute=mock_exec,
                                           configuration=self.cfg)
         self.driver.set_initialized()
+        self.driver.configuration.get = _config_getter
         self.volume = _stub_volume()
         self.api_patcher = mock.patch('cinder.volume.drivers.datera.'
                                       'DateraDriver._issue_api_request')
@@ -74,9 +77,8 @@ class DateraVolumeTestCase(test.TestCase):
         def _progress_api_return(mock_api):
             if mock_api.retry_count == 1:
                 _bad_vol_ai = stub_single_ai.copy()
-                _bad_vol_ai['storage_instances'][
-                    DEFAULT_STORAGE_NAME]['volumes'][DEFAULT_VOLUME_NAME][
-                        'op_status'] = 'unavailable'
+                _bad_vol_ai['storage_instances']['storage-1'][
+                    'volumes']['volume-1']['op_status'] = 'unavailable'
                 return _bad_vol_ai
             else:
                 self.mock_api.retry_count += 1
@@ -259,7 +261,7 @@ class DateraVolumeTestCase(test.TestCase):
 
     def test_delete_snapshot_not_found(self):
         self.mock_api.side_effect = [stub_return_snapshots, exception.NotFound]
-        snapshot = _stub_snapshot(self.volume['id'])
+        snapshot = _stub_snapshot(self.volume['id'], volume_id="test")
         self.assertIsNone(self.driver.delete_snapshot(snapshot))
 
     def test_delete_snapshot_fails(self):
@@ -303,6 +305,73 @@ class DateraVolumeTestCase(test.TestCase):
         self.assertRaises(exception.NotAuthorized, self.driver._login)
         self.assertEqual(1, self.mock_api.call_count)
 
+    def test_manage_existing(self):
+        TEST_NAME = {"source-name": "test-app:test-si:test-vol"}
+        self.mock_api.return_value = {}
+        self.assertIsNone(
+            self.driver.manage_existing(
+                _stub_volume(),
+                TEST_NAME))
+        self.mock_api.assert_called_once_with(
+            URL_TEMPLATES['ai_inst']().format(
+                TEST_NAME["source-name"].split(":")[0]),
+            method='put',
+            body={'name': OS_PREFIX + _stub_volume()['id']})
+
+    def test_manage_existing_wrong_ref(self):
+        TEST_NAME = {"source-name": "incorrect-reference"}
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing,
+            _stub_volume(),
+            TEST_NAME)
+
+    def test_manage_existing_get_size(self):
+        TEST_NAME = {"source-name": "test-app:storage-1:volume-1"}
+        self.mock_api.side_effect = self._generate_fake_api_request()
+        self.assertEqual(
+            self.driver.manage_existing_get_size(
+                _stub_volume(),
+                TEST_NAME), 500)
+        self.mock_api.assert_called_once_with(
+            URL_TEMPLATES['ai_inst']().format(
+                TEST_NAME["source-name"].split(":")[0]))
+
+    def test_manage_existing_get_size_wrong_ref(self):
+        TEST_NAME = {"source-name": "incorrect-reference"}
+        self.assertRaises(
+            exception.ManageExistingInvalidReference,
+            self.driver.manage_existing_get_size,
+            _stub_volume(),
+            TEST_NAME)
+
+    def test_get_manageable_volumes(self):
+        self.mock_api.return_value = non_cinder_ais
+        self.assertEqual(
+            self.driver.get_manageable_volumes(
+                {}, "", 10, 0, "", ""),
+            [{'cinder_id': None,
+              'extra_info': None,
+              'reason_not_safe': None,
+              'reference': {"source-name": 'test-app-inst:storage-1:volume-1'},
+              'safe_to_manage': True,
+              'size': 50},
+             {'cinder_id': 'c20aba21-6ef6-446b-b374-45733b4883ba',
+              'extra_info': None,
+              'reason_not_safe': None,
+              'reference': None,
+              'safe_to_manage': False,
+              'size': None}])
+
+    def test_unmanage(self):
+        self.mock_api.return_value = {}
+        self.assertIsNone(self.driver.unmanage(_stub_volume()))
+        self.mock_api.assert_called_once_with(
+            URL_TEMPLATES['ai_inst']().format(
+                OS_PREFIX + _stub_volume()['id']),
+            method='put',
+            body={'name': UNMANAGE_PREFIX + _stub_volume()['id']})
+
     def _generate_fake_api_request(self, targets_exist=True):
         def _fake_api_request(resource_type, method='get', resource=None,
                               body=None, action=None, sensitive=False):
@@ -318,6 +387,8 @@ class DateraVolumeTestCase(test.TestCase):
                 return stub_acl
             elif resource_type == 'ig_group':
                 return stub_ig
+            else:
+                return list(stub_app_instance.values())[0]
         return _fake_api_request
 
 stub_acl = {
@@ -422,6 +493,7 @@ stub_app_instance = {
                 },
                 "creation_type": "user",
                 "descr": "c20aba21-6ef6-446b-b374-45733b4883ba__ST__storage-1",
+                "op_state": "available",
                 "name": "storage-1",
                 "path": "/app_instances/c20aba21-6ef6-446b-b374-"
                         "45733b4883ba/storage_instances/storage-1",
@@ -481,6 +553,148 @@ stub_return_snapshots = \
     }
 
 
+non_cinder_ais = {
+    "75bc1c69-a399-4acb-aade-3514caf13c5e": {
+        "admin_state": "online",
+        "create_mode": "normal",
+        "descr": "",
+        "health": "ok",
+        "id": "75bc1c69-a399-4acb-aade-3514caf13c5e",
+        "name": "test-app-inst",
+        "path": "/app_instances/75bc1c69-a399-4acb-aade-3514caf13c5e",
+        "snapshot_policies": {},
+        "snapshots": {},
+        "storage_instances": {
+            "storage-1": {
+                "access": {
+                    "ips": [
+                        "172.28.41.93"
+                    ],
+                    "iqn": "iqn.2013-05.com.daterainc:tc:01:sn:"
+                           "29036682e2d37b98",
+                    "path": "/app_instances/75bc1c69-a399-4acb-aade-"
+                            "3514caf13c5e/storage_instances/storage-1/access"
+                },
+                "access_control_mode": "deny_all",
+                "acl_policy": {
+                    "initiator_groups": [],
+                    "initiators": [],
+                    "path": "/app_instances/75bc1c69-a399-4acb-aade-"
+                            "3514caf13c5e/storage_instances/storage-"
+                            "1/acl_policy"
+                },
+                "active_initiators": [],
+                "active_storage_nodes": [
+                    "/storage_nodes/78b350a8-43f2-453f-a257-8df76d7406b9"
+                ],
+                "admin_state": "online",
+                "auth": {
+                    "initiator_pswd": "(hidden)",
+                    "initiator_user_name": "",
+                    "path": "/app_instances/75bc1c69-a399-4acb-aade-"
+                            "3514caf13c5e/storage_instances/storage-1/auth",
+                    "target_pswd": "(hidden)",
+                    "target_user_name": "",
+                    "type": "none"
+                },
+                "creation_type": "user",
+                "ip_pool": "/access_network_ip_pools/default",
+                "name": "storage-1",
+                "op_state": "available",
+                "path": "/app_instances/75bc1c69-a399-4acb-aade-"
+                        "3514caf13c5e/storage_instances/storage-1",
+                "uuid": "6421237d-e4fc-433a-b535-148d5b6d8586",
+                "volumes": {
+                    "volume-1": {
+                        "capacity_in_use": 0,
+                        "name": "volume-1",
+                        "op_state": "available",
+                        "path": "/app_instances/75bc1c69-a399-4acb-aade-"
+                                "3514caf13c5e/storage_instances/storage-"
+                                "1/volumes/volume-1",
+                        "replica_count": 1,
+                        "size": 50,
+                        "snapshot_policies": {},
+                        "snapshots": {},
+                        "uuid": "e674d29c-a672-40d1-9577-abe3a504ffe9"
+                    }
+                }
+            }
+        },
+        "uuid": "00000000-0000-0000-0000-000000000000"
+    },
+    "dfdaf8d1-8976-4c13-a829-3345e03cf810": {
+        "admin_state": "offline",
+        "create_mode": "openstack",
+        "descr": "",
+        "health": "ok",
+        "id": "dfdaf8d1-8976-4c13-a829-3345e03cf810",
+        "name": "OS-c20aba21-6ef6-446b-b374-45733b4883ba",
+        "path": "/app_instances/dfdaf8d1-8976-4c13-a829-3345e03cf810",
+        "snapshot_policies": {},
+        "snapshots": {},
+        "storage_instances": {
+            "storage-1": {
+                "access": {
+                    "ips": [
+                        "172.28.41.57"
+                    ],
+                    "iqn": "iqn.2013-05.com.daterainc:tc:01:sn:"
+                           "56cd59e754ad02b6",
+                    "path": "/app_instances/dfdaf8d1-8976-4c13-a829-"
+                            "3345e03cf810/storage_instances/storage-1/access"
+                },
+                "access_control_mode": "deny_all",
+                "acl_policy": {
+                    "initiator_groups": [],
+                    "initiators": [],
+                    "path": "/app_instances/dfdaf8d1-8976-4c13-a829-"
+                            "3345e03cf810/storage_instances/storage-"
+                            "1/acl_policy"
+                },
+                "active_initiators": [],
+                "active_storage_nodes": [
+                    "/storage_nodes/78b350a8-43f2-453f-a257-8df76d7406b9"
+                ],
+                "admin_state": "offline",
+                "auth": {
+                    "initiator_pswd": "(hidden)",
+                    "initiator_user_name": "",
+                    "path": "/app_instances/dfdaf8d1-8976-4c13-a829-"
+                            "3345e03cf810/storage_instances/storage-1/auth",
+                    "target_pswd": "(hidden)",
+                    "target_user_name": "",
+                    "type": "none"
+                },
+                "creation_type": "user",
+                "ip_pool": "/access_network_ip_pools/default",
+                "name": "storage-1",
+                "op_state": "unavailable",
+                "path": "/app_instances/dfdaf8d1-8976-4c13-a829-3345e03cf810"
+                        "/storage_instances/storage-1",
+                "uuid": "5620a673-9985-464e-9616-e325a50eac60",
+                "volumes": {
+                    "volume-1": {
+                        "capacity_in_use": 0,
+                        "name": "volume-1",
+                        "op_state": "available",
+                        "path": "/app_instances/dfdaf8d1-8976-4c13-a829-"
+                                "3345e03cf810/storage_instances/storage-"
+                                "1/volumes/volume-1",
+                        "replica_count": 1,
+                        "size": 5,
+                        "snapshot_policies": {},
+                        "snapshots": {},
+                        "uuid": "c20aba21-6ef6-446b-b374-45733b4883ba"
+                    }
+                }
+            }
+        },
+        "uuid": "c20aba21-6ef6-446b-b374-45733b4883ba"
+    }
+}
+
+
 def _stub_datera_volume(*args, **kwargs):
     return {
         "status": "available",
@@ -519,3 +733,7 @@ def _stub_snapshot(*args, **kwargs):
     volume['display_name'] = kwargs.get('display_name', name)
     volume['volume_id'] = kwargs.get('volume_id', None)
     return volume
+
+
+def _config_getter(*args, **kwargs):
+    return {}
