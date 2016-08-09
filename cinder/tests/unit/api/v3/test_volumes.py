@@ -20,6 +20,7 @@ import fixtures
 import iso8601
 from oslo_serialization import jsonutils
 from oslo_utils import strutils
+from oslo_utils import timeutils
 from six.moves import http_client
 import webob
 
@@ -120,18 +121,27 @@ class VolumeApiTest(test.TestCase):
         self._reset_filter_file()
 
     def _create_volume_with_glance_metadata(self):
+        basetime = timeutils.utcnow()
+        td = datetime.timedelta(minutes=1)
+
         vol1 = db.volume_create(self.ctxt, {'display_name': 'test1',
+                                            'created_at': basetime - 3 * td,
+                                            'updated_at': basetime - 2 * td,
                                             'project_id':
                                             self.ctxt.project_id,
                                             'volume_type_id':
-                                                fake.VOLUME_TYPE_ID})
+                                                fake.VOLUME_TYPE_ID,
+                                            'id': fake.VOLUME_ID})
         db.volume_glance_metadata_create(self.ctxt, vol1.id, 'image_name',
                                          'imageTestOne')
         vol2 = db.volume_create(self.ctxt, {'display_name': 'test2',
+                                            'created_at': basetime - td,
+                                            'updated_at': basetime,
                                             'project_id':
                                             self.ctxt.project_id,
                                             'volume_type_id':
-                                                fake.VOLUME_TYPE_ID})
+                                                fake.VOLUME_TYPE_ID,
+                                            'id': fake.VOLUME2_ID})
         db.volume_glance_metadata_create(self.ctxt, vol2.id, 'image_name',
                                          'imageTestTwo')
         db.volume_glance_metadata_create(self.ctxt, vol2.id, 'disk_format',
@@ -984,3 +994,80 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual('host1', attachments[0]['host_name'])
         self.assertEqual('na', attachments[0]['device'])
         self.assertEqual(att_time, attachments[0]['attached_at'])
+
+    @ddt.data(('created_at=gt:', 0), ('created_at=lt:', 2))
+    @ddt.unpack
+    def test_volume_index_filter_by_created_at_with_gt_and_lt(self, change,
+                                                              expect_result):
+        self._create_volume_with_glance_metadata()
+        change_time = timeutils.utcnow() + datetime.timedelta(minutes=1)
+        req = fakes.HTTPRequest.blank(("/v3/volumes?%s%s") %
+                                      (change, change_time))
+        req.environ['cinder.context'] = self.ctxt
+        req.headers = mv.get_mv_header(mv.VOLUME_TIME_COMPARISON_FILTER)
+        req.api_version_request = mv.get_api_version(
+            mv.VOLUME_TIME_COMPARISON_FILTER)
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEqual(expect_result, len(volumes))
+
+    @ddt.data(('updated_at=gt:', 0), ('updated_at=lt:', 1))
+    @ddt.unpack
+    def test_vol_filter_by_updated_at_with_gt_and_lt(self, change, result):
+        vols = self._create_volume_with_glance_metadata()
+        change_time = vols[1].updated_at
+        req = fakes.HTTPRequest.blank(("/v3/volumes?%s%s") %
+                                      (change, change_time))
+        req.environ['cinder.context'] = self.ctxt
+        req.headers = mv.get_mv_header(mv.VOLUME_TIME_COMPARISON_FILTER)
+        req.api_version_request = mv.get_api_version(
+            mv.VOLUME_TIME_COMPARISON_FILTER)
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEqual(result, len(volumes))
+
+    @ddt.data(('updated_at=eq:', 1, fake.VOLUME2_ID),
+              ('updated_at=neq:', 1, fake.VOLUME_ID))
+    @ddt.unpack
+    def test_vol_filter_by_updated_at_with_eq_and_neq(self, change, result,
+                                                      expected_volume_id):
+        vols = self._create_volume_with_glance_metadata()
+        change_time = vols[1].updated_at
+        req = fakes.HTTPRequest.blank(("/v3/volumes?%s%s") %
+                                      (change, change_time))
+        req.environ['cinder.context'] = self.ctxt
+        req.headers = mv.get_mv_header(mv.VOLUME_TIME_COMPARISON_FILTER)
+        req.api_version_request = mv.get_api_version(
+            mv.VOLUME_TIME_COMPARISON_FILTER)
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEqual(result, len(volumes))
+        self.assertEqual(expected_volume_id, volumes[0]['id'])
+
+    @ddt.data('created_at', 'updated_at')
+    def test_volume_filter_by_time_with_invaild_time(self, change):
+        self._create_volume_with_glance_metadata()
+        change_time = '123'
+        req = fakes.HTTPRequest.blank(("/v3/volumes?%s=%s") %
+                                      (change, change_time))
+        req.environ['cinder.context'] = self.ctxt
+        req.headers = mv.get_mv_header(mv.VOLUME_TIME_COMPARISON_FILTER)
+        req.api_version_request = mv.get_api_version(
+            mv.VOLUME_TIME_COMPARISON_FILTER)
+        self.assertRaises(webob.exc.HTTPBadRequest, self.controller.index, req)
+
+    def test_volume_index_filter_by_time_with_lte_and_gte(self):
+        vols = self._create_volume_with_glance_metadata()
+        change_since = vols[1].updated_at
+        change_before = timeutils.utcnow() + datetime.timedelta(minutes=1)
+        req = fakes.HTTPRequest.blank(("/v3/volumes?updated_at=lte:%s&"
+                                       "updated_at=gte:%s") %
+                                      (change_before, change_since))
+        req.environ['cinder.context'] = self.ctxt
+        req.headers = mv.get_mv_header(mv.VOLUME_TIME_COMPARISON_FILTER)
+        req.api_version_request = mv.get_api_version(
+            mv.VOLUME_TIME_COMPARISON_FILTER)
+        res_dict = self.controller.index(req)
+        volumes = res_dict['volumes']
+        self.assertEqual(1, len(volumes))
+        self.assertEqual(vols[1].id, volumes[0]['id'])

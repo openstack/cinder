@@ -385,6 +385,14 @@ def get_enabled_resource_filters(resource=None):
         return {}
 
 
+def get_time_comparsion_operators():
+    """Get list of time comparsion operators.
+
+    This method returns list which contains the allowed comparsion operators.
+    """
+    return ["gt", "gte", "eq", "neq", "lt", "lte"]
+
+
 def convert_filter_attributes(filters, resource):
     for key in filters.copy().keys():
         if resource in ['volume', 'backup',

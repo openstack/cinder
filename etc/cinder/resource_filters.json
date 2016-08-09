@@ -1,7 +1,7 @@
 {
     "volume": ["name", "status", "metadata",
                "bootable", "migration_status", "availability_zone",
-               "group_id", "size"],
+               "group_id", "size", "created_at", "updated_at"],
     "backup": ["name", "status", "volume_id"],
     "snapshot": ["name", "status", "volume_id", "metadata",
                  "availability_zone"],

@@ -15,6 +15,7 @@
 
 from oslo_log import log as logging
 from oslo_log import versionutils
+from oslo_utils import timeutils
 import six
 from six.moves import http_client
 import webob
@@ -90,9 +91,43 @@ class VolumeController(volumes_v2.VolumeController):
         if req_version.matches(None, mv.BACKUP_UPDATE):
             filters.pop('group_id', None)
 
+        if req_version.matches(None, mv.SUPPORT_TRANSFER_PAGINATION):
+            filters.pop('created_at', None)
+            filters.pop('updated_at', None)
+
         api_utils.remove_invalid_filter_options(
             context, filters,
             self._get_volume_filter_options())
+
+    def _handle_time_comparison_filters(self, filters):
+        for time_comparison_filter in ['created_at', 'updated_at']:
+            if time_comparison_filter in filters:
+                time_filter_dict = {}
+                comparison_units = filters[time_comparison_filter].split(',')
+                operators = common.get_time_comparsion_operators()
+                for comparison_unit in comparison_units:
+                    try:
+                        operator_and_time = comparison_unit.split(":")
+                        comparison_operator = operator_and_time[0]
+                        time = ''
+                        for time_str in operator_and_time[1:-1]:
+                            time += time_str + ":"
+                        time += operator_and_time[-1]
+                        if comparison_operator not in operators:
+                            msg = _(
+                                'Invalid %s operator') % comparison_operator
+                            raise exc.HTTPBadRequest(explanation=msg)
+                    except IndexError:
+                        msg = _('Invalid %s value') % time_comparison_filter
+                        raise exc.HTTPBadRequest(explanation=msg)
+                    try:
+                        parsed_time = timeutils.parse_isotime(time)
+                    except ValueError:
+                        msg = _('Invalid %s value') % time
+                        raise exc.HTTPBadRequest(explanation=msg)
+                    time_filter_dict[comparison_operator] = parsed_time
+
+                filters[time_comparison_filter] = time_filter_dict
 
     def _get_volumes(self, req, is_detail):
         """Returns a list of volumes, transformed through view builder."""
@@ -120,6 +155,8 @@ class VolumeController(volumes_v2.VolumeController):
 
         if 'name' in filters:
             filters['display_name'] = filters.pop('name')
+
+        self._handle_time_comparison_filters(filters)
 
         strict = req.api_version_request.matches(
             mv.VOLUME_LIST_BOOTABLE, None)

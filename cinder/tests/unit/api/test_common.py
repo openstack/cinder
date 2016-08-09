@@ -477,7 +477,7 @@ class GeneralFiltersTest(test.TestCase):
                'expected': ["name", "status", "metadata",
                             "bootable", "migration_status",
                             "availability_zone", "group_id",
-                            "size"]},
+                            "size", "created_at", "updated_at"]},
               {'resource': 'backup',
                'expected': ["name", "status", "volume_id"]},
               {'resource': 'snapshot',

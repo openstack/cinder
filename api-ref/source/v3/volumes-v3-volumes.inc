@@ -94,6 +94,8 @@ Request
    - offset: offset
    - marker: marker
    - with_count: with_count
+   - created_at: filter_created_at
+   - updated_at: filter_updated_at
 
 
 Response Parameters
@@ -286,6 +288,8 @@ Request
    - offset: offset
    - marker: marker
    - with_count: with_count
+   - created_at: filter_created_at
+   - updated_at: filter_updated_at
 
 
 Response Parameters

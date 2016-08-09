@@ -413,6 +413,27 @@ def _filter_host(field, value, match_level=None):
     return or_(*conditions)
 
 
+def _filter_time_comparison(field, time_filter_dict):
+    """Generate a filter condition for time comparison operators"""
+
+    conditions = []
+    for operator in time_filter_dict:
+        filter_time = timeutils.normalize_time(time_filter_dict[operator])
+        if operator == 'gt':
+            conditions.append(field.op('>')(filter_time))
+        elif operator == 'gte':
+            conditions.append(field.op('>=')(filter_time))
+        if operator == 'eq':
+            conditions.append(field.op('=')(filter_time))
+        elif operator == 'neq':
+            conditions.append(field.op('!=')(filter_time))
+        if operator == 'lt':
+            conditions.append(field.op('<')(filter_time))
+        elif operator == 'lte':
+            conditions.append(field.op('<=')(filter_time))
+    return or_(*conditions)
+
+
 def _clustered_bool_field_filter(query, field_name, filter_value):
     # Now that we have clusters, a service is disabled/frozen if the service
     # doesn't belong to a cluster or if it belongs to a cluster and the cluster
@@ -2432,6 +2453,19 @@ def _process_volume_filters(query, filters):
     if cluster_name:
         query = query.filter(_filter_host(models.Volume.cluster_name,
                                           cluster_name))
+
+    for time_comparison_filter in ['created_at', 'updated_at']:
+        if filters.get(time_comparison_filter, None):
+            time_filter_dict = filters.pop(time_comparison_filter)
+            try:
+                time_filter_attr = getattr(models.Volume,
+                                           time_comparison_filter)
+                query = query.filter(_filter_time_comparison(time_filter_attr,
+                                                             time_filter_dict))
+            except AttributeError:
+                LOG.debug("%s column could not be found.",
+                          time_comparison_filter)
+                return None
 
     # Apply exact match filters for everything else, ensure that the
     # filter value exists on the model

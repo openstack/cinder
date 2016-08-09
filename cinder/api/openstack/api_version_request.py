@@ -135,6 +135,10 @@ REST_API_VERSION_HISTORY = """
              detail, list group snapshots with detail, show group detail and
              show group snapshot detail APIs.
     * 3.59 - Support volume transfer pagination.
+    * 3.60 - Support filtering on the "updated_at" and "created_at" fields with
+             time comparison operators for the volume summary list
+             ("GET /v3/{project_id}/volumes") and volume detail list
+             ("GET /v3/{project_id}/volumes/detail") requests.
 """
 
 # The minimum and maximum versions of the API supported
@@ -142,7 +146,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v2 endpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.59"
+_MAX_API_VERSION = "3.60"
 _LEGACY_API_VERSION2 = "2.0"
 UPDATED = "2018-07-17T00:00:00Z"
 

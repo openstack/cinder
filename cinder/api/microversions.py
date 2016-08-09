@@ -159,6 +159,8 @@ GROUP_GROUPSNAPSHOT_PROJECT_ID = '3.58'
 
 SUPPORT_TRANSFER_PAGINATION = '3.59'
 
+VOLUME_TIME_COMPARISON_FILTER = '3.60'
+
 
 def get_mv_header(version):
     """Gets a formatted HTTP microversion header.
