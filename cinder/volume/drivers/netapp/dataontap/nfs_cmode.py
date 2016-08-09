@@ -318,6 +318,8 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver):
 
     def _is_share_clone_compatible(self, volume, share):
         """Checks if share is compatible with volume to host its clone."""
+        if share not in volume['host']:
+            return False
         thin = self._is_volume_thin_provisioned(volume)
         compatible = self._share_has_space_for_clone(share,
                                                      volume['size'],
