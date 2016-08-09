@@ -129,3 +129,6 @@ class NetApp7modeFibreChannelDriver(driver.BaseVD,
         return self.library.create_consistencygroup_from_src(
             group, volumes, cgsnapshot=cgsnapshot, snapshots=snapshots,
             source_cg=source_cg, source_vols=source_vols)
+
+    def failover_host(self, context, volumes, secondary_id=None):
+        raise NotImplementedError()

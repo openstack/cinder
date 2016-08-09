@@ -34,6 +34,7 @@ EXPORT_PATH = '/fake/export/path'
 NFS_SHARE = '%s:%s' % (SHARE_IP, EXPORT_PATH)
 HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, POOL_NAME)
 NFS_HOST_STRING = '%s@%s#%s' % (HOST_NAME, BACKEND_NAME, NFS_SHARE)
+AGGREGATE = 'aggr1'
 FLEXVOL = 'openstack-flexvol'
 NFS_FILE_PATH = 'nfsvol'
 PATH = '/vol/%s/%s' % (POOL_NAME, LUN_NAME)

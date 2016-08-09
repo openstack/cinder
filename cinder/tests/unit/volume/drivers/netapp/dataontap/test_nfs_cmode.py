@@ -35,6 +35,8 @@ from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import nfs_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
+from cinder.volume.drivers.netapp.dataontap.utils import data_motion
+from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
 from cinder.volume import utils as volume_utils
@@ -45,7 +47,10 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def setUp(self):
         super(NetAppCmodeNfsDriverTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_cmode()}
+        kwargs = {
+            'configuration': self.get_config_cmode(),
+            'host': 'openstack@nfscmode',
+        }
 
         with mock.patch.object(utils, 'get_root_helper',
                                return_value=mock.Mock()):
@@ -72,11 +77,42 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         config.netapp_copyoffload_tool_path = 'copyoffload_tool_path'
         return config
 
+    @ddt.data({'active_backend_id': None, 'targets': ['dev1', 'dev2']},
+              {'active_backend_id': None, 'targets': []},
+              {'active_backend_id': 'dev1', 'targets': []},
+              {'active_backend_id': 'dev1', 'targets': ['dev1', 'dev2']})
+    @ddt.unpack
+    def test_init_driver_for_replication(self, active_backend_id,
+                                         targets):
+        kwargs = {
+            'configuration': self.get_config_cmode(),
+            'host': 'openstack@nfscmode',
+            'active_backend_id': active_backend_id,
+        }
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         mock.Mock(return_value=targets))
+        with mock.patch.object(utils, 'get_root_helper',
+                               return_value=mock.Mock()):
+            with mock.patch.object(remotefs_brick, 'RemoteFsClient',
+                                   return_value=mock.Mock()):
+                nfs_driver = nfs_cmode.NetAppCmodeNfsDriver(**kwargs)
+
+                self.assertEqual(active_backend_id,
+                                 nfs_driver.failed_over_backend_name)
+                self.assertEqual(active_backend_id is not None,
+                                 nfs_driver.failed_over)
+                self.assertEqual(len(targets) > 0,
+                                 nfs_driver.replication_enabled)
+
     @mock.patch.object(perf_cmode, 'PerformanceCmodeLibrary', mock.Mock())
     @mock.patch.object(client_cmode, 'Client', mock.Mock())
     @mock.patch.object(nfs.NfsDriver, 'do_setup')
     @mock.patch.object(na_utils, 'check_flags')
     def test_do_setup(self, mock_check_flags, mock_super_do_setup):
+        self.mock_object(
+            config_utils, 'get_backend_configuration',
+            mock.Mock(return_value=self.get_config_cmode()))
         self.driver.do_setup(mock.Mock())
 
         self.assertTrue(mock_check_flags.called)
@@ -94,6 +130,7 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'driver_version': self.driver.VERSION,
             'pools': {},
             'sparse_copy_volume': True,
+            'replication_enabled': False,
             'storage_protocol': 'nfs',
             'vendor_name': 'NetApp',
             'volume_backend_name': 'NetApp_NFS_Cluster_direct',
@@ -342,8 +379,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
     def test_check_for_setup_error(self):
         super_check_for_setup_error = self.mock_object(
             nfs_base.NetAppNfsDriver, 'check_for_setup_error')
-        mock_start_periodic_tasks = self.mock_object(
-            self.driver, '_start_periodic_tasks')
         mock_check_api_permissions = self.mock_object(
             self.driver.ssc_library, 'check_api_permissions')
 
@@ -351,7 +386,51 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
         mock_check_api_permissions.assert_called_once_with()
-        self.assertEqual(1, mock_start_periodic_tasks.call_count)
+
+    def test_start_periodic_tasks(self):
+
+        mock_update_ssc = self.mock_object(
+            self.driver, '_update_ssc')
+        super_start_periodic_tasks = self.mock_object(
+            nfs_base.NetAppNfsDriver, '_start_periodic_tasks')
+
+        update_ssc_periodic_task = mock.Mock()
+        mock_loopingcall = self.mock_object(
+            loopingcall, 'FixedIntervalLoopingCall',
+            mock.Mock(return_value=update_ssc_periodic_task))
+
+        self.driver._start_periodic_tasks()
+
+        mock_loopingcall.assert_called_once_with(mock_update_ssc)
+        self.assertTrue(update_ssc_periodic_task.start.called)
+        mock_update_ssc.assert_called_once_with()
+        super_start_periodic_tasks.assert_called_once_with()
+
+    @ddt.data({'replication_enabled': True, 'failed_over': False},
+              {'replication_enabled': True, 'failed_over': True},
+              {'replication_enabled': False, 'failed_over': False})
+    @ddt.unpack
+    def test_handle_housekeeping_tasks(self, replication_enabled, failed_over):
+        ensure_mirrors = self.mock_object(data_motion.DataMotionMixin,
+                                          'ensure_snapmirrors')
+        self.mock_object(self.driver.ssc_library, 'get_ssc_flexvol_names',
+                         mock.Mock(return_value=fake_ssc.SSC.keys()))
+        self.driver.replication_enabled = replication_enabled
+        self.driver.failed_over = failed_over
+        super_handle_housekeeping_tasks = self.mock_object(
+            nfs_base.NetAppNfsDriver, '_handle_housekeeping_tasks')
+
+        self.driver._handle_housekeeping_tasks()
+
+        super_handle_housekeeping_tasks.assert_called_once_with()
+        (self.driver.zapi_client.remove_unused_qos_policy_groups.
+         assert_called_once_with())
+        if replication_enabled and not failed_over:
+            ensure_mirrors.assert_called_once_with(
+                self.driver.configuration, self.driver.backend_name,
+                fake_ssc.SSC.keys())
+        else:
+            self.assertFalse(ensure_mirrors.called)
 
     def test_delete_volume(self):
         fake_provider_location = 'fake_provider_location'
@@ -836,29 +915,6 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_info.assert_has_calls([mock.call(fake.NFS_VOLUME)])
         super_unmanage.assert_has_calls([mock.call(fake.NFS_VOLUME)])
 
-    def test_start_periodic_tasks(self):
-
-        mock_update_ssc = self.mock_object(self.driver, '_update_ssc')
-        mock_remove_unused_qos_policy_groups = self.mock_object(
-            self.driver.zapi_client,
-            'remove_unused_qos_policy_groups')
-
-        update_ssc_periodic_task = mock.Mock()
-        harvest_qos_periodic_task = mock.Mock()
-        side_effect = [update_ssc_periodic_task, harvest_qos_periodic_task]
-        mock_loopingcall = self.mock_object(
-            loopingcall, 'FixedIntervalLoopingCall',
-            mock.Mock(side_effect=side_effect))
-
-        self.driver._start_periodic_tasks()
-
-        mock_loopingcall.assert_has_calls([
-            mock.call(mock_update_ssc),
-            mock.call(mock_remove_unused_qos_policy_groups)])
-        self.assertTrue(update_ssc_periodic_task.start.called)
-        self.assertTrue(harvest_qos_periodic_task.start.called)
-        mock_update_ssc.assert_called_once_with()
-
     @ddt.data({'has_space': True, 'type_match': True, 'expected': True},
               {'has_space': True, 'type_match': False, 'expected': False},
               {'has_space': False, 'type_match': True, 'expected': False},
@@ -1220,3 +1276,68 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.driver._copy_from_remote_cache.assert_called_once_with(
             fake.VOLUME, fake.IMAGE_FILE_ID, cache_result[0])
         self.assertFalse(self.driver._post_clone_image.called)
+
+    @ddt.data({'secondary_id': 'dev0', 'configured_targets': ['dev1']},
+              {'secondary_id': 'dev3', 'configured_targets': ['dev1', 'dev2']},
+              {'secondary_id': 'dev1', 'configured_targets': []},
+              {'secondary_id': None, 'configured_targets': []})
+    @ddt.unpack
+    def test_failover_host_invalid_replication_target(self, secondary_id,
+                                                      configured_targets):
+        """This tests executes a method in the DataMotionMixin."""
+        self.driver.backend_name = 'dev0'
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         mock.Mock(return_value=configured_targets))
+        complete_failover_call = self.mock_object(
+            data_motion.DataMotionMixin, '_complete_failover')
+
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.driver.failover_host, 'fake_context', [],
+                          secondary_id=secondary_id)
+        self.assertFalse(complete_failover_call.called)
+
+    def test_failover_host_unable_to_failover(self):
+        """This tests executes a method in the DataMotionMixin."""
+        self.driver.backend_name = 'dev0'
+        self.mock_object(
+            data_motion.DataMotionMixin, '_complete_failover',
+            mock.Mock(side_effect=exception.NetAppDriverException))
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         mock.Mock(return_value=['dev1', 'dev2']))
+        self.mock_object(self.driver.ssc_library, 'get_ssc_flexvol_names',
+                         mock.Mock(return_value=fake_ssc.SSC.keys()))
+        self.mock_object(self.driver, '_update_zapi_client')
+
+        self.assertRaises(exception.UnableToFailOver,
+                          self.driver.failover_host, 'fake_context', [],
+                          secondary_id='dev1')
+        data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
+            'dev0', ['dev1', 'dev2'], fake_ssc.SSC.keys(), [],
+            failover_target='dev1')
+        self.assertFalse(self.driver._update_zapi_client.called)
+
+    def test_failover_host(self):
+        """This tests executes a method in the DataMotionMixin."""
+        self.driver.backend_name = 'dev0'
+        self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
+                         mock.Mock(return_value=('dev1', [])))
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         mock.Mock(return_value=['dev1', 'dev2']))
+        self.mock_object(self.driver.ssc_library, 'get_ssc_flexvol_names',
+                         mock.Mock(return_value=fake_ssc.SSC.keys()))
+        self.mock_object(self.driver, '_update_zapi_client')
+
+        actual_active, vol_updates = self.driver.failover_host(
+            'fake_context', [], secondary_id='dev1')
+
+        data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
+            'dev0', ['dev1', 'dev2'], fake_ssc.SSC.keys(), [],
+            failover_target='dev1')
+        self.driver._update_zapi_client.assert_called_once_with('dev1')
+        self.assertTrue(self.driver.failed_over)
+        self.assertEqual('dev1', self.driver.failed_over_backend_name)
+        self.assertEqual('dev1', actual_active)
+        self.assertEqual([], vol_updates)

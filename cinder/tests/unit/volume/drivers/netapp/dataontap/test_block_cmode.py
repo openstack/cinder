@@ -25,12 +25,16 @@ from oslo_service import loopingcall
 from cinder import exception
 from cinder import test
 import cinder.tests.unit.volume.drivers.netapp.dataontap.fakes as fake
+from cinder.tests.unit.volume.drivers.netapp.dataontap.utils import fakes as\
+    fake_utils
 import cinder.tests.unit.volume.drivers.netapp.fakes as na_fakes
 from cinder.volume.drivers.netapp.dataontap import block_base
 from cinder.volume.drivers.netapp.dataontap import block_cmode
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
 from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
+from cinder.volume.drivers.netapp.dataontap.utils import data_motion
+from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -41,7 +45,10 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     def setUp(self):
         super(NetAppBlockStorageCmodeLibraryTestCase, self).setUp()
 
-        kwargs = {'configuration': self.get_config_cmode()}
+        kwargs = {
+            'configuration': self.get_config_cmode(),
+            'host': 'openstack@cdotblock',
+        }
         self.library = block_cmode.NetAppBlockStorageCmodeLibrary(
             'driver', 'protocol', **kwargs)
 
@@ -82,6 +89,9 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
     @mock.patch.object(block_base.NetAppBlockStorageLibrary, 'do_setup')
     def test_do_setup(self, super_do_setup, mock_check_flags):
         self.mock_object(client_base.Client, '_init_ssh_client')
+        self.mock_object(
+            config_utils, 'get_backend_configuration',
+            mock.Mock(return_value=self.get_config_cmode()))
         context = mock.Mock()
 
         self.library.do_setup(context)
@@ -94,8 +104,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             block_base.NetAppBlockStorageLibrary, 'check_for_setup_error')
         mock_check_api_permissions = self.mock_object(
             self.library.ssc_library, 'check_api_permissions')
-        mock_start_periodic_tasks = self.mock_object(
-            self.library, '_start_periodic_tasks')
         mock_get_pool_map = self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
             mock.Mock(return_value={'fake_map': None}))
@@ -104,7 +112,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
         mock_check_api_permissions.assert_called_once_with()
-        self.assertEqual(1, mock_start_periodic_tasks.call_count)
         mock_get_pool_map.assert_called_once_with()
 
     def test_check_for_setup_error_no_filtered_pools(self):
@@ -112,7 +119,6 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                          'check_for_setup_error')
         mock_check_api_permissions = self.mock_object(
             self.library.ssc_library, 'check_api_permissions')
-        self.mock_object(self.library, '_start_periodic_tasks')
         self.mock_object(
             self.library, '_get_flexvol_to_pool_map',
             mock.Mock(return_value={}))
@@ -121,6 +127,51 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
                           self.library.check_for_setup_error)
 
         mock_check_api_permissions.assert_called_once_with()
+
+    def test_start_periodic_tasks(self):
+
+        mock_update_ssc = self.mock_object(
+            self.library, '_update_ssc')
+        super_start_periodic_tasks = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, '_start_periodic_tasks')
+
+        update_ssc_periodic_task = mock.Mock()
+        mock_loopingcall = self.mock_object(
+            loopingcall, 'FixedIntervalLoopingCall',
+            mock.Mock(return_value=update_ssc_periodic_task))
+
+        self.library._start_periodic_tasks()
+
+        mock_loopingcall.assert_called_once_with(mock_update_ssc)
+        self.assertTrue(update_ssc_periodic_task.start.called)
+        mock_update_ssc.assert_called_once_with()
+        super_start_periodic_tasks.assert_called_once_with()
+
+    @ddt.data({'replication_enabled': True, 'failed_over': False},
+              {'replication_enabled': True, 'failed_over': True},
+              {'replication_enabled': False, 'failed_over': False})
+    @ddt.unpack
+    def test_handle_housekeeping_tasks(self, replication_enabled, failed_over):
+        ensure_mirrors = self.mock_object(data_motion.DataMotionMixin,
+                                          'ensure_snapmirrors')
+        self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
+                         mock.Mock(return_value=fake_utils.SSC.keys()))
+        self.library.replication_enabled = replication_enabled
+        self.library.failed_over = failed_over
+        super_handle_housekeeping_tasks = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, '_handle_housekeeping_tasks')
+
+        self.library._handle_housekeeping_tasks()
+
+        super_handle_housekeeping_tasks.assert_called_once_with()
+        (self.zapi_client.remove_unused_qos_policy_groups.
+         assert_called_once_with())
+        if replication_enabled and not failed_over:
+            ensure_mirrors.assert_called_once_with(
+                self.library.configuration, self.library.backend_name,
+                fake_utils.SSC.keys())
+        else:
+            self.assertFalse(ensure_mirrors.called)
 
     def test_find_mapped_lun_igroup(self):
         igroups = [fake.IGROUP1]
@@ -590,25 +641,67 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         self.zapi_client.move_lun.assert_called_once_with(
             '/vol/FAKE_CMODE_VOL1/name', '/vol/FAKE_CMODE_VOL1/volume')
 
-    def test_start_periodic_tasks(self):
+    @ddt.data({'secondary_id': 'dev0', 'configured_targets': ['dev1']},
+              {'secondary_id': 'dev3', 'configured_targets': ['dev1', 'dev2']},
+              {'secondary_id': 'dev1', 'configured_targets': []},
+              {'secondary_id': None, 'configured_targets': []})
+    @ddt.unpack
+    def test_failover_host_invalid_replication_target(self, secondary_id,
+                                                      configured_targets):
+        """This tests executes a method in the DataMotionMixin."""
+        self.library.backend_name = 'dev0'
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         mock.Mock(return_value=configured_targets))
+        complete_failover_call = self.mock_object(
+            data_motion.DataMotionMixin, '_complete_failover')
 
-        mock_update_ssc = self.mock_object(
-            self.library, '_update_ssc')
-        mock_remove_unused_qos_policy_groups = self.mock_object(
-            self.zapi_client, 'remove_unused_qos_policy_groups')
+        self.assertRaises(exception.InvalidReplicationTarget,
+                          self.library.failover_host, 'fake_context', [],
+                          secondary_id=secondary_id)
+        self.assertFalse(complete_failover_call.called)
 
-        update_ssc_periodic_task = mock.Mock()
-        harvest_qos_periodic_task = mock.Mock()
-        side_effect = [update_ssc_periodic_task, harvest_qos_periodic_task]
-        mock_loopingcall = self.mock_object(
-            loopingcall, 'FixedIntervalLoopingCall',
-            mock.Mock(side_effect=side_effect))
+    def test_failover_host_unable_to_failover(self):
+        """This tests executes a method in the DataMotionMixin."""
+        self.library.backend_name = 'dev0'
+        self.mock_object(
+            data_motion.DataMotionMixin, '_complete_failover',
+            mock.Mock(side_effect=exception.NetAppDriverException))
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         mock.Mock(return_value=['dev1', 'dev2']))
+        self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
+                         mock.Mock(return_value=fake_utils.SSC.keys()))
+        self.mock_object(self.library, '_update_zapi_client')
 
-        self.library._start_periodic_tasks()
+        self.assertRaises(exception.UnableToFailOver,
+                          self.library.failover_host, 'fake_context', [],
+                          secondary_id='dev1')
+        data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
+            'dev0', ['dev1', 'dev2'], fake_utils.SSC.keys(), [],
+            failover_target='dev1')
+        self.assertFalse(self.library._update_zapi_client.called)
 
-        mock_loopingcall.assert_has_calls([
-            mock.call(mock_update_ssc),
-            mock.call(mock_remove_unused_qos_policy_groups)])
-        self.assertTrue(update_ssc_periodic_task.start.called)
-        self.assertTrue(harvest_qos_periodic_task.start.called)
-        mock_update_ssc.assert_called_once_with()
+    def test_failover_host(self):
+        """This tests executes a method in the DataMotionMixin."""
+        self.library.backend_name = 'dev0'
+        self.mock_object(data_motion.DataMotionMixin, '_complete_failover',
+                         mock.Mock(return_value=('dev1', [])))
+        self.mock_object(data_motion.DataMotionMixin,
+                         'get_replication_backend_names',
+                         mock.Mock(return_value=['dev1', 'dev2']))
+        self.mock_object(self.library.ssc_library, 'get_ssc_flexvol_names',
+                         mock.Mock(return_value=fake_utils.SSC.keys()))
+        self.mock_object(self.library, '_update_zapi_client')
+
+        actual_active, vol_updates = self.library.failover_host(
+            'fake_context', [], secondary_id='dev1')
+
+        data_motion.DataMotionMixin._complete_failover.assert_called_once_with(
+            'dev0', ['dev1', 'dev2'], fake_utils.SSC.keys(), [],
+            failover_target='dev1')
+        self.library._update_zapi_client.assert_called_once_with('dev1')
+        self.assertTrue(self.library.failed_over)
+        self.assertEqual('dev1', self.library.failed_over_backend_name)
+        self.assertEqual('dev1', actual_active)
+        self.assertEqual([], vol_updates)

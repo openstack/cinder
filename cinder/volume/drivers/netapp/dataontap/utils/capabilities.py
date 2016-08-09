@@ -88,6 +88,11 @@ class CapabilitiesLibrary(object):
 
         return copy.deepcopy(self.ssc)
 
+    def get_ssc_flexvol_names(self):
+        """Get the names of the FlexVols in the Storage Service Catalog."""
+        ssc = self.get_ssc()
+        return ssc.keys()
+
     def get_ssc_for_flexvol(self, flexvol_name):
         """Get map of Storage Service Catalog entries for a single flexvol."""
 
@@ -132,6 +137,11 @@ class CapabilitiesLibrary(object):
             ssc[flexvol_name] = ssc_volume
 
         self.ssc = ssc
+
+    def _update_for_failover(self, zapi_client, flexvol_map):
+
+        self.zapi_client = zapi_client
+        self.update_ssc(flexvol_map)
 
     def _get_ssc_flexvol_info(self, flexvol_name):
         """Gather flexvol info and recast into SSC-style volume stats."""

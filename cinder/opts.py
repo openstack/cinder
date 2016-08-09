@@ -226,6 +226,7 @@ def list_opts():
                 cinder_volume_drivers_netapp_options.netapp_eseries_opts,
                 cinder_volume_drivers_netapp_options.netapp_nfs_extra_opts,
                 cinder_volume_drivers_netapp_options.netapp_san_opts,
+                cinder_volume_drivers_netapp_options.netapp_replication_opts,
                 cinder_volume_drivers_ibm_storwize_svc_storwizesvciscsi.
                 storwize_svc_iscsi_opts,
                 cinder_backup_drivers_glusterfs.glusterfsbackup_service_opts,
