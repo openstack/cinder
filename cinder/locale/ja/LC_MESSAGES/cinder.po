@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev225\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev230\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-08 03:22+0000\n"
+"POT-Creation-Date: 2016-08-09 04:02+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-07 02:47+0000\n"
+"PO-Revision-Date: 2016-08-08 02:24+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -593,6 +593,12 @@ msgstr "マッピングビューへの LUN グループの関連付けのエラ�
 msgid "Associate portgroup to mapping view error."
 msgstr "マッピングビューへのポートグループの関連付けのエラー。"
 
+#, python-format
+msgid "Async error: Unable to retrieve %(obj)s method %(method)s result"
+msgstr ""
+"非同期エラー: オブジェクト %(obj)s  、メソッド  %(method)s  の結果を取得でき"
+"ません。"
+
 msgid "At least one valid iSCSI IP address must be set."
 msgstr "有効な iSCSI IP アドレスを 1 つ以上設定する必要があります。"
 
@@ -879,7 +885,7 @@ msgid "Cache volume %s does not have required properties"
 msgstr "キャッシュボリューム %s に必須のプロパティーがありません"
 
 msgid "Call returned a None object"
-msgstr "呼び出しが None オブジェクトを返しました"
+msgstr "呼び出しが None オブジェクトを返しました。"
 
 msgid "Can not add FC port to host."
 msgstr "ホストに FC ポートを追加できません。"
@@ -1579,7 +1585,7 @@ msgstr "Swift との接続に失敗しました: %(reason)s"
 
 #, python-format
 msgid "Connector does not provide: %s"
-msgstr "コネクターが %s を提供しません"
+msgstr "コネクターが %s を提供しません。"
 
 #, python-format
 msgid "Connector doesn't have required information: %(missing)s"
@@ -1612,6 +1618,10 @@ msgstr ""
 #, python-format
 msgid "Consistency Group %s not found"
 msgstr "整合性グループ %s が見つかりません。"
+
+#, python-format
+msgid "Consistency Group %s: not found"
+msgstr "整合性グループ %s: 見つかりませんでした。"
 
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "整合性グループが空です。cgsnapshot は作成されません。"
@@ -2131,7 +2141,8 @@ msgstr ""
 #, python-format
 msgid "Dell Cinder driver configuration error replication_device %s not found"
 msgstr ""
-"Dell Cinder ドライバーの設定エラー の replication_device %s が見つかりません"
+"Dell Cinder ドライバーの設定エラー の replication_device %s が見つかりませ"
+"ん。"
 
 msgid "Describe-resource is admin only functionality"
 msgstr "Describe-resource は管理者専用の機能です"
@@ -3106,6 +3117,10 @@ msgid "Error writing field to database"
 msgstr "データベースへのフィールドの書き込みに失敗しました"
 
 #, python-format
+msgid "Error: Failed to %(operation_type)s %(component)s"
+msgstr "エラー: 失敗しました。%(operation_type)s  %(component)s"
+
+#, python-format
 msgid "Error[%(stat)s - %(res)s] while getting volume id."
 msgstr "ボリューム ID の取得中にエラーが発生しました [%(stat)s - %(res)s]。"
 
@@ -3189,12 +3204,20 @@ msgid "Expected volume size was %d"
 msgstr "予期されたボリュームサイズは %d でした"
 
 #, python-format
+msgid "Export Group %s: not found"
+msgstr "エクスポートグループ %s: 見つかりませんでした。"
+
+#, python-format
 msgid ""
 "Export backup aborted, expected backup status %(expected_status)s but got "
 "%(actual_status)s."
 msgstr ""
 "バックアップのエクスポートが中止しました。予期していたバックアップの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
+
+#, python-format
+msgid "Export group with name %s already exists"
+msgstr "名前 %s を持つエクスポートグループはすでに存在します。"
 
 #, python-format
 msgid ""
@@ -3488,7 +3511,7 @@ msgstr "スケジューラーマネージャーのボリュームフローを作
 
 #, python-format
 msgid "Failed to create snapshot %s"
-msgstr "スナップショット %s の作成に失敗しました"
+msgstr "スナップショット %s の作成に失敗しました。"
 
 #, python-format
 msgid "Failed to create snapshot for cg: %(cgName)s."
@@ -3535,7 +3558,7 @@ msgstr "シンプールの作成に失敗しました。エラーメッセージ
 
 #, python-format
 msgid "Failed to create volume %s"
-msgstr "ボリューム %s の作成に失敗しました"
+msgstr "ボリューム %s の作成に失敗しました。"
 
 #, python-format
 msgid "Failed to delete SI for volume_id: %(volume_id)s because it has pair."
@@ -3590,7 +3613,7 @@ msgstr "複製の削除に失敗しました。"
 
 #, python-format
 msgid "Failed to delete snapshot %s"
-msgstr "スナップショット %s の削除に失敗しました"
+msgstr "スナップショット %s の削除に失敗しました。"
 
 #, python-format
 msgid "Failed to delete snapshot for cg: %(cgId)s."
@@ -3668,7 +3691,7 @@ msgid "Failed to extend volume %(name)s, Error msg: %(msg)s."
 msgstr "ボリューム %(name)s の拡張に失敗しました。エラーメッセージ: %(msg)s。"
 
 msgid "Failed to find QoSnode"
-msgstr "QoSNode が見つかりません"
+msgstr "QoSNode が見つかりません。"
 
 msgid "Failed to find Storage Center"
 msgstr "ストレージセンターが見つかりませんでした"
@@ -4798,6 +4821,10 @@ msgstr ""
 #, python-format
 msgid "Host type %s not supported."
 msgstr "ホストタイプ %s はサポートされていません。"
+
+#, python-format
+msgid "Host with name: %s not found"
+msgstr "名前 %s を持つホスト: 見つかりませんでした。"
 
 #, python-format
 msgid "Host with ports %(ports)s not found."
@@ -6347,6 +6374,14 @@ msgstr "事前に %(pool_list)s プールを作成してください。"
 msgid "Please create %(tier_levels)s tier in pool %(pool)s in advance!"
 msgstr "事前にプール %(pool)s に %(tier_levels)s 層を作成してください。"
 
+#, python-format
+msgid "Please provide at least one volume for parameter %s"
+msgstr "パラメーター %s には、少なくとも1つのボリューム を指定してください。"
+
+#, python-format
+msgid "Please provide valid format volume: lun for parameter %s"
+msgstr "パラメーター %s に、正しい形式で ボリューム: lun を指定してください。"
+
 msgid "Please re-run cinder-manage as root."
 msgstr "cinder-manage を root として再実行してください。"
 
@@ -6419,11 +6454,18 @@ msgstr "Cinder でのプログラミングエラー : %(reason)s"
 msgid "Project ID"
 msgstr "プロジェクト ID"
 
+msgid "Project name not specified"
+msgstr "プロジェクト名が指定されていません。"
+
 #, python-format
 msgid "Project quotas are not properly setup for nested quotas: %(reason)s."
 msgstr ""
 "ネストされたクォータに対してプロジェクトのクォータが適切に設定されていませ"
 "ん: %(reason)s"
+
+#, python-format
+msgid "Project: %s not found"
+msgstr "プロジェクト %s: 見つかりませんでした。"
 
 msgid "Protection Group not ready."
 msgstr "保護グループの準備ができていません。"
@@ -6566,6 +6608,9 @@ msgstr "RBD diff 操作が失敗しました: (ret=%(ret)s stderr=%(stderr)s)"
 msgid "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 msgstr "REST %(proxy_ver)s hpelefthandclient %(rest_ver)s"
 
+msgid "REST Async Error: Command not accepted."
+msgstr "REST 非同期エラー: コマンドが許可されていません。"
+
 msgid "REST server IP must by specified."
 msgstr "REST サーバーの IP を指定しなければなりません。"
 
@@ -6705,6 +6750,20 @@ msgstr "ボリュームの複製が有効になっていません"
 
 msgid "Replication not allowed yet."
 msgstr "まだレプリケーションを行うことはできません。"
+
+msgid ""
+"Replication setup failure: replication has been enabled but no replication "
+"target has been specified for this backend."
+msgstr ""
+"レプリケーションセットアップ失敗: レプリケーションが有効になっていますが、レ"
+"プリケーションターゲットがこのバックエンド用に指定されていません。"
+
+msgid ""
+"Replication setup failure: replication:livevolume has been enabled but more "
+"than one replication target has been specified for this backend."
+msgstr ""
+"レプリケーションセットアップ失敗: ライブボリュームが有効になっていますが、1つ"
+"以上のレプリケーションターゲットがこのバックエンド用に指定されています。"
 
 #, python-format
 msgid ""
@@ -6959,6 +7018,13 @@ msgstr "スケジューラーホスト Weigher %(weigher_name)s が見つかり�
 
 #, python-format
 msgid ""
+"Search URI %s is not in the expected format, it should end with ?tag={0}"
+msgstr ""
+"検索 URI %s は期待される形式ではありません。 URI は  ?tag={0} で終わる必要が"
+"あります。"
+
+#, python-format
+msgid ""
 "Secondary copy status: %(status)s and synchronized: %(sync)s, sync progress "
 "is: %(progress)s%%."
 msgstr ""
@@ -7197,6 +7263,12 @@ msgid "Snapshot with id of %s could not be found."
 msgstr "%s の ID を持つスナップショットを見つけることができませんでした。"
 
 #, python-format
+msgid "Snapshot with name %(snaplabel)s already exists under %(typename)s"
+msgstr ""
+"名前 %(snaplabel)s を持つスナップショットは、 %(typename)s の下にすでに存在し"
+"ます。"
+
+#, python-format
 msgid ""
 "Snapshot: %(snapshotname)s, create failed\n"
 "%(err)s"
@@ -7400,8 +7472,24 @@ msgstr ""
 msgid "Target volume type is still in use."
 msgstr "ターゲットボリュームタイプはまだ使用中です。"
 
+#, python-format
+msgid ""
+"Task did not complete in %d secs. Operation timed out. Task in CoprHD will "
+"continue"
+msgstr ""
+"タスクが %d 秒以内に完了しませんでした。オペレーションはタイムアウトしまし"
+"た。 CoprHD 内のタスクは継続されます。"
+
+#, python-format
+msgid "Task: %(task_id)s is failed with error: %(error_message)s"
+msgstr "タスク: %(task_id)s が失敗しました。エラー: %(error_message)s"
+
+#, python-format
+msgid "Tenant %s: not found"
+msgstr "テナント %s: 見つかりませんでした。"
+
 msgid "Terminate connection failed"
-msgstr "接続を強制終了できませんでした"
+msgstr "接続を強制終了できませんでした。"
 
 msgid "Terminate connection unable to connect to backend."
 msgstr "バックエンドに接続できない接続を強制終了します。"
@@ -7964,7 +8052,7 @@ msgstr ""
 
 #, python-format
 msgid "Timeout while calling %s "
-msgstr " %s の呼び出し中にタイムアウトが発生しました"
+msgstr " %s の呼び出し中にタイムアウトが発生しました。"
 
 #, python-format
 msgid "Timeout while requesting %(service)s API."
@@ -8023,6 +8111,9 @@ msgstr "タイプは NaElement に変換できません。"
 msgid "TypeError: %s"
 msgstr "TypeError: %s"
 
+msgid "URI should end with /tag"
+msgstr "URIは /tag で終わらなければいけません。"
+
 #, python-format
 msgid "UUIDs %s are in both add and remove volume list."
 msgstr "UUID %s が、ボリュームの追加リストと削除リストの両方に存在します。"
@@ -8055,7 +8146,7 @@ msgstr "project_id なしでは Barbican Client を作成できません。"
 
 #, python-format
 msgid "Unable to create consistency group %s"
-msgstr "整合性グループ %s を作成できません"
+msgstr "整合性グループ %s を作成できません。"
 
 msgid "Unable to create lock. Coordination backend not started."
 msgstr ""
@@ -8092,14 +8183,14 @@ msgstr "%(vol)s からボリューム %(name)s を作成できません。"
 
 #, python-format
 msgid "Unable to create volume %s"
-msgstr "ボリューム %s を作成できません"
+msgstr "ボリューム %s を作成できません。"
 
 msgid "Unable to create volume. Backend down."
 msgstr "ボリュームを作成できません。バックエンドがダウンしています。"
 
 #, python-format
 msgid "Unable to delete Consistency Group snapshot %s"
-msgstr "整合性グループ %s を削除できません"
+msgstr "整合性グループ %s を削除できません。"
 
 #, python-format
 msgid "Unable to delete snapshot %(id)s, status: %(status)s."
@@ -8162,7 +8253,7 @@ msgstr "Storwize クラスター %s とのパートナーシップを確立で�
 
 #, python-format
 msgid "Unable to extend volume %s"
-msgstr "ボリューム %s を拡張できません"
+msgstr "ボリューム %s を拡張できません。"
 
 #, python-format
 msgid ""
@@ -8178,6 +8269,9 @@ msgid ""
 msgstr ""
 "デフォルトにフェイルバックすることできません。フェイルバックができるのは、"
 "フェイルオーバーの完了後に限られます。"
+
+msgid "Unable to failback. Backend is misconfigured."
+msgstr "フェイルバックを行えません。バックエンドの設定に誤りがあります。"
 
 #, python-format
 msgid "Unable to failover to replication target:%(reason)s)."
@@ -8239,7 +8333,7 @@ msgstr ""
 
 #, python-format
 msgid "Unable to find volume %s"
-msgstr "ボリューム %s が見つかりません"
+msgstr "ボリューム %s が見つかりません。"
 
 #, python-format
 msgid "Unable to get a block device for file '%s'"
@@ -8395,11 +8489,14 @@ msgstr ""
 
 #, python-format
 msgid "Unable to rename volume %(existing)s to %(newname)s"
-msgstr "ボリューム %(existing)s の名前を %(newname)s に変更できません"
+msgstr "ボリューム %(existing)s の名前を %(newname)s に変更できません。"
 
 #, python-format
 msgid "Unable to retrieve snapshot group with id of %s."
 msgstr "%s の ID を持つスナップショットグループを取得できません。"
+
+msgid "Unable to retrieve volume stats."
+msgstr "ボリュームの統計を取得できません。"
 
 #, python-format
 msgid ""
@@ -8407,7 +8504,7 @@ msgid ""
 "%(spectype)s values. Value received: %(spec)s"
 msgstr ""
 "%(specname)s を再入力できません。要求した最新の %(spectype)s の値を受信するこ"
-"とを予期していたものの、%(spec)s の値を受信しました"
+"とを予期していたものの、%(spec)s の値を受信しました。"
 
 #, python-format
 msgid ""
@@ -8438,7 +8535,7 @@ msgstr ""
 
 #, python-format
 msgid "Unable to snap Consistency Group %s"
-msgstr "整合性グループ %s を移動できません"
+msgstr "整合性グループ %s を移動できません。"
 
 msgid "Unable to terminate volume connection from backend."
 msgstr "バックエンドからのボリューム接続を終了することができません。"
@@ -8449,7 +8546,7 @@ msgstr "ボリューム接続を終了することができません: %(err)s"
 
 #, python-format
 msgid "Unable to update consistency group %s"
-msgstr "整合性グループ %s を更新できません"
+msgstr "整合性グループ %s を更新できません。"
 
 #, python-format
 msgid ""
@@ -8743,6 +8840,10 @@ msgid "VF is not enabled."
 msgstr "VF は有効になっていません。"
 
 #, python-format
+msgid "VPool %(name)s ( %(vpooltype)s ) : not found"
+msgstr "Pool %(name)s ( %(vpooltype)s ) : 見つかりませんでした。"
+
+#, python-format
 msgid "VV Set %s does not exist."
 msgstr "VV セット %s は存在しません。"
 
@@ -8949,6 +9050,10 @@ msgid ""
 msgstr ""
 "ボリューム %(volume_name)s: 更新が失敗しました。\n"
 "%(err)s"
+
+#, python-format
+msgid "Volume %s : not found"
+msgstr "ボリューム %s:  見つかりませんでした。"
 
 #, python-format
 msgid "Volume %s could not be created from source volume."
@@ -9207,7 +9312,7 @@ msgid "Volume not found."
 msgstr "ボリュームが見つかりません。"
 
 msgid "Volume not unique."
-msgstr "ボリュームが一意でありません"
+msgstr "ボリュームが一意ではありません。"
 
 msgid "Volume not yet assigned to host."
 msgstr "ボリュームがまだホストに割り当てられていません。"
@@ -9342,6 +9447,10 @@ msgstr "ボリューム種別名を空にすることはできません"
 #, python-format
 msgid "Volume type with name %(volume_type_name)s could not be found."
 msgstr "名前 %(volume_type_name)s を持つボリューム種別が見つかりませんでした。"
+
+#, python-format
+msgid "Volume%s: not found"
+msgstr "ボリューム %s:  見つかりませんでした。"
 
 #, python-format
 msgid ""
@@ -9605,6 +9714,9 @@ msgstr ""
 "_find_pool、eternus_pool:%(eternus_pool)s、EnumerateInstances、ETERNUS に接続"
 "できません。"
 
+msgid "_get_async_url: Invalid URL."
+msgstr "_get_async_url: 正しくないURLです。"
+
 #, python-format
 msgid ""
 "_get_drvcfg, filename: %(filename)s, tagname: %(tagname)s, data is None!! "
@@ -9727,7 +9839,7 @@ msgstr "_get_unmanaged_replay: %s という名前のスナップショットが�
 
 #, python-format
 msgid "_get_unmanaged_replay: Cannot find volume id %s"
-msgstr "_get_unmanaged_replay: ボリューム ID %s が見つかりません"
+msgstr "_get_unmanaged_replay: ボリューム ID %s が見つかりません。"
 
 msgid "_get_unmanaged_replay: Must specify source-name."
 msgstr "_get_unmanaged_replay: ソース名を指定する必要があります。"
@@ -9975,6 +10087,10 @@ msgstr "割り当てられたクラスター"
 msgid "cluster changed"
 msgstr "変更されたクラスター"
 
+#, python-format
+msgid "consistency group with name: %s already exists"
+msgstr "名前 %s を持つ整合性グループはすでに存在します。"
+
 msgid "consistencygroup assigned"
 msgstr "割り当てられた整合性グループ"
 
@@ -10215,6 +10331,18 @@ msgstr ""
 "はありません"
 
 #, python-format
+msgid ""
+"error: Incorrect value of new size: %(new_size_in_gb)s GB\n"
+"New size must be greater than current size: %(current_size)s GB"
+msgstr ""
+"エラー: 新しいサイズの値が正しくありません: %(new_size_in_gb)s GB\n"
+"新しいサイズは現在のサイズより大きくなければいけません。現在のサイズ: "
+"%(current_size)s GB"
+
+msgid "error: task list is empty, no task response found"
+msgstr "エラー: タスクリストが空です。タスクの応答が見つかりませんでした。"
+
+#, python-format
 msgid "extend_volume, eternus_pool: %(eternus_pool)s, pool not found."
 msgstr ""
 "extend_volume、eternus_pool: %(eternus_pool)s、プールが見つかりません。"
@@ -10427,7 +10555,7 @@ msgid ""
 "%(vol)s"
 msgstr ""
 "manage_existing_snapshot: ボリューム %(vol)s 上で既存のリプレー %(ss)s の管理"
-"でエラーが発生しました"
+"でエラーが発生しました。"
 
 #, python-format
 msgid "marker [%s] not found"
@@ -10619,6 +10747,10 @@ msgid "serve() can only be called once"
 msgstr "serve() は一度しか呼び出せません。"
 
 #, python-format
+msgid "snapshot with the name: %s Not Found"
+msgstr "名前 %s を持つスナップショット: 見つかりませんでした。"
+
+#, python-format
 msgid "snapshot-%s"
 msgstr "スナップショット: %s"
 
@@ -10698,11 +10830,11 @@ msgstr "アンマウント: <mnt_path>: ターゲットが使用中です"
 
 #, python-format
 msgid "unmanage_snapshot: Cannot find snapshot named %s"
-msgstr "unmanage_snapshot: %s という名前のスナップショットが見つかりません"
+msgstr "unmanage_snapshot: %s という名前のスナップショットが見つかりません。"
 
 #, python-format
 msgid "unmanage_snapshot: Cannot find volume id %s"
-msgstr "unmanage_snapshot: ボリューム ID %s が見つかりません"
+msgstr "unmanage_snapshot: ボリューム ID %s が見つかりません。"
 
 #, python-format
 msgid "unrecognized argument %s"
@@ -10714,6 +10846,10 @@ msgstr "サポートされない圧縮アルゴリズム: %s"
 
 msgid "valid iqn needed for show_target"
 msgstr "show_target に必要とされる有効な iqn"
+
+#, python-format
+msgid "varray %s: not found"
+msgstr "varray %s: 見つかりませんでした。"
 
 #, python-format
 msgid "vdisk %s is not defined."
