@@ -1263,6 +1263,39 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual('OK', result)
         self.assertEqual(2, mock_log.debug.call_count)
 
+    def test_utils_trace_method_with_password_dict(self):
+        mock_log = self.patch('cinder.utils.logging.getLogger')
+        mock_log().isEnabledFor.return_value = True
+
+        @utils.trace_method
+        def _trace_test_method(*args, **kwargs):
+            return {'something': 'test',
+                    'password': 'Now you see me'}
+
+        utils.setup_tracing(['method'])
+
+        result = _trace_test_method(self)
+
+        expected_masked_dict = {'password': '***', 'something': 'test'}
+
+        self.assertEqual(expected_masked_dict, result)
+
+    def test_utils_trace_method_with_password_str(self):
+        mock_log = self.patch('cinder.utils.logging.getLogger')
+        mock_log().isEnabledFor.return_value = True
+
+        @utils.trace_method
+        def _trace_test_method(*args, **kwargs):
+            return "'adminPass': 'Now you see me'"
+
+        utils.setup_tracing(['method'])
+
+        result = _trace_test_method(self)
+
+        expected_masked_str = "'adminPass': '***'"
+
+        self.assertEqual(expected_masked_str, result)
+
     def test_utils_calculate_virtual_free_capacity_with_thick(self):
         host_stat = {'total_capacity_gb': 30.01,
                      'free_capacity_gb': 28.01,
