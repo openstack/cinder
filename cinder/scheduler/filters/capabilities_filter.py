@@ -30,6 +30,10 @@ class CapabilitiesFilter(filters.BaseHostFilter):
         Check that the capabilities provided by the services satisfy
         the extra specs associated with the resource type.
         """
+
+        if not resource_type:
+            return True
+
         extra_specs = resource_type.get('extra_specs', [])
         if not extra_specs:
             return True
