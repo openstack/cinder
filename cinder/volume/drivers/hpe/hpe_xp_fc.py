@@ -19,6 +19,7 @@ Fibre channel Cinder volume driver for Hewlett Packard Enterprise storage.
 from oslo_utils import importutils
 
 from cinder import interface
+from cinder import utils
 from cinder.volume import driver
 from cinder.volume.drivers.hpe import hpe_xp_opts as opts
 from cinder.zonemanager import utils as fczm_utils
@@ -45,26 +46,32 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
         """Setup errors are already checked for in do_setup so return pass."""
         pass
 
+    @utils.trace
     def create_volume(self, volume):
         """Create a volume."""
         return self.common.create_volume(volume)
 
+    @utils.trace
     def create_volume_from_snapshot(self, volume, snapshot):
         """Create a volume from a snapshot."""
         return self.common.create_volume_from_snapshot(volume, snapshot)
 
+    @utils.trace
     def create_cloned_volume(self, volume, src_vref):
         """Create a clone of the specified volume."""
         return self.common.create_cloned_volume(volume, src_vref)
 
+    @utils.trace
     def delete_volume(self, volume):
         """Delete a volume."""
         self.common.delete_volume(volume)
 
+    @utils.trace
     def create_snapshot(self, snapshot):
         """Create a snapshot."""
         return self.common.create_snapshot(snapshot)
 
+    @utils.trace
     def delete_snapshot(self, snapshot):
         """Delete a snapshot."""
         self.common.delete_snapshot(snapshot)
@@ -72,10 +79,12 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
     def local_path(self, volume):
         pass
 
+    @utils.trace
     def get_volume_stats(self, refresh=False):
         """Get volume stats."""
         return self.common.get_volume_stats(refresh)
 
+    @utils.trace
     def copy_image_to_volume(self, context, volume, image_service, image_id):
         """Fetch the image from image_service and write it to the volume.
 
@@ -87,6 +96,7 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
         self.common.copy_image_to_volume(
             context, volume, image_service, image_id)
 
+    @utils.trace
     def after_volume_copy(self, context, src_vol, dest_vol, remote=None):
         """Driver-specific actions after copyvolume data.
 
@@ -95,6 +105,7 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
         """
         self.common.copy_volume_data(context, src_vol, dest_vol, remote)
 
+    @utils.trace
     def restore_backup(self, context, backup, volume, backup_service):
         """Restore an existing backup to a new or existing volume.
 
@@ -105,10 +116,12 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
             context, backup, volume, backup_service)
         self.common.restore_backup(context, backup, volume, backup_service)
 
+    @utils.trace
     def extend_volume(self, volume, new_size):
         """Extend a volume."""
         self.common.extend_volume(volume, new_size)
 
+    @utils.trace
     def manage_existing(self, volume, existing_ref):
         """Manage an existing HPE XP storage volume.
 
@@ -119,6 +132,7 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
         """
         return self.common.manage_existing(volume, existing_ref)
 
+    @utils.trace
     def manage_existing_get_size(self, volume, existing_ref):
         """Return size of volume for manage_existing."""
         return self.common.manage_existing_get_size(volume, existing_ref)
@@ -140,11 +154,13 @@ class HPEXPFCDriver(driver.FibreChannelDriver):
     def remove_export(self, context, volume):
         pass
 
+    @utils.trace
     @fczm_utils.AddFCZone
     def initialize_connection(self, volume, connector):
         """Attach the volume to an instance."""
         return self.common.initialize_connection(volume, connector)
 
+    @utils.trace
     @fczm_utils.RemoveFCZone
     def terminate_connection(self, volume, connector, **kwargs):
         """Detach a volume from an instance."""
