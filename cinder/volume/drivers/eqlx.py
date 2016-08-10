@@ -162,6 +162,9 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
 
     VERSION = "1.3.0"
 
+    # ThirdPartySytems wiki page
+    CI_WIKI_NAME = "Dell_Storage_CI"
+
     def __init__(self, *args, **kwargs):
         super(DellEQLSanISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(eqlx_opts)

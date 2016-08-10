@@ -61,6 +61,9 @@ class V7000FCPDriver(driver.FibreChannelDriver):
 
     VERSION = '1.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Violin_Memory_CI"
+
     def __init__(self, *args, **kwargs):
         super(V7000FCPDriver, self).__init__(*args, **kwargs)
         self.gateway_fc_wwns = []

@@ -146,6 +146,9 @@ class PureBaseVolumeDriver(san.SanDriver):
 
     SUPPORTED_REST_API_VERSIONS = ['1.2', '1.3', '1.4', '1.5']
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Pure_Storage_CI"
+
     def __init__(self, *args, **kwargs):
         execute = kwargs.pop("execute", utils.execute)
         super(PureBaseVolumeDriver, self).__init__(execute=execute, *args,

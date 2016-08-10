@@ -76,6 +76,9 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
     volume_backend_name = 'Generic_NFS'
     VERSION = VERSION
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     def __init__(self, execute=putils.execute, *args, **kwargs):
         self._remotefsclient = None
         super(NfsDriver, self).__init__(*args, **kwargs)

@@ -126,6 +126,8 @@ class DateraDriver(san.SanISCSIDriver):
     """
     VERSION = '2.1'
 
+    CI_WIKI_NAME = "datera-ci"
+
     def __init__(self, *args, **kwargs):
         super(DateraDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(d_opts)

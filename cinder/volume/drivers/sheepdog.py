@@ -439,6 +439,9 @@ class SheepdogDriver(driver.VolumeDriver):
 
     VERSION = "1.0.0"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     def __init__(self, *args, **kwargs):
         super(SheepdogDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(sheepdog_opts)

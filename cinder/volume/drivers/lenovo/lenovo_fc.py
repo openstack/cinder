@@ -30,6 +30,9 @@ class LenovoFCDriver(dothill_fc.DotHillFCDriver):
 
     VERSION = "1.0"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Vedams-LenovoStorage_FCISCSI_CI"
+
     def __init__(self, *args, **kwargs):
         super(LenovoFCDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(lenovo_common.common_opts)

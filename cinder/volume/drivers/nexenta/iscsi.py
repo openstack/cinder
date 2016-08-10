@@ -56,6 +56,9 @@ class NexentaISCSIDriver(driver.ISCSIDriver):
 
     VERSION = VERSION
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Nexenta_CI"
+
     def __init__(self, *args, **kwargs):
         super(NexentaISCSIDriver, self).__init__(*args, **kwargs)
         self.nms = None

@@ -95,6 +95,9 @@ class ZFSSANFSDriver(nfs.NfsDriver):
     volume_backend_name = 'ZFSSA_NFS'
     protocol = driver_prefix = driver_volume_type = 'nfs'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Oracle_ZFSSA_CI"
+
     def __init__(self, *args, **kwargs):
         super(ZFSSANFSDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(ZFSSA_OPTS)

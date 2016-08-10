@@ -122,6 +122,9 @@ class HPE3PARISCSIDriver(driver.TransferVD,
 
     VERSION = "3.0.11"
 
+    # The name of the CI wiki page.
+    CI_WIKI_NAME = "HPE_Storage_CI"
+
     def __init__(self, *args, **kwargs):
         super(HPE3PARISCSIDriver, self).__init__(*args, **kwargs)
         self._active_backend_id = kwargs.get('active_backend_id', None)

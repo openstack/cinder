@@ -327,6 +327,9 @@ class CohoDriver(nfs.NfsDriver):
 
     COHO_QOS_KEYS = ['maxIOPS', 'maxMBS']
 
+    # ThirdPartySystems wiki page name
+    CI_WIKI_NAME = "Coho_Data_CI"
+
     def __init__(self, *args, **kwargs):
         super(CohoDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(coho_opts)

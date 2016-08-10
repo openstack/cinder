@@ -123,6 +123,9 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
     VERSION = '1.0.2'
     protocol = 'iSCSI'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Oracle_ZFSSA_CI"
+
     def __init__(self, *args, **kwargs):
         super(ZFSSAISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(ZFSSA_OPTS)

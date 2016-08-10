@@ -44,6 +44,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
     volume_backend_name = 'NexentaNfsDriver'
     VERSION = VERSION
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Nexenta_CI"
+
     def __init__(self, *args, **kwargs):
         super(NexentaNfsDriver, self).__init__(*args, **kwargs)
         if self.configuration:

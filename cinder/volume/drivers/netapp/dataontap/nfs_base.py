@@ -62,6 +62,10 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     # do not increment this as it may be used in volume type definitions
     VERSION = "1.0.0"
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "NetApp_CI"
+
     REQUIRED_FLAGS = ['netapp_login', 'netapp_password',
                       'netapp_server_hostname']
     DEFAULT_FILTER_FUNCTION = 'capabilities.utilization < 70'

@@ -45,6 +45,9 @@ LOG = logging.getLogger(__name__)
 class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
     """NetApp NFS driver for Data ONTAP (7-mode)."""
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "NetApp_CI"
+
     def __init__(self, *args, **kwargs):
         super(NetApp7modeNfsDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(na_opts.netapp_7mode_opts)

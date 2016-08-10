@@ -32,6 +32,9 @@ _DRIVER_CLASS = 'hpe_xp_horcm_fc.HPEXPHORCMFC'
 class HPEXPFCDriver(driver.FibreChannelDriver):
     """OpenStack Fibre Channel driver to enable HPE XP storage."""
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "XP_Storage_CI"
+
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
         super(HPEXPFCDriver, self).__init__(*args, **kwargs)

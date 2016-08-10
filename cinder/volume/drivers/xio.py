@@ -74,6 +74,9 @@ class XIOISEDriver(object):
     # 1.1.3     Wait for volume/snapshot to be deleted.
     # 1.1.4     Force target_lun to be int (Bug 1549048)
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "X-IO_technologies_CI"
+
     def __init__(self, *args, **kwargs):
         super(XIOISEDriver, self).__init__()
         LOG.debug("XIOISEDriver __init__ called.")

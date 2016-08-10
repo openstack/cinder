@@ -46,6 +46,10 @@ CONF.set_default('smbfs_default_volume_format', 'vhd')
 @interface.volumedriver
 class WindowsSmbfsDriver(smbfs.SmbfsDriver):
     VERSION = VERSION
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Microsoft_iSCSI_CI"
+
     _MINIMUM_QEMU_IMG_VERSION = '1.6'
 
     def __init__(self, *args, **kwargs):

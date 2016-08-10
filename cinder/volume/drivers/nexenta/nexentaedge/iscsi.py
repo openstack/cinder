@@ -43,6 +43,9 @@ class NexentaEdgeISCSIDriver(driver.ISCSIDriver):
 
     VERSION = '1.0.2'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Nexenta_Edge_CI"
+
     def __init__(self, *args, **kwargs):
         super(NexentaEdgeISCSIDriver, self).__init__(*args, **kwargs)
         if self.configuration:

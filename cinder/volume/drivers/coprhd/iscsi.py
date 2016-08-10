@@ -31,6 +31,9 @@ class EMCCoprHDISCSIDriver(driver.ISCSIDriver):
     """CoprHD iSCSI Driver."""
     VERSION = "3.0.0.0"
 
+    # ThirdPartySystems wiki page name
+    CI_WIKI_NAME = "EMC_CoprHD_CI"
+
     def __init__(self, *args, **kwargs):
         super(EMCCoprHDISCSIDriver, self).__init__(*args, **kwargs)
         self.common = self._get_common_driver()

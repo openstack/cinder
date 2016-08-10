@@ -361,6 +361,10 @@ class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
     VERSION = '1.0.7'
+
+    # ThirdPartySystems wiki
+    CI_WIKI_NAME = "EMC_XIO_CI"
+
     driver_name = 'XtremIO'
     MIN_XMS_VERSION = [3, 0, 0]
 

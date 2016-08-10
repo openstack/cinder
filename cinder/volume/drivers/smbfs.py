@@ -108,6 +108,9 @@ class SmbfsDriver(remotefs_drv.RemoteFSSnapDriver):
     SHARE_FORMAT_REGEX = r'//.+/.+'
     VERSION = VERSION
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     _MINIMUM_QEMU_IMG_VERSION = '1.7'
 
     _DISK_FORMAT_VHD = 'vhd'

@@ -67,6 +67,7 @@ class DriverInfo(object):
         self.class_fqn = '{}.{}'.format(inspect.getmodule(cls).__name__,
                                         self.class_name)
         self.version = getattr(cls, 'VERSION', None)
+        self.ci_wiki_name = getattr(cls, 'CI_WIKI_NAME', None)
 
     def __str__(self):
         return self.class_name

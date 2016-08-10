@@ -69,6 +69,9 @@ class DSWAREDriver(driver.VolumeDriver):
     """Huawei FusionStorage Driver."""
     VERSION = '1.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Huawei_volume_CI"
+
     DSWARE_VOLUME_CREATE_SUCCESS_STATUS = 0
     DSWARE_VOLUME_DUPLICATE_VOLUME = 6
     DSWARE_VOLUME_CREATING_STATUS = 7

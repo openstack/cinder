@@ -34,6 +34,9 @@ LOG = logging.getLogger(__name__)
 class FJDXISCSIDriver(driver.ISCSIDriver):
     """iSCSI Cinder Volume Driver for Fujitsu ETERNUS DX S3 series."""
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Fujitsu_ETERNUS_CI"
+
     def __init__(self, *args, **kwargs):
 
         super(FJDXISCSIDriver, self).__init__(*args, **kwargs)

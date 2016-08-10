@@ -34,6 +34,9 @@ class NetAppEseriesFibreChannelDriver(driver.BaseVD,
 
     DRIVER_NAME = 'NetApp_FibreChannel_ESeries'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "NetApp_CI"
+
     def __init__(self, *args, **kwargs):
         super(NetAppEseriesFibreChannelDriver, self).__init__(*args, **kwargs)
         na_utils.validate_instantiation(**kwargs)

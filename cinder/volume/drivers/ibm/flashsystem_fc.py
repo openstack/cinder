@@ -83,6 +83,9 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver):
 
     VERSION = "1.0.11"
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "IBM_FlashSystem_CI"
+
     def __init__(self, *args, **kwargs):
         super(FlashSystemFCDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(fscommon.flashsystem_opts)

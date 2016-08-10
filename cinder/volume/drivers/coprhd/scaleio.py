@@ -64,6 +64,9 @@ class EMCCoprHDScaleIODriver(driver.VolumeDriver):
     VERSION = "3.0.0.0"
     server_token = None
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "EMC_CoprHD_CI"
+
     def __init__(self, *args, **kwargs):
         super(EMCCoprHDScaleIODriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(scaleio_opts)

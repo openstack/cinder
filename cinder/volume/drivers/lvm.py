@@ -82,6 +82,9 @@ class LVMVolumeDriver(driver.VolumeDriver):
 
     VERSION = '3.0.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     def __init__(self, vg_obj=None, *args, **kwargs):
         # Parent sets db, host, _execute and base config
         super(LVMVolumeDriver, self).__init__(*args, **kwargs)

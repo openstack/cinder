@@ -51,6 +51,9 @@ class FSSISCSIDriver(fss_common.FalconstorBaseDriver,
 
     VERSION = '3.0.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "FalconStor_CI"
+
     def __init__(self, *args, **kwargs):
         super(FSSISCSIDriver, self).__init__(*args, **kwargs)
         self._storage_protocol = "iSCSI"

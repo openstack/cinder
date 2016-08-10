@@ -175,6 +175,9 @@ class BlockbridgeISCSIDriver(driver.ISCSIDriver):
 
     VERSION = '1.3.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Blockbridge_EPS_CI"
+
     def __init__(self, *args, **kwargs):
         super(BlockbridgeISCSIDriver, self).__init__(*args, **kwargs)
 

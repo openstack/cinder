@@ -48,6 +48,9 @@ class BlockDeviceDriver(driver.BaseVD, driver.LocalVD,
                         driver.CloneableImageVD, driver.TransferVD):
     VERSION = '2.3.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Cinder_Jenkins"
+
     def __init__(self, *args, **kwargs):
         super(BlockDeviceDriver, self).__init__(*args, **kwargs)
         self.configuration.append_config_values(volume_opts)

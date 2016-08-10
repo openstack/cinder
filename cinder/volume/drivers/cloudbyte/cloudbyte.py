@@ -48,6 +48,7 @@ class CloudByteISCSIDriver(san.SanISCSIDriver):
     """
 
     VERSION = '1.2.0'
+    CI_WIKI_NAME = "CloudByte_CI"
     volume_stats = {}
 
     def __init__(self, *args, **kwargs):

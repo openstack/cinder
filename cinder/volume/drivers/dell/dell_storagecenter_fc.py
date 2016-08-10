@@ -60,6 +60,8 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
 
     VERSION = '3.2.0'
 
+    CI_WIKI_NAME = "Dell_Storage_CI"
+
     def __init__(self, *args, **kwargs):
         super(DellStorageCenterFCDriver, self).__init__(*args, **kwargs)
         self.backend_name =\

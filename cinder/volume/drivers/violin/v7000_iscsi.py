@@ -54,6 +54,9 @@ class V7000ISCSIDriver(driver.ISCSIDriver):
 
     VERSION = '1.0'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Violin_Memory_CI"
+
     def __init__(self, *args, **kwargs):
         super(V7000ISCSIDriver, self).__init__(*args, **kwargs)
         self.stats = {}

@@ -74,6 +74,9 @@ class IBMStorageDriver(san.SanDriver,
     systems.
     """
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "IBM_XIV-DS8K_CI"
+
     def __init__(self, *args, **kwargs):
         """Initialize the driver."""
 

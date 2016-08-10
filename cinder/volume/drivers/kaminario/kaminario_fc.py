@@ -39,6 +39,9 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
 
     VERSION = '1.3'
 
+    # ThirdPartySystems wiki page name
+    CI_WIKI_NAME = "Kaminario_K2_CI"
+
     @kaminario_logger
     def __init__(self, *args, **kwargs):
         super(KaminarioFCDriver, self).__init__(*args, **kwargs)

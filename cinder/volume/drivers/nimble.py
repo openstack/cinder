@@ -107,6 +107,9 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
 
     VERSION = DRIVER_VERSION
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Nimble_Storage_CI"
+
     def __init__(self, *args, **kwargs):
         super(NimbleISCSIDriver, self).__init__(*args, **kwargs)
         self.APIExecutor = None
