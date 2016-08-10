@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev241\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-06 02:58+0000\n"
+"POT-Creation-Date: 2016-08-10 04:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -9770,10 +9770,6 @@ msgid ""
 msgstr ""
 "create_volume_from_snapshot: el estado de la instantánea debe ser \"available"
 "\" (disponible) para crear el volumen. El estado no válido es: %s."
-
-msgid "create_volume_from_snapshot: Source and destination size differ."
-msgstr ""
-"create_volume_from_snapshot: el tamaño de origen y de destino son distintos."
 
 msgid ""
 "create_volume_from_snapshot: Volume size is different from snapshot based "
