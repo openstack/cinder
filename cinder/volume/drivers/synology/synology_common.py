@@ -725,7 +725,7 @@ class SynoCommon(object):
                 LOG.exception(_LE('Failed to get lun status. [%s]'),
                               volume_name)
 
-        LOG.debug(_LE('Lun [%(vol)s], status [%(status)s].'),
+        LOG.debug('Lun [%(vol)s], status [%(status)s].',
                   {'vol': volume_name,
                    'status': status})
         return status == 'normal'
@@ -743,7 +743,7 @@ class SynoCommon(object):
                 LOG.exception(_LE('Failed to get snapshot status. [%s]'),
                               snapshot_uuid)
 
-        LOG.debug(_LE('Lun [%(snapshot)s], status [%(status)s].'),
+        LOG.debug('Lun [%(snapshot)s], status [%(status)s].',
                   {'snapshot': snapshot_uuid,
                    'status': status})
         return status == 'Healthy'
