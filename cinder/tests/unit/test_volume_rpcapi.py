@@ -16,9 +16,9 @@
 Unit Tests for cinder.volume.rpcapi
 """
 import copy
+
 import ddt
 import mock
-
 from oslo_config import cfg
 from oslo_serialization import jsonutils
 
@@ -328,12 +328,17 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_volume_api('delete_consistencygroup', rpc_method='cast',
                               group=self.fake_src_cg, version='3.0')
 
-    def test_update_consistencygroup(self):
+    @ddt.data(None, 'my_cluster')
+    def test_update_consistencygroup(self, cluster_name):
+        self._change_cluster_name(self.fake_cg, cluster_name)
         self._test_volume_api('update_consistencygroup', rpc_method='cast',
                               group=self.fake_cg, add_volumes=['vol1'],
                               remove_volumes=['vol2'], version='3.0')
 
-    def test_create_cgsnapshot(self):
+    @ddt.data(None, 'my_cluster')
+    def test_create_cgsnapshot(self, cluster_name):
+        self._change_cluster_name(self.fake_cgsnap.consistencygroup,
+                                  cluster_name)
         self._test_volume_api('create_cgsnapshot', rpc_method='cast',
                               cgsnapshot=self.fake_cgsnap, version='3.0')
 
@@ -376,7 +381,9 @@ class VolumeRpcAPITestCase(test.TestCase):
                               cascade=True,
                               version='3.0')
 
-    def test_create_snapshot(self):
+    @ddt.data(None, 'mycluster')
+    def test_create_snapshot(self, cluster_name):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('create_snapshot',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
@@ -475,7 +482,9 @@ class VolumeRpcAPITestCase(test.TestCase):
                               attachment_id='fake_uuid',
                               version=version)
 
-    def test_copy_volume_to_image(self):
+    @ddt.data(None, 'mycluster')
+    def test_copy_volume_to_image(self, cluster_name):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('copy_volume_to_image',
                               rpc_method='cast',
                               volume=self.fake_volume_obj,
@@ -517,7 +526,9 @@ class VolumeRpcAPITestCase(test.TestCase):
                               force=False,
                               version='3.0')
 
-    def test_accept_transfer(self):
+    @ddt.data(None, 'mycluster')
+    def test_accept_transfer(self, cluster_name):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('accept_transfer',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
@@ -653,28 +664,34 @@ class VolumeRpcAPITestCase(test.TestCase):
                               volume=self.fake_volume_obj,
                               version='3.0')
 
+    @ddt.data(None, 'mycluster')
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=True)
-    def test_get_backup_device(self, mock_can_send_version):
+    def test_get_backup_device(self, cluster_name, mock_can_send_version):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('get_backup_device',
                               rpc_method='call',
                               backup=self.fake_backup_obj,
                               volume=self.fake_volume_obj,
                               version='3.2')
 
+    @ddt.data(None, 'mycluster')
     @mock.patch('oslo_messaging.RPCClient.can_send_version',
                 return_value=False)
     @mock.patch('cinder.objects.backup.BackupDeviceInfo.from_primitive',
                 return_value={})
-    def test_get_backup_device_old(self, mock_from_primitive,
+    def test_get_backup_device_old(self, cluster_name, mock_from_primitive,
                                    mock_can_send_version):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('get_backup_device',
                               rpc_method='call',
                               backup=self.fake_backup_obj,
                               volume=self.fake_volume_obj,
                               version='3.0')
 
-    def test_secure_file_operations_enabled(self):
+    @ddt.data(None, 'mycluster')
+    def test_secure_file_operations_enabled(self, cluster_name):
+        self._change_cluster_name(self.fake_volume_obj, cluster_name)
         self._test_volume_api('secure_file_operations_enabled',
                               rpc_method='call',
                               volume=self.fake_volume_obj,
@@ -693,7 +710,9 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_group_api('delete_group', rpc_method='cast',
                              group=self.fake_group, version='3.0')
 
-    def test_update_group(self):
+    @ddt.data(None, 'mycluster')
+    def test_update_group(self, cluster_name):
+        self._change_cluster_name(self.fake_group, cluster_name)
         self._test_group_api('update_group', rpc_method='cast',
                              group=self.fake_group, add_volumes=['vol1'],
                              remove_volumes=['vol2'], version='3.0')

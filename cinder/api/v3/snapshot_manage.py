@@ -14,31 +14,19 @@
 
 from cinder.api.contrib import snapshot_manage as snapshot_manage_v2
 from cinder.api.openstack import wsgi
-from cinder import exception
+from cinder.api.v3 import resource_common_manage as common
 
 
-class SnapshotManageController(snapshot_manage_v2.SnapshotManageController):
-    def _ensure_min_version(self, req, allowed_version):
-        version = req.api_version_request
-        if not version.matches(allowed_version, None):
-            raise exception.VersionNotFoundForAPIMethod(version=version)
+class SnapshotManageController(common.ManageResource,
+                               snapshot_manage_v2.SnapshotManageController):
+    def __init__(self, *args, **kwargs):
+        super(SnapshotManageController, self).__init__(*args, **kwargs)
+        self._set_resource_type('snapshot')
 
     @wsgi.response(202)
     def create(self, req, body):
         self._ensure_min_version(req, "3.8")
         return super(SnapshotManageController, self).create(req, body)
-
-    @wsgi.extends
-    def index(self, req):
-        """Returns a summary list of snapshots available to manage."""
-        self._ensure_min_version(req, "3.8")
-        return super(SnapshotManageController, self).index(req)
-
-    @wsgi.extends
-    def detail(self, req):
-        """Returns a detailed list of snapshots available to manage."""
-        self._ensure_min_version(req, "3.8")
-        return super(SnapshotManageController, self).detail(req)
 
 
 def create_resource():

@@ -21,11 +21,7 @@ def get_manageable_resources(req, is_detail, function_get_manageable,
                              view_builder):
     context = req.environ['cinder.context']
     params = req.params.copy()
-    host = params.get('host')
-    if host is None:
-        raise exception.InvalidHost(
-            reason=_("Host must be specified in query parameters"))
-
+    cluster_name, host = common.get_cluster_host(req, params, '3.17')
     marker, limit, offset = common.get_pagination_params(params)
     sort_keys, sort_dirs = common.get_sort_params(params,
                                                   default_key='reference')
@@ -43,9 +39,9 @@ def get_manageable_resources(req, is_detail, function_get_manageable,
         msg = _("Invalid sort dirs passed: %s") % ', '.join(invalid_dirs)
         raise exception.InvalidParameterValue(err=msg)
 
-    resources = function_get_manageable(context, host, marker=marker,
-                                        limit=limit, offset=offset,
-                                        sort_keys=sort_keys,
+    resources = function_get_manageable(context, host, cluster_name,
+                                        marker=marker, limit=limit,
+                                        offset=offset, sort_keys=sort_keys,
                                         sort_dirs=sort_dirs)
     resource_count = len(resources)
 

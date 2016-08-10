@@ -200,3 +200,9 @@ user documentation.
   that specific cluster.  Only ``host`` or ``cluster`` can be provided.
 
   Creating a managed volume also supports the cluster parameter.
+
+3.17
+----
+  os-snapshot-manage and os-volume-manage now support ``cluster`` parameter on
+  listings (summay and detailed).  Both location parameters, ``cluster`` and
+  ``host`` are exclusive and only one should be provided.

@@ -30,6 +30,7 @@ import six
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
+from cinder import objects
 from cinder import quota
 from cinder import quota_utils
 from cinder.volume import api as volume_api
@@ -162,7 +163,7 @@ class API(base.Base):
             raise exception.InvalidAuthKey(reason=msg)
 
         volume_id = transfer['volume_id']
-        vol_ref = self.db.volume_get(context.elevated(), volume_id)
+        vol_ref = objects.Volume.get_by_id(context.elevated(), volume_id)
         if vol_ref['consistencygroup_id']:
             msg = _("Volume %s must not be part of a consistency "
                     "group.") % vol_ref['id']

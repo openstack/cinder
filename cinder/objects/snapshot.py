@@ -273,14 +273,14 @@ class SnapshotList(base.ObjectListBase, base.CinderObject):
     }
 
     @classmethod
-    def get_all(cls, context, search_opts, marker=None, limit=None,
+    def get_all(cls, context, filters, marker=None, limit=None,
                 sort_keys=None, sort_dirs=None, offset=None):
         """Get all snapshot given some search_opts (filters).
 
-        Special search options accepted are host and cluster_name, that refer
-        to the volume's fields.
+        Special filters accepted are host and cluster_name, that refer to the
+        volume's fields.
         """
-        snapshots = db.snapshot_get_all(context, search_opts, marker, limit,
+        snapshots = db.snapshot_get_all(context, filters, marker, limit,
                                         sort_keys, sort_dirs, offset)
         expected_attrs = Snapshot._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Snapshot,

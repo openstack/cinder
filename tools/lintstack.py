@@ -69,6 +69,10 @@ ignore_messages = [
 
     # NOTE(dulek): This one is related to objects.
     "No value passed for parameter 'id' in function call",
+
+    # NOTE(geguileo): v3 common manage class for volumes and snapshots
+    "Instance of 'ManageResource' has no 'volume_api' member",
+    "Instance of 'ManageResource' has no '_list_manageable_view' member",
 ]
 
 # Note(maoy):  We ignore cinder.tests for now due to high false
@@ -173,6 +177,7 @@ class LintOutput(object):
                  'line_content': self.line_content,
                  'code': self.code,
                  'message': self.message})
+
 
 class ErrorKeys(object):
 

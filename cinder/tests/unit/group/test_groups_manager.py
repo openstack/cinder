@@ -698,7 +698,7 @@ class GroupManagerTestCase(test.TestCase):
         self.volume.host = 'host1@backend2'
         self.volume.create_volume(self.context, volume)
 
-        self.assertRaises(exception.InvalidVolume,
+        self.assertRaises(exception.Invalid,
                           self.volume.delete_group,
                           self.context,
                           group)
