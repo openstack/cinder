@@ -120,7 +120,7 @@ class HttpClient(object):
     def _get_header(self, async):
         if async:
             header = self.header.copy()
-            header['async'] = True
+            header['async'] = 'True'
             return header
         return self.header
 
