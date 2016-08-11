@@ -23,7 +23,12 @@ Field = fields.Field
 FieldType = fields.FieldType
 
 
-class BackupStatus(Enum):
+class BaseCinderEnum(Enum):
+    def __init__(self):
+        super(BaseCinderEnum, self).__init__(valid_values=self.__class__.ALL)
+
+
+class BackupStatus(BaseCinderEnum):
     ERROR = 'error'
     ERROR_DELETING = 'error_deleting'
     CREATING = 'creating'
@@ -35,15 +40,12 @@ class BackupStatus(Enum):
     ALL = (ERROR, ERROR_DELETING, CREATING, AVAILABLE, DELETING, DELETED,
            RESTORING)
 
-    def __init__(self):
-        super(BackupStatus, self).__init__(valid_values=BackupStatus.ALL)
-
 
 class BackupStatusField(BaseEnumField):
     AUTO_TYPE = BackupStatus()
 
 
-class ConsistencyGroupStatus(Enum):
+class ConsistencyGroupStatus(BaseCinderEnum):
     ERROR = 'error'
     AVAILABLE = 'available'
     CREATING = 'creating'
@@ -55,16 +57,12 @@ class ConsistencyGroupStatus(Enum):
     ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
            UPDATING, ERROR_DELETING)
 
-    def __init__(self):
-        super(ConsistencyGroupStatus, self).__init__(
-            valid_values=ConsistencyGroupStatus.ALL)
-
 
 class ConsistencyGroupStatusField(BaseEnumField):
     AUTO_TYPE = ConsistencyGroupStatus()
 
 
-class ReplicationStatus(Enum):
+class ReplicationStatus(BaseCinderEnum):
     ERROR = 'error'
     ENABLED = 'enabled'
     DISABLED = 'disabled'
@@ -76,16 +74,12 @@ class ReplicationStatus(Enum):
     ALL = (ERROR, ENABLED, DISABLED, NOT_CAPABLE, FAILOVER_ERROR, FAILING_OVER,
            FAILED_OVER)
 
-    def __init__(self):
-        super(ReplicationStatus, self).__init__(
-            valid_values=ReplicationStatus.ALL)
-
 
 class ReplicationStatusField(BaseEnumField):
     AUTO_TYPE = ReplicationStatus()
 
 
-class SnapshotStatus(Enum):
+class SnapshotStatus(BaseCinderEnum):
     ERROR = 'error'
     AVAILABLE = 'available'
     CREATING = 'creating'
@@ -97,25 +91,17 @@ class SnapshotStatus(Enum):
     ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
            UPDATING, ERROR_DELETING)
 
-    def __init__(self):
-        super(SnapshotStatus, self).__init__(
-            valid_values=SnapshotStatus.ALL)
-
 
 class SnapshotStatusField(BaseEnumField):
     AUTO_TYPE = SnapshotStatus()
 
 
-class QoSConsumerValues(Enum):
+class QoSConsumerValues(BaseCinderEnum):
     BACK_END = 'back-end'
     FRONT_END = 'front-end'
     BOTH = 'both'
 
     ALL = (BACK_END, FRONT_END, BOTH)
-
-    def __init__(self):
-        super(QoSConsumerValues, self).__init__(
-            valid_values=QoSConsumerValues.ALL)
 
 
 class QoSConsumerField(BaseEnumField):
