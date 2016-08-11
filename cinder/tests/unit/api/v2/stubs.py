@@ -21,6 +21,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
+from cinder import utils
 
 
 DEFAULT_VOL_NAME = "displayname"
@@ -89,6 +90,7 @@ def stub_volume_create(self, context, size, name, description, snapshot=None,
     vol['source_volid'] = source_volume.get('id')
     vol['bootable'] = False
     vol['volume_attachment'] = []
+    vol['multiattach'] = utils.get_bool_param('multiattach', param)
     try:
         vol['snapshot_id'] = snapshot['id']
     except (KeyError, TypeError):
