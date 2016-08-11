@@ -839,6 +839,7 @@ def trace(f):
             return f(*args, **kwargs)
 
         all_args = inspect.getcallargs(f, *args, **kwargs)
+
         logger.debug('==> %(func)s: call %(all_args)r',
                      {'func': func_name, 'all_args': all_args})
 
@@ -853,6 +854,11 @@ def trace(f):
                           'exc': exc})
             raise
         total_time = int(round(time.time() * 1000)) - start_time
+
+        if isinstance(result, dict):
+            result = strutils.mask_dict_password(result)
+        elif isinstance(result, six.string_types):
+            result = strutils.mask_password(result)
 
         logger.debug('<== %(func)s: return (%(time)dms) %(result)r',
                      {'func': func_name,
