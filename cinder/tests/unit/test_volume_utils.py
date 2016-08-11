@@ -23,6 +23,7 @@ import six
 
 from oslo_concurrency import processutils
 from oslo_config import cfg
+from oslo_utils import units
 
 from cinder import context
 from cinder import db
@@ -331,33 +332,27 @@ class NotifyUsageTestCase(test.TestCase):
 class LVMVolumeDriverTestCase(test.TestCase):
     def test_convert_blocksize_option(self):
         # Test valid volume_dd_blocksize
-        bs, count = volume_utils._calculate_count(1024, '10M')
+        bs = volume_utils._check_blocksize('10M')
         self.assertEqual('10M', bs)
-        self.assertEqual(103, count)
 
-        bs, count = volume_utils._calculate_count(1024, '1xBBB')
+        bs = volume_utils._check_blocksize('1xBBB')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test 'volume_dd_blocksize' with fraction
-        bs, count = volume_utils._calculate_count(1024, '1.3M')
+        bs = volume_utils._check_blocksize('1.3M')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test zero-size 'volume_dd_blocksize'
-        bs, count = volume_utils._calculate_count(1024, '0M')
+        bs = volume_utils._check_blocksize('0M')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test negative 'volume_dd_blocksize'
-        bs, count = volume_utils._calculate_count(1024, '-1M')
+        bs = volume_utils._check_blocksize('-1M')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
         # Test non-digital 'volume_dd_blocksize'
-        bs, count = volume_utils._calculate_count(1024, 'ABM')
+        bs = volume_utils._check_blocksize('ABM')
         self.assertEqual('1M', bs)
-        self.assertEqual(1024, count)
 
 
 class OdirectSupportTestCase(test.TestCase):
@@ -450,8 +445,8 @@ class ClearVolumeTestCase(test.TestCase):
         output = volume_utils.clear_volume(1024, 'volume_path')
         self.assertIsNone(output)
         mock_exec.assert_called_with(
-            'dd', 'if=/dev/zero', 'of=volume_path', 'count=1', 'bs=1M',
-            'oflag=direct', run_as_root=True)
+            'dd', 'if=/dev/zero', 'of=volume_path', 'count=1048576', 'bs=1M',
+            'iflag=count_bytes', 'oflag=direct', run_as_root=True)
 
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
@@ -466,8 +461,8 @@ class ClearVolumeTestCase(test.TestCase):
         output = volume_utils.clear_volume(1024, 'volume_path')
         self.assertIsNone(output)
         mock_exec.assert_called_with(
-            'dd', 'if=/dev/zero', 'of=volume_path', 'count=1', 'bs=1M',
-            'oflag=direct', run_as_root=True)
+            'dd', 'if=/dev/zero', 'of=volume_path', 'count=1048576', 'bs=1M',
+            'iflag=count_bytes', 'oflag=direct', run_as_root=True)
 
     @mock.patch('cinder.volume.utils.CONF')
     def test_clear_volume_invalid_opt(self, mock_conf):
@@ -480,129 +475,121 @@ class ClearVolumeTestCase(test.TestCase):
 
 
 class CopyVolumeTestCase(test.TestCase):
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.utils.execute')
     @mock.patch('cinder.volume.utils.CONF')
     def test_copy_volume_dd_iflag_and_oflag(self, mock_conf, mock_exec,
-                                            mock_support, mock_count):
+                                            mock_support):
         fake_throttle = throttling.Throttle(['fake_throttle'])
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('fake_throttle', 'dd',
                                           'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', 'iflag=direct',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes,direct',
                                           'oflag=direct', run_as_root=True)
 
         mock_exec.reset_mock()
 
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=False, execute=utils.execute,
                                           ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('fake_throttle', 'dd',
                                           'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', 'iflag=direct',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes,direct',
                                           'oflag=direct', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_no_iflag_or_oflag(self, mock_exec,
-                                              mock_support, mock_count):
+    def test_copy_volume_dd_no_iflag_or_oflag(self, mock_exec, mock_support):
         fake_throttle = throttling.Throttle(['fake_throttle'])
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice=None, throttle=fake_throttle)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('fake_throttle', 'dd',
                                           'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', 'conv=fdatasync',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes',
+                                          'conv=fdatasync', run_as_root=True)
+
+        mock_exec.reset_mock()
+
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
+                                          sync=False, execute=utils.execute,
+                                          ionice=None, throttle=fake_throttle)
+        self.assertIsNone(output)
+        mock_exec.assert_called_once_with('fake_throttle', 'dd',
+                                          'if=/dev/zero',
+                                          'of=/dev/null',
+                                          'count=%s' % units.Gi,
+                                          'bs=3M', 'iflag=count_bytes',
                                           run_as_root=True)
 
-        mock_exec.reset_mock()
-
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
-                                          sync=False, execute=utils.execute,
-                                          ionice=None, throttle=fake_throttle)
-        self.assertIsNone(output)
-        mock_exec.assert_called_once_with('fake_throttle', 'dd',
-                                          'if=/dev/zero',
-                                          'of=/dev/null', 'count=5678',
-                                          'bs=1234', run_as_root=True)
-
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_no_throttle(self, mock_exec, mock_support,
-                                        mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+    def test_copy_volume_dd_no_throttle(self, mock_exec, mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice=None)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes',
                                           'conv=fdatasync', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_with_ionice(self, mock_exec,
-                                        mock_support, mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+    def test_copy_volume_dd_with_ionice(self, mock_exec, mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           ionice='-c3')
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('ionice', '-c3', 'dd',
                                           'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes',
                                           'conv=fdatasync', run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=False)
     @mock.patch('cinder.utils.execute')
-    def test_copy_volume_dd_with_sparse(self, mock_exec,
-                                        mock_support, mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+    def test_copy_volume_dd_with_sparse(self, mock_exec, mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           sparse=True)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes',
                                           'conv=fdatasync,sparse',
                                           run_as_root=True)
 
-    @mock.patch('cinder.volume.utils._calculate_count',
-                return_value=(1234, 5678))
     @mock.patch('cinder.volume.utils.check_for_odirect_support',
                 return_value=True)
     @mock.patch('cinder.utils.execute')
     def test_copy_volume_dd_with_sparse_iflag_and_oflag(self, mock_exec,
-                                                        mock_support,
-                                                        mock_count):
-        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, 1,
+                                                        mock_support):
+        output = volume_utils.copy_volume('/dev/zero', '/dev/null', 1024, '3M',
                                           sync=True, execute=utils.execute,
                                           sparse=True)
         self.assertIsNone(output)
         mock_exec.assert_called_once_with('dd', 'if=/dev/zero', 'of=/dev/null',
-                                          'count=5678', 'bs=1234',
-                                          'iflag=direct', 'oflag=direct',
-                                          'conv=sparse', run_as_root=True)
+                                          'count=%s' % units.Gi, 'bs=3M',
+                                          'iflag=count_bytes,direct',
+                                          'oflag=direct', 'conv=sparse',
+                                          run_as_root=True)
 
     @mock.patch('cinder.volume.utils._copy_volume_with_file')
     def test_copy_volume_handles(self, mock_copy):

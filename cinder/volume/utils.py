@@ -338,7 +338,7 @@ def notify_about_group_snapshot_usage(context, group_snapshot, event_suffix,
         usage_info)
 
 
-def _calculate_count(size_in_m, blocksize):
+def _check_blocksize(blocksize):
 
     # Check if volume_dd_blocksize is valid
     try:
@@ -346,7 +346,7 @@ def _calculate_count(size_in_m, blocksize):
         # cannot be caught by strutils
         if blocksize.startswith(('-', '0')) or '.' in blocksize:
             raise ValueError
-        bs = strutils.string_to_bytes('%sB' % blocksize)
+        strutils.string_to_bytes('%sB' % blocksize)
     except ValueError:
         LOG.warning(_LW("Incorrect value error: %(blocksize)s, "
                         "it may indicate that \'volume_dd_blocksize\' "
@@ -355,11 +355,8 @@ def _calculate_count(size_in_m, blocksize):
         # Fall back to default blocksize
         CONF.clear_override('volume_dd_blocksize')
         blocksize = CONF.volume_dd_blocksize
-        bs = strutils.string_to_bytes('%sB' % blocksize)
 
-    count = math.ceil(size_in_m * units.Mi / bs)
-
-    return blocksize, int(count)
+    return blocksize
 
 
 def check_for_odirect_support(src, dest, flag='oflag=direct'):
@@ -387,15 +384,16 @@ def _copy_volume_with_path(prefix, srcstr, deststr, size_in_m, blocksize,
     if ionice:
         cmd.extend(('ionice', ionice))
 
-    blocksize, count = _calculate_count(size_in_m, blocksize)
+    blocksize = _check_blocksize(blocksize)
+    size_in_bytes = size_in_m * units.Mi
+
     cmd.extend(('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-                'count=%d' % count, 'bs=%s' % blocksize))
+                'count=%d' % size_in_bytes, 'bs=%s' % blocksize))
 
     # Use O_DIRECT to avoid thrashing the system buffer cache
-    odirect = False
-    if check_for_odirect_support(srcstr, deststr, 'iflag=direct'):
-        cmd.append('iflag=direct')
-        odirect = True
+    odirect = check_for_odirect_support(srcstr, deststr, 'iflag=direct')
+
+    cmd.append('iflag=count_bytes,direct' if odirect else 'iflag=count_bytes')
 
     if check_for_odirect_support(srcstr, deststr, 'oflag=direct'):
         cmd.append('oflag=direct')
