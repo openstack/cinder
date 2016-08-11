@@ -56,10 +56,10 @@ CONF.register_opts(image_helper_opts)
 
 
 # NOTE(abhishekk): qemu-img convert command supports raw, qcow2, qed,
-# vdi, vmdk and vhd disk-formats but glance doesn't support qed and
-# vhd(vpc) disk-formats.
+# vdi, vmdk, vhd and vhdx disk-formats but glance doesn't support qed
+# disk-format.
 # Ref: http://docs.openstack.org/image-guide/convert-images.html
-VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2')
+VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2', 'vhd', 'vhdx')
 
 
 def validate_disk_format(disk_format):
@@ -395,15 +395,20 @@ def upload_volume(context, image_service, image_meta, volume_path,
                 reason=_("fmt=%(fmt)s backed by:%(backing_file)s")
                 % {'fmt': fmt, 'backing_file': backing_file})
 
-        convert_image(volume_path, tmp, image_meta['disk_format'],
+        out_format = image_meta['disk_format']
+        # qemu-img accepts 'vpc' as argument for vhd format
+        if out_format == 'vhd':
+            out_format = 'vpc'
+
+        convert_image(volume_path, tmp, out_format,
                       run_as_root=run_as_root)
 
         data = qemu_img_info(tmp, run_as_root=run_as_root)
-        if data.file_format != image_meta['disk_format']:
+        if data.file_format != out_format:
             raise exception.ImageUnacceptable(
                 image_id=image_id,
                 reason=_("Converted to %(f1)s, but format is now %(f2)s") %
-                {'f1': image_meta['disk_format'], 'f2': data.file_format})
+                {'f1': out_format, 'f2': data.file_format})
 
         with open(tmp, 'rb') as image_file:
             image_service.update(context, image_id, {}, image_file)

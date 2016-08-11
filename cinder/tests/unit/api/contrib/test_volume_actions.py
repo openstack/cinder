@@ -1304,3 +1304,49 @@ class VolumeImageActionsTest(test.TestCase):
         expected['os-volume_upload_image'].update(visibility='public',
                                                   protected=True)
         self.assertDictMatch(expected, res_dict)
+
+    @mock.patch.object(volume_api.API, "get_volume_image_metadata")
+    @mock.patch.object(glance.GlanceImageService, "create")
+    @mock.patch.object(volume_rpcapi.VolumeAPI, "copy_volume_to_image")
+    def test_copy_volume_to_image_vhd(
+            self, mock_copy_to_image, mock_create, mock_get_image_metadata):
+        """Test create image from volume with vhd disk format"""
+        volume, expected = self._create_volume_with_type()
+        mock_get_image_metadata.return_value = {}
+        mock_create.side_effect = self.fake_image_service_create
+        req = fakes.HTTPRequest.blank(
+            '/v2/fakeproject/volumes/%s/action' % volume.id)
+        body = self._get_os_volume_upload_image()
+        body['os-volume_upload_image']['force'] = True
+        body['os-volume_upload_image']['container_format'] = 'bare'
+        body['os-volume_upload_image']['disk_format'] = 'vhd'
+
+        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+
+        self.assertDictMatch(expected, res_dict)
+        vol_db = objects.Volume.get_by_id(self.context, volume.id)
+        self.assertEqual('uploading', vol_db.status)
+        self.assertEqual('available', vol_db.previous_status)
+
+    @mock.patch.object(volume_api.API, "get_volume_image_metadata")
+    @mock.patch.object(glance.GlanceImageService, "create")
+    @mock.patch.object(volume_rpcapi.VolumeAPI, "copy_volume_to_image")
+    def test_copy_volume_to_image_vhdx(
+            self, mock_copy_to_image, mock_create, mock_get_image_metadata):
+        """Test create image from volume with vhdx disk format"""
+        volume, expected = self._create_volume_with_type()
+        mock_get_image_metadata.return_value = {}
+        mock_create.side_effect = self.fake_image_service_create
+        req = fakes.HTTPRequest.blank(
+            '/v2/fakeproject/volumes/%s/action' % volume.id)
+        body = self._get_os_volume_upload_image()
+        body['os-volume_upload_image']['force'] = True
+        body['os-volume_upload_image']['container_format'] = 'bare'
+        body['os-volume_upload_image']['disk_format'] = 'vhdx'
+
+        res_dict = self.controller._volume_upload_image(req, volume.id, body)
+
+        self.assertDictMatch(expected, res_dict)
+        vol_db = objects.Volume.get_by_id(self.context, volume.id)
+        self.assertEqual('uploading', vol_db.status)
+        self.assertEqual('available', vol_db.previous_status)
