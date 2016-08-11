@@ -270,10 +270,6 @@ class FilterScheduler(driver.Scheduler):
         self._populate_retry(filter_properties,
                              request_spec['volume_properties'])
 
-        if resource_type is None:
-            msg = _("volume_type cannot be None")
-            raise exception.InvalidVolumeType(reason=msg)
-
         request_spec_dict = jsonutils.to_primitive(request_spec)
 
         filter_properties.update({'context': context,
@@ -427,7 +423,7 @@ class FilterScheduler(driver.Scheduler):
         if not weighed_hosts:
             LOG.warning(_LW('No weighed hosts found for volume '
                             'with properties: %s'),
-                        filter_properties['request_spec']['volume_type'])
+                        filter_properties['request_spec'].get('volume_type'))
             return None
         return self._choose_top_host(weighed_hosts, request_spec)
 

@@ -147,7 +147,7 @@ class FilterSchedulerTestCase(test_scheduler.SchedulerTestCase):
                                               'size': 1},
                         'volume_id': fake.VOLUME_ID}
         request_spec = objects.RequestSpec.from_primitives(request_spec)
-        self.assertRaises(exception.InvalidVolumeType,
+        self.assertRaises(exception.NoValidHost,
                           sched.schedule_create_volume,
                           fake_context,
                           request_spec,
