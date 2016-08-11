@@ -29,6 +29,8 @@ parser.add_argument("--format", default='str', choices=['str', 'dict'],
 # The tests pass ['docs'] on the cmdln, but it's never been used.
 parser.add_argument("output_list", default=None, nargs='?')
 
+CI_WIKI_ROOT = "https://wiki.openstack.org/wiki/ThirdPartySystems/"
+
 
 class Output(object):
 
@@ -71,6 +73,9 @@ def print_drivers(drivers, config_name, output):
         if driver.version:
             output.write('* Version: %s' % driver.version)
         output.write('* %s=%s' % (config_name, driver.class_fqn))
+        if driver.ci_wiki_name:
+            output.write('* CI info: %s%s' % (CI_WIKI_ROOT,
+                                              driver.ci_wiki_name))
         output.write('* Description:')
         format_description(driver.desc, output)
         output.write('')
