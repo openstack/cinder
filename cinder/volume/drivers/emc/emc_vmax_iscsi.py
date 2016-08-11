@@ -75,6 +75,7 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
               - Operations and timeout issues (bug #1538214)
         2.4.0 - EMC VMAX - locking SG for concurrent threads (bug #1554634)
               - SnapVX licensing checks for VMAX3 (bug #1587017)
+              - VMAX oversubscription Support (blueprint vmax-oversubscription)
 
     """
 
