@@ -1047,13 +1047,13 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
             # Raise an exception if we didn't find a suitable rbd image.
             try:
                 rbd_image = self.rbd.Image(client.ioctx, rbd_name)
-                image_size = rbd_image.size()
             except self.rbd.ImageNotFound:
                 kwargs = {'existing_ref': rbd_name,
                           'reason': 'Specified rbd image does not exist.'}
                 raise exception.ManageExistingInvalidReference(**kwargs)
-            finally:
-                rbd_image.close()
+
+            image_size = rbd_image.size()
+            rbd_image.close()
 
             # RBD image size is returned in bytes.  Attempt to parse
             # size as a float and round up to the next integer.
