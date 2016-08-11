@@ -879,7 +879,8 @@ class RBDTestCase(test.TestCase):
                     'auth_username': None,
                     'secret_type': 'ceph',
                     'secret_uuid': None,
-                    'volume_id': self.volume_a.id
+                    'volume_id': self.volume_a.id,
+                    'discard': True,
                 }
             }
             actual = self.driver.initialize_connection(self.volume_a, None)

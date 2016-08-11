@@ -831,6 +831,7 @@ class RBDDriver(driver.TransferVD, driver.ExtendVD,
                 'secret_type': 'ceph',
                 'secret_uuid': self.configuration.rbd_secret_uuid,
                 'volume_id': volume.id,
+                "discard": True,
             }
         }
         LOG.debug('connection data: %s', data)
