@@ -1275,6 +1275,10 @@ class KaminarioCinderDriverException(VolumeDriverException):
     message = _("KaminarioCinderDriver failure: %(reason)s")
 
 
+class KaminarioRetryableException(VolumeDriverException):
+    message = _("Kaminario retryable exception: %(reason)s")
+
+
 # Synology driver
 class SynoAPIHTTPError(CinderException):
     message = _("HTTP exit code: [%(code)s]")

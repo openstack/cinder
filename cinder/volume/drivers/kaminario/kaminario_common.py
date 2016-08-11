@@ -16,7 +16,7 @@
 
 import math
 import re
-import six
+import threading
 
 import eventlet
 from oslo_config import cfg
@@ -24,6 +24,8 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import units
 from oslo_utils import versionutils
+import requests
+import six
 
 import cinder
 from cinder import exception
@@ -33,7 +35,11 @@ from cinder import utils
 from cinder.volume.drivers.san import san
 from cinder.volume import utils as vol_utils
 
+krest = importutils.try_import("krest")
+
 K2_MIN_VERSION = '2.2.0'
+K2_LOCK_PREFIX = 'Kaminario'
+MAX_K2_RETRY = 5
 LOG = logging.getLogger(__name__)
 
 kaminario1_opts = [
@@ -54,6 +60,43 @@ kaminario2_opts = [
 
 CONF = cfg.CONF
 CONF.register_opts(kaminario1_opts)
+
+K2HTTPError = requests.exceptions.HTTPError
+K2_RETRY_ERRORS = ("MC_ERR_BUSY", "MC_ERR_BUSY_SPECIFIC",
+                   "MC_ERR_INPROGRESS", "MC_ERR_START_TIMEOUT")
+
+if krest:
+    class KrestWrap(krest.EndPoint):
+        def __init__(self, *args, **kwargs):
+            self.krestlock = threading.Lock()
+            super(KrestWrap, self).__init__(*args, **kwargs)
+
+        def _should_retry(self, err_code, err_msg):
+            if err_code == 400:
+                for er in K2_RETRY_ERRORS:
+                    if er in err_msg:
+                        LOG.debug("Retry ERROR: %d with status %s",
+                                  err_code, err_msg)
+                        return True
+            return False
+
+        @utils.retry(exception.KaminarioRetryableException,
+                     retries=MAX_K2_RETRY)
+        def _request(self, method, *args, **kwargs):
+            try:
+                LOG.debug("running through the _request wrapper...")
+                self.krestlock.acquire()
+                return super(KrestWrap, self)._request(method,
+                                                       *args, **kwargs)
+            except K2HTTPError as err:
+                err_code = err.response.status_code
+                err_msg = err.response.text
+                if self._should_retry(err_code, err_msg):
+                    raise exception.KaminarioRetryableException(
+                        reason=six.text_type(err_msg))
+                raise
+            finally:
+                self.krestlock.release()
 
 
 def kaminario_logger(func):
@@ -96,23 +139,25 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         self.configuration.append_config_values(kaminario2_opts)
         self.replica = None
         self._protocol = None
+        k2_lock_sfx = self.configuration.safe_get('volume_backend_name') or ''
+        self.k2_lock_name = "%s-%s" % (K2_LOCK_PREFIX, k2_lock_sfx)
 
     def check_for_setup_error(self):
-        if self.krest is None:
+        if krest is None:
             msg = _("Unable to import 'krest' python module.")
             LOG.error(msg)
             raise exception.KaminarioCinderDriverException(reason=msg)
         else:
             conf = self.configuration
-            self.client = self.krest.EndPoint(conf.san_ip,
-                                              conf.san_login,
-                                              conf.san_password,
-                                              ssl_validate=False)
+            self.client = KrestWrap(conf.san_ip,
+                                    conf.san_login,
+                                    conf.san_password,
+                                    ssl_validate=False)
             if self.replica:
-                self.target = self.krest.EndPoint(self.replica.backend_id,
-                                                  self.replica.login,
-                                                  self.replica.password,
-                                                  ssl_validate=False)
+                self.target = KrestWrap(self.replica.backend_id,
+                                        self.replica.login,
+                                        self.replica.password,
+                                        ssl_validate=False)
             v_rs = self.client.search("system/state")
             if hasattr(v_rs, 'hits') and v_rs.total != 0:
                 ver = v_rs.hits[0].rest_api_version
@@ -150,7 +195,6 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def do_setup(self, context):
         super(KaminarioCinderDriver, self).do_setup(context)
         self._check_ops()
-        self.krest = importutils.try_import("krest")
 
     @kaminario_logger
     def create_volume(self, volume):
@@ -647,7 +691,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         pass
 
     @kaminario_logger
-    def terminate_connection(self, volume, connector, **kwargs):
+    def terminate_connection(self, volume, connector):
         """Terminate connection of volume from host."""
         # Get volume object
         if type(volume).__name__ != 'RestObject':

@@ -17,6 +17,7 @@ import six
 
 from oslo_log import log as logging
 
+from cinder import coordination
 from cinder import exception
 from cinder.i18n import _, _LE
 from cinder import interface
@@ -50,6 +51,7 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
         self._protocol = 'iSCSI'
 
     @kaminario_logger
+    @coordination.synchronized('{self.k2_lock_name}')
     def initialize_connection(self, volume, connector):
         """Attach K2 volume to host."""
         # Get target_portal and target iqn.
@@ -62,6 +64,12 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
                          "target_portal": iscsi_portal,
                          "target_lun": lun,
                          "target_discovered": True}}
+
+    @kaminario_logger
+    @coordination.synchronized('{self.k2_lock_name}')
+    def terminate_connection(self, volume, connector, **kwargs):
+        super(KaminarioISCSIDriver, self).terminate_connection(volume,
+                                                               connector)
 
     @kaminario_logger
     def get_target_info(self, volume):
