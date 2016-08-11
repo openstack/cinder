@@ -318,36 +318,36 @@ def check_for_odirect_support(src, dest, flag='oflag=direct'):
 def _copy_volume_with_path(prefix, srcstr, deststr, size_in_m, blocksize,
                            sync=False, execute=utils.execute, ionice=None,
                            sparse=False):
+    cmd = prefix[:]
+
+    if ionice:
+        cmd.extend(('ionice', ionice))
+
+    blocksize, count = _calculate_count(size_in_m, blocksize)
+    cmd.extend(('dd', 'if=%s' % srcstr, 'of=%s' % deststr,
+                'count=%d' % count, 'bs=%s' % blocksize))
+
     # Use O_DIRECT to avoid thrashing the system buffer cache
-    extra_flags = []
+    odirect = False
     if check_for_odirect_support(srcstr, deststr, 'iflag=direct'):
-        extra_flags.append('iflag=direct')
+        cmd.append('iflag=direct')
+        odirect = True
 
     if check_for_odirect_support(srcstr, deststr, 'oflag=direct'):
-        extra_flags.append('oflag=direct')
+        cmd.append('oflag=direct')
+        odirect = True
 
     # If the volume is being unprovisioned then
     # request the data is persisted before returning,
     # so that it's not discarded from the cache.
     conv = []
-    if sync and not extra_flags:
+    if sync and not odirect:
         conv.append('fdatasync')
     if sparse:
         conv.append('sparse')
     if conv:
         conv_options = 'conv=' + ",".join(conv)
-        extra_flags.append(conv_options)
-
-    blocksize, count = _calculate_count(size_in_m, blocksize)
-
-    cmd = ['dd', 'if=%s' % srcstr, 'of=%s' % deststr,
-           'count=%d' % count, 'bs=%s' % blocksize]
-    cmd.extend(extra_flags)
-
-    if ionice is not None:
-        cmd = ['ionice', ionice] + cmd
-
-    cmd = prefix + cmd
+        cmd.append(conv_options)
 
     # Perform the copy
     start_time = timeutils.utcnow()
