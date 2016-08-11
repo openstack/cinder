@@ -10,9 +10,9 @@
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev241\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev267\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-10 04:08+0000\n"
+"POT-Creation-Date: 2016-08-11 03:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -46,6 +46,10 @@ msgstr "aber die Größe ist jetzt %d."
 
 msgid " or "
 msgstr "oder"
+
+#, python-format
+msgid "%(attr)s is not set."
+msgstr "%(attr)s ist nicht festgelegt."
 
 #, python-format
 msgid ""
@@ -362,6 +366,10 @@ msgstr ""
 
 msgid "API key is missing for CloudByte driver."
 msgstr "API-Schlüssel für CloudByte-Treiber fehlt."
+
+#, python-format
+msgid "API response: %(response)s"
+msgstr "API-Antwort: %(response)s"
 
 #, python-format
 msgid "API response: %s"
@@ -6884,9 +6892,6 @@ msgstr "Schattenkopie von Datenträger im Status %s nicht unterstützt."
 msgid "Snapshot res \"%s\" that is not deployed anywhere?"
 msgstr "Schattenkopieressource \"%s\", die an keiner Stelle implementiert ist?"
 
-msgid "Snapshot size must be multiple of 1 GB."
-msgstr "Größe der Schattenkopie muss Vielfaches von 1 GB sein."
-
 #, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr ""
@@ -8193,6 +8198,9 @@ msgstr ""
 
 msgid "Unexpected response from Nimble API"
 msgstr "Unerwartete Antwort von Nimble-API"
+
+msgid "Unexpected response from Tegile IntelliFlash API"
+msgstr "Unerwartete Antwort von Tegile IntelliFlash-API"
 
 msgid "Unexpected status code"
 msgstr "Unerwarteter Statuscode"
@@ -10324,9 +10332,6 @@ msgstr ""
 #, python-format
 msgid "volume size %d is invalid."
 msgstr "Die Datenträgergröße %d ist ungültig."
-
-msgid "volume_type cannot be None"
-msgstr "'volume_type' darf nicht 'None' sein."
 
 msgid ""
 "volume_type must be provided when creating a volume in a consistency group."
