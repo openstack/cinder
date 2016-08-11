@@ -15,9 +15,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev241\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev267\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-10 04:08+0000\n"
+"POT-Creation-Date: 2016-08-11 03:13+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -51,6 +51,10 @@ msgstr "但现在大小为 %d。"
 
 msgid " or "
 msgstr "或者"
+
+#, python-format
+msgid "%(attr)s is not set."
+msgstr "未设置 %(attr)s。"
 
 #, python-format
 msgid ""
@@ -338,6 +342,10 @@ msgstr ""
 
 msgid "API key is missing for CloudByte driver."
 msgstr "CloudByte 驱动程序缺少 API 键。"
+
+#, python-format
+msgid "API response: %(response)s"
+msgstr "API 响应：%(response)s"
 
 #, python-format
 msgid "API response: %s"
@@ -6037,9 +6045,6 @@ msgstr "不支持对处于以下状态的卷生成快照：%s。"
 msgid "Snapshot res \"%s\" that is not deployed anywhere?"
 msgstr "未在任何位置部署的快照资源“%s”？"
 
-msgid "Snapshot size must be multiple of 1 GB."
-msgstr "快照大小必须是 1 GB 的倍数。"
-
 #, python-format
 msgid "Snapshot status %(cur)s not allowed for update_snapshot_status"
 msgstr "对于 update_snapshot_status，不允许快照状态 %(cur)s"
@@ -7140,6 +7145,9 @@ msgstr "意外输出。需要 [%(expected)s]，但接收到 [%(output)s]"
 
 msgid "Unexpected response from Nimble API"
 msgstr "来自 Nimble API 的意外响应"
+
+msgid "Unexpected response from Tegile IntelliFlash API"
+msgstr "Tegile IntelliFlash API 给出了意外响应"
 
 msgid "Unexpected status code"
 msgstr "意外的状态码"
@@ -9052,9 +9060,6 @@ msgstr "卷大小 %(volume_size)d 太小，无法复原大小为 %(size)d 的备
 #, python-format
 msgid "volume size %d is invalid."
 msgstr "卷大小 %d 无效。"
-
-msgid "volume_type cannot be None"
-msgstr "volume_type 不能为 None"
 
 msgid ""
 "volume_type must be provided when creating a volume in a consistency group."
