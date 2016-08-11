@@ -24,7 +24,7 @@ from oslo_log import log as logging
 from xml.etree import ElementTree as ETree
 
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ def _xml_read(root, element, check=None):
             return ""
         raise exception.ParameterNotFound(param=element)
 
-    LOG.debug(_LI("%(element)s: %(val)s"),
+    LOG.debug("%(element)s: %(val)s",
               {'element': element,
                'val': val if element != 'password' else '***'})
 
