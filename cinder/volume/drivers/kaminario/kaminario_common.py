@@ -486,7 +486,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
 
         LOG.debug("Searching and deleting snapshots for volume groups:"
                   "%(vg1)s, %(vg2)s in K2.", {'vg1': vg_name, 'vg2': rvg_name})
-        vg = self.target.search('volume_groups', name=vg_name).hits
+        vg = self.client.search('volume_groups', name=vg_name).hits
         rvg = self.target.search('volume_groups', name=rvg_name).hits
         snaps = self.client.search('snapshots', volume_group=vg).hits
         for s in snaps:
@@ -637,9 +637,9 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         return "cview-{0}".format(vid)
 
     @kaminario_logger
-    def get_rep_name(self, sname):
-        """Return the replication session name."""
-        return "r{0}".format(sname)
+    def get_rep_name(self, name):
+        """Return the corresponding replication names."""
+        return "r{0}".format(name)
 
     @kaminario_logger
     def _delete_host_by_name(self, name):
@@ -758,7 +758,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 'kaminario:thin_prov_type')
             if specs_val == 'nodedup':
                 return False
-            elif CONF.kaminario_nodedup_substring in vol_type.name:
+            elif CONF.kaminario_nodedup_substring in vol_type.get('name'):
                 LOG.info(_LI("'kaminario_nodedup_substring' option is "
                              "deprecated in favour of 'kaminario:thin_prov_"
                              "type' in extra-specs and will be removed in "
@@ -779,12 +779,12 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         return replica
 
     def _get_replica_status(self, vg_name):
-        status = False
-        rvg = self.client.search("replication/peer_volume_groups",
-                                 name=vg_name)
-        if rvg.total != 0:
-            status = True
-        return status
+        vg = self.client.search("volume_groups", name=vg_name).hits[0]
+        if self.client.search("replication/sessions",
+                              local_volume_group=vg).total != 0:
+            return True
+        else:
+            return False
 
     def manage_existing(self, volume, existing_ref):
         vol_name = existing_ref['source-name']
@@ -885,7 +885,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         LOG.debug("Searching volume with name: %(name)s",
                   {'name': vol_name})
         vol = self.client.search("volumes", name=vol_name).hits[0]
-        self._create_volume_replica(volume, vg, vol, 500)
+        self._create_volume_replica(volume, vg, vol, self.replica.rpo)
 
     def _delete_replication(self, volume):
         vg_name = self.get_volume_group_name(volume.id)
