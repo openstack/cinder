@@ -41,14 +41,31 @@ LOG = logging.getLogger(__name__)
 iSCSI_OPTS = [
     cfg.StrOpt('hds_hnas_iscsi_config_file',
                default='/opt/hds/hnas/cinder_iscsi_conf.xml',
-               help='Configuration file for HNAS iSCSI cinder plugin')]
+               help='Legacy configuration file for HNAS iSCSI Cinder '
+                    'plugin. This is not needed if you fill all '
+                    'configuration on cinder.conf',
+               deprecated_for_removal=True),
+    cfg.BoolOpt('hnas_chap_enabled',
+                default=True,
+                help='Whether the chap authentication is enabled in the '
+                     'iSCSI target or not.'),
+    cfg.IPOpt('hnas_svc0_iscsi_ip',
+              help='Service 0 iSCSI IP'),
+    cfg.IPOpt('hnas_svc1_iscsi_ip',
+              help='Service 1 iSCSI IP'),
+    cfg.IPOpt('hnas_svc2_iscsi_ip',
+              help='Service 2 iSCSI IP'),
+    cfg.IPOpt('hnas_svc3_iscsi_ip',
+              help='Service 3 iSCSI IP')
+]
+
 
 CONF = cfg.CONF
 CONF.register_opts(iSCSI_OPTS)
 
-HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc',
-                       'chap_enabled': 'True',
-                       'ssh_port': '22'}
+HNAS_DEFAULT_CONFIG = {'ssc_cmd': 'ssc',
+                       'chap_enabled': True,
+                       'ssh_port': 22}
 MAX_HNAS_ISCSI_TARGETS = 32
 MAX_HNAS_LUS_PER_TARGET = 32
 
@@ -75,7 +92,8 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                        Removed the option to use local SSC (ssh_enabled=False)
                        Updated to use versioned objects
                        Changed the class name to HNASISCSIDriver
-    """
+                       Deprecated XML config file
+"""
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Hitachi_HNAS_CI"
@@ -83,18 +101,29 @@ class HNASISCSIDriver(driver.ISCSIDriver):
     def __init__(self, *args, **kwargs):
         """Initializes and reads different config parameters."""
         self.configuration = kwargs.get('configuration', None)
-
         self.context = {}
+        self.config = {}
+
         service_parameters = ['volume_type', 'hdp', 'iscsi_ip']
-        optional_parameters = ['hnas_cmd', 'cluster_admin_ip0',
+        optional_parameters = ['ssc_cmd', 'cluster_admin_ip0',
                                'chap_enabled']
 
         if self.configuration:
+            self.configuration.append_config_values(
+                hnas_utils.drivers_common_opts)
             self.configuration.append_config_values(iSCSI_OPTS)
-            self.config = hnas_utils.read_config(
-                self.configuration.hds_hnas_iscsi_config_file,
-                service_parameters,
-                optional_parameters)
+
+            # Trying to get HNAS configuration from cinder.conf
+            self.config = hnas_utils.read_cinder_conf(
+                self.configuration, 'iscsi')
+
+            # If HNAS configuration are not set on cinder.conf, tries to use
+            # the deprecated XML configuration file
+            if not self.config:
+                self.config = hnas_utils.read_xml_config(
+                    self.configuration.hds_hnas_iscsi_config_file,
+                    service_parameters,
+                    optional_parameters)
 
         super(HNASISCSIDriver, self).__init__(*args, **kwargs)
         self.backend = hnas_backend.HNASSSHBackend(self.config)
@@ -185,7 +214,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         # see if the client supports CHAP authentication and if
         # iscsi_secret has already been set, retrieve the secret if
         # available, otherwise generate and store
-        if self.config['chap_enabled'] == 'True':
+        if self.config['chap_enabled']:
             # CHAP support is enabled. Tries to get the target secret.
             if 'iscsi_secret' not in tgt_info.keys():
                 LOG.info(_LI("Retrieving secret for service: %(tgt)s."),
@@ -217,7 +246,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
             self.backend.create_target(tgt_alias, fs_label,
                                        tgt_info['iscsi_secret'])
         elif (tgt['tgt']['secret'] == "" and
-                self.config['chap_enabled'] == 'True'):
+                self.config['chap_enabled']):
             # The target exists, has no secret and chap is enabled
             self.backend.set_target_secret(tgt_alias, fs_label,
                                            tgt_info['iscsi_secret'])
@@ -482,7 +511,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         properties['volume_id'] = volume.id
         properties['auth_username'] = connector['initiator']
 
-        if self.config['chap_enabled'] == 'True':
+        if self.config['chap_enabled']:
             properties['auth_method'] = 'CHAP'
             properties['auth_password'] = secret
 

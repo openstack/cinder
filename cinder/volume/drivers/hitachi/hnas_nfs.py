@@ -45,12 +45,16 @@ LOG = logging.getLogger(__name__)
 NFS_OPTS = [
     cfg.StrOpt('hds_hnas_nfs_config_file',
                default='/opt/hds/hnas/cinder_nfs_conf.xml',
-               help='Configuration file for HNAS NFS cinder plugin'), ]
+               help='Legacy configuration file for HNAS NFS Cinder plugin. '
+                    'This is not needed if you fill all configuration on '
+                    'cinder.conf',
+               deprecated_for_removal=True)
+]
 
 CONF = cfg.CONF
 CONF.register_opts(NFS_OPTS)
 
-HNAS_DEFAULT_CONFIG = {'hnas_cmd': 'ssc', 'ssh_port': '22'}
+HNAS_DEFAULT_CONFIG = {'ssc_cmd': 'ssc', 'ssh_port': '22'}
 
 
 @interface.volumedriver
@@ -74,6 +78,7 @@ class HNASNFSDriver(nfs.NfsDriver):
                        Removed the option to use local SSC (ssh_enabled=False)
                        Updated to use versioned objects
                        Changed the class name to HNASNFSDriver
+                       Deprecated XML config file
     """
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Hitachi_HNAS_CI"
@@ -84,14 +89,25 @@ class HNASNFSDriver(nfs.NfsDriver):
         self.configuration = kwargs.get('configuration', None)
 
         service_parameters = ['volume_type', 'hdp']
-        optional_parameters = ['hnas_cmd', 'cluster_admin_ip0']
+        optional_parameters = ['ssc_cmd', 'cluster_admin_ip0']
 
         if self.configuration:
+            self.configuration.append_config_values(
+                hnas_utils.drivers_common_opts)
             self.configuration.append_config_values(NFS_OPTS)
-            self.config = hnas_utils.read_config(
-                self.configuration.hds_hnas_nfs_config_file,
-                service_parameters,
-                optional_parameters)
+            self.config = {}
+
+            # Trying to get HNAS configuration from cinder.conf
+            self.config = hnas_utils.read_cinder_conf(
+                self.configuration, 'nfs')
+
+            # If HNAS configuration are not set on cinder.conf, tries to use
+            # the deprecated XML configuration file
+            if not self.config:
+                self.config = hnas_utils.read_xml_config(
+                    self.configuration.hds_hnas_nfs_config_file,
+                    service_parameters,
+                    optional_parameters)
 
         super(HNASNFSDriver, self).__init__(*args, **kwargs)
         self.backend = hnas_backend.HNASSSHBackend(self.config)

@@ -109,6 +109,8 @@ from cinder.volume.drivers.hitachi import hnas_iscsi as \
     cinder_volume_drivers_hitachi_hnasiscsi
 from cinder.volume.drivers.hitachi import hnas_nfs as \
     cinder_volume_drivers_hitachi_hnasnfs
+from cinder.volume.drivers.hitachi import hnas_utils as \
+    cinder_volume_drivers_hitachi_hnasutils
 from cinder.volume.drivers.hpe import hpe_3par_common as \
     cinder_volume_drivers_hpe_hpe3parcommon
 from cinder.volume.drivers.hpe import hpe_lefthand_iscsi as \
@@ -208,6 +210,7 @@ def list_opts():
             itertools.chain(
                 cinder_backup_driver.service_opts,
                 [cinder_cmd_volume.cluster_opt],
+                cinder_volume_drivers_hitachi_hnasutils.drivers_common_opts,
                 cinder_api_common.api_common_opts,
                 cinder_backup_drivers_ceph.service_opts,
                 cinder_volume_drivers_smbfs.volume_opts,
