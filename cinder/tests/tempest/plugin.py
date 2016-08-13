@@ -17,6 +17,7 @@ import cinder
 import os
 
 from cinder.tests.tempest import config as project_config
+
 from tempest import config
 from tempest.test_discover import plugins
 
@@ -33,6 +34,15 @@ class CinderTempestPlugin(plugins.TempestPlugin):
         config.register_opt_group(
             conf, project_config.service_available_group,
             project_config.ServiceAvailableGroup)
+        config.register_opt_group(
+            conf, project_config.cinder_group,
+            project_config.CinderGroup
+        )
 
     def get_opt_lists(self):
-        pass
+        return [
+            (project_config.service_available_group.name,
+             project_config.ServiceAvailableGroup),
+            (project_config.cinder_group.name,
+             project_config.CinderGroup),
+        ]

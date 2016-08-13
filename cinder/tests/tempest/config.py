@@ -24,3 +24,14 @@ ServiceAvailableGroup = [
                 default=True,
                 help="Whether or not cinder is expected to be available"),
 ]
+
+# Use a new config group specific to the cinder in-tree tests to avoid
+# any naming confusion with the upstream tempest config options.
+cinder_group = cfg.OptGroup(name='cinder',
+                            title='Cinder Tempest Config Options')
+
+CinderGroup = [
+    cfg.BoolOpt('consistency_group',
+                default=False,
+                help='Enable to run Cinder volume consistency group tests'),
+]
