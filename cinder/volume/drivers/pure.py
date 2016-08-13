@@ -1654,7 +1654,7 @@ class PureFCDriver(PureBaseVolumeDriver, driver.FibreChannelDriver):
         hosts = array.list_hosts()
         for host in hosts:
             for wwn in connector["wwpns"]:
-                if wwn in str(host["wwn"]).lower():
+                if wwn.lower() in str(host["wwn"]).lower():
                     return host
 
     @staticmethod

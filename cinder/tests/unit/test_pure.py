@@ -122,7 +122,7 @@ SNAPSHOT_WITH_CGROUP = SNAPSHOT.copy()
 SNAPSHOT_WITH_CGROUP['cgsnapshot_id'] = \
     "4a2f7e3a-312a-40c5-96a8-536b8a0fe075"
 INITIATOR_IQN = "iqn.1993-08.org.debian:01:222"
-INITIATOR_WWN = "5001500150015081"
+INITIATOR_WWN = "5001500150015081abc"
 ISCSI_CONNECTOR = {"initiator": INITIATOR_IQN, "host": HOSTNAME}
 FC_CONNECTOR = {"wwpns": {INITIATOR_WWN}, "host": HOSTNAME}
 TARGET_IQN = "iqn.2010-06.com.purestorage:flasharray.12345abc"
@@ -132,7 +132,7 @@ INITIATOR_TARGET_MAP =\
     {
         # _build_initiator_target_map() calls list(set()) on the list,
         # we must also call list(set()) to get the exact same order
-        '5001500150015081': list(set(FC_WWNS)),
+        '5001500150015081abc': list(set(FC_WWNS)),
     }
 DEVICE_MAPPING =\
     {
@@ -2220,6 +2220,16 @@ class PureFCDriverTestCase(PureDriverTestCase):
                                      self.driver._get_host,
                                      self.array,
                                      FC_CONNECTOR)
+
+    def test_get_host_uppercase_wwpn(self):
+        expected_host = PURE_HOST.copy()
+        expected_host['wwn'] = [INITIATOR_WWN]
+        self.array.list_hosts.return_value = [expected_host]
+        connector = FC_CONNECTOR.copy()
+        connector['wwpns'] = [wwpn.upper() for wwpn in FC_CONNECTOR['wwpns']]
+
+        actual_result = self.driver._get_host(self.array, connector)
+        self.assertEqual(expected_host, actual_result)
 
     @mock.patch(FC_DRIVER_OBJ + "._connect")
     def test_initialize_connection(self, mock_connection):
