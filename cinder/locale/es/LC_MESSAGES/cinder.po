@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev267\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev287\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-11 03:13+0000\n"
+"POT-Creation-Date: 2016-08-12 21:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -961,10 +961,6 @@ msgid ""
 msgstr ""
 "No se puede importar la instantánea %s en Cinder. El estado de la "
 "instantánea no es normal o el estado de ejecución no es en línea."
-
-#, python-format
-msgid "Can't open config file: %s"
-msgstr "No se puede abrir el archivo de configuración: %s"
 
 msgid "Can't parse backup record."
 msgstr "No se puede analizar el registro de copia de seguridad."

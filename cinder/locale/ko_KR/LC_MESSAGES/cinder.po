@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev267\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev287\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-11 03:13+0000\n"
+"POT-Creation-Date: 2016-08-12 21:49+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -883,10 +883,6 @@ msgid ""
 msgstr ""
 "스냅샷 %s을(를) Cinder에 가져올 수 없습니다. 스냅샷 상태가 정상이 아니거나 실"
 "행 상태가 온라인이 아닙니다."
-
-#, python-format
-msgid "Can't open config file: %s"
-msgstr "구성 파일을 열 수 없음: %s"
 
 msgid "Can't parse backup record."
 msgstr "백업 레코드를 구문 분석할 수 없습니다. "
