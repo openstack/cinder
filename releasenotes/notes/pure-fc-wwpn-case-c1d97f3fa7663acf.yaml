@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fix issue with PureFCDriver where partially case sensitive comparison of
+    connector wwpn could cause initialize_connection to fail when attempting
+    to create duplicate Purity host.
