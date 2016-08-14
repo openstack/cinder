@@ -20,8 +20,10 @@ from cinder.api.openstack import api_version_request as api_version
 from cinder.api.v3 import volumes
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume.api import API as vol_get
 
@@ -145,3 +147,33 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.index(req)
         volumes = res_dict['volumes']
         self.assertEqual(2, len(volumes))
+
+    def _fake_volumes_summary_request(self, version='3.12'):
+        req = fakes.HTTPRequest.blank('/v3/volumes/summary')
+        req.headers = {'OpenStack-API-Version': 'volume ' + version}
+        req.api_version_request = api_version.APIVersionRequest(version)
+        return req
+
+    def test_volumes_summary_in_unsupport_version(self):
+        """Function call to test summary volumes API in unsupported version"""
+        req = self._fake_volumes_summary_request(version='3.7')
+        self.assertRaises(exception.VersionNotFoundForAPIMethod,
+                          self.controller.summary, req)
+
+    def test_volumes_summary_in_supported_version(self):
+        """Function call to test the summary volumes API for version v3."""
+        req = self._fake_volumes_summary_request()
+        res_dict = self.controller.summary(req)
+        expected = {'volume-summary': {'total_size': 0.0, 'total_count': 0}}
+        self.assertEqual(expected, res_dict)
+
+        vol = v2_test_volumes.VolumeApiTest._vol_in_request_body(
+            availability_zone="nova")
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v3/volumes')
+        res_dict = self.controller.create(req, body)
+
+        req = self._fake_volumes_summary_request()
+        res_dict = self.controller.summary(req)
+        expected = {'volume-summary': {'total_size': 1.0, 'total_count': 1}}
+        self.assertEqual(expected, res_dict)

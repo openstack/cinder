@@ -174,3 +174,7 @@ user documentation.
 3.11
 ----
   Added group types and group specs API.
+
+3.12
+----
+  Added volumes/summary API.

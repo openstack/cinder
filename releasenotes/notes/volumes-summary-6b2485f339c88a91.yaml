@@ -1,0 +1,4 @@
+---
+features:
+  - A new API to display the volumes summary. This summary API displays the
+    total number of volumes and total volume's size in GB.

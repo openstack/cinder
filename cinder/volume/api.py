@@ -523,6 +523,24 @@ class API(base.Base):
         LOG.info(_LI("Get all volumes completed successfully."))
         return volumes
 
+    def get_volume_summary(self, context, filters=None):
+        check_policy(context, 'get_all')
+
+        if filters is None:
+            filters = {}
+
+        allTenants = utils.get_bool_param('all_tenants', filters)
+
+        if context.is_admin and allTenants:
+            del filters['all_tenants']
+            volumes = objects.VolumeList.get_volume_summary_all(context)
+        else:
+            volumes = objects.VolumeList.get_volume_summary_by_project(
+                context, context.project_id)
+
+        LOG.info(_LI("Get summary completed successfully."))
+        return volumes
+
     def get_snapshot(self, context, snapshot_id):
         check_policy(context, 'get_snapshot')
         snapshot = objects.Snapshot.get_by_id(context, snapshot_id)

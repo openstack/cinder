@@ -128,7 +128,8 @@ class VolumeApiTest(test.TestCase):
         res_dict = self.controller.detail(req)
         self.assertTrue(mock_validate.called)
 
-    def _vol_in_request_body(self,
+    @classmethod
+    def _vol_in_request_body(cls,
                              size=stubs.DEFAULT_VOL_SIZE,
                              name=stubs.DEFAULT_VOL_NAME,
                              description=stubs.DEFAULT_VOL_DESCRIPTION,
