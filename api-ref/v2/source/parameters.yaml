@@ -1055,6 +1055,12 @@ os-reset_status:
   in: body
   required: true
   type: object
+OS-SCH-HNT:scheduler_hints:
+  description: |
+    The dictionary of data to send to the scheduler.
+  in: body
+  required: false
+  type: object
 os-set_image_metadata:
   description: |
     The ``os-set_image_metadata`` action.
@@ -1235,12 +1241,6 @@ restore:
     A ``restore`` object.
   in: body
   required: true
-  type: object
-OS-SCH-HNT:scheduler_hints:
-  description: |
-    The dictionary of data to send to the scheduler.
-  in: body
-  required: false
   type: object
 security_group_rules:
   description: |
