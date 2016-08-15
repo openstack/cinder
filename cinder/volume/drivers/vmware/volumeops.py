@@ -459,6 +459,7 @@ class VMwareVolumeOps(object):
                                         'vmFolder')
 
     def _get_child_folder(self, parent_folder, child_folder_name):
+        LOG.debug("Finding child folder: %s.", child_folder_name)
         # Get list of child entities for the parent folder
         prop_val = self._session.invoke_api(vim_util, 'get_object_property',
                                             self._session.vim, parent_folder,
@@ -475,40 +476,32 @@ class VMwareVolumeOps(object):
                 if (child_entity_name
                     and (urllib.parse.unquote(child_entity_name)
                          == child_folder_name)):
-                    LOG.debug("Child folder: %s exists.", child_folder_name)
                     return child_entity
 
     def create_folder(self, parent_folder, child_folder_name):
-        """Creates child folder with given name under the given parent folder.
+        """Creates child folder under the given parent folder.
 
-        The method first checks if a child folder already exists, if it does,
-        then it returns a moref for the folder, else it creates one and then
-        return the moref.
-
-        :param parent_folder: Reference to the folder entity
+        :param parent_folder: Reference to the parent folder
         :param child_folder_name: Name of the child folder
-        :return: Reference to the child folder with input name if it already
-                 exists, else create one and return the reference
+        :return: Reference to the child folder
         """
         LOG.debug("Creating folder: %(child_folder_name)s under parent "
                   "folder: %(parent_folder)s.",
                   {'child_folder_name': child_folder_name,
                    'parent_folder': parent_folder})
 
-        child_folder = self._get_child_folder(parent_folder, child_folder_name)
-        if not child_folder:
-            # Need to create the child folder.
-            try:
-                child_folder = self._session.invoke_api(self._session.vim,
-                                                        'CreateFolder',
-                                                        parent_folder,
-                                                        name=child_folder_name)
-                LOG.debug("Created child folder: %s.", child_folder)
-            except exceptions.DuplicateName:
-                # Another thread is trying to create the same folder, ignore
-                # the exception.
-                child_folder = self._get_child_folder(parent_folder,
-                                                      child_folder_name)
+        try:
+            child_folder = self._session.invoke_api(self._session.vim,
+                                                    'CreateFolder',
+                                                    parent_folder,
+                                                    name=child_folder_name)
+            LOG.debug("Created child folder: %s.", child_folder)
+        except exceptions.DuplicateName:
+            # Another thread is trying to create the same folder, ignore
+            # the exception.
+            LOG.debug('Folder: %s already exists.', child_folder_name)
+            child_folder = self._get_child_folder(parent_folder,
+                                                  child_folder_name)
         return child_folder
 
     def create_vm_inventory_folder(self, datacenter, path_comp):

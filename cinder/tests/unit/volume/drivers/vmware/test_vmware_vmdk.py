@@ -147,12 +147,20 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             project_id)
         return fake_volume.fake_volume_obj(self._context, **vol)
 
-    @mock.patch.object(VMDK_DRIVER, '_select_ds_for_volume')
-    def test_verify_volume_creation(self, select_ds_for_volume):
-        volume = self._create_volume_dict()
+    @mock.patch.object(VMDK_DRIVER, '_get_disk_type')
+    @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
+    @mock.patch.object(VMDK_DRIVER, 'ds_sel')
+    def test_verify_volume_creation(self, ds_sel, get_storage_profile,
+                                    get_disk_type):
+        profile_name = mock.sentinel.profile_name
+        get_storage_profile.return_value = profile_name
+
+        volume = self._create_volume_obj()
         self._driver._verify_volume_creation(volume)
 
-        select_ds_for_volume.assert_called_once_with(volume)
+        get_disk_type.assert_called_once_with(volume)
+        get_storage_profile.assert_called_once_with(volume)
+        ds_sel.get_profile_id.assert_called_once_with(profile_name)
 
     @mock.patch.object(VMDK_DRIVER, '_verify_volume_creation')
     def test_create_volume(self, verify_volume_creation):
@@ -1033,10 +1041,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     @mock.patch.object(VMDK_DRIVER, '_select_datastore')
+    @mock.patch.object(VMDK_DRIVER, '_get_dc')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     def test_retype_with_diff_extra_spec_and_vol_snapshot(
             self,
             get_volume_group_folder,
+            get_dc,
             select_datastore,
             ds_sel, get_extra_spec_storage_profile,
             get_storage_profile,
@@ -1069,6 +1079,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         summary = mock.Mock(datastore=new_datastore)
         select_datastore.return_value = (host, rp, summary)
 
+        dc = mock.sentinel.dc
+        get_dc.return_value = dc
+
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
 
@@ -1088,6 +1101,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
              hub.DatastoreSelector.HARD_ANTI_AFFINITY_DS: ['ds1'],
              hub.DatastoreSelector.PROFILE_NAME: new_profile})
+        get_dc.assert_called_once_with(rp)
+        get_volume_group_folder.assert_called_once_with(dc,
+                                                        volume['project_id'])
         vops.relocate_backing.assert_called_once_with(
             backing, new_datastore, rp, host, new_disk_type)
         vops.move_backing_to_folder.assert_called_once_with(backing, folder)
@@ -1104,6 +1120,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     @mock.patch.object(VMDK_DRIVER, '_get_extra_spec_storage_profile')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     @mock.patch.object(VMDK_DRIVER, '_select_datastore')
+    @mock.patch.object(VMDK_DRIVER, '_get_dc')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch('oslo_utils.uuidutils.generate_uuid')
     @mock.patch.object(VMDK_DRIVER, '_delete_temp_backing')
@@ -1112,6 +1129,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
             delete_temp_backing,
             generate_uuid,
             get_volume_group_folder,
+            get_dc,
             select_datastore,
             ds_sel,
             get_extra_spec_storage_profile,
@@ -1145,6 +1163,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         summary = mock.Mock(datastore=datastore)
         select_datastore.return_value = (host, rp, summary)
 
+        dc = mock.sentinel.dc
+        get_dc.return_value = dc
+
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
 
@@ -1176,6 +1197,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         select_datastore.assert_called_once_with(
             {hub.DatastoreSelector.SIZE_BYTES: volume['size'] * units.Gi,
              hub.DatastoreSelector.PROFILE_NAME: new_profile})
+        get_dc.assert_called_once_with(rp)
+        get_volume_group_folder.assert_called_once_with(dc,
+                                                        volume['project_id'])
         vops.clone_backing.assert_called_once_with(
             volume['name'], backing, None, volumeops.FULL_CLONE_TYPE,
             datastore, disk_type=new_disk_type, host=host, resource_pool=rp,
@@ -1634,13 +1658,34 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         validate_vc_version.assert_called_once_with(vc_version)
         get_pbm_wsdl_loc.assert_called_once_with(ver_str)
 
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    def test_get_dc(self, vops):
+        dc_1 = mock.sentinel.dc_1
+        dc_2 = mock.sentinel.dc_2
+        vops.get_dc.side_effect = [dc_1, dc_2]
+
+        # cache miss
+        rp_1 = mock.Mock(value='rp-1')
+        rp_2 = mock.Mock(value='rp-2')
+        self.assertEqual(dc_1, self._driver._get_dc(rp_1))
+        self.assertEqual(dc_2, self._driver._get_dc(rp_2))
+        self.assertDictMatch({'rp-1': dc_1, 'rp-2': dc_2},
+                             self._driver._dc_cache)
+
+        # cache hit
+        self.assertEqual(dc_1, self._driver._get_dc(rp_1))
+        self.assertEqual(dc_2, self._driver._get_dc(rp_2))
+
+        vops.get_dc.assert_has_calls([mock.call(rp_1), mock.call(rp_2)])
+
     @mock.patch.object(VMDK_DRIVER, '_get_storage_profile')
     @mock.patch.object(VMDK_DRIVER, '_select_datastore')
+    @mock.patch.object(VMDK_DRIVER, '_get_dc')
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @ddt.data(None, {vmdk.CREATE_PARAM_DISK_SIZE: 2 * VOL_SIZE})
     def test_select_ds_for_volume(
-            self, create_params, get_volume_group_folder, vops,
+            self, create_params, get_volume_group_folder, vops, get_dc,
             select_datastore, get_storage_profile):
 
         profile = mock.sentinel.profile
@@ -1652,7 +1697,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         select_datastore.return_value = (host, rp, summary)
 
         dc = mock.sentinel.dc
-        vops.get_dc.return_value = dc
+        get_dc.return_value = dc
 
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
@@ -1669,7 +1714,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         exp_req = {hub.DatastoreSelector.SIZE_BYTES: exp_size,
                    hub.DatastoreSelector.PROFILE_NAME: profile}
         select_datastore.assert_called_once_with(exp_req, host)
-        vops.get_dc.assert_called_once_with(rp)
+        get_dc.assert_called_once_with(rp)
         get_volume_group_folder.assert_called_once_with(dc, vol['project_id'])
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
@@ -2491,10 +2536,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self.assertFalse(vops.relocate_backing.called)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_dc')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     def test_relocate_backing(
-            self, ds_sel, get_volume_group_folder, vops):
+            self, ds_sel, get_volume_group_folder, get_dc, vops):
         volume = {'name': 'vol-1', 'size': 1,
                   'project_id': '63c19a12292549818c09946a5e59ddaf'}
 
@@ -2509,11 +2555,17 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         summary = mock.Mock(datastore=datastore)
         ds_sel.select_datastore.return_value = (host, rp, summary)
 
+        dc = mock.sentinel.dc
+        get_dc.return_value = dc
+
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
 
         self._driver._relocate_backing(volume, backing, host)
 
+        get_dc.assert_called_once_with(rp)
+        get_volume_group_folder.assert_called_once_with(
+            dc, volume['project_id'])
         vops.relocate_backing.assert_called_once_with(backing,
                                                       datastore,
                                                       rp,
@@ -2522,10 +2574,11 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                                             folder)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_dc')
     @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
     @mock.patch.object(VMDK_DRIVER, 'ds_sel')
     def test_relocate_backing_with_pbm_disabled(
-            self, ds_sel, get_volume_group_folder, vops):
+            self, ds_sel, get_volume_group_folder, get_dc, vops):
         self._driver._storage_policy_enabled = False
         volume = {'name': 'vol-1', 'size': 1, 'project_id': 'abc'}
 
@@ -2539,12 +2592,18 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         summary = mock.Mock(datastore=datastore)
         ds_sel.select_datastore.return_value = (host, rp, summary)
 
+        dc = mock.sentinel.dc
+        get_dc.return_value = dc
+
         folder = mock.sentinel.folder
         get_volume_group_folder.return_value = folder
 
         self._driver._relocate_backing(volume, backing, host)
 
         self.assertFalse(vops.get_profile.called)
+        get_dc.assert_called_once_with(rp)
+        get_volume_group_folder.assert_called_once_with(
+            dc, volume['project_id'])
         vops.relocate_backing.assert_called_once_with(backing,
                                                       datastore,
                                                       rp,
