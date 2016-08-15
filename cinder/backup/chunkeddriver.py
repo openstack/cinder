@@ -159,7 +159,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
         """
         return
 
-    def _create_container(self, context, backup):
+    def _create_container(self, backup):
         # Container's name will be decided by the driver (returned by method
         # update_container_name), if no change is required by the driver then
         # we'll use the one the backup object already has, but if it doesn't
@@ -280,7 +280,7 @@ class ChunkedBackupDriver(driver.BackupDriver):
             err = _('volume size %d is invalid.') % volume['size']
             raise exception.InvalidVolume(reason=err)
 
-        container = self._create_container(self.context, backup)
+        container = self._create_container(backup)
 
         object_prefix = self._generate_object_name_prefix(backup)
         backup.service_metadata = object_prefix

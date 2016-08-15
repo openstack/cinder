@@ -200,7 +200,7 @@ class BackupManager(manager.SchedulerDependentManager):
             return mapper[service]
         return service
 
-    def _update_backup_error(self, backup, context, err):
+    def _update_backup_error(self, backup, err):
         backup.status = fields.BackupStatus.ERROR
         backup.fail_reason = err
         backup.save()
@@ -269,7 +269,7 @@ class BackupManager(manager.SchedulerDependentManager):
             self._cleanup_one_volume(ctxt, volume)
 
             err = 'incomplete backup reset on manager restart'
-            self._update_backup_error(backup, ctxt, err)
+            self._update_backup_error(backup, err)
         elif backup['status'] == fields.BackupStatus.RESTORING:
             LOG.info(_LI('Resetting backup %s to '
                          'available (was restoring).'),
@@ -381,7 +381,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 'expected_status': expected_status,
                 'actual_status': actual_status,
             }
-            self._update_backup_error(backup, context, err)
+            self._update_backup_error(backup, err)
             raise exception.InvalidVolume(reason=err)
 
         expected_status = fields.BackupStatus.CREATING
@@ -392,7 +392,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 'expected_status': expected_status,
                 'actual_status': actual_status,
             }
-            self._update_backup_error(backup, context, err)
+            self._update_backup_error(backup, err)
             backup.save()
             raise exception.InvalidBackup(reason=err)
 
@@ -403,7 +403,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 self.db.volume_update(context, volume_id,
                                       {'status': previous_status,
                                        'previous_status': 'error_backing-up'})
-                self._update_backup_error(backup, context, six.text_type(err))
+                self._update_backup_error(backup, six.text_type(err))
 
         # Restore the original status.
         self.db.volume_update(context, volume_id,
@@ -487,7 +487,7 @@ class BackupManager(manager.SchedulerDependentManager):
                      '%(expected_status)s but got %(actual_status)s.') %
                    {'expected_status': expected_status,
                     'actual_status': actual_status})
-            self._update_backup_error(backup, context, err)
+            self._update_backup_error(backup, err)
             self.db.volume_update(context, volume_id, {'status': 'error'})
             raise exception.InvalidBackup(reason=err)
 
@@ -572,7 +572,7 @@ class BackupManager(manager.SchedulerDependentManager):
                     '%(expected_status)s but got %(actual_status)s.') \
                 % {'expected_status': expected_status,
                    'actual_status': actual_status}
-            self._update_backup_error(backup, context, err)
+            self._update_backup_error(backup, err)
             raise exception.InvalidBackup(reason=err)
 
         backup_service = self._map_service_to_driver(backup['service'])
@@ -585,7 +585,7 @@ class BackupManager(manager.SchedulerDependentManager):
                         ' backup [%(backup_service)s].')\
                     % {'configured_service': configured_service,
                        'backup_service': backup_service}
-                self._update_backup_error(backup, context, err)
+                self._update_backup_error(backup, err)
                 raise exception.InvalidBackup(reason=err)
 
             try:
@@ -593,8 +593,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 backup_service.delete(backup)
             except Exception as err:
                 with excutils.save_and_reraise_exception():
-                    self._update_backup_error(backup, context,
-                                              six.text_type(err))
+                    self._update_backup_error(backup, six.text_type(err))
 
         # Get reservations
         try:
@@ -721,7 +720,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 err = _('Import record failed, cannot find backup '
                         'service to perform the import. Request service '
                         '%(service)s') % {'service': backup_service}
-                self._update_backup_error(backup, context, err)
+                self._update_backup_error(backup, err)
                 raise exception.ServiceNotFound(service_id=backup_service)
         else:
             # Yes...
@@ -735,7 +734,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 backup_service.import_record(backup, driver_options)
             except Exception as err:
                 msg = six.text_type(err)
-                self._update_backup_error(backup, context, msg)
+                self._update_backup_error(backup, msg)
                 raise exception.InvalidBackup(reason=msg)
 
             required_import_options = {
@@ -755,7 +754,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 msg = (_('Driver successfully decoded imported backup data, '
                          'but there are missing fields (%s).') %
                        ', '.join(missing_opts))
-                self._update_backup_error(backup, context, msg)
+                self._update_backup_error(backup, msg)
                 raise exception.InvalidBackup(reason=msg)
 
             # Confirm the ID from the record in the DB is the right one
@@ -764,7 +763,7 @@ class BackupManager(manager.SchedulerDependentManager):
                 msg = (_('Trying to import backup metadata from id %(meta_id)s'
                          ' into backup %(id)s.') %
                        {'meta_id': backup_id, 'id': backup.id})
-                self._update_backup_error(backup, context, msg)
+                self._update_backup_error(backup, msg)
                 raise exception.InvalidBackup(reason=msg)
 
             # Overwrite some fields
@@ -794,8 +793,7 @@ class BackupManager(manager.SchedulerDependentManager):
                                  'id': backup.id})
             except exception.InvalidBackup as err:
                 with excutils.save_and_reraise_exception():
-                    self._update_backup_error(backup, context,
-                                              six.text_type(err))
+                    self._update_backup_error(backup, six.text_type(err))
 
             LOG.info(_LI('Import record id %s metadata from driver '
                          'finished.'), backup.id)
