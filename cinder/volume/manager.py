@@ -135,10 +135,6 @@ MAPPING = {
     'cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver',
     'cinder.volume.drivers.huawei.huawei_driver.Huawei18000FCDriver':
     'cinder.volume.drivers.huawei.huawei_driver.HuaweiFCDriver',
-    'cinder.volume.drivers.fujitsu_eternus_dx_fc.FJDXFCDriver':
-    'cinder.volume.drivers.fujitsu.eternus_dx_fc.FJDXFCDriver',
-    'cinder.volume.drivers.fujitsu_eternus_dx_iscsi.FJDXISCSIDriver':
-    'cinder.volume.drivers.fujitsu.eternus_dx_iscsi.FJDXISCSIDriver',
     'cinder.volume.drivers.hds.nfs.HDSNFSDriver':
     'cinder.volume.drivers.hitachi.hnas_nfs.HNASNFSDriver',
     'cinder.volume.drivers.hds.iscsi.HDSISCSIDriver':
