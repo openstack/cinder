@@ -743,9 +743,9 @@ class TestCinderDictObject(test_objects.BaseObjectsTestCase):
 
     def test_dict_objects(self):
         obj = self.TestDictObject()
-        self.assertIsNone(obj.get('non_existing'))
+        self.assertNotIn('non_existing', obj)
         self.assertEqual('val', obj.get('abc', 'val'))
-        self.assertIsNone(obj.get('abc'))
+        self.assertNotIn('abc', obj)
         obj.abc = 'val2'
         self.assertEqual('val2', obj.get('abc', 'val'))
         self.assertEqual(42, obj.get('foo'))
