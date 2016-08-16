@@ -415,6 +415,9 @@ class TestNexentaNfsDriver(test.TestCase):
             'recursive': 'true',
             'anonymous_rw': 'true',
         }
+        self.nms_mock.netstorsvc.get_shared_folders.return_value = ''
+        self.nms_mock.folder.get_child_props.return_value = {
+            'available': 1, 'used': 1}
         self.drv.check_for_setup_error()
         self.nms_mock.netstorsvc.share_folder.assert_called_with(
             'svc:/network/nfs/server:default', 'stack/share', share_opts)
@@ -452,6 +455,8 @@ class TestNexentaNfsDriver(test.TestCase):
         self.drv.share2nms = {self.TEST_EXPORT1: self.nms_mock}
 
         compression = self.cfg.nexenta_dataset_compression
+        self.nms_mock.folder.get_child_props.return_value = {
+            'available': 1, 'used': 1}
         self.nms_mock.server.get_prop.return_value = '/volumes'
         self.nms_mock.netsvc.get_confopts('svc:/network/nfs/server:default',
                                           'configure').AndReturn({
@@ -471,6 +476,8 @@ class TestNexentaNfsDriver(test.TestCase):
         mock_truncate = self.nms_mock.appliance.execute
         mock_truncate.side_effect = exception.NexentaException()
         self.nms_mock.server.get_prop.return_value = '/volumes'
+        self.nms_mock.folder.get_child_props.return_value = {
+            'available': 1, 'used': 1}
         self.assertRaises(exception.NexentaException,
                           self.drv._do_create_volume, volume)
 
@@ -610,7 +617,8 @@ class TestNexentaNfsDriver(test.TestCase):
         self.drv._execute = lambda *_, **__: 0
 
         self.nms_mock.server.get_prop.return_value = '/volumes'
-        self.nms_mock.folder.get_child_props.return_value = None
+        self.nms_mock.folder.get_child_props.return_value = {
+            'available': 1, 'used': 1}
         self.drv.delete_volume({
             'id': '1',
             'name': 'volume-1',
