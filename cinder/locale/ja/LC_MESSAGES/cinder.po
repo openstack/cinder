@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev290\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-14 22:05+0000\n"
+"POT-Creation-Date: 2016-08-16 01:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-14 08:50+0000\n"
+"PO-Revision-Date: 2016-08-15 02:16+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1758,12 +1758,6 @@ msgstr "GPFS クラスター ID が見つかりませんでした: %s。"
 #, python-format
 msgid "Could not find GPFS file system device: %s."
 msgstr "GPFS ファイルシステムデバイスが見つかりませんでした: %s。"
-
-#, python-format
-msgid "Could not find a host for volume %(volume_id)s with type %(type_id)s."
-msgstr ""
-"タイプ %(type_id)s を持つボリューム %(volume_id)s のホストが見つかりませんで"
-"した。"
 
 #, python-format
 msgid "Could not find config at %(path)s"
@@ -4066,6 +4060,10 @@ msgstr ""
 "論理デバイスをマッピングできませんでした。(LDEV: %(ldev)s、LUN: %(lun)s、ポー"
 "ト: %(port)s、ID: %(id)s)"
 
+#, python-format
+msgid "Failed to migrate volume %(src)s."
+msgstr "ボリューム %(src)s  のマイグレーションに失敗しました。"
+
 msgid "Failed to migrate volume for the first time."
 msgstr "ボリュームのマイグレーションに失敗しました (初回)。"
 
@@ -5571,6 +5569,9 @@ msgstr ""
 msgid "LU does not exist for volume: %s"
 msgstr "ボリューム: %s 用の LU は存在しません"
 
+msgid "LUN doesn't exist."
+msgstr "LUN が存在しません。"
+
 msgid "LUN export failed!"
 msgstr "LUN のエクスポートが失敗しました。"
 
@@ -6052,6 +6053,9 @@ msgstr "ホストには FC イニシエーターを追加できません。"
 msgid "No FC port connected to fabric."
 msgstr "ファブリックに接続された FC ポートはありません。"
 
+msgid "No FC targets found"
+msgstr "FC ターゲットが見つかりません。"
+
 msgid "No FCP targets found"
 msgstr "FCP ターゲットが見つかりません"
 
@@ -6277,6 +6281,9 @@ msgstr "有効なホストが見つかりませんでした。%(reason)s"
 #, python-format
 msgid "No valid hosts for volume %(id)s with type %(type)s"
 msgstr "タイプ %(type)s のボリューム %(id)s に対して有効なホストがありません"
+
+msgid "No valid ports."
+msgstr "有効なポートがありません。"
 
 #, python-format
 msgid "No vdisk with the UID specified by ref %s."
@@ -7757,6 +7764,14 @@ msgstr ""
 #, python-format
 msgid "The iSCSI CHAP user %(user)s does not exist."
 msgstr "iSCSI CHAP ユーザー %(user)s は存在しません。"
+
+#, python-format
+msgid ""
+"The imported lun is in pool %(lun_pool)s which is not managed by the host "
+"%(host)s."
+msgstr ""
+"インポートした LUN はホスト %(host)s に管理されていないプール %(lun_pool)s に"
+"あります。"
 
 #, python-format
 msgid "The job has not completed and is in a %(state)s state."
@@ -9703,6 +9718,13 @@ msgstr "ゾーン"
 #, python-format
 msgid "Zoning Policy: %s, not recognized"
 msgstr "ゾーニングポリシー %s は認識されていません"
+
+#, python-format
+msgid ""
+"[%(group)s] Invalid %(protocol)s ports %(port)s specified for io_port_list."
+msgstr ""
+"[%(group)s]  無効な %(protocol)s ポート %(port)s が io_port_list に指定されま"
+"した。"
 
 #, python-format
 msgid "_create_and_copy_vdisk_data: Failed to get attributes for vdisk %s."

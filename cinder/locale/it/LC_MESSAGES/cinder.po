@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev287\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-12 21:49+0000\n"
+"POT-Creation-Date: 2016-08-16 01:19+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1528,11 +1528,6 @@ msgstr "Impossibile trovare l'id cluster GPFS: %s."
 #, python-format
 msgid "Could not find GPFS file system device: %s."
 msgstr "Impossibile trovare il dispositivo di file system GPFS: %s."
-
-#, python-format
-msgid "Could not find a host for volume %(volume_id)s with type %(type_id)s."
-msgstr ""
-"Impossibile trovare un host per il volume %(volume_id)s con tipo %(type_id)s."
 
 #, python-format
 msgid "Could not find config at %(path)s"
