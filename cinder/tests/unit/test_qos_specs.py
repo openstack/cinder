@@ -99,8 +99,8 @@ class QoSSpecsTestCase(test.TestCase):
 
         del input['consumer']
 
-        self.stubs.Set(db, 'qos_specs_create',
-                       fake_db_qos_specs_create)
+        self.mock_object(db, 'qos_specs_create',
+                         fake_db_qos_specs_create)
         # able to catch DBError
         self.assertRaises(exception.QoSSpecsCreateFailed,
                           qos_specs.create, self.ctxt, 'FailQoSName', input)
@@ -132,7 +132,7 @@ class QoSSpecsTestCase(test.TestCase):
                           qos_specs.update, self.ctxt, specs_id,
                           {'consumer': 'not-real'})
 
-        self.stubs.Set(db, 'qos_specs_update', fake_db_update)
+        self.mock_object(db, 'qos_specs_update', fake_db_update)
         self.assertRaises(exception.QoSSpecsUpdateFailed,
                           qos_specs.update, self.ctxt, specs_id, {'key':
                                                                   'new_key'})
@@ -153,11 +153,11 @@ class QoSSpecsTestCase(test.TestCase):
         def fake_disassociate_all(context, id):
             pass
 
-        self.stubs.Set(db, 'qos_specs_associations_get',
-                       fake_db_associations_get)
-        self.stubs.Set(qos_specs, 'disassociate_all',
-                       fake_disassociate_all)
-        self.stubs.Set(db, 'qos_specs_delete', fake_db_delete)
+        self.mock_object(db, 'qos_specs_associations_get',
+                         fake_db_associations_get)
+        self.mock_object(qos_specs, 'disassociate_all',
+                         fake_disassociate_all)
+        self.mock_object(db, 'qos_specs_delete', fake_db_delete)
         self.assertRaises(exception.InvalidQoSSpecs,
                           qos_specs.delete, self.ctxt, None)
         self.assertRaises(exception.QoSSpecsNotFound,
@@ -176,12 +176,6 @@ class QoSSpecsTestCase(test.TestCase):
             if key == 'NotFound':
                 raise exception.QoSSpecsKeyNotFound(specs_id=id,
                                                     specs_key=key)
-            else:
-                pass
-
-        def fake_qos_specs_get(context, id):
-            if id == 'NotFound':
-                raise exception.QoSSpecsNotFound(specs_id=id)
             else:
                 pass
 
@@ -204,7 +198,7 @@ class QoSSpecsTestCase(test.TestCase):
                      'specs': specs['specs']}
         self.assertDictMatch(expected, specs_dic)
 
-        self.stubs.Set(db, 'qos_specs_item_delete', fake_db_qos_delete_key)
+        self.mock_object(db, 'qos_specs_item_delete', fake_db_qos_delete_key)
         self.assertRaises(exception.InvalidQoSSpecs,
                           qos_specs.delete_keys, self.ctxt, None, [])
         self.assertRaises(exception.QoSSpecsNotFound,
@@ -267,11 +261,11 @@ class QoSSpecsTestCase(test.TestCase):
         self.assertEqual('TypeName', res[0]['name'])
         self.assertEqual(type_ref['id'], res[0]['id'])
 
-        self.stubs.Set(db, 'qos_specs_associate',
-                       fake_db_associate)
-        self.stubs.Set(qos_specs, 'get_qos_specs', fake_qos_specs_get)
-        self.stubs.Set(volume_types, 'get_volume_type_qos_specs',
-                       fake_vol_type_qos_get)
+        self.mock_object(db, 'qos_specs_associate',
+                         fake_db_associate)
+        self.mock_object(qos_specs, 'get_qos_specs', fake_qos_specs_get)
+        self.mock_object(volume_types, 'get_volume_type_qos_specs',
+                         fake_vol_type_qos_get)
         self.assertRaises(exception.VolumeTypeNotFound,
                           qos_specs.associate_qos_with_type,
                           self.ctxt, 'specs-id', 'NotFound')
@@ -309,8 +303,8 @@ class QoSSpecsTestCase(test.TestCase):
         # not associated with no error
         qos_specs.disassociate_qos_specs(self.ctxt, specs_id, type_ref['id'])
         qos_specs.associate_qos_with_type(self.ctxt, specs_id, type_ref['id'])
-        self.stubs.Set(db, 'qos_specs_disassociate',
-                       fake_db_disassociate)
+        self.mock_object(db, 'qos_specs_disassociate',
+                         fake_db_disassociate)
         self.assertRaises(exception.QoSSpecsDisassociateFailed,
                           qos_specs.disassociate_qos_specs,
                           self.ctxt, specs_id, type_ref['id'])
@@ -342,10 +336,10 @@ class QoSSpecsTestCase(test.TestCase):
         res = qos_specs.get_associations(self.ctxt, specs_id)
         self.assertEqual(0, len(res))
 
-        self.stubs.Set(db, 'qos_specs_disassociate_all',
-                       fake_db_disassociate_all)
-        self.stubs.Set(qos_specs, 'get_qos_specs',
-                       fake_qos_specs_get)
+        self.mock_object(db, 'qos_specs_disassociate_all',
+                         fake_db_disassociate_all)
+        self.mock_object(qos_specs, 'get_qos_specs',
+                         fake_qos_specs_get)
         self.assertRaises(exception.QoSSpecsDisassociateFailed,
                           qos_specs.disassociate_all,
                           self.ctxt, 'Trouble')

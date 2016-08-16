@@ -838,7 +838,7 @@ class VolumeTypeQuotaEngineTestCase(test.TestCase):
     def test_default_resources(self):
         def fake_vtga(context, inactive=False, filters=None):
             return {}
-        self.stubs.Set(db, 'volume_type_get_all', fake_vtga)
+        self.mock_object(db, 'volume_type_get_all', fake_vtga)
 
         engine = quota.VolumeTypeQuotaEngine()
         self.assertEqual(['backup_gigabytes', 'backups',
@@ -864,7 +864,7 @@ class VolumeTypeQuotaEngineTestCase(test.TestCase):
                     'extra_specs': {},
                 },
             }
-        self.stubs.Set(db, 'volume_type_get_all', fake_vtga)
+        self.mock_object(db, 'volume_type_get_all', fake_vtga)
 
         engine = quota.VolumeTypeQuotaEngine()
         self.assertEqual(['backup_gigabytes', 'backups',
@@ -920,8 +920,8 @@ class DbQuotaDriverBaseTestCase(test.TestCase):
         self.mock_utcnow = patcher.start()
         self.mock_utcnow.return_value = datetime.datetime.utcnow()
 
-    def _stub_quota_class_get_default(self):
-        # Stub out quota_class_get_default
+    def _mock_quota_class_get_default(self):
+        # Mock quota_class_get_default
         def fake_qcgd(context):
             self.calls.append('quota_class_get_default')
             return dict(volumes=10,
@@ -930,30 +930,30 @@ class DbQuotaDriverBaseTestCase(test.TestCase):
                         backups=10,
                         backup_gigabytes=1000
                         )
-        self.stubs.Set(db, 'quota_class_get_default', fake_qcgd)
+        self.mock_object(db, 'quota_class_get_default', fake_qcgd)
 
-    def _stub_volume_type_get_all(self):
+    def _mock_volume_type_get_all(self):
         def fake_vtga(context, inactive=False, filters=None):
             return {}
-        self.stubs.Set(db, 'volume_type_get_all', fake_vtga)
+        self.mock_object(db, 'volume_type_get_all', fake_vtga)
 
-    def _stub_quota_class_get_all_by_name(self):
-        # Stub out quota_class_get_all_by_name
+    def _mock_quota_class_get_all_by_name(self):
+        # Mock quota_class_get_all_by_name
         def fake_qcgabn(context, quota_class):
             self.calls.append('quota_class_get_all_by_name')
             self.assertEqual('test_class', quota_class)
             return dict(gigabytes=500, volumes=10, snapshots=10, backups=10,
                         backup_gigabytes=500)
-        self.stubs.Set(db, 'quota_class_get_all_by_name', fake_qcgabn)
+        self.mock_object(db, 'quota_class_get_all_by_name', fake_qcgabn)
 
-    def _stub_allocated_get_all_by_project(self, allocated_quota=False):
+    def _mock_allocated_get_all_by_project(self, allocated_quota=False):
         def fake_qagabp(context, project_id):
             self.calls.append('quota_allocated_get_all_by_project')
             if allocated_quota:
                 return dict(project_id=project_id, volumes=3)
             return dict(project_id=project_id)
 
-        self.stubs.Set(db, 'quota_allocated_get_all_by_project', fake_qagabp)
+        self.mock_object(db, 'quota_allocated_get_all_by_project', fake_qagabp)
 
 
 class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
@@ -964,8 +964,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
 
     def test_get_defaults(self):
         # Use our pre-defined resources
-        self._stub_quota_class_get_default()
-        self._stub_volume_type_get_all()
+        self._mock_quota_class_get_default()
+        self._mock_volume_type_get_all()
         result = self.driver.get_defaults(None, quota.QUOTAS.resources)
 
         self.assertEqual(
@@ -978,8 +978,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                 per_volume_gigabytes=-1), result)
 
     def test_get_class_quotas(self):
-        self._stub_quota_class_get_all_by_name()
-        self._stub_volume_type_get_all()
+        self._mock_quota_class_get_all_by_name()
+        self._mock_volume_type_get_all()
         result = self.driver.get_class_quotas(None, quota.QUOTAS.resources,
                                               'test_class')
 
@@ -992,7 +992,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                          per_volume_gigabytes=-1), result)
 
     def test_get_class_quotas_no_defaults(self):
-        self._stub_quota_class_get_all_by_name()
+        self._mock_quota_class_get_all_by_name()
         result = self.driver.get_class_quotas(None, quota.QUOTAS.resources,
                                               'test_class', False)
 
@@ -1003,7 +1003,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                               backups=10,
                               backup_gigabytes=500), result)
 
-    def _stub_get_by_project(self):
+    def _mock_get_by_project(self):
         def fake_qgabp(context, project_id):
             self.calls.append('quota_get_all_by_project')
             self.assertEqual('test_project', project_id)
@@ -1021,16 +1021,16 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                         backup_gigabytes=dict(in_use=10, reserved=0)
                         )
 
-        self.stubs.Set(db, 'quota_get_all_by_project', fake_qgabp)
-        self.stubs.Set(db, 'quota_usage_get_all_by_project', fake_qugabp)
+        self.mock_object(db, 'quota_get_all_by_project', fake_qgabp)
+        self.mock_object(db, 'quota_usage_get_all_by_project', fake_qugabp)
 
-        self._stub_quota_class_get_all_by_name()
-        self._stub_quota_class_get_default()
+        self._mock_quota_class_get_all_by_name()
+        self._mock_quota_class_get_default()
 
     def test_get_project_quotas(self):
-        self._stub_get_by_project()
-        self._stub_volume_type_get_all()
-        self._stub_allocated_get_all_by_project()
+        self._mock_get_by_project()
+        self._mock_volume_type_get_all()
+        self._mock_allocated_get_all_by_project()
         result = self.driver.get_project_quotas(
             FakeContext('test_project', 'test_class'),
             quota.QUOTAS.resources, 'test_project')
@@ -1079,9 +1079,9 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertTrue(mock_defaults.called)
 
     def test_get_root_project_with_subprojects_quotas(self):
-        self._stub_get_by_project()
-        self._stub_volume_type_get_all()
-        self._stub_allocated_get_all_by_project(allocated_quota=True)
+        self._mock_get_by_project()
+        self._mock_volume_type_get_all()
+        self._mock_allocated_get_all_by_project(allocated_quota=True)
         result = self.driver.get_project_quotas(
             FakeContext('test_project', None),
             quota.QUOTAS.resources, 'test_project')
@@ -1117,8 +1117,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                               ), result)
 
     def test_get_project_quotas_alt_context_no_class(self):
-        self._stub_get_by_project()
-        self._stub_volume_type_get_all()
+        self._mock_get_by_project()
+        self._mock_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('other_project', 'other_class'),
             quota.QUOTAS.resources, 'test_project')
@@ -1147,8 +1147,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                               ), result)
 
     def test_get_project_quotas_alt_context_with_class(self):
-        self._stub_get_by_project()
-        self._stub_volume_type_get_all()
+        self._mock_get_by_project()
+        self._mock_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('other_project', 'other_class'),
             quota.QUOTAS.resources, 'test_project', quota_class='test_class')
@@ -1178,8 +1178,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                          result)
 
     def test_get_project_quotas_no_defaults(self):
-        self._stub_get_by_project()
-        self._stub_volume_type_get_all()
+        self._mock_get_by_project()
+        self._mock_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('test_project', 'test_class'),
             quota.QUOTAS.resources, 'test_project', defaults=False)
@@ -1206,8 +1206,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                               ), result)
 
     def test_get_project_quotas_no_usages(self):
-        self._stub_get_by_project()
-        self._stub_volume_type_get_all()
+        self._mock_get_by_project()
+        self._mock_volume_type_get_all()
         result = self.driver.get_project_quotas(
             FakeContext('test_project', 'test_class'),
             quota.QUOTAS.resources, 'test_project', usages=False)
@@ -1222,18 +1222,18 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                               backup_gigabytes=dict(limit=50, ),
                               per_volume_gigabytes=dict(limit=-1, )), result)
 
-    def _stub_get_project_quotas(self):
+    def _mock_get_project_quotas(self):
         def fake_get_project_quotas(context, resources, project_id,
                                     quota_class=None, defaults=True,
                                     usages=True, parent_project_id=None):
             self.calls.append('get_project_quotas')
             return {k: dict(limit=v.default) for k, v in resources.items()}
 
-        self.stubs.Set(self.driver, 'get_project_quotas',
-                       fake_get_project_quotas)
+        self.mock_object(self.driver, 'get_project_quotas',
+                         fake_get_project_quotas)
 
     def test_get_quotas_has_sync_unknown(self):
-        self._stub_get_project_quotas()
+        self._mock_get_project_quotas()
         self.assertRaises(exception.QuotaResourceUnknown,
                           self.driver._get_quotas,
                           None, quota.QUOTAS.resources,
@@ -1241,7 +1241,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual([], self.calls)
 
     def test_get_quotas_no_sync_unknown(self):
-        self._stub_get_project_quotas()
+        self._mock_get_project_quotas()
         self.assertRaises(exception.QuotaResourceUnknown,
                           self.driver._get_quotas,
                           None, quota.QUOTAS.resources,
@@ -1249,7 +1249,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual([], self.calls)
 
     def test_get_quotas_has_sync_no_sync_resource(self):
-        self._stub_get_project_quotas()
+        self._mock_get_project_quotas()
         self.assertRaises(exception.QuotaResourceUnknown,
                           self.driver._get_quotas,
                           None, quota.QUOTAS.resources,
@@ -1257,7 +1257,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual([], self.calls)
 
     def test_get_quotas_no_sync_has_sync_resource(self):
-        self._stub_get_project_quotas()
+        self._mock_get_project_quotas()
         self.assertRaises(exception.QuotaResourceUnknown,
                           self.driver._get_quotas,
                           None, quota.QUOTAS.resources,
@@ -1265,7 +1265,7 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual([], self.calls)
 
     def test_get_quotas_has_sync(self):
-        self._stub_get_project_quotas()
+        self._mock_get_project_quotas()
         result = self.driver._get_quotas(FakeContext('test_project',
                                                      'test_class'),
                                          quota.QUOTAS.resources,
@@ -1275,17 +1275,17 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['get_project_quotas'], self.calls)
         self.assertEqual(dict(volumes=10, gigabytes=1000, ), result)
 
-    def _stub_quota_reserve(self):
+    def _mock_quota_reserve(self):
         def fake_quota_reserve(context, resources, quotas, deltas, expire,
                                until_refresh, max_age, project_id=None):
             self.calls.append(('quota_reserve', expire, until_refresh,
                                max_age))
             return ['resv-1', 'resv-2', 'resv-3']
-        self.stubs.Set(db, 'quota_reserve', fake_quota_reserve)
+        self.mock_object(db, 'quota_reserve', fake_quota_reserve)
 
     def test_reserve_bad_expire(self):
-        self._stub_get_project_quotas()
-        self._stub_quota_reserve()
+        self._mock_get_project_quotas()
+        self._mock_quota_reserve()
         self.assertRaises(exception.InvalidReservationExpiration,
                           self.driver.reserve,
                           FakeContext('test_project', 'test_class'),
@@ -1294,8 +1294,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual([], self.calls)
 
     def test_reserve_default_expire(self):
-        self._stub_get_project_quotas()
-        self._stub_quota_reserve()
+        self._mock_get_project_quotas()
+        self._mock_quota_reserve()
         result = self.driver.reserve(FakeContext('test_project', 'test_class'),
                                      quota.QUOTAS.resources,
                                      dict(volumes=2))
@@ -1306,8 +1306,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['resv-1', 'resv-2', 'resv-3'], result)
 
     def test_reserve_int_expire(self):
-        self._stub_get_project_quotas()
-        self._stub_quota_reserve()
+        self._mock_get_project_quotas()
+        self._mock_quota_reserve()
         result = self.driver.reserve(FakeContext('test_project', 'test_class'),
                                      quota.QUOTAS.resources,
                                      dict(volumes=2), expire=3600)
@@ -1318,8 +1318,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['resv-1', 'resv-2', 'resv-3'], result)
 
     def test_reserve_timedelta_expire(self):
-        self._stub_get_project_quotas()
-        self._stub_quota_reserve()
+        self._mock_get_project_quotas()
+        self._mock_quota_reserve()
         expire_delta = datetime.timedelta(seconds=60)
         result = self.driver.reserve(FakeContext('test_project', 'test_class'),
                                      quota.QUOTAS.resources,
@@ -1331,8 +1331,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['resv-1', 'resv-2', 'resv-3'], result)
 
     def test_reserve_datetime_expire(self):
-        self._stub_get_project_quotas()
-        self._stub_quota_reserve()
+        self._mock_get_project_quotas()
+        self._mock_quota_reserve()
         expire = timeutils.utcnow() + datetime.timedelta(seconds=120)
         result = self.driver.reserve(FakeContext('test_project', 'test_class'),
                                      quota.QUOTAS.resources,
@@ -1343,8 +1343,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['resv-1', 'resv-2', 'resv-3'], result)
 
     def test_reserve_until_refresh(self):
-        self._stub_get_project_quotas()
-        self._stub_quota_reserve()
+        self._mock_get_project_quotas()
+        self._mock_quota_reserve()
         self.flags(until_refresh=500)
         expire = timeutils.utcnow() + datetime.timedelta(seconds=120)
         result = self.driver.reserve(FakeContext('test_project', 'test_class'),
@@ -1356,8 +1356,8 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
         self.assertEqual(['resv-1', 'resv-2', 'resv-3'], result)
 
     def test_reserve_max_age(self):
-        self._stub_get_project_quotas()
-        self._stub_quota_reserve()
+        self._mock_get_project_quotas()
+        self._mock_quota_reserve()
         self.flags(max_age=86400)
         expire = timeutils.utcnow() + datetime.timedelta(seconds=120)
         result = self.driver.reserve(FakeContext('test_project', 'test_class'),
@@ -1368,15 +1368,15 @@ class DbQuotaDriverTestCase(DbQuotaDriverBaseTestCase):
                           ('quota_reserve', expire, 0, 86400), ], self.calls)
         self.assertEqual(['resv-1', 'resv-2', 'resv-3'], result)
 
-    def _stub_quota_destroy_by_project(self):
+    def _mock_quota_destroy_by_project(self):
         def fake_quota_destroy_by_project(context, project_id):
             self.calls.append(('quota_destroy_by_project', project_id))
             return None
-        self.stubs.Set(sqa_api, 'quota_destroy_by_project',
-                       fake_quota_destroy_by_project)
+        self.mock_object(sqa_api, 'quota_destroy_by_project',
+                         fake_quota_destroy_by_project)
 
     def test_destroy_quota_by_project(self):
-        self._stub_quota_destroy_by_project()
+        self._mock_quota_destroy_by_project()
         self.driver.destroy_by_project(FakeContext('test_project',
                                                    'test_class'),
                                        'test_project')
@@ -1426,7 +1426,7 @@ class NestedDbQuotaDriverBaseTestCase(DbQuotaDriverBaseTestCase):
         self.fixture.config(auth_uri=self.auth_url, group='keystone_authtoken')
         self.driver = quota.NestedDbQuotaDriver()
 
-    def _stub_get_by_subproject(self):
+    def _mock_get_by_subproject(self):
         def fake_qgabp(context, project_id):
             self.calls.append('quota_get_all_by_project')
             return dict(volumes=10, gigabytes=50, reserved=0)
@@ -1436,15 +1436,15 @@ class NestedDbQuotaDriverBaseTestCase(DbQuotaDriverBaseTestCase):
             return dict(volumes=dict(in_use=2, reserved=0),
                         gigabytes=dict(in_use=10, reserved=0))
 
-        self.stubs.Set(db, 'quota_get_all_by_project', fake_qgabp)
-        self.stubs.Set(db, 'quota_usage_get_all_by_project', fake_qugabp)
+        self.mock_object(db, 'quota_get_all_by_project', fake_qgabp)
+        self.mock_object(db, 'quota_usage_get_all_by_project', fake_qugabp)
 
-        self._stub_quota_class_get_all_by_name()
+        self._mock_quota_class_get_all_by_name()
 
 
 class NestedDbQuotaDriverTestCase(NestedDbQuotaDriverBaseTestCase):
     def test_get_defaults(self):
-        self._stub_volume_type_get_all()
+        self._mock_volume_type_get_all()
 
         # Test for child project defaults
         result = self.driver.get_defaults(self.context,
@@ -1473,9 +1473,9 @@ class NestedDbQuotaDriverTestCase(NestedDbQuotaDriverBaseTestCase):
                           project_id=self._child_proj_id)
 
     def test_get_subproject_quotas(self):
-        self._stub_get_by_subproject()
-        self._stub_volume_type_get_all()
-        self._stub_allocated_get_all_by_project(allocated_quota=True)
+        self._mock_get_by_subproject()
+        self._mock_volume_type_get_all()
+        self._mock_allocated_get_all_by_project(allocated_quota=True)
         result = self.driver.get_project_quotas(
             self.context,
             quota.QUOTAS.resources, self._child_proj_id)
@@ -1695,7 +1695,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
             QUOTA_SYNC_FUNCTIONS['_sync_%s' % res_name] = make_sync(res_name)
             self.resources[res_name] = res
 
-        self.stubs.Set(sqa_api, 'QUOTA_SYNC_FUNCTIONS', QUOTA_SYNC_FUNCTIONS)
+        self.mock_object(sqa_api, 'QUOTA_SYNC_FUNCTIONS', QUOTA_SYNC_FUNCTIONS)
         self.expire = timeutils.utcnow() + datetime.timedelta(seconds=3600)
 
         self.usages = {}
@@ -1734,12 +1734,16 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
             self.assertEqual('test_project', project_id)
             return {'project_id': project_id}
 
-        self.stubs.Set(sqa_api, 'quota_allocated_get_all_by_project',
-                       fake_qagabp)
-        self.stubs.Set(sqa_api, 'get_session', fake_get_session)
-        self.stubs.Set(sqa_api, '_get_quota_usages', fake_get_quota_usages)
-        self.stubs.Set(sqa_api, '_quota_usage_create', fake_quota_usage_create)
-        self.stubs.Set(sqa_api, '_reservation_create', fake_reservation_create)
+        self.mock_object(sqa_api, 'quota_allocated_get_all_by_project',
+                         fake_qagabp)
+        self.mock_object(sqa_api, 'get_session',
+                         fake_get_session)
+        self.mock_object(sqa_api, '_get_quota_usages',
+                         fake_get_quota_usages)
+        self.mock_object(sqa_api, '_quota_usage_create',
+                         fake_quota_usage_create)
+        self.mock_object(sqa_api, '_reservation_create',
+                         fake_reservation_create)
 
         patcher = mock.patch.object(timeutils, 'utcnow')
         self.addCleanup(patcher.stop)
@@ -1819,7 +1823,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
 
         self.assertEqual(0, len(reservations))
 
-    def _stub_allocated_get_all_by_project(self, allocated_quota=False):
+    def _mock_allocated_get_all_by_project(self, allocated_quota=False):
         def fake_qagabp(context, project_id):
             self.assertEqual('test_project', project_id)
             if allocated_quota:
@@ -1827,14 +1831,13 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                             gigabytes = 2 * 1024)
             return dict(project_id=project_id)
 
-        self.stubs.Set(sqa_api,
-                       'quota_allocated_get_all_by_project',
-                       fake_qagabp)
+        self.mock_object(sqa_api, 'quota_allocated_get_all_by_project',
+                         fake_qagabp)
 
     def test_quota_reserve_with_allocated(self):
         context = FakeContext('test_project', 'test_class')
         # Allocated quota for volume will be updated for 3
-        self._stub_allocated_get_all_by_project(allocated_quota=True)
+        self._mock_allocated_get_all_by_project(allocated_quota=True)
         # Quota limited for volume updated for 10
         quotas = dict(volumes=10,
                       gigabytes=10 * 1024, )
@@ -1868,7 +1871,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                       gigabytes=10 * 1024, )
         deltas = dict(volumes=2,
                       gigabytes=2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
@@ -1902,7 +1905,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
                       gigabytes=10 * 1024, )
         deltas = dict(volumes=2,
                       gigabytes=2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 5, 0)
 
@@ -1933,7 +1936,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         context = FakeContext('test_project', 'test_class')
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 5, 0)
 
@@ -1969,7 +1972,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         context = FakeContext('test_project', 'test_class')
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 0, max_age)
 
@@ -2000,7 +2003,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         context = FakeContext('test_project', 'test_class')
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
@@ -2031,7 +2034,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         context = FakeContext('test_project', 'test_class')
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=-2, gigabytes=-2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
@@ -2062,7 +2065,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         context = FakeContext('test_project', 'test_class')
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=2, gigabytes=2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         self.assertRaises(exception.OverQuota,
                           sqa_api.quota_reserve,
                           context, self.resources, quotas,
@@ -2088,7 +2091,7 @@ class QuotaReserveSqlAlchemyTestCase(test.TestCase):
         context = FakeContext('test_project', 'test_class')
         quotas = dict(volumes=5, gigabytes=10 * 1024, )
         deltas = dict(volumes=-2, gigabytes=-2 * 1024, )
-        self._stub_allocated_get_all_by_project()
+        self._mock_allocated_get_all_by_project()
         result = sqa_api.quota_reserve(context, self.resources, quotas,
                                        deltas, self.expire, 0, 0)
 
