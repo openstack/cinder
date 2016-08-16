@@ -39,6 +39,7 @@ class InfortrendCLIFCDriver(driver.FibreChannelDriver):
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Infortrend_Storage_CI"
+    VERSION = common_cli.InfortrendCommon.VERSION
 
     def __init__(self, *args, **kwargs):
         super(InfortrendCLIFCDriver, self).__init__(*args, **kwargs)

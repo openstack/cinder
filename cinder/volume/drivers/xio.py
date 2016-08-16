@@ -1388,6 +1388,7 @@ class XIOISEDriver(object):
 class XIOISEISCSIDriver(driver.ISCSIDriver):
 
     """Requires ISE Running FW version 3.1.0 or higher"""
+    VERSION = XIOISEDriver.VERSION
 
     def __init__(self, *args, **kwargs):
         super(XIOISEISCSIDriver, self).__init__(*args, **kwargs)
@@ -1515,6 +1516,7 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
 class XIOISEFCDriver(driver.FibreChannelDriver):
 
     """Requires ISE Running FW version 2.8.0 or higher"""
+    VERSION = XIOISEDriver.VERSION
 
     def __init__(self, *args, **kwargs):
         super(XIOISEFCDriver, self).__init__(*args, **kwargs)
