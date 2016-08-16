@@ -153,7 +153,7 @@ class BaseVolumeTestCase(test.TestCase):
         self.stubs.Set(brick_lvm.LVM,
                        'get_all_volume_groups',
                        self.fake_get_all_volume_groups)
-        fake_image.stub_out_image_service(self.stubs)
+        fake_image.mock_image_service(self)
         self.stubs.Set(brick_lvm.LVM, '_vg_exists', lambda x: True)
         self.stubs.Set(os.path, 'exists', lambda x: True)
         self.volume.driver.set_initialized()
