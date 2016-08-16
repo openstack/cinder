@@ -607,6 +607,9 @@ class ScaleIODriver(driver.VolumeDriver):
             return size
         return size + num - (size % num)
 
+    def _round_down_to_num_gran(self, size, num=8):
+        return size - (size % num)
+
     def create_cloned_volume(self, volume, src_vref):
         """Creates a cloned volume."""
         volume_id = src_vref['provider_id']
@@ -787,8 +790,6 @@ class ScaleIODriver(driver.VolumeDriver):
         stats['vendor_name'] = 'EMC'
         stats['driver_version'] = self.VERSION
         stats['storage_protocol'] = 'scaleio'
-        stats['total_capacity_gb'] = 'unknown'
-        stats['free_capacity_gb'] = 'unknown'
         stats['reserved_percentage'] = 0
         stats['QoS_support'] = True
         stats['consistencygroup_support'] = True
@@ -797,7 +798,7 @@ class ScaleIODriver(driver.VolumeDriver):
 
         verify_cert = self._get_verify_cert()
 
-        max_free_capacity = 0
+        free_capacity = 0
         total_capacity = 0
 
         for sp_name in self.storage_pools:
@@ -881,7 +882,8 @@ class ScaleIODriver(driver.VolumeDriver):
                        "/api/types/StoragePool/instances/action/"
                        "querySelectedStatistics") % req_vars
             params = {'ids': [pool_id], 'properties': [
-                "capacityInUseInKb", "capacityLimitInKb"]}
+                "capacityAvailableForVolumeAllocationInKb",
+                "capacityLimitInKb", "spareCapacityInKb"]}
             r = requests.post(
                 request,
                 data=json.dumps(params),
@@ -893,11 +895,15 @@ class ScaleIODriver(driver.VolumeDriver):
             response = r.json()
             LOG.info(_LI("Query capacity stats response: %s."), response)
             for res in response.values():
-                capacityInUse = res['capacityInUseInKb']
-                capacityLimit = res['capacityLimitInKb']
-                total_capacity_gb = capacityLimit / units.Mi
-                used_capacity_gb = capacityInUse / units.Mi
-                free_capacity_gb = total_capacity_gb - used_capacity_gb
+                # Divide by two because ScaleIO creates a copy for each volume
+                total_capacity_kb = (
+                    (res['capacityLimitInKb'] - res['spareCapacityInKb']) / 2)
+                total_capacity_gb = (self._round_down_to_num_gran
+                                     (total_capacity_kb / units.Mi))
+                # This property is already rounded
+                # to 8 GB granularity in backend
+                free_capacity_gb = (
+                    res['capacityAvailableForVolumeAllocationInKb'] / units.Mi)
                 LOG.info(_LI(
                          "free capacity of pool %(pool)s is: %(free)s, "
                          "total capacity: %(total)s."),
@@ -913,17 +919,15 @@ class ScaleIODriver(driver.VolumeDriver):
                     }
 
             pools.append(pool)
-            if free_capacity_gb > max_free_capacity:
-                max_free_capacity = free_capacity_gb
-            total_capacity = total_capacity + total_capacity_gb
+            free_capacity += free_capacity_gb
+            total_capacity += total_capacity_gb
 
-        # Use zero capacities here so we always use a pool.
         stats['total_capacity_gb'] = total_capacity
-        stats['free_capacity_gb'] = max_free_capacity
+        stats['free_capacity_gb'] = free_capacity
         LOG.info(_LI(
                  "Free capacity for backend is: %(free)s, total capacity: "
                  "%(total)s."),
-                 {'free': max_free_capacity,
+                 {'free': free_capacity,
                   'total': total_capacity})
 
         stats['pools'] = pools
