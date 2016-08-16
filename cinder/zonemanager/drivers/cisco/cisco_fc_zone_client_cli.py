@@ -174,24 +174,6 @@ class CiscoFCZoneClientCLI(object):
                      ['zoneset', 'name', cfg_name, 'vsan', fabric_vsan]]
 
         for zone in zones.keys():
-            # if zone exists, its an update. Delete & insert
-            LOG.debug("Update call")
-            if zone in zone_list:
-                # Response from get_active_zone_set strips colons from WWPNs
-                current_zone = set(zone_list[zone])
-                new_wwpns = map(lambda x: x.lower().replace(':', ''),
-                                zones[zone])
-                new_zone = set(new_wwpns)
-
-                if current_zone != new_zone:
-                    try:
-                        self.delete_zones(zone, activate, fabric_vsan,
-                                          active_zone_set, zone_status)
-                    except exception.CiscoZoningCliException:
-                        with excutils.save_and_reraise_exception():
-                            LOG.error(_LE("Deleting zone failed %s"), zone)
-                    LOG.debug("Deleted Zone before insert : %s", zone)
-
             zone_cmds.append(['zone', 'name', zone])
 
             for member in zones[zone]:
@@ -211,6 +193,72 @@ class CiscoFCZoneClientCLI(object):
             msg = _("Creating and activating zone set failed: "
                     "(Zone set=%(zoneset)s error=%(err)s)."
                     ) % {'zoneset': cfg_name, 'err': six.text_type(e)}
+            LOG.error(msg)
+            raise exception.CiscoZoningCliException(reason=msg)
+
+    def update_zones(self, zones, activate, fabric_vsan, operation,
+                     active_zone_set, zone_status):
+        """Update the zone configuration.
+
+        This method will update the zone configuration passed by user.
+
+        :param zones: zone names mapped to members. Zone members
+                      are colon separated but case-insensitive
+
+        .. code-block:: python
+
+            {   zonename1:[zonememeber1, zonemember2,...],
+                zonename2:[zonemember1, zonemember2,...]...}
+
+            e.g:
+
+            {
+                'openstack50060b0000c26604201900051ee8e329':
+                        ['50:06:0b:00:00:c2:66:04',
+                         '20:19:00:05:1e:e8:e3:29']
+            }
+
+        :param activate: True will activate the zone config.
+        :param operation: zone add or zone remove
+        :param fabric_vsan: Virtual San #
+        :param active_zone_set: Active zone set dict retrieved from
+                                get_active_zone_set method
+        :param zone_status: Status of the zone
+        :raises: CiscoZoningCliException
+        """
+
+        LOG.debug("Update Zones - Operation: %(op)s - Zones "
+                  "passed: %(zones)s",
+                  {'op': operation, 'zones': zones})
+
+        cfg_name = active_zone_set[ZoneConstant.ACTIVE_ZONE_CONFIG]
+
+        zone_cmds = [['conf'],
+                     ['zoneset', 'name', cfg_name, 'vsan', fabric_vsan]]
+        zone_mod_cmd = []
+        if operation == ZoneConstant.ZONE_ADD:
+            zone_mod_cmd = ['member', 'pwwn']
+        elif operation == ZoneConstant.ZONE_REMOVE:
+            zone_mod_cmd = ['no', 'member', 'pwwn']
+
+        for zone, zone_members in zones.items():
+            zone_cmds.append(['zone', 'name', zone])
+            for member in zone_members:
+                zone_cmds.append(zone_mod_cmd + [member])
+        zone_cmds.append(['end'])
+
+        try:
+            LOG.debug("Update zones: Config cmd to run: %s", zone_cmds)
+            self._ssh_execute(zone_cmds, True, 1)
+
+            if activate:
+                self.activate_zoneset(cfg_name, fabric_vsan, zone_status)
+            self._cfg_save()
+        except Exception as e:
+
+            msg = (_("Updating and activating zone set failed: "
+                     "(Zone set=%(zoneset)s error=%(err)s).")
+                   % {'zoneset': cfg_name, 'err': six.text_type(e)})
             LOG.error(msg)
             raise exception.CiscoZoningCliException(reason=msg)
 
