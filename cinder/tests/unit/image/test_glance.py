@@ -79,7 +79,7 @@ class TestGlanceImageService(test.TestCase):
         1. Glance -> ImageService - This is needed so we can support
            multiple ImageServices (Glance, Local, etc)
 
-        2. ImageService -> API - This is needed so we can support multple
+        2. ImageService -> API - This is needed so we can support multiple
            APIs (OpenStack, EC2)
 
     """
