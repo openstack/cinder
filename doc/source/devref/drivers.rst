@@ -21,6 +21,19 @@ Cinder exposes an API to users to interact with different storage backend
 solutions. The following are standards across all drivers for Cinder services
 to properly interact with a driver.
 
+Basic attributes
+----------------
+
+There are some basic attributes that all drivers classes should have:
+
+* VERSION: Driver version in string format.  No naming convention is imposed,
+  although semantic versioning is recommended.
+* CI_WIKI_NAME: Must be the exact name of the ThirdPartySystems wiki page.
+  This is used by our tooling system to associated jobs to drivers and
+  track their CI reporting status correctly.
+
+The tooling system will also use the name and docstring of the driver class.
+
 Minimum Features
 ----------------
 
