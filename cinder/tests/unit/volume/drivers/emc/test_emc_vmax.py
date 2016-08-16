@@ -726,7 +726,7 @@ class FakeEcomConnection(object):
         return result
 
     def ModifyInstance(self, objectpath, PropertyList=None):
-        pass
+            pass
 
     def DeleteInstance(self, objectpath):
         pass
@@ -1164,6 +1164,14 @@ class FakeEcomConnection(object):
         else:
             targetmaskinggroup['ElementName'] = (
                 self.data.storagegroupname)
+        if 'EMCMaximumIO' in objectpath:
+            targetmaskinggroup['EMCMaximumIO'] = objectpath['EMCMaximumIO']
+        if 'EMCMaximumBandwidth' in objectpath:
+            targetmaskinggroup['EMCMaximumBandwidth'] = (
+                objectpath['EMCMaximumBandwidth'])
+        if 'EMCMaxIODynamicDistributionType' in objectpath:
+            targetmaskinggroup['EMCMaxIODynamicDistributionType'] = (
+                objectpath['EMCMaxIODynamicDistributionType'])
         return targetmaskinggroup
 
     def _getinstance_unit(self, objectpath):
@@ -6242,8 +6250,8 @@ class EMCV3DriverTestCase(test.TestCase):
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'V3_BE'})
     def test_create_cgsnapshot_v3_success(
-            self, _mock_volume_type, _mock_storage, _mock_cg, _mock_members,
-            mock_rg):
+            self, _mock_volume_type, _mock_storage, _mock_cg,
+            _mock_members, mock_rg):
         provisionv3 = self.driver.common.provisionv3
         provisionv3.create_group_replica = mock.Mock(return_value=(0, None))
         self.driver.create_cgsnapshot(
@@ -6448,6 +6456,9 @@ class EMCV3DriverTestCase(test.TestCase):
         targetInstance = (
             conn.EnumerateInstanceNames("EMC_StorageVolume")[0])
         deviceID = targetInstance['DeviceID']
+        common._delete_from_pool_v3(storageConfigService, targetInstance,
+                                    targetInstance['Name'], deviceID,
+                                    extraSpecs)
         common._delete_from_pool_v3.assert_called_with(storageConfigService,
                                                        targetInstance,
                                                        targetInstance['Name'],
@@ -7162,7 +7173,6 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
                        self.fake_sleep)
         self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                        self.fake_is_v3)
-
         driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
         driver.db = FakeDB()
         driver.common.conn = FakeEcomConnection()
@@ -8000,6 +8010,51 @@ class EMCVMAXUtilsTest(test.TestCase):
         max_subscription_percent_float = (
             self.driver.utils.get_ratio_from_max_sub_per(str(0)))
         self.assertIsNone(max_subscription_percent_float)
+
+    def test_update_storage_QOS(self):
+        conn = FakeEcomConnection()
+        pywbem = mock.Mock()
+        pywbem.cim_obj = mock.Mock()
+        pywbem.cim_obj.CIMInstance = mock.Mock()
+        emc_vmax_utils.pywbem = pywbem
+
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'qos': {
+                          'maxIOPS': '6000',
+                          'maxMBPS': '6000',
+                          'DistributionType': 'Always'
+                      }}
+
+        storageGroupInstanceName = {
+            'CreationClassName': 'CIM_DeviceMaskingGroup',
+            'EMCMaximumIO': 6000,
+            'EMCMaximumBandwidth': 5000,
+            'EMCMaxIODynamicDistributionType': 1
+
+        }
+        modifiedstorageGroupInstance = {
+            'CreationClassName': 'CIM_DeviceMaskingGroup',
+            'EMCMaximumIO': 6000,
+            'EMCMaximumBandwidth': 6000,
+            'EMCMaxIODynamicDistributionType': 1
+
+        }
+        conn.ModifyInstance = (
+            mock.Mock(return_value=modifiedstorageGroupInstance))
+        self.driver.common.utils.update_storagegroup_qos(
+            conn, storageGroupInstanceName, extraSpecs)
+
+        modifiedInstance = self.driver.common.utils.update_storagegroup_qos(
+            conn, storageGroupInstanceName, extraSpecs)
+        self.assertIsNotNone(modifiedInstance)
+        self.assertEqual(
+            6000, modifiedInstance['EMCMaximumIO'])
+        self.assertEqual(
+            6000, modifiedInstance['EMCMaximumBandwidth'])
+        self.assertEqual(
+            1, modifiedInstance['EMCMaxIODynamicDistributionType'])
+        self.assertEqual('CIM_DeviceMaskingGroup',
+                         modifiedInstance['CreationClassName'])
 
 
 class EMCVMAXCommonTest(test.TestCase):

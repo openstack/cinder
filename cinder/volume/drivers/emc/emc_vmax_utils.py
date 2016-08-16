@@ -1083,6 +1083,28 @@ class EMCVMAXUtils(object):
 
         return extraSpecs
 
+    def get_volumetype_qosspecs(self, volume, volumeTypeId=None):
+        """Get the qos specs.
+
+        :param volume: the volume dictionary
+        :param volumeTypeId: Optional override for volume['volume_type_id']
+        :returns: dict -- qosSpecs - the qos specs
+        """
+        qosSpecs = {}
+
+        try:
+            if volumeTypeId:
+                type_id = volumeTypeId
+            else:
+                type_id = volume['volume_type_id']
+            if type_id is not None:
+                qosSpecs = volume_types.get_volume_type_qos_specs(type_id)
+
+        except Exception:
+            LOG.debug("Unable to get QoS specifications.")
+
+        return qosSpecs
+
     def get_volume_type_name(self, volume):
         """Get the volume type name.
 
@@ -2645,3 +2667,51 @@ class EMCVMAXUtils(object):
             max_over_sub_ratio = float(max_sub_ratio_from_per)
 
         return max_over_sub_ratio
+
+    def update_storagegroup_qos(self, conn, storagegroup, extraspecs):
+        """Update the storagegroupinstance with qos details.
+
+        If MaxIOPS or maxMBPS is in extraspecs, then DistributionType can be
+        modified in addition to MaxIOPS or/and maxMBPS
+        If MaxIOPS or maxMBPS is NOT in extraspecs, we check to see if
+        either is set in StorageGroup. If so, then DistributionType can be
+        modified
+
+        :param conn: connection to the ecom server
+        :param storagegroup: the storagegroup instance name
+        :param extraSpecs: extra specifications
+        """
+        if type(storagegroup) is pywbem.cim_obj.CIMInstance:
+            storagegroupInstance = storagegroup
+        else:
+            storagegroupInstance = conn.GetInstance(storagegroup)
+        propertylist = []
+        if 'maxIOPS' in extraspecs.get('qos'):
+            maxiops = self.get_num(extraspecs.get('qos').get('maxIOPS'), '32')
+            if maxiops != storagegroupInstance['EMCMaximumIO']:
+                storagegroupInstance['EMCMaximumIO'] = maxiops
+                propertylist.append('EMCMaximumIO')
+        if 'maxMBPS' in extraspecs.get('qos'):
+            maxmbps = self.get_num(extraspecs.get('qos').get('maxMBPS'), '32')
+            if maxmbps != storagegroupInstance['EMCMaximumBandwidth']:
+                storagegroupInstance['EMCMaximumBandwidth'] = maxmbps
+                propertylist.append('EMCMaximumBandwidth')
+        if 'DistributionType' in extraspecs.get('qos') and (
+                propertylist or (
+                storagegroupInstance['EMCMaximumBandwidth'] != 0) or (
+                storagegroupInstance['EMCMaximumIO'] != 0)):
+            dynamicdict = {'never': 1, 'onfailure': 2, 'always': 3}
+            dynamicvalue = dynamicdict.get(
+                extraspecs.get('qos').get('DistributionType').lower())
+            if dynamicvalue:
+                distributiontype = self.get_num(dynamicvalue, '16')
+            if distributiontype != (
+                    storagegroupInstance['EMCMaxIODynamicDistributionType']
+            ):
+                storagegroupInstance['EMCMaxIODynamicDistributionType'] = (
+                    distributiontype)
+                propertylist.append('EMCMaxIODynamicDistributionType')
+        if propertylist:
+            modifiedInstance = conn.ModifyInstance(storagegroupInstance,
+                                                   PropertyList=propertylist)
+        return modifiedInstance
