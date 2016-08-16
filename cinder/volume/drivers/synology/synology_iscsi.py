@@ -31,7 +31,8 @@ class SynoISCSIDriver(driver.ISCSIDriver):
     Version history:
         1.0.0 - Initial driver. Provide Cinder minimum features
     """
-
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = 'Synology_DSM_CI'
     VERSION = '1.0.0'
 
     def __init__(self, *args, **kwargs):
