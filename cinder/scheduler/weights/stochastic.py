@@ -22,14 +22,13 @@ weight.
 
 import random
 
-from cinder.scheduler.base_weight import BaseWeightHandler
-from cinder.scheduler.weights import BaseHostWeigher
-from cinder.scheduler.weights import WeighedHost
+from cinder.scheduler import base_weight
+from cinder.scheduler import weights as wts
 
 
-class StochasticHostWeightHandler(BaseWeightHandler):
+class StochasticHostWeightHandler(base_weight.BaseWeightHandler):
     def __init__(self, namespace):
-        super(StochasticHostWeightHandler, self).__init__(BaseHostWeigher,
+        super(StochasticHostWeightHandler, self).__init__(wts.BaseHostWeigher,
                                                           namespace)
 
     def get_weighed_objects(self, weigher_classes, obj_list,
@@ -42,7 +41,7 @@ class StochasticHostWeightHandler(BaseWeightHandler):
 
         # Compute the object weights as the parent would but without sorting
         # or normalization.
-        weighed_objs = [WeighedHost(obj, 0.0) for obj in obj_list]
+        weighed_objs = [wts.WeighedHost(obj, 0.0) for obj in obj_list]
         for weigher_cls in weigher_classes:
             weigher = weigher_cls()
             weights = weigher.weigh_objects(weighed_objs, weighing_properties)
