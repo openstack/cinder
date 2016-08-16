@@ -396,9 +396,10 @@ def _filter_host(field, value, match_level=None):
             match_level = 'host'
 
     # Mysql is not doing case sensitive filtering, so we force it
-    if CONF.database.connection.startswith('mysql:'):
+    conn_str = CONF.database.connection
+    if conn_str.startswith('mysql') and conn_str[5] in ['+', ':']:
         cmp_value = func.binary(value)
-        like_op = 'LIKE_BINARY'
+        like_op = 'LIKE BINARY'
     else:
         cmp_value = value
         like_op = 'LIKE'
