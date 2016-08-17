@@ -50,11 +50,9 @@ class Controller(wsgi.Controller):
         context = req.environ['cinder.context']
         metadata = body['metadata']
 
-        new_metadata = self._update_volume_metadata(context,
-                                                    volume_id,
-                                                    metadata,
-                                                    delete=False)
-
+        new_metadata = self._update_volume_metadata(context, volume_id,
+                                                    metadata, delete=False,
+                                                    use_create=True)
         return {'metadata': new_metadata}
 
     def update(self, req, volume_id, id, body):
@@ -89,17 +87,17 @@ class Controller(wsgi.Controller):
 
         return {'metadata': new_metadata}
 
-    def _update_volume_metadata(self, context,
-                                volume_id, metadata,
-                                delete=False):
+    def _update_volume_metadata(self, context, volume_id, metadata,
+                                delete=False, use_create=False):
         try:
             volume = self.volume_api.get(context, volume_id)
-            return self.volume_api.update_volume_metadata(
-                context,
-                volume,
-                metadata,
-                delete,
-                meta_type=common.METADATA_TYPES.user)
+            if use_create:
+                return self.volume_api.create_volume_metadata(context, volume,
+                                                              metadata)
+            else:
+                return self.volume_api.update_volume_metadata(
+                    context, volume, metadata, delete,
+                    meta_type=common.METADATA_TYPES.user)
         # Not found exception will be handled at the wsgi level
         except (ValueError, AttributeError):
             msg = _("Malformed request body")

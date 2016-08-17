@@ -1,0 +1,6 @@
+---
+features:
+  - Separate create and update rules for volume metadata.
+upgrade:
+  - If policy for update volume metadata is modified in a desired way
+    it's needed to add a desired rule for create volume metadata.

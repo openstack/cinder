@@ -318,6 +318,7 @@ class AvailabilityZoneTestCase(BaseVolumeTestCase):
         self.assertEqual(expected, azs)
 
 
+@ddt.ddt
 class VolumeTestCase(BaseVolumeTestCase):
 
     def setUp(self):
@@ -754,12 +755,34 @@ class VolumeTestCase(BaseVolumeTestCase):
                           self.context,
                           volume_id)
 
+    @mock.patch('cinder.db.volume_metadata_update')
+    def test_create_volume_metadata(self, metadata_update):
+        metadata = {'fake_key': 'fake_value'}
+        metadata_update.return_value = metadata
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        res = self.volume_api.create_volume_metadata(self.context,
+                                                     volume, metadata)
+        metadata_update.assert_called_once_with(self.context, volume.id,
+                                                metadata, False,
+                                                common.METADATA_TYPES.user)
+        self.assertEqual(metadata, res)
+
+    @ddt.data('maintenance', 'uploading')
+    def test_create_volume_metadata_maintenance(self, status):
+        metadata = {'fake_key': 'fake_value'}
+        volume = tests_utils.create_volume(self.context, **self.volume_params)
+        volume['status'] = status
+        self.assertRaises(exception.InvalidVolume,
+                          self.volume_api.create_volume_metadata,
+                          self.context,
+                          volume,
+                          metadata)
+
     def test_create_volume_with_invalid_metadata(self):
         """Test volume create with too much metadata fails."""
-        volume_api = cinder.volume.api.API()
         test_meta = {'fake_key': 'fake_value' * 256}
         self.assertRaises(exception.InvalidVolumeMetadataSize,
-                          volume_api.create,
+                          self.volume_api.create,
                           self.context,
                           1,
                           'name',
@@ -777,11 +800,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, metadata=test_meta1,
                                            **self.volume_params)
         self.volume.create_volume(self.context, volume.id, volume=volume)
-
-        volume_api = cinder.volume.api.API()
-
         # update user metadata associated with the volume.
-        result_meta = volume_api.update_volume_metadata(
+        result_meta = self.volume_api.update_volume_metadata(
             self.context,
             volume,
             test_meta2,
@@ -790,7 +810,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(test_meta2, result_meta)
 
         # create image metadata associated with the volume.
-        result_meta = volume_api.update_volume_metadata(
+        result_meta = self.volume_api.update_volume_metadata(
             self.context,
             volume,
             test_meta1,
@@ -799,7 +819,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(test_meta1, result_meta)
 
         # update image metadata associated with the volume.
-        result_meta = volume_api.update_volume_metadata(
+        result_meta = self.volume_api.update_volume_metadata(
             self.context,
             volume,
             test_meta2,
@@ -809,7 +829,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # update volume metadata with invalid metadta type.
         self.assertRaises(exception.InvalidMetadataType,
-                          volume_api.update_volume_metadata,
+                          self.volume_api.update_volume_metadata,
                           self.context,
                           volume,
                           test_meta1,
@@ -823,9 +843,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, metadata=test_meta1,
                                            **self.volume_params)
         volume['status'] = 'maintenance'
-        volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidVolume,
-                          volume_api.update_volume_metadata,
+                          self.volume_api.update_volume_metadata,
                           self.context,
                           volume,
                           test_meta1,
@@ -836,9 +855,8 @@ class VolumeTestCase(BaseVolumeTestCase):
     def test_update_with_ovo(self, volume_update):
         """Test update volume using oslo_versionedobject."""
         volume = tests_utils.create_volume(self.context, **self.volume_params)
-        volume_api = cinder.volume.api.API()
         updates = {'display_name': 'foobbar'}
-        volume_api.update(self.context, volume, updates)
+        self.volume_api.update(self.context, volume, updates)
         volume_update.assert_called_once_with(self.context, volume.id,
                                               updates)
         self.assertEqual('foobbar', volume.display_name)
@@ -852,11 +870,8 @@ class VolumeTestCase(BaseVolumeTestCase):
                                            **self.volume_params)
         volume_id = volume['id']
         self.volume.create_volume(self.context, volume_id, volume=volume)
-
-        volume_api = cinder.volume.api.API()
-
         # delete user metadata associated with the volume.
-        volume_api.delete_volume_metadata(
+        self.volume_api.delete_volume_metadata(
             self.context,
             volume,
             'fake_key2',
@@ -866,7 +881,7 @@ class VolumeTestCase(BaseVolumeTestCase):
                          db.volume_metadata_get(self.context, volume_id))
 
         # create image metadata associated with the volume.
-        result_meta = volume_api.update_volume_metadata(
+        result_meta = self.volume_api.update_volume_metadata(
             self.context,
             volume,
             test_meta1,
@@ -876,7 +891,7 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(test_meta1, result_meta)
 
         # delete image metadata associated with the volume.
-        volume_api.delete_volume_metadata(
+        self.volume_api.delete_volume_metadata(
             self.context,
             volume,
             'fake_key2',
@@ -891,7 +906,7 @@ class VolumeTestCase(BaseVolumeTestCase):
 
         # delete volume metadata with invalid metadta type.
         self.assertRaises(exception.InvalidMetadataType,
-                          volume_api.delete_volume_metadata,
+                          self.volume_api.delete_volume_metadata,
                           self.context,
                           volume,
                           'fake_key1',
@@ -904,9 +919,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, metadata=test_meta1,
                                            **self.volume_params)
         volume['status'] = 'maintenance'
-        volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidVolume,
-                          volume_api.delete_volume_metadata,
+                          self.volume_api.delete_volume_metadata,
                           self.context,
                           volume,
                           'fake_key1',
@@ -918,9 +932,8 @@ class VolumeTestCase(BaseVolumeTestCase):
         volume = tests_utils.create_volume(self.context, metadata=test_meta1,
                                            **self.volume_params)
         volume['status'] = 'maintenance'
-        volume_api = cinder.volume.api.API()
         self.assertRaises(exception.InvalidVolume,
-                          volume_api.attach,
+                          self.volume_api.attach,
                           self.context,
                           volume, None, None, None, None)
 

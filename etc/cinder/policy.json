@@ -10,6 +10,7 @@
     "volume:get": "rule:admin_or_owner",
     "volume:get_all": "rule:admin_or_owner",
     "volume:get_volume_metadata": "rule:admin_or_owner",
+    "volume:create_volume_metadata": "rule:admin_or_owner",
     "volume:delete_volume_metadata": "rule:admin_or_owner",
     "volume:update_volume_metadata": "rule:admin_or_owner",
     "volume:get_volume_admin_metadata": "rule:admin_api",
