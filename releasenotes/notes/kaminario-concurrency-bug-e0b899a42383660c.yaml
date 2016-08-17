@@ -4,6 +4,3 @@ fixes:
     due to possible race conditions between attach and detach
     volumes and due to limitation from Kaminario K2 iSCSI and
     FC arrays on concurrent operations.
-    To overcome array limitation, use locks and retry mechanism
-    on each K2 requests. To overcome race conditions, use locks
-    on initialize_connection and terminate_connection.

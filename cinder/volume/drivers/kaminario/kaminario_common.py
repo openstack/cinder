@@ -17,6 +17,7 @@
 import math
 import re
 import threading
+import time
 
 import eventlet
 from oslo_config import cfg
@@ -30,6 +31,7 @@ import six
 import cinder
 from cinder import exception
 from cinder.i18n import _, _LE, _LW, _LI
+from cinder import objects
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume.drivers.san import san
@@ -40,6 +42,7 @@ krest = importutils.try_import("krest")
 K2_MIN_VERSION = '2.2.0'
 K2_LOCK_PREFIX = 'Kaminario'
 MAX_K2_RETRY = 5
+K2_REP_FAILED_OVER = fields.ReplicationStatus.FAILED_OVER
 LOG = logging.getLogger(__name__)
 
 kaminario1_opts = [
@@ -290,6 +293,62 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             raise exception.KaminarioCinderDriverException(
                 reason=six.text_type(ex.message))
 
+    @kaminario_logger
+    def _create_failover_volume_replica(self, volume, vg_name, vol_name):
+        """Volume replica creation in K2 needs session and remote volume.
+
+        - create a session
+        - create a volume in the volume group
+
+        """
+        session_name = self.get_session_name(volume.id)
+        rsession_name = self.get_rep_name(session_name)
+
+        rvg_name = self.get_rep_name(vg_name)
+        rvol_name = self.get_rep_name(vol_name)
+        rvg = self.target.search("volume_groups", name=rvg_name).hits[0]
+        rvol = self.target.search("volumes", name=rvol_name).hits[0]
+        k2peer_rs = self.target.search("replication/peer_k2arrays",
+                                       mgmt_host=self.configuration.san_ip)
+        if hasattr(k2peer_rs, 'hits') and k2peer_rs.total != 0:
+            k2peer = k2peer_rs.hits[0]
+        else:
+            msg = _("Unable to find K2peer in source K2:")
+            LOG.error(msg)
+            raise exception.KaminarioCinderDriverException(reason=msg)
+        try:
+            LOG.debug("Creating source session with name: %(sname)s and "
+                      " target session name: %(tname)s",
+                      {'sname': rsession_name, 'tname': session_name})
+            tgt_ssn = self.target.new("replication/sessions")
+            tgt_ssn.replication_peer_k2array = k2peer
+            tgt_ssn.auto_configure_peer_volumes = "False"
+            tgt_ssn.local_volume_group = rvg
+            tgt_ssn.replication_peer_volume_group_name = vg_name
+            tgt_ssn.remote_replication_session_name = session_name
+            tgt_ssn.name = rsession_name
+            tgt_ssn.rpo = self.replica.rpo
+            tgt_ssn.save()
+            LOG.debug("Creating remote volume with name: %s",
+                      rvol_name)
+            self.target.new("replication/peer_volumes",
+                            local_volume=rvol,
+                            name=vol_name,
+                            replication_session=tgt_ssn).save()
+            tgt_ssn.state = "in_sync"
+            tgt_ssn.save()
+        except Exception as ex:
+            LOG.exception(_LE("Replication for the volume %s has "
+                              "failed."), rvol_name)
+            self._delete_by_ref(self.target, "replication/sessions",
+                                rsession_name, 'session')
+            self._delete_by_ref(self.client, "replication/sessions",
+                                session_name, 'remote session')
+            self._delete_by_ref(self.client, "volumes", vol_name, "volume")
+            self._delete_by_ref(self.client, "volume_groups", vg_name, "vg")
+            raise exception.KaminarioCinderDriverException(
+                reason=six.text_type(ex.message))
+
     def _delete_by_ref(self, device, url, name, msg):
         rs = device.search(url, name=name)
         for result in rs.hits:
@@ -313,27 +372,183 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def failover_host(self, context, volumes, secondary_id=None):
         """Failover to replication target."""
         volume_updates = []
+        back_end_ip = None
+        svc_host = vol_utils.extract_host(self.host, 'backend')
+        service = objects.Service.get_by_args(context, svc_host,
+                                              'cinder-volume')
+
         if secondary_id and secondary_id != self.replica.backend_id:
             LOG.error(_LE("Kaminario driver received failover_host "
                           "request, But backend is non replicated device"))
             raise exception.UnableToFailOver(reason=_("Failover requested "
                                                       "on non replicated "
                                                       "backend."))
-        for v in volumes:
-            vol_name = self.get_volume_name(v['id'])
-            rv = self.get_rep_name(vol_name)
-            if self.target.search("volumes", name=rv).total:
-                self._failover_volume(v)
-                volume_updates.append(
-                    {'volume_id': v['id'],
-                     'updates':
-                     {'replication_status':
-                      fields.ReplicationStatus.FAILED_OVER}})
-            else:
-                volume_updates.append({'volume_id': v['id'],
-                                       'updates': {'status': 'error', }})
 
-        return self.replica.backend_id, volume_updates
+        if (service.active_backend_id and
+                service.active_backend_id != self.configuration.san_ip):
+            self.snap_updates = []
+            rep_volumes = []
+            # update status for non-replicated primary volumes
+            for v in volumes:
+                vol_name = self.get_volume_name(v['id'])
+                vol = self.client.search("volumes", name=vol_name)
+                if v.replication_status != K2_REP_FAILED_OVER and vol.total:
+                    status = 'available'
+                    if v.volume_attachment:
+                        map_rs = self.client.search("mappings",
+                                                    volume=vol.hits[0])
+                        status = 'in-use'
+                        if map_rs.total:
+                            map_rs.hits[0].delete()
+                    volume_updates.append({'volume_id': v['id'],
+                                           'updates':
+                                           {'status': status}})
+                else:
+                    rep_volumes.append(v)
+
+            # In-sync from secondaray array to primary array
+            for v in rep_volumes:
+                vol_name = self.get_volume_name(v['id'])
+                vol = self.client.search("volumes", name=vol_name)
+                rvol_name = self.get_rep_name(vol_name)
+                rvol = self.target.search("volumes", name=rvol_name)
+                session_name = self.get_session_name(v['id'])
+                rsession_name = self.get_rep_name(session_name)
+                ssn = self.target.search("replication/sessions",
+                                         name=rsession_name)
+                if ssn.total:
+                    tgt_ssn = ssn.hits[0]
+                ssn = self.client.search("replication/sessions",
+                                         name=session_name)
+                if ssn.total:
+                    src_ssn = ssn.hits[0]
+
+                if (tgt_ssn.state == 'failed_over' and
+                   tgt_ssn.current_role == 'target' and vol.total and src_ssn):
+                    map_rs = self.client.search("mappings", volume=vol.hits[0])
+                    if map_rs.total:
+                        map_rs.hits[0].delete()
+                    tgt_ssn.state = 'in_sync'
+                    tgt_ssn.save()
+                    self._check_for_status(src_ssn, 'in_sync')
+                if (rvol.total and src_ssn.state == 'in_sync' and
+                   src_ssn.current_role == 'target'):
+                    gen_no = self._create_volume_replica_user_snap(self.target,
+                                                                   tgt_ssn)
+                    self.snap_updates.append({'tgt_ssn': tgt_ssn,
+                                              'gno': gen_no,
+                                              'stime': time.time()})
+                LOG.debug("The target session: %s state is "
+                          "changed to in sync", rsession_name)
+
+            self._is_user_snap_sync_finished()
+
+            # Delete secondary volume mappings and create snapshot
+            for v in rep_volumes:
+                vol_name = self.get_volume_name(v['id'])
+                vol = self.client.search("volumes", name=vol_name)
+                rvol_name = self.get_rep_name(vol_name)
+                rvol = self.target.search("volumes", name=rvol_name)
+                session_name = self.get_session_name(v['id'])
+                rsession_name = self.get_rep_name(session_name)
+                ssn = self.target.search("replication/sessions",
+                                         name=rsession_name)
+                if ssn.total:
+                    tgt_ssn = ssn.hits[0]
+                ssn = self.client.search("replication/sessions",
+                                         name=session_name)
+                if ssn.total:
+                    src_ssn = ssn.hits[0]
+                if (rvol.total and src_ssn.state == 'in_sync' and
+                   src_ssn.current_role == 'target'):
+                    map_rs = self.target.search("mappings",
+                                                volume=rvol.hits[0])
+                    if map_rs.total:
+                        map_rs.hits[0].delete()
+                    gen_no = self._create_volume_replica_user_snap(self.target,
+                                                                   tgt_ssn)
+                    self.snap_updates.append({'tgt_ssn': tgt_ssn,
+                                              'gno': gen_no,
+                                              'stime': time.time()})
+            self._is_user_snap_sync_finished()
+            # changing source sessions to failed-over
+            for v in rep_volumes:
+                vol_name = self.get_volume_name(v['id'])
+                vol = self.client.search("volumes", name=vol_name)
+                rvol_name = self.get_rep_name(vol_name)
+                rvol = self.target.search("volumes", name=rvol_name)
+                session_name = self.get_session_name(v['id'])
+                rsession_name = self.get_rep_name(session_name)
+                ssn = self.target.search("replication/sessions",
+                                         name=rsession_name)
+                if ssn.total:
+                    tgt_ssn = ssn.hits[0]
+                ssn = self.client.search("replication/sessions",
+                                         name=session_name)
+                if ssn.total:
+                    src_ssn = ssn.hits[0]
+                if (rvol.total and src_ssn.state == 'in_sync' and
+                   src_ssn.current_role == 'target'):
+                    src_ssn.state = 'failed_over'
+                    src_ssn.save()
+                    self._check_for_status(tgt_ssn, 'suspended')
+                    LOG.debug("The target session: %s state is "
+                              "changed to failed over", session_name)
+
+                    src_ssn.state = 'in_sync'
+                    src_ssn.save()
+                    LOG.debug("The target session: %s state is "
+                              "changed to in sync", session_name)
+                    rep_status = fields.ReplicationStatus.ENABLED
+                    volume_updates.append({'volume_id': v['id'],
+                                           'updates':
+                                          {'replication_status': rep_status}})
+
+            back_end_ip = self.configuration.san_ip
+        else:
+            """Failover to replication target."""
+            for v in volumes:
+                vol_name = self.get_volume_name(v['id'])
+                rv = self.get_rep_name(vol_name)
+                if self.target.search("volumes", name=rv).total:
+                    self._failover_volume(v)
+                    volume_updates.append(
+                        {'volume_id': v['id'],
+                         'updates':
+                         {'replication_status': K2_REP_FAILED_OVER}})
+                else:
+                    volume_updates.append({'volume_id': v['id'],
+                                           'updates': {'status': 'error', }})
+            back_end_ip = self.replica.backend_id
+        return back_end_ip, volume_updates
+
+    def _create_volume_replica_user_snap(self, k2, sess):
+        snap = k2.new("snapshots")
+        snap.is_application_consistent = "False"
+        snap.replication_session = sess
+        snap.save()
+        return snap.generation_number
+
+    def _is_user_snap_sync_finished(self):
+        # waiting for user snapshot to be synced
+        while len(self.snap_updates) > 0:
+            for l in self.snap_updates:
+                sess = l.get('tgt_ssn')
+                gno = l.get('gno')
+                stime = l.get('stime')
+                sess.refresh()
+                if (sess.generation_number == gno and
+                   sess.current_snapshot_progress == 100
+                   and sess.current_snapshot_id is None):
+                    if time.time() - stime > 300:
+                        gen_no = self._create_volume_replica_user_snap(
+                            self.target,
+                            sess)
+                        self.snap_updates.append({'tgt_ssn': sess,
+                                                  'gno': gen_no,
+                                                  'stime': time.time()})
+                    self.snap_updates.remove(l)
+                eventlet.sleep(1)
 
     @kaminario_logger
     def create_volume_from_snapshot(self, volume, snapshot):
@@ -500,6 +715,26 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                             rvg_name, "remote vg")
 
     @kaminario_logger
+    def _delete_failover_volume_replica(self, volume, vg_name, vol_name):
+        rvg_name = self.get_rep_name(vg_name)
+        rvol_name = self.get_rep_name(vol_name)
+        session_name = self.get_session_name(volume.id)
+        rsession_name = self.get_rep_name(session_name)
+        tgt_ssn = self.target.search('replication/sessions',
+                                     name=rsession_name).hits[0]
+        tgt_ssn.state = 'idle'
+        tgt_ssn.save()
+        tgt_ssn.delete()
+
+        LOG.debug("Searching and deleting snapshots for target volume group "
+                  "and target volume: %(vol)s, %(vg)s in K2.",
+                  {'vol': rvol_name, 'vg': rvg_name})
+        rvg = self.target.search('volume_groups', name=rvg_name).hits
+        rsnaps = self.target.search('snapshots', volume_group=rvg).hits
+        for s in rsnaps:
+            s.delete()
+
+    @kaminario_logger
     def _check_for_status(self, obj, status):
         while obj.state != status:
             obj.refresh()
@@ -664,9 +899,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     @kaminario_logger
     def _get_volume_object(self, volume):
         vol_name = self.get_volume_name(volume.id)
-        if volume.replication_status == 'failed-over':
+        if volume.replication_status == K2_REP_FAILED_OVER:
             vol_name = self.get_rep_name(vol_name)
-            self.client = self.target
         LOG.debug("Searching volume : %s in K2.", vol_name)
         vol_rs = self.client.search("volumes", name=vol_name)
         if not hasattr(vol_rs, 'hits') or vol_rs.total == 0:
@@ -696,9 +930,8 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         # Get volume object
         if type(volume).__name__ != 'RestObject':
             vol_name = self.get_volume_name(volume.id)
-            if volume.replication_status == 'failed-over':
+            if volume.replication_status == K2_REP_FAILED_OVER:
                 vol_name = self.get_rep_name(vol_name)
-                self.client = self.target
             LOG.debug("Searching volume: %s in K2.", vol_name)
             volume_rs = self.client.search("volumes", name=vol_name)
             if hasattr(volume_rs, "hits") and volume_rs.total != 0:
@@ -779,12 +1012,13 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         return replica
 
     def _get_replica_status(self, vg_name):
-        vg = self.client.search("volume_groups", name=vg_name).hits[0]
-        if self.client.search("replication/sessions",
-                              local_volume_group=vg).total != 0:
-            return True
-        else:
-            return False
+        vg_rs = self.client.search("volume_groups", name=vg_name)
+        if vg_rs.total:
+            vg = vg_rs.hits[0]
+            if self.client.search("replication/sessions",
+                                  local_volume_group=vg).total:
+                return True
+        return False
 
     def manage_existing(self, volume, existing_ref):
         vol_name = existing_ref['source-name']
@@ -853,6 +1087,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def retype(self, ctxt, volume, new_type, diff, host):
         old_type = volume.get('volume_type')
         vg_name = self.get_volume_group_name(volume.id)
+        vol_name = self.get_volume_name(volume.id)
+        vol_rs = self.client.search("volumes", name=vol_name)
+        if vol_rs.total:
+            vol = vol_rs.hits[0]
+            vmap = self.client.search("mappings", volume=vol).total
         old_rep_type = self._get_replica_status(vg_name)
         new_rep_type = self._get_is_replica(new_type)
         new_prov_type = self._get_is_dedup(new_type)
@@ -867,8 +1106,11 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                 self._delete_replication(volume)
                 return True
         elif not new_rep_type and not old_rep_type:
-            LOG.debug("Use '--migration-policy on-demand' to change 'dedup "
-                      "without replication'<->'nodedup without replication'.")
+            msg = ("Use '--migration-policy on-demand' to change 'dedup "
+                   "without replication'<->'nodedup without replication'.")
+            if vol_rs.total and vmap:
+                msg = "Unattach volume and {0}".format(msg)
+            LOG.debug(msg)
             return False
         else:
             LOG.error(_LE('Change from type1: %(type1)s to type2: %(type2)s '
@@ -879,15 +1121,21 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
     def _add_replication(self, volume):
         vg_name = self.get_volume_group_name(volume.id)
         vol_name = self.get_volume_name(volume.id)
-        LOG.debug("Searching volume group with name: %(name)s",
-                  {'name': vg_name})
-        vg = self.client.search("volume_groups", name=vg_name).hits[0]
-        LOG.debug("Searching volume with name: %(name)s",
-                  {'name': vol_name})
-        vol = self.client.search("volumes", name=vol_name).hits[0]
-        self._create_volume_replica(volume, vg, vol, self.replica.rpo)
+        if volume.replication_status == K2_REP_FAILED_OVER:
+            self._create_failover_volume_replica(volume, vg_name, vol_name)
+        else:
+            LOG.debug("Searching volume group with name: %(name)s",
+                      {'name': vg_name})
+            vg = self.client.search("volume_groups", name=vg_name).hits[0]
+            LOG.debug("Searching volume with name: %(name)s",
+                      {'name': vol_name})
+            vol = self.client.search("volumes", name=vol_name).hits[0]
+            self._create_volume_replica(volume, vg, vol, self.replica.rpo)
 
     def _delete_replication(self, volume):
         vg_name = self.get_volume_group_name(volume.id)
         vol_name = self.get_volume_name(volume.id)
-        self._delete_volume_replica(volume, vg_name, vol_name)
+        if volume.replication_status == K2_REP_FAILED_OVER:
+            self._delete_failover_volume_replica(volume, vg_name, vol_name)
+        else:
+            self._delete_volume_replica(volume, vg_name, vol_name)

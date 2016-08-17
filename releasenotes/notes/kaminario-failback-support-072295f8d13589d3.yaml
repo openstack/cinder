@@ -1,0 +1,4 @@
+---
+fixes:
+  - Added missing replication failback support in Kaminario iSCSI and
+    FC Cinder drivers.

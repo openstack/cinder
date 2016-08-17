@@ -15,15 +15,18 @@
 """Unit tests for kaminario driver."""
 import mock
 from oslo_utils import units
+import time
 
 from cinder import context
 from cinder import exception
+from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume import configuration
+from cinder.volume.drivers.kaminario import kaminario_common
 from cinder.volume.drivers.kaminario import kaminario_fc
 from cinder.volume.drivers.kaminario import kaminario_iscsi
 from cinder.volume import utils as vol_utils
@@ -53,6 +56,13 @@ class FakeSaveObject(FakeK2Obj):
         self.size = units.Mi
         self.replication_status = None
         self.state = 'in_sync'
+        self.generation_number = 548
+        self.current_role = 'target'
+        self.current_snapshot_progress = 100
+        self.current_snapshot_id = None
+
+    def refresh(self):
+        return
 
     def save(self):
         return FakeSaveObject()
@@ -364,15 +374,33 @@ class TestKaminarioISCSI(test.TestCase):
         result = self.driver._failover_volume(self.vol)
         self.assertIsNone(result)
 
-    def test_failover_host(self):
+    @mock.patch.object(kaminario_common.KaminarioCinderDriver,
+                       '_check_for_status')
+    @mock.patch.object(objects.service.Service, 'get_by_args')
+    def test_failover_host(self, get_by_args, check_stauts):
         """Test failover_host."""
+        mock_args = mock.Mock()
+        mock_args.active_backend_id = '10.0.0.1'
+        self.vol.replication_status = 'failed-over'
+        self.driver.configuration.san_ip = '10.0.0.1'
+        get_by_args.side_effect = [mock_args, mock_args]
+        self.driver.host = 'host'
         volumes = [self.vol, self.vol]
         self.driver.replica = Replication()
         self.driver.target = FakeKrest()
+        self.driver.target.search().total = 1
+        self.driver.client.search().total = 1
         backend_ip, res_volumes = self.driver.failover_host(None, volumes)
         self.assertEqual('10.0.0.1', backend_ip)
         status = res_volumes[0]['updates']['replication_status']
         self.assertEqual(fields.ReplicationStatus.FAILED_OVER, status)
+        # different backend ip
+        self.driver.configuration.san_ip = '10.0.0.2'
+        self.driver.client.search().hits[0].state = 'in_sync'
+        backend_ip, res_volumes = self.driver.failover_host(None, volumes)
+        self.assertEqual('10.0.0.2', backend_ip)
+        status = res_volumes[0]['updates']['replication_status']
+        self.assertEqual(fields.ReplicationStatus.ENABLED, status)
 
     def test_delete_volume_replica(self):
         """Test _delete_volume_replica."""
@@ -452,6 +480,41 @@ class TestKaminarioISCSI(test.TestCase):
         self.driver.target = FakeKrest()
         self.driver._check_for_status = mock.Mock()
         result = self.driver._delete_replication(self.vol)
+        self.assertIsNone(result)
+
+    def test_create_failover_volume_replica(self):
+        """Test _create_failover_volume_replica."""
+        self.driver.replica = Replication()
+        self.driver.target = FakeKrest()
+        self.driver.configuration.san_ip = '10.0.0.1'
+        result = self.driver._create_failover_volume_replica(self.vol,
+                                                             'test', 'test')
+        self.assertIsNone(result)
+
+    def test_create_volume_replica_user_snap(self):
+        """Test create_volume_replica_user_snap."""
+        result = self.driver._create_volume_replica_user_snap(FakeKrest(),
+                                                              'sess')
+        self.assertEqual(548, result)
+
+    def test_is_user_snap_sync_finished(self):
+        """Test _is_user_snap_sync_finished."""
+        sess_mock = mock.Mock()
+        sess_mock.refresh = mock.Mock()
+        sess_mock.generation_number = 548
+        sess_mock.current_snapshot_id = None
+        sess_mock.current_snapshot_progress = 100
+        sess_mock.current_snapshot_id = None
+        self.driver.snap_updates = [{'tgt_ssn': sess_mock, 'gno': 548,
+                                     'stime': time.time()}]
+        result = self.driver._is_user_snap_sync_finished()
+        self.assertIsNone(result)
+
+    def test_delete_failover_volume_replica(self):
+        """Test _delete_failover_volume_replica."""
+        self.driver.target = FakeKrest()
+        result = self.driver._delete_failover_volume_replica(self.vol, 'test',
+                                                             'test')
         self.assertIsNone(result)
 
 
