@@ -31,7 +31,7 @@ from cinder.tests.unit import fake_constants as fake
 from cinder.volume import volume_types
 
 
-def stub_volume_type(id):
+def fake_volume_type(id):
     specs = {
         "key1": "value1",
         "key2": "value2",
@@ -51,9 +51,9 @@ def return_volume_types_get_all_types(context, filters=None, marker=None,
                                       limit=None, sort_keys=None,
                                       sort_dirs=None, offset=None,
                                       list_result=False):
-    result = dict(vol_type_1=stub_volume_type(1),
-                  vol_type_2=stub_volume_type(2),
-                  vol_type_3=stub_volume_type(3)
+    result = dict(vol_type_1=fake_volume_type(1),
+                  vol_type_2=fake_volume_type(2),
+                  vol_type_3=fake_volume_type(3)
                   )
     if list_result:
         return list(result.values())
@@ -72,15 +72,11 @@ def return_empty_volume_types_get_all_types(context, filters=None, marker=None,
 def return_volume_types_get_volume_type(context, id):
     if id == fake.WILL_NOT_BE_FOUND_ID:
         raise exception.VolumeTypeNotFound(volume_type_id=id)
-    return stub_volume_type(id)
+    return fake_volume_type(id)
 
 
 def return_volume_types_get_default():
-    return stub_volume_type(1)
-
-
-def return_volume_types_get_default_not_found():
-    return {}
+    return fake_volume_type(1)
 
 
 class VolumeTypesApiTest(test.TestCase):
@@ -105,8 +101,8 @@ class VolumeTypesApiTest(test.TestCase):
                                                  [fake.PROJECT_ID])
 
     def test_volume_types_index(self):
-        self.stubs.Set(volume_types, 'get_all_types',
-                       return_volume_types_get_all_types)
+        self.mock_object(volume_types, 'get_all_types',
+                         return_volume_types_get_all_types)
 
         req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID,
                                       use_admin_context=True)
@@ -121,8 +117,8 @@ class VolumeTypesApiTest(test.TestCase):
             self.assertEqual('value1', entry['extra_specs']['key1'])
 
     def test_volume_types_index_no_data(self):
-        self.stubs.Set(volume_types, 'get_all_types',
-                       return_empty_volume_types_get_all_types)
+        self.mock_object(volume_types, 'get_all_types',
+                         return_empty_volume_types_get_all_types)
 
         req = fakes.HTTPRequest.blank('/v2/%s/types' % fake.PROJECT_ID)
         res_dict = self.controller.index(req)
@@ -234,8 +230,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(expect_result[2], res['volume_types'][2]['id'])
 
     def test_volume_types_show(self):
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
 
         type_id = str(uuid.uuid4())
         req = fakes.HTTPRequest.blank('/v2/%s/types/' % fake.PROJECT_ID
@@ -248,8 +244,8 @@ class VolumeTypesApiTest(test.TestCase):
         self.assertEqual(type_name, res_dict['volume_type']['name'])
 
     def test_volume_types_show_not_found(self):
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       return_volume_types_get_volume_type)
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_volume_types_get_volume_type)
 
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s' %
                                       (fake.PROJECT_ID,
@@ -258,8 +254,8 @@ class VolumeTypesApiTest(test.TestCase):
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
     def test_get_default(self):
-        self.stubs.Set(volume_types, 'get_default_volume_type',
-                       return_volume_types_get_default)
+        self.mock_object(volume_types, 'get_default_volume_type',
+                         return_volume_types_get_default)
         req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.PROJECT_ID)
         req.method = 'GET'
         res_dict = self.controller.show(req, 'default')
@@ -269,8 +265,8 @@ class VolumeTypesApiTest(test.TestCase):
                          res_dict['volume_type']['description'])
 
     def test_get_default_not_found(self):
-        self.stubs.Set(volume_types, 'get_default_volume_type',
-                       return_volume_types_get_default_not_found)
+        self.mock_object(volume_types, 'get_default_volume_type',
+                         return_value={})
         req = fakes.HTTPRequest.blank('/v2/%s/types/default' % fake.PROJECT_ID)
         req.method = 'GET'
 

@@ -37,7 +37,7 @@ DEFAULT_VOL_ID = fake.VOLUME_ID
 DEFAULT_AZ = "fakeaz"
 
 
-def stub_volume(id, **kwargs):
+def create_fake_volume(id, **kwargs):
     volume = {
         'id': id,
         'user_id': fake.USER_ID,
@@ -80,9 +80,9 @@ def stub_volume(id, **kwargs):
     return volume
 
 
-def stub_volume_create(self, context, size, name, description, snapshot=None,
+def fake_volume_create(self, context, size, name, description, snapshot=None,
                        **param):
-    vol = stub_volume(DEFAULT_VOL_ID)
+    vol = create_fake_volume(DEFAULT_VOL_ID)
     vol['size'] = size
     vol['display_name'] = name
     vol['display_description'] = description
@@ -99,12 +99,12 @@ def stub_volume_create(self, context, size, name, description, snapshot=None,
     return vol
 
 
-def stub_volume_api_create(self, context, *args, **kwargs):
-    vol = stub_volume_create(self, context, *args, **kwargs)
+def fake_volume_api_create(self, context, *args, **kwargs):
+    vol = fake_volume_create(self, context, *args, **kwargs)
     return fake_volume.fake_volume_obj(context, **vol)
 
 
-def stub_image_service_detail(self, context, **kwargs):
+def fake_image_service_detail(self, context, **kwargs):
     filters = kwargs.get('filters', {'name': ''})
     if filters['name'] == "Fedora-x86_64-20-20140618-sda":
         return [{'id': "c905cedb-7281-47e4-8a62-f26bc5fc4c77"}]
@@ -114,10 +114,10 @@ def stub_image_service_detail(self, context, **kwargs):
     return []
 
 
-def stub_volume_create_from_image(self, context, size, name, description,
+def fake_volume_create_from_image(self, context, size, name, description,
                                   snapshot, volume_type, metadata,
                                   availability_zone):
-    vol = stub_volume(fake.VOLUME_ID)
+    vol = create_fake_volume(fake.VOLUME_ID)
     vol['status'] = 'creating'
     vol['size'] = size
     vol['display_name'] = name
@@ -127,70 +127,70 @@ def stub_volume_create_from_image(self, context, size, name, description,
     return vol
 
 
-def stub_volume_update(self, context, *args, **param):
+def fake_volume_update(self, context, *args, **param):
     pass
 
 
-def stub_volume_delete(self, context, *args, **param):
+def fake_volume_delete(self, context, *args, **param):
     pass
 
 
-def stub_volume_get(self, context, volume_id, viewable_admin_meta=False):
+def fake_volume_get(self, context, volume_id, viewable_admin_meta=False):
     if viewable_admin_meta:
-        return stub_volume(volume_id)
+        return create_fake_volume(volume_id)
     else:
-        volume = stub_volume(volume_id)
+        volume = create_fake_volume(volume_id)
         del volume['volume_admin_metadata']
         return volume
 
 
-def stub_volume_get_notfound(self, context,
+def fake_volume_get_notfound(self, context,
                              volume_id, viewable_admin_meta=False):
     raise exc.VolumeNotFound(volume_id)
 
 
-def stub_volume_get_db(context, volume_id):
+def fake_volume_get_db(context, volume_id):
     if context.is_admin:
-        return stub_volume(volume_id)
+        return create_fake_volume(volume_id)
     else:
-        volume = stub_volume(volume_id)
+        volume = create_fake_volume(volume_id)
         del volume['volume_admin_metadata']
         return volume
 
 
-def stub_volume_api_get(self, context, volume_id, viewable_admin_meta=False):
-    vol = stub_volume(volume_id)
+def fake_volume_api_get(self, context, volume_id, viewable_admin_meta=False):
+    vol = create_fake_volume(volume_id)
     return fake_volume.fake_volume_obj(context, **vol)
 
 
-def stub_volume_get_all(context, search_opts=None, marker=None, limit=None,
+def fake_volume_get_all(context, search_opts=None, marker=None, limit=None,
                         sort_keys=None, sort_dirs=None, filters=None,
                         viewable_admin_meta=False, offset=None):
-    return [stub_volume(fake.VOLUME_ID, project_id=fake.PROJECT_ID),
-            stub_volume(fake.VOLUME2_ID, project_id=fake.PROJECT2_ID),
-            stub_volume(fake.VOLUME3_ID, project_id=fake.PROJECT3_ID)]
+    return [create_fake_volume(fake.VOLUME_ID, project_id=fake.PROJECT_ID),
+            create_fake_volume(fake.VOLUME2_ID, project_id=fake.PROJECT2_ID),
+            create_fake_volume(fake.VOLUME3_ID, project_id=fake.PROJECT3_ID)]
 
 
-def stub_volume_get_all_by_project(self, context, marker, limit,
+def fake_volume_get_all_by_project(self, context, marker, limit,
                                    sort_keys=None, sort_dirs=None,
                                    filters=None,
                                    viewable_admin_meta=False, offset=None):
-    return [stub_volume_get(self, context, fake.VOLUME_ID,
+    return [fake_volume_get(self, context, fake.VOLUME_ID,
                             viewable_admin_meta=True)]
 
 
-def stub_volume_api_get_all_by_project(self, context, marker, limit,
+def fake_volume_api_get_all_by_project(self, context, marker, limit,
                                        sort_keys=None, sort_dirs=None,
                                        filters=None,
                                        viewable_admin_meta=False,
                                        offset=None):
-    vol = stub_volume_get(self, context, fake.VOLUME_ID,
+    vol = fake_volume_get(self, context, fake.VOLUME_ID,
                           viewable_admin_meta=viewable_admin_meta)
     vol_obj = fake_volume.fake_volume_obj(context, **vol)
     return objects.VolumeList(objects=[vol_obj])
 
 
-def stub_snapshot(id, **kwargs):
+def fake_snapshot(id, **kwargs):
     snapshot = {'id': id,
                 'volume_id': fake.VOLUME_ID,
                 'status': fields.SnapshotStatus.AVAILABLE,
@@ -205,43 +205,43 @@ def stub_snapshot(id, **kwargs):
     return snapshot
 
 
-def stub_snapshot_get_all(context, filters=None, marker=None, limit=None,
+def fake_snapshot_get_all(context, filters=None, marker=None, limit=None,
                           sort_keys=None, sort_dirs=None, offset=None):
-    return [stub_snapshot(fake.VOLUME_ID, project_id=fake.PROJECT_ID),
-            stub_snapshot(fake.VOLUME2_ID, project_id=fake.PROJECT2_ID),
-            stub_snapshot(fake.VOLUME3_ID, project_id=fake.PROJECT3_ID)]
+    return [fake_snapshot(fake.VOLUME_ID, project_id=fake.PROJECT_ID),
+            fake_snapshot(fake.VOLUME2_ID, project_id=fake.PROJECT2_ID),
+            fake_snapshot(fake.VOLUME3_ID, project_id=fake.PROJECT3_ID)]
 
 
-def stub_snapshot_get_all_by_project(context, project_id, filters=None,
+def fake_snapshot_get_all_by_project(context, project_id, filters=None,
                                      marker=None, limit=None, sort_keys=None,
                                      sort_dirs=None, offset=None):
-    return [stub_snapshot(fake.SNAPSHOT_ID)]
+    return [fake_snapshot(fake.SNAPSHOT_ID)]
 
 
-def stub_snapshot_update(self, context, *args, **param):
+def fake_snapshot_update(self, context, *args, **param):
     pass
 
 
-def stub_service_get_all(*args, **kwargs):
+def fake_service_get_all(*args, **kwargs):
     return [{'availability_zone': "zone1:host1", "disabled": 0}]
 
 
-def stub_service_get_all_by_topic(context, topic, disabled=None):
+def fake_service_get_all_by_topic(context, topic, disabled=None):
     return [{'availability_zone': "zone1:host1", "disabled": 0}]
 
 
-def stub_snapshot_get(self, context, snapshot_id):
+def fake_snapshot_get(self, context, snapshot_id):
     if snapshot_id == fake.WILL_NOT_BE_FOUND_ID:
         raise exc.SnapshotNotFound(snapshot_id=snapshot_id)
 
-    return stub_snapshot(snapshot_id)
+    return fake_snapshot(snapshot_id)
 
 
-def stub_consistencygroup_get_notfound(self, context, cg_id):
+def fake_consistencygroup_get_notfound(self, context, cg_id):
     raise exc.ConsistencyGroupNotFound(consistencygroup_id=cg_id)
 
 
-def stub_volume_type_get(context, id, *args, **kwargs):
+def fake_volume_type_get(context, id, *args, **kwargs):
     return {'id': id,
             'name': 'vol_type_name',
             'description': 'A fake volume type',
@@ -255,7 +255,7 @@ def stub_volume_type_get(context, id, *args, **kwargs):
             'deleted': False}
 
 
-def stub_volume_admin_metadata_get(context, volume_id, **kwargs):
+def fake_volume_admin_metadata_get(context, volume_id, **kwargs):
     admin_meta = {'attached_mode': 'rw', 'readonly': 'False'}
     if kwargs.get('attach_status') == 'detached':
         del admin_meta['attached_mode']

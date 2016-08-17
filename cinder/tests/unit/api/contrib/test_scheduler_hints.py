@@ -22,7 +22,7 @@ from cinder.api.openstack import wsgi
 from cinder import context
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 
 
@@ -33,7 +33,8 @@ class SchedulerHintsTestCase(test.TestCase):
 
     def setUp(self):
         super(SchedulerHintsTestCase, self).setUp()
-        self.fake_instance = stubs.stub_volume(fake.VOLUME_ID, uuid=UUID)
+        self.fake_instance = v2_fakes.create_fake_volume(fake.VOLUME_ID,
+                                                         uuid=UUID)
         self.fake_instance['created_at'] =\
             datetime.datetime(2013, 1, 1, 1, 1, 1)
         self.fake_instance['launched_at'] =\

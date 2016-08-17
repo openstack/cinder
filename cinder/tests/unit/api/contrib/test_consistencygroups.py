@@ -31,7 +31,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 from cinder.volume import api as volume_api
@@ -1132,7 +1132,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_create_consistencygroup_from_src(self, mock_validate):
-        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         consistencygroup = utils.create_consistencygroup(self.ctxt)
         volume_id = utils.create_volume(
@@ -1175,7 +1175,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         cgsnapshot.destroy()
 
     def test_create_consistencygroup_from_src_cg(self):
-        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         source_cg = utils.create_consistencygroup(self.ctxt)
         volume_id = utils.create_volume(
@@ -1207,7 +1207,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         source_cg.destroy()
 
     def test_create_consistencygroup_from_src_both_snap_cg(self):
-        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+        self.mock_object(volume_api.API, "create", v2_fakes.fake_volume_create)
 
         consistencygroup = utils.create_consistencygroup(self.ctxt)
         volume_id = utils.create_volume(

@@ -21,12 +21,12 @@ from cinder import db
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 
 
 def fake_snapshot_get(context, snapshot_id):
-    snapshot = stubs.stub_snapshot(snapshot_id)
+    snapshot = v2_fakes.fake_snapshot(snapshot_id)
 
     if snapshot_id == fake.SNAPSHOT_ID:
         snapshot['status'] = fields.SnapshotStatus.CREATING

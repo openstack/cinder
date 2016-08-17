@@ -28,7 +28,7 @@ from cinder import exception
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v2 import stubs
+from cinder.tests.unit.api.v2 import fakes as v2_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_volume
 from cinder import volume
@@ -39,43 +39,30 @@ CONF = cfg.CONF
 
 
 def return_create_volume_metadata_max(context, volume_id, metadata, delete):
-    return stub_max_volume_metadata()
+    return fake_max_volume_metadata()
 
 
 def return_create_volume_metadata(context, volume_id, metadata,
                                   delete, meta_type):
-    return stub_volume_metadata()
+    return fake_volume_metadata()
 
 
 def return_new_volume_metadata(context, volume_id, metadata,
                                delete, meta_type):
-    return stub_new_volume_metadata()
+    return fake_new_volume_metadata()
 
 
 def return_create_volume_metadata_insensitive(context, snapshot_id,
                                               metadata, delete,
                                               meta_type):
-    return stub_volume_metadata_insensitive()
+    return fake_volume_metadata_insensitive()
 
 
 def return_volume_metadata(context, volume_id):
-    return stub_volume_metadata()
+    return fake_volume_metadata()
 
 
-def return_empty_volume_metadata(context, volume_id):
-    return {}
-
-
-def return_empty_container_metadata(context, volume_id, metadata,
-                                    delete, meta_type):
-    return {}
-
-
-def delete_volume_metadata(context, volume_id, key, meta_type):
-    pass
-
-
-def stub_volume_metadata():
+def fake_volume_metadata():
     metadata = {
         "key1": "value1",
         "key2": "value2",
@@ -84,7 +71,7 @@ def stub_volume_metadata():
     return metadata
 
 
-def stub_new_volume_metadata():
+def fake_new_volume_metadata():
     metadata = {
         'key10': 'value10',
         'key99': 'value99',
@@ -93,7 +80,7 @@ def stub_new_volume_metadata():
     return metadata
 
 
-def stub_volume_metadata_insensitive():
+def fake_volume_metadata_insensitive():
     metadata = {
         "key1": "value1",
         "key2": "value2",
@@ -103,7 +90,7 @@ def stub_volume_metadata_insensitive():
     return metadata
 
 
-def stub_max_volume_metadata():
+def fake_max_volume_metadata():
     metadata = {"metadata": {}}
     for num in range(CONF.quota_metadata_items):
         metadata['metadata']['key%i' % num] = "blah"
@@ -120,24 +107,19 @@ def return_volume_nonexistent(*args, **kwargs):
     raise exception.VolumeNotFound('bogus test message')
 
 
-def fake_update_volume_metadata(self, context, volume, diff):
-    pass
-
-
 class volumeMetaDataTest(test.TestCase):
 
     def setUp(self):
         super(volumeMetaDataTest, self).setUp()
         self.volume_api = volume_api.API()
-        self.stubs.Set(volume.api.API, 'get', get_volume)
-        self.stubs.Set(db, 'volume_metadata_get',
-                       return_volume_metadata)
-        self.patch(
-            'cinder.db.service_get_all', autospec=True,
-            return_value=stubs.stub_service_get_all_by_topic(None, None))
-
-        self.stubs.Set(self.volume_api, 'update_volume_metadata',
-                       fake_update_volume_metadata)
+        self.mock_object(volume.api.API, 'get', get_volume)
+        self.mock_object(db, 'volume_metadata_get',
+                         return_volume_metadata)
+        self.mock_object(db, 'service_get_all',
+                         return_value=v2_fakes.fake_service_get_all_by_topic(
+                             None, None),
+                         autospec=True)
+        self.mock_object(self.volume_api, 'update_volume_metadata')
 
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
@@ -170,15 +152,15 @@ class volumeMetaDataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_index_nonexistent_volume(self):
-        self.stubs.Set(db, 'volume_metadata_get',
-                       return_volume_nonexistent)
+        self.mock_object(db, 'volume_metadata_get',
+                         return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(self.url)
         self.assertRaises(exception.VolumeNotFound,
                           self.controller.index, req, self.url)
 
     def test_index_no_data(self):
-        self.stubs.Set(db, 'volume_metadata_get',
-                       return_empty_volume_metadata)
+        self.mock_object(db, 'volume_metadata_get',
+                         return_value={})
         req = fakes.HTTPRequest.blank(self.url)
         res_dict = self.controller.index(req, self.req_id)
         expected = {'metadata': {}}
@@ -191,15 +173,15 @@ class volumeMetaDataTest(test.TestCase):
         self.assertEqual(expected, res_dict)
 
     def test_show_nonexistent_volume(self):
-        self.stubs.Set(db, 'volume_metadata_get',
-                       return_volume_nonexistent)
+        self.mock_object(db, 'volume_metadata_get',
+                         return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(self.url + '/key2')
         self.assertRaises(exception.VolumeNotFound,
                           self.controller.show, req, self.req_id, 'key2')
 
     def test_show_meta_not_found(self):
-        self.stubs.Set(db, 'volume_metadata_get',
-                       return_empty_volume_metadata)
+        self.mock_object(db, 'volume_metadata_get',
+                         return_value={})
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         self.assertRaises(exception.VolumeMetadataNotFound,
                           self.controller.show, req, self.req_id, 'key6')
@@ -210,7 +192,6 @@ class volumeMetaDataTest(test.TestCase):
         fake_volume = objects.Volume(id=self.req_id, status='available')
         fake_context = mock.Mock()
         metadata_get.side_effect = return_volume_metadata
-        metadata_delete.side_effect = delete_volume_metadata
         req = fakes.HTTPRequest.blank(self.url + '/key2')
         req.method = 'DELETE'
         req.environ['cinder.context'] = fake_context
@@ -228,7 +209,6 @@ class volumeMetaDataTest(test.TestCase):
         fake_volume = objects.Volume(id=self.req_id, status='maintenance')
         fake_context = mock.Mock()
         metadata_get.side_effect = return_volume_metadata
-        metadata_delete.side_effect = delete_volume_metadata
         req = fakes.HTTPRequest.blank(self.url + '/key2')
         req.method = 'DELETE'
         req.environ['cinder.context'] = fake_context
@@ -261,8 +241,8 @@ class volumeMetaDataTest(test.TestCase):
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
     def test_delete_meta_not_found(self):
-        self.stubs.Set(db, 'volume_metadata_get',
-                       return_empty_volume_metadata)
+        self.mock_object(db, 'volume_metadata_get',
+                         return_value={})
         req = fakes.HTTPRequest.blank(self.url + '/key6')
         req.method = 'DELETE'
         self.assertRaises(exception.VolumeMetadataNotFound,
@@ -273,7 +253,7 @@ class volumeMetaDataTest(test.TestCase):
     def test_create(self, metadata_get, metadata_update):
         fake_volume = {'id': self.req_id, 'status': 'available'}
         fake_context = mock.Mock()
-        metadata_get.side_effect = return_empty_volume_metadata
+        metadata_get.return_value = {}
         metadata_update.side_effect = return_create_volume_metadata
         req = fakes.HTTPRequest.blank('/v2/volume_metadata')
         req.method = 'POST'
@@ -295,7 +275,7 @@ class volumeMetaDataTest(test.TestCase):
     def test_create_volume_maintenance(self, metadata_get, metadata_update):
         fake_volume = {'id': self.req_id, 'status': 'maintenance'}
         fake_context = mock.Mock()
-        metadata_get.side_effect = return_empty_volume_metadata
+        metadata_get.return_value = {}
         metadata_update.side_effect = return_create_volume_metadata
         req = fakes.HTTPRequest.blank('/v2/volume_metadata')
         req.method = 'POST'
@@ -321,7 +301,7 @@ class volumeMetaDataTest(test.TestCase):
         # which server added
         fake_volume = {'id': self.req_id, 'status': 'available'}
         fake_context = mock.Mock()
-        metadata_get.side_effect = return_empty_volume_metadata
+        metadata_get.return_value = {}
         metadata_update.side_effect = return_create_volume_metadata_insensitive
 
         req = fakes.HTTPRequest.blank('/v2/volume_metadata')
@@ -347,8 +327,8 @@ class volumeMetaDataTest(test.TestCase):
             self.assertEqual(expected, res_dict)
 
     def test_create_empty_body(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'POST'
         req.headers["content-type"] = "application/json"
@@ -357,8 +337,8 @@ class volumeMetaDataTest(test.TestCase):
                           self.controller.create, req, self.req_id, None)
 
     def test_create_item_empty_key(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"": "value1"}}
@@ -369,8 +349,8 @@ class volumeMetaDataTest(test.TestCase):
                           self.controller.create, req, self.req_id, body)
 
     def test_create_item_key_too_long(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {("a" * 260): "value1"}}
@@ -382,11 +362,12 @@ class volumeMetaDataTest(test.TestCase):
                           req, self.req_id, body)
 
     def test_create_nonexistent_volume(self):
-        self.stubs.Set(volume.api.API, 'get', return_volume_nonexistent)
-        self.stubs.Set(db, 'volume_metadata_get',
-                       return_volume_metadata)
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(volume.api.API, 'get',
+                         return_volume_nonexistent)
+        self.mock_object(db, 'volume_metadata_get',
+                         return_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
 
         req = fakes.HTTPRequest.blank('/v2/volume_metadata')
         req.method = 'POST'
@@ -489,7 +470,7 @@ class volumeMetaDataTest(test.TestCase):
     def test_update_all_empty_container(self, metadata_update):
         fake_volume = {'id': self.req_id, 'status': 'available'}
         fake_context = mock.Mock()
-        metadata_update.side_effect = return_empty_container_metadata
+        metadata_update.return_value = {}
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -505,8 +486,8 @@ class volumeMetaDataTest(test.TestCase):
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
     def test_update_all_malformed_container(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -518,8 +499,8 @@ class volumeMetaDataTest(test.TestCase):
                           expected)
 
     def test_update_all_malformed_data(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -531,7 +512,7 @@ class volumeMetaDataTest(test.TestCase):
                           expected)
 
     def test_update_all_nonexistent_volume(self):
-        self.stubs.Set(db, 'volume_get', return_volume_nonexistent)
+        self.mock_object(db, 'volume_get', return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(self.url)
         req.method = 'PUT'
         req.content_type = "application/json"
@@ -583,8 +564,8 @@ class volumeMetaDataTest(test.TestCase):
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
     def test_update_item_nonexistent_volume(self):
-        self.stubs.Set(db, 'volume_get',
-                       return_volume_nonexistent)
+        self.mock_object(db, 'volume_get',
+                         return_volume_nonexistent)
         req = fakes.HTTPRequest.blank(
             '/v2/%s/volumes/asdf/metadata/key1' % fake.PROJECT_ID)
         req.method = 'PUT'
@@ -597,8 +578,8 @@ class volumeMetaDataTest(test.TestCase):
                           body)
 
     def test_update_item_empty_body(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         req.headers["content-type"] = "application/json"
@@ -671,8 +652,8 @@ class volumeMetaDataTest(test.TestCase):
             get_volume.assert_called_once_with(fake_context, self.req_id)
 
     def test_update_item_too_many_keys(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/key1')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1", "key2": "value2"}}
@@ -684,8 +665,8 @@ class volumeMetaDataTest(test.TestCase):
                           body)
 
     def test_update_item_body_uri_mismatch(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       return_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         return_create_volume_metadata)
         req = fakes.HTTPRequest.blank(self.url + '/bad')
         req.method = 'PUT'
         body = {"meta": {"key1": "value1"}}
