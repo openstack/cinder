@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev316\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-17 02:39+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-15 02:16+0000\n"
+"PO-Revision-Date: 2016-08-16 01:32+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -3272,6 +3272,14 @@ msgstr "FAST はこのアレイでサポートされていません。"
 msgid "FC is the protocol but wwpns are not supplied by OpenStack."
 msgstr "FC がプロトコルですが、wwpns が OpenStack によって提供されていません。"
 
+msgid "FSS cinder volume driver not ready: Unable to determine session id."
+msgstr ""
+"FSS cinder ボリュームドライバーが準備できていません: セッション ID を判別でき"
+"ません。"
+
+msgid "FSS do not support multipathing."
+msgstr "FSS はマルチパスをサポートしていません。"
+
 #, python-format
 msgid "Faield to unassign %(volume)s"
 msgstr "%(volume)s の割り当て解除に失敗しました"
@@ -6521,6 +6529,9 @@ msgstr "ボリュームのプール ['host'] %(host)s が見つかりません�
 msgid "Pool from volume['host'] failed with: %(ex)s."
 msgstr "ボリュームのプール ['host'] が以下のため失敗しました: %(ex)s。"
 
+msgid "Pool is not available in the cinder configuration fields."
+msgstr "プールが cinder 設定フィールドにありません。"
+
 msgid "Pool is not available in the volume host field."
 msgstr "プールがボリュームホストフィールドにありません。"
 
@@ -7734,6 +7745,13 @@ msgstr ""
 "以下の移行にはダウングレードがありますが、これは許容されません: \n"
 "\t%s"
 
+msgid ""
+"The given pool info must include the storage pool and naming start with "
+"OpenStack-"
+msgstr ""
+"与えられるプール情報にはストレージプールが含まれていなければならず、名前は "
+"Openstack から始まる必要があります。"
+
 msgid "The host group or iSCSI target could not be added."
 msgstr "ホストグループまたは iSCSI ターゲットを追加できませんでした。"
 
@@ -7858,6 +7876,9 @@ msgstr "結果が無効です。"
 msgid "The retention count must be %s or less."
 msgstr "保存数は %s 以下でなければなりません。"
 
+msgid "The san_secondary_ip param is null."
+msgstr " san_secondary_ip パラメーターが null です。"
+
 msgid "The snapshot cannot be created when the volume is in error status."
 msgstr ""
 "ボリュームの状態が「エラー」である場合は、スナップショットを作成できません。"
@@ -7972,6 +7993,9 @@ msgstr ""
 "ストレージデバイスは %(prot)s をサポートしません。デバイスが %(prot)s をサ"
 "ポートするように設定するか、別のプロトコルを使用するドライバーに切り替えてく"
 "ださい。"
+
+msgid "The storage pool information is empty or not correct"
+msgstr "ストレージプールの情報が空か、正しくありません。"
 
 #, python-format
 msgid ""
@@ -8729,6 +8753,12 @@ msgid ""
 "%(row)s."
 msgstr ""
 "予期しない CLI 応答: ヘッダー/行の不一致。ヘッダー: %(header)s、行: %(row)s。"
+
+msgid "Unexpected exception during get pools info."
+msgstr "プール情報の取得中に予期しない例外が発生しました。"
+
+msgid "Unexpected exception during pool checking."
+msgstr "プールのチェック中に予期しない例外が発生しました。"
 
 #, python-format
 msgid ""
