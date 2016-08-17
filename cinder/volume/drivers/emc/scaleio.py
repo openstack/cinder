@@ -68,7 +68,15 @@ scaleio_opts = [
     cfg.StrOpt('sio_storage_pool_name',
                help='Storage Pool name.'),
     cfg.StrOpt('sio_storage_pool_id',
-               help='Storage Pool ID.')
+               help='Storage Pool ID.'),
+    cfg.FloatOpt('sio_max_over_subscription_ratio',
+                 # This option exists to provide a default value for the
+                 # ScaleIO driver which is different than the global default.
+                 help='max_over_subscription_ratio setting for the ScaleIO '
+                      'driver. If set, this takes precedence over the '
+                      'general max_over_subscription_ratio option. If '
+                      'None, the general option is used.'
+                      'Maximum value allowed for ScaleIO is 10.0.')
 ]
 
 CONF.register_opts(scaleio_opts)
@@ -77,7 +85,8 @@ STORAGE_POOL_NAME = 'sio:sp_name'
 STORAGE_POOL_ID = 'sio:sp_id'
 PROTECTION_DOMAIN_NAME = 'sio:pd_name'
 PROTECTION_DOMAIN_ID = 'sio:pd_id'
-PROVISIONING_KEY = 'sio:provisioning_type'
+PROVISIONING_KEY = 'provisioning:type'
+OLD_PROVISIONING_KEY = 'sio:provisioning_type'
 IOPS_LIMIT_KEY = 'sio:iops_limit'
 BANDWIDTH_LIMIT = 'sio:bandwidth_limit'
 QOS_IOPS_LIMIT_KEY = 'maxIOPS'
@@ -93,6 +102,7 @@ OLD_VOLUME_NOT_FOUND_ERROR = 78
 VOLUME_NOT_MAPPED_ERROR = 84
 VOLUME_ALREADY_MAPPED_ERROR = 81
 MIN_BWS_SCALING_SIZE = 128
+SIO_MAX_OVERSUBSCRIPTION_RATIO = 10.0
 
 
 @interface.volumedriver
@@ -165,7 +175,9 @@ class ScaleIODriver(driver.VolumeDriver):
         LOG.info(_LI(
                  "Default provisioning type: %(provisioning_type)s."),
                  {'provisioning_type': self.provisioning_type})
-
+        if self.configuration.sio_max_over_subscription_ratio is not None:
+            self.configuration.max_over_subscription_ratio = (
+                self.configuration.sio_max_over_subscription_ratio)
         self.connector = connector.InitiatorConnector.factory(
             connector.SCALEIO, utils.get_root_helper(),
             device_scan_attempts=
@@ -228,6 +240,15 @@ class ScaleIODriver(driver.VolumeDriver):
                      "sio_storage_pools."))
             raise exception.InvalidInput(reason=msg)
 
+        if (self.configuration.max_over_subscription_ratio is not None and
+            (self.configuration.max_over_subscription_ratio -
+             SIO_MAX_OVERSUBSCRIPTION_RATIO > 1)):
+            msg = (_("Max over subscription is configured to %(ratio)1f "
+                     "while ScaleIO support up to %(sio_ratio)s.") %
+                   {'sio_ratio': SIO_MAX_OVERSUBSCRIPTION_RATIO,
+                    'ratio': self.configuration.max_over_subscription_ratio})
+            raise exception.InvalidInput(reason=msg)
+
     def _find_storage_pool_id_from_storage_type(self, storage_type):
         # Default to what was configured in configuration file if not defined.
         return storage_type.get(STORAGE_POOL_ID,
@@ -248,8 +269,25 @@ class ScaleIODriver(driver.VolumeDriver):
                                 self.protection_domain_name)
 
     def _find_provisioning_type(self, storage_type):
-        return storage_type.get(PROVISIONING_KEY,
-                                self.provisioning_type)
+        new_provisioning_type = storage_type.get(PROVISIONING_KEY)
+        old_provisioning_type = storage_type.get(OLD_PROVISIONING_KEY)
+        if new_provisioning_type is None and old_provisioning_type is not None:
+            LOG.info(_LI("Using sio:provisioning_type for defining "
+                         "thin or thick volume will be deprecated in the "
+                         "Ocata release of OpenStack. Please use "
+                         "provisioning:type configuration option."))
+            provisioning_type = old_provisioning_type
+        else:
+            provisioning_type = new_provisioning_type
+
+        if provisioning_type is not None:
+            if provisioning_type not in ('thick', 'thin'):
+                msg = _("Illegal provisioning type. The supported "
+                        "provisioning types are 'thick' or 'thin'.")
+                raise exception.VolumeBackendAPIException(data=msg)
+            return provisioning_type
+        else:
+            return self.provisioning_type
 
     def _find_limit(self, storage_type, qos_key, extraspecs_key):
         qos_limit = (storage_type.get(qos_key)
@@ -793,13 +831,15 @@ class ScaleIODriver(driver.VolumeDriver):
         stats['reserved_percentage'] = 0
         stats['QoS_support'] = True
         stats['consistencygroup_support'] = True
-
+        stats['thick_provisioning_support'] = True
+        stats['thin_provisioning_support'] = True
         pools = []
 
         verify_cert = self._get_verify_cert()
 
         free_capacity = 0
         total_capacity = 0
+        provisioned_capacity = 0
 
         for sp_name in self.storage_pools:
             splitted_name = sp_name.split(':')
@@ -881,9 +921,11 @@ class ScaleIODriver(driver.VolumeDriver):
             request = ("https://%(server_ip)s:%(server_port)s"
                        "/api/types/StoragePool/instances/action/"
                        "querySelectedStatistics") % req_vars
+            # The 'Km' in thinCapacityAllocatedInKm is a bug in REST API
             params = {'ids': [pool_id], 'properties': [
                 "capacityAvailableForVolumeAllocationInKb",
-                "capacityLimitInKb", "spareCapacityInKb"]}
+                "capacityLimitInKb", "spareCapacityInKb",
+                "thickCapacityInUseInKb", "thinCapacityAllocatedInKm"]}
             r = requests.post(
                 request,
                 data=json.dumps(params),
@@ -904,18 +946,29 @@ class ScaleIODriver(driver.VolumeDriver):
                 # to 8 GB granularity in backend
                 free_capacity_gb = (
                     res['capacityAvailableForVolumeAllocationInKb'] / units.Mi)
+                # Divide by two because ScaleIO creates a copy for each volume
+                provisioned_capacity = (
+                    ((res['thickCapacityInUseInKb'] +
+                     res['thinCapacityAllocatedInKm']) / 2) / units.Mi)
                 LOG.info(_LI(
                          "free capacity of pool %(pool)s is: %(free)s, "
-                         "total capacity: %(total)s."),
+                         "total capacity: %(total)s, "
+                         "provisioned capacity: %(prov)s"),
                          {'pool': pool_name,
                           'free': free_capacity_gb,
-                          'total': total_capacity_gb})
+                          'total': total_capacity_gb,
+                          'prov': provisioned_capacity})
             pool = {'pool_name': sp_name,
                     'total_capacity_gb': total_capacity_gb,
                     'free_capacity_gb': free_capacity_gb,
                     'QoS_support': True,
                     'consistencygroup_support': True,
-                    'reserved_percentage': 0
+                    'reserved_percentage': 0,
+                    'thin_provisioning_support': True,
+                    'thick_provisioning_support': True,
+                    'provisioned_capacity_gb': provisioned_capacity,
+                    'max_over_subscription_ratio':
+                        self.configuration.max_over_subscription_ratio
                     }
 
             pools.append(pool)
