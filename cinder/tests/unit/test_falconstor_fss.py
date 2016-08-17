@@ -521,7 +521,7 @@ class TestRESTProxy(test.TestCase):
         self.FSS_MOCK = mock.MagicMock()
         self.proxy.FSS = self.FSS_MOCK
         self.FSS_MOCK._fss_request.return_value = API_RESPONSE
-        self.stubs.Set(time, 'sleep', Fake_sleep)
+        self.mock_object(time, 'sleep', Fake_sleep)
 
     def test_do_setup(self):
         self.proxy.do_setup()
