@@ -61,6 +61,7 @@ global_opts = [
                default=1,
                help='Version of the glance API to use'),
     cfg.IntOpt('glance_num_retries',
+               min=0,
                default=0,
                help='Number retries when downloading an image from glance'),
     cfg.BoolOpt('glance_api_insecure',
