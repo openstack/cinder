@@ -2840,6 +2840,30 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                           volume, new_size)
         extend_backing.assert_called_once_with(backing, new_size)
 
+    @mock.patch.object(VMDK_DRIVER, 'volumeops')
+    @mock.patch.object(VMDK_DRIVER, '_get_volume_group_folder')
+    def test_accept_transfer(self, get_volume_group_folder, vops):
+        backing = mock.sentinel.backing
+        vops.get_backing.return_value = backing
+
+        dc = mock.sentinel.dc
+        vops.get_dc.return_value = dc
+
+        new_folder = mock.sentinel.new_folder
+        get_volume_group_folder.return_value = new_folder
+
+        context = mock.sentinel.context
+        volume = self._create_volume_obj()
+        new_project = mock.sentinel.new_project
+        self._driver.accept_transfer(context, volume, mock.sentinel.new_user,
+                                     new_project)
+
+        vops.get_backing.assert_called_once_with(volume.name)
+        vops.get_dc.assert_called_once_with(backing)
+        get_volume_group_folder.assert_called_once_with(dc, new_project)
+        vops.move_backing_to_folder.assert_called_once_with(backing,
+                                                            new_folder)
+
 
 class ImageDiskTypeTest(test.TestCase):
     """Unit tests for ImageDiskType."""
