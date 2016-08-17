@@ -2846,10 +2846,12 @@ class StorageCenterApi(object):
         """
         replinstanceid = None
         scvolume = self.find_volume(volumename, instance_id)
-        screplication = self.get_screplication(scvolume, destssn)
-        # if we got our replication volume we can do this nicely.
-        if screplication:
-            replinstanceid = screplication['destinationVolume']['instanceId']
+        if scvolume:
+            screplication = self.get_screplication(scvolume, destssn)
+            # if we got our replication volume we can do this nicely.
+            if screplication:
+                replinstanceid = (
+                    screplication['destinationVolume']['instanceId'])
         screplvol = self.find_repl_volume(self._repl_name(volumename),
                                           destssn, replinstanceid)
         # delete_replication fails to delete replication without also

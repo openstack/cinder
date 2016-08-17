@@ -6227,9 +6227,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                         None]           # 4
         # Much like find volume we do not gate on this.
         mock_get_screplication.side_effect = [self.SCREPL[0],  # 1
-                                              None,            # 2
-                                              None,            # 3
-                                              None]            # 4
+                                              None]            # 2
         # This
         mock_find_repl_volume.side_effect = [self.VOLUME,   # 1
                                              self.VOLUME,   # 2
