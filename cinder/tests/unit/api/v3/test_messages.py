@@ -10,8 +10,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import mock
-
 from cinder.api import extensions
 from cinder.api.v3 import messages
 from cinder import context
@@ -20,7 +18,7 @@ from cinder.message import api as message_api
 from cinder.message import defined_messages
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v3 import stubs
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 
 
 NS = '{http://docs.openstack.org/api/openstack-block-storage/3.0/content}'
@@ -37,7 +35,7 @@ class MessageApiTest(test.TestCase):
         self.ctxt = context.RequestContext('admin', 'fakeproject', True)
 
     def _expected_message_from_controller(self, id):
-        message = stubs.stub_message(id)
+        message = v3_fakes.fake_message(id)
         links = [
             {'href': 'http://localhost/v3/fakeproject/messages/%s' % id,
              'rel': 'self'},
@@ -59,7 +57,7 @@ class MessageApiTest(test.TestCase):
         }
 
     def test_show(self):
-        self.stubs.Set(message_api.API, 'get', stubs.stub_message_get)
+        self.mock_object(message_api.API, 'get', v3_fakes.fake_message_get)
 
         req = fakes.HTTPRequest.blank(
             '/v3/messages/%s' % fakes.FAKE_UUID,
@@ -72,9 +70,9 @@ class MessageApiTest(test.TestCase):
         self.assertEqual(ex, res_dict)
 
     def test_show_not_found(self):
-        self.stubs.Set(message_api.API, 'get',
-                       mock.Mock(side_effect=exception.MessageNotFound(
-                           message_id=fakes.FAKE_UUID)))
+        self.mock_object(message_api.API, 'get',
+                         side_effect=exception.MessageNotFound(
+                             message_id=fakes.FAKE_UUID))
 
         req = fakes.HTTPRequest.blank(
             '/v3/messages/%s' % fakes.FAKE_UUID,
@@ -85,7 +83,7 @@ class MessageApiTest(test.TestCase):
                           req, fakes.FAKE_UUID)
 
     def test_show_pre_microversion(self):
-        self.stubs.Set(message_api.API, 'get', stubs.stub_message_get)
+        self.mock_object(message_api.API, 'get', v3_fakes.fake_message_get)
 
         req = fakes.HTTPRequest.blank('/v3/messages/%s' % fakes.FAKE_UUID,
                                       version='3.0')
@@ -95,8 +93,8 @@ class MessageApiTest(test.TestCase):
                           self.controller.show, req, fakes.FAKE_UUID)
 
     def test_delete(self):
-        self.stubs.Set(message_api.API, 'get', stubs.stub_message_get)
-        self.stubs.Set(message_api.API, 'delete', mock.Mock())
+        self.mock_object(message_api.API, 'get', v3_fakes.fake_message_get)
+        self.mock_object(message_api.API, 'delete')
 
         req = fakes.HTTPRequest.blank(
             '/v3/messages/%s' % fakes.FAKE_UUID,
@@ -109,9 +107,9 @@ class MessageApiTest(test.TestCase):
         self.assertTrue(message_api.API.delete.called)
 
     def test_delete_not_found(self):
-        self.stubs.Set(message_api.API, 'get',
-                       mock.Mock(side_effect=exception.MessageNotFound(
-                           message_id=fakes.FAKE_UUID)))
+        self.mock_object(message_api.API, 'get',
+                         side_effect=exception.MessageNotFound(
+                             message_id=fakes.FAKE_UUID))
 
         req = fakes.HTTPRequest.blank(
             '/v3/messages/%s' % fakes.FAKE_UUID,
@@ -121,8 +119,8 @@ class MessageApiTest(test.TestCase):
                           req, fakes.FAKE_UUID)
 
     def test_index(self):
-        self.stubs.Set(message_api.API, 'get_all', mock.Mock(
-                       return_value=[stubs.stub_message(fakes.FAKE_UUID)]))
+        self.mock_object(message_api.API, 'get_all',
+                         return_value=[v3_fakes.fake_message(fakes.FAKE_UUID)])
         req = fakes.HTTPRequest.blank(
             '/v3/messages/%s' % fakes.FAKE_UUID,
             version=messages.MESSAGES_BASE_MICRO_VERSION)
