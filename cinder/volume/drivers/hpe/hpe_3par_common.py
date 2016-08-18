@@ -243,10 +243,11 @@ class HPE3PARCommon(object):
                  characters. bug #1573647
         3.0.24 - Fix terminate connection on failover
         3.0.25 - Fix delete volume when online clone is active. bug #1349639
+        3.0.26 - Fix concurrent snapshot delete conflict. bug #1600104
 
     """
 
-    VERSION = "3.0.25"
+    VERSION = "3.0.26"
 
     stats = {}
 
@@ -2476,8 +2477,34 @@ class HPE3PARCommon(object):
                             "cinder: %(id)s Ex: %(msg)s"),
                         {'id': snapshot['id'], 'msg': ex})
         except hpeexceptions.HTTPConflict as ex:
-            LOG.error(_LE("Exception: %s"), ex)
-            raise exception.SnapshotIsBusy(snapshot_name=snapshot['id'])
+            if (ex.get_code() == 32):
+                # Error 32 means that the snapshot has children
+                # see if we have any temp snapshots
+                snaps = self.client.getVolumeSnapshots(snap_name)
+                for snap in snaps:
+                    if snap.startswith('tss-'):
+                        LOG.info(
+                            _LI("Found a temporary snapshot %(name)s"),
+                            {'name': snap})
+                        try:
+                            self.client.deleteVolume(snap)
+                        except hpeexceptions.HTTPNotFound:
+                            # if the volume is gone, it's as good as a
+                            # successful delete
+                            pass
+                        except Exception:
+                            msg = _("Snapshot has a temporary snapshot that "
+                                    "can't be deleted at this time.")
+                            raise exception.SnapshotIsBusy(message=msg)
+
+                try:
+                    self.client.deleteVolume(snap_name)
+                except Exception:
+                    msg = _("Snapshot has children and cannot be deleted!")
+                    raise exception.SnapshotIsBusy(message=msg)
+            else:
+                LOG.error(_LE("Exception: %s"), ex)
+                raise exception.SnapshotIsBusy(message=ex.get_description())
 
     def _get_3par_hostname_from_wwn_iqn(self, wwns, iqns):
         if wwns is not None and not isinstance(wwns, list):
