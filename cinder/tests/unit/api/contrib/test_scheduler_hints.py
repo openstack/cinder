@@ -53,8 +53,8 @@ class SchedulerHintsTestCase(test.TestCase):
             self.assertNotIn('scheduler_hints', kwargs['body'])
             return self.fake_instance
 
-        self.stubs.Set(cinder.api.v2.volumes.VolumeController, 'create',
-                       fake_create)
+        self.mock_object(cinder.api.v2.volumes.VolumeController, 'create',
+                         fake_create)
 
         req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'
@@ -74,8 +74,8 @@ class SchedulerHintsTestCase(test.TestCase):
             self.assertEqual({"a": "b"}, kwargs['body']['scheduler_hints'])
             return self.fake_instance
 
-        self.stubs.Set(cinder.api.v2.volumes.VolumeController, 'create',
-                       fake_create)
+        self.mock_object(cinder.api.v2.volumes.VolumeController, 'create',
+                         fake_create)
 
         req = fakes.HTTPRequest.blank('/v2/%s/volumes' % fake.PROJECT_ID)
         req.method = 'POST'

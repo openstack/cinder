@@ -25,7 +25,7 @@ from cinder.tests.unit.api.v2 import stubs
 from cinder.tests.unit import fake_constants as fake
 
 
-def stub_snapshot_get(context, snapshot_id):
+def fake_snapshot_get(context, snapshot_id):
     snapshot = stubs.stub_snapshot(snapshot_id)
 
     if snapshot_id == fake.SNAPSHOT_ID:
@@ -44,7 +44,7 @@ class SnapshotActionsTest(test.TestCase):
 
     @mock.patch('cinder.db.snapshot_update', autospec=True)
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
-                side_effect=stub_snapshot_get)
+                side_effect=fake_snapshot_get)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status(self, metadata_get, *args):
 
@@ -61,7 +61,7 @@ class SnapshotActionsTest(test.TestCase):
         self.assertEqual(202, res.status_int)
 
     @mock.patch('cinder.db.sqlalchemy.api._snapshot_get',
-                side_effect=stub_snapshot_get)
+                side_effect=fake_snapshot_get)
     @mock.patch('cinder.db.snapshot_metadata_get', return_value=dict())
     def test_update_snapshot_status_invalid_status(self, metadata_get, *args):
         body = {'os-update_snapshot_status': {'status': 'in-use'}}
@@ -76,7 +76,7 @@ class SnapshotActionsTest(test.TestCase):
         self.assertEqual(400, res.status_int)
 
     def test_update_snapshot_status_without_status(self):
-        self.stubs.Set(db, 'snapshot_get', stub_snapshot_get)
+        self.mock_object(db, 'snapshot_get', fake_snapshot_get)
         body = {'os-update_snapshot_status': {}}
         req = webob.Request.blank('/v2/%s/snapshots/%s/action' % (
             fake.PROJECT_ID, fake.SNAPSHOT_ID))

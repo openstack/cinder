@@ -28,26 +28,14 @@ import cinder.wsgi
 
 def return_create_volume_type_extra_specs(context, volume_type_id,
                                           extra_specs):
-    return stub_volume_type_extra_specs()
+    return fake_volume_type_extra_specs()
 
 
 def return_volume_type_extra_specs(context, volume_type_id):
-    return stub_volume_type_extra_specs()
+    return fake_volume_type_extra_specs()
 
 
-def return_empty_volume_type_extra_specs(context, volume_type_id):
-    return {}
-
-
-def delete_volume_type_extra_specs(context, volume_type_id, key):
-    pass
-
-
-def delete_volume_type_extra_specs_not_found(context, volume_type_id, key):
-    raise exception.VolumeTypeExtraSpecsNotFound("Not Found")
-
-
-def stub_volume_type_extra_specs():
+def fake_volume_type_extra_specs():
     specs = {"key1": "value1",
              "key2": "value2",
              "key3": "value3",
@@ -56,16 +44,12 @@ def stub_volume_type_extra_specs():
     return specs
 
 
-def volume_type_get(context, id, inactive=False, expected_fields=None):
-    pass
-
-
 class VolumeTypesExtraSpecsTest(test.TestCase):
 
     def setUp(self):
         super(VolumeTypesExtraSpecsTest, self).setUp()
         self.flags(host='fake')
-        self.stubs.Set(cinder.db, 'volume_type_get', volume_type_get)
+        self.mock_object(cinder.db, 'volume_type_get')
         self.api_path = '/v2/%s/os-volume-types/%s/extra_specs' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE_ID)
         self.controller = types_extra_specs.VolumeTypeExtraSpecsController()
@@ -73,8 +57,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         """to reset notifier drivers left over from other api/contrib tests"""
 
     def test_index(self):
-        self.stubs.Set(cinder.db, 'volume_type_extra_specs_get',
-                       return_volume_type_extra_specs)
+        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
+                         return_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.index(req, fake.VOLUME_TYPE_ID)
@@ -82,8 +66,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value1', res_dict['extra_specs']['key1'])
 
     def test_index_no_data(self):
-        self.stubs.Set(cinder.db, 'volume_type_extra_specs_get',
-                       return_empty_volume_type_extra_specs)
+        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
+                         return_value={})
 
         req = fakes.HTTPRequest.blank(self.api_path)
         res_dict = self.controller.index(req, fake.VOLUME_TYPE_ID)
@@ -91,8 +75,8 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(0, len(res_dict['extra_specs']))
 
     def test_show(self):
-        self.stubs.Set(cinder.db, 'volume_type_extra_specs_get',
-                       return_volume_type_extra_specs)
+        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
+                         return_volume_type_extra_specs)
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
         res_dict = self.controller.show(req, fake.VOLUME_TYPE_ID, 'key5')
@@ -100,16 +84,15 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value5', res_dict['key5'])
 
     def test_show_spec_not_found(self):
-        self.stubs.Set(cinder.db, 'volume_type_extra_specs_get',
-                       return_empty_volume_type_extra_specs)
+        self.mock_object(cinder.db, 'volume_type_extra_specs_get',
+                         return_value={})
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6')
         self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
                           self.controller.show, req, fake.VOLUME_ID, 'key6')
 
     def test_delete(self):
-        self.stubs.Set(cinder.db, 'volume_type_extra_specs_delete',
-                       delete_volume_type_extra_specs)
+        self.mock_object(cinder.db, 'volume_type_extra_specs_delete')
 
         self.assertEqual(0, len(self.notifier.notifications))
         req = fakes.HTTPRequest.blank(self.api_path + '/key5')
@@ -117,8 +100,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual(1, len(self.notifier.notifications))
 
     def test_delete_not_found(self):
-        self.stubs.Set(cinder.db, 'volume_type_extra_specs_delete',
-                       delete_volume_type_extra_specs_not_found)
+        self.mock_object(cinder.db, 'volume_type_extra_specs_delete',
+                         side_effect=exception.VolumeTypeExtraSpecsNotFound(
+                             "Not Found"))
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key6')
         self.assertRaises(exception.VolumeTypeExtraSpecsNotFound,
@@ -126,9 +110,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
     @mock.patch('cinder.utils.check_string_length')
     def test_create(self, mock_check):
-        self.stubs.Set(cinder.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"extra_specs": {"key1": "value1"}}
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -192,9 +176,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
 
     @mock.patch('cinder.utils.check_string_length')
     def test_update_item(self, mock_check):
-        self.stubs.Set(cinder.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
 
         self.assertEqual(0, len(self.notifier.notifications))
@@ -206,9 +190,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
         self.assertEqual('value1', res_dict['key1'])
 
     def test_update_item_too_many_keys(self):
-        self.stubs.Set(cinder.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"key1": "value1", "key2": "value2"}
 
         req = fakes.HTTPRequest.blank(self.api_path + '/key1')
@@ -216,9 +200,9 @@ class VolumeTypesExtraSpecsTest(test.TestCase):
                           req, fake.VOLUME_ID, 'key1', body)
 
     def test_update_item_body_uri_mismatch(self):
-        self.stubs.Set(cinder.db,
-                       'volume_type_extra_specs_update_or_create',
-                       return_create_volume_type_extra_specs)
+        self.mock_object(cinder.db,
+                         'volume_type_extra_specs_update_or_create',
+                         return_create_volume_type_extra_specs)
         body = {"key1": "value1"}
 
         req = fakes.HTTPRequest.blank(self.api_path + '/bad')

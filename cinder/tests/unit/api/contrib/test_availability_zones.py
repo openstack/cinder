@@ -45,9 +45,9 @@ class ControllerTestCase(cinder.test.TestCase):
         super(ControllerTestCase, self).setUp()
         self.controller = cinder.api.contrib.availability_zones.Controller()
         self.req = FakeRequest()
-        self.stubs.Set(cinder.volume.api.API,
-                       'list_availability_zones',
-                       list_availability_zones)
+        self.mock_object(cinder.volume.api.API,
+                         'list_availability_zones',
+                         list_availability_zones)
 
     def test_list_hosts(self):
         """Verify that the volume hosts are returned."""
