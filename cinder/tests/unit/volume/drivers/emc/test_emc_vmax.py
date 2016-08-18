@@ -1921,8 +1921,10 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def fake_do_iscsi_discovery(self, volume):
         output = []
-        item = '10.10.0.50: 3260,1 iqn.1992-04.com.emc: 50000973f006dd80'
-        output.append(item)
+        properties = {}
+        properties['target_portal'] = '10.10.0.50:3260'
+        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
+        output.append(properties)
         return output
 
     def fake_sleep(self, seconds):
@@ -3958,8 +3960,10 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
 
     def fake_do_iscsi_discovery(self, volume):
         output = []
-        item = '10.10.0.50: 3260,1 iqn.1992-04.com.emc: 50000973f006dd80'
-        output.append(item)
+        properties = {}
+        properties['target_portal'] = '10.10.0.50:3260'
+        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
+        output.append(properties)
         return output
 
     def fake_sleep(self, seconds):
@@ -6672,8 +6676,10 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
 
     def fake_do_iscsi_discovery(self, volume):
         output = []
-        item = '10.10.0.50: 3260,1 iqn.1992-04.com.emc: 50000973f006dd80'
-        output.append(item)
+        properties = {}
+        properties['target_portal'] = '10.10.0.50:3260'
+        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
+        output.append(properties)
         return output
 
     def fake_sleep(self, seconds):
@@ -8189,3 +8195,56 @@ class EMCVMAXProvisionTest(test.TestCase):
         masking.provision.add_members_to_masking_group.assert_called_with(
             conn, controllerConfigService, storageGroupInstanceName,
             volumeInstanceName, volumeName, extraSpecs)
+
+
+class EMCVMAXISCSITest(test.TestCase):
+    def setUp(self):
+        self.data = EMCVMAXCommonData()
+
+        super(EMCVMAXISCSITest, self).setUp()
+
+        configuration = mock.Mock()
+        configuration.safe_get.return_value = 'iSCSITests'
+        configuration.config_group = 'iSCSITests'
+        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
+                         'smis_do_iscsi_discovery',
+                         self.fake_do_iscsi_discovery)
+        emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
+        driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
+        driver.db = FakeDB()
+        self.driver = driver
+
+    def fake_do_iscsi_discovery(self, volume):
+        output = []
+        properties = {}
+        properties['target_portal'] = '10.10.0.50:3260'
+        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
+        output.append(properties)
+        properties = {}
+        properties['target_portal'] = '10.10.0.51:3260'
+        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd81'
+        output.append(properties)
+        return output
+
+    def test_parse_target_list(self):
+        targets = ["10.10.10.31:3260,0 iqn.1f:29.ID2",
+                   "10.10.10.32:3260,0 iqn.2f:29.ID2"]
+        out_targets = self.driver._parse_target_list(targets)
+        self.assertEqual('10.10.10.31:3260', out_targets[0]['target_portal'])
+        self.assertEqual('iqn.1f:29.ID2', out_targets[0]['target_iqn'])
+        self.assertEqual('10.10.10.32:3260', out_targets[1]['target_portal'])
+        self.assertEqual('iqn.2f:29.ID2', out_targets[1]['target_iqn'])
+
+    def test_smis_get_iscsi_properties(self):
+        self.driver.iscsi_ip_addresses = ['10.10.0.50', '10.10.0.51']
+        device_info = {'hostlunid': 1}
+        self.driver.common.find_device_number = (
+            mock.Mock(return_value=device_info))
+        properties = self.driver.smis_get_iscsi_properties(
+            self.data.test_volume, self.data.connector, True)
+        self.assertEqual([1, 1], properties['target_luns'])
+        self.assertEqual(['iqn.1992-04.com.emc:50000973f006dd80',
+                          'iqn.1992-04.com.emc:50000973f006dd81'],
+                         properties['target_iqns'])
+        self.assertEqual(['10.10.0.50:3260', '10.10.0.51:3260'],
+                         properties['target_portals'])

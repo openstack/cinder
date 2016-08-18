@@ -385,6 +385,7 @@ class EMCVMAXCommon(object):
         """
         portGroupName = None
         extraSpecs = self._initial_setup(volume)
+        is_multipath = connector.get('multipath', False)
 
         volumeName = volume['name']
         LOG.info(_LI("Initialize connection: %(volume)s."),
@@ -421,11 +422,13 @@ class EMCVMAXCommon(object):
                     volume, connector, extraSpecs, maskingViewDict))
 
         if self.protocol.lower() == 'iscsi':
-            return self._find_ip_protocol_endpoints(
-                self.conn, deviceInfoDict['storagesystem'],
-                portGroupName)
-        else:
-            return deviceInfoDict
+            deviceInfoDict['iscsi_ip_addresses'] = (
+                self._find_ip_protocol_endpoints(
+                    self.conn, deviceInfoDict['storagesystem'],
+                    portGroupName))
+            deviceInfoDict['is_multipath'] = is_multipath
+
+        return deviceInfoDict
 
     def _attach_volume(self, volume, connector, extraSpecs,
                        maskingViewDict, isLiveMigration=False):
@@ -4453,7 +4456,8 @@ class EMCVMAXCommon(object):
                     ipaddress = (
                         self.utils.get_iscsi_ip_address(
                             conn, ipendpointinstancename))
-                    foundipaddresses.append(ipaddress)
+                    if ipaddress:
+                        foundipaddresses.append(ipaddress)
         return foundipaddresses
 
     def _extend_v3_volume(self, volumeInstance, volumeName, newSize,
