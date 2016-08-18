@@ -53,8 +53,15 @@ class VolumeManagementDriver(base.CinderInterface):
         ManageExistingVolumeTypeMismatch, specifying a reason for the failure.
 
         :param volume:       Cinder volume to manage
-        :param existing_ref: Driver-specific information used to identify a
-                             volume
+        :param existing_ref: Dictionary with keys 'source-id', 'source-name'
+                             with driver-specific values to identify a backend
+                             storage object.
+        :raises: ManageExistingInvalidReference If the existing_ref doesn't
+                 make sense, or doesn't refer to an existing backend storage
+                 object.
+        :raises: ManageExistingVolumeTypeMismatch If there is a mismatch
+                 between the volume type and the properties of the existing
+                 backend storage object.
         """
 
     def manage_existing_get_size(self, volume, existing_ref):
@@ -63,8 +70,12 @@ class VolumeManagementDriver(base.CinderInterface):
         When calculating the size, round up to the next GB.
 
         :param volume:       Cinder volume to manage
-        :param existing_ref: Driver-specific information used to identify a
-                             volume
+        :param existing_ref: Dictionary with keys 'source-id', 'source-name'
+                             with driver-specific values to identify a backend
+                             storage object.
+        :raises: ManageExistingInvalidReference If the existing_ref doesn't
+                 make sense, or doesn't refer to an existing backend storage
+                 object.
         """
 
     def unmanage(self, volume):

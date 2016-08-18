@@ -78,9 +78,18 @@ class VolumeDriverCore(base.CinderInterface):
             string such as: "iSCSI", "FC", "nfs", "ceph", etc.
         * total_capacity_gb
             The total capacity in gigabytes (GiB) of the storage backend being
-            used to store Cinder volumes.
+            used to store Cinder volumes. Use keyword 'unknown' if the backend
+            cannot report the value or 'infinite' if there is no upper limit.
+            But, it is recommended to report real values as the Cinder
+            scheduler assigns lowest weight to any storage backend reporting
+            'unknown' or 'infinite'.
+
         * free_capacity_gb
-            The free capacity in gigabytes (GiB).
+            The free capacity in gigabytes (GiB). Use keyword 'unknown' if the
+            backend cannot report the value or 'infinite' if there is no upper
+            limit. But, it is recommended to report real values as the Cinder
+            scheduler assigns lowest weight to any storage backend reporting
+            'unknown' or 'infinite'.
 
         And the following optional fields:
 
