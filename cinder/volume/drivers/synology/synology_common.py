@@ -17,14 +17,15 @@ import base64
 import functools
 from hashlib import md5
 import json
+import math
 from random import randint
 import string
-import time
 
 from Crypto.Cipher import AES
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA
 from Crypto import Random
+import eventlet
 from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
@@ -162,7 +163,7 @@ class Session(object):
             if one_time_pass and not device_id:
                 self._did = result['data']['did']
         else:
-            raise exception.SynoAuthError(_('Login failed.'))
+            raise exception.SynoAuthError(reason=_('Login failed.'))
 
     def _random_AES_passpharse(self, length):
         available = ('0123456789'
@@ -369,7 +370,8 @@ class APIRequest(object):
 
         if ('error' in result and 'code' in result["error"]
                 and result['error']['code'] == 105):
-            raise exception.SynoAuthError(_('Session might have expired.'))
+            raise exception.SynoAuthError(reason=_('Session might have '
+                                                   'expired.'))
 
         return result
 
@@ -462,8 +464,39 @@ class SynoCommon(object):
 
         free_capacity_gb = int(int(info['size_free_byte']) / units.Gi)
         total_capacity_gb = int(int(info['size_total_byte']) / units.Gi)
+        other_user_data_gb = int(math.ceil((float(info['size_total_byte']) -
+                                            float(info['size_free_byte']) -
+                                            float(info['eppool_used_byte'])) /
+                                 units.Gi))
 
-        return free_capacity_gb, total_capacity_gb
+        return free_capacity_gb, total_capacity_gb, other_user_data_gb
+
+    def _get_pool_lun_provisioned_size(self):
+        pool_name = self.config.pool_name
+        if not pool_name:
+            raise exception.InvalidConfigurationValue(option='pool_name',
+                                                      value=pool_name)
+        try:
+            out = self.exec_webapi('SYNO.Core.ISCSI.LUN',
+                                   'list',
+                                   1,
+                                   location='/' + pool_name)
+
+            self.check_response(out)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE('Failed to _get_pool_lun_provisioned_size.'))
+
+        if not self.check_value_valid(out, ['data', 'luns'], list):
+            raise exception.MalformedResponse(
+                cmd='_get_pool_lun_provisioned_size',
+                reason=_('no data found'))
+
+        size = 0
+        for lun in out['data']['luns']:
+            size += lun['size']
+
+        return int(math.ceil(float(size) / units.Gi))
 
     def _get_lun_info(self, lun_name, additional=None):
         if not lun_name:
@@ -503,7 +536,7 @@ class SynoCommon(object):
                 LOG.exception(_LE('Failed to _get_lun_uuid. [%s]'), lun_name)
 
         if not self.check_value_valid(lun_info, ['uuid'], string_types):
-            raise exception.MalformedResponse(cmd='_get_lun_info',
+            raise exception.MalformedResponse(cmd='_get_lun_uuid',
                                               reason=_('uuid not found'))
 
         return lun_info['uuid']
@@ -719,7 +752,7 @@ class SynoCommon(object):
                 status, locked = self._get_lun_status(volume_name)
                 if not locked:
                     break
-                time.sleep(2)
+                eventlet.sleep(2)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Failed to get lun status. [%s]'),
@@ -737,7 +770,7 @@ class SynoCommon(object):
                 status, locked = self._get_snapshot_status(snapshot_uuid)
                 if not locked:
                     break
-                time.sleep(2)
+                eventlet.sleep(2)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.exception(_LE('Failed to get snapshot status. [%s]'),
@@ -760,7 +793,7 @@ class SynoCommon(object):
         LUN_NO_SUCH_SNAPSHOT = 18990532
 
         if not self.check_value_valid(out, ['error', 'code'], int):
-            raise exception.MalformedResponse(cmd='exec_webapi',
+            raise exception.MalformedResponse(cmd='_check_iscsi_response',
                                               reason=_('no error code found'))
 
         code = out['error']['code']
@@ -785,7 +818,7 @@ class SynoCommon(object):
     def _check_ds_pool_status(self):
         pool_info = self._get_pool_info()
         if not self.check_value_valid(pool_info, ['readonly'], bool):
-            raise exception.MalformedResponse(cmd='check_for_setup_error',
+            raise exception.MalformedResponse(cmd='_check_ds_pool_status',
                                               reason=_('no readonly found'))
 
         if pool_info['readonly']:
@@ -955,9 +988,22 @@ class SynoCommon(object):
         self._check_ds_ability()
 
     def update_volume_stats(self):
-        """Update volume statistics."""
+        """Update volume statistics.
 
-        free_capacity_gb, total_capacity_gb = self._get_pool_size()
+        Three kinds of data are stored on the Synology backend pool:
+        1. Thin volumes (LUNs on the pool),
+        2. Thick volumes (LUNs on the pool),
+        3. Other user data.
+
+        other_user_data_gb is the size of the 3rd one.
+        lun_provisioned_gb is the summation of all thin/thick volume
+        provisioned size.
+
+        Only thin type is available for Cinder volumes.
+        """
+
+        free_gb, total_gb, other_user_data_gb = self._get_pool_size()
+        lun_provisioned_gb = self._get_pool_lun_provisioned_size()
 
         data = {}
         data['volume_backend_name'] = self.volume_backend_name
@@ -967,10 +1013,14 @@ class SynoCommon(object):
         data['QoS_support'] = False
         data['thin_provisioning_support'] = True
         data['thick_provisioning_support'] = False
-        data['reserved_percentage'] = 0
+        data['reserved_percentage'] = self.config.reserved_percentage
 
-        data['free_capacity_gb'] = free_capacity_gb
-        data['total_capacity_gb'] = total_capacity_gb
+        data['free_capacity_gb'] = free_gb
+        data['total_capacity_gb'] = total_gb
+        data['provisioned_capacity_gb'] = (lun_provisioned_gb +
+                                           other_user_data_gb)
+        data['max_over_subscription_ratio'] = (self.config.
+                                               max_over_subscription_ratio)
 
         data['iscsi_ip_address'] = self.config.iscsi_ip_address
         data['pool_name'] = self.config.pool_name
@@ -1091,7 +1141,7 @@ class SynoCommon(object):
         if not self.check_value_valid(resp,
                                       ['data', 'snapshot_uuid'],
                                       string_types):
-            raise exception.MalformedResponse(cmd='take_snapshot',
+            raise exception.MalformedResponse(cmd='create_snapshot',
                                               reason=_('uuid not found'))
 
         snapshot_uuid = resp['data']['snapshot_uuid']

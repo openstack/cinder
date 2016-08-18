@@ -16,6 +16,7 @@
 """Tests for the Synology iSCSI volume driver."""
 
 import copy
+import math
 
 import mock
 from oslo_utils import units
@@ -109,6 +110,7 @@ POOL_INFO = {
     'readonly': False,
     'fs_type': 'ext4',
     'location': 'internal',
+    'eppool_used_byte': '139177984',
     'size_total_byte': '487262806016',
     'volume_id': 1,
     'size_free_byte': '486521139200',
@@ -367,6 +369,8 @@ class SynoCommonTestCase(test.TestCase):
         config.pool_name = POOL_NAME
         config.chap_username = 'abcd'
         config.chap_password = 'qwerty'
+        config.reserved_percentage = 0
+        config.max_over_subscription_ratio = 20
 
         return config
 
@@ -457,12 +461,57 @@ class SynoCommonTestCase(test.TestCase):
         result = self.common._get_pool_size()
 
         self.assertEqual((int(int(POOL_INFO['size_free_byte']) / units.Gi),
-                          int(int(POOL_INFO['size_total_byte']) / units.Gi)),
+                          int(int(POOL_INFO['size_total_byte']) / units.Gi),
+                          math.ceil((float(POOL_INFO['size_total_byte']) -
+                                     float(POOL_INFO['size_free_byte']) -
+                                     float(POOL_INFO['eppool_used_byte'])) /
+                                    units.Gi)),
                          result)
 
         del pool_info['size_free_byte']
         self.assertRaises(exception.MalformedResponse,
                           self.common._get_pool_size)
+
+    def test__get_pool_lun_provisioned_size(self):
+        out = {
+            'data': {
+                'luns': [{
+                    'lun_id': 1,
+                    'location': '/' + POOL_NAME,
+                    'size': 5368709120
+                }, {
+                    'lun_id': 2,
+                    'location': '/' + POOL_NAME,
+                    'size': 3221225472
+                }]
+            },
+            'success': True
+        }
+        self.common.exec_webapi = mock.Mock(return_value=out)
+
+        result = self.common._get_pool_lun_provisioned_size()
+        (self.common.exec_webapi.
+            assert_called_with('SYNO.Core.ISCSI.LUN',
+                               'list',
+                               mock.ANY,
+                               location='/' + POOL_NAME))
+        self.assertEqual(int(math.ceil(float(5368709120 + 3221225472) /
+                             units.Gi)),
+                         result)
+
+    def test__get_pool_lun_provisioned_size_error(self):
+        out = {
+            'data': {},
+            'success': True
+        }
+        self.common.exec_webapi = mock.Mock(return_value=out)
+
+        self.assertRaises(exception.MalformedResponse,
+                          self.common._get_pool_lun_provisioned_size)
+
+        self.conf.pool_name = ''
+        self.assertRaises(exception.InvalidConfigurationValue,
+                          self.common._get_pool_lun_provisioned_size)
 
     def test__get_lun_info(self):
         out = {
@@ -847,7 +896,7 @@ class SynoCommonTestCase(test.TestCase):
                           VOLUME['name'],
                           NEW_VOLUME['name'])
 
-    @mock.patch('time.sleep')
+    @mock.patch('eventlet.sleep')
     def test__check_lun_status_normal(self, _patched_sleep):
         self.common._get_lun_status = (
             mock.Mock(side_effect=[
@@ -869,7 +918,7 @@ class SynoCommonTestCase(test.TestCase):
                           self.common._check_lun_status_normal,
                           VOLUME['name'])
 
-    @mock.patch('time.sleep')
+    @mock.patch('eventlet.sleep')
     def test__check_snapshot_status_healthy(self, _patched_sleep):
         self.common._get_snapshot_status = (
             mock.Mock(side_effect=[
@@ -1180,7 +1229,9 @@ class SynoCommonTestCase(test.TestCase):
         self.assertIsNone(result)
 
     def test_update_volume_stats(self):
-        self.common._get_pool_size = mock.Mock(return_value=(10, 100))
+        self.common._get_pool_size = mock.Mock(return_value=(10, 100, 50))
+        self.common._get_pool_lun_provisioned_size = (
+            mock.Mock(return_value=300))
 
         data = {
             'volume_backend_name': 'DiskStation',
@@ -1193,6 +1244,8 @@ class SynoCommonTestCase(test.TestCase):
             'reserved_percentage': 0,
             'free_capacity_gb': 10,
             'total_capacity_gb': 100,
+            'provisioned_capacity_gb': 350,
+            'max_over_subscription_ratio': 20,
             'iscsi_ip_address': '10.0.0.1',
             'pool_name': 'volume1',
             'backend_info':
@@ -1400,7 +1453,7 @@ class SynoCommonTestCase(test.TestCase):
                           SNAPSHOT)
 
         self.common.exec_webapi = (
-            mock.Mock(side_effect=exception.SynoAuthError))
+            mock.Mock(side_effect=exception.SynoAuthError(reason='dont care')))
 
         self.assertRaises(exception.SynoAuthError,
                           self.common.create_snapshot,
