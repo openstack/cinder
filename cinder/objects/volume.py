@@ -463,6 +463,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
             setattr(self, key, value)
             setattr(dest_volume, key, value_to_dst)
 
+        self.save()
         dest_volume.save()
         return dest_volume
 

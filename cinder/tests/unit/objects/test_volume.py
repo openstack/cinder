@@ -380,6 +380,9 @@ class TestVolume(test_objects.BaseObjectsTestCase):
                          updated_dest_volume.display_description)
         self.assertEqual(src_volume.id, updated_dest_volume._name_id)
         self.assertTrue(volume_update.called)
+        volume_update.assert_has_calls([
+            mock.call(self.context, src_volume.id, mock.ANY),
+            mock.call(self.context, dest_volume.id, mock.ANY)])
         ctxt, vol_id, updates = volume_update.call_args[0]
         self.assertNotIn('volume_type', updates)
 

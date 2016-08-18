@@ -1793,11 +1793,15 @@ class VolumeManager(manager.SchedulerDependentManager):
         volume.save()
 
         # Detach the source volume (if it fails, don't fail the migration)
+        # As after detach and refresh, volume_attchments will be None.
+        # We keep volume_attachment for later attach.
+        if orig_volume_status == 'in-use':
+            attachments = volume.volume_attachment
+        else:
+            attachments = None
         try:
-            if orig_volume_status == 'in-use':
-                attachments = volume.volume_attachment
-                for attachment in attachments:
-                    self.detach_volume(ctxt, volume.id, attachment['id'])
+            for attachment in attachments:
+                self.detach_volume(ctxt, volume.id, attachment['id'])
         except Exception as ex:
             LOG.error(_LE("Detach migration source volume failed:  %(err)s"),
                       {'err': ex}, resource=volume)
@@ -1819,7 +1823,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                    'migration_status': 'success'}
 
         if orig_volume_status == 'in-use':
-            attachments = volume.volume_attachment
             for attachment in attachments:
                 rpcapi.attach_volume(ctxt, volume,
                                      attachment['instance_uuid'],
