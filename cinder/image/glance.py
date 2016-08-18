@@ -36,7 +36,7 @@ from six.moves import range
 from six.moves import urllib
 
 from cinder import exception
-from cinder.i18n import _, _LE, _LW
+from cinder.i18n import _, _LE
 
 
 glance_opts = [
@@ -156,13 +156,6 @@ class GlanceClientWrapper(object):
             self.client = None
         self.api_servers = None
         self.version = version
-
-        if CONF.glance_num_retries < 0:
-            LOG.warning(_LW(
-                "glance_num_retries shouldn't be a negative value. "
-                "The number of retries will be set to 0 until this is"
-                "corrected in the cinder.conf."))
-            CONF.set_override('glance_num_retries', 0)
 
     def _create_static_client(self, context, netloc, use_ssl, version):
         """Create a client that we'll use for every call."""
