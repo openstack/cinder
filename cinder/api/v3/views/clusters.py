@@ -19,8 +19,6 @@ from oslo_utils import timeutils
 class ViewBuilder(object):
     """Map Cluster into dicts for API responses."""
 
-    _collection_name = 'clusters'
-
     @staticmethod
     def _normalize(date):
         if date:
