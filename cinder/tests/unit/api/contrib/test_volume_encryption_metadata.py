@@ -25,10 +25,10 @@ from cinder.tests.unit import fake_constants as fake
 
 
 def return_volume_type_encryption_metadata(context, volume_type_id):
-    return stub_volume_type_encryption()
+    return fake_volume_type_encryption()
 
 
-def stub_volume_type_encryption():
+def fake_volume_type_encryption():
     values = {
         'cipher': 'cipher',
         'key_size': 256,
@@ -68,8 +68,8 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         super(VolumeEncryptionMetadataTest, self).setUp()
         self.controller = (volume_encryption_metadata.
                            VolumeEncryptionMetadataController())
-        self.stubs.Set(db.sqlalchemy.api, 'volume_type_encryption_get',
-                       return_volume_type_encryption_metadata)
+        self.mock_object(db.sqlalchemy.api, 'volume_type_encryption_get',
+                         return_volume_type_encryption_metadata)
 
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID)
         self.volume_id = self._create_volume(self.ctxt)
@@ -184,8 +184,8 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(fake.ENCRYPTION_KEY_ID, res.body.decode())
 
     def test_show_volume_not_encrypted_type(self):
-        self.stubs.Set(db.sqlalchemy.api, 'volume_type_encryption_get',
-                       lambda *args, **kwargs: None)
+        self.mock_object(db.sqlalchemy.api, 'volume_type_encryption_get',
+                         return_value=None)
 
         volume_id = self._create_volume(self.ctxt, encryption_key_id=None)
         self.addCleanup(db.volume_destroy, self.ctxt.elevated(), volume_id)
@@ -198,8 +198,8 @@ class VolumeEncryptionMetadataTest(test.TestCase):
         self.assertEqual(0, len(res.body))
 
     def test_index_volume_not_encrypted_type(self):
-        self.stubs.Set(db.sqlalchemy.api, 'volume_type_encryption_get',
-                       lambda *args, **kwargs: None)
+        self.mock_object(db.sqlalchemy.api, 'volume_type_encryption_get',
+                         return_value=None)
 
         volume_id = self._create_volume(self.ctxt, encryption_key_id=None)
         self.addCleanup(db.volume_destroy, self.ctxt.elevated(), volume_id)

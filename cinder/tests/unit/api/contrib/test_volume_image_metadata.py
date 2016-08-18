@@ -101,12 +101,12 @@ class VolumeImageMetadataTest(test.TestCase):
 
     def setUp(self):
         super(VolumeImageMetadataTest, self).setUp()
-        self.stubs.Set(volume.api.API, 'get', fake_volume_api_get)
-        self.stubs.Set(volume.api.API, 'get_all', fake_volume_get_all)
-        self.stubs.Set(volume.api.API, 'get_volume_image_metadata',
-                       fake_get_volume_image_metadata)
-        self.stubs.Set(volume.api.API, 'get_volumes_image_metadata',
-                       fake_get_volumes_image_metadata)
+        self.mock_object(volume.api.API, 'get', fake_volume_api_get)
+        self.mock_object(volume.api.API, 'get_all', fake_volume_get_all)
+        self.mock_object(volume.api.API, 'get_volume_image_metadata',
+                         fake_get_volume_image_metadata)
+        self.mock_object(volume.api.API, 'get_volumes_image_metadata',
+                         fake_get_volumes_image_metadata)
         self.UUID = uuid.uuid4()
         self.controller = (volume_image_metadata.
                            VolumeImageMetadataController())
@@ -162,9 +162,10 @@ class VolumeImageMetadataTest(test.TestCase):
         def fake_dont_call_this(*args, **kwargs):
             fake_dont_call_this.called = True
         fake_dont_call_this.called = False
-        self.stubs.Set(volume.api.API, 'get_list_volumes_image_metadata',
-                       fake_dont_call_this)
-        self.stubs.Set(volume.api.API, 'get_all', fake_volume_get_all_empty)
+        self.mock_object(volume.api.API, 'get_list_volumes_image_metadata',
+                         fake_dont_call_this)
+        self.mock_object(volume.api.API, 'get_all',
+                         fake_volume_get_all_empty)
 
         res = self._make_request('/v2/%s/volumes/detail' % fake.PROJECT_ID)
         self.assertEqual(200, res.status_int)
@@ -186,10 +187,10 @@ class VolumeImageMetadataTest(test.TestCase):
                          self._get_image_metadata_list(res.body)[0])
 
     def test_create_image_metadata(self):
-        self.stubs.Set(volume.api.API, 'get_volume_image_metadata',
-                       return_empty_image_metadata)
-        self.stubs.Set(db, 'volume_metadata_update',
-                       fake_create_volume_metadata)
+        self.mock_object(volume.api.API, 'get_volume_image_metadata',
+                         return_empty_image_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         fake_create_volume_metadata)
 
         body = {"os-set_image_metadata": {"metadata": fake_image_metadata}}
         req = webob.Request.blank('/v2/%s/volumes/%s/action' % (
@@ -207,10 +208,10 @@ class VolumeImageMetadataTest(test.TestCase):
     def test_create_with_keys_case_insensitive(self):
         # If the keys in uppercase_and_lowercase, should return the one
         # which server added
-        self.stubs.Set(volume.api.API, 'get_volume_image_metadata',
-                       return_empty_image_metadata)
-        self.stubs.Set(db, 'volume_metadata_update',
-                       fake_create_volume_metadata)
+        self.mock_object(volume.api.API, 'get_volume_image_metadata',
+                         return_empty_image_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         fake_create_volume_metadata)
 
         body = {
             "os-set_image_metadata": {
@@ -245,7 +246,7 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, fake.VOLUME_ID, None)
 
     def test_create_nonexistent_volume(self):
-        self.stubs.Set(volume.api.API, 'get', return_volume_nonexistent)
+        self.mock_object(volume.api.API, 'get', return_volume_nonexistent)
 
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
@@ -259,8 +260,8 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, fake.VOLUME_ID, body)
 
     def test_invalid_metadata_items_on_create(self):
-        self.stubs.Set(db, 'volume_metadata_update',
-                       fake_create_volume_metadata)
+        self.mock_object(db, 'volume_metadata_update',
+                         fake_create_volume_metadata)
         req = fakes.HTTPRequest.blank('/v2/%s/volumes/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_ID))
         req.method = 'POST'
@@ -292,8 +293,8 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.create, req, fake.VOLUME_ID, data)
 
     def test_delete(self):
-        self.stubs.Set(db, 'volume_metadata_delete',
-                       volume_metadata_delete)
+        self.mock_object(db, 'volume_metadata_delete',
+                         volume_metadata_delete)
 
         body = {"os-unset_image_metadata": {
             "key": "ramdisk_id"}
@@ -322,8 +323,8 @@ class VolumeImageMetadataTest(test.TestCase):
                           self.controller.delete, req, fake.VOLUME_ID, data)
 
     def test_delete_nonexistent_volume(self):
-        self.stubs.Set(db, 'volume_metadata_delete',
-                       return_volume_nonexistent)
+        self.mock_object(db, 'volume_metadata_delete',
+                         return_volume_nonexistent)
 
         body = {"os-unset_image_metadata": {
             "key": "fake"}

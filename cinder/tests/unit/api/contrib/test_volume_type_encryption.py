@@ -27,10 +27,10 @@ from cinder import utils
 
 
 def return_volume_type_encryption(context, volume_type_id):
-    return stub_volume_type_encryption()
+    return fake_volume_type_encryption()
 
 
-def stub_volume_type_encryption():
+def fake_volume_type_encryption():
     values = {
         'cipher': 'fake_cipher',
         'control_location': 'front-end',
@@ -72,7 +72,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def _create_type_and_encryption(self, volume_type, body=None):
         if body is None:
-            body = {"encryption": stub_volume_type_encryption()}
+            body = {"encryption": fake_volume_type_encryption()}
 
         db.volume_type_create(context.get_admin_context(), volume_type)
 
@@ -81,8 +81,8 @@ class VolumeTypeEncryptionTest(test.TestCase):
                                   req_headers='application/json')
 
     def test_index(self):
-        self.stubs.Set(db, 'volume_type_encryption_get',
-                       return_volume_type_encryption)
+        self.mock_object(db, 'volume_type_encryption_get',
+                         return_volume_type_encryption)
 
         volume_type = self._default_volume_type
         self._create_type_and_encryption(volume_type)
@@ -91,7 +91,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
         self.assertEqual(200, res.status_code)
         res_dict = jsonutils.loads(res.body)
 
-        expected = stub_volume_type_encryption()
+        expected = fake_volume_type_encryption()
         self.assertEqual(expected, res_dict)
 
         db.volume_type_destroy(context.get_admin_context(), volume_type['id'])
@@ -211,7 +211,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def test_create_invalid_volume_type(self):
         volume_type = self._default_volume_type
-        body = {"encryption": stub_volume_type_encryption()}
+        body = {"encryption": fake_volume_type_encryption()}
 
         # Attempt to create encryption without first creating type
         res = self._get_response(volume_type, req_method='POST',
@@ -233,7 +233,7 @@ class VolumeTypeEncryptionTest(test.TestCase):
 
     def test_create_encryption_type_exists(self):
         volume_type = self._default_volume_type
-        body = {"encryption": stub_volume_type_encryption()}
+        body = {"encryption": fake_volume_type_encryption()}
         self._create_type_and_encryption(volume_type, body)
 
         # Try to create encryption specs for a volume type
