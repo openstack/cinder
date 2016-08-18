@@ -306,7 +306,7 @@ method test, you just need to add the ``OpenStack-API-Version``
 header, for example::
 
     req = fakes.HTTPRequest.blank('/testable/url/endpoint')
-    req.headers = {'OpenStack-API-Version': 'volume 3.2'}
+    req.headers['OpenStack-API-Version'] = 'volume 3.6'
     req.api_version_request = api_version.APIVersionRequest('3.6')
 
     controller = controller.TestableController()
