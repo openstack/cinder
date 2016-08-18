@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev316\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev328\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-17 02:39+0000\n"
+"POT-Creation-Date: 2016-08-18 05:22+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-16 01:32+0000\n"
+"PO-Revision-Date: 2016-08-17 11:11+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -828,7 +828,6 @@ msgid "Blockbridge user not configured (required for auth scheme 'password')"
 msgstr ""
 "Blockbridge のユーザーが設定されていません ('password' の認証スキームに必要)"
 
-#, fuzzy
 msgid "Bourne internal server error"
 msgstr "Bourne 内部サーバーエラー"
 
@@ -907,6 +906,14 @@ msgstr "ホストに FC ポートを追加できません。"
 msgid "Can not find cache id by cache name %(name)s."
 msgstr ""
 "キャッシュ名 %(name)s によってキャッシュ ID を見つけることができません。"
+
+#, python-format
+msgid "Can not find cinder volume - %(volumeName)s"
+msgstr "Cinder ボリュームが見つかりません - %(volumeName)s"
+
+#, python-format
+msgid "Can not find consistency group: %s."
+msgstr "整合性グループが見つかりません: %s"
 
 #, python-format
 msgid "Can not find partition id by name %(name)s."
@@ -5048,6 +5055,9 @@ msgstr ""
 "Infortrend CLI の例外: %(err)s。パラメーター: %(param)s (戻りコード: %(rc)s) "
 "(出力: %(out)s)"
 
+msgid "Initiators of host cannot be empty."
+msgstr "ホストのイニシエーターは空にできません。"
+
 msgid "Input volumes or snapshots are invalid."
 msgstr "入力ボリュームまたはスナップショットが無効です。"
 
@@ -6866,6 +6876,12 @@ msgstr "複製サービス機能が %(storageSystemName)s に見つかりませ�
 msgid "Replication Service not found on %(storageSystemName)s."
 msgstr "複製サービスが %(storageSystemName)s に見つかりません。"
 
+msgid ""
+"Replication is configured, but no MirrorView/S enabler installed on VNX."
+msgstr ""
+"レプリケーションが設定されていますが、 VNX にMirrorView/S イネーブラーがイン"
+"ストールされていません。"
+
 msgid "Replication is not enabled"
 msgstr "複製が有効になっていません"
 
@@ -7670,6 +7686,9 @@ msgstr ""
 "このコマンドを実行する前に、'cinder-manage db sync' を使用してデータベースを"
 "作成してください。"
 
+msgid "The allocated size must less than total size."
+msgstr "割り当てサイズは合計のサイズよりも少ない必要があります。"
+
 #, python-format
 msgid ""
 "The array does not support the storage pool setting for SLO %(slo)s and "
@@ -7868,6 +7887,9 @@ msgstr ""
 #, python-format
 msgid "The resource %(resource)s was not found."
 msgstr "リソース %(resource)s が見つかりませんでした。"
+
+msgid "The resource is a thin device, thin size is invalid."
+msgstr "リソースは thin デバイスです。 thin サイズが正しくありません。"
 
 msgid "The results are invalid."
 msgstr "結果が無効です。"
@@ -8078,6 +8100,14 @@ msgstr ""
 
 msgid "The volume label is required as input."
 msgstr "入力としてボリュームラベルが必要です。"
+
+#, python-format
+msgid ""
+"The volume to be managed is a %(provision)s LUN and the tiering setting is "
+"%(tier)s. This doesn't match with the type %(type)s."
+msgstr ""
+"管理対象となるボリュームは %(provision)s LUN で、ティアリングの設定は "
+"%(tier)s です。これはタイプ %(type)s と適合していません。"
 
 #, python-format
 msgid "There are no resources available for use. (resource: %(resource)s)"
@@ -9025,6 +9055,11 @@ msgstr "V3 のロールバック"
 
 msgid "VF is not enabled."
 msgstr "VF は有効になっていません。"
+
+msgid "VNX Cinder driver does not support multiple replication targets."
+msgstr ""
+"VNX Cinder ドライバーは複数のレプリケーションターゲットをサポートしていませ"
+"ん。"
 
 #, python-format
 msgid "VPool %(name)s ( %(vpooltype)s ) : not found"
@@ -11062,6 +11097,18 @@ msgstr "varray %s: 見つかりませんでした。"
 #, python-format
 msgid "vdisk %s is not defined."
 msgstr "vdisk %s が定義されていません。"
+
+msgid "vid is null. FSS failed to create snapshot."
+msgstr "vid が null です。 FSS はスナップショットの作成に失敗しました。"
+
+msgid "vid is null. FSS failed to create_volume_from_snapshot."
+msgstr "vid が null です。 FSS は create_volume_from_snapshot に失敗しました。"
+
+msgid "vid is null. FSS failed to delete snapshot"
+msgstr "vid が null です。 FSS はスナップショットの削除に失敗しました。"
+
+msgid "vid is null. FSS failed to delete volume."
+msgstr "vid が null です。 FSS はボリュームの削除に失敗しました。"
 
 msgid "vmemclient python library not found"
 msgstr "vmemclient python ライブラリーが見つかりません"
