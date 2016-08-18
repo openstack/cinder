@@ -633,13 +633,15 @@ class Client(client_base.Client):
                                    "%(junction)s ") % msg_fmt)
 
     def clone_file(self, flex_vol, src_path, dest_path, vserver,
-                   dest_exists=False, is_snapshot=False):
+                   dest_exists=False, source_snapshot=None,
+                   is_snapshot=False):
         """Clones file on vserver."""
         LOG.debug("Cloning with params volume %(volume)s, src %(src_path)s, "
-                  "dest %(dest_path)s, vserver %(vserver)s",
+                  "dest %(dest_path)s, vserver %(vserver)s,"
+                  "source_snapshot %(source_snapshot)s",
                   {'volume': flex_vol, 'src_path': src_path,
-                   'dest_path': dest_path, 'vserver': vserver})
-
+                   'dest_path': dest_path, 'vserver': vserver,
+                   'source_snapshot': source_snapshot})
         zapi_args = {
             'volume': flex_vol,
             'source-path': src_path,
@@ -647,9 +649,10 @@ class Client(client_base.Client):
         }
         if is_snapshot and self.features.BACKUP_CLONE_PARAM:
             zapi_args['is-backup'] = 'true'
+        if source_snapshot:
+            zapi_args['snapshot-name'] = source_snapshot
         clone_create = netapp_api.NaElement.create_node_with_children(
             'clone-create', **zapi_args)
-
         major, minor = self.connection.get_api_version()
         if major == 1 and minor >= 20 and dest_exists:
             clone_create.add_new_child('destination-exists', 'true')

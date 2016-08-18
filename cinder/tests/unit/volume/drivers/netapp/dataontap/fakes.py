@@ -387,6 +387,7 @@ FAKE_7MODE_POOLS = [
 
 CG_VOLUME_NAME = 'fake_cg_volume'
 CG_GROUP_NAME = 'fake_consistency_group'
+CG_POOL_NAME = 'cdot'
 SOURCE_CG_VOLUME_NAME = 'fake_source_cg_volume'
 CG_VOLUME_ID = 'fake_cg_volume_id'
 CG_VOLUME_SIZE = 100
@@ -419,7 +420,7 @@ CG_VOLUME = {
     'name': CG_VOLUME_NAME,
     'size': 100,
     'id': CG_VOLUME_ID,
-    'host': 'hostname@backend#cdot',
+    'host': 'hostname@backend#' + CG_POOL_NAME,
     'consistencygroup_id': CONSISTENCY_GROUP_ID,
     'status': 'fake_status',
 }
@@ -434,6 +435,8 @@ CONSISTENCY_GROUP = {
     'status': 'fake_status',
     'name': CG_GROUP_NAME,
 }
+
+CG_CONTEXT = {}
 
 CG_SNAPSHOT = {
     'id': CG_SNAPSHOT_ID,

@@ -81,7 +81,8 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         mock_get_actual_path_for_export.assert_called_once_with(
             fake.EXPORT_PATH)
         self.driver.zapi_client.clone_file.assert_called_once_with(
-            'fake_path/' + fake.FLEXVOL, 'fake_path/fake_clone')
+            'fake_path/' + fake.FLEXVOL, 'fake_path/fake_clone',
+            None)
 
     @ddt.data({'nfs_sparsed_volumes': True},
               {'nfs_sparsed_volumes': False})
@@ -115,6 +116,7 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
 
         expected = [{'pool_name': '192.168.99.24:/fake/export/path',
                      'QoS_support': False,
+                     'consistencygroup_support': True,
                      'thick_provisioning_support': thick,
                      'thin_provisioning_support': not thick,
                      'free_capacity_gb': 12.0,
@@ -171,3 +173,31 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
                                                         fake.NFS_SHARE)
 
         self.assertEqual(expected, result)
+
+    def test_delete_cgsnapshot(self):
+        mock_delete_file = self.mock_object(self.driver, '_delete_file')
+
+        model_update, snapshots_model_update = (
+            self.driver.delete_cgsnapshot(
+                fake.CG_CONTEXT, fake.CG_SNAPSHOT, [fake.SNAPSHOT]))
+
+        mock_delete_file.assert_called_once_with(
+            fake.SNAPSHOT['volume_id'], fake.SNAPSHOT['name'])
+        self.assertIsNone(model_update)
+        self.assertIsNone(snapshots_model_update)
+
+    def test_get_snapshot_backing_flexvol_names(self):
+        snapshots = [
+            {'volume': {'host': 'hostA@192.168.99.25#/fake/volume1'}},
+            {'volume': {'host': 'hostA@192.168.1.01#/fake/volume2'}},
+            {'volume': {'host': 'hostA@192.168.99.25#/fake/volume3'}},
+            {'volume': {'host': 'hostA@192.168.99.25#/fake/volume1'}},
+        ]
+
+        hosts = [snap['volume']['host'] for snap in snapshots]
+        flexvols = self.driver._get_backing_flexvol_names(hosts)
+
+        self.assertEqual(3, len(flexvols))
+        self.assertIn('volume1', flexvols)
+        self.assertIn('volume2', flexvols)
+        self.assertIn('volume3', flexvols)
