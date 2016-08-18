@@ -357,7 +357,19 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 encryption_key_id = key_manager.copy_key(context,
                                                          encryption_key_id)
             else:
-                encryption_key_id = key_manager.create_key(context)
+                volume_type_encryption = (
+                    volume_types.get_volume_type_encryption(context,
+                                                            volume_type_id))
+                cipher = volume_type_encryption.cipher
+                length = volume_type_encryption.key_size
+
+                # NOTE(kaitlin-farr): dm-crypt expects the cipher in a
+                # hyphenated format (aes-xts-plain64). The algorithm needs
+                # to be parsed out to pass to the key manager (aes).
+                algorithm = cipher.split('-')[0] if cipher else None
+                encryption_key_id = key_manager.create_key(context,
+                                                           algorithm=algorithm,
+                                                           key_length=length)
 
         return encryption_key_id
 

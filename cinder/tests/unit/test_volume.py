@@ -1047,8 +1047,12 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
 
     @mock.patch.object(keymgr, 'API', fake_keymgr.fake_api)
-    def test_create_volume_with_encrypted_volume_type(self):
+    def test_create_volume_with_encrypted_volume_type_aes(self):
         ctxt = context.get_admin_context()
+
+        cipher = 'aes-xts-plain64'
+        key_size = 256
+        control_location = 'front-end'
 
         db.volume_type_create(ctxt,
                               {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
@@ -1056,7 +1060,10 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_type_encryption_create(
             ctxt,
             '61298380-0c12-11e3-bfd6-4b48424183be',
-            {'control_location': 'front-end', 'provider': ENCRYPTION_PROVIDER})
+            {'control_location': control_location,
+             'provider': ENCRYPTION_PROVIDER,
+             'cipher': cipher,
+             'key_size': key_size})
 
         volume_api = cinder.volume.api.API()
 
@@ -1067,7 +1074,56 @@ class VolumeTestCase(BaseVolumeTestCase):
                                    'name',
                                    'description',
                                    volume_type=db_vol_type)
+
+        key_manager = volume_api.key_manager
+        key = key_manager.get_key(self.context, volume['encryption_key_id'])
+        self.assertEqual(key_size, len(key.key) * 8)
+        self.assertEqual('aes', key.alg)
+
+        metadata = db.volume_encryption_metadata_get(self.context, volume.id)
         self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
+        self.assertEqual(cipher, metadata.get('cipher'))
+        self.assertEqual(key_size, metadata.get('key_size'))
+        self.assertIsNotNone(volume['encryption_key_id'])
+
+    @mock.patch.object(keymgr, 'API', fake_keymgr.fake_api)
+    def test_create_volume_with_encrypted_volume_type_blowfish(self):
+        ctxt = context.get_admin_context()
+
+        cipher = 'blowfish-cbc'
+        key_size = 32
+        control_location = 'front-end'
+
+        db.volume_type_create(ctxt,
+                              {'id': '61298380-0c12-11e3-bfd6-4b48424183be',
+                               'name': 'LUKS'})
+        db.volume_type_encryption_create(
+            ctxt,
+            '61298380-0c12-11e3-bfd6-4b48424183be',
+            {'control_location': control_location,
+             'provider': ENCRYPTION_PROVIDER,
+             'cipher': cipher,
+             'key_size': key_size})
+
+        volume_api = cinder.volume.api.API()
+
+        db_vol_type = db.volume_type_get_by_name(ctxt, 'LUKS')
+
+        volume = volume_api.create(self.context,
+                                   1,
+                                   'name',
+                                   'description',
+                                   volume_type=db_vol_type)
+
+        key_manager = volume_api.key_manager
+        key = key_manager.get_key(self.context, volume['encryption_key_id'])
+        self.assertEqual(key_size, len(key.key) * 8)
+        self.assertEqual('blowfish', key.alg)
+
+        metadata = db.volume_encryption_metadata_get(self.context, volume.id)
+        self.assertEqual(db_vol_type.get('id'), volume['volume_type_id'])
+        self.assertEqual(cipher, metadata.get('cipher'))
+        self.assertEqual(key_size, metadata.get('key_size'))
         self.assertIsNotNone(volume['encryption_key_id'])
 
     def test_create_volume_with_provider_id(self):
