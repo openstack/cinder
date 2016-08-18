@@ -64,7 +64,8 @@ QEMU_IMG_LIMITS = processutils.ProcessLimits(
 # vdi, vmdk, vhd and vhdx disk-formats but glance doesn't support qed
 # disk-format.
 # Ref: http://docs.openstack.org/image-guide/convert-images.html
-VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2', 'vhd', 'vhdx')
+VALID_DISK_FORMATS = ('raw', 'vmdk', 'vdi', 'qcow2',
+                      'vhd', 'vhdx', 'parallels')
 
 
 def validate_disk_format(disk_format):
