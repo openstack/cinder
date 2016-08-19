@@ -35,7 +35,7 @@ class HGSTTestCase(test.TestCase):
     def setUp(self, mock_ghn, mock_grnam, mock_pwnam):
         """Set up UUT and all the flags required for later fake_executes."""
         super(HGSTTestCase, self).setUp()
-        self.stubs.Set(processutils, 'execute', self._fake_execute)
+        self.mock_object(processutils, 'execute', self._fake_execute)
         self._fail_vgc_cluster = False
         self._fail_ip = False
         self._fail_network_list = False

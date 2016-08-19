@@ -711,12 +711,12 @@ class FJFCDriverTestCase(test.TestCase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.cinder_eternus_config_file = self.config_file.name
 
-        self.stubs.Set(dx_common.FJDXCommon, '_get_eternus_connection',
-                       self.fake_eternus_connection)
+        self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
+                         self.fake_eternus_connection)
 
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(dx_common.FJDXCommon, '_create_eternus_instance_name',
-                       instancename.fake_create_eternus_instance_name)
+        self.mock_object(dx_common.FJDXCommon, '_create_eternus_instance_name',
+                         instancename.fake_create_eternus_instance_name)
 
         # Set iscsi driver to self.driver.
         driver = dx_fc.FJDXFCDriver(configuration=self.configuration)
@@ -824,15 +824,15 @@ class FJISCSIDriverTestCase(test.TestCase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.cinder_eternus_config_file = self.config_file.name
 
-        self.stubs.Set(dx_common.FJDXCommon, '_get_eternus_connection',
-                       self.fake_eternus_connection)
+        self.mock_object(dx_common.FJDXCommon, '_get_eternus_connection',
+                         self.fake_eternus_connection)
 
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(dx_common.FJDXCommon, '_create_eternus_instance_name',
-                       instancename.fake_create_eternus_instance_name)
+        self.mock_object(dx_common.FJDXCommon, '_create_eternus_instance_name',
+                         instancename.fake_create_eternus_instance_name)
 
-        self.stubs.Set(dx_common.FJDXCommon, '_get_mapdata_iscsi',
-                       self.fake_get_mapdata)
+        self.mock_object(dx_common.FJDXCommon, '_get_mapdata_iscsi',
+                         self.fake_get_mapdata)
 
         # Set iscsi driver to self.driver.
         driver = dx_iscsi.FJDXISCSIDriver(configuration=self.configuration)

@@ -65,23 +65,23 @@ class TintriDriverTestCase(test.TestCase):
         return configuration
 
     def fake_stubs(self):
-        self.stubs.Set(TClient, 'login', self.fake_login)
-        self.stubs.Set(TClient, 'logout', self.fake_logout)
-        self.stubs.Set(TClient, 'get_snapshot', self.fake_get_snapshot)
-        self.stubs.Set(TClient, 'get_image_snapshots_to_date',
-                       self.fake_get_image_snapshots_to_date)
-        self.stubs.Set(TintriDriver, '_move_cloned_volume',
-                       self.fake_move_cloned_volume)
-        self.stubs.Set(TintriDriver, '_get_provider_location',
-                       self.fake_get_provider_location)
-        self.stubs.Set(TintriDriver, '_set_rw_permissions',
-                       self.fake_set_rw_permissions)
-        self.stubs.Set(TintriDriver, '_is_volume_present',
-                       self.fake_is_volume_present)
-        self.stubs.Set(TintriDriver, '_is_share_vol_compatible',
-                       self.fake_is_share_vol_compatible)
-        self.stubs.Set(TintriDriver, '_is_file_size_equal',
-                       self.fake_is_file_size_equal)
+        self.mock_object(TClient, 'login', self.fake_login)
+        self.mock_object(TClient, 'logout', self.fake_logout)
+        self.mock_object(TClient, 'get_snapshot', self.fake_get_snapshot)
+        self.mock_object(TClient, 'get_image_snapshots_to_date',
+                         self.fake_get_image_snapshots_to_date)
+        self.mock_object(TintriDriver, '_move_cloned_volume',
+                         self.fake_move_cloned_volume)
+        self.mock_object(TintriDriver, '_get_provider_location',
+                         self.fake_get_provider_location)
+        self.mock_object(TintriDriver, '_set_rw_permissions',
+                         self.fake_set_rw_permissions)
+        self.mock_object(TintriDriver, '_is_volume_present',
+                         self.fake_is_volume_present)
+        self.mock_object(TintriDriver, '_is_share_vol_compatible',
+                         self.fake_is_share_vol_compatible)
+        self.mock_object(TintriDriver, '_is_file_size_equal',
+                         self.fake_is_file_size_equal)
 
     def fake_login(self, user_name, password):
         return 'session-id'

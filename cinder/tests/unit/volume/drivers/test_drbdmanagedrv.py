@@ -324,21 +324,21 @@ class DrbdManageIscsiTestCase(test.TestCase):
 
         super(DrbdManageIscsiTestCase, self).setUp()
 
-        self.stubs.Set(importutils, 'import_object',
-                       self.fake_import_object)
-        self.stubs.Set(drv.DrbdManageBaseDriver,
-                       'call_or_reconnect',
-                       self.fake_issue_dbus_call)
-        self.stubs.Set(drv.DrbdManageBaseDriver,
-                       'dbus_connect',
-                       self.fake_issue_dbus_connect)
-        self.stubs.Set(drv.DrbdManageBaseDriver,
-                       '_wait_for_node_assignment',
-                       self.fake_wait_node_assignment)
+        self.mock_object(importutils, 'import_object',
+                         self.fake_import_object)
+        self.mock_object(drv.DrbdManageBaseDriver,
+                         'call_or_reconnect',
+                         self.fake_issue_dbus_call)
+        self.mock_object(drv.DrbdManageBaseDriver,
+                         'dbus_connect',
+                         self.fake_issue_dbus_connect)
+        self.mock_object(drv.DrbdManageBaseDriver,
+                         '_wait_for_node_assignment',
+                         self.fake_wait_node_assignment)
 
         self.configuration.safe_get = self._fake_safe_get
 
-        self.stubs.Set(eventlet, 'sleep', self._fake_sleep)
+        self.mock_object(eventlet, 'sleep', self._fake_sleep)
 
     # Infrastructure
     def fake_import_object(self, what, configuration, db, executor):
@@ -624,9 +624,9 @@ class DrbdManageDrbdTestCase(DrbdManageIscsiTestCase):
     def setUp(self):
         super(DrbdManageDrbdTestCase, self).setUp()
 
-        self.stubs.Set(drv.DrbdManageDrbdDriver,
-                       '_is_external_node',
-                       self.fake_is_external_node)
+        self.mock_object(drv.DrbdManageDrbdDriver,
+                         '_is_external_node',
+                         self.fake_is_external_node)
 
     def test_drbd_create_export(self):
         volume = {'project_id': 'testprjid',
