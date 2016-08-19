@@ -158,7 +158,11 @@ class HttpClient(object):
                 # Object returned switches to one without objectType or with
                 # a different objectType.
                 if not StorageCenterApi._check_result(r):
-                    LOG.debug('Async error: status_code: %s', r.status_code)
+                    LOG.debug('Async error:\n'
+                              '\tstatus_code: %(code)s\n'
+                              '\ttext:        %(text)s\n',
+                              {'code': r.status_code,
+                               'text': r.text})
                 else:
                     # In theory we have a good run.
                     if r.content:
@@ -3114,8 +3118,9 @@ class StorageCenterApi(object):
         :return: Boolean on success/fail.
         """
         payload = {}
+        payload['ConvertToReplication'] = False
         payload['DeleteSecondaryVolume'] = deletesecondaryvolume
-        payload['RecycleSecondaryVolume'] = False
+        payload['RecycleSecondaryVolume'] = deletesecondaryvolume
         r = self.client.delete('StorageCenter/ScLiveVolume/%s' %
                                self._get_id(sclivevolume), payload, True)
         if self._check_result(r):
