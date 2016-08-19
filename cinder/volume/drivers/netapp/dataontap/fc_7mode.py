@@ -35,6 +35,7 @@ class NetApp7modeFibreChannelDriver(driver.BaseVD,
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_CI"
+    VERSION = block_7mode.NetAppBlockStorage7modeLibrary.VERSION
 
     def __init__(self, *args, **kwargs):
         super(NetApp7modeFibreChannelDriver, self).__init__(*args, **kwargs)

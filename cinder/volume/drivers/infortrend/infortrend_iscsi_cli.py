@@ -37,6 +37,7 @@ class InfortrendCLIISCSIDriver(driver.ISCSIDriver):
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Infortrend_Storage_CI"
+    VERSION = common_cli.InfortrendCommon.VERSION
 
     def __init__(self, *args, **kwargs):
         super(InfortrendCLIISCSIDriver, self).__init__(*args, **kwargs)

@@ -36,6 +36,7 @@ class FJDXISCSIDriver(driver.ISCSIDriver):
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Fujitsu_ETERNUS_CI"
+    VERSION = eternus_dx_common.FJDXCommon.VERSION
 
     def __init__(self, *args, **kwargs):
 

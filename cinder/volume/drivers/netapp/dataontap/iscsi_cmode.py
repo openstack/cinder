@@ -34,6 +34,7 @@ class NetAppCmodeISCSIDriver(driver.BaseVD,
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "NetApp_CI"
+    VERSION = block_cmode.NetAppBlockStorageCmodeLibrary.VERSION
 
     def __init__(self, *args, **kwargs):
         super(NetAppCmodeISCSIDriver, self).__init__(*args, **kwargs)
