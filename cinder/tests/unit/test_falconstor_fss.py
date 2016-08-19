@@ -208,7 +208,7 @@ class FSSDriverTestCase(test.TestCase):
         self.mock_config.san_is_local = False
         self.mock_config.fss_debug = False
         self.mock_config.additional_retry_list = False
-        self.stubs.Set(time, 'sleep', Fake_sleep)
+        self.mock_object(time, 'sleep', Fake_sleep)
 
 
 class TestFSSISCSIDriver(FSSDriverTestCase):
