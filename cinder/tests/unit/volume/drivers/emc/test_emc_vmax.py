@@ -2324,14 +2324,17 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         rollbackDict['defaultStorageGroupInstanceName'] = (
             self.data.default_storage_group)
         rollbackDict['sgName'] = self.data.storagegroupname
+        rollbackDict['sgGroupName'] = self.data.storagegroupname
         rollbackDict['volumeName'] = 'vol1'
         rollbackDict['fastPolicyName'] = 'GOLD1'
         rollbackDict['volumeInstance'] = vol
         rollbackDict['controllerConfigService'] = controllerConfigService
         rollbackDict['extraSpecs'] = extraSpecs
+        rollbackDict['igGroupName'] = self.data.initiatorgroup_name
+        rollbackDict['connector'] = self.data.connector
         # Path 1 - The volume is in another storage group that isn't the
         # default storage group
-        expectedmessage = (_("V2 rollback - Volume in another storage "
+        expectedmessage = (_("Rollback - Volume in another storage "
                              "group besides default storage group."))
         message = (
             self.driver.common.masking.
@@ -2340,6 +2343,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertEqual(expectedmessage, message)
         # Path 2 - The volume is not in any storage group
         rollbackDict['sgName'] = 'sq_not_exist'
+        rollbackDict['sgGroupName'] = 'sq_not_exist'
         expectedmessage = (_("V2 rollback, volume is not in any storage "
                              "group."))
         message = (
@@ -7903,6 +7907,113 @@ class EMCVMAXMaskingTest(test.TestCase):
         masking._remove_volume_from_sg.assert_called_with(
             conn, controllerConfigService, storageGroupInstanceName,
             volumeInstance, extraSpecs)
+
+    # Bug 1552426 - failed rollback on V3 when MV issue
+    def test_check_ig_rollback(self):
+        # called on masking view rollback
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        connector = self.data.connector
+        extraSpecs = {'volume_backend_name': 'V3_BE',
+                      'isV3': True,
+                      'slo': 'Bronze',
+                      'pool': 'SRP_1',
+                      }
+        igGroupName = self.data.initiatorgroup_name
+        host = igGroupName.split("-")[1]
+        igInstance = masking._find_initiator_masking_group(
+            conn, controllerConfigService, self.data.initiatorNames)
+        # path 1: The masking view creation process created a now stale
+        # initiator group before it failed.
+        with mock.patch.object(masking,
+                               '_last_volume_delete_initiator_group'):
+            masking._check_ig_rollback(conn, controllerConfigService,
+                                       igGroupName, connector, extraSpecs)
+            (masking._last_volume_delete_initiator_group.
+                assert_called_once_with(conn, controllerConfigService,
+                                        igInstance, extraSpecs, host))
+            # path 2: No initiator group was created before the masking
+            # view process failed.
+            with mock.patch.object(masking,
+                                   '_find_initiator_masking_group',
+                                   return_value=None):
+                masking._last_volume_delete_initiator_group.reset_mock()
+                masking._check_ig_rollback(conn, controllerConfigService,
+                                           igGroupName, connector, extraSpecs)
+                (masking._last_volume_delete_initiator_group.
+                 assert_not_called())
+
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        'get_associated_masking_groups_from_device',
+        return_value=EMCVMAXCommonData.storagegroups)
+    @mock.patch.object(
+        emc_vmax_masking.EMCVMAXMasking,
+        'return_volume_to_default_storage_group_v3',
+        return_value='Returning volume to default sg')
+    def test_check_if_rollback_action_required_v3(
+            self, mock_return, mock_group):
+        conn = self.fake_ecom_connection()
+        masking = self.driver.common.masking
+        controllerConfigService = (
+            self.driver.utils.find_controller_configuration_service(
+                conn, self.data.storage_system))
+        extraSpecs_v3 = {'volume_backend_name': 'V3_BE',
+                         'isV3': True,
+                         'slo': 'Bronze',
+                         'pool': 'SRP_1',
+                         'connector': self.data.connector}
+
+        vol = EMC_StorageVolume()
+        vol['name'] = self.data.test_volume['name']
+        vol['CreationClassName'] = 'Symm_StorageVolume'
+        vol['ElementName'] = self.data.test_volume['id']
+        vol['DeviceID'] = self.data.test_volume['device_id']
+        vol['Id'] = self.data.test_volume['id']
+        vol['SystemName'] = self.data.storage_system
+        vol['NumberOfBlocks'] = self.data.test_volume['NumberOfBlocks']
+        vol['BlockSize'] = self.data.test_volume['BlockSize']
+
+        # Added vol to vol.path
+        vol['SystemCreationClassName'] = 'Symm_StorageSystem'
+        vol.path = vol
+        vol.path.classname = vol['CreationClassName']
+        rollbackDict = {}
+        rollbackDict['isV3'] = True
+        rollbackDict['defaultStorageGroupInstanceName'] = (
+            self.data.default_storage_group)
+        rollbackDict['sgGroupName'] = self.data.storagegroupname
+        rollbackDict['sgName'] = self.data.storagegroupname
+        rollbackDict['volumeName'] = 'vol1'
+        rollbackDict['slo'] = 'Bronze'
+        rollbackDict['volumeInstance'] = vol
+        rollbackDict['controllerConfigService'] = controllerConfigService
+        rollbackDict['extraSpecs'] = extraSpecs_v3
+        rollbackDict['igGroupName'] = self.data.initiatorgroup_name
+        rollbackDict['connector'] = self.data.connector
+        # v3 Path 1 - The volume is in another storage group that isn't the
+        # default storage group
+        expectedmessage = (_("Rollback - Volume in another storage "
+                             "group besides default storage group."))
+        message = (
+            masking.
+            _check_if_rollback_action_for_masking_required(conn,
+                                                           rollbackDict))
+        self.assertEqual(expectedmessage, message)
+        # v3 Path 2 - The volume is not in any storage group
+        rollbackDict['sgGroupName'] = 'sq_not_exist'
+        (rollbackDict
+         ['defaultStorageGroupInstanceName']) = (self.data.
+                                                 default_sg_instance_name)
+        expectedmessage = (_("V3 rollback"))
+        message = (
+            masking.
+            _check_if_rollback_action_for_masking_required(conn,
+                                                           rollbackDict))
+        self.assertEqual(expectedmessage, message)
 
 
 class EMCVMAXFCTest(test.TestCase):
