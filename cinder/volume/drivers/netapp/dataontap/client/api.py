@@ -29,6 +29,7 @@ from oslo_log import log as logging
 import random
 import six
 from six.moves import urllib
+import ssl
 
 from cinder import exception
 from cinder.i18n import _, _LE
@@ -278,7 +279,11 @@ class NaServer(object):
             auth_handler = self._create_basic_auth_handler()
         else:
             auth_handler = self._create_certificate_auth_handler()
-        opener = urllib.request.build_opener(auth_handler)
+        try:
+            https_handler = urllib.request.HTTPSHandler(context=ssl._create_unverified_context())
+        except:
+            https_handler = urllib.request.HTTPSHandler()
+        opener = urllib.request.build_opener(auth_handler, https_handler)
         self._opener = opener
 
     def _create_basic_auth_handler(self):
