@@ -858,35 +858,35 @@ class CommonAdapter(object):
                               registered.
         :param host: information of initiator, etc.
 
-        The behavior depends on the combination of the already-registered
-        initiators of SG and configured white list of ports (that is
-        `self.allowed_ports`).
-        Note that `self.allowed_ports` is the list of all iSCSI/FC ports on
-        array if no white list is configured.
+        The behavior depends on the combination of the registered
+        initiators of SG and the configured white list of the ports (that is
+        `self.config.io_port_list`).
 
-        1. Port white list is empty (not configured or configured to `[]`):
-        a) Skip the initiators registered to any port.
-        b) For the not-registered initiators, register to `self.allowed_ports`.
-        2. Port white list is not empty:
-        a) For the initiators registered to port_n, register to
-        `self.allowed_ports` except port_n (could be a list).
-        b) For the not-registered initiators, register to `self.allowed_ports`.
+        1. Register all non-registered initiators to `self.allowed_ports`.
+        2. For registered initiators, if the white list is configured, register
+        them to `self.allowed_ports` except the ones which are already
+        registered.
+        Note that `self.allowed_ports` comprises of all iSCSI/FC ports on array
+        or the valid ports of the white list if `self.config.io_port_list` is
+        configured.
         """
 
         host_initiators = set(host.initiators)
         sg_initiators = set(storage_group.initiator_uid_list)
         unreg_initiators = host_initiators - sg_initiators
-        # Case 1.b and case 2.b.
         initiator_port_map = {unreg_id: set(self.allowed_ports)
                               for unreg_id in unreg_initiators}
 
         if self.config.io_port_list is not None:
             reg_initiators = host_initiators & sg_initiators
-            # Case 2.a
-            initiator_port_map.update({
-                reg_id: (set(self.allowed_ports) -
-                         set(storage_group.get_ports(reg_id)))
-                for reg_id in reg_initiators})
+            for reg_id in reg_initiators:
+                ports_to_reg = (set(self.allowed_ports) -
+                                set(storage_group.get_ports(reg_id)))
+                if ports_to_reg:
+                    initiator_port_map[reg_id] = ports_to_reg
+                    LOG.debug('Ports [%(ports)s] in white list will be bound '
+                              'to the registered initiator: %(reg_id)s',
+                              {'ports': ports_to_reg, 'reg_id': reg_id})
 
         self.client.register_initiator(storage_group, host, initiator_port_map)
 

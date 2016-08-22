@@ -12,7 +12,6 @@
 # WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 # License for the specific language governing permissions and limitations
 # under the License.
-
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import importutils
@@ -88,6 +87,7 @@ class Client(object):
                                      scope=scope,
                                      naviseccli=naviseccli,
                                      sec_file=sec_file)
+        self.sg_cache = {}
 
     def create_lun(self, pool, name, size, provision,
                    tier, cg_id=None, ignore_thresholds=False):
@@ -404,7 +404,19 @@ class Client(object):
             return self.vnx.get_sg(name=name)
 
     def get_storage_group(self, name):
-        return self.vnx.get_sg(name)
+        """Retrieve the storage group by name.
+
+        Check the storage group instance cache first to save
+        CLI call.
+        If the specified storage group doesn't exist in the cache,
+        try to grab it from CLI.
+
+        :param name: name of the storage group
+        :return: storage group instance
+        """
+        if name not in self.sg_cache:
+            self.sg_cache[name] = self.vnx.get_sg(name)
+        return self.sg_cache[name]
 
     def register_initiator(self, storage_group, host, initiator_port_map):
         """Registers the initiators of `host` to the `storage_group`.
@@ -425,7 +437,9 @@ class Client(object):
                                 {'port': port, 'hba_id': initiator_id,
                                  'msg': ex.message})
 
-        if initiator_port_map:
+        if any(initiator_port_map.values()):
+            LOG.debug('New path set for initiator %(hba_id)s, so update '
+                      'storage group with poll.', {'hba_id': initiator_id})
             utils.update_res_with_poll(storage_group)
 
     def ping_node(self, port, ip_address):

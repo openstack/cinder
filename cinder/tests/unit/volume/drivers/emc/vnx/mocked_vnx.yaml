@@ -1583,6 +1583,18 @@ test_auto_register_initiator: &test_auto_register_initiator
 
 test_auto_register_initiator_no_white_list: *test_auto_register_initiator
 
+test_auto_register_initiator_no_port_to_reg:
+  allowed_ports: [*iscsi_port_a-0-0]
+  reg_ports: [*iscsi_port_a-0-0]
+  sg:
+    _properties:
+      <<: *sg_base_prop
+      initiator_uid_list: ['iqn-reg-1', 'iqn-reg-2']
+    _methods:
+      get_ports: [*iscsi_port_a-0-0]
+  vnx:
+    <<: *vnx_base
+
 test_build_provider_location:
   vnx:
     _properties:

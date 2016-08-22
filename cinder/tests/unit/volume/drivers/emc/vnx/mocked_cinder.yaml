@@ -310,6 +310,9 @@ test_auto_register_initiator:
 test_auto_register_initiator_no_white_list:
   volume: *volume_base
 
+test_auto_register_initiator_no_port_to_reg:
+  volume: *volume_base
+
 test_remove_host_access:
   volume: *volume_base
 
