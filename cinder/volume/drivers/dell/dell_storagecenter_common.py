@@ -1390,6 +1390,16 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
 
         return model_update
 
+    def _finish_failback(self, api, replitems):
+        # Wait for replication to complete.
+        # This will also flip replication.
+        self._wait_for_replication(api, replitems)
+        # Replications are done. Attach to any additional replication
+        # backends.
+        self._reattach_remaining_replications(api, replitems)
+        self._fixup_types(api, replitems)
+        return self._volume_updates(replitems)
+
     def failback_volumes(self, volumes):
         """This is a generic volume failback.
 
@@ -1435,16 +1445,14 @@ class DellCommonDriver(driver.ConsistencyGroupVD, driver.ManageableVD,
                 if model_update:
                     volume_updates.append({'volume_id': volume['id'],
                                            'updates': model_update})
+                # Let's do up to 5 replications at once.
+                if len(replitems) == 5:
+                    volume_updates += self._finish_failback(api, replitems)
+                    replitems = []
 
+            # Finish any leftover items
             if replitems:
-                # Wait for replication to complete.
-                # This will also flip replication.
-                self._wait_for_replication(api, replitems)
-                # Replications are done. Attach to any additional replication
-                # backends.
-                self._reattach_remaining_replications(api, replitems)
-                self._fixup_types(api, replitems)
-                volume_updates += self._volume_updates(replitems)
+                volume_updates += self._finish_failback(api, replitems)
 
             # Set us back to a happy state.
             # The only way this doesn't happen is if the primary is down.
