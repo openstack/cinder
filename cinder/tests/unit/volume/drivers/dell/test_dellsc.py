@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import eventlet
 import mock
 import uuid
 
@@ -244,6 +245,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         # Mock tests bozo this.
         self.driver.backends = None
         self.driver.replication_enabled = False
+
+        self.mock_sleep = self.mock_object(eventlet, 'sleep')
 
         self.volid = str(uuid.uuid4())
         self.volume_name = "volume" + self.volid
@@ -3860,6 +3863,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         self.driver.failback_timeout = 1
         self.driver._wait_for_replication(mock_api, items)
         self.assertEqual(expected, items)
+        calls = [mock.call(1)] * 5
+        self.mock_sleep.assert_has_calls(calls)
         self.backends = backends
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
