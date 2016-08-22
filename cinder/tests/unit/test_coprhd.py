@@ -193,7 +193,9 @@ def get_test_volume_data(volume_type_id):
                    'project_id': 'project',
                    'display_name': 'test-vol1',
                    'display_description': 'test volume',
-                   'volume_type_id': volume_type_id}
+                   'volume_type_id': volume_type_id,
+                   'provider_id': '1',
+                   }
     return test_volume
 
 
@@ -860,6 +862,7 @@ class EMCCoprHDScaleIODriverTest(test.TestCase):
                                         'hostIP': '10.0.0.2',
                                         'iopsLimit': None,
                                         'scaleIO_volname': 'test-vol1',
+                                        'scaleIO_volume_id': '1',
                                         'serverIP': '10.10.10.11',
                                         'serverPassword': 'scaleio_password',
                                         'serverPort': 443,
