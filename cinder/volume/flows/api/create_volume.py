@@ -369,7 +369,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                 algorithm = cipher.split('-')[0] if cipher else None
                 encryption_key_id = key_manager.create_key(context,
                                                            algorithm=algorithm,
-                                                           key_length=length)
+                                                           length=length)
 
         return encryption_key_id
 

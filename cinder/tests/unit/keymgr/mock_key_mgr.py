@@ -61,7 +61,7 @@ class MockKeyManager(key_mgr.KeyManager):
         return hex_encoded
 
     def _generate_key(self, **kwargs):
-        _hex = self._generate_hex_key(kwargs.get('key_length'))
+        _hex = self._generate_hex_key(kwargs.get('length'))
         key_bytes = array.array('B', binascii.unhexlify(_hex)).tolist()
         algorithm = kwargs.get('algorithm', 'AES')
         return key.SymmetricKey(algorithm, key_bytes)
