@@ -341,19 +341,21 @@ class DatastoreTest(test.TestCase):
         get_profile_id_by_name.reset_mock()
         profile_id = mock.sentinel.profile_id
         get_profile_id_by_name.return_value = profile_id
-        filter_by_profile.return_value = []
+        filter_by_profile.return_value = {}
         self.assertFalse(self._ds_sel.is_datastore_compliant(datastore,
                                                              profile_name))
         get_profile_id_by_name.assert_called_once_with(self._session,
                                                        profile_name)
-        filter_by_profile.assert_called_once_with([datastore], profile_id)
+        filter_by_profile.assert_called_once_with({datastore: None},
+                                                  profile_id)
 
         # Test with valid profile and compliant datastore.
         get_profile_id_by_name.reset_mock()
         filter_by_profile.reset_mock()
-        filter_by_profile.return_value = [datastore]
+        filter_by_profile.return_value = {datastore: None}
         self.assertTrue(self._ds_sel.is_datastore_compliant(datastore,
                                                             profile_name))
         get_profile_id_by_name.assert_called_once_with(self._session,
                                                        profile_name)
-        filter_by_profile.assert_called_once_with([datastore], profile_id)
+        filter_by_profile.assert_called_once_with({datastore: None},
+                                                  profile_id)
