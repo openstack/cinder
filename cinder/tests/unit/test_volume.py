@@ -1126,7 +1126,13 @@ class VolumeTestCase(BaseVolumeTestCase):
         db.volume_update(self.context, volume['id'], {'status': 'available'})
         self.volume_api.delete(self.context, volume)
 
-        volume = db.volume_get(self.context, volume['id'])
+        volume = objects.Volume.get_by_id(self.context, volume.id)
+        while volume.status == 'available':
+            # Must wait for volume_api delete request to process enough to
+            # change the volume status.
+            time.sleep(0.5)
+            volume.refresh()
+
         self.assertEqual('deleting', volume['status'])
 
         db.volume_destroy(self.context, volume['id'])
