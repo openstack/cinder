@@ -22,6 +22,7 @@ from cinder import db
 from cinder import exception
 from cinder.i18n import _
 from cinder import rpc
+from cinder import utils
 from cinder.volume import group_types
 
 
@@ -48,17 +49,6 @@ class GroupTypeSpecsController(wsgi.Controller):
         self._check_type(context, group_type_id)
         return self._get_group_specs(context, group_type_id)
 
-    def _validate_group_specs(self, specs):
-        """Validating key and value of group specs."""
-        for key, value in specs.items():
-            if key is not None:
-                self.validate_string_length(key, 'Key "%s"' % key,
-                                            min_length=1, max_length=255)
-
-            if value is not None:
-                self.validate_string_length(value, 'Value for key "%s"' % key,
-                                            min_length=0, max_length=255)
-
     @wsgi.Controller.api_version('3.11')
     @wsgi.response(202)
     def create(self, req, group_type_id, body=None):
@@ -69,7 +59,7 @@ class GroupTypeSpecsController(wsgi.Controller):
         self._check_type(context, group_type_id)
         specs = body['group_specs']
         self._check_key_names(specs.keys())
-        self._validate_group_specs(specs)
+        utils.validate_dictionary_string_length(specs)
 
         db.group_type_specs_update_or_create(context,
                                              group_type_id,
@@ -94,7 +84,7 @@ class GroupTypeSpecsController(wsgi.Controller):
             expl = _('Request body contains too many items')
             raise webob.exc.HTTPBadRequest(explanation=expl)
         self._check_key_names(body.keys())
-        self._validate_group_specs(body)
+        utils.validate_dictionary_string_length(body)
 
         db.group_type_specs_update_or_create(context,
                                              group_type_id,
