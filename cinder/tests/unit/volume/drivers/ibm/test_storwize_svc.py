@@ -2912,6 +2912,8 @@ class StorwizeSVCCommonDriverTestCase(test.TestCase):
         self.driver.do_setup(None)
         self.driver.check_for_setup_error()
         self.driver._helpers.check_fcmapping_interval = 0
+        self.mock_gr_sleep = mock.patch.object(
+            storwize_svc_common.StorwizeSVCCommonDriver, "DEFAULT_GR_SLEEP", 0)
 
     def _set_flag(self, flag, value, configuration=None):
         if not configuration:
@@ -5152,6 +5154,8 @@ class StorwizeHelpersTestCase(test.TestCase):
     def setUp(self):
         super(StorwizeHelpersTestCase, self).setUp()
         self.storwize_svc_common = storwize_svc_common.StorwizeHelpers(None)
+        self.mock_wait_time = mock.patch.object(
+            storwize_svc_common.StorwizeHelpers, "WAIT_TIME", 0)
 
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lslicense')
     @mock.patch.object(storwize_svc_common.StorwizeSSH, 'lsguicapabilities')

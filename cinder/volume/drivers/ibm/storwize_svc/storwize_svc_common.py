@@ -539,6 +539,7 @@ class StorwizeHelpers(object):
     # 'default': to indicate the value, when the parameter is disabled.
     # 'param': to indicate the corresponding parameter in the command.
     # 'type': to indicate the type of this value.
+    WAIT_TIME = 5
     svc_qos_keys = {'IOThrottling': {'default': '0',
                                      'param': 'rate',
                                      'type': int}}
@@ -1187,8 +1188,7 @@ class StorwizeHelpers(object):
     def _prepare_fc_map(self, fc_map_id, timeout):
         self.ssh.prestartfcmap(fc_map_id)
         mapping_ready = False
-        wait_time = 5
-        max_retries = (timeout // wait_time) + 1
+        max_retries = (timeout // self.WAIT_TIME) + 1
         for try_number in range(1, max_retries):
             mapping_attrs = self._get_flashcopy_mapping_attributes(fc_map_id)
             if (mapping_attrs is None or
@@ -1207,7 +1207,7 @@ class StorwizeHelpers(object):
                           'attr': mapping_attrs})
                 LOG.error(msg)
                 raise exception.VolumeBackendAPIException(data=msg)
-            greenthread.sleep(wait_time)
+            greenthread.sleep(self.WAIT_TIME)
 
         if not mapping_ready:
             msg = (_('Mapping %(id)s prepare failed to complete within the'
@@ -1897,6 +1897,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
     METRO = 'metro'
     VALID_REP_TYPES = (GLOBAL, METRO)
     FAILBACK_VALUE = 'default'
+    DEFAULT_GR_SLEEP = random.randint(20, 500) / 100.0
 
     def __init__(self, *args, **kwargs):
         super(StorwizeSVCCommonDriver, self).__init__(*args, **kwargs)
@@ -2140,7 +2141,7 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                     except Exception as e:
                             LOG.error(_LE('Error has occurred: %s'), e)
                             last_exception = e
-                            greenthread.sleep(random.randint(20, 500) / 100.0)
+                            greenthread.sleep(self.DEFAULT_GR_SLEEP)
                     try:
                         raise processutils.ProcessExecutionError(
                             exit_code=last_exception.exit_code,
