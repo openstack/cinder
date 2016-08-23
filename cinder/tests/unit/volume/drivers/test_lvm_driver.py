@@ -26,7 +26,7 @@ from cinder.objects import fields
 from cinder.tests import fake_driver
 from cinder.tests.unit.brick import fake_lvm
 from cinder.tests.unit import fake_constants as fake
-from cinder.tests.unit.test_volume import DriverTestCase
+from cinder.tests.unit import test_volume
 from cinder.tests.unit.test_volume import fake_opt
 from cinder.tests.unit import utils as tests_utils
 from cinder import utils
@@ -39,7 +39,7 @@ CONF = cfg.CONF
 
 
 @ddt.ddt
-class LVMVolumeDriverTestCase(DriverTestCase):
+class LVMVolumeDriverTestCase(test_volume.DriverTestCase):
     """Test case for VolumeDriver"""
     driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
     FAKE_VOLUME = {'name': 'test1',
@@ -887,7 +887,7 @@ class LVMVolumeDriverTestCase(DriverTestCase):
                          lvm_driver.configuration.max_over_subscription_ratio)
 
 
-class LVMISCSITestCase(DriverTestCase):
+class LVMISCSITestCase(test_volume.DriverTestCase):
     """Test Case for LVMISCSIDriver"""
     driver_name = "cinder.volume.drivers.lvm.LVMVolumeDriver"
 

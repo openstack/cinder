@@ -23,7 +23,7 @@ from cinder import quota
 from cinder.tests.unit import conf_fixture
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
-from cinder.tests.unit.test_volume import BaseVolumeTestCase
+from cinder.tests.unit import test_volume
 from cinder.tests.unit import utils as tests_utils
 import cinder.volume
 from cinder.volume import driver
@@ -33,7 +33,7 @@ CGQUOTAS = quota.CGQUOTAS
 CONF = cfg.CONF
 
 
-class ConsistencyGroupTestCase(BaseVolumeTestCase):
+class ConsistencyGroupTestCase(test_volume.BaseVolumeTestCase):
     def test_delete_volume_in_consistency_group(self):
         """Test deleting a volume that's tied to a consistency group fails."""
         consistencygroup_id = fake.CONSISTENCY_GROUP_ID

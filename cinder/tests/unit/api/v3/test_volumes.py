@@ -31,7 +31,7 @@ from cinder.tests.unit.api.v2 import stubs
 from cinder.tests.unit.api.v2 import test_volumes as v2_test_volumes
 from cinder.tests.unit import fake_constants as fake
 from cinder.volume import api as volume_api
-from cinder.volume.api import API as vol_get
+from cinder.volume import api as vol_get
 
 version_header_name = 'OpenStack-API-Version'
 
@@ -52,7 +52,7 @@ class VolumeApiTest(test.TestCase):
         self.ctxt = context.RequestContext(fake.USER_ID, fake.PROJECT_ID, True)
 
     def test_check_volume_filters_called(self):
-        with mock.patch.object(vol_get,
+        with mock.patch.object(vol_get.API,
                                'check_volume_filters') as volume_get:
             req = fakes.HTTPRequest.blank('/v3/volumes?bootable=True')
             req.method = 'GET'
@@ -68,7 +68,7 @@ class VolumeApiTest(test.TestCase):
 
     def test_check_volume_filters_strict_called(self):
 
-        with mock.patch.object(vol_get,
+        with mock.patch.object(vol_get.API,
                                'check_volume_filters') as volume_get:
             req = fakes.HTTPRequest.blank('/v3/volumes?bootable=True')
             req.method = 'GET'
