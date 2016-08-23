@@ -58,6 +58,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
     VMDK_DRIVER = vmdk.VMwareVcVmdkDriver
     CLUSTERS = ["cls-1", "cls-2"]
     DEFAULT_VC_VERSION = '5.5'
+    POOL_SIZE = 20
 
     VOL_ID = 'abcdefab-cdef-abcd-efab-cdefabcdefab'
     DISPLAY_NAME = 'foo'
@@ -89,6 +90,7 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._config.vmware_insecure = False
         self._config.vmware_cluster_name = self.CLUSTERS
         self._config.vmware_host_version = self.DEFAULT_VC_VERSION
+        self._config.vmware_connection_pool_size = self.POOL_SIZE
 
         self._db = mock.Mock()
         self._driver = vmdk.VMwareVcVmdkDriver(configuration=self._config,
@@ -2687,17 +2689,19 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
         self._driver.session()
 
+        config = self._driver.configuration
         apiSession.assert_called_once_with(
-            self._config.vmware_host_ip,
-            self._config.vmware_host_username,
-            self._config.vmware_host_password,
-            self._config.vmware_api_retry_count,
-            self._config.vmware_task_poll_interval,
-            wsdl_loc=self._config.safe_get('vmware_wsdl_location'),
+            config.vmware_host_ip,
+            config.vmware_host_username,
+            config.vmware_host_password,
+            config.vmware_api_retry_count,
+            config.vmware_task_poll_interval,
+            wsdl_loc=config.safe_get('vmware_wsdl_location'),
             pbm_wsdl_loc=None,
-            port=self._config.vmware_host_port,
-            cacert=self._config.vmware_ca_file,
-            insecure=self._config.vmware_insecure)
+            port=config.vmware_host_port,
+            cacert=config.vmware_ca_file,
+            insecure=config.vmware_insecure,
+            pool_size=config.vmware_connection_pool_size)
 
     @mock.patch.object(VMDK_DRIVER, 'volumeops')
     @mock.patch.object(VMDK_DRIVER, '_extend_backing')
