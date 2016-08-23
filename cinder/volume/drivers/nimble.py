@@ -18,6 +18,7 @@ Volume driver for Nimble Storage.
 This driver supports Nimble Storage controller CS-Series.
 
 """
+import abc
 import functools
 import math
 import random
@@ -37,11 +38,13 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
 from cinder.objects import volume
+from cinder.volume import driver
 from cinder.volume.drivers.san import san
 from cinder.volume import volume_types
+from cinder.zonemanager import utils as fczm_utils
 
 
-DRIVER_VERSION = '3.0.0'
+DRIVER_VERSION = '3.1.0'
 AES_256_XTS_CIPHER = 2
 DEFAULT_CIPHER = 3
 EXTRA_SPEC_ENCRYPTION = 'nimble:encryption'
@@ -63,6 +66,8 @@ SM_SUBNET_DATA = 3
 SM_SUBNET_MGMT_PLUS_DATA = 4
 LUN_ID = '0'
 WARN_LEVEL = 0.8
+ISCSI_TARGET_PORT = ':3260'
+FIBRE_CHANNEL_PROTOCOL = 2
 
 # Work around for ubuntu_openssl_bug_965371. Python soap client suds
 # throws the error ssl-certificate-verify-failed-error, workaround to disable
@@ -93,9 +98,7 @@ class NimbleAPIException(exception.VolumeBackendAPIException):
     message = _("Unexpected response from Nimble API")
 
 
-@interface.volumedriver
-class NimbleISCSIDriver(san.SanISCSIDriver):
-
+class NimbleBaseVolumeDriver(san.SanDriver):
     """OpenStack driver to enable Nimble Controller.
 
     Version history:
@@ -111,6 +114,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         2.0.1 - Added multi-initiator support through extra-specs
         2.0.2 - Fixed supporting extra specs while cloning vols
         3.0.0 - Newton Support for Force Backup
+        3.1.0 - Fibre Channel Support
     """
 
     VERSION = DRIVER_VERSION
@@ -119,9 +123,10 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
     CI_WIKI_NAME = "Nimble_Storage_CI"
 
     def __init__(self, *args, **kwargs):
-        super(NimbleISCSIDriver, self).__init__(*args, **kwargs)
+        super(NimbleBaseVolumeDriver, self).__init__(*args, **kwargs)
         self.APIExecutor = None
         self.group_stats = {}
+        self._storage_protocol = None
         self.configuration.append_config_values(nimble_opts)
 
     def _check_config(self):
@@ -131,43 +136,6 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
             if not getattr(self.configuration, attr, None):
                 raise exception.InvalidInput(reason=_('%s is not set.') %
                                              attr)
-
-    def _get_discovery_ip(self, netconfig):
-        """Get discovery ip."""
-        subnet_label = self.configuration.nimble_subnet_label
-        LOG.debug('subnet_label used %(netlabel)s, netconfig %(netconf)s',
-                  {'netlabel': subnet_label, 'netconf': netconfig})
-        ret_discovery_ip = ''
-        for subnet in netconfig['subnet-list']:
-            LOG.info(_LI('Exploring array subnet label %s'), subnet['label'])
-            if subnet_label == '*':
-                # Use the first data subnet, save mgmt+data for later
-                if subnet['subnet-id']['type'] == SM_SUBNET_DATA:
-                    LOG.info(_LI('Discovery ip %(disc_ip)s is used '
-                                 'on data subnet %(net_label)s'),
-                             {'disc_ip': subnet['discovery-ip'],
-                              'net_label': subnet['label']})
-                    return subnet['discovery-ip']
-                elif (subnet['subnet-id']['type'] ==
-                        SM_SUBNET_MGMT_PLUS_DATA):
-                    LOG.info(_LI('Discovery ip %(disc_ip)s is found'
-                                 ' on mgmt+data subnet %(net_label)s'),
-                             {'disc_ip': subnet['discovery-ip'],
-                              'net_label': subnet['label']})
-                    ret_discovery_ip = subnet['discovery-ip']
-            # If subnet is specified and found, use the subnet
-            elif subnet_label == subnet['label']:
-                LOG.info(_LI('Discovery ip %(disc_ip)s is used'
-                             ' on subnet %(net_label)s'),
-                         {'disc_ip': subnet['discovery-ip'],
-                          'net_label': subnet['label']})
-                return subnet['discovery-ip']
-        if ret_discovery_ip:
-            LOG.info(_LI('Discovery ip %s is used on mgmt+data subnet'),
-                     ret_discovery_ip)
-            return ret_discovery_ip
-        else:
-            raise NimbleDriverException(_('No suitable discovery ip found'))
 
     def _update_existing_vols_agent_type(self, context):
         LOG.debug("Updating existing volumes to have "
@@ -200,23 +168,17 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
             raise
         self._update_existing_vols_agent_type(context)
 
-    def _get_provider_location(self, volume_name):
-        """Get volume iqn for initiator access."""
-        vol_info = self.APIExecutor.get_vol_info(volume_name)
-        iqn = vol_info['target-name']
-        netconfig = self.APIExecutor.get_netconfig('active')
-        target_ipaddr = self._get_discovery_ip(netconfig)
-        iscsi_portal = target_ipaddr + ':3260'
-        provider_location = '%s %s %s' % (iscsi_portal, iqn, LUN_ID)
-        LOG.info(_LI('vol_name=%(name)s provider_location=%(loc)s'),
-                 {'name': volume_name, 'loc': provider_location})
-        return provider_location
-
     def _get_model_info(self, volume_name):
         """Get model info for the volume."""
         return (
             {'provider_location': self._get_provider_location(volume_name),
              'provider_auth': None})
+
+    @abc.abstractmethod
+    def _get_provider_location(self, volume_name):
+        """Volume info for iSCSI and FC"""
+
+        pass
 
     def create_volume(self, volume):
         """Create a new volume."""
@@ -368,7 +330,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
             self.group_stats = {'volume_backend_name': backend_name,
                                 'vendor_name': 'Nimble',
                                 'driver_version': DRIVER_VERSION,
-                                'storage_protocol': 'iSCSI'}
+                                'storage_protocol': self._storage_protocol}
             # Just use a single pool for now, FIXME to support multiple
             # pools
             single_pool = dict(
@@ -491,15 +453,6 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         self.APIExecutor.online_vol(vol_name, False, ignore_list=[
             'SM-enoent'])
 
-    def _create_igroup_for_initiator(self, initiator_name):
-        """Creates igroup for an initiator and returns the igroup name."""
-        igrp_name = 'openstack-' + self._generate_random_string(12)
-        LOG.info(_LI('Creating initiator group %(grp)s '
-                     'with initiator %(iname)s'),
-                 {'grp': igrp_name, 'iname': initiator_name})
-        self.APIExecutor.create_initiator_group(igrp_name, initiator_name)
-        return igrp_name
-
     def _get_igroupname_for_initiator(self, initiator_name):
         initiator_groups = self.APIExecutor.get_initiator_grp_list()
         for initiator_group in initiator_groups:
@@ -515,6 +468,51 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         LOG.info(_LI('No igroup found for initiator %s'), initiator_name)
         return ''
 
+
+@interface.volumedriver
+class NimbleISCSIDriver(NimbleBaseVolumeDriver, san.SanISCSIDriver):
+    """OpenStack driver to enable Nimble ISCSI Controller."""
+
+    def __init__(self, *args, **kwargs):
+        super(NimbleISCSIDriver, self).__init__(*args, **kwargs)
+        self._storage_protocol = "iSCSI"
+
+    def _get_discovery_ip(self, netconfig):
+        """Get discovery ip."""
+        subnet_label = self.configuration.nimble_subnet_label
+        LOG.debug('subnet_label used %(netlabel)s, netconfig %(netconf)s',
+                  {'netlabel': subnet_label, 'netconf': netconfig})
+        ret_discovery_ip = ''
+        for subnet in netconfig['subnet-list']:
+            LOG.info(_LI('Exploring array subnet label %s'), subnet['label'])
+            if subnet_label == '*':
+                # Use the first data subnet, save mgmt+data for later
+                if subnet['subnet-id']['type'] == SM_SUBNET_DATA:
+                    LOG.info(_LI('Discovery ip %(disc_ip)s is used '
+                                 'on data subnet %(net_label)s'),
+                             {'disc_ip': subnet['discovery-ip'],
+                              'net_label': subnet['label']})
+                    return subnet['discovery-ip']
+                elif (subnet['subnet-id']['type'] ==
+                      SM_SUBNET_MGMT_PLUS_DATA):
+                    LOG.info(_LI('Discovery ip %(disc_ip)s is found'
+                                 ' on mgmt+data subnet %(net_label)s'),
+                             {'disc_ip': subnet['discovery-ip'],
+                              'net_label': subnet['label']})
+                    ret_discovery_ip = subnet['discovery-ip']
+            # If subnet is specified and found, use the subnet
+            elif subnet_label == subnet['label']:
+                LOG.info(_LI('Discovery ip %(disc_ip)s is used'
+                             ' on subnet %(net_label)s'),
+                         {'disc_ip': subnet['discovery-ip'],
+                          'net_label': subnet['label']})
+                return subnet['discovery-ip']
+        if ret_discovery_ip:
+            LOG.info(_LI('Discovery ip %s is used on mgmt+data subnet'),
+                     ret_discovery_ip)
+            return ret_discovery_ip
+        raise NimbleDriverException(_('No suitable discovery ip found'))
+
     def initialize_connection(self, volume, connector):
         """Driver entry point to attach a volume to an instance."""
         LOG.info(_LI('Entering initialize_connection volume=%(vol)s'
@@ -526,7 +524,7 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
         initiator_group_name = self._get_igroupname_for_initiator(
             initiator_name)
         if not initiator_group_name:
-            initiator_group_name = self._create_igroup_for_initiator(
+            initiator_group_name = self._create_igroup_for_initiator_iscsi(
                 initiator_name)
         LOG.info(_LI('Initiator group name is %(grp)s for initiator '
                      '%(iname)s'),
@@ -559,6 +557,203 @@ class NimbleISCSIDriver(san.SanISCSIDriver):
                 _('No initiator group found for initiator %s') %
                 initiator_name)
         self.APIExecutor.remove_acl(volume, initiator_group_name)
+
+    def _create_igroup_for_initiator_iscsi(self, initiator_name):
+        """Creates igroup for an initiator and returns the igroup name."""
+        igrp_name = 'openstack-' + self._generate_random_string(12)
+        LOG.info(_LI('Creating initiator group %(grp)s '
+                     'with initiator %(iname)s'),
+                 {'grp': igrp_name, 'iname': initiator_name})
+        self.APIExecutor.create_initiator_group(igrp_name, initiator_name)
+        return igrp_name
+
+    def _get_provider_location(self, volume_name):
+        """Get volume iqn for initiator access."""
+        vol_info = self.APIExecutor.get_vol_info(volume_name)
+        iqn = vol_info['target-name']
+        netconfig = self.APIExecutor.get_netconfig('active')
+        target_ipaddr = self._get_discovery_ip(netconfig)
+        iscsi_portal = target_ipaddr + ISCSI_TARGET_PORT
+        provider_location = '%s %s %s' % (iscsi_portal, iqn, LUN_ID)
+        LOG.info(_LI('vol_name=%(name)s provider_location=%(loc)s'),
+                 {'name': volume_name, 'loc': provider_location})
+        return provider_location
+
+
+@interface.volumedriver
+class NimbleFCDriver(NimbleBaseVolumeDriver, driver.FibreChannelDriver):
+    """OpenStack driver to enable Nimble FC Driver Controller."""
+
+    def __init__(self, *args, **kwargs):
+        super(NimbleFCDriver, self).__init__(*args, **kwargs)
+        self._storage_protocol = "FC"
+        self._lookup_service = fczm_utils.create_lookup_service()
+
+    def _get_provider_location(self, volume_name):
+        """Get array info wwn details."""
+        netconfig = self.APIExecutor.get_netconfig('active')
+        array_name = netconfig['array-list'][0]['array-name']
+        provider_location = '%s' % (array_name)
+        LOG.info(_LI('vol_name=%(name)s provider_location=%(loc)s'),
+                 {'name': volume_name, 'loc': provider_location})
+        return provider_location
+
+    def _build_initiator_target_map(self, target_wwns, connector):
+        """Build the target_wwns and the initiator target map."""
+        init_targ_map = {}
+
+        if self._lookup_service:
+            # use FC san lookup to determine which wwpns to use
+            # for the new VLUN.
+            dev_map = self._lookup_service.get_device_mapping_from_network(
+                connector['wwpns'],
+                target_wwns)
+            map_fabric = dev_map
+            LOG.info(_LI("dev_map =%(fabric)s"), {'fabric': map_fabric})
+
+            for fabric_name in dev_map:
+                fabric = dev_map[fabric_name]
+                for initiator in fabric['initiator_port_wwn_list']:
+                    if initiator not in init_targ_map:
+                        init_targ_map[initiator] = []
+                    init_targ_map[initiator] += fabric['target_port_wwn_list']
+                    init_targ_map[initiator] = list(set(
+                        init_targ_map[initiator]))
+        else:
+            init_targ_map = dict.fromkeys(connector["wwpns"], target_wwns)
+
+        return init_targ_map
+
+    @fczm_utils.AddFCZone
+    def initialize_connection(self, volume, connector):
+        """Driver entry point to attach a volume to an instance."""
+        LOG.info(_LI('Entering initialize_connection volume=%(vol)s'
+                     ' connector=%(conn)s location=%(loc)s'),
+                 {'vol': volume,
+                  'conn': connector,
+                  'loc': volume['provider_location']})
+        wwpns = []
+        initiator_name = connector['initiator']
+        for wwpn in connector['wwpns']:
+            wwpns.append(wwpn)
+        initiator_group_name = self._get_igroupname_for_initiator_fc(wwpns)
+
+        if not initiator_group_name:
+            initiator_group_name = self._create_igroup_for_initiator_fc(
+                initiator_name, wwpns)
+
+        LOG.info(_LI('Initiator group name is %(grp)s for initiator '
+                     '%(iname)s'),
+                 {'grp': initiator_group_name, 'iname': initiator_name})
+        self.APIExecutor.add_acl(volume, initiator_group_name)
+
+        lun = self.get_lun_number(volume, initiator_group_name)
+        init_targ_map = {}
+        array_name = volume['provider_location'].split()
+
+        target_wwns = self.get_wwpns_from_array(array_name)
+
+        init_targ_map = self._build_initiator_target_map(target_wwns,
+                                                         connector)
+
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {'target_lun': lun,
+                         'target_discovered': True,
+                         'target_wwn': target_wwns,
+                         'initiator_target_map': init_targ_map}}
+
+        LOG.info(_LI("Return FC data for zone addition: %(data)s."),
+                 {'data': data})
+
+        return data
+
+    @fczm_utils.RemoveFCZone
+    def terminate_connection(self, volume, connector, **kwargs):
+        """Driver entry point to unattach a volume from an instance."""
+        LOG.info(_LI('Entering terminate_connection volume=%(vol)s'
+                     ' connector=%(conn)s location=%(loc)s.'),
+                 {'vol': volume,
+                  'conn': connector,
+                  'loc': volume['provider_location']})
+
+        wwpns = []
+        initiator_name = connector['initiator']
+        for wwpn in connector['wwpns']:
+            wwpns.append(wwpn)
+        init_targ_map = {}
+        array_name = volume['provider_location'].split()
+        target_wwns = self.get_wwpns_from_array(array_name)
+        init_targ_map = self._build_initiator_target_map(target_wwns,
+                                                         connector)
+        initiator_group_name = self._get_igroupname_for_initiator_fc(wwpns)
+        if not initiator_group_name:
+            raise NimbleDriverException(
+                _('No initiator group found for initiator %s') %
+                initiator_name)
+        LOG.debug("initiator_target_map".format(init_targ_map))
+        self.APIExecutor.remove_acl(volume, initiator_group_name)
+        # FIXME to check for other volumes attached to the host and then
+        # return the data. Bug https://bugs.launchpad.net/cinder/+bug/1617472
+
+        data = {'driver_volume_type': 'fibre_channel',
+                'data': {}}
+
+        return data
+
+    def _get_igroupname_for_initiator_fc(self, initiator_wwpns):
+        initiator_groups = self.APIExecutor.get_initiator_grp_list()
+        for initiator_group in initiator_groups:
+            if 'initiator-list' in initiator_group:
+                wwpns_list = []
+                for initiator in initiator_group['initiator-list']:
+                    wwpn = str(initiator['wwpn']).replace(":", "")
+                    wwpns_list.append(wwpn)
+                LOG.debug("initiator_wwpns= %s wwpns_list_from_array=%s",
+                          initiator_wwpns, wwpns_list)
+                if set(initiator_wwpns) == set(wwpns_list):
+                    LOG.info(_LI('igroup %(grp)s found for '
+                                 'initiator %(wwpns_list)s'),
+                             {'grp': initiator_group['name'],
+                              'wwpns_list': wwpns_list})
+                    return initiator_group['name']
+        LOG.info(_LI('No igroup found for initiator %s'), initiator_wwpns)
+        return ''
+
+    def get_lun_number(self, volume, initiator_group_name):
+        vol_info = self.APIExecutor.get_vol_info(volume['name'])
+        for acl in vol_info['aclList']:
+            if (initiator_group_name == acl['initiatorgrp']):
+                LOG.info(_LI("acllist =%(aclList)s"),
+                         {'aclList': vol_info['aclList']})
+                lun = vol_info['aclList'][0]['lun']
+                return lun
+
+    def _create_igroup_for_initiator_fc(self, initiator_name, wwpn_list):
+        """Creates igroup for an initiator and returns the igroup name."""
+        igrp_name = 'openstack-' + self._generate_random_string(12)
+        LOG.info(_LI('Creating initiator group %(grp)s '
+                     'with initiator %(iname)s'),
+                 {'grp': igrp_name, 'iname': initiator_name})
+        self.APIExecutor.create_initiator_group_fc(igrp_name, initiator_name,
+                                                   wwpn_list)
+        return igrp_name
+
+    def get_wwpns_from_array(self, array_name):
+        """Retrieve the wwpns from the array"""
+        target_wwpns = []
+        interface_info = self.APIExecutor.get_fc_interface_list(array_name)
+
+        for wwpn_list in interface_info['ctrlr-a-interface-list']:
+            wwpn = wwpn_list['wwpn']
+            wwpn = wwpn.replace(":", "")
+            target_wwpns.append(wwpn)
+
+        for wwpn_list in interface_info['ctrlr-b-interface-list']:
+            wwpn = wwpn_list['wwpn']
+            wwpn = wwpn.replace(":", "")
+            target_wwpns.append(wwpn)
+
+        return target_wwpns
 
 
 def _response_checker(func):
@@ -607,6 +802,7 @@ class NimbleAPIExecutor(object):
         self.sid = None
         self.username = kwargs['username']
         self.password = kwargs['password']
+        self.ip = kwargs['ip']
 
         wsdl_url = 'https://%s/wsdl/NsGroupManagement.wsdl' % (kwargs['ip'])
         LOG.debug('Using Nimble wsdl_url: %s', wsdl_url)
@@ -984,6 +1180,29 @@ class NimbleAPIExecutor(object):
 
     @_connection_checker
     @_response_checker
+    def create_initiator_group_fc(self, initiator_group_name, initiator_name,
+                                  wwpn_list):
+        """Execute createInitiatorGrp API for Fibre Channel"""
+        LOG.info(_LI('Creating initiator group %(igrp)s'
+                     ' with wwpn %(wwpn)s'),
+                 {'igrp': initiator_group_name, 'wwpn': wwpn_list})
+        request = {}
+        request['sid'] = self.sid
+        request['attr'] = {}
+        request['attr']['name'] = initiator_group_name
+        request['attr']['access-protocol'] = FIBRE_CHANNEL_PROTOCOL
+        request['attr']['initiator-list'] = []
+        for wwpn in wwpn_list:
+            initiator = {}
+            initiator['access-protocol'] = FIBRE_CHANNEL_PROTOCOL
+            initiator['wwpn'] = wwpn
+            request['attr']['initiator-list'].append(initiator)
+        LOG.debug("createInitiatorGrp request %s", request)
+
+        return self.client.service.createInitiatorGrp(request=request)
+
+    @_connection_checker
+    @_response_checker
     def create_initiator_group(self, initiator_group_name, initiator_name):
         """Execute createInitiatorGrp API."""
         LOG.info(_LI('Creating initiator group %(igrp)s'
@@ -1003,3 +1222,11 @@ class NimbleAPIExecutor(object):
         return self.client.service.deleteInitiatorGrp(
             request={'sid': self.sid,
                      'name': initiator_group_name})
+
+    @_connection_checker
+    @_response_checker
+    def get_fc_interface_list(self, array_name):
+        """getFibreChannelInterfaceList API to get FC interfaces on array"""
+        return self.client.service.getFibreChannelInterfaceList(
+            request={'sid': self.sid,
+                     'name-or-serial': array_name})

@@ -33,7 +33,9 @@ NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.client'
 NIMBLE_URLLIB2 = 'six.moves.urllib.request'
 NIMBLE_RANDOM = 'cinder.volume.drivers.nimble.random'
 NIMBLE_ISCSI_DRIVER = 'cinder.volume.drivers.nimble.NimbleISCSIDriver'
-DRIVER_VERSION = '3.0.0'
+NIMBLE_BASE_DRIVER = 'cinder.volume.drivers.nimble.NimbleBaseVolumeDriver'
+NIMBLE_FC_DRIVER = 'cinder.volume.drivers.nimble.NimbleFCDriver'
+DRIVER_VERSION = '3.1.0'
 
 FAKE_ENUM_STRING = """
     <simpleType name="SmErrorType">
@@ -114,6 +116,15 @@ FAKE_IGROUP_LIST_RESPONSE = {
          'name': 'test-igrp1'},
         {'initiator-list': [{'name': 'test-initiator1'}],
          'name': 'test-igrp2'}]}
+
+FAKE_IGROUP_LIST_RESPONSE_FC = {
+    'err-list': {'err-list': [{'code': 0}]},
+    'initiatorgrp-list': [
+        {'initiator-list': [{'wwpn': '10:00:00:00:00:00:00:00'}],
+         'name': 'test-igrp2'},
+        {'initiator-list': [{'wwpn': '10:00:00:00:00:00:00:00'},
+                            {'wwpn': '10:00:00:00:00:00:00:01'}],
+         'name': 'test-igrp1'}]}
 
 FAKE_GET_VOL_INFO_RESPONSE = {
     'err-list': {'err-list': [{'code': 0}]},
@@ -203,6 +214,27 @@ class NimbleDriverBaseTestCase(test.TestCase):
                 self.driver.do_setup(context.get_admin_context())
                 func(self, *args, **kwargs)
             return inner_client_mock
+        return client_mock_wrapper
+
+    @staticmethod
+    def client_mock_decorator_fc(configuration):
+        def client_mock_wrapper(func):
+            def inner_clent_mock(
+                    self, mock_client_class, mock_urllib2, *args, **kwargs):
+                self.mock_client_class = mock_client_class
+                self.mock_client_service = mock.MagicMock(name='Client')
+                self.mock_client_class.Client.return_value = (
+                    self.mock_client_service)
+                mock_wsdl = mock_urllib2.urlopen.return_value
+                mock_wsdl.read = mock.MagicMock()
+                mock_wsdl.read.return_value = FAKE_ENUM_STRING
+                self.driver = nimble.NimbleFCDriver(
+                    configuration=configuration)
+                self.mock_client_service.service.login.return_value = (
+                    FAKE_POSITIVE_LOGIN_RESPONSE_1)
+                self.driver.do_setup(context.get_admin_context())
+                func(self, *args, **kwargs)
+            return inner_clent_mock
         return client_mock_wrapper
 
     def tearDown(self):
@@ -1011,6 +1043,53 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_lun_number")
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
+    def test_initialize_connection_fc_igroup_exist(self, mock_wwpns,
+                                                   mock_lun_number):
+        mock_lun_number.return_value = 13
+        mock_wwpns.return_value = ["1111111111111101"]
+        self.mock_client_service.service.getInitiatorGrpList.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE_FC)
+        expected_res = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'target_lun': 13,
+                'target_discovered': True,
+                'target_wwn': ["1111111111111101"],
+                'initiator_target_map': {'1000000000000000':
+                                         ['1111111111111101']}}}
+        self.assertEqual(
+            expected_res,
+            self.driver.initialize_connection(
+                {'name': 'test-volume',
+                 'provider_location': 'array1',
+                 'id': 12},
+                {'initiator': 'test-initiator1',
+                 'wwpns': ['1000000000000000']}))
+        expected_call_list = [mock.call.set_options(
+            location='https://10.18.108.55:5391/soap'),
+            mock.call.service.login(
+                req={
+                    'username': 'nimble', 'password': 'nimble_pass'}),
+            mock.call.service.getInitiatorGrpList(
+                request={'sid': 'a9b9aba7'}),
+            mock.call.service.addVolAcl(
+                request={'volname': 'test-volume',
+                         'apply-to': 3,
+                         'chapuser': '*',
+                         'initiatorgrp': 'test-igrp2',
+                         'sid': 'a9b9aba7'})]
+        self.assertEqual(
+            self.mock_client_service.method_calls,
+            expected_call_list)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
@@ -1055,6 +1134,57 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
 
     @mock.patch(NIMBLE_URLLIB2)
     @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_lun_number")
+    @mock.patch(NIMBLE_RANDOM)
+    def test_initialize_connection_fc_igroup_not_exist(self, mock_random,
+                                                       mock_lun_number,
+                                                       mock_wwpns):
+        mock_random.sample.return_value = 'abcdefghijkl'
+        mock_lun_number.return_value = 13
+        mock_wwpns.return_value = ["1111111111111101"]
+        self.mock_client_service.service.getInitiatorGrpList.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE_FC)
+        expected_res = {
+            'driver_volume_type': 'fibre_channel',
+            'data': {
+                'target_lun': 13,
+                'target_discovered': True,
+                'target_wwn': ["1111111111111101"],
+                'initiator_target_map': {'1000000000000000':
+                                         ['1111111111111101']}}}
+
+        self.assertEqual(
+            expected_res,
+            self.driver.initialize_connection(
+                {'name': 'test-volume',
+                 'provider_location': 'array1',
+                 'id': 12},
+                {'initiator': 'test-initiator3',
+                 'wwpns': ['1000000000000000']}))
+        expected_calls = [
+            mock.call.service.getInitiatorGrpList(
+                request={'sid': 'a9b9aba7'}),
+            mock.call.service.createInitiatorGrp(
+                request={
+                    'attr': {'initiator-list': [{'wwn': '1000000000000000'}],
+                             'name': 'openstack-abcdefghijkl'},
+                    'sid': 'a9b9aba7'}),
+            mock.call.service.addVolAcl(
+                request={'volname': 'test-volume', 'apply-to': 3,
+                         'chapuser': '*',
+                         'initiatorgrp': 'openstack-abcdefghijkl',
+                         'sid': 'a9b9aba7'})]
+        self.mock_client_service.assert_has_calls(
+            self.mock_client_service.method_calls,
+            expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
     @mock.patch.object(obj_volume.VolumeList, 'get_all_by_host',
                        mock.Mock(return_value=[]))
     @NimbleDriverBaseTestCase.client_mock_decorator(create_configuration(
@@ -1075,6 +1205,36 @@ class NimbleDriverConnectionTestCase(NimbleDriverBaseTestCase):
                          'chapuser': '*',
                          'initiatorgrp': {'initiator-list':
                                           [{'name': 'test-initiator1'}]},
+                         'sid': 'a9b9aba7'})]
+        self.mock_client_service.assert_has_calls(
+            self.mock_client_service.method_calls,
+            expected_calls)
+
+    @mock.patch(NIMBLE_URLLIB2)
+    @mock.patch(NIMBLE_CLIENT)
+    @mock.patch.object(obj_volume.VolumeList, 'get_all',
+                       mock.Mock(return_value=[]))
+    @NimbleDriverBaseTestCase.client_mock_decorator_fc(create_configuration(
+        'nimble', 'nimble_pass', '10.18.108.55', 'default', '*'))
+    @mock.patch(NIMBLE_FC_DRIVER + ".get_wwpns_from_array")
+    def test_terminate_connection_positive_fc(self, mock_wwpns):
+        mock_wwpns.return_value = ["1111111111111101"]
+        self.mock_client_service.service.getInitiatorGrpList.return_value = (
+            FAKE_IGROUP_LIST_RESPONSE_FC)
+        self.driver.terminate_connection(
+            {'name': 'test-volume',
+             'provider_location': 'array1',
+             'id': 12},
+            {'initiator': 'test-initiator1',
+             'wwpns': ['1000000000000000']})
+        expected_calls = [mock.call.service.getInitiatorGrpList(
+            request={'sid': 'a9b9aba7'}),
+            mock.call.service.removeVolAcl(
+                request={'volname': 'test-volume',
+                         'apply-to': 3,
+                         'chapuser': '*',
+                         'initiatorgrp': {'initiator-list':
+                                          [{'wwn': '1000000000000000'}]},
                          'sid': 'a9b9aba7'})]
         self.mock_client_service.assert_has_calls(
             self.mock_client_service.method_calls,
