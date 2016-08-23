@@ -13,6 +13,7 @@
 #    under the License.
 
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import excutils
 
@@ -39,7 +40,11 @@ common_opts = [
                help='Name of the volume folder to use on the Storage Center'),
     cfg.BoolOpt('dell_sc_verify_cert',
                 default=False,
-                help='Enable HTTPS SC certificate verification.')
+                help='Enable HTTPS SC certificate verification'),
+    cfg.MultiOpt('excluded_domain_ip',
+                 item_type=types.IPAddress(),
+                 default=None,
+                 help='Domain IP to be excluded from iSCSI returns.')
 ]
 
 LOG = logging.getLogger(__name__)
