@@ -265,6 +265,13 @@ volume_opts = [
                 help='If this is set to True, the backup_use_temp_snapshot '
                      'path will be used during the backup. Otherwise, it '
                      'will use backup_use_temp_volume path.'),
+    cfg.BoolOpt('enable_unsupported_driver',
+                default=False,
+                help="Set this to True when you want to allow an usupported "
+                     "driver to start.  Drivers that haven't maintained a "
+                     "working CI system and testing are marked as unsupported "
+                     "until CI is working again.  This also marks a driver as "
+                     "deprecated and may be removed in the next release."),
 ]
 
 # for backward compatibility
@@ -355,6 +362,12 @@ class BaseVD(object):
 
         # set True by manager after successful check_for_setup
         self._initialized = False
+
+        # If a driver hasn't maintained their CI system, this will get
+        # set to False, which prevents the driver from starting.
+        # Add enable_unsupported_driver = True inn cinder.conf to get
+        # the unsupported driver started.
+        self._supported = True
 
     def _driver_data_namespace(self):
         namespace = self.__class__.__name__
@@ -479,6 +492,10 @@ class BaseVD(object):
     @property
     def initialized(self):
         return self._initialized
+
+    @property
+    def supported(self):
+        return self._supported
 
     def set_throttle(self):
         bps_limit = ((self.configuration and

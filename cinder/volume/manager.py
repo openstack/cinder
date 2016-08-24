@@ -375,6 +375,17 @@ class VolumeManager(manager.SchedulerDependentManager):
     def init_host(self, added_to_cluster=None):
         """Perform any required initialization."""
         ctxt = context.get_admin_context()
+        if not self.driver.supported:
+            utils.log_unsupported_driver_warning(self.driver)
+
+            if not self.configuration.enable_unsupported_driver:
+                LOG.error(_LE("Unsupported drivers are disabled."
+                              " You can re-enable by adding "
+                              "enable_unsupported_driver=True to the "
+                              "driver section in cinder.conf"),
+                          resource={'type': 'driver',
+                                    'id': self.__class__.__name__})
+                return
 
         # If we have just added this host to a cluster we have to include all
         # our resources in that cluster.
@@ -485,6 +496,17 @@ class VolumeManager(manager.SchedulerDependentManager):
                  {'driver_name': self.driver.__class__.__name__,
                   'version': self.driver.get_version()})
 
+        try:
+            # Make sure the driver is initialized first
+            utils.log_unsupported_driver_warning(self.driver)
+            utils.require_driver_initialized(self.driver)
+        except exception.DriverNotInitialized:
+            LOG.error(_LE("Cannot complete RPC initialization because "
+                          "driver isn't initialized properly."),
+                      resource={'type': 'driver',
+                                'id': self.driver.__class__.__name__})
+            return
+
         stats = self.driver.get_volume_stats(refresh=True)
         svc_host = vol_utils.extract_host(self.host, 'backend')
         try:
@@ -522,6 +544,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                       filter_properties=None, allow_reschedule=True,
                       volume=None):
         """Creates the volume."""
+        # Log about unsupported drivers
+        utils.log_unsupported_driver_warning(self.driver)
+
         # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
             # For older clients, mimic the old behavior and look up the volume

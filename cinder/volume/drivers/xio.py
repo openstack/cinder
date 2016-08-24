@@ -62,7 +62,7 @@ def RaiseXIODriverException():
     raise exception.XIODriverException()
 
 
-class XIOISEDriver(object):
+class XIOISEDriver(driver.VolumeDriver):
 
     VERSION = '1.1.4'
 
