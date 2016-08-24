@@ -25,6 +25,7 @@ from oslo_serialization import jsonutils
 from cinder.common import constants
 from cinder import context
 from cinder import db
+from cinder import exception
 from cinder import objects
 from cinder.objects import base as ovo_base
 from cinder.objects import fields
@@ -731,3 +732,28 @@ class VolumeRpcAPITestCase(test.TestCase):
         self._test_group_api('delete_group_snapshot', rpc_method='cast',
                              group_snapshot=self.fake_group_snapshot,
                              version='3.0')
+
+    @ddt.data(('myhost', None), ('myhost', 'mycluster'))
+    @ddt.unpack
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI._get_cctxt')
+    def test_do_cleanup(self, host, cluster, get_cctxt_mock):
+        cleanup_request = objects.CleanupRequest(self.context,
+                                                 host=host,
+                                                 cluster_name=cluster)
+        rpcapi = volume_rpcapi.VolumeAPI()
+        rpcapi.do_cleanup(self.context, cleanup_request)
+        get_cctxt_mock.assert_called_once_with(
+            cleanup_request.service_topic_queue, '3.7')
+        get_cctxt_mock.return_value.cast.assert_called_once_with(
+            self.context, 'do_cleanup', cleanup_request=cleanup_request)
+
+    def test_do_cleanup_too_old(self):
+        cleanup_request = objects.CleanupRequest(self.context)
+        rpcapi = volume_rpcapi.VolumeAPI()
+        with mock.patch.object(rpcapi.client, 'can_send_version',
+                               return_value=False) as can_send_mock:
+            self.assertRaises(exception.ServiceTooOld,
+                              rpcapi.do_cleanup,
+                              self.context,
+                              cleanup_request)
+            can_send_mock.assert_called_once_with('3.7')

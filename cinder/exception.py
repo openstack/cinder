@@ -239,6 +239,10 @@ class ServiceUnavailable(Invalid):
     message = _("Service is unavailable at this time.")
 
 
+class UnavailableDuringUpgrade(Invalid):
+    message = _('Cannot perform %(action)s during system upgrade.')
+
+
 class ImageUnacceptable(Invalid):
     message = _("Image %(image_id)s is unacceptable: %(reason)s")
 

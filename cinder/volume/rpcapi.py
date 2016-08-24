@@ -14,6 +14,8 @@
 
 
 from cinder.common import constants
+from cinder import exception
+from cinder.i18n import _
 from cinder import objects
 from cinder import quota
 from cinder import rpc
@@ -118,9 +120,11 @@ class VolumeAPI(rpc.RPCAPI):
         3.5  - Adds support for cluster in retype and migrate_volume
         3.6  - Switch to use oslo.messaging topics to indicate backends instead
                of @backend suffixes in server names.
+        3.7  - Adds do_cleanup method to do volume cleanups from other nodes
+               that we were doing in init_host.
     """
 
-    RPC_API_VERSION = '3.6'
+    RPC_API_VERSION = '3.7'
     RPC_DEFAULT_VERSION = '3.0'
     TOPIC = constants.VOLUME_TOPIC
     BINARY = 'cinder-volume'
@@ -390,3 +394,17 @@ class VolumeAPI(rpc.RPCAPI):
         cctxt = self._get_cctxt(group_snapshot.service_topic_queue)
         cctxt.cast(ctxt, 'delete_group_snapshot',
                    group_snapshot=group_snapshot)
+
+    def do_cleanup(self, ctxt, cleanup_request):
+        """Perform this service/cluster resource cleanup as requested."""
+        if not self.client.can_send_version('3.7'):
+            msg = _('One of cinder-volume services is too old to accept such '
+                    'a request. Are you running mixed Newton-Ocata services?')
+            raise exception.ServiceTooOld(msg)
+
+        destination = cleanup_request.service_topic_queue
+        cctxt = self._get_cctxt(destination, '3.7')
+        # NOTE(geguileo): This call goes to do_cleanup code in
+        # cinder.manager.CleanableManager unless in the future we overwrite it
+        # in cinder.volume.manager
+        cctxt.cast(ctxt, 'do_cleanup', cleanup_request=cleanup_request)

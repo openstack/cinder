@@ -37,6 +37,7 @@ from cinder.api.v3 import snapshots
 from cinder.api.v3 import volume_manage
 from cinder.api.v3 import volume_metadata
 from cinder.api.v3 import volumes
+from cinder.api.v3 import workers
 from cinder.api import versions
 
 
@@ -173,3 +174,8 @@ class APIRouter(cinder.api.openstack.APIRouter):
         mapper.resource("backup", "backups",
                         controller=self.resources['backups'],
                         collection={'detail': 'GET'})
+
+        self.resources['workers'] = workers.create_resource()
+        mapper.resource('worker', 'workers',
+                        controller=self.resources['workers'],
+                        collection={'cleanup': 'POST'})

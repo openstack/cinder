@@ -17,6 +17,8 @@
 Tests For Scheduler
 """
 
+import collections
+
 import mock
 from oslo_config import cfg
 
@@ -75,7 +77,8 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('cinder.objects.service.Service.get_minimum_rpc_version')
     @mock.patch('cinder.objects.service.Service.get_minimum_obj_version')
     @mock.patch('cinder.rpc.LAST_RPC_VERSIONS', {'cinder-volume': '1.3'})
-    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-volume': '1.4'})
+    @mock.patch('cinder.rpc.LAST_OBJ_VERSIONS', {'cinder-volume': '1.4',
+                                                 'cinder-scheduler': '1.4'})
     def test_reset(self, get_min_obj, get_min_rpc):
         mgr = self.manager_cls()
 
@@ -346,6 +349,98 @@ class SchedulerManagerTestCase(test.TestCase):
 
         vol.refresh()
         self.assertEqual('error', vol.status)
+
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI'
+                '.determine_rpc_version_cap', mock.Mock(return_value='2.0'))
+    def test_upgrading_cloud(self):
+        self.assertTrue(self.manager.upgrading_cloud)
+
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI'
+                '.determine_rpc_version_cap')
+    def test_upgrading_cloud_not(self, cap_mock):
+        cap_mock.return_value = self.manager.RPC_API_VERSION
+        self.assertFalse(self.manager.upgrading_cloud)
+
+    def test_cleanup_destination_scheduler(self):
+        service = objects.Service(id=1, host='hostname',
+                                  binary='cinder-scheduler')
+        result = self.manager._cleanup_destination(None, service)
+        expected = self.manager.sch_api.do_cleanup, None, service.host
+        self.assertEqual(expected, result)
+
+    def test_cleanup_destination_volume(self):
+        service = objects.Service(id=1, host='hostname', cluster_name=None,
+                                  binary='cinder-volume')
+        result = self.manager._cleanup_destination(None, service)
+        expected = self.manager.volume_api.do_cleanup, service, service.host
+        self.assertEqual(expected, result)
+
+    def test_cleanup_destination_volume_cluster_cache_hit(self):
+        cluster = objects.Cluster(id=1, name='mycluster',
+                                  binary='cinder-volume')
+        service = objects.Service(id=2, host='hostname',
+                                  cluster_name=cluster.name,
+                                  binary='cinder-volume')
+        cluster_cache = {'cinder-volume': {'mycluster': cluster}}
+        result = self.manager._cleanup_destination(cluster_cache, service)
+        expected = self.manager.volume_api.do_cleanup, cluster, cluster.name
+        self.assertEqual(expected, result)
+
+    @mock.patch('cinder.objects.Cluster.get_by_id')
+    def test_cleanup_destination_volume_cluster_cache_miss(self, get_mock):
+        cluster = objects.Cluster(id=1, name='mycluster',
+                                  binary='cinder-volume')
+        service = objects.Service(self.context,
+                                  id=2, host='hostname',
+                                  cluster_name=cluster.name,
+                                  binary='cinder-volume')
+        get_mock.return_value = cluster
+        cluster_cache = collections.defaultdict(dict)
+        result = self.manager._cleanup_destination(cluster_cache, service)
+        expected = self.manager.volume_api.do_cleanup, cluster, cluster.name
+        self.assertEqual(expected, result)
+
+    @mock.patch('cinder.scheduler.manager.SchedulerManager.upgrading_cloud')
+    def test_work_cleanup_upgrading(self, upgrading_mock):
+        cleanup_request = objects.CleanupRequest(host='myhost')
+        upgrading_mock.return_value = True
+        self.assertRaises(exception.UnavailableDuringUpgrade,
+                          self.manager.work_cleanup,
+                          self.context,
+                          cleanup_request)
+
+    @mock.patch('cinder.objects.Cluster.is_up', True)
+    @mock.patch('cinder.objects.Service.is_up', False)
+    @mock.patch('cinder.scheduler.rpcapi.SchedulerAPI.do_cleanup')
+    @mock.patch('cinder.volume.rpcapi.VolumeAPI.do_cleanup')
+    @mock.patch('cinder.objects.ServiceList.get_all')
+    def test_work_cleanup(self, get_mock, vol_clean_mock, sch_clean_mock):
+        args = dict(service_id=1, cluster_name='cluster_name', host='host',
+                    binary='cinder-volume', is_up=False, disabled=True,
+                    resource_id=fake.VOLUME_ID, resource_type='Volume')
+
+        cluster = objects.Cluster(id=1, name=args['cluster_name'],
+                                  binary='cinder-volume')
+        services = [objects.Service(self.context,
+                                    id=2, host='hostname',
+                                    cluster_name=cluster.name,
+                                    binary='cinder-volume',
+                                    cluster=cluster),
+                    objects.Service(self.context,
+                                    id=3, host='hostname',
+                                    cluster_name=None,
+                                    binary='cinder-scheduler'),
+                    objects.Service(self.context,
+                                    id=4, host='hostname',
+                                    cluster_name=None,
+                                    binary='cinder-volume')]
+        get_mock.return_value = services
+
+        cleanup_request = objects.CleanupRequest(self.context, **args)
+        res = self.manager.work_cleanup(self.context, cleanup_request)
+        self.assertEqual((services[:2], services[2:]), res)
+        self.assertEqual(1, vol_clean_mock.call_count)
+        self.assertEqual(1, sch_clean_mock.call_count)
 
 
 class SchedulerTestCase(test.TestCase):

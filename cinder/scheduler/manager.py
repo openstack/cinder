@@ -19,6 +19,7 @@
 Scheduler Service
 """
 
+import collections
 from datetime import datetime
 
 import eventlet
@@ -28,13 +29,14 @@ import oslo_messaging as messaging
 from oslo_utils import excutils
 from oslo_utils import importutils
 from oslo_utils import timeutils
+from oslo_utils import versionutils
 import six
 
 from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import flow_utils
-from cinder.i18n import _, _LE
+from cinder.i18n import _, _LE, _LI
 from cinder import manager
 from cinder import objects
 from cinder import quota
@@ -71,6 +73,10 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         self.driver = importutils.import_object(scheduler_driver)
         super(SchedulerManager, self).__init__(*args, **kwargs)
         self._startup_delay = True
+        self.volume_api = volume_rpcapi.VolumeAPI()
+        self.sch_api = scheduler_rpcapi.SchedulerAPI()
+        self.rpc_api_version = versionutils.convert_version_to_int(
+            self.RPC_API_VERSION)
 
     def init_host_with_rpc(self):
         ctxt = context.get_admin_context()
@@ -81,6 +87,8 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
 
     def reset(self):
         super(SchedulerManager, self).reset()
+        self.volume_api = volume_rpcapi.VolumeAPI()
+        self.sch_api = scheduler_rpcapi.SchedulerAPI()
         self.driver.reset()
 
     def update_service_capabilities(self, context, service_name=None,
@@ -373,3 +381,99 @@ class SchedulerManager(manager.CleanableManager, manager.Manager):
         rpc.get_notifier("scheduler").error(context,
                                             'scheduler.' + method,
                                             payload)
+
+    @property
+    def upgrading_cloud(self):
+        min_version_str = self.sch_api.determine_rpc_version_cap()
+        min_version = versionutils.convert_version_to_int(min_version_str)
+        return min_version < self.rpc_api_version
+
+    def _cleanup_destination(self, clusters, service):
+        """Determines the RPC method, destination service and name.
+
+        The name is only used for logging, and it is the topic queue.
+        """
+        # For the scheduler we don't have a specific destination, as any
+        # scheduler will do and we know we are up, since we are running this
+        # code.
+        if service.binary == 'cinder-scheduler':
+            cleanup_rpc = self.sch_api.do_cleanup
+            dest = None
+            dest_name = service.host
+        else:
+            cleanup_rpc = self.volume_api.do_cleanup
+
+            # For clustered volume services we try to get info from the cache.
+            if service.is_clustered:
+                # Get cluster info from cache
+                dest = clusters[service.binary].get(service.cluster_name)
+                # Cache miss forces us to get the cluster from the DB via OVO
+                if not dest:
+                    dest = service.cluster
+                    clusters[service.binary][service.cluster_name] = dest
+                dest_name = dest.name
+            # Non clustered volume services
+            else:
+                dest = service
+                dest_name = service.host
+        return cleanup_rpc, dest, dest_name
+
+    def work_cleanup(self, context, cleanup_request):
+        """Process request from API to do cleanup on services.
+
+        Here we retrieve from the DB which services we want to clean up based
+        on the request from the user.
+
+        Then send individual cleanup requests to each of the services that are
+        up, and we finally return a tuple with services that we have sent a
+        cleanup request and those that were not up and we couldn't send it.
+        """
+        if self.upgrading_cloud:
+            raise exception.UnavailableDuringUpgrade(action='workers cleanup')
+
+        LOG.info(_LI('Workers cleanup request started.'))
+
+        filters = dict(service_id=cleanup_request.service_id,
+                       cluster_name=cleanup_request.cluster_name,
+                       host=cleanup_request.host,
+                       binary=cleanup_request.binary,
+                       is_up=cleanup_request.is_up,
+                       disabled=cleanup_request.disabled)
+        # Get the list of all the services that match the request
+        services = objects.ServiceList.get_all(context, filters)
+
+        until = cleanup_request.until or timeutils.utcnow()
+        requested = []
+        not_requested = []
+
+        # To reduce DB queries we'll cache the clusters data
+        clusters = collections.defaultdict(dict)
+
+        for service in services:
+            cleanup_request.cluster_name = service.cluster_name
+            cleanup_request.service_id = service.id
+            cleanup_request.host = service.host
+            cleanup_request.binary = service.binary
+            cleanup_request.until = until
+
+            cleanup_rpc, dest, dest_name = self._cleanup_destination(clusters,
+                                                                     service)
+
+            # If it's a scheduler or the service is up, send the request.
+            if not dest or dest.is_up:
+                LOG.info(_LI('Sending cleanup for %(binary)s %(dest_name)s.'),
+                         {'binary': service.binary,
+                          'dest_name': dest_name})
+                cleanup_rpc(context, cleanup_request)
+                requested.append(service)
+            # We don't send cleanup requests when there are no services alive
+            # to do the cleanup.
+            else:
+                LOG.info(_LI('No service available to cleanup %(binary)s '
+                             '%(dest_name)s.'),
+                         {'binary': service.binary,
+                          'dest_name': dest_name})
+                not_requested.append(service)
+
+        LOG.info(_LI('Cleanup requests completed.'))
+        return requested, not_requested
