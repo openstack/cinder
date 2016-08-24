@@ -51,6 +51,7 @@ eqlx_opts = [
                     'specified in cinder/volume/drivers/san/san.py '
                     'and will be removed in M release.'),
     cfg.IntOpt('eqlx_cli_max_retries',
+               min=0,
                default=5,
                help='Maximum retry count for reconnection. Default is 5.'),
     cfg.BoolOpt('eqlx_use_chap',
@@ -295,10 +296,6 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
 
     def check_for_setup_error(self):
         super(DellEQLSanISCSIDriver, self).check_for_setup_error()
-        if self.configuration.eqlx_cli_max_retries < 0:
-            raise exception.InvalidInput(
-                reason=_("eqlx_cli_max_retries must be greater than or "
-                         "equal to 0"))
 
     def _eql_execute(self, *args, **kwargs):
         return self._run_ssh(
