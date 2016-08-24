@@ -254,10 +254,20 @@ class HNASiSCSIDriverTest(test.TestCase):
                     '172.17.39.133': {'evs_number': 2},
                     '172.17.39.134': {'evs_number': 3}}
 
+        version_info = {
+            'mac': '83-68-96-AA-DA-5D',
+            'model': 'HNAS 4040',
+            'version': '12.4.3924.11',
+            'hardware': 'NAS Platform',
+            'serial': 'B1339109',
+        }
+
         self.mock_object(HNASSSHBackend, 'get_fs_info',
                          mock.Mock(return_value=True))
         self.mock_object(HNASSSHBackend, 'get_evs_info',
                          mock.Mock(return_value=evs_info))
+        self.mock_object(HNASSSHBackend, 'get_version',
+                         mock.Mock(return_value=version_info))
 
         self.driver.do_setup(None)
 
@@ -269,10 +279,20 @@ class HNASiSCSIDriverTest(test.TestCase):
                     '172.17.39.133': {'evs_number': 2},
                     '172.17.39.134': {'evs_number': 3}}
 
+        version_info = {
+            'mac': '83-68-96-AA-DA-5D',
+            'model': 'HNAS 4040',
+            'version': '12.4.3924.11',
+            'hardware': 'NAS Platform',
+            'serial': 'B1339109',
+        }
+
         self.mock_object(HNASSSHBackend, 'get_fs_info',
                          mock.Mock(return_value=True))
         self.mock_object(HNASSSHBackend, 'get_evs_info',
                          mock.Mock(return_value=evs_info))
+        self.mock_object(HNASSSHBackend, 'get_version',
+                         mock.Mock(return_value=version_info))
 
         self.assertRaises(exception.InvalidParameterValue,
                           self.driver.do_setup, None)

@@ -26,8 +26,7 @@ import six
 from xml.etree import ElementTree as ETree
 
 from cinder import exception
-
-from cinder.i18n import _, _LW
+from cinder.i18n import _, _LW, _LE
 from cinder.volume import volume_types
 
 LOG = logging.getLogger(__name__)
@@ -45,7 +44,7 @@ drivers_common_opts = [
                    'the SMU IP.'),
     cfg.StrOpt('hnas_ssc_cmd',
                default='ssc',
-               help='Command to communicate to HNAS array.'),
+               help='Command to communicate to HNAS.'),
     cfg.StrOpt('hnas_username',
                help='HNAS username.'),
     cfg.StrOpt('hnas_password',
@@ -96,6 +95,7 @@ def _check_conf_params(config, vol_type, dv_type, idx):
     if config['username'] is None:
         msg = (_("The config parameter hnas_username "
                  "is not set in the cinder.conf."))
+        LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
     if (config['password'] is None and
@@ -104,11 +104,13 @@ def _check_conf_params(config, vol_type, dv_type, idx):
                  "missing: you need to set hnas_password "
                  "or hnas_ssh_private_key "
                  "in the cinder.conf."))
+        LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
     if config['mgmt_ip0'] is None:
         msg = (_("The config parameter hnas_mgmt_ip0 "
                  "is not set in the cinder.conf."))
+        LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
     if config['services'][vol_type]['hdp'] is None:
@@ -116,6 +118,7 @@ def _check_conf_params(config, vol_type, dv_type, idx):
                  "not set in the cinder.conf. Note that you need to "
                  "have at least one pool configured.") %
                {'idx': idx})
+        LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
     if config['services'][vol_type]['volume_type'] is None:
@@ -124,6 +127,7 @@ def _check_conf_params(config, vol_type, dv_type, idx):
                  "in the cinder.conf. Note that you need to "
                  "have at least one pool configured.") %
                {'idx': idx})
+        LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
     if (dv_type == 'iscsi' and
@@ -132,6 +136,7 @@ def _check_conf_params(config, vol_type, dv_type, idx):
                  "hnas_svc%(idx)s_iscsi_ip is not set "
                  "in the cinder.conf. Note that you need to "
                  "have at least one pool configured.") % {'idx': idx})
+        LOG.error(msg)
         raise exception.InvalidParameterValue(err=msg)
 
 
@@ -147,6 +152,7 @@ def _xml_read(root, element, check=None):
 
     # mandatory parameter not found
     if val is None and check:
+        LOG.error(_LE("Mandatory parameter not found: %(p)s"), {'p': element})
         raise exception.ParameterNotFound(param=element)
 
     # tag not found
@@ -158,6 +164,7 @@ def _xml_read(root, element, check=None):
     if not val.strip():
         if svc_tag_pattern.search(element):
             return ""
+        LOG.error(_LE("Parameter not found: %(param)s"), {'param': element})
         raise exception.ParameterNotFound(param=element)
 
     LOG.debug("%(element)s: %(val)s",
@@ -180,6 +187,7 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
     if not os.access(xml_config_file, os.R_OK):
         msg = (_("Can't find HNAS configurations on cinder.conf neither "
                  "on the path %(xml)s.") % {'xml': xml_config_file})
+        LOG.error(msg)
         raise exception.ConfigNotFound(message=msg)
     else:
         LOG.warning(_LW("This XML configuration file %(xml)s is deprecated. "
@@ -191,7 +199,9 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
     try:
         root = ETree.parse(xml_config_file).getroot()
     except ETree.ParseError:
-        msg = (_("Error parsing config file: %s") % xml_config_file)
+        msg = (_("Error parsing config file: %(xml_config_file)s") %
+               {'xml_config_file': xml_config_file})
+        LOG.error(msg)
         raise exception.ConfigNotFound(message=msg)
 
     # mandatory parameters for NFS and iSCSI
@@ -210,7 +220,8 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
     config['password'] = _xml_read(root, 'password')
 
     if config['ssh_private_key'] is None and config['password'] is None:
-        msg = (_("Missing authentication option (passw or private key file)."))
+        msg = _("Missing authentication option (passw or private key file).")
+        LOG.error(msg)
         raise exception.ConfigNotFound(message=msg)
 
     if _xml_read(root, 'ssh_port') is not None:
@@ -235,8 +246,8 @@ def read_xml_config(xml_config_file, svc_params, optional_params):
 
     # at least one service required!
     if not config['services'].keys():
-        msg = (_("svc_0"))
-        raise exception.ParameterNotFound(param=msg)
+        LOG.error(_LE("No service found in xml config file"))
+        raise exception.ParameterNotFound(param="svc_0")
 
     return config
 

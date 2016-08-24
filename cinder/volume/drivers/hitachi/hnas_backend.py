@@ -82,12 +82,12 @@ class HNASSSHBackend(object):
                 return out, err
             except putils.ProcessExecutionError as e:
                 if 'Failed to establish SSC connection' in e.stderr:
-                    LOG.debug("SSC connection error!")
-                    msg = _("Failed to establish SSC connection.")
+                    msg = _("Failed to establish SSC connection!")
+                    LOG.exception(msg)
                     raise exception.HNASConnError(msg)
                 elif 'Connection reset' in e.stderr:
-                    LOG.debug("HNAS connection reset!")
-                    msg = _("HNAS has disconnected SSC")
+                    msg = _("HNAS connection reset!")
+                    LOG.exception(msg)
                     raise exception.HNASConnError(msg)
                 else:
                     raise
@@ -124,6 +124,7 @@ class HNASSSHBackend(object):
 
             self.storage_version = version_info
 
+        LOG.debug("version_info: %(info)s", {'info': self.storage_version})
         return self.storage_version
 
     def get_evs_info(self):
@@ -236,7 +237,10 @@ class HNASSSHBackend(object):
         # When the FS is found in the list of known FS, returns the EVS ID
         for key in self.fslist:
             if fs_label == self.fslist[key]['label']:
+                LOG.debug("EVS ID for fs %(fs)s: %(id)s.",
+                          {'fs': fs_label, 'id': self.fslist[key]['evsid']})
                 return self.fslist[key]['evsid']
+        LOG.debug("Can't find EVS ID for fs %(fs)s.", {'fs': fs_label})
 
     def _get_targets(self, evs_id, tgt_alias=None, refresh=False):
         """Gets the target list of an EVS.
@@ -365,11 +369,13 @@ class HNASSSHBackend(object):
         if not fs:
             LOG.error(_LE("Can't find file %(file)s in FS %(label)s"),
                       {'file': src, 'label': fs_label})
-            msg = _('FS label: %s') % fs_label
+            msg = _('FS label: %(fs_label)s') % {'fs_label': fs_label}
             raise exception.InvalidParameterValue(err=msg)
 
         self._run_cmd("console-context", "--evs", fs['evsid'],
                       'file-clone-create', '-f', fs_label, src, name)
+        LOG.debug('file_clone: fs:%(fs_label)s %(src)s/src: -> %(name)s/dst',
+                  {'fs_label': fs_label, 'src': src, 'name': name})
 
     def extend_lu(self, fs_label, new_size, lu_name):
         """Extends an iSCSI volume.
@@ -433,6 +439,7 @@ class HNASSSHBackend(object):
 
         LOG.debug('add_iscsi_conn: LU %(lu)s added to %(tgt)s.',
                   {'lu': lu_name, 'tgt': tgt_alias})
+        LOG.debug('conn_info: %(conn_info)s', {'conn_info': conn_info})
 
         return conn_info
 
@@ -487,7 +494,10 @@ class HNASSSHBackend(object):
         for line in lines:
             if 'Globally unique name' in line:
                 full_iqn = line.split()[3]
+                LOG.debug('get_target_iqn: %(iqn)s', {'iqn': full_iqn})
                 return full_iqn
+        LOG.debug("Could not find iqn for alias %(alias)s on fs %(fs_label)s",
+                  {'alias': tgt_alias, 'fs_label': fs_label})
 
     def set_target_secret(self, targetalias, fs_label, secret):
         """Sets the chap secret for the specified target.
@@ -598,7 +608,8 @@ class HNASSSHBackend(object):
         lu_info['id'] = 0
         lu_info['tgt'] = None
 
-        LOG.debug("LU %(lu)s not attached.", {'lu': vol_name})
+        LOG.debug("LU %(lu)s not attached. lu_info: %(lu_info)s",
+                  {'lu': vol_name, 'lu_info': lu_info})
 
         return lu_info
 
@@ -769,6 +780,7 @@ class HNASSSHBackend(object):
 
             export_list.append(export_info)
 
+        LOG.debug("get_export_list: %(exp_list)s", {'exp_list': export_list})
         return export_list
 
     def create_cloned_lu(self, src_lu, fs_label, clone_name):
@@ -799,3 +811,5 @@ class HNASSSHBackend(object):
                       'iscsi-target', 'add', tgt_alias, secret)
 
         self._get_targets(_evs_id, refresh=True)
+        LOG.debug("create_target: alias: %(alias)s  fs_label: %(fs_label)s",
+                  {'alias': tgt_alias, 'fs_label': fs_label})
