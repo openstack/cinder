@@ -146,7 +146,6 @@ class BaseBackupTest(test.TestCase):
         """
         kwargs = {}
         kwargs['size'] = size
-        kwargs['host'] = 'testhost'
         kwargs['user_id'] = str(uuid.uuid4())
         kwargs['project_id'] = str(uuid.uuid4())
         kwargs['status'] = status

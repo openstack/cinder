@@ -93,7 +93,6 @@ class QuotaIntegrationTestCase(test.TestCase):
         snapshot.project_id = self.project_id or fake.PROJECT_ID
         snapshot.volume_id = volume['id']
         snapshot.volume_size = volume['size']
-        snapshot.host = volume['host']
         snapshot.status = fields.SnapshotStatus.AVAILABLE
         snapshot.create()
         return snapshot

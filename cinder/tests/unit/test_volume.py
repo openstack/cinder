@@ -5845,7 +5845,6 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
         self.db_snap_attrs = [
             {
                 'id': fake.SNAPSHOT_ID,
-                'host': 'devstack',
                 'project_id': 'p1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True,
@@ -5856,7 +5855,6 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
 
             {
                 'id': fake.SNAPSHOT2_ID,
-                'host': 'devstack',
                 'project_id': 'p1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True,
@@ -5866,7 +5864,6 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             },
             {
                 'id': fake.SNAPSHOT3_ID,
-                'host': 'devstack',
                 'project_id': 'p1',
                 'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
                 'deleted': True,
@@ -5876,14 +5873,12 @@ class GetActiveByWindowTestCase(BaseVolumeTestCase):
             },
             {
                 'id': fake.SNAPSHOT_ID,
-                'host': 'devstack',
                 'project_id': 'p1',
                 'created_at': datetime.datetime(1, 3, 10, 1, 1, 1),
                 'volume_id': fake.VOLUME_ID,
             },
             {
                 'id': fake.SNAPSHOT2_ID,
-                'host': 'devstack',
                 'project_id': 'p1',
                 'created_at': datetime.datetime(1, 5, 1, 1, 1, 1),
                 'volume_id': fake.VOLUME_ID
