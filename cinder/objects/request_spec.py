@@ -13,14 +13,12 @@
 #    under the License.
 
 from oslo_config import cfg
-from oslo_log import log as logging
 from oslo_versionedobjects import fields
 
 from cinder import objects
 from cinder.objects import base
 
 CONF = cfg.CONF
-LOG = logging.getLogger(__name__)
 
 
 @base.CinderObjectRegistry.register
