@@ -55,8 +55,8 @@ class TestFCZoneManager(test.TestCase):
         def fake_build_driver(self):
             self.driver = mock.Mock(fc_zone_driver.FCZoneDriver)
 
-        self.stubs.Set(fc_zone_manager.ZoneManager, '_build_driver',
-                       fake_build_driver)
+        self.mock_object(fc_zone_manager.ZoneManager, '_build_driver',
+                         fake_build_driver)
 
         self.zm = fc_zone_manager.ZoneManager(configuration=config)
         self.configuration = conf.Configuration(None)
