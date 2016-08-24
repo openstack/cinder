@@ -741,15 +741,15 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         self.assert_error_propagates([self.array.create_snapshot],
                                      self.driver.create_snapshot, SNAPSHOT)
 
-    def test_delete_snapshot(self):
+    @ddt.data("does not exist", "has been destroyed")
+    def test_delete_snapshot(self, error_text):
         snap_name = SNAPSHOT["volume_name"] + "-cinder." + SNAPSHOT["name"]
         self.driver.delete_snapshot(SNAPSHOT)
         expected = [mock.call.destroy_volume(snap_name)]
         self.array.assert_has_calls(expected)
         self.assertFalse(self.array.eradicate_volume.called)
         self.array.destroy_volume.side_effect = (
-            self.purestorage_module.PureHTTPError(code=400, text="does not "
-                                                                 "exist"))
+            self.purestorage_module.PureHTTPError(code=400, text=error_text))
         self.driver.delete_snapshot(SNAPSHOT)
         self.array.destroy_volume.side_effect = None
         self.assert_error_propagates([self.array.destroy_volume],
