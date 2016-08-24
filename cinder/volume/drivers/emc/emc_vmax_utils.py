@@ -2796,3 +2796,19 @@ class EMCVMAXUtils(object):
                               "record.",
                               {'Volume': volume['id']})
         return returned_record
+
+    def get_iqn(self, conn, ipendpointinstancename):
+        """Get the IPv4Address from the ip endpoint instance name.
+
+        :param conn: the ecom connection
+        :param ipendpointinstancename: the ip endpoint instance name
+        :returns: foundIqn
+        """
+        foundIqn = None
+        ipendpointinstance = conn.GetInstance(ipendpointinstancename)
+        propertiesList = ipendpointinstance.properties.items()
+        for properties in propertiesList:
+            if properties[0] == 'Name':
+                cimProperties = properties[1]
+                foundIqn = cimProperties.value
+        return foundIqn
