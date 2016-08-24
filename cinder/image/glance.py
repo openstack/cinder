@@ -44,7 +44,7 @@ glance_opts = [
                 default=[],
                 help='A list of url schemes that can be downloaded directly '
                      'via the direct_url.  Currently supported schemes: '
-                     '[file].'),
+                     '[file, cinder].'),
     cfg.StrOpt('glance_catalog_info',
                default='image:glance:publicURL',
                help='Info to match when looking for glance in the service '
