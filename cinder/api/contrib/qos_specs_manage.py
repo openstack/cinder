@@ -78,7 +78,7 @@ class QoSSpecsController(wsgi.Controller):
         self.assert_valid_body(body, 'qos_specs')
 
         specs = body['qos_specs']
-        name = specs.get('name', None)
+        name = specs.pop('name', None)
         if name is None:
             msg = _("Please specify a name for QoS specs.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
@@ -86,8 +86,6 @@ class QoSSpecsController(wsgi.Controller):
         self.validate_string_length(name, 'name', min_length=1,
                                     max_length=255, remove_whitespaces=True)
         name = name.strip()
-        # Remove name from 'specs' since passing it in as separate param
-        del specs['name']
 
         # Validate the key-value pairs in the qos spec.
         utils.validate_dictionary_string_length(specs)

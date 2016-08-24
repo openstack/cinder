@@ -130,8 +130,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         ctxt = context.RequestContext('fake_user', 'fake_project')
 
         if 'rpcapi_class' in kwargs:
-            rpcapi_class = kwargs['rpcapi_class']
-            del kwargs['rpcapi_class']
+            rpcapi_class = kwargs.pop('rpcapi_class')
         else:
             rpcapi_class = volume_rpcapi.VolumeAPI
         rpcapi = rpcapi_class()
@@ -147,17 +146,15 @@ class VolumeRpcAPITestCase(test.TestCase):
 
         expected_msg = copy.deepcopy(kwargs)
         if 'volume' in expected_msg:
-            volume = expected_msg['volume']
+            volume = expected_msg.pop('volume')
             # NOTE(thangp): copy.deepcopy() is making oslo_versionedobjects
             # think that 'metadata' was changed.
             if isinstance(volume, objects.Volume):
                 volume.obj_reset_changes()
-            del expected_msg['volume']
             expected_msg['volume_id'] = volume['id']
             expected_msg['volume'] = volume
         if 'snapshot' in expected_msg:
-            snapshot = expected_msg['snapshot']
-            del expected_msg['snapshot']
+            snapshot = expected_msg.pop('snapshot')
             expected_msg['snapshot_id'] = snapshot.id
             expected_msg['snapshot'] = snapshot
         if 'cgsnapshot' in expected_msg:
@@ -166,18 +163,16 @@ class VolumeRpcAPITestCase(test.TestCase):
                 cgsnapshot.consistencygroup
                 kwargs['cgsnapshot'].consistencygroup
         if 'backup' in expected_msg:
-            backup = expected_msg['backup']
-            del expected_msg['backup']
+            backup = expected_msg.pop('backup')
             expected_msg['backup_id'] = backup.id
             expected_msg['backup'] = backup
 
         if 'host' in expected_msg:
             del expected_msg['host']
         if 'dest_host' in expected_msg:
-            dest_host = expected_msg['dest_host']
+            dest_host = expected_msg.pop('dest_host')
             dest_host_dict = {'host': dest_host.host,
                               'capabilities': dest_host.capabilities}
-            del expected_msg['dest_host']
             expected_msg['host'] = dest_host_dict
         if 'new_volume' in expected_msg:
             volume = expected_msg['new_volume']

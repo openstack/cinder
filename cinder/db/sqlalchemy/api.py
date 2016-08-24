@@ -3074,7 +3074,7 @@ def _process_volume_types_filters(query, filters):
             return
         if filters.get('extra_specs') is not None:
             the_filter = []
-            searchdict = filters.get('extra_specs')
+            searchdict = filters.pop('extra_specs')
             extra_specs = getattr(models.VolumeTypes, 'extra_specs')
             for k, v in searchdict.items():
                 the_filter.extend([extra_specs.any(key=k, value=v,
@@ -3083,7 +3083,6 @@ def _process_volume_types_filters(query, filters):
                 query = query.filter(and_(*the_filter))
             else:
                 query = query.filter(the_filter[0])
-            del filters['extra_specs']
         query = query.filter_by(**filters)
     return query
 
@@ -3109,7 +3108,7 @@ def _process_group_types_filters(query, filters):
             return
         if filters.get('group_specs') is not None:
             the_filter = []
-            searchdict = filters.get('group_specs')
+            searchdict = filters.pop('group_specs')
             group_specs = getattr(models.GroupTypes, 'group_specs')
             for k, v in searchdict.items():
                 the_filter.extend([group_specs.any(key=k, value=v,
@@ -3118,7 +3117,6 @@ def _process_group_types_filters(query, filters):
                 query = query.filter(and_(*the_filter))
             else:
                 query = query.filter(the_filter[0])
-            del filters['group_specs']
         query = query.filter_by(**filters)
     return query
 
@@ -4097,8 +4095,7 @@ def _dict_with_qos_specs(rows):
             member = {'name': row['value'], 'id': row['id']}
             if row.specs:
                 spec_dict = _dict_with_children_specs(row.specs)
-                member['consumer'] = spec_dict['consumer']
-                del spec_dict['consumer']
+                member['consumer'] = spec_dict.pop('consumer')
                 member.update(dict(specs=spec_dict))
             result.append(member)
     return result

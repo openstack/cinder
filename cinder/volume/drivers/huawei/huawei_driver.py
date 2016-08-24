@@ -1745,8 +1745,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             metadata = huawei_utils.get_volume_metadata(v)
             old_status = 'available'
             if 'old_status' in metadata:
-                old_status = metadata['old_status']
-                del metadata['old_status']
+                old_status = metadata.pop('old_status')
             v_update['updates'] = {'status': old_status,
                                    'metadata': metadata}
             volumes_update.append(v_update)

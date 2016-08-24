@@ -662,8 +662,7 @@ class FlashSystemManagementSimulator(object):
         except exception.InvalidInput:
             return self._errors['CMMVC50000']
 
-        command = kwargs['cmd']
-        del kwargs['cmd']
+        command = kwargs.pop('cmd')
         func = getattr(self, '_cmd_' + command)
         out, err = func(**kwargs)
 
