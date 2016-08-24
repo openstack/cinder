@@ -25,6 +25,7 @@ from cinder.objects import fields
 from cinder.volume.drivers.kaminario import kaminario_common as common
 
 ISCSI_TCP_PORT = "3260"
+K2_REP_FAILED_OVER = fields.ReplicationStatus.FAILED_OVER
 LOG = logging.getLogger(__name__)
 kaminario_logger = common.kaminario_logger
 
@@ -38,9 +39,10 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
         1.1 - Added manage/unmanage and extra-specs support for nodedup
         1.2 - Added replication support
         1.3 - Added retype support
+        1.4 - Added replication failback support
     """
 
-    VERSION = '1.3'
+    VERSION = '1.4'
 
     # ThirdPartySystems wiki page name
     CI_WIKI_NAME = "Kaminario_K2_CI"
@@ -54,10 +56,19 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
     @coordination.synchronized('{self.k2_lock_name}')
     def initialize_connection(self, volume, connector):
         """Attach K2 volume to host."""
+        # To support replication failback
+        temp_client = None
+        if (hasattr(volume, 'replication_status') and
+                volume.replication_status == K2_REP_FAILED_OVER):
+            temp_client = self.client
+            self.client = self.target
         # Get target_portal and target iqn.
         iscsi_portal, target_iqn = self.get_target_info(volume)
         # Map volume.
         lun = self.k2_initialize_connection(volume, connector)
+        # To support replication failback
+        if temp_client:
+            self.client = temp_client
         # Return target volume information.
         return {"driver_volume_type": "iscsi",
                 "data": {"target_iqn": target_iqn,
@@ -68,15 +79,20 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
     @kaminario_logger
     @coordination.synchronized('{self.k2_lock_name}')
     def terminate_connection(self, volume, connector, **kwargs):
+        # To support replication failback
+        temp_client = None
+        if (hasattr(volume, 'replication_status') and
+                volume.replication_status == K2_REP_FAILED_OVER):
+            temp_client = self.client
+            self.client = self.target
         super(KaminarioISCSIDriver, self).terminate_connection(volume,
                                                                connector)
+        # To support replication failback
+        if temp_client:
+            self.client = temp_client
 
     @kaminario_logger
     def get_target_info(self, volume):
-        rep_status = fields.ReplicationStatus.FAILED_OVER
-        if (hasattr(volume, 'replication_status') and
-                volume.replication_status == rep_status):
-            self.client = self.target
         LOG.debug("Searching first iscsi port ip without wan in K2.")
         iscsi_ip_rs = self.client.search("system/net_ips", wan_port="")
         iscsi_ip = target_iqn = None
