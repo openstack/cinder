@@ -400,7 +400,7 @@ class TestKaminarioISCSI(test.TestCase):
         backend_ip, res_volumes = self.driver.failover_host(None, volumes)
         self.assertEqual('10.0.0.2', backend_ip)
         status = res_volumes[0]['updates']['replication_status']
-        self.assertEqual(fields.ReplicationStatus.ENABLED, status)
+        self.assertEqual(fields.ReplicationStatus.DISABLED, status)
 
     def test_delete_volume_replica(self):
         """Test _delete_volume_replica."""

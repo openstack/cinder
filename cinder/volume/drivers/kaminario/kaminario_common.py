@@ -499,7 +499,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                     src_ssn.save()
                     LOG.debug("The target session: %s state is "
                               "changed to in sync", session_name)
-                    rep_status = fields.ReplicationStatus.ENABLED
+                    rep_status = fields.ReplicationStatus.DISABLED
                     volume_updates.append({'volume_id': v['id'],
                                            'updates':
                                           {'replication_status': rep_status}})
