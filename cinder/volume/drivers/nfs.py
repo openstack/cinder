@@ -114,17 +114,28 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         """Any initialization the volume driver does while starting."""
         super(NfsDriver, self).do_setup(context)
 
-        config = self.configuration.nfs_shares_config
-        if not config:
-            msg = (_("There's no NFS config file configured (%s)") %
-                   'nfs_shares_config')
-            LOG.warning(msg)
-            raise exception.NfsException(msg)
-        if not os.path.exists(config):
-            msg = (_("NFS config file at %(config)s doesn't exist") %
-                   {'config': config})
-            LOG.warning(msg)
-            raise exception.NfsException(msg)
+        nas_host = getattr(self.configuration,
+                           'nas_host',
+                           None)
+        nas_share_path = getattr(self.configuration,
+                                 'nas_share_path',
+                                 None)
+
+        # If both nas_host and nas_share_path are set we are not
+        # going to use the nfs_shares_config file.  So, only check
+        # for its existence if it is going to be used.
+        if((not nas_host) or (not nas_share_path)):
+            config = self.configuration.nfs_shares_config
+            if not config:
+                msg = (_("There's no NFS config file configured (%s)") %
+                       'nfs_shares_config')
+                LOG.warning(msg)
+                raise exception.NfsException(msg)
+            if not os.path.exists(config):
+                msg = (_("NFS config file at %(config)s doesn't exist") %
+                       {'config': config})
+                LOG.warning(msg)
+                raise exception.NfsException(msg)
 
         self.shares = {}  # address : options
 
