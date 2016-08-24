@@ -10,9 +10,9 @@
 # Zbyněk Schwarz <zbynek.schwarz@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev85\n"
+"Project-Id-Version: cinder 8.1.1.dev2\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-06 20:14+0000\n"
+"POT-Creation-Date: 2016-08-18 04:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2718,9 +2718,6 @@ msgstr ""
 #, python-format
 msgid "Failed to create IG, %s"
 msgstr "Nelze vytvořit IG, %s"
-
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "Nelze vytvořit obraz-svazek SolidFire"
 
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
