@@ -141,7 +141,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         super(BackupNFSSwiftBasedTestCase, self).setUp()
 
         self.ctxt = context.get_admin_context()
-        self.stubs.Set(hashlib, 'md5', fake_md5)
+        self.mock_object(hashlib, 'md5', fake_md5)
         self.volume_file = tempfile.NamedTemporaryFile()
         self.temp_dir = tempfile.mkdtemp()
         self.addCleanup(self.volume_file.close)
@@ -265,10 +265,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             prefix = volume + '_' + backup_name
             return prefix
 
-        # Raise a pseudo exception.BackupDriverException.
-        self.stubs.Set(nfs.NFSBackupDriver,
-                       '_generate_object_name_prefix',
-                       _fake_generate_object_name_prefix)
+        self.mock_object(nfs.NFSBackupDriver,
+                         '_generate_object_name_prefix',
+                         _fake_generate_object_name_prefix)
 
         container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
                                                '', 1)
@@ -296,10 +295,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             prefix = volume + '_' + backup_name
             return prefix
 
-        # Raise a pseudo exception.BackupDriverException.
-        self.stubs.Set(nfs.NFSBackupDriver,
-                       '_generate_object_name_prefix',
-                       _fake_generate_object_name_prefix)
+        self.mock_object(nfs.NFSBackupDriver,
+                         '_generate_object_name_prefix',
+                         _fake_generate_object_name_prefix)
 
         container_name = self.temp_dir.replace(tempfile.gettempdir() + '/',
                                                '', 1)
@@ -342,10 +340,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             prefix = volume + '_' + backup_name
             return prefix
 
-        # Raise a pseudo exception.BackupDriverException.
-        self.stubs.Set(nfs.NFSBackupDriver,
-                       '_generate_object_name_prefix',
-                       _fake_generate_object_name_prefix)
+        self.mock_object(nfs.NFSBackupDriver,
+                         '_generate_object_name_prefix',
+                         _fake_generate_object_name_prefix)
 
         self.flags(backup_file_size=(8 * 1024))
         self.flags(backup_sha_block_size_bytes=1024)
@@ -396,10 +393,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             prefix = volume + '_' + backup_name
             return prefix
 
-        # Raise a pseudo exception.BackupDriverException.
-        self.stubs.Set(nfs.NFSBackupDriver,
-                       '_generate_object_name_prefix',
-                       _fake_generate_object_name_prefix)
+        self.mock_object(nfs.NFSBackupDriver,
+                         '_generate_object_name_prefix',
+                         _fake_generate_object_name_prefix)
 
         self.flags(backup_file_size=(8 * 1024))
         self.flags(backup_sha_block_size_bytes=1024)
@@ -458,8 +454,8 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             raise exception.BackupDriverException(message=_('fake'))
 
         # Raise a pseudo exception.BackupDriverException.
-        self.stubs.Set(nfs.NFSBackupDriver, '_backup_metadata',
-                       fake_backup_metadata)
+        self.mock_object(nfs.NFSBackupDriver, '_backup_metadata',
+                         fake_backup_metadata)
 
         # We expect that an exception be notified directly.
         self.assertRaises(exception.BackupDriverException,
@@ -485,14 +481,14 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             raise exception.BackupDriverException(message=_('fake'))
 
         # Raise a pseudo exception.BackupDriverException.
-        self.stubs.Set(nfs.NFSBackupDriver, '_backup_metadata',
-                       fake_backup_metadata)
+        self.mock_object(nfs.NFSBackupDriver, '_backup_metadata',
+                         fake_backup_metadata)
 
         def fake_delete(self, backup):
             raise exception.BackupOperationError()
 
         # Raise a pseudo exception.BackupOperationError.
-        self.stubs.Set(nfs.NFSBackupDriver, 'delete', fake_delete)
+        self.mock_object(nfs.NFSBackupDriver, 'delete', fake_delete)
 
         # We expect that the second exception is notified.
         self.assertRaises(exception.BackupOperationError,
@@ -563,10 +559,9 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
             prefix = volume + '_' + backup_name
             return prefix
 
-        # Raise a pseudo exception.BackupDriverException.
-        self.stubs.Set(nfs.NFSBackupDriver,
-                       '_generate_object_name_prefix',
-                       _fake_generate_object_name_prefix)
+        self.mock_object(nfs.NFSBackupDriver,
+                         '_generate_object_name_prefix',
+                         _fake_generate_object_name_prefix)
 
         self.flags(backup_file_size =(1024 * 8))
         self.flags(backup_sha_block_size_bytes=1024)
