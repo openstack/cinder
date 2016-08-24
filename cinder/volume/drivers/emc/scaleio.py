@@ -976,8 +976,8 @@ class ScaleIODriver(driver.VolumeDriver):
         connection_properties = dict(self.connection_properties)
         connection_properties['scaleIO_volname'] = self._id_to_base64(
             volume.id)
+        connection_properties['scaleIO_volume_id'] = volume.provider_id
         device_info = self.connector.connect_volume(connection_properties)
-
         return device_info['path']
 
     def _sio_detach_volume(self, volume):
@@ -986,6 +986,7 @@ class ScaleIODriver(driver.VolumeDriver):
         connection_properties = dict(self.connection_properties)
         connection_properties['scaleIO_volname'] = self._id_to_base64(
             volume.id)
+        connection_properties['scaleIO_volume_id'] = volume.provider_id
         self.connector.disconnect_volume(connection_properties, volume)
 
     def copy_image_to_volume(self, context, volume, image_service, image_id):
