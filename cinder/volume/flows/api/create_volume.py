@@ -771,15 +771,14 @@ class VolumeCastTask(flow_utils.CinderTask):
             filter_properties['scheduler_hints'] = scheduler_hints
         self._cast_create_volume(context, request_spec, filter_properties)
 
-    def revert(self, context, result, flow_failures, **kwargs):
+    def revert(self, context, result, flow_failures, volume, **kwargs):
         if isinstance(result, ft.Failure):
             return
 
         # Restore the source volume status and set the volume to error status.
-        volume_id = kwargs['volume_id']
         common.restore_source_status(context, self.db, kwargs)
-        common.error_out_volume(context, self.db, volume_id)
-        LOG.error(_LE("Volume %s: create failed"), volume_id)
+        common.error_out(volume)
+        LOG.error(_LE("Volume %s: create failed"), volume.id)
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info

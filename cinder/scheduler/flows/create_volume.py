@@ -120,7 +120,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                               "payload %(payload)s"),
                           {'topic': self.FAILURE_TOPIC, 'payload': payload})
 
-    def execute(self, context, request_spec, filter_properties):
+    def execute(self, context, request_spec, filter_properties, volume):
         try:
             self.driver_api.schedule_create_volume(context, request_spec,
                                                    filter_properties)
@@ -141,9 +141,7 @@ class ScheduleCreateVolumeTask(flow_utils.CinderTask):
                 try:
                     self._handle_failure(context, request_spec, e)
                 finally:
-                    common.error_out_volume(context, self.db_api,
-                                            request_spec['volume_id'],
-                                            reason=e)
+                    common.error_out(volume, reason=e)
 
 
 def get_flow(context, db_api, driver_api, request_spec=None,

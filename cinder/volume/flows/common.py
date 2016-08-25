@@ -107,3 +107,21 @@ def error_out_volume(context, db, volume_id, reason=None):
 def error_out_snapshot(context, db, snapshot_id, reason=None):
     reason = _clean_reason(reason)
     _update_object(context, db, 'error', reason, 'snapshot', snapshot_id)
+
+
+def error_out(resource, reason=None):
+    """Sets status to error for any persistent OVO."""
+    reason = _clean_reason(reason)
+    try:
+        LOG.debug('Setting %(object_type)s %(object_id)s to error due to: '
+                  '%(reason)s', {'object_type': resource.obj_name(),
+                                 'object_id': resource.id,
+                                 'reason': reason})
+        resource.status = 'error'
+        resource.save()
+    except Exception:
+        # Don't let this cause further exceptions.
+        LOG.exception(_LE("Failed setting %(object_type)s %(object_id)s to "
+                          " error status."),
+                      {'object_type': resource.obj_name(),
+                       'object_id': resource.id})
