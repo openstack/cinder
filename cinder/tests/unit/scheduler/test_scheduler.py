@@ -266,8 +266,9 @@ class SchedulerManagerTestCase(test.TestCase):
 
     @mock.patch('cinder.db.volume_update')
     @mock.patch('cinder.db.volume_attachment_get_all_by_volume_id')
+    @mock.patch('cinder.quota.QUOTAS.rollback')
     def test_retype_volume_exception_returns_volume_state(
-            self, _mock_vol_attachment_get, _mock_vol_update):
+            self, quota_rollback, _mock_vol_attachment_get, _mock_vol_update):
         # Test NoValidHost exception behavior for retype.
         # Puts the volume in original state and eats the exception.
         volume = tests_utils.create_volume(self.context,
@@ -279,8 +280,10 @@ class SchedulerManagerTestCase(test.TestCase):
                                                   '/dev/fake')
         _mock_vol_attachment_get.return_value = [volume_attach]
         topic = 'fake_topic'
+        reservations = mock.sentinel.reservations
         request_spec = {'volume_id': volume.id, 'volume_type': {'id': 3},
-                        'migration_policy': 'on-demand'}
+                        'migration_policy': 'on-demand',
+                        'quota_reservations': reservations}
         _mock_vol_update.return_value = {'status': 'in-use'}
         _mock_find_retype_host = mock.Mock(
             side_effect=exception.NoValidHost(reason=""))
@@ -295,6 +298,7 @@ class SchedulerManagerTestCase(test.TestCase):
         _mock_find_retype_host.assert_called_once_with(self.context,
                                                        request_spec, {},
                                                        'on-demand')
+        quota_rollback.assert_called_once_with(self.context, reservations)
         _mock_vol_update.assert_called_once_with(self.context, volume.id,
                                                  {'status': 'in-use'})
         self.manager.driver.find_retype_host = orig_retype

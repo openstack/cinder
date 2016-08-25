@@ -253,7 +253,7 @@ class SchedulerManager(manager.Manager):
             reraise = not isinstance(ex, exception.NoValidHost)
             with excutils.save_and_reraise_exception(reraise=reraise):
                 _retype_volume_set_error(self, context, ex, request_spec,
-                                         volume, None, reservations)
+                                         volume, reservations)
         else:
             volume_rpcapi.VolumeAPI().retype(context, volume,
                                              new_type['id'], tgt_host,
