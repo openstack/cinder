@@ -7,9 +7,9 @@
 # Jennifer <cristxu@tw.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev85\n"
+"Project-Id-Version: cinder 8.1.1.dev2\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-06 20:14+0000\n"
+"POT-Creation-Date: 2016-08-18 04:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -796,9 +796,6 @@ msgstr "無法將 %s 轉換為整數。"
 #, python-format
 msgid "Can't access 'scality_sofs_config': %s"
 msgstr "無法存取 'scality_sofs_config'：%s"
-
-msgid "Can't attach snapshot."
-msgstr "無法連接 Snapshot。"
 
 msgid "Can't decode backup record."
 msgstr "無法將備份記錄解碼。"
@@ -3014,9 +3011,6 @@ msgstr "無法從 Snapshot %(cgSnapshot)s 建立 CG %(cgName)s。"
 #, python-format
 msgid "Failed to create IG, %s"
 msgstr "無法建立 IG %s"
-
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "無法建立 SolidFire 映像檔磁區"
 
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"

@@ -11,9 +11,9 @@
 # Lucas Palm <lapalm@us.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 8.0.1.dev85\n"
+"Project-Id-Version: cinder 8.1.1.dev2\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-07-06 20:14+0000\n"
+"POT-Creation-Date: 2016-08-18 04:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -862,9 +862,6 @@ msgstr "Невозможно преобразовать %s в целое чис�
 #, python-format
 msgid "Can't access 'scality_sofs_config': %s"
 msgstr "Нет доступа к scality_sofs_config: %s"
-
-msgid "Can't attach snapshot."
-msgstr "Не удается присоединить моментальную копию."
 
 msgid "Can't decode backup record."
 msgstr "Не удалось декодировать запись резервной копии."
@@ -3271,9 +3268,6 @@ msgstr ""
 #, python-format
 msgid "Failed to create IG, %s"
 msgstr "Не удалось создать группу инициаторов, %s"
-
-msgid "Failed to create SolidFire Image-Volume"
-msgstr "Не удалось создать образ-том SolidFire"
 
 #, python-format
 msgid "Failed to create Volume Group: %(vg_name)s"
