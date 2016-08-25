@@ -127,7 +127,7 @@ class GroupTypeSpecsController(wsgi.Controller):
 
         try:
             db.group_type_specs_delete(context, group_type_id, id)
-        except exception.GroupTypeExtraSpecsNotFound as error:
+        except exception.GroupTypeSpecsNotFound as error:
             raise webob.exc.HTTPNotFound(explanation=error.msg)
 
         notifier_info = dict(type_id=group_type_id, id=id)
