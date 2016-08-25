@@ -1,0 +1,6 @@
+---
+fixes:
+  - Fixed retyping 'dedup volume without replication' <->
+    'nodedup volume without replication' after replication failback and
+    removing replication for a replicated volume in Kaminario iSCSI and
+    FC Cinder Drivers.
