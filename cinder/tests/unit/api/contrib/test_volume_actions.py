@@ -1033,3 +1033,67 @@ class VolumeImageActionsTest(test.TestCase):
         }
 
         self.assertDictMatch(expected_res, res_dict)
+
+    def fake_vhd_image_service_create(self, *args):
+        ret = {
+            'status': u'queued',
+            'name': u'image_name',
+            'deleted': False,
+            'container_format': u'bare',
+            'created_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'disk_format': u'vhd',
+            'updated_at': datetime.datetime(1, 1, 1, 1, 1, 1),
+            'id': 1,
+            'min_ram': 0,
+            'checksum': None,
+            'min_disk': 0,
+            'is_public': False,
+            'deleted_at': None,
+            'properties': {u'x_billing_code_license': u'246254365'},
+            'size': 0}
+        return ret
+
+    @mock.patch.object(volume_api.API, "get_volume_image_metadata")
+    @mock.patch.object(glance.GlanceImageService, "create")
+    @mock.patch.object(volume_api.API, "get")
+    @mock.patch.object(volume_api.API, "update")
+    @mock.patch.object(volume_rpcapi.VolumeAPI, "copy_volume_to_image")
+    def test_copy_volume_to_image_volume_vhd(
+            self,
+            mock_copy_volume_to_image,
+            mock_update,
+            mock_get,
+            mock_create,
+            mock_get_volume_image_metadata):
+        """Test create image from volume with vhd_disk_format"""
+
+        db_volume = fake_volume.fake_db_volume()
+        volume_obj = objects.Volume._from_db_object(self.context,
+                                                    objects.Volume(),
+                                                    db_volume)
+
+        mock_create.side_effect = self.fake_vhd_image_service_create
+        mock_get.return_value = volume_obj
+        mock_copy_volume_to_image.side_effect = (
+            self.fake_rpc_copy_volume_to_image)
+
+        req = fakes.HTTPRequest.blank('/v2/tenant1/volumes/%s/action' % id)
+        body = self._get_os_volume_upload_image()
+
+        res_dict = self.controller._volume_upload_image(req, id, body)
+        expected_res = {
+            'os-volume_upload_image': {
+                'id': fake.volume_id,
+                'updated_at': None,
+                'status': 'uploading',
+                'display_description': None,
+                'size': 1,
+                'volume_type': None,
+                'image_id': 1,
+                'container_format': u'bare',
+                'disk_format': u'vhd',
+                'image_name': u'image_name'
+            }
+        }
+
+        self.assertDictMatch(expected_res, res_dict)
