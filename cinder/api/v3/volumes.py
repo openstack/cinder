@@ -16,7 +16,10 @@
 from cinder.api import common
 from cinder.api.openstack import wsgi
 from cinder.api.v2 import volumes as volumes_v2
+from cinder.api.v3.views import volumes as volume_views_v3
 from cinder import utils
+
+SUMMARY_BASE_MICRO_VERSION = '3.12'
 
 
 class VolumeController(volumes_v2.VolumeController):
@@ -71,6 +74,19 @@ class VolumeController(volumes_v2.VolumeController):
         else:
             volumes = self._view_builder.summary_list(req, volumes)
         return volumes
+
+    @wsgi.Controller.api_version(SUMMARY_BASE_MICRO_VERSION)
+    def summary(self, req):
+        """Return summary of volumes."""
+        view_builder_v3 = volume_views_v3.ViewBuilder()
+        context = req.environ['cinder.context']
+        filters = req.params.copy()
+
+        utils.remove_invalid_filter_options(context, filters,
+                                            self._get_volume_filter_options())
+
+        volumes = self.volume_api.get_volume_summary(context, filters=filters)
+        return view_builder_v3.quick_summary(volumes[0], int(volumes[1]))
 
 
 def create_resource(ext_mgr):

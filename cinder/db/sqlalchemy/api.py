@@ -1776,6 +1776,23 @@ def volume_get_all(context, marker, limit, sort_keys=None, sort_dirs=None,
 
 
 @require_admin_context
+def get_volume_summary_all(context):
+    """Retrieves all volumes summary.
+
+    :param context: context to query under
+    :returns: volume summary of all projects
+    """
+    query = model_query(context, func.count(models.Volume.id),
+                        func.sum(models.Volume.size), read_deleted="no")
+
+    if query is None:
+        return []
+
+    result = query.first()
+    return (result[0] or 0, result[1] or 0)
+
+
+@require_admin_context
 def volume_get_all_by_host(context, host, filters=None):
     """Retrieves all volumes hosted on a host.
 
@@ -2075,6 +2092,25 @@ def process_sort_params(sort_keys, sort_dirs, default_keys=None,
             result_dirs.append(default_dir_value)
 
     return result_keys, result_dirs
+
+
+@require_context
+def get_volume_summary_by_project(context, project_id):
+    """Retrieves all volumes summary in a project.
+
+    :param context: context to query under
+    :param project_id: project for all volumes being retrieved
+    :returns: volume summary of a project
+    """
+    query = model_query(context, func.count(models.Volume.id),
+                        func.sum(models.Volume.size), read_deleted="no").\
+        filter_by(project_id=project_id)
+
+    if query is None:
+        return []
+
+    result = query.first()
+    return (result[0] or 0, result[1] or 0)
 
 
 @handle_db_data_error

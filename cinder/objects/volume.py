@@ -538,3 +538,13 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
         expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)
+
+    @classmethod
+    def get_volume_summary_all(cls, context):
+        volumes = db.get_volume_summary_all(context)
+        return volumes
+
+    @classmethod
+    def get_volume_summary_by_project(cls, context, project_id):
+        volumes = db.get_volume_summary_by_project(context, project_id)
+        return volumes
