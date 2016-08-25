@@ -222,7 +222,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, res, 'Unexpected return data')
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None)
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None, False)
         mock_get_volume.assert_called_once_with(self.VOLUME[u'instanceId'])
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
@@ -243,7 +243,10 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                        'find_wwns')
     @mock.patch.object(dell_storagecenter_fc.DellStorageCenterFCDriver,
                        'initialize_secondary')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_live_volume')
     def test_initialize_connection_live_vol(self,
+                                            mock_get_live_volume,
                                             mock_initialize_secondary,
                                             mock_find_wwns,
                                             mock_is_live_volume,
@@ -260,7 +263,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
                      'secondaryVolume': {'instanceId': '102.101',
                                          'instanceName': fake.VOLUME_ID},
                      'secondaryScSerialNumber': 102}
-        mock_is_live_volume.return_value = sclivevol
+        mock_is_live_volume.return_value = True
         mock_find_wwns.return_value = (
             1, [u'5000D31000FCBE3D', u'5000D31000FCBE35'],
             {u'21000024FF30441C': [u'5000D31000FCBE35'],
@@ -269,6 +272,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
             1, [u'5000D31000FCBE3E', u'5000D31000FCBE36'],
             {u'21000024FF30441E': [u'5000D31000FCBE36'],
              u'21000024FF30441F': [u'5000D31000FCBE3E']})
+        mock_get_live_volume.return_value = (sclivevol, False)
         res = self.driver.initialize_connection(volume, connector)
         expected = {'data':
                     {'discard': True,
@@ -285,7 +289,7 @@ class DellSCSanFCDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, res, 'Unexpected return data')
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None)
+        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, None, True)
         mock_get_volume.assert_called_once_with(self.VOLUME[u'instanceId'])
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,

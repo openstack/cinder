@@ -84,6 +84,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         # known unique name.
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
+        islivevol = self._is_live_vol(volume)
         LOG.debug('Initialize connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
@@ -95,7 +96,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                 if scserver is None:
                     scserver = api.create_server(wwpns)
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(volume_name, provider_id)
+                scvolume = api.find_volume(volume_name, provider_id, islivevol)
                 if scserver is not None and scvolume is not None:
                     mapping = api.map_volume(scvolume, scserver)
                     if mapping is not None:
@@ -104,16 +105,24 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                         scvolume = api.get_volume(scvolume['instanceId'])
                         lun, targets, init_targ_map = api.find_wwns(scvolume,
                                                                     scserver)
-                        sclivevolume = self._is_live_vol(api, volume)
-                        if sclivevolume:
-                            # Now map our secondary.
-                            lvlun, lvtargets, lvinit_targ_map = (
-                                self.initialize_secondary(api, sclivevolume,
-                                                          wwpns))
-                            # Unmapped. Add info to our list.
-                            targets += lvtargets
-                            init_targ_map.update(lvinit_targ_map)
 
+                        # Do we have extra live volume work?
+                        if islivevol:
+                            # Get our volume and our swap state.
+                            sclivevolume, swapped = api.get_live_volume(
+                                provider_id)
+                            # Do not map to a failed over volume.
+                            if sclivevolume and not swapped:
+                                # Now map our secondary.
+                                lvlun, lvtargets, lvinit_targ_map = (
+                                    self.initialize_secondary(api,
+                                                              sclivevolume,
+                                                              wwpns))
+                                # Unmapped. Add info to our list.
+                                targets += lvtargets
+                                init_targ_map.update(lvinit_targ_map)
+
+                        # Roll up our return data.
                         if lun is not None and len(targets) > 0:
                             data = {'driver_volume_type': 'fibre_channel',
                                     'data': {'target_lun': lun,
@@ -174,6 +183,7 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         # Get our volume name
         volume_name = volume.get('id')
         provider_id = volume.get('provider_id')
+        islivevol = self._is_live_vol(volume)
         LOG.debug('Terminate connection: %s', volume_name)
         with self._client.open_connection() as api:
             try:
@@ -181,18 +191,23 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
                 scserver = self._find_server(api, wwpns)
 
                 # Find the volume on the storage center.
-                scvolume = api.find_volume(volume_name, provider_id)
+                scvolume = api.find_volume(volume_name, provider_id, islivevol)
                 # Get our target map so we can return it to free up a zone.
                 lun, targets, init_targ_map = api.find_wwns(scvolume, scserver)
-                # Unmap from our secondary first.
-                sclivevolume = self._is_live_vol(api, volume)
-                if sclivevolume:
-                    lvlun, lvtargets, lvinit_targ_map = (
-                        self.terminate_secondary(api, sclivevolume, wwpns))
-                    # Add to our return.
-                    if lvlun:
-                        targets += lvtargets
-                        init_targ_map.update(lvinit_targ_map)
+
+                # Do we have extra live volume work?
+                if islivevol:
+                    # Get our volume and our swap state.
+                    sclivevolume, swapped = api.get_live_volume(
+                        provider_id)
+                    # Do not map to a failed over volume.
+                    if sclivevolume and not swapped:
+                        lvlun, lvtargets, lvinit_targ_map = (
+                            self.terminate_secondary(api, sclivevolume, wwpns))
+                        # Add to our return.
+                        if lvlun:
+                            targets += lvtargets
+                            init_targ_map.update(lvinit_targ_map)
 
                 # If we have a server and a volume lets unmap them.
                 if (scserver is not None and

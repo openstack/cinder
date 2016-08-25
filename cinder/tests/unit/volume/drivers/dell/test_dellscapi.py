@@ -6410,15 +6410,18 @@ class DellSCSanAPITestCase(test.TestCase):
                              mock_open_connection,
                              mock_init):
         # Basic check
-        ret = self.scapi.get_live_volume(None)
-        self.assertIsNone(ret)
-        lv1 = {'primaryVolume': {'instanceId': '12345.1'}}
+        retlv, retswapped = self.scapi.get_live_volume(None)
+        self.assertIsNone(retlv)
+        self.assertFalse(retswapped)
+        lv1 = {'primaryVolume': {'instanceId': '12345.1'},
+               'secondaryVolume': {'instanceId': '67890.1'}}
         lv2 = {'primaryVolume': {'instanceId': '12345.2'}}
         mock_get_json.return_value = [lv1, lv2]
         mock_get.return_value = self.RESPONSE_200
         # Good Run
-        ret = self.scapi.get_live_volume('12345.2')
-        self.assertEqual(lv2, ret)
+        retlv, retswapped = self.scapi.get_live_volume('12345.2')
+        self.assertEqual(lv2, retlv)
+        self.assertFalse(retswapped)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'get')
@@ -6430,12 +6433,35 @@ class DellSCSanAPITestCase(test.TestCase):
                                        mock_close_connection,
                                        mock_open_connection,
                                        mock_init):
-        lv1 = {'primaryVolume': {'instanceId': '12345.1'}}
-        lv2 = {'primaryVolume': {'instanceId': '12345.2'}}
+        lv1 = {'primaryVolume': {'instanceId': '12345.1'},
+               'secondaryVolume': {'instanceId': '67890.1'}}
+        lv2 = {'primaryVolume': {'instanceId': '12345.2'},
+               'secondaryVolume': {'instanceId': '67890.2'}}
         mock_get_json.return_value = [lv1, lv2]
         mock_get.return_value = self.RESPONSE_200
-        ret = self.scapi.get_live_volume('12345.3')
-        self.assertIsNone(ret)
+        retlv, retswapped = self.scapi.get_live_volume('12345.3')
+        self.assertIsNone(retlv)
+        self.assertFalse(retswapped)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'get')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    def test_get_live_volume_swapped(self,
+                                     mock_get_json,
+                                     mock_get,
+                                     mock_close_connection,
+                                     mock_open_connection,
+                                     mock_init):
+        lv1 = {'primaryVolume': {'instanceId': '12345.1'},
+               'secondaryVolume': {'instanceId': '67890.1'}}
+        lv2 = {'primaryVolume': {'instanceId': '67890.2'},
+               'secondaryVolume': {'instanceId': '12345.2'}}
+        mock_get_json.return_value = [lv1, lv2]
+        mock_get.return_value = self.RESPONSE_200
+        retlv, retswapped = self.scapi.get_live_volume('12345.2')
+        self.assertEqual(lv2, retlv)
+        self.assertTrue(retswapped)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'get')
@@ -6445,8 +6471,9 @@ class DellSCSanAPITestCase(test.TestCase):
                                    mock_open_connection,
                                    mock_init):
         mock_get.return_value = self.RESPONSE_400
-        ret = self.scapi.get_live_volume('12345.2')
-        self.assertIsNone(ret)
+        retlv, retswapped = self.scapi.get_live_volume('12345.2')
+        self.assertIsNone(retlv)
+        self.assertFalse(retswapped)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post')
@@ -6527,11 +6554,69 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_post.return_value = self.RESPONSE_200
         mock_get_json.return_value = sclivevol
         ret = self.scapi.create_live_volume(scvol, remotessn, active, sync,
-                                            primaryqos, secondaryqos)
+                                            False, primaryqos, secondaryqos)
         mock_find_sc.assert_called_once_with(102)
         mock_find_qos.assert_any_call(primaryqos)
         mock_find_qos.assert_any_call(secondaryqos, 102)
         self.assertEqual(sclivevol, ret)
+
+    @mock.patch.object(dell_storagecenter_api.HttpClient,
+                       'post')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_get_json')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       '_find_qos')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_sc')
+    def test_create_live_volume_autofailover(self,
+                                             mock_find_sc,
+                                             mock_find_qos,
+                                             mock_get_json,
+                                             mock_post,
+                                             mock_close_connection,
+                                             mock_open_connection,
+                                             mock_init):
+        scvol = {'instanceId': '101.1',
+                 'name': 'name'}
+        sclivevol = {'instanceId': '101.101',
+                     'secondaryVolume': {'instanceId': '102.101'},
+                     'secondaryScSerialNumber': 102}
+
+        remotessn = '102'
+        active = True
+        sync = False
+        primaryqos = 'fast'
+        secondaryqos = 'slow'
+        mock_find_sc.return_value = 102
+        mock_find_qos.side_effect = [{'instanceId': '101.1001'},
+                                     {'instanceId': '102.1001'}]
+        mock_post.return_value = self.RESPONSE_200
+        mock_get_json.return_value = sclivevol
+        ret = self.scapi.create_live_volume(scvol, remotessn, active, sync,
+                                            True, primaryqos, secondaryqos)
+        mock_find_sc.assert_called_once_with(102)
+        mock_find_qos.assert_any_call(primaryqos)
+        mock_find_qos.assert_any_call(secondaryqos, 102)
+        self.assertEqual(sclivevol, ret)
+        # Make sure sync flipped and that we set HighAvailablity.
+        expected = {'SyncMode': 'HighAvailability',
+                    'SwapRolesAutomaticallyEnabled': False,
+                    'SecondaryStorageCenter': 102,
+                    'FailoverAutomaticallyEnabled': True,
+                    'StorageCenter': 12345,
+                    'RestoreAutomaticallyEnabled': True,
+                    'SecondaryQosNode': '102.1001',
+                    'ReplicateActiveReplay': True,
+                    'PrimaryQosNode': '101.1001',
+                    'Type': 'Synchronous',
+                    'PrimaryVolume': '101.1',
+                    'SecondaryVolumeAttributes':
+                        {'Notes': 'Created by Dell Cinder Driver',
+                         'CreateSourceVolumeFolderPath': True,
+                         'Name': 'name'}
+                    }
+        mock_post.assert_called_once_with('StorageCenter/ScLiveVolume',
+                                          expected, True)
 
     @mock.patch.object(dell_storagecenter_api.HttpClient,
                        'post')
@@ -6558,7 +6643,7 @@ class DellSCSanAPITestCase(test.TestCase):
                                      {'instanceId': '102.1001'}]
         mock_post.return_value = self.RESPONSE_400
         ret = self.scapi.create_live_volume(scvol, remotessn, active, sync,
-                                            primaryqos, secondaryqos)
+                                            False, primaryqos, secondaryqos)
         mock_find_sc.assert_called_once_with(102)
         mock_find_qos.assert_any_call(primaryqos)
         mock_find_qos.assert_any_call(secondaryqos, 102)
@@ -6584,7 +6669,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_find_sc.return_value = 102
         mock_find_qos.return_value = {}
         ret = self.scapi.create_live_volume(scvol, remotessn, active, sync,
-                                            primaryqos, secondaryqos)
+                                            False, primaryqos, secondaryqos)
         mock_find_sc.assert_called_once_with(102)
         mock_find_qos.assert_any_call(primaryqos)
         mock_find_qos.assert_any_call(secondaryqos, 102)
@@ -6610,7 +6695,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_find_sc.return_value = 102
         mock_find_qos.return_value = None
         ret = self.scapi.create_live_volume(scvol, remotessn, active, sync,
-                                            primaryqos, secondaryqos)
+                                            False, primaryqos, secondaryqos)
         mock_find_sc.assert_called_once_with(102)
         mock_find_qos.assert_any_call(primaryqos)
         mock_find_qos.assert_any_call(secondaryqos, 102)
@@ -6637,7 +6722,7 @@ class DellSCSanAPITestCase(test.TestCase):
         mock_find_qos.side_effect = [{'instanceId': '101.1001'},
                                      None]
         ret = self.scapi.create_live_volume(scvol, remotessn, active, sync,
-                                            primaryqos, secondaryqos)
+                                            False, primaryqos, secondaryqos)
         mock_find_sc.assert_called_once_with(102)
         mock_find_qos.assert_any_call(primaryqos)
         mock_find_qos.assert_any_call(secondaryqos, 102)
