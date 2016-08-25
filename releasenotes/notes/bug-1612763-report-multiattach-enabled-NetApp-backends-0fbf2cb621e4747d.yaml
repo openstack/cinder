@@ -1,0 +1,5 @@
+---
+fixes:
+  - Volumes created on NetApp cDOT and 7mode storage systems now
+    report 'multiattach' capability. They have always supported such a
+    capability, but not reported it to Cinder.

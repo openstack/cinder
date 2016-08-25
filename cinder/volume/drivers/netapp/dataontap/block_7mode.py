@@ -301,6 +301,7 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
             pool = dict()
             pool['pool_name'] = volume_name
             pool['QoS_support'] = False
+            pool['multiattach'] = True
             pool['reserved_percentage'] = (
                 self.reserved_percentage)
             pool['max_over_subscription_ratio'] = (
