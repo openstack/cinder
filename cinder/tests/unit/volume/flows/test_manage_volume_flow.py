@@ -89,11 +89,9 @@ class ManageVolumeFlowTestCase(test.TestCase):
         mock_driver = mock.MagicMock()
         mock_result = mock.MagicMock()
         mock_flow_failures = mock.MagicMock()
-        mock_error_out_volumes = self.mock_object(
-            flow_common, 'error_out_volume')
+        mock_error_out = self.mock_object(flow_common, 'error_out')
         volume_ref = self._stub_volume_object_get(self)
         task = manager.PrepareForQuotaReservationTask(mock_db, mock_driver)
 
         task.revert(self.ctxt, mock_result, mock_flow_failures, volume_ref)
-        mock_error_out_volumes.assert_called_once_with(
-            self.ctxt, mock_db, volume_ref.id, reason=mock.ANY)
+        mock_error_out.assert_called_once_with(volume_ref, reason=mock.ANY)

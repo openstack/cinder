@@ -21,7 +21,7 @@ import six
 
 from cinder import exception
 from cinder.i18n import _LE
-from cinder import objects
+
 
 LOG = logging.getLogger(__name__)
 
@@ -73,40 +73,6 @@ def _clean_reason(reason):
         return reason
     else:
         return reason[0:REASON_LENGTH] + '...'
-
-
-def _update_object(context, db, status, reason, object_type, object_id):
-    update = {
-        'status': status,
-    }
-    try:
-        LOG.debug('Updating %(object_type)s: %(object_id)s with %(update)s'
-                  ' due to: %(reason)s', {'object_type': object_type,
-                                          'object_id': object_id,
-                                          'reason': reason,
-                                          'update': update})
-        if object_type == 'volume':
-            db.volume_update(context, object_id, update)
-        elif object_type == 'snapshot':
-            snapshot = objects.Snapshot.get_by_id(context, object_id)
-            snapshot.update(update)
-            snapshot.save()
-    except exception.CinderException:
-        # Don't let this cause further exceptions.
-        LOG.exception(_LE("Failed updating %(object_type)s %(object_id)s with"
-                          " %(update)s"), {'object_type': object_type,
-                                           'object_id': object_id,
-                                           'update': update})
-
-
-def error_out_volume(context, db, volume_id, reason=None):
-    reason = _clean_reason(reason)
-    _update_object(context, db, 'error', reason, 'volume', volume_id)
-
-
-def error_out_snapshot(context, db, snapshot_id, reason=None):
-    reason = _clean_reason(reason)
-    _update_object(context, db, 'error', reason, 'snapshot', snapshot_id)
 
 
 def error_out(resource, reason=None):

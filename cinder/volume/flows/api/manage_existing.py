@@ -103,8 +103,7 @@ class ManageCastTask(flow_utils.CinderTask):
         self.scheduler_rpcapi = scheduler_rpcapi
         self.db = db
 
-    def execute(self, context, **kwargs):
-        volume = kwargs.pop('volume')
+    def execute(self, context, volume, **kwargs):
         request_spec = kwargs.copy()
         request_spec['volume_id'] = volume.id
 
@@ -115,11 +114,10 @@ class ManageCastTask(flow_utils.CinderTask):
                                               request_spec=request_spec,
                                               volume=volume)
 
-    def revert(self, context, result, flow_failures, **kwargs):
+    def revert(self, context, result, flow_failures, volume, **kwargs):
         # Restore the source volume status and set the volume to error status.
-        volume_id = kwargs['volume_id']
-        common.error_out_volume(context, self.db, volume_id)
-        LOG.error(_LE("Volume %s: manage failed."), volume_id)
+        common.error_out(volume)
+        LOG.error(_LE("Volume %s: manage failed."), volume.id)
         exc_info = False
         if all(flow_failures[-1].exc_info):
             exc_info = flow_failures[-1].exc_info
