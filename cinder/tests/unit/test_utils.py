@@ -1264,8 +1264,10 @@ class LogTracingTestCase(test.TestCase):
         self.assertEqual(2, mock_log.debug.call_count)
 
     def test_utils_trace_method_with_password_dict(self):
-        mock_log = self.patch('cinder.utils.logging.getLogger')
-        mock_log().isEnabledFor.return_value = True
+        mock_logging = self.mock_object(utils, 'logging')
+        mock_log = mock.Mock()
+        mock_log.isEnabledFor = lambda x: True
+        mock_logging.getLogger = mock.Mock(return_value=mock_log)
 
         @utils.trace_method
         def _trace_test_method(*args, **kwargs):
@@ -1273,28 +1275,33 @@ class LogTracingTestCase(test.TestCase):
                     'password': 'Now you see me'}
 
         utils.setup_tracing(['method'])
-
         result = _trace_test_method(self)
+        expected_unmasked_dict = {'something': 'test',
+                                  'password': 'Now you see me'}
 
-        expected_masked_dict = {'password': '***', 'something': 'test'}
-
-        self.assertEqual(expected_masked_dict, result)
+        self.assertEqual(expected_unmasked_dict, result)
+        self.assertEqual(2, mock_log.debug.call_count)
+        self.assertIn("'password': '***'",
+                      str(mock_log.debug.call_args_list[1]))
 
     def test_utils_trace_method_with_password_str(self):
-        mock_log = self.patch('cinder.utils.logging.getLogger')
-        mock_log().isEnabledFor.return_value = True
+        mock_logging = self.mock_object(utils, 'logging')
+        mock_log = mock.Mock()
+        mock_log.isEnabledFor = lambda x: True
+        mock_logging.getLogger = mock.Mock(return_value=mock_log)
 
         @utils.trace_method
         def _trace_test_method(*args, **kwargs):
             return "'adminPass': 'Now you see me'"
 
         utils.setup_tracing(['method'])
-
         result = _trace_test_method(self)
+        expected_unmasked_str = "'adminPass': 'Now you see me'"
 
-        expected_masked_str = "'adminPass': '***'"
-
-        self.assertEqual(expected_masked_str, result)
+        self.assertEqual(expected_unmasked_str, result)
+        self.assertEqual(2, mock_log.debug.call_count)
+        self.assertIn("'adminPass': '***'",
+                      str(mock_log.debug.call_args_list[1]))
 
     def test_utils_calculate_virtual_free_capacity_with_thick(self):
         host_stat = {'total_capacity_gb': 30.01,
