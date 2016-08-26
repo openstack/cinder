@@ -36,3 +36,4 @@ def register_all():
     __import__('cinder.objects.volume_attachment')
     __import__('cinder.objects.volume_type')
     __import__('cinder.objects.group_type')
+    __import__('cinder.objects.group')

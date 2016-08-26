@@ -171,6 +171,23 @@ class ConsistencyGroup(BASE, CinderBase):
     source_cgid = Column(String(36))
 
 
+class Group(BASE, CinderBase):
+    """Represents a generic volume group."""
+    __tablename__ = 'groups'
+    id = Column(String(36), primary_key=True)
+
+    user_id = Column(String(255), nullable=False)
+    project_id = Column(String(255), nullable=False)
+
+    cluster_name = Column(String(255))
+    host = Column(String(255))
+    availability_zone = Column(String(255))
+    name = Column(String(255))
+    description = Column(String(255))
+    status = Column(String(255))
+    group_type_id = Column(String(36))
+
+
 class Cgsnapshot(BASE, CinderBase):
     """Represents a cgsnapshot."""
     __tablename__ = 'cgsnapshots'
@@ -240,6 +257,7 @@ class Volume(BASE, CinderBase):
     encryption_key_id = Column(String(36))
 
     consistencygroup_id = Column(String(36))
+    group_id = Column(String(36))
 
     bootable = Column(Boolean, default=False)
     multiattach = Column(Boolean, default=False)
@@ -255,6 +273,12 @@ class Volume(BASE, CinderBase):
         backref="volumes",
         foreign_keys=consistencygroup_id,
         primaryjoin='Volume.consistencygroup_id == ConsistencyGroup.id')
+
+    group = relationship(
+        Group,
+        backref="volumes",
+        foreign_keys=group_id,
+        primaryjoin='Volume.group_id == Group.id')
 
 
 class VolumeMetadata(BASE, CinderBase):
@@ -330,13 +354,33 @@ class GroupTypes(BASE, CinderBase):
     name = Column(String(255))
     description = Column(String(255))
     is_public = Column(Boolean, default=True)
-    # TODO(xyang): Uncomment the following after groups table is added.
-    # groups = relationship(Group,
-    #                       backref=backref('group_type', uselist=False),
-    #                       foreign_keys=id,
-    #                       primaryjoin='and_('
-    #                       'Group.group_type_id == GroupTypes.id, '
-    #                       'GroupTypes.deleted == False)')
+    groups = relationship(Group,
+                          backref=backref('group_type', uselist=False),
+                          foreign_keys=id,
+                          primaryjoin='and_('
+                          'Group.group_type_id == GroupTypes.id, '
+                          'GroupTypes.deleted == False)')
+
+
+class GroupVolumeTypeMapping(BASE, CinderBase):
+    """Represent mapping between groups and volume_types."""
+    __tablename__ = "group_volume_type_mapping"
+    id = Column(Integer, primary_key=True, nullable=False)
+    volume_type_id = Column(String(36),
+                            ForeignKey('volume_types.id'),
+                            nullable=False)
+    group_id = Column(String(36),
+                      ForeignKey('groups.id'),
+                      nullable=False)
+
+    group = relationship(
+        Group,
+        backref="volume_types",
+        foreign_keys=group_id,
+        primaryjoin='and_('
+        'GroupVolumeTypeMapping.group_id == Group.id,'
+        'GroupVolumeTypeMapping.deleted == False)'
+    )
 
 
 class VolumeTypeProjects(BASE, CinderBase):

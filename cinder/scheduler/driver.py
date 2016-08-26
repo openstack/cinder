@@ -66,6 +66,16 @@ def group_update_db(context, group, host):
     return group
 
 
+def generic_group_update_db(context, group, host):
+    """Set the host and the scheduled_at field of a group.
+
+    :returns: A Group with the updated fields set properly.
+    """
+    group.update({'host': host, 'updated_at': timeutils.utcnow()})
+    group.save()
+    return group
+
+
 class Scheduler(object):
     """The base class that all Scheduler classes should inherit from."""
 
@@ -117,6 +127,15 @@ class Scheduler(object):
         """Must override schedule method for scheduler to work."""
         raise NotImplementedError(_(
             "Must implement schedule_create_consistencygroup"))
+
+    def schedule_create_group(self, context, group,
+                              group_spec,
+                              request_spec_list,
+                              group_filter_properties,
+                              filter_properties_list):
+        """Must override schedule method for scheduler to work."""
+        raise NotImplementedError(_(
+            "Must implement schedule_create_group"))
 
     def get_pools(self, context, filters):
         """Must override schedule method for scheduler to work."""

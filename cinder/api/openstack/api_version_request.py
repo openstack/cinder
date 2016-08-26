@@ -60,6 +60,7 @@ REST_API_VERSION_HISTORY = """
     * 3.10 - Add group_id filter to list/detail volumes in _get_volumes.
     * 3.11 - Add group types and group specs API.
     * 3.12 - Add volumes summary API.
+    * 3.13 - Add generic volume groups API.
 
 """
 
@@ -68,7 +69,7 @@ REST_API_VERSION_HISTORY = """
 # minimum version of the API supported.
 # Explicitly using /v1 or /v2 enpoints will still work
 _MIN_API_VERSION = "3.0"
-_MAX_API_VERSION = "3.12"
+_MAX_API_VERSION = "3.13"
 _LEGACY_API_VERSION1 = "1.0"
 _LEGACY_API_VERSION2 = "2.0"
 

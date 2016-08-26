@@ -57,11 +57,12 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
     # Version 1.2: Added glance_metadata, consistencygroup and snapshots
     # Version 1.3: Added finish_volume_migration()
     # Version 1.4: Added cluster fields
-    VERSION = '1.4'
+    # Version 1.5: Added group
+    VERSION = '1.5'
 
     OPTIONAL_FIELDS = ('metadata', 'admin_metadata', 'glance_metadata',
                        'volume_type', 'volume_attachment', 'consistencygroup',
-                       'snapshots', 'cluster')
+                       'snapshots', 'cluster', 'group')
 
     fields = {
         'id': fields.UUIDField(),
@@ -99,6 +100,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'encryption_key_id': fields.UUIDField(nullable=True),
 
         'consistencygroup_id': fields.UUIDField(nullable=True),
+        'group_id': fields.UUIDField(nullable=True),
 
         'deleted': fields.BooleanField(default=False, nullable=True),
         'bootable': fields.BooleanField(default=False, nullable=True),
@@ -119,6 +121,7 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         'consistencygroup': fields.ObjectField('ConsistencyGroup',
                                                nullable=True),
         'snapshots': fields.ObjectField('SnapshotList', nullable=True),
+        'group': fields.ObjectField('Group', nullable=True),
     }
 
     # NOTE(thangp): obj_extra_fields is used to hold properties that are not
@@ -298,6 +301,12 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
                                                 db_cluster)
             else:
                 volume.cluster = None
+        if 'group' in expected_attrs:
+            group = objects.Group(context)
+            group._from_db_object(context,
+                                  group,
+                                  db_volume['group'])
+            volume.group = group
 
         volume._context = context
         volume.obj_reset_changes()
@@ -318,6 +327,9 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
         if 'cluster' in updates:
             raise exception.ObjectActionError(
                 action='create', reason=_('cluster assigned'))
+        if 'group' in updates:
+            raise exception.ObjectActionError(
+                action='create', reason=_('group assigned'))
 
         db_volume = db.volume_create(self._context, updates)
         self._from_db_object(self._context, self, db_volume)
@@ -328,6 +340,9 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
             if 'consistencygroup' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('consistencygroup changed'))
+            if 'group' in updates:
+                raise exception.ObjectActionError(
+                    action='save', reason=_('group changed'))
             if 'glance_metadata' in updates:
                 raise exception.ObjectActionError(
                     action='save', reason=_('glance_metadata changed'))
@@ -410,6 +425,10 @@ class Volume(base.CinderPersistentObject, base.CinderObject,
                     self._context, name=self.cluster_name)
             else:
                 self.cluster = None
+        elif attrname == 'group':
+            group = objects.Group.get_by_id(
+                self._context, self.group_id)
+            self.group = group
 
         self.obj_reset_changes(fields=[attrname])
 
@@ -522,7 +541,17 @@ class VolumeList(base.ObjectListBase, base.CinderObject):
 
     @classmethod
     def get_all_by_group(cls, context, group_id, filters=None):
+        # Consistency group
         volumes = db.volume_get_all_by_group(context, group_id, filters)
+        expected_attrs = cls._get_expected_attrs(context)
+        return base.obj_make_list(context, cls(context), objects.Volume,
+                                  volumes, expected_attrs=expected_attrs)
+
+    @classmethod
+    def get_all_by_generic_group(cls, context, group_id, filters=None):
+        # Generic volume group
+        volumes = db.volume_get_all_by_generic_group(context, group_id,
+                                                     filters)
         expected_attrs = cls._get_expected_attrs(context)
         return base.obj_make_list(context, cls(context), objects.Volume,
                                   volumes, expected_attrs=expected_attrs)

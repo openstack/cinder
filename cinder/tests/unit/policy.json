@@ -118,6 +118,12 @@
     "group:access_group_types_specs": "rule:admin_api",
     "group:group_type_access": "rule:admin_or_owner",
 
+    "group:create" : "",
+    "group:delete": "",
+    "group:update": "",
+    "group:get": "",
+    "group:get_all": "",
+
     "scheduler_extension:scheduler_stats:get_pools" : "rule:admin_api",
 
     "message:delete": "rule:admin_or_owner",

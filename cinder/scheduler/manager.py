@@ -124,6 +124,35 @@ class SchedulerManager(manager.Manager):
                 group.status = 'error'
                 group.save()
 
+    def create_group(self, context, topic,
+                     group,
+                     group_spec=None,
+                     group_filter_properties=None,
+                     request_spec_list=None,
+                     filter_properties_list=None):
+
+        self._wait_for_scheduler()
+        try:
+            self.driver.schedule_create_group(
+                context, group,
+                group_spec,
+                request_spec_list,
+                group_filter_properties,
+                filter_properties_list)
+        except exception.NoValidHost:
+            LOG.error(_LE("Could not find a host for group "
+                          "%(group_id)s."),
+                      {'group_id': group.id})
+            group.status = 'error'
+            group.save()
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.exception(_LE("Failed to create generic group "
+                                  "%(group_id)s."),
+                              {'group_id': group.id})
+                group.status = 'error'
+                group.save()
+
     def create_volume(self, context, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
                       filter_properties=None, volume=None):

@@ -110,6 +110,12 @@ def get_all_types(context, inactive=0, filters=None, marker=None,
     return vol_types
 
 
+def get_all_types_by_group(context, group_id):
+    """Get all volume_types in a group."""
+    vol_types = db.volume_type_get_all_by_group(context, group_id)
+    return vol_types
+
+
 def get_volume_type(ctxt, id, expected_fields=None):
     """Retrieves single volume type by id."""
     if id is None:

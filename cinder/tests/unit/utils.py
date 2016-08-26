@@ -47,6 +47,7 @@ def create_volume(ctxt,
                   replication_extended_status=None,
                   replication_driver_data=None,
                   consistencygroup_id=None,
+                  group_id=None,
                   previous_status=None,
                   testcase_instance=None,
                   **kwargs):
@@ -65,6 +66,8 @@ def create_volume(ctxt,
     vol['availability_zone'] = availability_zone
     if consistencygroup_id:
         vol['consistencygroup_id'] = consistencygroup_id
+    if group_id:
+        vol['group_id'] = group_id
     if volume_type_id:
         vol['volume_type_id'] = volume_type_id
     for key in kwargs:
@@ -164,6 +167,38 @@ def create_consistencygroup(ctxt,
         db.consistencygroup_update(ctxt, cg.id, {'id': new_id})
         cg = objects.ConsistencyGroup.get_by_id(ctxt, new_id)
     return cg
+
+
+def create_group(ctxt,
+                 host='test_host@fakedrv#fakepool',
+                 name='test_group',
+                 description='this is a test group',
+                 status=fields.GroupStatus.AVAILABLE,
+                 availability_zone='fake_az',
+                 group_type_id=None,
+                 volume_type_ids=None,
+                 **kwargs):
+    """Create a group object in the DB."""
+
+    grp = objects.Group(ctxt)
+    grp.host = host
+    grp.user_id = ctxt.user_id or fake.USER_ID
+    grp.project_id = ctxt.project_id or fake.PROJECT_ID
+    grp.status = status
+    grp.name = name
+    grp.description = description
+    grp.availability_zone = availability_zone
+    if group_type_id:
+        grp.group_type_id = group_type_id
+    if volume_type_ids:
+        grp.volume_type_ids = volume_type_ids
+    new_id = kwargs.pop('id', None)
+    grp.update(kwargs)
+    grp.create()
+    if new_id and new_id != grp.id:
+        db.group_update(ctxt, grp.id, {'id': new_id})
+        grp = objects.Group.get_by_id(ctxt, new_id)
+    return grp
 
 
 def create_cgsnapshot(ctxt,

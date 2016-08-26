@@ -178,3 +178,7 @@ user documentation.
 3.12
 ----
   Added volumes/summary API.
+
+3.13
+----
+  Added create/delete/update/list/show APIs for generic volume groups.

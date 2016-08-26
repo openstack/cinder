@@ -47,6 +47,7 @@ SRC_VOL_PROCEED_STATUS = ('available', 'in-use',)
 REPLICA_PROCEED_STATUS = ('active', 'active-stopped',)
 CG_PROCEED_STATUS = ('available', 'creating',)
 CGSNAPSHOT_PROCEED_STATUS = ('available',)
+GROUP_PROCEED_STATUS = ('available', 'creating',)
 
 
 class ExtractVolumeRequestTask(flow_utils.CinderTask):
@@ -67,7 +68,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
                             'source_volid', 'volume_type', 'volume_type_id',
                             'encryption_key_id', 'source_replicaid',
                             'consistencygroup_id', 'cgsnapshot_id',
-                            'qos_specs'])
+                            'qos_specs', 'group_id'])
 
     def __init__(self, image_service, availability_zones, **kwargs):
         super(ExtractVolumeRequestTask, self).__init__(addons=[ACTION],
@@ -114,6 +115,11 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         return self._extract_resource(consistencygroup, (CG_PROCEED_STATUS,),
                                       exception.InvalidConsistencyGroup,
                                       'consistencygroup')
+
+    def _extract_group(self, group):
+        return self._extract_resource(group, (GROUP_PROCEED_STATUS,),
+                                      exception.InvalidGroup,
+                                      'group')
 
     def _extract_cgsnapshot(self, cgsnapshot):
         return self._extract_resource(cgsnapshot, (CGSNAPSHOT_PROCEED_STATUS,),
@@ -269,7 +275,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             return volume_type
 
     def _extract_availability_zone(self, availability_zone, snapshot,
-                                   source_volume):
+                                   source_volume, group):
         """Extracts and returns a validated availability zone.
 
         This function will extract the availability zone (if not provided) from
@@ -277,6 +283,14 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         checks on the provided or extracted availability zone and then returns
         the validated availability zone.
         """
+
+        # If the volume will be created in a group, it should be placed in
+        # in same availability zone as the group.
+        if group:
+            try:
+                availability_zone = group['availability_zone']
+            except (TypeError, KeyError):
+                pass
 
         # Try to extract the availability zone from the corresponding snapshot
         # or source volume if either is valid so that we can be in the same
@@ -389,7 +403,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
 
     def execute(self, context, size, snapshot, image_id, source_volume,
                 availability_zone, volume_type, metadata, key_manager,
-                source_replica, consistencygroup, cgsnapshot):
+                source_replica, consistencygroup, cgsnapshot, group):
 
         utils.check_exclusive_options(snapshot=snapshot,
                                       imageRef=image_id,
@@ -404,12 +418,14 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
         size = self._extract_size(size, source_volume, snapshot)
         consistencygroup_id = self._extract_consistencygroup(consistencygroup)
         cgsnapshot_id = self._extract_cgsnapshot(cgsnapshot)
+        group_id = self._extract_group(group)
 
         self._check_image_metadata(context, image_id, size)
 
         availability_zone = self._extract_availability_zone(availability_zone,
                                                             snapshot,
-                                                            source_volume)
+                                                            source_volume,
+                                                            group)
 
         # TODO(joel-coffman): This special handling of snapshots to ensure that
         # their volume type matches the source volume is too convoluted. We
@@ -467,6 +483,7 @@ class ExtractVolumeRequestTask(flow_utils.CinderTask):
             'source_replicaid': source_replicaid,
             'consistencygroup_id': consistencygroup_id,
             'cgsnapshot_id': cgsnapshot_id,
+            'group_id': group_id,
         }
 
 
@@ -483,7 +500,8 @@ class EntryCreateTask(flow_utils.CinderTask):
                     'name', 'reservations', 'size', 'snapshot_id',
                     'source_volid', 'volume_type_id', 'encryption_key_id',
                     'source_replicaid', 'consistencygroup_id',
-                    'cgsnapshot_id', 'multiattach', 'qos_specs']
+                    'cgsnapshot_id', 'multiattach', 'qos_specs',
+                    'group_id', ]
         super(EntryCreateTask, self).__init__(addons=[ACTION],
                                               requires=requires)
         self.db = db
@@ -687,7 +705,7 @@ class VolumeCastTask(flow_utils.CinderTask):
         requires = ['image_id', 'scheduler_hints', 'snapshot_id',
                     'source_volid', 'volume_id', 'volume', 'volume_type',
                     'volume_properties', 'source_replicaid',
-                    'consistencygroup_id', 'cgsnapshot_id', ]
+                    'consistencygroup_id', 'cgsnapshot_id', 'group_id', ]
         super(VolumeCastTask, self).__init__(addons=[ACTION],
                                              requires=requires)
         self.volume_rpcapi = volume_rpcapi
@@ -704,12 +722,21 @@ class VolumeCastTask(flow_utils.CinderTask):
         cgroup_id = request_spec['consistencygroup_id']
         host = None
         cgsnapshot_id = request_spec['cgsnapshot_id']
-
+        group_id = request_spec['group_id']
         if cgroup_id:
             # If cgroup_id existed, we should cast volume to the scheduler
             # to choose a proper pool whose backend is same as CG's backend.
             cgroup = objects.ConsistencyGroup.get_by_id(context, cgroup_id)
             request_spec['CG_backend'] = vol_utils.extract_host(cgroup.host)
+        elif group_id:
+            # If group_id exists, we should cast volume to the scheduler
+            # to choose a proper pool whose backend is same as group's backend.
+            group = objects.Group.get_by_id(context, group_id)
+            # FIXME(wanghao): group_backend got added before request_spec was
+            # converted to versioned objects. We should make sure that this
+            # will be handled by object version translations once we add
+            # RequestSpec object.
+            request_spec['group_backend'] = vol_utils.extract_host(group.host)
         elif snapshot_id and CONF.snapshot_same_host:
             # NOTE(Rongze Zhu): A simple solution for bug 1008866.
             #

@@ -210,7 +210,8 @@ class API(base.Base):
                availability_zone=None, source_volume=None,
                scheduler_hints=None,
                source_replica=None, consistencygroup=None,
-               cgsnapshot=None, multiattach=False, source_cg=None):
+               cgsnapshot=None, multiattach=False, source_cg=None,
+               group=None):
 
         check_policy(context, 'create')
 
@@ -239,6 +240,18 @@ class API(base.Base):
             if volume_type.get('id') not in cg_voltypeids:
                 msg = _("Invalid volume_type provided: %s (requested "
                         "type must be supported by this consistency "
+                        "group).") % volume_type
+                raise exception.InvalidInput(reason=msg)
+
+        if group:
+            if not volume_type:
+                msg = _("volume_type must be provided when creating "
+                        "a volume in a group.")
+                raise exception.InvalidInput(reason=msg)
+            vol_type_ids = [v_type.id for v_type in group.volume_types]
+            if volume_type.get('id') not in vol_type_ids:
+                msg = _("Invalid volume_type provided: %s (requested "
+                        "type must be supported by this "
                         "group).") % volume_type
                 raise exception.InvalidInput(reason=msg)
 
@@ -302,6 +315,7 @@ class API(base.Base):
             'consistencygroup': consistencygroup,
             'cgsnapshot': cgsnapshot,
             'multiattach': multiattach,
+            'group': group,
         }
         try:
             sched_rpcapi = (self.scheduler_rpcapi if (not cgsnapshot and
@@ -370,7 +384,8 @@ class API(base.Base):
         # Build required conditions for conditional update
         expected = {'attach_status': db.Not('attached'),
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
-                    'consistencygroup_id': None}
+                    'consistencygroup_id': None,
+                    'group_id': None}
 
         # If not force deleting we have status conditions
         if not force:
@@ -391,7 +406,7 @@ class API(base.Base):
             status = utils.build_or_str(expected.get('status'),
                                         _('status must be %s and'))
             msg = _('Volume %s must not be migrating, attached, belong to a '
-                    'consistency group or have snapshots.') % status
+                    'group or have snapshots.') % status
             LOG.info(msg)
             raise exception.InvalidVolume(reason=msg)
 
@@ -1293,6 +1308,7 @@ class API(base.Base):
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
                     'replication_status': (None, 'disabled'),
                     'consistencygroup_id': (None, ''),
+                    'group_id': (None, ''),
                     'host': db.Not(host)}
 
         filters = [~db.volume_has_snapshots_filter()]
@@ -1316,8 +1332,8 @@ class API(base.Base):
         if not result:
             msg = _('Volume %s status must be available or in-use, must not '
                     'be migrating, have snapshots, be replicated, be part of '
-                    'a consistency group and destination host must be '
-                    'different than the current host') % {'vol_id': volume.id}
+                    'a group and destination host must be different than the '
+                    'current host') % {'vol_id': volume.id}
             LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
@@ -1450,6 +1466,7 @@ class API(base.Base):
         expected = {'status': ('available', 'in-use'),
                     'migration_status': self.AVAILABLE_MIGRATION_STATUS,
                     'consistencygroup_id': (None, ''),
+                    'group_id': (None, ''),
                     'volume_type_id': db.Not(vol_type_id)}
 
         # We don't support changing encryption requirements yet
@@ -1465,9 +1482,9 @@ class API(base.Base):
         if not volume.conditional_update(updates, expected, filters):
             msg = _('Retype needs volume to be in available or in-use state, '
                     'have same encryption requirements, not be part of an '
-                    'active migration or a consistency group, requested type '
-                    'has to be different that the one from the volume, and '
-                    'for in-use volumes front-end qos specs cannot change.')
+                    'active migration or a group, requested type has to be '
+                    'different that the one from the volume, and for in-use '
+                    'volumes front-end qos specs cannot change.')
             LOG.error(msg)
             QUOTAS.rollback(context, reservations + old_reservations,
                             project_id=volume.project_id)

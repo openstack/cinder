@@ -34,20 +34,22 @@ object_data = {
     'ConsistencyGroupList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'QualityOfServiceSpecs': '1.0-0b212e0a86ee99092229874e03207fe8',
     'QualityOfServiceSpecsList': '1.0-1b54e51ad0fc1f3a8878f5010e7e16dc',
-    'RequestSpec': '1.0-42685a616bd27c2a4d75cba93a81ed8c',
+    'RequestSpec': '1.1-b0bd1a28d191d75648901fa853e8a733',
     'Service': '1.4-c7d011989d1718ca0496ccf640b42712',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Snapshot': '1.1-37966f7141646eb29e9ad5298ff2ca8a',
     'SnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'Volume': '1.4-cd0fc67e0ea8c9a28d9dce6b21368e01',
+    'Volume': '1.5-19919d8086d6a38ab9d3ab88139e70e0',
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'VolumeAttachment': '1.0-b30dacf62b2030dd83d8a1603f1064ff',
     'VolumeAttachmentList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'VolumeProperties': '1.0-42f00cf1f6c657377a3e2a7efbed0bca',
+    'VolumeProperties': '1.1-cadac86b2bdc11eb79d1dcea988ff9e8',
     'VolumeType': '1.2-02ecb0baac87528d041f4ddd95b95579',
     'VolumeTypeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'GroupType': '1.0-d4a7b272199d0b0d6fc3ceed58539d30',
     'GroupTypeList': '1.0-1b54e51ad0fc1f3a8878f5010e7e16dc',
+    'Group': '1.0-fd0a002ba8c1388fe9d94ec20b346f0c',
+    'GroupList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
 }
 
 
@@ -84,7 +86,12 @@ class TestObjectVersions(test.TestCase):
         # db model and object match.
         def _check_table_matched(db_model, cls):
             for column in db_model.__table__.columns:
-                if column.name in cls.fields:
+                # NOTE(xyang): Skip the comparison of the colume name
+                # group_type_id in table Group because group_type_id
+                # is in the object Group but it is stored in a different
+                # table in the database, not in the Group table.
+                if (column.name in cls.fields and
+                        (column.name != 'group_type_id' and name != 'Group')):
                     self.assertEqual(
                         column.nullable,
                         cls.fields[column.name].nullable,

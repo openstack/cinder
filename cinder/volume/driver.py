@@ -1680,6 +1680,99 @@ class BaseVD(object):
         """Old replication update method, deprecate."""
         raise NotImplementedError()
 
+    def create_group(self, context, group):
+        """Creates a group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the group to be created.
+        :returns: model_update
+
+        model_update will be in this format: {'status': xxx, ......}.
+
+        If the status in model_update is 'error', the manager will throw
+        an exception and it will be caught in the try-except block in the
+        manager. If the driver throws an exception, the manager will also
+        catch it in the try-except block. The group status in the db will
+        be changed to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and return it or return None. The group status will
+        be set to 'available'.
+        """
+        raise NotImplementedError()
+
+    def delete_group(self, context, group, volumes):
+        """Deletes a group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the group to be deleted.
+        :param volumes: a list of volume dictionaries in the group.
+        :returns: model_update, volumes_model_update
+
+        param volumes is retrieved directly from the db. It is a list of
+        cinder.db.sqlalchemy.models.Volume to be precise. It cannot be
+        assigned to volumes_model_update. volumes_model_update is a list of
+        dictionaries. It has to be built by the driver. An entry will be
+        in this format: {'id': xxx, 'status': xxx, ......}. model_update
+        will be in this format: {'status': xxx, ......}.
+
+        The driver should populate volumes_model_update and model_update
+        and return them.
+
+        The manager will check volumes_model_update and update db accordingly
+        for each volume. If the driver successfully deleted some volumes
+        but failed to delete others, it should set statuses of the volumes
+        accordingly so that the manager can update db correctly.
+
+        If the status in any entry of volumes_model_update is 'error_deleting'
+        or 'error', the status in model_update will be set to the same if it
+        is not already 'error_deleting' or 'error'.
+
+        If the status in model_update is 'error_deleting' or 'error', the
+        manager will raise an exception and the status of the group will be
+        set to 'error' in the db. If volumes_model_update is not returned by
+        the driver, the manager will set the status of every volume in the
+        group to 'error' in the except block.
+
+        If the driver raises an exception during the operation, it will be
+        caught by the try-except block in the manager. The statuses of the
+        group and all volumes in it will be set to 'error'.
+
+        For a successful operation, the driver can either build the
+        model_update and volumes_model_update and return them or
+        return None, None. The statuses of the group and all volumes
+        will be set to 'deleted' after the manager deletes them from db.
+        """
+        raise NotImplementedError()
+
+    def update_group(self, context, group,
+                     add_volumes=None, remove_volumes=None):
+        """Updates a group.
+
+        :param context: the context of the caller.
+        :param group: the dictionary of the group to be updated.
+        :param add_volumes: a list of volume dictionaries to be added.
+        :param remove_volumes: a list of volume dictionaries to be removed.
+        :returns: model_update, add_volumes_update, remove_volumes_update
+
+        model_update is a dictionary that the driver wants the manager
+        to update upon a successful return. If None is returned, the manager
+        will set the status to 'available'.
+
+        add_volumes_update and remove_volumes_update are lists of dictionaries
+        that the driver wants the manager to update upon a successful return.
+        Note that each entry requires a {'id': xxx} so that the correct
+        volume entry can be updated. If None is returned, the volume will
+        remain its original status. Also note that you cannot directly
+        assign add_volumes to add_volumes_update as add_volumes is a list of
+        cinder.db.sqlalchemy.models.Volume objects and cannot be used for
+        db update directly. Same with remove_volumes.
+
+        If the driver throws an exception, the status of the group as well as
+        those of the volumes to be added/removed will be set to 'error'.
+        """
+        raise NotImplementedError()
+
 
 @six.add_metaclass(abc.ABCMeta)
 class LocalVD(object):
@@ -2083,8 +2176,8 @@ class ReplicaVD(object):
         return
 
 
-class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD, ExtendVD,
-                   CloneableImageVD, ManageableSnapshotsVD,
+class VolumeDriver(ConsistencyGroupVD, TransferVD, ManageableVD,
+                   ExtendVD, CloneableImageVD, ManageableSnapshotsVD,
                    SnapshotVD, ReplicaVD, LocalVD, MigrateVD, BaseVD):
     """This class will be deprecated soon.
 

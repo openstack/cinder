@@ -941,6 +941,68 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
         self.assertIsInstance(type_projects.c.project_id.type,
                               self.VARCHAR_TYPE)
 
+    def _check_078(self, engine, data):
+        """Test adding groups tables."""
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "groups"))
+        groups = db_utils.get_table(engine, 'groups')
+
+        self.assertIsInstance(groups.c.id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.name.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.description.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(groups.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(groups.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(groups.c.deleted.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(groups.c.user_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.project_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.host.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.availability_zone.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.group_type_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.status.type,
+                              self.VARCHAR_TYPE)
+
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "group_volume_type_mapping"))
+        mapping = db_utils.get_table(engine, 'group_volume_type_mapping')
+
+        self.assertIsInstance(mapping.c.id.type,
+                              self.INTEGER_TYPE)
+        self.assertIsInstance(mapping.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(mapping.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(mapping.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(mapping.c.deleted.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(mapping.c.volume_type_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(mapping.c.group_id.type,
+                              self.VARCHAR_TYPE)
+
+        volumes = db_utils.get_table(engine, 'volumes')
+        self.assertIsInstance(volumes.c.group_id.type,
+                              self.VARCHAR_TYPE)
+
+        quota_classes = db_utils.get_table(engine, 'quota_classes')
+        rows = quota_classes.count().\
+            where(quota_classes.c.resource == 'groups').\
+            execute().scalar()
+        self.assertEqual(1, rows)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 

@@ -31,6 +31,7 @@ from cinder.api.v3 import clusters
 from cinder.api.v3 import consistencygroups
 from cinder.api.v3 import group_specs
 from cinder.api.v3 import group_types
+from cinder.api.v3 import groups
 from cinder.api.v3 import messages
 from cinder.api.v3 import snapshot_manage
 from cinder.api.v3 import volume_manage
@@ -81,6 +82,17 @@ class APIRouter(cinder.api.openstack.APIRouter):
                         controller=self.resources['group_specs'],
                         parent_resource=dict(member_name='group_type',
                                              collection_name='group_types'))
+
+        self.resources['groups'] = groups.create_resource()
+        mapper.resource("group", "groups",
+                        controller=self.resources['groups'],
+                        collection={'detail': 'GET'},
+                        member={'action': 'POST'})
+        mapper.connect("groups",
+                       "/{project_id}/groups/{id}/action",
+                       controller=self.resources["groups"],
+                       action="action",
+                       conditions={"action": ["POST"]})
 
         self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
         mapper.resource("snapshot", "snapshots",

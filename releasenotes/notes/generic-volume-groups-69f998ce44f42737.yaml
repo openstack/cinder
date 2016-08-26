@@ -1,0 +1,4 @@
+---
+features:
+  - Introduced generic volume groups and added create/
+    delete/update/list/show APIs for groups.

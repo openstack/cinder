@@ -190,6 +190,9 @@ global_opts = [
     cfg.StrOpt('consistencygroup_api_class',
                default='cinder.consistencygroup.api.API',
                help='The full class name of the consistencygroup API class'),
+    cfg.StrOpt('group_api_class',
+               default='cinder.group.api.API',
+               help='The full class name of the group API class'),
     cfg.StrOpt('os_privileged_user_name',
                help='OpenStack privileged account username. Used for requests '
                     'to other services (such as Nova) that require an account '

@@ -46,7 +46,8 @@ class TestVolume(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.sqlalchemy.api.model_query')
     def test_get_by_id_no_existing_id(self, model_query):
-        pf = model_query().options().options().options().options().options()
+        pf = (model_query().options().options().options().options().options().
+              options())
         pf.filter_by().first.return_value = None
         self.assertRaises(exception.VolumeNotFound,
                           objects.Volume.get_by_id, self.context, 123)

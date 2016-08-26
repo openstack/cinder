@@ -62,6 +62,24 @@ class ConsistencyGroupStatusField(BaseEnumField):
     AUTO_TYPE = ConsistencyGroupStatus()
 
 
+class GroupStatus(BaseCinderEnum):
+    ERROR = 'error'
+    AVAILABLE = 'available'
+    CREATING = 'creating'
+    DELETING = 'deleting'
+    DELETED = 'deleted'
+    UPDATING = 'updating'
+    IN_USE = 'in-use'
+    ERROR_DELETING = 'error_deleting'
+
+    ALL = (ERROR, AVAILABLE, CREATING, DELETING, DELETED,
+           UPDATING, IN_USE, ERROR_DELETING)
+
+
+class GroupStatusField(BaseEnumField):
+    AUTO_TYPE = GroupStatus()
+
+
 class ReplicationStatus(BaseCinderEnum):
     ERROR = 'error'
     ENABLED = 'enabled'

@@ -104,9 +104,10 @@ class VolumeAPI(rpc.RPCAPI):
         2.3  - Adds support for sending objects over RPC in
                initialize_connection().
         2.4 - Sends request_spec as object in create_volume().
+        2.5  - Adds create_group, delete_group, and update_group
     """
 
-    RPC_API_VERSION = '2.4'
+    RPC_API_VERSION = '2.5'
     TOPIC = CONF.volume_topic
     BINARY = 'cinder-volume'
 
@@ -341,3 +342,21 @@ class VolumeAPI(rpc.RPCAPI):
         return cctxt.call(ctxt, 'get_manageable_snapshots', marker=marker,
                           limit=limit, offset=offset, sort_keys=sort_keys,
                           sort_dirs=sort_dirs)
+
+    def create_group(self, ctxt, group, host):
+        cctxt = self._get_cctxt(host, '2.5')
+        cctxt.cast(ctxt, 'create_group',
+                   group=group)
+
+    def delete_group(self, ctxt, group):
+        cctxt = self._get_cctxt(group.host, '2.5')
+        cctxt.cast(ctxt, 'delete_group',
+                   group=group)
+
+    def update_group(self, ctxt, group, add_volumes=None,
+                     remove_volumes=None):
+        cctxt = self._get_cctxt(group.host, '2.5')
+        cctxt.cast(ctxt, 'update_group',
+                   group=group,
+                   add_volumes=add_volumes,
+                   remove_volumes=remove_volumes)
