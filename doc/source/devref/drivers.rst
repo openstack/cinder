@@ -28,9 +28,10 @@ There are some basic attributes that all drivers classes should have:
 
 * VERSION: Driver version in string format.  No naming convention is imposed,
   although semantic versioning is recommended.
-* CI_WIKI_NAME: Must be the exact name of the ThirdPartySystems wiki page.
-  This is used by our tooling system to associated jobs to drivers and
-  track their CI reporting status correctly.
+* CI_WIKI_NAME: Must be the exact name of the `ThirdPartySystems wiki page
+  <https://wiki.openstack.org/wiki/ThirdPartySystems>`_. This is used by our
+  tooling system to associate jobs to drivers and track their CI reporting
+  status correctly.
 
 The tooling system will also use the name and docstring of the driver class.
 
@@ -63,7 +64,6 @@ provided by a driver.
 
 * driver_version
 * free_capacity_gb
-* reserved_percentage
 * storage_protocol
 * total_capacity_gb
 * vendor_name
@@ -71,8 +71,9 @@ provided by a driver.
 
 **NOTE:** If the driver is unable to provide a value for free_capacity_gb or
 total_capacity_gb, keywords can be provided instead. Please use 'unknown' if
-the array cannot report the value or 'infinite' if the array has no upper
-limit.
+the backend cannot report the value or 'infinite' if the backend has no upper
+limit. But, it is recommended to report real values as the Cinder scheduler
+assigns lowest weight to any storage backend reporting 'unknown' or 'infinite'.
 
 Feature Enforcement
 -------------------

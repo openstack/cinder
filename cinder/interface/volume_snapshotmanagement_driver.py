@@ -44,7 +44,9 @@ class VolumeSnapshotManagementDriver(base.CinderInterface):
            backend storage object when required.
 
         :param snapshot: The snapshot to manage.
-        :param existing_ref: A reference to the existing snap.
+        :param existing_ref: Dictionary with keys 'source-id', 'source-name'
+                             with driver-specific values to identify a backend
+                             storage object.
         :raises: ManageExistingInvalidReference If the existing_ref doesn't
                  make sense, or doesn't refer to an existing backend storage
                  object.
@@ -55,8 +57,13 @@ class VolumeSnapshotManagementDriver(base.CinderInterface):
 
         When calculating the size, round up to the next GB.
 
-        :param snapshot: The snapshot.
-        :param existing_ref: A reference to the existing snap.
+        :param snapshot: The snapshot to manage.
+        :param existing_ref: Dictionary with keys 'source-id', 'source-name'
+                             with driver-specific values to identify a backend
+                             storage object.
+        :raises: ManageExistingInvalidReference If the existing_ref doesn't
+                 make sense, or doesn't refer to an existing backend storage
+                 object.
         """
 
     def unmanage_snapshot(self, snapshot):
