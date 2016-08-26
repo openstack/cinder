@@ -19,6 +19,7 @@ import six
 
 from cinder import exception
 from cinder import objects
+from cinder.tests.unit import fake_cluster
 from cinder.tests.unit import fake_service
 from cinder.tests.unit import objects as test_objects
 
@@ -161,6 +162,20 @@ class TestService(test_objects.BaseObjectsTestCase):
         self.assertEqual('1.2', min_obj)
         service_get_all.assert_called_once_with(self.context, binary=None,
                                                 disabled=None)
+
+    @mock.patch('cinder.db.sqlalchemy.api.cluster_get')
+    def test_lazy_loading_cluster_field(self, cluster_get):
+        cluster_orm = fake_cluster.fake_cluster_orm(name='mycluster')
+        cluster_get.return_value = cluster_orm
+        cluster = objects.Cluster._from_db_object(self.context,
+                                                  objects.Cluster(),
+                                                  cluster_orm)
+
+        service = fake_service.fake_service_obj(self.context,
+                                                cluster_name='mycluster')
+        self.assertEqual(cluster, service.cluster)
+        cluster_get.assert_called_once_with(self.context, None,
+                                            name='mycluster')
 
 
 class TestServiceList(test_objects.BaseObjectsTestCase):
