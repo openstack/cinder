@@ -4668,6 +4668,28 @@ class VolumeTestCase(BaseVolumeTestCase):
         self.assertRaises(exception.VolumeNotFound, volume.refresh)
         self.assertRaises(exception.SnapshotNotFound, snapshot.refresh)
 
+    @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
+                'manage_existing')
+    @mock.patch('cinder.volume.drivers.lvm.LVMVolumeDriver.'
+                'manage_existing_get_size')
+    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    def test_manage_volume_with_notify(self, mock_notify, mock_size,
+                                       mock_manage):
+        elevated = context.get_admin_context()
+        vol_type = db.volume_type_create(
+            elevated, {'name': 'type1', 'extra_specs': {}})
+        # create source volume
+        volume_params = {'volume_type_id': vol_type.id, 'status': 'managing'}
+        test_vol = tests_utils.create_volume(self.context, **volume_params)
+        mock_size.return_value = 1
+        mock_manage.return_value = None
+
+        self.volume.manage_existing(self.context, None, 'volume_ref',
+                                    test_vol)
+        mock_notify.assert_called_with(self.context, test_vol,
+                                       'manage_existing.end',
+                                       host=test_vol.host)
+
 
 @ddt.ddt
 class VolumeMigrationTestCase(BaseVolumeTestCase):
