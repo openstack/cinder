@@ -661,7 +661,7 @@ def check_string_length(value, name, min_length=0, max_length=None,
     except(ValueError, TypeError) as exc:
         raise exception.InvalidInput(reason=exc)
 
-    if not allow_all_spaces and str.isspace(value):
+    if not allow_all_spaces and value.isspace():
         msg = _('%(name)s cannot be all spaces.')
         raise exception.InvalidInput(reason=msg)
 

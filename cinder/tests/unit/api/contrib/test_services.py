@@ -708,6 +708,20 @@ class ServicesTest(test.TestCase):
         self.assertEqual('disabled', res_dict['status'])
         self.assertEqual('test-reason', res_dict['disabled_reason'])
 
+    def test_services_disable_log_reason_unicode(self):
+        self.ext_mgr.extensions['os-extended-services'] = True
+        self.controller = services.ServiceController(self.ext_mgr)
+        req = (
+            fakes.HTTPRequest.blank('v1/fake/os-services/disable-log-reason'))
+        body = {'host': 'host1',
+                'binary': 'cinder-scheduler',
+                'disabled_reason': u'test-reason',
+                }
+        res_dict = self.controller.update(req, "disable-log-reason", body)
+
+        self.assertEqual('disabled', res_dict['status'])
+        self.assertEqual('test-reason', res_dict['disabled_reason'])
+
     def test_services_disable_log_reason_none(self):
         self.ext_mgr.extensions['os-extended-services'] = True
         self.controller = services.ServiceController(self.ext_mgr)
