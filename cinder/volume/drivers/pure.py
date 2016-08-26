@@ -413,7 +413,8 @@ class PureBaseVolumeDriver(san.SanDriver):
             with excutils.save_and_reraise_exception() as ctxt:
                 if err.code == 400 and (
                         ERR_MSG_NOT_EXIST in err.text or
-                        ERR_MSG_NO_SUCH_SNAPSHOT in err.text):
+                        ERR_MSG_NO_SUCH_SNAPSHOT in err.text or
+                        ERR_MSG_PENDING_ERADICATION in err.text):
                     # Happens if the snapshot does not exist.
                     ctxt.reraise = False
                     LOG.warning(_LW("Unable to delete snapshot, assuming "
