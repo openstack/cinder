@@ -1143,7 +1143,7 @@ class BaseVD(object):
 
         Otherwise for in-use volume, create a temp snapshot and back it up.
         """
-        volume = self.db.volume_get(context, backup.volume_id)
+        volume = objects.Volume.get_by_id(context, backup.volume_id)
         snapshot = None
         if backup.snapshot_id:
             snapshot = objects.Snapshot.get_by_id(context, backup.snapshot_id)
