@@ -94,6 +94,11 @@ test_delete_volume_not_force: &test_delete_volume_not_force
 
 test_delete_volume_force: *test_delete_volume_not_force
 
+test_delete_async_volume:
+  volume: *volume_base
+
+test_delete_async_volume_migrating:
+  volume: *volume_base
 
 test_retype_need_migration_when_host_changed:
   volume: *volume_base

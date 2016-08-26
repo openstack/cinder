@@ -201,7 +201,7 @@ def get_original_status(volume):
 
 def construct_snap_name(volume):
     """Return snapshot name."""
-    if snapcopy_enabled(volume):
+    if is_snapcopy_enabled(volume):
         return 'snap-as-vol-' + six.text_type(volume.name_id)
     else:
         return 'tmp-snap-' + six.text_type(volume.name_id)
@@ -227,9 +227,23 @@ def construct_smp_name(snap_id):
     return 'tmp-smp-' + six.text_type(snap_id)
 
 
-def snapcopy_enabled(volume):
+def is_snapcopy_enabled(volume):
     meta = get_metadata(volume)
     return 'snapcopy' in meta and meta['snapcopy'].lower() == 'true'
+
+
+def is_async_migrate_enabled(volume):
+    extra_specs = common.ExtraSpecs.from_volume(volume)
+    if extra_specs.is_replication_enabled:
+        # For replication-enabled volume, we should not use the async-cloned
+        # volume, or setup replication would fail with
+        # VNXMirrorLunNotAvailableError
+        return False
+    meta = get_metadata(volume)
+    if 'async_migrate' not in meta:
+        # Asynchronous migration is the default behavior now
+        return True
+    return 'async_migrate' in meta and meta['async_migrate'].lower() == 'true'
 
 
 def get_migration_rate(volume):

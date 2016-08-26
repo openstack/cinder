@@ -363,7 +363,8 @@ def _build_client():
                          password='sysadmin',
                          scope='global',
                          naviseccli=None,
-                         sec_file=None)
+                         sec_file=None,
+                         queue_path='vnx-cinder')
 
 
 def patch_client(func):

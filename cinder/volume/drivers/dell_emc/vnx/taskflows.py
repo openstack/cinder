@@ -24,6 +24,7 @@ from taskflow import task
 from taskflow.types import failure
 
 from cinder import exception
+from cinder.volume.drivers.dell_emc.vnx import common
 from cinder.volume.drivers.dell_emc.vnx import const
 from cinder.volume.drivers.dell_emc.vnx import utils
 from cinder.i18n import _, _LI, _LW
@@ -37,19 +38,18 @@ class MigrateLunTask(task.Task):
     Reversion strategy: Cleanup the migration session
     """
     def __init__(self, name=None, provides=None, inject=None,
-                 rebind=None, wait_for_completion=True):
+                 rebind=None):
         super(MigrateLunTask, self).__init__(name=name,
                                              provides=provides,
                                              inject=inject,
                                              rebind=rebind)
-        self.wait_for_completion = wait_for_completion
 
-    def execute(self, client, src_id, dst_id, *args, **kwargs):
+    def execute(self, client, src_id, dst_id, async_migrate, *args, **kwargs):
         LOG.debug('%s.execute', self.__class__.__name__)
         dst_lun = client.get_lun(lun_id=dst_id)
         dst_wwn = dst_lun.wwn
         client.migrate_lun(src_id, dst_id)
-        if self.wait_for_completion:
+        if not async_migrate:
             migrated = client.verify_migration(src_id, dst_id, dst_wwn)
             if not migrated:
                 msg = _("Failed to migrate volume between source vol %(src)s"
@@ -175,12 +175,13 @@ class CreateSnapshotTask(task.Task):
 
     Reversion Strategy: Delete the created snapshot.
     """
-    def execute(self, client, snap_name, lun_id, *args, **kwargs):
+    def execute(self, client, snap_name, lun_id, keep_for=None,
+                *args, **kwargs):
         LOG.debug('%s.execute', self.__class__.__name__)
         LOG.info(_LI('Create snapshot: %(snapshot)s: lun: %(lun)s'),
                  {'snapshot': snap_name,
                   'lun': lun_id})
-        client.create_snapshot(lun_id, snap_name)
+        client.create_snapshot(lun_id, snap_name, keep_for=keep_for)
 
     def revert(self, result, client, snap_name, *args, **kwargs):
         method_name = '%s.revert' % self.__class__.__name__
@@ -191,11 +192,12 @@ class CreateSnapshotTask(task.Task):
         client.delete_snapshot(snap_name)
 
 
-class AllowReadWriteTask(task.Task):
+class ModifySnapshotTask(task.Task):
     """Task to modify a Snapshot to allow ReadWrite on it."""
-    def execute(self, client, snap_name, *args, **kwargs):
+    def execute(self, client, snap_name, keep_for=None,
+                *args, **kwargs):
         LOG.debug('%s.execute', self.__class__.__name__)
-        client.modify_snapshot(snap_name, allow_rw=True)
+        client.modify_snapshot(snap_name, allow_rw=True, keep_for=keep_for)
 
     def revert(self, result, client, snap_name, *args, **kwargs):
         method_name = '%s.revert' % self.__class__.__name__
@@ -333,6 +335,7 @@ def run_migration_taskflow(client,
                   'tier': tier,
                   'ignore_thresholds': True,
                   'src_id': lun_id,
+                  'async_migrate': False,
                   }
     work_flow = linear_flow.Flow(flow_name)
     work_flow.add(CreateLunTask(),
@@ -364,7 +367,7 @@ def fast_create_volume_from_snapshot(client,
                   }
     work_flow = linear_flow.Flow(flow_name)
     work_flow.add(CopySnapshotTask(),
-                  AllowReadWriteTask(rebind={'snap_name': 'new_snap_name'}),
+                  ModifySnapshotTask(rebind={'snap_name': 'new_snap_name'}),
                   CreateSMPTask(),
                   AttachSnapTask(rebind={'snap_name': 'new_snap_name'}))
     engine = taskflow.engines.load(
@@ -374,17 +377,19 @@ def fast_create_volume_from_snapshot(client,
     return lun_id
 
 
-def create_volume_from_snapshot(client, snap_name, lun_name,
+def create_volume_from_snapshot(client, src_snap_name, lun_name,
                                 lun_size, base_lun_name, pool_name,
-                                provision, tier):
-    # Step 1: create smp from base lun
-    # Step 2: attach snapshot to smp
-    # Step 3: Create new LUN
-    # Step 4: migrate the smp to new LUN
+                                provision, tier, new_snap_name=None):
+    # Step 1: Copy and modify snap(only for async migrate)
+    # Step 2: Create smp from base lun
+    # Step 3: Attach snapshot to smp
+    # Step 4: Create new LUN
+    # Step 5: migrate the smp to new LUN
     tmp_lun_name = '%s_dest' % lun_name
     flow_name = 'create_volume_from_snapshot'
     store_spec = {'client': client,
-                  'snap_name': snap_name,
+                  'snap_name': src_snap_name,
+                  'new_snap_name': new_snap_name,
                   'smp_name': lun_name,
                   'lun_name': tmp_lun_name,
                   'lun_size': lun_size,
@@ -392,10 +397,19 @@ def create_volume_from_snapshot(client, snap_name, lun_name,
                   'pool_name': pool_name,
                   'provision': provision,
                   'tier': tier,
+                  'keep_for': (common.SNAP_EXPIRATION_HOUR
+                               if new_snap_name else None),
+                  'async_migrate': True if new_snap_name else False,
                   }
     work_flow = linear_flow.Flow(flow_name)
+    if new_snap_name:
+        work_flow.add(CopySnapshotTask(),
+                      ModifySnapshotTask(
+                      rebind={'snap_name': 'new_snap_name'}))
+
     work_flow.add(CreateSMPTask(),
-                  AttachSnapTask(),
+                  AttachSnapTask(rebind={'snap_name': 'new_snap_name'})
+                  if new_snap_name else AttachSnapTask(),
                   CreateLunTask(),
                   MigrateLunTask(
                       rebind={'src_id': 'smp_id',
@@ -428,7 +442,7 @@ def fast_create_cloned_volume(client, snap_name, lun_id,
 
 def create_cloned_volume(client, snap_name, lun_id, lun_name,
                          lun_size, base_lun_name, pool_name,
-                         provision, tier):
+                         provision, tier, async_migrate=False):
     tmp_lun_name = '%s_dest' % lun_name
     flow_name = 'create_cloned_volume'
     store_spec = {'client': client,
@@ -441,6 +455,9 @@ def create_cloned_volume(client, snap_name, lun_id, lun_name,
                   'pool_name': pool_name,
                   'provision': provision,
                   'tier': tier,
+                  'keep_for': (common.SNAP_EXPIRATION_HOUR if
+                               async_migrate else None),
+                  'async_migrate': async_migrate,
                   }
     work_flow = linear_flow.Flow(flow_name)
     work_flow.add(
@@ -453,6 +470,8 @@ def create_cloned_volume(client, snap_name, lun_id, lun_name,
     engine = taskflow.engines.load(
         work_flow, store=store_spec)
     engine.run()
+    if not async_migrate:
+        client.delete_snapshot(snap_name)
     lun_id = engine.storage.fetch('smp_id')
     return lun_id
 
@@ -473,7 +492,7 @@ def create_cg_from_cg_snapshot(client, cg_name, src_cg_name,
         prepare_tasks.append(
             CopySnapshotTask())
         prepare_tasks.append(
-            AllowReadWriteTask(rebind={'snap_name': 'new_snap_name'}))
+            ModifySnapshotTask(rebind={'snap_name': 'new_snap_name'}))
     else:
         flow_name = 'create_cg_from_cg'
         snap_name = cg_snap_name
@@ -505,6 +524,7 @@ def create_cg_from_cg_snapshot(client, cg_name, src_cg_name,
             'base_lun_name': src_lun_names[i],
             'smp_name': lun_name,
             'snap_name': snap_name,
+            'async_migrate': True,
         }
         work_flow.add(CreateSMPTask(name="CreateSMPTask_%s" % i,
                                     inject=sub_store_spec,
@@ -519,8 +539,7 @@ def create_cg_from_cg_snapshot(client, cg_name, src_cg_name,
                           name="MigrateLunTask_%s" % i,
                           inject=sub_store_spec,
                           rebind={'src_id': new_src_id_template % i,
-                                  'dst_id': new_dst_id_template % i},
-                          wait_for_completion=False))
+                                  'dst_id': new_dst_id_template % i}))
 
     # Wait all migration session finished
     work_flow.add(WaitMigrationsTask(new_src_id_template,

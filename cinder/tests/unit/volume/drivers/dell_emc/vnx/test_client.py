@@ -160,6 +160,10 @@ class TestClient(test.TestCase):
         client.cleanup_migration(1, 2)
 
     @res_mock.patch_client
+    def test_cleanup_migration_not_migrating(self, client, mocked):
+        client.cleanup_migration(1, 2)
+
+    @res_mock.patch_client
     def test_get_lun_by_name(self, client, mocked):
         lun = client.get_lun(name='lun_name_test_get_lun_by_name')
         self.assertEqual(888, lun.lun_id)
@@ -181,6 +185,12 @@ class TestClient(test.TestCase):
         self.assertRaisesRegexp(storops_ex.VNXDeleteLunError,
                                 'General lun delete error.',
                                 client.delete_lun, mocked['lun'].name)
+
+    @res_mock.patch_client
+    def test_cleanup_async_lun(self, client, mocked):
+        client.cleanup_async_lun(
+            mocked['lun'].name,
+            force=True)
 
     @res_mock.patch_client
     def test_enable_compression(self, client, mocked):
@@ -261,7 +271,8 @@ class TestClient(test.TestCase):
         lun = client.vnx.get_lun()
         lun.create_snap.assert_called_once_with('snap_test_create_snapshot',
                                                 allow_rw=True,
-                                                auto_delete=False)
+                                                auto_delete=False,
+                                                keep_for=None)
 
     @res_mock.patch_client
     def test_create_snapshot_snap_name_exist_error(self, client, _ignore):
