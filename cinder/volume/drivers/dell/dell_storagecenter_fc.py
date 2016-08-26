@@ -90,52 +90,59 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         with self._client.open_connection() as api:
             try:
                 wwpns = connector.get('wwpns')
-                # Find our server.
-                scserver = self._find_server(api, wwpns)
-
-                # No? Create it.
-                if scserver is None:
-                    scserver = api.create_server(
-                        wwpns, self.configuration.dell_server_os)
-                # Find the volume on the storage center.
+                # Find the volume on the storage center. Note that if this
+                # is live volume and we are swapped this will be the back
+                # half of the live volume.
                 scvolume = api.find_volume(volume_name, provider_id, islivevol)
-                if scserver is not None and scvolume is not None:
-                    mapping = api.map_volume(scvolume, scserver)
-                    if mapping is not None:
-                        # Since we just mapped our volume we had best update
-                        # our sc volume object.
-                        scvolume = api.get_volume(scvolume['instanceId'])
-                        lun, targets, init_targ_map = api.find_wwns(scvolume,
-                                                                    scserver)
+                if scvolume:
+                    # Get the SSN it is on.
+                    ssn = scvolume['instanceId'].split('.')[0]
+                    # Find our server.
+                    scserver = self._find_server(api, wwpns, ssn)
 
-                        # Do we have extra live volume work?
-                        if islivevol:
-                            # Get our volume and our swap state.
-                            sclivevolume, swapped = api.get_live_volume(
-                                provider_id)
-                            # Do not map to a failed over volume.
-                            if sclivevolume and not swapped:
-                                # Now map our secondary.
-                                lvlun, lvtargets, lvinit_targ_map = (
-                                    self.initialize_secondary(api,
-                                                              sclivevolume,
-                                                              wwpns))
-                                # Unmapped. Add info to our list.
-                                targets += lvtargets
-                                init_targ_map.update(lvinit_targ_map)
+                    # No? Create it.
+                    if scserver is None:
+                        scserver = api.create_server(
+                            wwpns, self.configuration.dell_server_os, ssn)
+                    # We have a volume and a server. Map them.
+                    if scserver is not None:
+                        mapping = api.map_volume(scvolume, scserver)
+                        if mapping is not None:
+                            # Since we just mapped our volume we had
+                            # best update our sc volume object.
+                            scvolume = api.get_volume(scvolume['instanceId'])
+                            lun, targets, init_targ_map = api.find_wwns(
+                                scvolume, scserver)
 
-                        # Roll up our return data.
-                        if lun is not None and len(targets) > 0:
-                            data = {'driver_volume_type': 'fibre_channel',
-                                    'data': {'target_lun': lun,
-                                             'target_discovered': True,
-                                             'target_wwn': targets,
-                                             'initiator_target_map':
-                                             init_targ_map,
-                                             'discard': True}}
-                            LOG.debug('Return FC data: %s', data)
-                            return data
-                        LOG.error(_LE('Lun mapping returned null!'))
+                            # Do we have extra live volume work?
+                            if islivevol:
+                                # Get our live volume.
+                                sclivevolume = api.get_live_volume(provider_id)
+                                # Do not map to a failed over volume.
+                                if (sclivevolume and not
+                                    api.is_failed_over(provider_id,
+                                                       sclivevolume)):
+                                    # Now map our secondary.
+                                    lvlun, lvtargets, lvinit_targ_map = (
+                                        self.initialize_secondary(api,
+                                                                  sclivevolume,
+                                                                  wwpns))
+                                    # Unmapped. Add info to our list.
+                                    targets += lvtargets
+                                    init_targ_map.update(lvinit_targ_map)
+
+                            # Roll up our return data.
+                            if lun is not None and len(targets) > 0:
+                                data = {'driver_volume_type': 'fibre_channel',
+                                        'data': {'target_lun': lun,
+                                                 'target_discovered': True,
+                                                 'target_wwn': targets,
+                                                 'initiator_target_map':
+                                                 init_targ_map,
+                                                 'discard': True}}
+                                LOG.debug('Return FC data: %s', data)
+                                return data
+                            LOG.error(_LE('Lun mapping returned null!'))
 
             except Exception:
                 with excutils.save_and_reraise_exception():
@@ -191,46 +198,53 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         with self._client.open_connection() as api:
             try:
                 wwpns = connector.get('wwpns')
-                scserver = self._find_server(api, wwpns)
-
                 # Find the volume on the storage center.
                 scvolume = api.find_volume(volume_name, provider_id, islivevol)
-                # Get our target map so we can return it to free up a zone.
-                lun, targets, init_targ_map = api.find_wwns(scvolume, scserver)
+                if scvolume:
+                    # Get the SSN it is on.
+                    ssn = scvolume['instanceId'].split('.')[0]
 
-                # Do we have extra live volume work?
-                if islivevol:
-                    # Get our volume and our swap state.
-                    sclivevolume, swapped = api.get_live_volume(
-                        provider_id)
-                    # Do not map to a failed over volume.
-                    if sclivevolume and not swapped:
-                        lvlun, lvtargets, lvinit_targ_map = (
-                            self.terminate_secondary(api, sclivevolume, wwpns))
-                        # Add to our return.
-                        if lvlun:
-                            targets += lvtargets
-                            init_targ_map.update(lvinit_targ_map)
+                    scserver = self._find_server(api, wwpns, ssn)
 
-                # If we have a server and a volume lets unmap them.
-                if (scserver is not None and
-                        scvolume is not None and
-                        api.unmap_volume(scvolume, scserver) is True):
-                    LOG.debug('Connection terminated')
-                else:
-                    raise exception.VolumeBackendAPIException(
-                        _('Terminate connection failed'))
+                    # Get our target map so we can return it to free up a zone.
+                    lun, targets, init_targ_map = api.find_wwns(scvolume,
+                                                                scserver)
 
-                # basic return info...
-                info = {'driver_volume_type': 'fibre_channel',
-                        'data': {}}
+                    # Do we have extra live volume work?
+                    if islivevol:
+                        # Get our live volume.
+                        sclivevolume = api.get_live_volume(provider_id)
+                        # Do not map to a failed over volume.
+                        if (sclivevolume and not
+                            api.is_failed_over(provider_id,
+                                               sclivevolume)):
+                            lvlun, lvtargets, lvinit_targ_map = (
+                                self.terminate_secondary(
+                                    api, sclivevolume, wwpns))
+                            # Add to our return.
+                            if lvlun:
+                                targets += lvtargets
+                                init_targ_map.update(lvinit_targ_map)
 
-                # if not then we return the target map so that
-                # the zone can be freed up.
-                if api.get_volume_count(scserver) == 0:
-                    info['data'] = {'target_wwn': targets,
-                                    'initiator_target_map': init_targ_map}
-                return info
+                    # If we have a server and a volume lets unmap them.
+                    if (scserver is not None and
+                            scvolume is not None and
+                            api.unmap_volume(scvolume, scserver) is True):
+                        LOG.debug('Connection terminated')
+                    else:
+                        raise exception.VolumeBackendAPIException(
+                            _('Terminate connection failed'))
+
+                    # basic return info...
+                    info = {'driver_volume_type': 'fibre_channel',
+                            'data': {}}
+
+                    # if not then we return the target map so that
+                    # the zone can be freed up.
+                    if api.get_volume_count(scserver) == 0:
+                        info['data'] = {'target_wwn': targets,
+                                        'initiator_target_map': init_targ_map}
+                    return info
 
             except Exception:
                 with excutils.save_and_reraise_exception():

@@ -518,9 +518,9 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         sclivevol = {'instanceId': '101.101',
                      'secondaryVolume': {'instanceId': '102.101',
                                          'instanceName': fake.VOLUME_ID},
-                     'secondaryScSerialNumber': 102}
-        mock_api.get_live_volume = mock.MagicMock(return_value=(sclivevol,
-                                                                False))
+                     'secondaryScSerialNumber': 102,
+                     'secondaryRole': 'Secondary'}
+        mock_api.get_live_volume = mock.MagicMock(return_value=sclivevol)
         # No replication driver data.
         ret = self.driver._delete_live_volume(mock_api, vol)
         self.assertFalse(ret)
@@ -538,7 +538,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         ret = self.driver._delete_live_volume(mock_api, vol)
         self.assertFalse(ret)
         # No live volume found.
-        mock_api.get_live_volume.return_value = (None, False)
+        mock_api.get_live_volume.return_value = None
         ret = self.driver._delete_live_volume(mock_api, vol)
         self.assertFalse(ret)
 
@@ -786,7 +786,8 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         data = self.driver.initialize_connection(volume, connector)
         self.assertEqual('iscsi', data['driver_volume_type'])
         # verify find_volume has been called and that is has been called twice
-        mock_find_volume.assert_called_once_with(fake.VOLUME_ID, provider_id)
+        mock_find_volume.assert_called_once_with(
+            fake.VOLUME_ID, provider_id, False)
         mock_get_volume.assert_called_once_with(provider_id)
         expected = {'data': self.ISCSI_PROPERTIES,
                     'driver_volume_type': 'iscsi'}
@@ -990,11 +991,7 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                                mock_init):
         volume = {'id': fake.VOLUME_ID}
         connector = self.connector
-        sclivevol = {'instanceId': '101.101',
-                     'secondaryVolume': {'instanceId': '102.101',
-                                         'instanceName': fake.VOLUME_ID},
-                     'secondaryScSerialNumber': 102}
-        mock_is_live_vol.return_value = sclivevol
+        mock_is_live_vol.return_value = True
         lvol_properties = {'access_mode': 'rw',
                            'target_discovered': False,
                            'target_iqn':
@@ -1017,6 +1014,75 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         expected = {'data': props,
                     'driver_volume_type': 'iscsi'}
         self.assertEqual(expected, ret)
+
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_server',
+                       return_value=None)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'create_server',
+                       return_value=SCSERVER)
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_volume')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'map_volume',
+                       return_value=MAPPINGS[0])
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'find_iscsi_properties')
+    @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
+                       'get_live_volume')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       '_is_live_vol')
+    @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
+                       'initialize_secondary')
+    def test_initialize_connection_live_volume_afo(self,
+                                                   mock_initialize_secondary,
+                                                   mock_is_live_vol,
+                                                   mock_get_live_vol,
+                                                   mock_find_iscsi_props,
+                                                   mock_map_volume,
+                                                   mock_get_volume,
+                                                   mock_find_volume,
+                                                   mock_create_server,
+                                                   mock_find_server,
+                                                   mock_close_connection,
+                                                   mock_open_connection,
+                                                   mock_init):
+        volume = {'id': fake.VOLUME_ID, 'provider_id': '101.101'}
+        scvol = {'instanceId': '102.101'}
+        mock_find_volume.return_value = scvol
+        mock_get_volume.return_value = scvol
+        connector = self.connector
+        sclivevol = {'instanceId': '101.10001',
+                     'primaryVolume': {'instanceId': '101.101',
+                                       'instanceName': fake.VOLUME_ID},
+                     'primaryScSerialNumber': 101,
+                     'secondaryVolume': {'instanceId': '102.101',
+                                         'instanceName': fake.VOLUME_ID},
+                     'secondaryScSerialNumber': 102,
+                     'secondaryRole': 'Activated'}
+        mock_is_live_vol.return_value = True
+        mock_get_live_vol.return_value = sclivevol
+        props = {
+            'access_mode': 'rw',
+            'target_discovered': False,
+            'target_iqn': u'iqn:1',
+            'target_iqns': [u'iqn:1',
+                            u'iqn:2'],
+            'target_lun': 1,
+            'target_luns': [1, 1],
+            'target_portal': u'192.168.1.21:3260',
+            'target_portals': [u'192.168.1.21:3260',
+                               u'192.168.1.22:3260']
+        }
+        mock_find_iscsi_props.return_value = props
+        ret = self.driver.initialize_connection(volume, connector)
+        expected = {'data': props,
+                    'driver_volume_type': 'iscsi'}
+        expected['data']['discard'] = True
+        self.assertEqual(expected, ret)
+        self.assertFalse(mock_initialize_secondary.called)
 
     @mock.patch.object(dell_storagecenter_iscsi.DellStorageCenterISCSIDriver,
                        '_get_replication_specs',
@@ -1230,9 +1296,10 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
         sclivevol = {'instanceId': '101.101',
                      'secondaryVolume': {'instanceId': '102.101',
                                          'instanceName': fake.VOLUME_ID},
-                     'secondaryScSerialNumber': 102}
+                     'secondaryScSerialNumber': 102,
+                     'secondaryRole': 'Secondary'}
         mock_is_live_vol.return_value = True
-        mock_get_live_vol.return_value = (sclivevol, False)
+        mock_get_live_vol.return_value = sclivevol
         connector = self.connector
         res = self.driver.terminate_connection(volume, connector)
         mock_unmap_volume.assert_called_once_with(self.VOLUME, self.SCSERVER)
@@ -2661,36 +2728,36 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                                        'instanceName': fake.VOLUME2_ID},
                      'secondaryVolume': {'instanceId': '102.101',
                                          'instanceName': fake.VOLUME_ID},
-                     'secondaryScSerialNumber': 102}
+                     'secondaryScSerialNumber': 102,
+                     'secondaryRole': 'Secondary'}
         postfail = {'instanceId': '101.100',
                     'primaryVolume': {'instanceId': '102.101',
                                       'instanceName': fake.VOLUME_ID},
                     'secondaryVolume': {'instanceId': '101.101',
                                         'instanceName': fake.VOLUME2_ID},
-                    'secondaryScSerialNumber': 102}
+                    'secondaryScSerialNumber': 102,
+                    'secondaryRole': 'Secondary'}
         mock_api.get_live_volume = mock.MagicMock()
-        mock_api.get_live_volume.side_effect = [(sclivevol, False),
-                                                (postfail, True),
-                                                (sclivevol, False),
-                                                (sclivevol, False)
-                                                ]
+        mock_api.get_live_volume.side_effect = [sclivevol, postfail,
+                                                sclivevol, sclivevol]
         # Good run.
+        mock_api.is_swapped = mock.MagicMock(return_value=False)
         mock_api.swap_roles_live_volume = mock.MagicMock(return_value=True)
         model_update = {'provider_id': '102.101',
                         'replication_status': 'failed-over'}
         ret = self.driver._failover_live_volume(mock_api, fake.VOLUME_ID,
-                                                '101.100')
+                                                '101.101')
         self.assertEqual(model_update, ret)
         # Swap fail
         mock_api.swap_roles_live_volume.return_value = False
         model_update = {'status': 'error'}
         ret = self.driver._failover_live_volume(mock_api, fake.VOLUME_ID,
-                                                '101.100')
+                                                '101.101')
         self.assertEqual(model_update, ret)
         # Can't find live volume.
-        mock_api.get_live_volume.return_value = (None, False)
+        mock_api.get_live_volume.return_value = None
         ret = self.driver._failover_live_volume(mock_api, fake.VOLUME_ID,
-                                                '101.100')
+                                                '101.101')
         self.assertEqual(model_update, ret)
 
     def test__failover_replication(self,
@@ -3206,16 +3273,16 @@ class DellSCSanISCSIDriverTestCase(test.TestCase):
                    {'id': fake.VOLUME2_ID,
                     'replication_driver_data': '12345',
                     'provider_id': '12345.2'}]
-        mock_get_live_volume.side_effect = [(
+        mock_get_live_volume.side_effect = [
             {'instanceId': '11111.101',
              'secondaryVolume': {'instanceId': '11111.1001',
                                  'instanceName': fake.VOLUME_ID},
-             'secondaryScSerialNumber': 11111}, True), (
+             'secondaryScSerialNumber': 11111},
             {'instanceId': '11111.102',
              'secondaryVolume': {'instanceId': '11111.1002',
                                  'instanceName': fake.VOLUME2_ID},
-             'secondaryScSerialNumber': 11111}, True
-        )]
+             'secondaryScSerialNumber': 11111}
+        ]
         mock_get_replication_specs.return_value = {'enabled': True,
                                                    'live': True}
         mock_swap_roles_live_volume.side_effect = [True, True]
