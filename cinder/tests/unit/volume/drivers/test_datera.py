@@ -23,7 +23,7 @@ from cinder.volume.drivers import datera
 from cinder.volume import volume_types
 
 
-datera.DEFAULT_SI_SLEEP = 0.01
+datera.DEFAULT_SI_SLEEP = 0
 URL_TEMPLATES = datera.URL_TEMPLATES
 OS_PREFIX = datera.OS_PREFIX
 UNMANAGE_PREFIX = datera.UNMANAGE_PREFIX
@@ -158,12 +158,11 @@ class DateraVolumeTestCase(test.TestCase):
                           self.driver.delete_volume, self.volume)
 
     def test_ensure_export_success(self):
-        with mock.patch('time.sleep'):
-            self.mock_api.side_effect = self._generate_fake_api_request()
-            ctxt = context.get_admin_context()
-            self.assertIsNone(self.driver.ensure_export(ctxt,
-                                                        self.volume,
-                                                        None))
+        self.mock_api.side_effect = self._generate_fake_api_request()
+        ctxt = context.get_admin_context()
+        self.assertIsNone(self.driver.ensure_export(ctxt,
+                                                    self.volume,
+                                                    None))
 
     def test_ensure_export_fails(self):
         self.mock_api.side_effect = exception.DateraAPIException
@@ -172,23 +171,21 @@ class DateraVolumeTestCase(test.TestCase):
                           self.driver.ensure_export, ctxt, self.volume, None)
 
     def test_create_export_target_does_not_exist_success(self):
-        with mock.patch('time.sleep'):
-            self.mock_api.side_effect = self._generate_fake_api_request(
-                targets_exist=False)
-            ctxt = context.get_admin_context()
-            self.assertIsNone(self.driver.create_export(ctxt,
-                                                        self.volume,
-                                                        None))
+        self.mock_api.side_effect = self._generate_fake_api_request(
+            targets_exist=False)
+        ctxt = context.get_admin_context()
+        self.assertIsNone(self.driver.create_export(ctxt,
+                                                    self.volume,
+                                                    None))
 
     def test_create_export_fails(self):
-        with mock.patch('time.sleep'):
-            self.mock_api.side_effect = exception.DateraAPIException
-            ctxt = context.get_admin_context()
-            self.assertRaises(exception.DateraAPIException,
-                              self.driver.create_export,
-                              ctxt,
-                              self.volume,
-                              None)
+        self.mock_api.side_effect = exception.DateraAPIException
+        ctxt = context.get_admin_context()
+        self.assertRaises(exception.DateraAPIException,
+                          self.driver.create_export,
+                          ctxt,
+                          self.volume,
+                          None)
 
     def test_initialize_connection_success(self):
         self.mock_api.side_effect = self._generate_fake_api_request()
