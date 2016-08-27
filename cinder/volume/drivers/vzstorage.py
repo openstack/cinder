@@ -23,6 +23,7 @@ from os_brick.remotefs import remotefs
 from oslo_concurrency import processutils as putils
 from oslo_config import cfg
 from oslo_log import log as logging
+from oslo_utils import imageutils
 from oslo_utils import units
 
 from cinder import exception
@@ -158,8 +159,31 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             vzstorage_mount_options=opts)
 
     def _qemu_img_info(self, path, volume_name):
-        return super(VZStorageDriver, self)._qemu_img_info_base(
-            path, volume_name, self.configuration.vzstorage_mount_point_base)
+        qemu_img_cache = path + ".qemu_img_info"
+        if os.path.isdir(path):
+            # 'parallels' disks stored along with metadata xml as directories
+            # qemu-img should explore base data file inside
+            path = os.path.join(path, PLOOP_BASE_DELTA_NAME)
+        if os.path.isfile(qemu_img_cache):
+            info_tm = os.stat(qemu_img_cache).st_mtime
+            snap_tm = os.stat(path).st_mtime
+        ret = None
+        if not os.path.isfile(qemu_img_cache) or snap_tm > info_tm:
+            LOG.debug("Cached qemu-img info %s not present or outdated,"
+                      " refresh", qemu_img_cache)
+            ret = super(VZStorageDriver, self)._qemu_img_info_base(
+                path, volume_name,
+                self.configuration.vzstorage_mount_point_base)
+            # We need only backing_file and file_format
+            d = {'file_format': ret.file_format,
+                 'backing_file': ret.backing_file}
+            with open(qemu_img_cache, "w") as f:
+                json.dump(d, f)
+        else:
+            ret = imageutils.QemuImgInfo()
+            with open(qemu_img_cache, "r") as f:
+                ret.__dict__ = json.load(f)
+        return ret
 
     @remotefs_drv.locked_volume_id_operation
     def initialize_connection(self, volume, connector):
@@ -297,9 +321,12 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                 self.configuration.vzstorage_default_volume_format)
 
     def get_volume_format(self, volume):
-        info_path = self._local_path_volume_info(volume)
-        snap_info = self._read_info_file(info_path)
-        return snap_info['volume_format']
+        active_file = self.get_active_image_from_info(volume)
+        active_file_path = os.path.join(self._local_volume_dir(volume),
+                                        active_file)
+
+        img_info = self._qemu_img_info(active_file_path, volume.name)
+        return img_info.file_format
 
     def _create_ploop(self, volume_path, volume_size):
         os.mkdir(volume_path)
@@ -312,7 +339,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             raise
 
     def _do_create_volume(self, volume):
-        """Create a volume on given smbfs_share.
+        """Create a volume on given vzstorage share.
 
         :param volume: volume reference
         """
@@ -337,9 +364,11 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             self._create_regular_file(volume_path, volume_size)
 
         info_path = self._local_path_volume_info(volume)
-        snap_info = {'volume_format': volume_format,
-                     'active': 'volume-%s' % volume.id}
+        snap_info = {'active': os.path.basename(volume_path)}
         self._write_info_file(info_path, snap_info)
+
+        # Query qemu-img info to cache the output
+        self._qemu_img_info(volume_path, volume.name)
 
     def _delete(self, path):
         self._execute('rm', '-rf', path, run_as_root=True)
@@ -418,6 +447,8 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         self._do_extend_volume(self.local_path(volume),
                                volume.size,
                                volume_format)
+        # Query qemu-img info to cache the output
+        self._qemu_img_info(self.local_path(volume), volume.name)
 
     def _copy_volume_from_snapshot(self, snapshot, volume, volume_size):
         """Copy data from snapshot to destination volume.
@@ -453,19 +484,15 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
             with PloopDevice(self.local_path(snapshot.volume),
                              snapshot.id,
                              execute=self._execute) as dev:
-                image_utils.convert_image(dev, volume_path, out_format)
+                base_file = os.path.join(volume_path, 'root.hds')
+                image_utils.convert_image(dev, base_file, out_format)
         else:
             msg = _("Unsupported volume format %s") % volume_format
             raise exception.InvalidVolume(msg)
 
-        if out_format == DISK_FORMAT_PLOOP:
-            img_path = os.path.join(volume_path, 'root.hds')
-            os.rename(volume_path, volume_path + '.tmp')
-            os.mkdir(volume_path)
-            os.rename(volume_path + '.tmp', img_path)
-            self._execute('ploop', 'restore-descriptor', volume_path, img_path)
-
         self._extend_volume(volume, volume_size, out_format)
+        # Query qemu-img info to cache the output
+        img_info = self._qemu_img_info(volume_path, volume.name)
 
     @remotefs_drv.locked_volume_id_operation
     def delete_volume(self, volume):
@@ -475,7 +502,6 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                      'specified, skipping.') % volume.name)
             LOG.error(msg)
             return
-#            raise exception.VzStorageException(msg)
 
         self._ensure_share_mounted(volume.provider_location)
         volume_dir = self._local_volume_dir(volume)
@@ -483,6 +509,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
                                     self.get_active_image_from_info(volume))
         if os.path.exists(mounted_path):
             self._delete(mounted_path)
+            self._delete(mounted_path + ".qemu_img_info")
         else:
             LOG.info(_LI("Skipping deletion of volume %s "
                          "as it does not exist."), mounted_path)
@@ -533,12 +560,68 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         else:
             super(VZStorageDriver, self)._create_snapshot(snapshot)
 
+    def _do_create_snapshot(self, snapshot, backing_filename,
+                            new_snap_path):
+        super(VZStorageDriver, self)._do_create_snapshot(snapshot,
+                                                         backing_filename,
+                                                         new_snap_path)
+        # Cache qemu-img info for created snapshot
+        self._qemu_img_info(new_snap_path, snapshot.volume.name)
+
     def delete_snapshot(self, snapshot):
+        info_path = self._local_path_volume_info(snapshot.volume)
+        snap_info = self._read_info_file(info_path, empty_if_missing=True)
+        snap_file = os.path.join(self._local_volume_dir(snapshot.volume),
+                                 snap_info[snapshot.id])
+        active_file = os.path.join(self._local_volume_dir(snapshot.volume),
+                                   snap_info['active'])
+        higher_file = self._get_higher_image_path(snapshot)
+        if higher_file:
+            higher_file = os.path.join(self._local_volume_dir(snapshot.volume),
+                                       higher_file)
+        elif active_file != snap_file:
+            msg = (_("Expected higher file exists for snapshot %s") %
+                   snapshot.id)
+            raise exception.VzStorageException(msg)
+
+        img_info = self._qemu_img_info(snap_file, snapshot.volume.name)
+        base_file = os.path.join(self._local_volume_dir(snapshot.volume),
+                                 img_info.backing_file)
         volume_format = self.get_volume_format(snapshot.volume)
+        online = snapshot.volume.status == 'in-use'
+
         if volume_format == 'parallels':
             self._delete_snapshot_ploop(snapshot)
         else:
             super(VZStorageDriver, self)._delete_snapshot(snapshot)
+
+        def _qemu_info_cache(fn):
+            return fn + ".qemu_img_info"
+
+        def _update_backing_file(info_src, info_dst):
+            with open(info_src, 'r') as fs, open(info_dst, 'r') as fd:
+                src = json.load(fs)
+                dst = json.load(fd)
+            dst['backing_file'] = src['backing_file']
+            with open(info_dst, 'w') as fdw:
+                json.dump(dst, fdw)
+
+        if volume_format == "qcow2":
+            if snap_file != active_file:
+                # mv snap_file.info higher_file.info
+                _update_backing_file(
+                    _qemu_info_cache(snap_file),
+                    _qemu_info_cache(higher_file))
+                self._delete(_qemu_info_cache(snap_file))
+            elif online:
+                # mv base_file.info snap_file.info
+                _update_backing_file(
+                    _qemu_info_cache(base_file),
+                    _qemu_info_cache(snap_file))
+                self._delete(_qemu_info_cache(base_file))
+            else:
+                # rm snap_file.info
+                self._delete(_qemu_info_cache(snap_file))
 
     def _copy_volume_to_image(self, context, volume, image_service,
                               image_meta):
@@ -586,8 +669,7 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         try:
             volume.provider_location = src_vref.provider_location
             info_path = self._local_path_volume_info(volume)
-            snap_info = {'volume_format': DISK_FORMAT_PLOOP,
-                         'active': 'volume-%s' % volume.id}
+            snap_info = {'active': 'volume-%s' % volume.id}
             self._write_info_file(info_path, snap_info)
             self._copy_volume_from_snapshot(temp_snapshot,
                                             volume,
@@ -599,10 +681,11 @@ class VZStorageDriver(remotefs_drv.RemoteFSSnapDriver):
         return {'provider_location': src_vref.provider_location}
 
     @remotefs_drv.locked_volume_id_operation
-    def create_cloned_volume(self, vol, src_vref):
+    def create_cloned_volume(self, volume, src_vref):
         """Creates a clone of the specified volume."""
         volume_format = self.get_volume_format(src_vref)
         if volume_format == 'parallels':
-            self._create_cloned_volume(vol, src_vref)
+            self._create_cloned_volume(volume, src_vref)
         else:
-            super(VZStorageDriver, self)._create_cloned_volume(vol, src_vref)
+            super(VZStorageDriver, self)._create_cloned_volume(volume,
+                                                               src_vref)
