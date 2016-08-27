@@ -342,7 +342,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
 
         self.assertEqual(target_details_list[2], result)
 
-    def test_get_pool_stats(self):
+    @ddt.data([], ['target_1', 'target_2'])
+    def test_get_pool_stats(self, replication_backends):
 
         ssc = {
             'vola': {
@@ -364,6 +365,8 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
         mock_get_aggrs = self.mock_object(self.library.ssc_library,
                                           'get_ssc_aggregates',
                                           mock.Mock(return_value=['aggr1']))
+        self.mock_object(self.library, 'get_replication_backend_names',
+                         mock.Mock(return_value=replication_backends))
 
         self.library.reserved_percentage = 5
         self.library.max_over_subscription_ratio = 10
@@ -414,7 +417,15 @@ class NetAppBlockStorageCmodeLibraryTestCase(test.TestCase):
             'netapp_aggregate': 'aggr1',
             'netapp_raid_type': 'raid_dp',
             'netapp_disk_type': 'SSD',
+            'replication_enabled': False,
         }]
+        if replication_backends:
+            expected[0].update({
+                'replication_enabled': True,
+                'replication_count': len(replication_backends),
+                'replication_targets': replication_backends,
+                'replication_type': 'async',
+            })
 
         self.assertEqual(expected, result)
         mock_get_ssc.assert_called_once_with()

@@ -143,7 +143,8 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         self.assertEqual(1, mock_debug_log.call_count)
         self.assertEqual(expected_stats, self.driver._stats)
 
-    def test_get_pool_stats(self):
+    @ddt.data([], ['target_1', 'target_2'])
+    def test_get_pool_stats(self, replication_backends):
 
         self.driver.zapi_client = mock.Mock()
         ssc = {
@@ -167,6 +168,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_aggrs = self.mock_object(self.driver.ssc_library,
                                           'get_ssc_aggregates',
                                           mock.Mock(return_value=['aggr1']))
+
+        self.mock_object(self.driver, 'get_replication_backend_names',
+                         mock.Mock(return_value=replication_backends))
 
         total_capacity_gb = na_utils.round_down(
             fake.TOTAL_BYTES // units.Gi, '0.01')
@@ -224,7 +228,15 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             'netapp_raid_type': 'raid_dp',
             'netapp_disk_type': 'SSD',
             'consistencygroup_support': True,
+            'replication_enabled': False,
         }]
+        if replication_backends:
+            expected[0].update({
+                'replication_enabled': True,
+                'replication_count': len(replication_backends),
+                'replication_targets': replication_backends,
+                'replication_type': 'async',
+            })
 
         self.assertEqual(expected, result)
         mock_get_ssc.assert_called_once_with()

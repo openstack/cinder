@@ -201,7 +201,9 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             filter_function=self.get_filter_function(),
             goodness_function=self.get_goodness_function())
         data['sparse_copy_volume'] = True
-        data.update(self.get_replication_backend_stats(self.configuration))
+
+        # Used for service state report
+        data['replication_enabled'] = self.replication_enabled
 
         self._spawn_clean_cache_job()
         self.zapi_client.provide_ems(self, netapp_backend, self._app_version)
@@ -257,6 +259,10 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             pool['utilization'] = na_utils.round_down(utilization)
             pool['filter_function'] = filter_function
             pool['goodness_function'] = goodness_function
+
+            # Add replication capabilities/stats
+            pool.update(
+                self.get_replication_backend_stats(self.configuration))
 
             pools.append(pool)
 
