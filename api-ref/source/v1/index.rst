@@ -1,8 +1,8 @@
 :tocdepth: 2
 
-===============
-Cinder API V1
-===============
+====================
+Block Storage API V1
+====================
 
 .. rest_expand_all::
 

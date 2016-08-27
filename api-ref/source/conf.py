@@ -28,6 +28,8 @@ import os
 import subprocess
 import sys
 
+import openstackdocstheme  # noqa
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -41,8 +43,7 @@ sys.path.insert(0, os.path.abspath('./'))
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
 
 extensions = [
-    'os_api_ref',
-    'oslosphinx',
+    'os_api_ref'
 ]
 
 # The suffix of source filenames.
@@ -56,7 +57,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'Cinder API Reference'
+project = u'Block Storage API Reference'
 copyright = u'OpenStack Foundation'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -110,6 +111,13 @@ pygments_style = 'sphinx'
 # Sphinx are currently 'default' and 'sphinxdoc'.
 # html_theme_path = ["."]
 # html_theme = '_theme'
+
+html_theme = 'openstackdocs'
+html_theme_path = [openstackdocstheme.get_html_theme_path()]
+html_theme_options = {
+    "sidebar_mode": "toc",
+}
+
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the

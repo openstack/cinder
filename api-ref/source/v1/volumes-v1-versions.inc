@@ -30,8 +30,8 @@ Response Example
    :language: javascript
 
 
-List API versions
-=================
+List API versions (v1)
+======================
 
 .. rest_method::  GET /
 
