@@ -113,14 +113,15 @@ class BaseBackupTest(test.TestCase):
                                 display_description='this is a test volume',
                                 status='backing-up',
                                 previous_status='available',
-                                size=1):
+                                size=1,
+                                host='testhost'):
         """Create a volume entry in the DB.
 
         Return the entry ID
         """
         vol = {}
         vol['size'] = size
-        vol['host'] = 'testhost'
+        vol['host'] = host
         vol['user_id'] = str(uuid.uuid4())
         vol['project_id'] = str(uuid.uuid4())
         vol['status'] = status
@@ -1470,6 +1471,20 @@ class BackupAPITestCase(BaseBackupTest):
                           description="test backup description",
                           volume_id=volume_id,
                           container='volumebackups')
+
+    @mock.patch('cinder.backup.rpcapi.BackupAPI.create_backup')
+    @mock.patch('cinder.backup.api.API._is_backup_service_enabled')
+    def test_create_backup_in_same_host(self, mock_is_enable,
+                                        mock_create):
+        self.override_config('backup_use_same_host', True)
+        mock_is_enable.return_value = True
+        self.ctxt.user_id = 'fake_user'
+        self.ctxt.project_id = 'fake_project'
+        volume_id = self._create_volume_db_entry(status='available',
+                                                 host='testhost#lvm',
+                                                 size=1)
+        backup = self.api.create(self.ctxt, None, None, volume_id, None)
+        self.assertEqual('testhost', backup.host)
 
     @mock.patch('cinder.backup.api.API._get_available_backup_service_host')
     @mock.patch('cinder.backup.rpcapi.BackupAPI.restore_backup')

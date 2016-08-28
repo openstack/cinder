@@ -40,6 +40,7 @@ from cinder import quota
 from cinder import quota_utils
 from cinder import utils
 import cinder.volume
+from cinder.volume import utils as volume_utils
 
 backup_api_opts = [
     cfg.BoolOpt('backup_use_same_host',
@@ -231,8 +232,9 @@ class API(base.Base):
             raise exception.InvalidSnapshot(reason=msg)
 
         previous_status = volume['status']
+        volume_host = volume_utils.extract_host(volume.host, 'host')
         host = self._get_available_backup_service_host(
-            None, volume.availability_zone)
+            volume_host, volume.availability_zone)
 
         # Reserve a quota before setting volume status and backup status
         try:
