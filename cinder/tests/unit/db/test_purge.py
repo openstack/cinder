@@ -60,6 +60,9 @@ class PurgeDeletedTest(test.TestCase):
         self.vgm = sqlalchemyutils.get_table(
             self.engine, "volume_glance_metadata")
 
+        self.qos = sqlalchemyutils.get_table(
+            self.engine, "quality_of_service_specs")
+
         self.uuidstrs = []
         for unused in range(6):
             self.uuidstrs.append(uuid.uuid4().hex)
@@ -87,6 +90,19 @@ class PurgeDeletedTest(test.TestCase):
 
             ins_stmt = self.vgm.insert().values(
                 snapshot_id=uuidstr, key='image_name', value='test')
+            self.conn.execute(ins_stmt)
+
+            ins_stmt = self.qos.insert().values(
+                id=uuidstr, key='QoS_Specs_Name', value='test')
+            self.conn.execute(ins_stmt)
+
+            ins_stmt = self.vol_types.insert().values(
+                id=uuid.uuid4().hex, qos_specs_id=uuidstr)
+            self.conn.execute(ins_stmt)
+
+            ins_stmt = self.qos.insert().values(
+                id=uuid.uuid4().hex, specs_id=uuidstr, key='desc',
+                value='test')
             self.conn.execute(ins_stmt)
 
         # Set 4 of them deleted, 2 are 60 days ago, 2 are 20 days ago
@@ -145,6 +161,25 @@ class PurgeDeletedTest(test.TestCase):
             where(self.vgm.c.snapshot_id.in_(self.uuidstrs[4:6]))\
             .values(deleted_at=older)
 
+        make_qos_old = self.qos.update().where(
+            self.qos.c.id.in_(self.uuidstrs[1:3])).values(deleted_at=old)
+        make_qos_older = self.qos.update().where(
+            self.qos.c.id.in_(self.uuidstrs[4:6])).values(deleted_at=older)
+
+        make_qos_child_record_old = self.qos.update().where(
+            self.qos.c.specs_id.in_(self.uuidstrs[1:3])).values(
+            deleted_at=old)
+        make_qos_child_record_older = self.qos.update().where(
+            self.qos.c.specs_id.in_(self.uuidstrs[4:6])).values(
+            deleted_at=older)
+
+        make_vol_types1_old = self.vol_types.update().where(
+            self.vol_types.c.qos_specs_id.in_(self.uuidstrs[1:3])).values(
+            deleted_at=old)
+        make_vol_types1_older = self.vol_types.update().where(
+            self.vol_types.c.qos_specs_id.in_(self.uuidstrs[4:6])).values(
+            deleted_at=older)
+
         self.conn.execute(make_vol_old)
         self.conn.execute(make_vol_older)
         self.conn.execute(make_vol_meta_old)
@@ -164,6 +199,15 @@ class PurgeDeletedTest(test.TestCase):
         self.conn.execute(make_vol_glance_meta_older)
         self.conn.execute(make_snap_glance_meta_old)
         self.conn.execute(make_snap_glance_meta_older)
+
+        self.conn.execute(make_qos_old)
+        self.conn.execute(make_qos_older)
+
+        self.conn.execute(make_qos_child_record_old)
+        self.conn.execute(make_qos_child_record_older)
+
+        self.conn.execute(make_vol_types1_old)
+        self.conn.execute(make_vol_types1_older)
 
     def test_purge_deleted_rows_old(self):
         dialect = self.engine.url.get_dialect()
@@ -186,15 +230,17 @@ class PurgeDeletedTest(test.TestCase):
         snap_rows = self.session.query(self.snapshots).count()
         snap_meta_rows = self.session.query(self.sm).count()
         vol_glance_meta_rows = self.session.query(self.vgm).count()
+        qos_rows = self.session.query(self.qos).count()
 
         # Verify that we only deleted 2
         self.assertEqual(4, vol_rows)
         self.assertEqual(4, vol_meta_rows)
-        self.assertEqual(4, vol_type_rows)
+        self.assertEqual(8, vol_type_rows)
         self.assertEqual(4, vol_type_proj_rows)
         self.assertEqual(4, snap_rows)
         self.assertEqual(4, snap_meta_rows)
         self.assertEqual(8, vol_glance_meta_rows)
+        self.assertEqual(8, qos_rows)
 
     def test_purge_deleted_rows_older(self):
         dialect = self.engine.url.get_dialect()
@@ -217,15 +263,17 @@ class PurgeDeletedTest(test.TestCase):
         snap_rows = self.session.query(self.snapshots).count()
         snap_meta_rows = self.session.query(self.sm).count()
         vol_glance_meta_rows = self.session.query(self.vgm).count()
+        qos_rows = self.session.query(self.qos).count()
 
         # Verify that we only have 2 rows now
         self.assertEqual(2, vol_rows)
         self.assertEqual(2, vol_meta_rows)
-        self.assertEqual(2, vol_type_rows)
+        self.assertEqual(4, vol_type_rows)
         self.assertEqual(2, vol_type_proj_rows)
         self.assertEqual(2, snap_rows)
         self.assertEqual(2, snap_meta_rows)
         self.assertEqual(4, vol_glance_meta_rows)
+        self.assertEqual(4, qos_rows)
 
     def test_purge_deleted_rows_bad_args(self):
         # Test with no age argument

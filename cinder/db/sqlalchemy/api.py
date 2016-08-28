@@ -5520,7 +5520,8 @@ def purge_deleted_rows(context, age_in_days):
 
     # Reorder the list so the volumes and volume_types tables are last
     # to avoid FK constraints
-    for table in ("volume_types", "snapshots", "volumes", "clusters"):
+    for table in ("volume_types", "quality_of_service_specs",
+                  "snapshots", "volumes", "clusters"):
         tables.remove(table)
         tables.append(table)
 
@@ -5532,6 +5533,14 @@ def purge_deleted_rows(context, age_in_days):
         deleted_age = timeutils.utcnow() - dt.timedelta(days=age_in_days)
         try:
             with session.begin():
+                # Delete child records first from quality_of_service_specs
+                # table to avoid FK constraints
+                if table == "quality_of_service_specs":
+                    session.query(models.QualityOfServiceSpecs).filter(
+                        and_(models.QualityOfServiceSpecs.specs_id.isnot(
+                            None), models.QualityOfServiceSpecs.deleted == 1,
+                            models.QualityOfServiceSpecs.deleted_at <
+                            deleted_age)).delete()
                 result = session.execute(
                     t.delete()
                     .where(t.c.deleted_at < deleted_age))
