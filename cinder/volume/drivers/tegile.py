@@ -152,6 +152,9 @@ class TegileIntelliFlashVolumeDriver(san.SanDriver):
                         'san_password', 'tegile_default_pool']
     SNAPSHOT_PREFIX = 'Manual-V-'
 
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = "Tegile_Storage_CI"
+
     _api_executor = None
 
     def __init__(self, *args, **kwargs):
