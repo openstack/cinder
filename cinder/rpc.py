@@ -206,11 +206,7 @@ class RPCAPI(object):
 
         version_cap = objects.Service.get_minimum_rpc_version(
             cinder.context.get_admin_context(), cls.BINARY)
-        if version_cap == 'liberty':
-            # NOTE(dulek): This means that one of the services is Liberty,
-            # we should cap to it's RPC version.
-            version_cap = LIBERTY_RPC_VERSIONS[cls.BINARY]
-        elif not version_cap:
+        if not version_cap:
             # If there is no service we assume they will come up later and will
             # have the same version as we do.
             version_cap = cls.RPC_API_VERSION
@@ -237,18 +233,3 @@ class RPCAPI(object):
                  {'binary': cls.BINARY, 'version': version_cap})
         LAST_OBJ_VERSIONS[cls.BINARY] = version_cap
         return version_cap
-
-
-# FIXME(dulek): Liberty haven't reported its RPC versions, so we need to have
-# them hardcoded. This dict may go away as soon as we drop compatibility with
-# L, which should be in early N.
-#
-# This is the only time we need to have such dictionary. We don't need to add
-# similar ones for any release following Liberty.
-LIBERTY_RPC_VERSIONS = {
-    'cinder-volume': '1.30',
-    'cinder-scheduler': '1.8',
-    # NOTE(dulek) backup.manager had specified version '1.2', but backup.rpcapi
-    # was really only sending messages up to '1.1'.
-    'cinder-backup': '1.1',
-}

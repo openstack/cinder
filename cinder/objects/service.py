@@ -164,12 +164,13 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         for s in services:
             ver_str = getattr(s, attribute)
             if ver_str is None:
-                # FIXME(dulek) None in *_current_version means that this
-                # service is in Liberty version, so we must assume this is the
-                # lowest one. We use handy and easy to remember token to
-                # indicate that. This may go away as soon as we drop
-                # compatibility with Liberty, possibly in early N.
-                return 'liberty'
+                # NOTE(dulek) None in *_current_version means that this
+                # service is in Liberty version, which we now don't provide
+                # backward compatibility to.
+                msg = _('One of the services is in Liberty version. We do not '
+                        'provide backward compatibility with Liberty now, you '
+                        'need to upgrade to Mitaka first.')
+                raise exception.ServiceTooOld(msg)
             ver = versionutils.convert_version_to_int(ver_str)
             if min_ver is None or ver < min_ver:
                 min_ver = ver

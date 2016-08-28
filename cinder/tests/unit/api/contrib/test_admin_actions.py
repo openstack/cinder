@@ -26,6 +26,7 @@ from cinder import context
 from cinder import db
 from cinder import exception
 from cinder import objects
+from cinder.objects import base as obj_base
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api.contrib import test_backups
@@ -35,6 +36,7 @@ from cinder.tests.unit import cast_as_call
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import fake_snapshot
 from cinder.volume import api as volume_api
+from cinder.volume import rpcapi
 
 CONF = cfg.CONF
 
@@ -84,6 +86,11 @@ class AdminActionsTest(BaseAdminTest):
 
         # start service to handle rpc messages for attach requests
         self.svc = self.start_service('volume', host='test')
+        self.patch(
+            'cinder.objects.Service.get_minimum_obj_version',
+            return_value=obj_base.OBJ_VERSIONS.get_current())
+        self.patch('cinder.objects.Service.get_minimum_rpc_version',
+                   return_value=rpcapi.VolumeAPI.RPC_API_VERSION)
 
     def tearDown(self):
         self.svc.stop()

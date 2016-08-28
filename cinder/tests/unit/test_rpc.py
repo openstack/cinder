@@ -50,22 +50,6 @@ class RPCAPITestCase(test.TestCase):
         FakeAPI()
 
     @mock.patch('cinder.objects.Service.get_minimum_rpc_version',
-                return_value='liberty')
-    @mock.patch('cinder.objects.Service.get_minimum_obj_version',
-                return_value='liberty')
-    @mock.patch('cinder.rpc.get_client')
-    def test_init_liberty_caps(self, get_client, get_min_obj, get_min_rpc):
-        def fake_get_client(target, version_cap, serializer):
-            self.assertEqual(FakeAPI.TOPIC, target.topic)
-            self.assertEqual(FakeAPI.RPC_API_VERSION, target.version)
-            self.assertEqual(rpc.LIBERTY_RPC_VERSIONS[FakeAPI.BINARY],
-                             version_cap)
-            self.assertEqual('liberty', serializer.version_cap)
-
-        get_client.side_effect = fake_get_client
-        FakeAPI()
-
-    @mock.patch('cinder.objects.Service.get_minimum_rpc_version',
                 return_value=None)
     @mock.patch('cinder.objects.Service.get_minimum_obj_version',
                 return_value=None)

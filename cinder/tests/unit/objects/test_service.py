@@ -17,6 +17,7 @@ from oslo_utils import timeutils
 import pytz
 import six
 
+from cinder import exception
 from cinder import objects
 from cinder.tests.unit import fake_service
 from cinder.tests.unit import objects as test_objects
@@ -112,8 +113,13 @@ class TestService(test_objects.BaseObjectsTestCase):
                                       mock.call(self.context, 123)])
 
     @mock.patch('cinder.db.service_get_all')
-    def _test_get_minimum_version(self, services_update, expected,
-                                  service_get_all):
+    def test_get_minimum_version(self, service_get_all):
+        services_update = [
+            {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
+            {'rpc_current_version': '1.1', 'object_current_version': '1.2'},
+            {'rpc_current_version': '2.0', 'object_current_version': '2.5'},
+        ]
+        expected = ('1.0', '1.2')
         services = [fake_service.fake_db_service(**s) for s in services_update]
         service_get_all.return_value = services
 
@@ -125,24 +131,21 @@ class TestService(test_objects.BaseObjectsTestCase):
             [mock.call(self.context, binary='foo', disabled=None)] * 2)
 
     @mock.patch('cinder.db.service_get_all')
-    def test_get_minimum_version(self, service_get_all):
-        services_update = [
-            {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
-            {'rpc_current_version': '1.1', 'object_current_version': '1.2'},
-            {'rpc_current_version': '2.0', 'object_current_version': '2.5'},
-        ]
-        expected = ('1.0', '1.2')
-        self._test_get_minimum_version(services_update, expected)
-
-    @mock.patch('cinder.db.service_get_all')
     def test_get_minimum_version_liberty(self, service_get_all):
         services_update = [
             {'rpc_current_version': '1.0', 'object_current_version': '1.3'},
             {'rpc_current_version': '1.1', 'object_current_version': None},
             {'rpc_current_version': None, 'object_current_version': '2.5'},
         ]
-        expected = ('liberty', 'liberty')
-        self._test_get_minimum_version(services_update, expected)
+        services = [fake_service.fake_db_service(**s) for s in services_update]
+        service_get_all.return_value = services
+
+        self.assertRaises(exception.ServiceTooOld,
+                          objects.Service.get_minimum_rpc_version,
+                          self.context, 'foo')
+        self.assertRaises(exception.ServiceTooOld,
+                          objects.Service.get_minimum_obj_version,
+                          self.context, 'foo')
 
 
 class TestServiceList(test_objects.BaseObjectsTestCase):
