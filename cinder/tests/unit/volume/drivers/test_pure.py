@@ -23,6 +23,7 @@ from oslo_utils import units
 from cinder import exception
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 
 
@@ -323,6 +324,108 @@ REPLICATED_VOL_TYPE = {"is_public": True,
                         "<is> True"},
                        "name": "volume_type_2",
                        "id": VOLUME_TYPE_ID}
+MANAGEABLE_PURE_VOLS = [
+    {
+        'name': 'myVol1',
+        'serial': '8E9C7E588B16C1EA00048CCA',
+        'size': 3221225472,
+        'created': '2016-08-05T17:26:34Z',
+        'source': None,
+    },
+    {
+        'name': 'myVol2',
+        'serial': '8E9C7E588B16C1EA00048CCB',
+        'size': 3221225472,
+        'created': '2016-08-05T17:26:34Z',
+        'source': None,
+    },
+    {
+        'name': 'myVol3',
+        'serial': '8E9C7E588B16C1EA00048CCD',
+        'size': 3221225472,
+        'created': '2016-08-05T17:26:34Z',
+        'source': None,
+    }
+]
+MANAGEABLE_PURE_VOL_REFS = [
+    {
+        'reference': {'name': 'myVol1'},
+        'size': 3,
+        'safe_to_manage': True,
+        'reason_not_safe': None,
+        'cinder_id': None,
+        'extra_info': None,
+    },
+    {
+        'reference': {'name': 'myVol2'},
+        'size': 3,
+        'safe_to_manage': True,
+        'reason_not_safe': None,
+        'cinder_id': None,
+        'extra_info': None,
+    },
+    {
+        'reference': {'name': 'myVol3'},
+        'size': 3,
+        'safe_to_manage': True,
+        'reason_not_safe': None,
+        'cinder_id': None,
+        'extra_info': None,
+    }
+]
+
+MANAGEABLE_PURE_SNAPS = [
+    {
+        'name': 'volume-fd33de6e-56f6-452d-a7b6-451c11089a9f-cinder.snap1',
+        'serial': '8E9C7E588B16C1EA00048CCA',
+        'size': 3221225472,
+        'created': '2016-08-05T17:26:34Z',
+        'source': 'volume-fd33de6e-56f6-452d-a7b6-451c11089a9f-cinder',
+    },
+    {
+        'name': 'volume-fd33de6e-56f6-452d-a7b6-451c11089a9f-cinder.snap2',
+        'serial': '8E9C7E588B16C1EA00048CCB',
+        'size': 4221225472,
+        'created': '2016-08-05T17:26:34Z',
+        'source': 'volume-fd33de6e-56f6-452d-a7b6-451c11089a9f-cinder',
+    },
+    {
+        'name': 'volume-fd33de6e-56f6-452d-a7b6-451c11089a9f-cinder.snap3',
+        'serial': '8E9C7E588B16C1EA00048CCD',
+        'size': 5221225472,
+        'created': '2016-08-05T17:26:34Z',
+        'source': 'volume-fd33de6e-56f6-452d-a7b6-451c11089a9f-cinder',
+    }
+]
+MANAGEABLE_PURE_SNAP_REFS = [
+    {
+        'reference': {'name': MANAGEABLE_PURE_SNAPS[0]['name']},
+        'size': 3,
+        'safe_to_manage': True,
+        'reason_not_safe': None,
+        'cinder_id': None,
+        'extra_info': None,
+        'source_reference': {'name': MANAGEABLE_PURE_SNAPS[0]['source']},
+    },
+    {
+        'reference': {'name': MANAGEABLE_PURE_SNAPS[1]['name']},
+        'size': 4,
+        'safe_to_manage': True,
+        'reason_not_safe': None,
+        'cinder_id': None,
+        'extra_info': None,
+        'source_reference': {'name': MANAGEABLE_PURE_SNAPS[1]['source']},
+    },
+    {
+        'reference': {'name': MANAGEABLE_PURE_SNAPS[2]['name']},
+        'size': 5,
+        'safe_to_manage': True,
+        'reason_not_safe': None,
+        'cinder_id': None,
+        'extra_info': None,
+        'source_reference': {'name': MANAGEABLE_PURE_SNAPS[2]['source']},
+    }
+]
 
 
 class FakePureStorageHTTPError(Exception):
@@ -1551,6 +1654,136 @@ class PureBaseVolumeDriverTestCase(PureBaseSharedDriverTestCase):
         expected = (True, None)
         self.assertEqual(expected, actual)
         return context, volume
+
+    def _test_get_manageable_things(self,
+                                    pure_objs=MANAGEABLE_PURE_VOLS,
+                                    expected_refs=MANAGEABLE_PURE_VOL_REFS,
+                                    pure_hosts=list(),
+                                    cinder_objs=list(),
+                                    is_snapshot=False):
+        self.array.list_volumes.return_value = pure_objs
+        self.array.list_hosts.return_value = pure_hosts
+        marker = mock.Mock()
+        limit = mock.Mock()
+        offset = mock.Mock()
+        sort_keys = mock.Mock()
+        sort_dirs = mock.Mock()
+
+        with mock.patch('cinder.volume.utils.paginate_entries_list') as mpage:
+            if is_snapshot:
+                test_func = self.driver.get_manageable_snapshots
+            else:
+                test_func = self.driver.get_manageable_volumes
+            test_func(cinder_objs, marker, limit, offset, sort_keys, sort_dirs)
+            mpage.assert_called_once_with(
+                expected_refs,
+                marker,
+                limit,
+                offset,
+                sort_keys,
+                sort_dirs
+            )
+
+    def test_get_manageable_volumes(self,):
+        """Default success case.
+
+        Given a list of pure volumes from the REST API, give back a list
+        of volume references.
+        """
+        self._test_get_manageable_things(pure_hosts=[PURE_HOST])
+
+    def test_get_manageable_volumes_connected_vol(self):
+        """Make sure volumes connected to hosts are flagged as unsafe."""
+        connected_host = deepcopy(PURE_HOST)
+        connected_host['name'] = 'host2'
+        connected_host['vol'] = MANAGEABLE_PURE_VOLS[0]['name']
+        pure_hosts = [PURE_HOST, connected_host]
+
+        expected_refs = deepcopy(MANAGEABLE_PURE_VOL_REFS)
+        expected_refs[0]['safe_to_manage'] = False
+        expected_refs[0]['reason_not_safe'] = 'Volume connected to host host2.'
+
+        self._test_get_manageable_things(expected_refs=expected_refs,
+                                         pure_hosts=pure_hosts)
+
+    def test_get_manageable_volumes_already_managed(self):
+        """Make sure volumes already owned by cinder are flagged as unsafe."""
+        cinder_vol = fake_volume.fake_volume_obj(mock.MagicMock())
+        cinder_vol.id = VOLUME_ID
+        cinders_vols = [cinder_vol]
+
+        # Have one of our vol names match up with the existing cinder volume
+        purity_vols = deepcopy(MANAGEABLE_PURE_VOLS)
+        purity_vols[0]['name'] = 'volume-' + VOLUME_ID + '-cinder'
+
+        expected_refs = deepcopy(MANAGEABLE_PURE_VOL_REFS)
+        expected_refs[0]['reference'] = {'name': purity_vols[0]['name']}
+        expected_refs[0]['safe_to_manage'] = False
+        expected_refs[0]['reason_not_safe'] = 'Volume already managed.'
+        expected_refs[0]['cinder_id'] = VOLUME_ID
+
+        self._test_get_manageable_things(pure_objs=purity_vols,
+                                         expected_refs=expected_refs,
+                                         pure_hosts=[PURE_HOST],
+                                         cinder_objs=cinders_vols)
+
+    def test_get_manageable_volumes_no_pure_volumes(self):
+        """Expect no refs to be found if no volumes are on Purity."""
+        self._test_get_manageable_things(pure_objs=[],
+                                         expected_refs=[],
+                                         pure_hosts=[PURE_HOST])
+
+    def test_get_manageable_volumes_no_hosts(self):
+        """Success case with no hosts on Purity."""
+        self._test_get_manageable_things(pure_hosts=[])
+
+    def test_get_manageable_snapshots(self):
+        """Default success case.
+
+        Given a list of pure snapshots from the REST API, give back a list
+        of snapshot references.
+        """
+        self._test_get_manageable_things(
+            pure_objs=MANAGEABLE_PURE_SNAPS,
+            expected_refs=MANAGEABLE_PURE_SNAP_REFS,
+            pure_hosts=[PURE_HOST],
+            is_snapshot=True
+        )
+
+    def test_get_manageable_snapshots_already_managed(self):
+        """Make sure snaps already owned by cinder are flagged as unsafe."""
+        cinder_vol = fake_volume.fake_volume_obj(mock.MagicMock())
+        cinder_vol.id = VOLUME_ID
+        cinder_snap = fake_snapshot.fake_snapshot_obj(mock.MagicMock())
+        cinder_snap.id = SNAPSHOT_ID
+        cinder_snap.volume = cinder_vol
+        cinder_snaps = [cinder_snap]
+
+        purity_snaps = deepcopy(MANAGEABLE_PURE_SNAPS)
+        purity_snaps[0]['name'] = 'volume-%s-cinder.snapshot-%s' % (
+            VOLUME_ID, SNAPSHOT_ID
+        )
+
+        expected_refs = deepcopy(MANAGEABLE_PURE_SNAP_REFS)
+        expected_refs[0]['reference'] = {'name': purity_snaps[0]['name']}
+        expected_refs[0]['safe_to_manage'] = False
+        expected_refs[0]['reason_not_safe'] = 'Snapshot already managed.'
+        expected_refs[0]['cinder_id'] = SNAPSHOT_ID
+
+        self._test_get_manageable_things(
+            pure_objs=purity_snaps,
+            expected_refs=expected_refs,
+            cinder_objs=cinder_snaps,
+            pure_hosts=[PURE_HOST],
+            is_snapshot=True
+        )
+
+    def test_get_manageable_snapshots_no_pure_snapshots(self):
+        """Expect no refs to be found if no snapshots are on Purity."""
+        self._test_get_manageable_things(pure_objs=[],
+                                         expected_refs=[],
+                                         pure_hosts=[PURE_HOST],
+                                         is_snapshot=True)
 
     @mock.patch(BASE_DRIVER_OBJ + '._is_volume_replicated_type', autospec=True)
     def test_retype_repl_to_repl(self, mock_is_replicated_type):
