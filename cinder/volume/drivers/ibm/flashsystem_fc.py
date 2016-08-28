@@ -79,9 +79,11 @@ class FlashSystemFCDriver(fscommon.FlashSystemDriver):
         1.0.10 - Fix bug #1585085, add host name check in
                  _find_host_exhaustive for iSCSI
         1.0.11 - Update driver to use ABC metaclasses
+        1.0.12 - Update driver to support Manage/Unmanage
+                 existing volume
     """
 
-    VERSION = "1.0.11"
+    VERSION = "1.0.12"
 
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "IBM_FlashSystem_CI"

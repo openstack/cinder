@@ -344,3 +344,78 @@ class FlashSystemISCSIDriverTestCase(test.TestCase):
         self.driver._delete_host(host2)
         self.sim.set_protocol('iSCSI')
         self._reset_flags()
+
+    def test_flashsystem_manage_existing(self):
+        # case 1: manage a vdisk good path
+        kwargs = {'name': u'unmanage-vol-01', 'size': u'1', 'unit': 'gb'}
+        self.sim._cmd_mkvdisk(**kwargs)
+        vol1 = self._generate_vol_info(None)
+        existing_ref = {'source-name': u'unmanage-vol-01'}
+        self.driver.manage_existing(vol1, existing_ref)
+        self.driver.delete_volume(vol1)
+
+        # case 2: manage a vdisk not exist
+        vol1 = self._generate_vol_info(None)
+        existing_ref = {'source-name': u'unmanage-vol-01'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, vol1, existing_ref)
+
+        # case 3: manage a vdisk without name and uid
+        kwargs = {'name': u'unmanage-vol-01', 'size': u'1', 'unit': 'gb'}
+        self.sim._cmd_mkvdisk(**kwargs)
+        vol1 = self._generate_vol_info(None)
+        existing_ref = {}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing, vol1, existing_ref)
+        vdisk1 = {'obj': u'unmanage-vol-01'}
+        self.sim._cmd_rmvdisk(**vdisk1)
+
+    @mock.patch.object(flashsystem_iscsi.FlashSystemISCSIDriver,
+                       '_get_vdiskhost_mappings')
+    def test_flashsystem_manage_existing_get_size_mapped(
+            self,
+            _get_vdiskhost_mappings_mock):
+        # case 2: manage a vdisk with mappings
+        _get_vdiskhost_mappings_mock.return_value = {'mapped': u'yes'}
+        kwargs = {'name': u'unmanage-vol-01', 'size': u'1', 'unit': 'gb'}
+        self.sim._cmd_mkvdisk(**kwargs)
+        vol1 = self._generate_vol_info(None)
+        existing_ref = {'source-name': u'unmanage-vol-01'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          vol1,
+                          existing_ref)
+
+        # clean environment
+        vdisk1 = {'obj': u'unmanage-vol-01'}
+        self.sim._cmd_rmvdisk(**vdisk1)
+
+    def test_flashsystem_manage_existing_get_size_bad_ref(self):
+        # bad existing_ref
+        vol1 = self._generate_vol_info(None, None)
+        existing_ref = {}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size, vol1,
+                          existing_ref)
+
+    def test_flashsystem_manage_existing_get_size_vdisk_not_exist(self):
+        # vdisk not exist
+        vol1 = self._generate_vol_info(None)
+        existing_ref = {'source-name': u'unmanage-vol-01'}
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          vol1,
+                          existing_ref)
+
+    def test_flashsystem_manage_existing_get_size(self):
+        # good path
+        kwargs = {'name': u'unmanage-vol-01', 'size': u'10001', 'unit': 'gb'}
+        self.sim._cmd_mkvdisk(**kwargs)
+        vol1 = self._generate_vol_info(None)
+        existing_ref = {'source-name': u'unmanage-vol-01'}
+        vdisk_size = self.driver.manage_existing_get_size(vol1, existing_ref)
+        self.assertEqual(10001, vdisk_size)
+
+        # clean environment
+        vdisk1 = {'obj': u'unmanage-vol-01'}
+        self.sim._cmd_rmvdisk(**vdisk1)
