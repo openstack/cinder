@@ -9,8 +9,8 @@ Administrators only, depending on policy settings.
 Shows, updates, and deletes quotas for a tenant.
 
 
-Show quota details for user
-===========================
+Show quota details for user (v1)
+================================
 
 .. rest_method::  GET /v1/{tenant_id}/os-quota-sets/{tenant_id}/detail/{user_id}
 
@@ -106,8 +106,8 @@ Response Example
    :language: javascript
 
 
-Show quotas
-===========
+Show quotas (v1)
+================
 
 .. rest_method::  GET /v1/{tenant_id}/os-quota-sets/{tenant_id}
 
@@ -157,8 +157,8 @@ Response Example
    :language: javascript
 
 
-Update quotas
-=============
+Update quotas (v1)
+==================
 
 .. rest_method::  PUT /v1/{tenant_id}/os-quota-sets/{tenant_id}
 
@@ -227,8 +227,8 @@ Response Example
    :language: javascript
 
 
-Delete quotas
-=============
+Delete quotas (v1)
+==================
 
 .. rest_method::  DELETE /v1/{tenant_id}/os-quota-sets/{tenant_id}
 
@@ -250,8 +250,8 @@ Response Example
 .. literalinclude:: ./samples/user-quotas-delete-response.json
    :language: javascript
 
-Show quotas for user
-====================
+Show quotas for user (v1)
+=========================
 
 .. rest_method::  GET /v1/{tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
@@ -304,8 +304,8 @@ Response Example
 
 
 
-Update quotas for user
-======================
+Update quotas for user (v1)
+===========================
 
 .. rest_method::  POST /v1/{tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 
@@ -375,8 +375,8 @@ Response Example
    :language: javascript
 
 
-Delete quotas for user
-======================
+Delete quotas for user (v1)
+===========================
 
 .. rest_method::  DELETE /v1/{tenant_id}/os-quota-sets/{tenant_id}/{user_id}
 

@@ -10,8 +10,8 @@ volume was not created from a snapshot or source volume, these
 values are null.
 
 
-List volumes, with details
-==========================
+List volumes, with details (v1)
+===============================
 
 .. rest_method::  GET /v1/{tenant_id}/volumes/detail
 
@@ -65,8 +65,8 @@ Response Example
    :language: javascript
 
 
-Create volume
-=============
+Create volume (v1)
+==================
 
 .. rest_method::  POST /v1/{tenant_id}/volumes
 
@@ -122,8 +122,8 @@ Response Parameters
    - metadata: metadata
 
 
-List volumes
-============
+List volumes (v1)
+=================
 
 .. rest_method::  GET /v1/{tenant_id}/volumes
 
@@ -160,8 +160,8 @@ Response Example
    :language: javascript
 
 
-Show volume details
-===================
+Show volume details (v1)
+========================
 
 .. rest_method::  GET /v1/{tenant_id}/volumes/{volume_id}
 
@@ -215,8 +215,8 @@ Response Example
 .. literalinclude:: ./samples/volume-show-response.json
    :language: javascript
 
-Delete volume
-=============
+Delete volume (v1)
+==================
 
 .. rest_method::  DELETE /v1/{tenant_id}/volumes/{volume_id}
 

@@ -1,8 +1,8 @@
 :tocdepth: 2
 
-==============
- Volume API V2
-==============
+====================
+Block Storage API V2
+====================
 
 .. rest_expand_all::
 
