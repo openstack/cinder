@@ -100,7 +100,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def get_local_and_remote_dev_conf(self):
         self.loc_dev_conf = self.huawei_conf.get_local_device()
 
-        # Now just support one replication_devices.
+        # Now just support one replication device.
         replica_devs = self.huawei_conf.get_replication_devices()
         self.replica_dev_conf = replica_devs[0] if replica_devs else {}
 
@@ -254,7 +254,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         opts.update(opts_value)
 
         for key, value in specs.items():
-            # Get the scope, if is using scope format.
+            # Get the scope, if it is using scope format.
             scope = None
             key_split = key.split(':')
             if len(key_split) > 2 and key_split[0] != "capabilities":
@@ -326,7 +326,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def _create_base_type_volume(self, opts, volume, volume_type):
         """Create volume and add some base type.
 
-        Base type is the services won't conflict with the other service.
+        Base type is the service type which doesn't conflict with the other.
         """
         lun_params = self._get_lun_params(volume, opts)
         lun_info, model_update = self._create_volume(volume, lun_params)
@@ -354,8 +354,8 @@ class HuaweiBaseDriver(driver.VolumeDriver):
                                    model_update):
         """Add the extend type.
 
-        Extend type is the services may conflict with LUNCopy.
-        So add it after the those services.
+        Extend type is the service type which may conflict with the other.
+        So add it after those services.
         """
         lun_id = lun_info['ID']
         if opts.get('hypermetro') == 'true':
@@ -556,7 +556,7 @@ class HuaweiBaseDriver(driver.VolumeDriver):
             LOG.error(_LE('Unable to rename lun %s on array.'), current_name)
             return {'_name_id': new_volume.name_id}
 
-        LOG.debug("Rename lun from %(current_name)s to %(original_name)s "
+        LOG.debug("Renamed lun from %(current_name)s to %(original_name)s "
                   "successfully.",
                   {'current_name': current_name,
                    'original_name': original_name})
