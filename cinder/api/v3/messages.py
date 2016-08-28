@@ -13,7 +13,6 @@
 """The messages API."""
 
 
-from oslo_config import cfg
 import webob
 
 from cinder.api import common
@@ -23,7 +22,6 @@ from cinder.message import api as message_api
 from cinder.message import defined_messages
 import cinder.policy
 
-CONF = cfg.CONF
 
 MESSAGES_BASE_MICRO_VERSION = '3.3'
 
