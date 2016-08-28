@@ -162,7 +162,9 @@ class NovaApiTestCase(test.TestCase):
             self.api.update_server_volume(self.ctx, 'server_id',
                                           'attach_id', 'new_volume_id')
 
-        mock_novaclient.assert_called_once_with(self.ctx)
+        mock_novaclient.assert_called_once_with(self.ctx,
+                                                admin_endpoint=True,
+                                                privileged_user=True)
         mock_update_server_volume.assert_called_once_with(
             'server_id',
             'attach_id',
