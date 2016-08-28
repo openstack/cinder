@@ -231,10 +231,14 @@ class Service(service.Service):
 
         LOG.debug("Creating RPC server for service %s", self.topic)
 
+        ctxt = context.get_admin_context()
         target = messaging.Target(topic=self.topic, server=self.host)
         endpoints = [self.manager]
         endpoints.extend(self.manager.additional_endpoints)
-        serializer = objects_base.CinderObjectSerializer()
+        obj_version_cap = objects.Service.get_minimum_obj_version(ctxt)
+        LOG.debug("Pinning object versions for RPC server serializer to %s",
+                  obj_version_cap)
+        serializer = objects_base.CinderObjectSerializer(obj_version_cap)
         self.rpcserver = rpc.get_server(target, endpoints, serializer)
         self.rpcserver.start()
 
@@ -245,7 +249,7 @@ class Service(service.Service):
                      {'topic': self.topic, 'version': version_string,
                       'cluster': self.cluster})
             target = messaging.Target(topic=self.topic, server=self.cluster)
-            serializer = objects_base.CinderObjectSerializer()
+            serializer = objects_base.CinderObjectSerializer(obj_version_cap)
             self.cluster_rpcserver = rpc.get_server(target, endpoints,
                                                     serializer)
             self.cluster_rpcserver.start()

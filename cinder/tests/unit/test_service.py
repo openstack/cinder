@@ -458,7 +458,7 @@ class ServiceTestCase(test.TestCase):
                                      cluster=None, topic=self.topic)
         self._check_rpc_servers_and_init_host(app, True, None)
 
-    @ddt.data('1.3', '1.8')
+    @ddt.data('1.3', '1.7')
     @mock.patch('cinder.objects.Service.get_minimum_obj_version')
     def test_start_rpc_and_init_host_cluster(self, obj_version,
                                              get_min_obj_mock):
