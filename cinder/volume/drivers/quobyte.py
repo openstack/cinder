@@ -59,7 +59,7 @@ CONF.register_opts(volume_opts)
 
 
 @interface.volumedriver
-class QuobyteDriver(remotefs_drv.RemoteFSSnapDriver):
+class QuobyteDriver(remotefs_drv.RemoteFSSnapDriverDistributed):
     """Cinder driver for Quobyte USP.
 
     Volumes are stored as files on the mounted Quobyte volume. The hypervisor
