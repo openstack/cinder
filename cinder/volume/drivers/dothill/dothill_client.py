@@ -14,7 +14,7 @@
 #    under the License.
 #
 
-from hashlib import md5
+import hashlib
 import math
 import time
 
@@ -50,7 +50,7 @@ class DotHillClient(object):
         hash_ = "%s_%s" % (self._login, self._password)
         if six.PY3:
             hash_ = hash_.encode('utf-8')
-        hash_ = md5(hash_)
+        hash_ = hashlib.md5(hash_)
         digest = hash_.hexdigest()
 
         url = self._base_url + "/login/" + digest
