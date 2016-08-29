@@ -299,6 +299,8 @@ class API(base.Base):
         if CONF.storage_availability_zone:
             availability_zones.add(CONF.storage_availability_zone)
 
+        utils.check_metadata_properties(metadata)
+
         create_what = {
             'context': context,
             'raw_size': size,

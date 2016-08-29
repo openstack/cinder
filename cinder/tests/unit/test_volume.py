@@ -778,20 +778,6 @@ class VolumeTestCase(BaseVolumeTestCase):
                           volume,
                           metadata)
 
-    def test_create_volume_with_invalid_metadata(self):
-        """Test volume create with too much metadata fails."""
-        test_meta = {'fake_key': 'fake_value' * 256}
-        self.assertRaises(exception.InvalidVolumeMetadataSize,
-                          self.volume_api.create,
-                          self.context,
-                          1,
-                          'name',
-                          'description',
-                          None,
-                          None,
-                          None,
-                          test_meta)
-
     def test_update_volume_metadata_with_metatype(self):
         """Test update volume metadata with different metadata type."""
         test_meta1 = {'fake_key1': 'fake_value1'}

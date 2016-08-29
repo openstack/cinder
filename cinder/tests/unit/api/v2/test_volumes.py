@@ -17,13 +17,13 @@
 import datetime
 import iso8601
 
+import ddt
 import mock
 from oslo_config import cfg
 import six
 from six.moves import range
 from six.moves import urllib
 import webob
-from webob import exc
 
 from cinder.api import common
 from cinder.api import extensions
@@ -49,6 +49,7 @@ NS = '{http://docs.openstack.org/api/openstack-block-storage/2.0/content}'
 DEFAULT_AZ = "zone1:host1"
 
 
+@ddt.ddt
 class VolumeApiTest(test.TestCase):
     def setUp(self):
         super(VolumeApiTest, self).setUp()
@@ -600,6 +601,24 @@ class VolumeApiTest(test.TestCase):
 
         self.assertEqual(ex, res_dict)
 
+    @ddt.data({'a' * 256: 'a'},
+              {'a': 'a' * 256},
+              {'': 'a'})
+    def test_volume_create_with_invalid_metadata(self, value):
+        vol = self._vol_in_request_body()
+        vol['metadata'] = value
+        body = {"volume": vol}
+        req = fakes.HTTPRequest.blank('/v2/volumes')
+
+        if len(list(value.keys())[0]) == 0:
+            exc = exception.InvalidVolumeMetadata
+        else:
+            exc = exception.InvalidVolumeMetadataSize
+        self.assertRaises(exc,
+                          self.controller.create,
+                          req,
+                          body)
+
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_volume_update(self, mock_validate):
@@ -682,7 +701,7 @@ class VolumeApiTest(test.TestCase):
                        stubs.stub_volume_type_get)
 
         updates = {
-            "metadata": {"qos_max_iops": 2000}
+            "metadata": {"qos_max_iops": '2000'}
         }
         body = {"volume": updates}
         req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
@@ -695,48 +714,6 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
         self.assertTrue(mock_validate.called)
-
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update_metadata_value_too_long(self, mock_validate):
-        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_api_get)
-
-        updates = {
-            "metadata": {"key1": ("a" * 260)}
-        }
-        body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertEqual(0, len(self.notifier.notifications))
-        self.assertRaises(exc.HTTPRequestEntityTooLarge,
-                          self.controller.update, req, fake.VOLUME_ID, body)
-
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update_metadata_key_too_long(self, mock_validate):
-        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_api_get)
-
-        updates = {
-            "metadata": {("a" * 260): "value1"}
-        }
-        body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertEqual(0, len(self.notifier.notifications))
-        self.assertRaises(exc.HTTPRequestEntityTooLarge,
-                          self.controller.update, req, fake.VOLUME_ID, body)
-
-    @mock.patch(
-        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
-    def test_volume_update_metadata_empty_key(self, mock_validate):
-        self.stubs.Set(volume_api.API, 'get', stubs.stub_volume_api_get)
-
-        updates = {
-            "metadata": {"": "value1"}
-        }
-        body = {"volume": updates}
-        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
-        self.assertEqual(0, len(self.notifier.notifications))
-        self.assertRaises(exception.InvalidVolumeMetadata,
-                          self.controller.update, req, fake.VOLUME_ID, body)
 
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
@@ -790,6 +767,26 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(expected, res_dict)
         self.assertEqual(2, len(self.notifier.notifications))
         self.assertTrue(mock_validate.called)
+
+    @ddt.data({'a' * 256: 'a'},
+              {'a': 'a' * 256},
+              {'': 'a'})
+    @mock.patch.object(volume_api.API, 'get',
+                       side_effect=stubs.stub_volume_api_get, autospec=True)
+    def test_volume_update_with_invalid_metadata(self, value, get):
+        updates = {
+            "metadata": value
+        }
+        body = {"volume": updates}
+        req = fakes.HTTPRequest.blank('/v2/volumes/%s' % fake.VOLUME_ID)
+
+        if len(list(value.keys())[0]) == 0:
+            exc = exception.InvalidVolumeMetadata
+        else:
+            exc = webob.exc.HTTPRequestEntityTooLarge
+        self.assertRaises(exc,
+                          self.controller.update,
+                          req, fake.VOLUME_ID, body)
 
     def test_update_empty_body(self):
         body = {}
