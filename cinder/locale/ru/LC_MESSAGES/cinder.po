@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1514,10 +1514,6 @@ msgid "Could not find config at %(path)s"
 msgstr "Невозможно найти конфигурацию по адресу %(path)s"
 
 #, python-format
-msgid "Could not find iSCSI export  for volume %(volumeName)s."
-msgstr "Не найден экспорт iSCSI для тома %(volumeName)s."
-
-#, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr "Не удалось найти экспорт iSCSI для тома %s"
 
@@ -1599,9 +1595,6 @@ msgid ""
 msgstr ""
 "Создание резервной копии прервано: ожидалось состояние тома "
 "%(expected_status)s, получено %(actual_status)s."
-
-msgid "Create consistency group failed."
-msgstr "Не удалось создать группу согласования."
 
 #, python-format
 msgid ""
@@ -2644,10 +2637,6 @@ msgstr "Ошибка удаления моментальной копии гру
 msgid "Error occurred when updating consistency group %s."
 msgstr "Ошибка изменения группы согласования %s."
 
-#, python-format
-msgid "Error parsing config file: %s"
-msgstr "Ошибка анализа файла конфигурации: %s"
-
 msgid "Error promoting secondary volume to primary"
 msgstr "Ошибка при попытке продвинуть вспомогательный том до уровня основного"
 
@@ -3345,9 +3334,6 @@ msgstr ""
 "Не удалось обеспечить область ресурсов моментальной копии. Не найден том с "
 "ИД %s"
 
-msgid "Failed to establish SSC connection."
-msgstr "Не удалось установить соединение SSC."
-
 msgid "Failed to establish connection with Coho cluster"
 msgstr "Не удалось установить соединение с кластером Coho"
 
@@ -3625,27 +3611,6 @@ msgid ""
 msgstr ""
 "Сбой управления существующего тома %(name)s: размер %(size)s не число с "
 "плавающей точкой."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the NFS share passed in the volume reference."
-msgstr ""
-"Сбой управления существующим томом, поскольку пул выбранного типа тома не "
-"соответствует общему ресурсу NFS, переданному в ссылке тома."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the file system passed in the volume reference."
-msgstr ""
-"Сбой управления существующим томом, поскольку пул выбранного типа тома не "
-"соответствует файловой системе, переданной в ссылке на том."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the pool of the host."
-msgstr ""
-"Сбой управления существующим томом, поскольку пул выбранного типа тома не "
-"соответствует пулу хоста."
 
 #, python-format
 msgid ""
@@ -4362,9 +4327,6 @@ msgstr "Получена неправильная информация о пут
 
 msgid "HBSD error occurs."
 msgstr "Ошибка HBSD."
-
-msgid "HNAS has disconnected SSC"
-msgstr "HNAS отключил SSC"
 
 msgid "HPELeftHand url not found"
 msgstr "URL HPELeftHand не найден"
@@ -8220,14 +8182,6 @@ msgstr ""
 "Том %s включен. Выключите его, чтобы передать под управление OpenStack."
 
 #, python-format
-msgid ""
-"Volume %s must not be migrating, attached, belong to a consistency group or "
-"have snapshots."
-msgstr ""
-"Том %s не должен быть в процессе переноса или присоединен, не должен "
-"принадлежать группе согласования или иметь моментальные копии."
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Том %s не должен быть частью группы согласования."
 
@@ -9329,9 +9283,6 @@ msgstr "отключить моментальную копию от удален
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: Нет настроенных узлов."
-
-msgid "eqlx_cli_max_retries must be greater than or equal to 0"
-msgstr "Значение eqlx_cli_max_retries должно быть больше или равно 0"
 
 #, python-format
 msgid ""

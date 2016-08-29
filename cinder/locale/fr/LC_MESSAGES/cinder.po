@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1594,10 +1594,6 @@ msgid "Could not find config at %(path)s"
 msgstr "Configuration introuvable dans %(path)s"
 
 #, python-format
-msgid "Could not find iSCSI export  for volume %(volumeName)s."
-msgstr "Exportation iSCSI introuvable pour le volume %(volumeName)s."
-
-#, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr "Exportation iSCSI trouvée pour le volume %s"
 
@@ -1682,9 +1678,6 @@ msgid ""
 msgstr ""
 "Création de la sauvegarde interrompue, état du volume attendu "
 "%(expected_status)s, mais état %(actual_status)s obtenu."
-
-msgid "Create consistency group failed."
-msgstr "La création du groupe de cohérence a échoué."
 
 #, python-format
 msgid ""
@@ -2761,10 +2754,6 @@ msgid "Error occurred when updating consistency group %s."
 msgstr ""
 "Une erreur est survenue lors de la mise à jour du groupe de cohérence %s."
 
-#, python-format
-msgid "Error parsing config file: %s"
-msgstr "Erreur lors de l'analyse syntaxique du fichier de configuration : %s"
-
 msgid "Error promoting secondary volume to primary"
 msgstr "Erreur de promotion du volume secondaire en volume primaire"
 
@@ -3495,9 +3484,6 @@ msgstr ""
 "Impossible de réserver la zone de ressource d'instantané, impossible de "
 "localiser le volume pour l'ID %s"
 
-msgid "Failed to establish SSC connection."
-msgstr "Echec d'établissement de la connexion SSC."
-
 msgid "Failed to establish connection with Coho cluster"
 msgstr "Connexion impossible à établir avec le cluster Coho "
 
@@ -3787,28 +3773,6 @@ msgid ""
 msgstr ""
 "Echec de gestion du volume %(name)s existant, en raison de la taille "
 "rapportée %(size)s qui n'était pas un nombre à virgule flottante."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the NFS share passed in the volume reference."
-msgstr ""
-"Echec de la gestion du volume existant vu que le pool du type de volume "
-"choisi ne correspond pas au partage NFS transmis dans le volume de référence."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the file system passed in the volume reference."
-msgstr ""
-"Echec de la gestion du volume existant vu que le pool du type de volume "
-"choisi ne correspond pas au système de fichiers transmis dans le volume de "
-"référence."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the pool of the host."
-msgstr ""
-"Echec de la gestion du volume existant vu que le pool du type de volume "
-"choisi ne correspond pas au pool de l'hôte."
 
 #, python-format
 msgid ""
@@ -4576,9 +4540,6 @@ msgstr "Informations de chemin incorrectes reçues de DRBDmanage : (%s)"
 
 msgid "HBSD error occurs."
 msgstr "Une erreur HBSD s'est produite."
-
-msgid "HNAS has disconnected SSC"
-msgstr "HNAS a déconnecté SSC"
 
 msgid "HPELeftHand url not found"
 msgstr "URL HPELeftHand introuvable"
@@ -8587,14 +8548,6 @@ msgstr ""
 "ligne (offline) pour le gérer avec OpenStack."
 
 #, python-format
-msgid ""
-"Volume %s must not be migrating, attached, belong to a consistency group or "
-"have snapshots."
-msgstr ""
-"Le volume %s ne doit pas être en cours de migration ou connecté, il ne doit "
-"pas appartenir à un groupe de cohérence ou avoir des instantanés."
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Le volume %s ne doit pas faire partie d'un groupe de cohérence."
 
@@ -9729,9 +9682,6 @@ msgstr "détachez l'instantané du noeud distant"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup : Aucun noeud configuré."
-
-msgid "eqlx_cli_max_retries must be greater than or equal to 0"
-msgstr "eqlx_cli_max_retries doit être supérieur ou égal à 0"
 
 #, python-format
 msgid ""

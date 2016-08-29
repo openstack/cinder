@@ -10,9 +10,9 @@
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1597,10 +1597,6 @@ msgid "Could not find config at %(path)s"
 msgstr "Konfiguration wurde nicht im Pfad %(path)s gefunden."
 
 #, python-format
-msgid "Could not find iSCSI export  for volume %(volumeName)s."
-msgstr "iSCSI-Export für Datenträger %(volumeName)s wurde nicht gefunden."
-
-#, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr "iSCSI-Export nicht gefunden für Datenträger %s"
 
@@ -1689,9 +1685,6 @@ msgid ""
 msgstr ""
 "Erstellung von Sicherung abgebrochen. Datenträgerstatus %(expected_status)s "
 "erwartet, tatsächlicher Status ist   %(actual_status)s."
-
-msgid "Create consistency group failed."
-msgstr "Erstellen der Konsistenzgruppe fehlgeschlagen."
 
 #, python-format
 msgid ""
@@ -2766,10 +2759,6 @@ msgstr "Beim Löschen von Cgsnapshot %s ist ein Fehler aufgetreten."
 msgid "Error occurred when updating consistency group %s."
 msgstr "Beim Aktualisieren von Konsistenzgruppe %s ist ein Fehler aufgetreten."
 
-#, python-format
-msgid "Error parsing config file: %s"
-msgstr "Fehler bei der Auswertung der Konfigurationsdatei: %s"
-
 msgid "Error promoting secondary volume to primary"
 msgstr ""
 "Fehler beim Hochstufen des sekundären Datenträgers zum primären Datenträger."
@@ -3497,9 +3486,6 @@ msgstr ""
 "Fehler beim Sicherstellen des Schattenkopieressourcenbereichs. Datenträger "
 "für ID %s wurde nicht gefunden."
 
-msgid "Failed to establish SSC connection."
-msgstr "Fehler beim Herstellen der SSC-Verbindung."
-
 msgid "Failed to establish connection with Coho cluster"
 msgstr "Fehler beim Herstellen einer Verbindung mit Coho-Cluster."
 
@@ -3783,29 +3769,6 @@ msgid ""
 msgstr ""
 "Fehler beim Verwalten des bereits vorhandenen Datenträgers %(name)s, da die "
 "gemeldete Größe %(size)s keine Gleitkommazahl war."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the NFS share passed in the volume reference."
-msgstr ""
-"Fehler beim Verwalten des vorhandenen Datenträgers, da der Pool des "
-"gewählten Datenträgertyps nicht mit der NFS-Freigabe, die in der "
-"Datenträgerreferenz übergeben wurde, übereinstimmt."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the file system passed in the volume reference."
-msgstr ""
-"Fehler beim Verwalten des vorhandenen Datenträgers, da der Pool des "
-"gewählten Datenträgertyps nicht mit dem Dateisystem, das in der "
-"Datenträgerreferenz übergeben wurde, übereinstimmt."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the pool of the host."
-msgstr ""
-"Fehler beim Verwalten des vorhandenen Datenträgers, da der Pool des "
-"gewählten Datenträgertyps nicht mit dem Pool des Hosts übereinstimmt."
 
 #, python-format
 msgid ""
@@ -4558,9 +4521,6 @@ msgstr "Fehlerhafte Pfadangaben von DRBDmanage erhalten! (%s)"
 
 msgid "HBSD error occurs."
 msgstr "HBSD-Fehler tritt auf."
-
-msgid "HNAS has disconnected SSC"
-msgstr "HNAS hat die Verbindung zu SSC getrennt."
 
 msgid "HPELeftHand url not found"
 msgstr "HPELeftHand-URL nicht gefunden"
@@ -8634,15 +8594,6 @@ msgstr ""
 "Verwaltung mit OpenStack auf 'offline'."
 
 #, python-format
-msgid ""
-"Volume %s must not be migrating, attached, belong to a consistency group or "
-"have snapshots."
-msgstr ""
-"Der Datenträger %s darf sich nicht in einer Migration befinden, nicht "
-"zugeordnet sein, darf zu keiner Konsistenzgruppe gehören und keine "
-"Schattenkopien haben."
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "Datenträger %s darf nicht Teil einer Konsistenzgruppe sein."
 
@@ -9797,9 +9748,6 @@ msgstr "Zuordnung der Schattenkopie zu fernem Knoten aufheben"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: keine konfigurierten Knoten."
-
-msgid "eqlx_cli_max_retries must be greater than or equal to 0"
-msgstr "eqlx_cli_max_retries muss größer-gleich 0 sein."
 
 #, python-format
 msgid ""

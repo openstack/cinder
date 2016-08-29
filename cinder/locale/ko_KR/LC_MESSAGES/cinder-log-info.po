@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev278\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-12 00:39+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -103,10 +103,6 @@ msgstr ""
 "'%(host)s'이(가) 삭제됨: %(reason)s"
 
 #, python-format
-msgid "AUTH properties: %(authProps)s"
-msgstr "AUTH 특성: %(authProps)s"
-
-#, python-format
 msgid "AUTH properties: %s."
 msgstr "AUTH 특성: %s."
 
@@ -187,10 +183,6 @@ msgstr "백엔드 이름이 %s입니다."
 #, python-format
 msgid "Backing VM: %(backing)s renamed to %(new_name)s."
 msgstr "백업 VM: %(backing)s의 이름이 %(new_name)s(으)로 변경되었습니다."
-
-#, python-format
-msgid "Backing consistency group snapshot %s available for deletion"
-msgstr "삭제할 수 있는 일관성 그룹 스냅샷 %s 백업"
 
 msgid "Backing not available, no operation to be performed."
 msgstr "백업을 사용할 수 없습니다. 작업이 수행되지 않습니다."
@@ -306,20 +298,8 @@ msgstr "볼륨 %(volume)s의 원본 %(origin)s 확인."
 
 #, python-format
 msgid ""
-"Cinder ISCSI volume with current path %(path)s is no longer being managed. "
-"The new name is %(unm)s."
-msgstr ""
-"현재 경로가 %(path)s인 Cinder ISCSI 볼륨이 더 이상 관리되지 않습니다. 새 이름"
-"은 %(unm)s입니다."
-
-#, python-format
-msgid ""
 "Cinder NFS volume with current path \"%(cr)s\" is no longer being managed."
 msgstr "현재 경로가 \"%(cr)s\"인 Cinder NFS 볼륨이 더 이상 관리되지 않습니다."
-
-#, python-format
-msgid "Cinder NFS volume with current path %(cr)s is no longer being managed."
-msgstr "현재 경로 %(cr)s의 Cinder NFS 볼륨이 더 이상 관리되지 않습니다."
 
 msgid "Cinder secure environment indicator file exists."
 msgstr "Cinder 보안 환경 표시기 파일이 있습니다."
@@ -409,14 +389,6 @@ msgstr "백엔드 사용 마이그레이션의 대상 호스트 %s에 연결."
 #, python-format
 msgid "Connector returning fcnsinfo-%s"
 msgstr "커넥터에서 fcnsinfo-%s 리턴"
-
-#, python-format
-msgid "Consistency group %s: created successfully"
-msgstr "일관성 그룹 %s: 성공적으로 작성됨"
-
-#, python-format
-msgid "Consistency group %s: creating"
-msgstr "일관성 그룹 %s: 작성 중"
 
 #, python-format
 msgid "Converted %(sz).2f MB image at %(mbps).2f MB/s"
@@ -534,9 +506,6 @@ msgstr "백업 작성이 완료됨. 백업: %s."
 #, python-format
 msgid "Create backup started, backup: %(backup_id)s volume: %(volume_id)s."
 msgstr "백업 작성이 시작됨, 백업: %(backup_id)s 볼륨: %(volume_id)s."
-
-msgid "Create consistency group completed successfully."
-msgstr "일관성 그룹 생성이 성공적으로 완료되었습니다."
 
 #, python-format
 msgid "Create consistency group from source-%(source)s completed successfully."
@@ -1265,16 +1234,8 @@ msgstr "HTTP 예외 처리: %s"
 msgid "Hypermetro id: %(metro_id)s. Remote lun id: %(remote_lun_id)s."
 msgstr "Hypermetro id: %(metro_id)s. 원격 lun id: %(remote_lun_id)s."
 
-#, python-format
-msgid "ISCSI properties: %(properties)s"
-msgstr "ISCSI 특성: %(properties)s"
-
 msgid "ISCSI provider_location not stored, using discovery."
 msgstr "ISCSI provider_location이 저장되지 않음, 검색 사용."
-
-#, python-format
-msgid "ISCSI volume is: %(volume)s"
-msgstr "ISCSI 볼륨: %(volume)s"
 
 #, python-format
 msgid "Ignored LU creation error \"%s\" while ensuring export."
@@ -3094,16 +3055,8 @@ msgid "free capacity of pool %(pool)s is: %(free)s, total capacity: %(total)s."
 msgstr "풀 %(pool)s의 사용 가능한 용량: %(free)s, 총 용량: %(total)s."
 
 #, python-format
-msgid "iSCSI portal found for service: %s"
-msgstr "서비스의 iSCSI 포털 발견: %s"
-
-#, python-format
 msgid "igroup %(grp)s found for initiator %(iname)s"
 msgstr "개시자 %(iname)s의 igroup %(grp)s을(를) 찾을 수 없음"
-
-#, python-format
-msgid "initialize volume %(vol)s connector %(conn)s"
-msgstr "볼륨 %(vol)s 커넥터 %(conn)s 초기화"
 
 #, python-format
 msgid "initialize_connection success. Return data: %s."
@@ -3158,20 +3111,12 @@ msgid ""
 "initialize_connection_fc, initiator: %(wwpns)s, volume name: %(volume)s."
 msgstr "initialize_connection_fc, 개시자: %(wwpns)s, 볼륨 이름: %(volume)s."
 
-#, python-format
-msgid "initiate: connection %s"
-msgstr "시작: 연결 %s"
-
 msgid "initiator has no password while using chap,adding it"
 msgstr "chap을 사용하는 동안 개시자의 비밀번호가 없음, 추가"
 
 #, python-format
 msgid "initiator name: %(initiator_name)s, LUN ID: %(lun_id)s."
 msgstr "개시자 이름: %(initiator_name)s, LUN ID: %(lun_id)s."
-
-#, python-format
-msgid "location is: %(location)s"
-msgstr "위치: %(location)s"
 
 #, python-format
 msgid ""

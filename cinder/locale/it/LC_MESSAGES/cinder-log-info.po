@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev278\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-12 00:39+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -104,10 +104,6 @@ msgstr ""
 "non è stato eliminato perché: %(reason)s"
 
 #, python-format
-msgid "AUTH properties: %(authProps)s"
-msgstr "Proprietà AUTH: %(authProps)s"
-
-#, python-format
 msgid "AUTH properties: %s."
 msgstr "Proprietà AUTH: %s."
 
@@ -190,10 +186,6 @@ msgstr "Il nome backend è %s."
 #, python-format
 msgid "Backing VM: %(backing)s renamed to %(new_name)s."
 msgstr "VM di backup: %(backing)s ridenominata %(new_name)s."
-
-#, python-format
-msgid "Backing consistency group snapshot %s available for deletion"
-msgstr "Backup istantanea gruppo di coerenza %s disponibile per l'eliminazione"
 
 msgid "Backing not available, no operation to be performed."
 msgstr "Backup non disponibile, nessuna operazione da eseguire."
@@ -314,22 +306,9 @@ msgstr "Verifica dell'origine %(origin)s del volume %(volume)s."
 
 #, python-format
 msgid ""
-"Cinder ISCSI volume with current path %(path)s is no longer being managed. "
-"The new name is %(unm)s."
-msgstr ""
-"Il volume ISCSI Cinder con percorso corrente %(path)s non viene più gestito. "
-"Il nuovo nome è %(unm)s."
-
-#, python-format
-msgid ""
 "Cinder NFS volume with current path \"%(cr)s\" is no longer being managed."
 msgstr ""
 "Il volume NFS Cinder con percorso corrente \"%(cr)s\" non è più gestito."
-
-#, python-format
-msgid "Cinder NFS volume with current path %(cr)s is no longer being managed."
-msgstr ""
-"Il volume NFS Cinder con percorso corrente %(cr)s non viene più gestito. "
 
 msgid "Cinder secure environment indicator file exists."
 msgstr "Il file indicatore dell'ambiente sicuro Cinder esiste."
@@ -423,14 +402,6 @@ msgstr ""
 #, python-format
 msgid "Connector returning fcnsinfo-%s"
 msgstr "Il connettore restituisce fcnsinfo-%s"
-
-#, python-format
-msgid "Consistency group %s: created successfully"
-msgstr "Gruppo di coerenza %s: creato correttamente"
-
-#, python-format
-msgid "Consistency group %s: creating"
-msgstr "Creazione del gruppo di coerenza %s:"
 
 #, python-format
 msgid "Converted %(sz).2f MB image at %(mbps).2f MB/s"
@@ -555,9 +526,6 @@ msgstr "Creazione backup completata, backup: %s."
 #, python-format
 msgid "Create backup started, backup: %(backup_id)s volume: %(volume_id)s."
 msgstr "Creazione backup avviata, backup: %(backup_id)s volume: %(volume_id)s."
-
-msgid "Create consistency group completed successfully."
-msgstr "Creazione del gruppo di coerenza completata correttamente."
 
 #, python-format
 msgid "Create consistency group from source-%(source)s completed successfully."
@@ -1333,16 +1301,8 @@ msgstr "Generata eccezione HTTP: %s"
 msgid "Hypermetro id: %(metro_id)s. Remote lun id: %(remote_lun_id)s."
 msgstr "ID hypermetro: %(metro_id)s. ID lun remota: %(remote_lun_id)s."
 
-#, python-format
-msgid "ISCSI properties: %(properties)s"
-msgstr "Proprietà ISCSI: %(properties)s"
-
 msgid "ISCSI provider_location not stored, using discovery."
 msgstr "provider_location ISCSI non archiviato, utilizzare il rilevamento."
-
-#, python-format
-msgid "ISCSI volume is: %(volume)s"
-msgstr "Il volume ISCSI è: %(volume)s"
 
 #, python-format
 msgid "Ignored LU creation error \"%s\" while ensuring export."
@@ -3260,16 +3220,8 @@ msgstr ""
 "%(total)s."
 
 #, python-format
-msgid "iSCSI portal found for service: %s"
-msgstr "Portale iSCSI trovato per il servizio: %s"
-
-#, python-format
 msgid "igroup %(grp)s found for initiator %(iname)s"
 msgstr "igroup %(grp)s trovato per l'iniziatore %(iname)s"
-
-#, python-format
-msgid "initialize volume %(vol)s connector %(conn)s"
-msgstr "inizializza volume %(vol)s connettore %(conn)s"
 
 #, python-format
 msgid "initialize_connection success. Return data: %s."
@@ -3325,10 +3277,6 @@ msgid ""
 msgstr ""
 "initialize_connection_fc, iniziatore: %(wwpns)s, nome volume: %(volume)s."
 
-#, python-format
-msgid "initiate: connection %s"
-msgstr "inizializza: connessione %s"
-
 msgid "initiator has no password while using chap,adding it"
 msgstr ""
 "l'iniziatore non presenta alcuna password durante l'utilizzo di chap, la "
@@ -3337,10 +3285,6 @@ msgstr ""
 #, python-format
 msgid "initiator name: %(initiator_name)s, LUN ID: %(lun_id)s."
 msgstr "nome iniziatore: %(initiator_name)s, ID LUN: %(lun_id)s."
-
-#, python-format
-msgid "location is: %(location)s"
-msgstr "location è: %(location)s"
 
 #, python-format
 msgid ""

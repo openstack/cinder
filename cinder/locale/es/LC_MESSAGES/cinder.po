@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1598,12 +1598,6 @@ msgid "Could not find config at %(path)s"
 msgstr "No se ha podido encontrar configuración en %(path)s"
 
 #, python-format
-msgid "Could not find iSCSI export  for volume %(volumeName)s."
-msgstr ""
-"No se ha podido encontrar la exportación iSCSI para el volumen "
-"%(volumeName)s."
-
-#, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr "No se ha podido encontrar la exportación iSCSI para el volumen %s"
 
@@ -1691,9 +1685,6 @@ msgid ""
 msgstr ""
 "La creación de copia de seguridad ha terminado anormalmente, se esperaba el "
 "estado de volumen %(expected_status)s pero se ha obtenido %(actual_status)s."
-
-msgid "Create consistency group failed."
-msgstr "Ha fallado la operación de crear un grupo de consistencia."
 
 #, python-format
 msgid ""
@@ -2757,10 +2748,6 @@ msgstr "Se producido un error al suprimir el cgsnapshot %s."
 msgid "Error occurred when updating consistency group %s."
 msgstr "Se ha producido un error al actualizar el grupo de consistencia %s."
 
-#, python-format
-msgid "Error parsing config file: %s"
-msgstr "Error al analizar el archivo de configuración: %s"
-
 msgid "Error promoting secondary volume to primary"
 msgstr "Error al promocionar el volumen secundario al primario"
 
@@ -3474,9 +3461,6 @@ msgstr ""
 "No se ha podido garantizar el área de recursos de la instantánea, no se ha "
 "encontrado el volumen para el ID %s"
 
-msgid "Failed to establish SSC connection."
-msgstr "No se ha podido establecer la conexión SSC."
-
 msgid "Failed to establish a stable connection"
 msgstr "No se ha podido establecer una conexión estable."
 
@@ -3778,29 +3762,6 @@ msgid ""
 msgstr ""
 "No se ha podido gestionar el volumen existente %(name)s, porque el archivo "
 "indicado %(size)s no era un número de coma flotante."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the NFS share passed in the volume reference."
-msgstr ""
-"No se ha podido gestionar el volumen existente porque la agrupación del tipo "
-"de volumen seleccionado no coincide con el uso compartido NFS pasado en la "
-"referencia de volumen."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the file system passed in the volume reference."
-msgstr ""
-"No se ha podido gestionar el volumen existente porque la agrupación del tipo "
-"de volumen seleccionado no coincide con el sistema de archivos pasado en la "
-"referencia de volumen."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the pool of the host."
-msgstr ""
-"No se ha podido gestionar el volumen existente porque la agrupación del tipo "
-"de volumen seleccionado no coincide con la agrupación del host."
 
 #, python-format
 msgid ""
@@ -4542,9 +4503,6 @@ msgstr ""
 
 msgid "HBSD error occurs."
 msgstr "Se ha producido un error HBSD."
-
-msgid "HNAS has disconnected SSC"
-msgstr "HNAS ha desconectado SSC"
 
 msgid "HPELeftHand url not found"
 msgstr "URL de HPELeftHand no encontrado"
@@ -8659,14 +8617,6 @@ msgstr ""
 "gestionarlo con  OpenStack."
 
 #, python-format
-msgid ""
-"Volume %s must not be migrating, attached, belong to a consistency group or "
-"have snapshots."
-msgstr ""
-"El volumen %s no se puede migrar ni adjuntar, no puede pertenecer a un  "
-"grupo de consistencia ni tener instantáneas."
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "El volumen %s no debe formar parte de un grupo de consistencia."
 
@@ -9822,9 +9772,6 @@ msgstr "desconecte instantánea del nodo remoto"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: No hay nodos configurado."
-
-msgid "eqlx_cli_max_retries must be greater than or equal to 0"
-msgstr "eqlx_cli_max_retries debe ser mayor o igual que 0"
 
 #, python-format
 msgid ""

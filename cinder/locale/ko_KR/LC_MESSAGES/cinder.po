@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1468,10 +1468,6 @@ msgid "Could not find config at %(path)s"
 msgstr "%(path)s에서 구성을 찾을 수 없음"
 
 #, python-format
-msgid "Could not find iSCSI export  for volume %(volumeName)s."
-msgstr "%(volumeName)s 볼륨에 대한 iSCSI 내보내기를 찾을 수 없습니다. "
-
-#, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr "%s 볼륨에 대한 iSCSI 내보내기를 찾을 수 없음"
 
@@ -1551,9 +1547,6 @@ msgid ""
 msgstr ""
 "백업 작성 중단. 예상 볼륨 상태는 %(expected_status)s이지만 %(actual_status)s"
 "인 동안에는 인스턴스 연관을 변경할 수 없습니다."
-
-msgid "Create consistency group failed."
-msgstr "일관성 그룹을 생성하는 데 실패했습니다."
 
 #, python-format
 msgid ""
@@ -2561,10 +2554,6 @@ msgstr "cg 스냅샷 %s을(를) 삭제하는 중에 오류가 발생했습니다
 msgid "Error occurred when updating consistency group %s."
 msgstr "일관성 그룹 %s을(를) 업데이트하는 중에 오류가 발생했습니다. "
 
-#, python-format
-msgid "Error parsing config file: %s"
-msgstr "구성 파일 구문 분석 중 오류: %s"
-
 msgid "Error promoting secondary volume to primary"
 msgstr "2차 볼륨을 1차로 승격시키는 중 오류 발생"
 
@@ -3242,9 +3231,6 @@ msgid ""
 "Failed to ensure snapshot resource area, could not locate volume for id %s"
 msgstr "스냅샷 자원 영역 보장 실패, id %s에 대한 볼륨을 찾을 수 없음"
 
-msgid "Failed to establish SSC connection."
-msgstr "SSC 연결 설정에 실패했습니다. "
-
 msgid "Failed to establish connection with Coho cluster"
 msgstr "Coho 클러스터와 연결하는 데 실패"
 
@@ -3509,27 +3495,6 @@ msgid ""
 msgstr ""
 "보고된 크기 %(size)s이(가) 부동 소수점 숫자가 아니므로 기존 볼륨 %(name)s을"
 "(를) 관리하지 못했습니다."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the NFS share passed in the volume reference."
-msgstr ""
-"선택한 볼륨 유형의 풀이 볼륨 참조에서 전달된 NFS 공유와 일치하지 않기 때문에 "
-"기존 볼륨을 관리하지 못했습니다. "
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the file system passed in the volume reference."
-msgstr ""
-"선택한 볼륨 유형의 풀이 볼륨 참조에서 전달된 파일 시스템과 일치하지 않기 때문"
-"에 기존 볼륨을 관리하지 못했습니다. "
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the pool of the host."
-msgstr ""
-"선택한 볼륨 유형의 풀이 호스트의 풀과 일치하지 않기 때문에 기존 볼륨을 관리하"
-"지 못했습니다. "
 
 #, python-format
 msgid ""
@@ -4218,9 +4183,6 @@ msgstr "DRBDmanage에서 잘못된 경로 정보를 가져왔습니다(%s)! "
 
 msgid "HBSD error occurs."
 msgstr "HBSD 오류가 발생했습니다."
-
-msgid "HNAS has disconnected SSC"
-msgstr "HNAS에서 SSC의 연결을 끊음"
 
 msgid "HPELeftHand url not found"
 msgstr "HPELeftHand url을 찾을 수 없음"
@@ -7995,14 +7957,6 @@ msgstr ""
 "설정합니다."
 
 #, python-format
-msgid ""
-"Volume %s must not be migrating, attached, belong to a consistency group or "
-"have snapshots."
-msgstr ""
-"볼륨 %s을(를) 마이그레이션하거나, 연결하거나, 일관성 그룹에 속하거나, 스냅샷"
-"이 없어야 합니다."
-
-#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "볼륨 %s이(가) 일관성 그룹의 일부가 아니어야 합니다. "
 
@@ -9082,9 +9036,6 @@ msgstr "원격 노드에서 스냅샷 분리"
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: 구성된 노드가 없습니다."
-
-msgid "eqlx_cli_max_retries must be greater than or equal to 0"
-msgstr "eqlx_cli_max_retries는 0 이상이어야 함"
 
 #, python-format
 msgid ""
