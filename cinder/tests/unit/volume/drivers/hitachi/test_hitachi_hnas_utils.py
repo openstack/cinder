@@ -19,7 +19,6 @@ import ddt
 import mock
 import os
 
-from oslo_config import cfg
 from xml.etree import ElementTree as ETree
 
 from cinder import context
@@ -149,8 +148,6 @@ invalid_XML_etree_no_authentication = ETree.XML(XML_no_authentication)
 invalid_XML_etree_empty_parameter = ETree.XML(XML_empty_authentication_param)
 invalid_XML_etree_no_mandatory_params = ETree.XML(XML_without_mandatory_params)
 invalid_XML_etree_no_service = ETree.XML(XML_no_services_configured)
-
-CONF = cfg.CONF
 
 
 @ddt.ddt

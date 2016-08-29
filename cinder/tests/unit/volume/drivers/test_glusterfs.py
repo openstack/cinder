@@ -24,7 +24,6 @@ import traceback
 import mock
 import os_brick
 from oslo_concurrency import processutils as putils
-from oslo_config import cfg
 from oslo_utils import imageutils
 from oslo_utils import units
 
@@ -41,9 +40,6 @@ from cinder import utils
 from cinder.volume import driver as base_driver
 from cinder.volume.drivers import glusterfs
 from cinder.volume.drivers import remotefs as remotefs_drv
-
-
-CONF = cfg.CONF
 
 
 class FakeDb(object):

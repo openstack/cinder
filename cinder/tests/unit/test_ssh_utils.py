@@ -14,13 +14,9 @@ import mock
 import paramiko
 import uuid
 
-from oslo_config import cfg
-
 from cinder import exception
 from cinder import ssh_utils
 from cinder import test
-
-CONF = cfg.CONF
 
 
 class FakeSock(object):

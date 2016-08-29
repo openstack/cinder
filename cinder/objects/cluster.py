@@ -13,7 +13,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
 from oslo_versionedobjects import fields
 
 from cinder import db
@@ -22,9 +21,6 @@ from cinder.i18n import _
 from cinder import objects
 from cinder.objects import base
 from cinder import utils
-
-
-CONF = cfg.CONF
 
 
 @base.CinderObjectRegistry.register

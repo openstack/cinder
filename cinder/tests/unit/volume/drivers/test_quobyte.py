@@ -22,7 +22,6 @@ import traceback
 
 import mock
 from oslo_concurrency import processutils as putils
-from oslo_config import cfg
 from oslo_utils import imageutils
 from oslo_utils import units
 
@@ -34,9 +33,6 @@ from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
 from cinder.volume import configuration as conf
 from cinder.volume.drivers import quobyte
-
-
-CONF = cfg.CONF
 
 
 class FakeDb(object):

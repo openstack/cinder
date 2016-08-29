@@ -17,16 +17,12 @@
 
 import copy
 
-from oslo_config import cfg
-
 from cinder.api import extensions
 from cinder.api import openstack
 from cinder.api.openstack import api_version_request
 from cinder.api.openstack import wsgi
 from cinder.api.views import versions as views_versions
 
-
-CONF = cfg.CONF
 
 _LINKS = [{
     "rel": "describedby",

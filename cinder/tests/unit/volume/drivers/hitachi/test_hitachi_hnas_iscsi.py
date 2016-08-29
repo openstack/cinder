@@ -17,7 +17,6 @@
 import mock
 
 from oslo_concurrency import processutils as putils
-from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
@@ -31,7 +30,6 @@ from cinder.volume.drivers.hitachi import hnas_iscsi as iscsi
 from cinder.volume.drivers.hitachi import hnas_utils
 from cinder.volume import volume_types
 
-CONF = cfg.CONF
 
 # The following information is passed on to tests, when creating a volume
 _VOLUME = {'name': 'volume-cinder',

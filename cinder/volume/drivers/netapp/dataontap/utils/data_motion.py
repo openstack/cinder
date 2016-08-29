@@ -20,7 +20,6 @@ location of the data's source and destination. This includes cloning,
 SnapMirror, and copy-offload as improvements to brute force data transfer.
 """
 
-from oslo_config import cfg
 from oslo_log import log
 from oslo_utils import excutils
 
@@ -33,7 +32,6 @@ from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
 from cinder.volume import utils as volume_utils
 
 LOG = log.getLogger(__name__)
-CONF = cfg.CONF
 ENTRY_DOES_NOT_EXIST = "(entry doesn't exist)"
 QUIESCE_RETRY_INTERVAL = 5
 

@@ -11,7 +11,6 @@
 #    under the License.
 
 import mock
-from oslo_config import cfg
 
 from cinder.api import extensions
 from cinder.api.v3 import messages
@@ -23,7 +22,6 @@ from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit.api.v3 import stubs
 
-CONF = cfg.CONF
 
 NS = '{http://docs.openstack.org/api/openstack-block-storage/3.0/content}'
 

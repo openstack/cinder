@@ -16,7 +16,6 @@ import ddt
 import iso8601
 
 import mock
-from oslo_config import cfg
 
 from cinder.api import extensions
 from cinder.api.openstack import api_version_request as api_version
@@ -34,8 +33,6 @@ from cinder.volume import api as volume_api
 from cinder.volume.api import API as vol_get
 
 version_header_name = 'OpenStack-API-Version'
-
-CONF = cfg.CONF
 
 DEFAULT_AZ = "zone1:host1"
 
