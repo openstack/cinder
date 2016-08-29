@@ -21,6 +21,7 @@ import six
 import webob
 
 import cinder.api.common as common
+from cinder.api.v3 import group_specs as v3_group_specs
 from cinder.api.v3 import group_types as v3_group_types
 from cinder.api.v3.views import group_types as views_types
 from cinder import context
@@ -95,9 +96,13 @@ class GroupTypesApiTest(test.TestCase):
     def setUp(self):
         super(GroupTypesApiTest, self).setUp()
         self.controller = v3_group_types.GroupTypesController()
+        self.specs_controller = v3_group_specs.GroupTypeSpecsController()
         self.ctxt = context.RequestContext(user_id=fake.USER_ID,
                                            project_id=fake.PROJECT_ID,
                                            is_admin=True)
+        self.user_ctxt = context.RequestContext(user_id=fake.USER2_ID,
+                                                project_id=fake.PROJECT2_ID,
+                                                is_admin=False)
         self.type_id1 = self._create_group_type('group_type1',
                                                 {'key1': 'value1'})
         self.type_id2 = self._create_group_type('group_type2',
@@ -533,3 +538,16 @@ class GroupTypesApiTest(test.TestCase):
             )
             self.assertDictMatch(expected_group_type,
                                  output['group_types'][i])
+
+    def test_check_policy(self):
+        self.controller._check_policy(self.ctxt)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.controller._check_policy,
+                          self.user_ctxt)
+
+        self.specs_controller._check_policy(self.ctxt)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.specs_controller._check_policy,
+                          self.user_ctxt)

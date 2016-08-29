@@ -21,12 +21,20 @@ from cinder.api.openstack import wsgi
 from cinder import db
 from cinder import exception
 from cinder.i18n import _
+from cinder import policy
 from cinder import rpc
 from cinder.volume import group_types
 
 
 class GroupTypeSpecsController(wsgi.Controller):
     """The group type specs API controller for the OpenStack API."""
+
+    def _check_policy(self, context):
+        target = {
+            'project_id': context.project_id,
+            'user_id': context.user_id,
+        }
+        policy.enforce(context, 'group:group_types_specs', target)
 
     def _get_group_specs(self, context, group_type_id):
         group_specs = db.group_type_specs_get(context, group_type_id)
@@ -45,6 +53,7 @@ class GroupTypeSpecsController(wsgi.Controller):
     def index(self, req, group_type_id):
         """Returns the list of group specs for a given group type."""
         context = req.environ['cinder.context']
+        self._check_policy(context)
         self._check_type(context, group_type_id)
         return self._get_group_specs(context, group_type_id)
 
@@ -63,7 +72,7 @@ class GroupTypeSpecsController(wsgi.Controller):
     @wsgi.response(202)
     def create(self, req, group_type_id, body=None):
         context = req.environ['cinder.context']
-
+        self._check_policy(context)
         self.assert_valid_body(body, 'group_specs')
 
         self._check_type(context, group_type_id)
@@ -83,6 +92,8 @@ class GroupTypeSpecsController(wsgi.Controller):
     @wsgi.Controller.api_version('3.11')
     def update(self, req, group_type_id, id, body=None):
         context = req.environ['cinder.context']
+        self._check_policy(context)
+
         if not body:
             expl = _('Request body empty')
             raise webob.exc.HTTPBadRequest(explanation=expl)
@@ -110,6 +121,8 @@ class GroupTypeSpecsController(wsgi.Controller):
     def show(self, req, group_type_id, id):
         """Return a single extra spec item."""
         context = req.environ['cinder.context']
+        self._check_policy(context)
+
         self._check_type(context, group_type_id)
         specs = self._get_group_specs(context, group_type_id)
         if id in specs['group_specs']:
@@ -123,6 +136,8 @@ class GroupTypeSpecsController(wsgi.Controller):
     def delete(self, req, group_type_id, id):
         """Deletes an existing group spec."""
         context = req.environ['cinder.context']
+        self._check_policy(context)
+
         self._check_type(context, group_type_id)
 
         try:

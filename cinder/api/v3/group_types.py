@@ -24,6 +24,7 @@ from cinder.api.openstack import wsgi
 from cinder.api.v3.views import group_types as views_types
 from cinder import exception
 from cinder.i18n import _
+from cinder import policy
 from cinder import rpc
 from cinder import utils
 from cinder.volume import group_types
@@ -33,6 +34,13 @@ class GroupTypesController(wsgi.Controller):
     """The group types API controller for the OpenStack API."""
 
     _view_builder_class = views_types.ViewBuilder
+
+    def _check_policy(self, context):
+        target = {
+            'project_id': context.project_id,
+            'user_id': context.user_id,
+        }
+        policy.enforce(context, 'group:group_types_manage', target)
 
     def _notify_group_type_error(self, context, method, err,
                                  group_type=None, id=None, name=None):
@@ -49,6 +57,7 @@ class GroupTypesController(wsgi.Controller):
     def create(self, req, body):
         """Creates a new group type."""
         context = req.environ['cinder.context']
+        self._check_policy(context)
 
         self.assert_valid_body(body, 'group_type')
 
@@ -95,6 +104,7 @@ class GroupTypesController(wsgi.Controller):
     def update(self, req, id, body):
         # Update description for a given group type.
         context = req.environ['cinder.context']
+        self._check_policy(context)
 
         self.assert_valid_body(body, 'group_type')
 
@@ -156,6 +166,7 @@ class GroupTypesController(wsgi.Controller):
     def delete(self, req, id):
         """Deletes an existing group type."""
         context = req.environ['cinder.context']
+        self._check_policy(context)
 
         try:
             grp_type = group_types.get_group_type(context, id)
