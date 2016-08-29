@@ -15,7 +15,7 @@
 
 import base64
 import functools
-from hashlib import md5
+import hashlib
 import json
 import math
 from random import randint
@@ -100,7 +100,7 @@ class AESCipher(object):
         d = d_i = ''
         while len(d) < key_length + iv_length:
             md5_str = d_i + password + salt
-            d_i = md5(md5_str).digest()
+            d_i = hashlib.md5(md5_str).digest()
             d += d_i
         return d[:key_length], d[key_length:key_length + iv_length]
 
