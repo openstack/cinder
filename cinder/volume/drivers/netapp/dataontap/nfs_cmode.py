@@ -246,6 +246,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
             capacity = self._get_share_capacity_info(nfs_share)
             pool.update(capacity)
 
+            dedupe_used = self.zapi_client.get_flexvol_dedupe_used_percent(
+                ssc_vol_name)
+            pool['netapp_dedupe_used_percent'] = na_utils.round_down(
+                dedupe_used)
+
             aggregate_name = ssc_vol_info.get('netapp_aggregate')
             aggr_capacity = aggr_capacities.get(aggregate_name, {})
             pool['netapp_aggregate_used_percent'] = aggr_capacity.get(

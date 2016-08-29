@@ -66,6 +66,7 @@ class Client(client_base.Client):
         self.features.add_feature('USER_CAPABILITY_LIST',
                                   supported=ontapi_1_20)
         self.features.add_feature('SYSTEM_METRICS', supported=ontapi_1_2x)
+        self.features.add_feature('CLONE_SPLIT_STATUS', supported=ontapi_1_30)
         self.features.add_feature('FAST_CLONE_DELETE', supported=ontapi_1_30)
         self.features.add_feature('SYSTEM_CONSTITUENT_METRICS',
                                   supported=ontapi_1_30)
@@ -985,8 +986,17 @@ class Client(client_base.Client):
                 'sis-status-info': {
                     'state': None,
                     'is-compression-enabled': None,
+                    'logical-data-size': None,
+                    'logical-data-limit': None,
                 },
             },
+        }
+
+        no_dedupe_response = {
+            'compression': False,
+            'dedupe': False,
+            'logical-data-size': 0,
+            'logical-data-limit': 1,
         }
 
         try:
@@ -994,10 +1004,10 @@ class Client(client_base.Client):
         except netapp_api.NaApiError:
             msg = _LE('Failed to get dedupe info for volume %s.')
             LOG.exception(msg, flexvol_name)
-            return {'compression': False, 'dedupe': False}
+            return no_dedupe_response
 
         if self._get_record_count(result) != 1:
-            return {'compression': False, 'dedupe': False}
+            return no_dedupe_response
 
         attributes_list = result.get_child_by_name(
             'attributes-list') or netapp_api.NaElement('none')
@@ -1005,14 +1015,62 @@ class Client(client_base.Client):
         sis_status_info = attributes_list.get_child_by_name(
             'sis-status-info') or netapp_api.NaElement('none')
 
+        logical_data_size = sis_status_info.get_child_content(
+            'logical-data-size') or 0
+        logical_data_limit = sis_status_info.get_child_content(
+            'logical-data-limit') or 1
+
         sis = {
             'compression': strutils.bool_from_string(
                 sis_status_info.get_child_content('is-compression-enabled')),
             'dedupe': na_utils.to_bool(
                 sis_status_info.get_child_content('state')),
+            'logical-data-size': int(logical_data_size),
+            'logical-data-limit': int(logical_data_limit),
         }
 
         return sis
+
+    def get_flexvol_dedupe_used_percent(self, flexvol_name):
+        """Determine how close a flexvol is to its shared block limit."""
+
+        # Note(cknight): The value returned by this method is computed from
+        # values returned by two different APIs, one of which was new in
+        # Data ONTAP 8.3.
+        if not self.features.CLONE_SPLIT_STATUS:
+            return 0.0
+
+        dedupe_info = self.get_flexvol_dedupe_info(flexvol_name)
+        clone_split_info = self.get_clone_split_info(flexvol_name)
+
+        total_dedupe_blocks = (dedupe_info.get('logical-data-size') +
+                               clone_split_info.get('unsplit-size'))
+        dedupe_used_percent = (100.0 * float(total_dedupe_blocks) /
+                               dedupe_info.get('logical-data-limit'))
+        return dedupe_used_percent
+
+    def get_clone_split_info(self, flexvol_name):
+        """Get the status of unsplit file/LUN clones in a flexvol."""
+
+        try:
+            result = self.send_request('clone-split-status',
+                                       {'volume-name': flexvol_name})
+        except netapp_api.NaApiError:
+            msg = _LE('Failed to get clone split info for volume %s.')
+            LOG.exception(msg, flexvol_name)
+            return {'unsplit-size': 0, 'unsplit-clone-count': 0}
+
+        clone_split_info = result.get_child_by_name(
+            'clone-split-info') or netapp_api.NaElement('none')
+
+        unsplit_size = clone_split_info.get_child_content('unsplit-size') or 0
+        unsplit_clone_count = clone_split_info.get_child_content(
+            'unsplit-clone-count') or 0
+
+        return {
+            'unsplit-size': int(unsplit_size),
+            'unsplit-clone-count': int(unsplit_clone_count),
+        }
 
     def is_flexvol_mirrored(self, flexvol_name, vserver_name):
         """Check if flexvol is a SnapMirror source."""

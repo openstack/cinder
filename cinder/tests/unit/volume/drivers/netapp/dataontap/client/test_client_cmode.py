@@ -1638,12 +1638,28 @@ class NetAppCmodeClientTestCase(test.TestCase):
                 'sis-status-info': {
                     'state': None,
                     'is-compression-enabled': None,
+                    'logical-data-size': None,
+                    'logical-data-limit': None,
                 },
             },
         }
         self.client.send_iter_request.assert_called_once_with(
             'sis-get-iter', sis_get_iter_args)
         self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC, result)
+
+    def test_get_flexvol_dedupe_info_no_logical_data_values(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.SIS_GET_ITER_SSC_NO_LOGICAL_DATA_RESPONSE)
+        self.mock_object(self.client,
+                         'send_iter_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_flexvol_dedupe_info(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
 
     def test_get_flexvol_dedupe_info_not_found(self):
 
@@ -1656,8 +1672,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         result = self.client.get_flexvol_dedupe_info(
             fake_client.VOLUME_NAMES[0])
 
-        expected = {'compression': False, 'dedupe': False}
-        self.assertEqual(expected, result)
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
 
     def test_get_flexvol_dedupe_info_api_error(self):
 
@@ -1668,7 +1684,81 @@ class NetAppCmodeClientTestCase(test.TestCase):
         result = self.client.get_flexvol_dedupe_info(
             fake_client.VOLUME_NAMES[0])
 
-        expected = {'compression': False, 'dedupe': False}
+        self.assertEqual(fake_client.VOLUME_DEDUPE_INFO_SSC_NO_LOGICAL_DATA,
+                         result)
+
+    def test_get_flexvol_dedupe_used_percent(self):
+
+        self.client.features.add_feature('CLONE_SPLIT_STATUS')
+        mock_get_flexvol_dedupe_info = self.mock_object(
+            self.client, 'get_flexvol_dedupe_info',
+            mock.Mock(return_value=fake_client.VOLUME_DEDUPE_INFO_SSC))
+        mock_get_clone_split_info = self.mock_object(
+            self.client, 'get_clone_split_info',
+            mock.Mock(return_value=fake_client.VOLUME_CLONE_SPLIT_STATUS))
+
+        result = self.client.get_flexvol_dedupe_used_percent(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(75.0, result)
+        mock_get_flexvol_dedupe_info.assert_called_once_with(
+            fake_client.VOLUME_NAMES[0])
+        mock_get_clone_split_info.assert_called_once_with(
+            fake_client.VOLUME_NAMES[0])
+
+    def test_get_flexvol_dedupe_used_percent_not_supported(self):
+
+        self.client.features.add_feature('CLONE_SPLIT_STATUS', supported=False)
+        mock_get_flexvol_dedupe_info = self.mock_object(
+            self.client, 'get_flexvol_dedupe_info',
+            mock.Mock(return_value=fake_client.VOLUME_DEDUPE_INFO_SSC))
+        mock_get_clone_split_info = self.mock_object(
+            self.client, 'get_clone_split_info',
+            mock.Mock(return_value=fake_client.VOLUME_CLONE_SPLIT_STATUS))
+
+        result = self.client.get_flexvol_dedupe_used_percent(
+            fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(0.0, result)
+        self.assertFalse(mock_get_flexvol_dedupe_info.called)
+        self.assertFalse(mock_get_clone_split_info.called)
+
+    def test_get_clone_split_info(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.CLONE_SPLIT_STATUS_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_clone_split_info(fake_client.VOLUME_NAMES[0])
+
+        self.assertEqual(fake_client.VOLUME_CLONE_SPLIT_STATUS, result)
+        self.client.send_request.assert_called_once_with(
+            'clone-split-status', {'volume-name': fake_client.VOLUME_NAMES[0]})
+
+    def test_get_clone_split_info_api_error(self):
+
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(side_effect=self._mock_api_error()))
+
+        result = self.client.get_clone_split_info(fake_client.VOLUME_NAMES[0])
+
+        expected = {'unsplit-size': 0, 'unsplit-clone-count': 0}
+        self.assertEqual(expected, result)
+
+    def test_get_clone_split_info_no_data(self):
+
+        api_response = netapp_api.NaElement(
+            fake_client.CLONE_SPLIT_STATUS_NO_DATA_RESPONSE)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_clone_split_info(fake_client.VOLUME_NAMES[0])
+
+        expected = {'unsplit-size': 0, 'unsplit-clone-count': 0}
         self.assertEqual(expected, result)
 
     def test_is_flexvol_mirrored(self):
