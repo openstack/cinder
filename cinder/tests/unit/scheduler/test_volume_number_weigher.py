@@ -17,8 +17,8 @@ Tests For Volume Number Weigher.
 """
 
 import mock
-from oslo_config import cfg
 
+from cinder.common import constants
 from cinder import context
 from cinder.db.sqlalchemy import api
 from cinder.scheduler import weights
@@ -26,8 +26,6 @@ from cinder import test
 from cinder.tests.unit import fake_constants
 from cinder.tests.unit.scheduler import fakes
 from cinder.volume import utils
-
-CONF = cfg.CONF
 
 
 def fake_volume_data_get_for_host(context, host, count_only=False):
@@ -78,7 +76,7 @@ class VolumeNumberWeigherTestCase(test.TestCase):
         _mock_service_get_all.assert_called_once_with(
             ctxt,
             None,  # backend_match_level
-            topic=CONF.volume_topic,
+            topic=constants.VOLUME_TOPIC,
             disabled=disabled)
         return host_states
 

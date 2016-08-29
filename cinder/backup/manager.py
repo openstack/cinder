@@ -25,8 +25,6 @@ Volume backups can be created, restored, deleted and listed.
 
 **Related Flags**
 
-:backup_topic:  What :mod:`rpc` topic to listen to (default:
-                        `cinder-backup`).
 :backup_manager:  The module name of a class derived from
                           :class:`manager.Manager` (default:
                           :class:`cinder.backup.manager.Manager`).

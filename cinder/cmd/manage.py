@@ -72,6 +72,7 @@ i18n.enable_lazy()
 
 # Need to register global_opts
 from cinder.common import config  # noqa
+from cinder.common import constants
 from cinder import context
 from cinder import db
 from cinder.db import migration as db_migration
@@ -266,7 +267,7 @@ class VolumeCommands(object):
         if self._client is None:
             if not rpc.initialized():
                 rpc.init(CONF)
-                target = messaging.Target(topic=CONF.volume_topic)
+                target = messaging.Target(topic=constants.VOLUME_TOPIC)
                 serializer = objects.base.CinderObjectSerializer()
                 self._client = rpc.get_client(target, serializer=serializer)
 

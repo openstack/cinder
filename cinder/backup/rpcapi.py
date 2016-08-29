@@ -18,13 +18,12 @@ Client side of the volume backup RPC API.
 """
 
 
-from oslo_config import cfg
 from oslo_log import log as logging
 
+from cinder.common import constants
 from cinder import rpc
 
 
-CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 
 
@@ -49,7 +48,7 @@ class BackupAPI(rpc.RPCAPI):
     """
 
     RPC_API_VERSION = '2.0'
-    TOPIC = CONF.backup_topic
+    TOPIC = constants.BACKUP_TOPIC
     BINARY = 'cinder-backup'
 
     def _compat_ver(self, current, legacy):

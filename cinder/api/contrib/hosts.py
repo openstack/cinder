@@ -22,6 +22,7 @@ import webob.exc
 
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
+from cinder.common import constants
 from cinder import db
 from cinder import exception
 from cinder.i18n import _, _LI
@@ -149,7 +150,7 @@ class HostController(wsgi.Controller):
 
         # Not found exception will be handled at the wsgi level
         host_ref = objects.Service.get_by_host_and_topic(
-            context, host, CONF.volume_topic)
+            context, host, constants.VOLUME_TOPIC)
 
         # Getting total available/used resource
         # TODO(jdg): Add summary info for Snapshots

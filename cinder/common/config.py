@@ -83,15 +83,6 @@ global_opts = [
                help='http/https timeout value for glance operations. If no '
                     'value (None) is supplied here, the glanceclient default '
                     'value is used.'),
-    cfg.StrOpt('scheduler_topic',
-               default='cinder-scheduler',
-               help='The topic that scheduler nodes listen on'),
-    cfg.StrOpt('volume_topic',
-               default='cinder-volume',
-               help='The topic that volume nodes listen on'),
-    cfg.StrOpt('backup_topic',
-               default='cinder-backup',
-               help='The topic that volume backup nodes listen on'),
     cfg.BoolOpt('enable_v1_api',
                 default=True,
                 deprecated_for_removal=True,

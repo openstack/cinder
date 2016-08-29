@@ -24,6 +24,7 @@ from oslo_log import log as logging
 from oslo_utils import importutils
 from oslo_utils import timeutils
 
+from cinder.common import constants
 from cinder import context as cinder_context
 from cinder import exception
 from cinder import objects
@@ -456,7 +457,7 @@ class HostManager(object):
     def _update_host_state_map(self, context):
 
         # Get resource usage across the available volume nodes:
-        topic = CONF.volume_topic
+        topic = constants.VOLUME_TOPIC
         volume_services = objects.ServiceList.get_all_by_topic(context,
                                                                topic,
                                                                disabled=False)

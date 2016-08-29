@@ -19,18 +19,15 @@ Tests For HostManager
 from datetime import datetime
 
 import mock
-from oslo_config import cfg
 from oslo_utils import timeutils
 
+from cinder.common import constants
 from cinder import exception
 from cinder import objects
 from cinder.scheduler import filters
 from cinder.scheduler import host_manager
 from cinder import test
 from cinder.tests.unit.objects import test_service
-
-
-CONF = cfg.CONF
 
 
 class FakeFilterClass1(filters.BaseHostFilter):
@@ -211,7 +208,7 @@ class HostManagerTestCase(test.TestCase):
     def test_get_all_host_states(self, _mock_service_is_up,
                                  _mock_service_get_all):
         context = 'fake_context'
-        topic = CONF.volume_topic
+        topic = constants.VOLUME_TOPIC
 
         services = [
             dict(id=1, host='host1', topic='volume', disabled=False,

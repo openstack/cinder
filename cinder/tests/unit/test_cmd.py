@@ -34,6 +34,7 @@ from cinder.cmd import rtstool as cinder_rtstool
 from cinder.cmd import scheduler as cinder_scheduler
 from cinder.cmd import volume as cinder_volume
 from cinder.cmd import volume_usage_audit
+from cinder.common import constants
 from cinder import context
 from cinder import exception
 from cinder.objects import fields
@@ -508,7 +509,6 @@ class TestCinderManageCmd(test.TestCase):
     @mock.patch('oslo_messaging.Target')
     def test_volume_commands_init(self, messaging_target, rpc_initialized,
                                   rpc_init, get_client, object_serializer):
-        CONF.set_override('volume_topic', 'fake-topic')
         mock_target = messaging_target.return_value
         mock_rpc_client = get_client.return_value
 
@@ -517,7 +517,7 @@ class TestCinderManageCmd(test.TestCase):
 
         rpc_initialized.assert_called_once_with()
         rpc_init.assert_called_once_with(CONF)
-        messaging_target.assert_called_once_with(topic='fake-topic')
+        messaging_target.assert_called_once_with(topic=constants.VOLUME_TOPIC)
         get_client.assert_called_once_with(mock_target,
                                            serializer=object_serializer())
         self.assertEqual(mock_rpc_client, rpc_client)

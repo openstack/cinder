@@ -19,6 +19,7 @@ import taskflow.engines
 from taskflow.patterns import linear_flow
 from taskflow.types import failure as ft
 
+from cinder.common import constants
 from cinder import exception
 from cinder import flow_utils
 from cinder.i18n import _, _LE, _LW
@@ -762,7 +763,7 @@ class VolumeCastTask(flow_utils.CinderTask):
             # to select the target host for this volume.
             self.scheduler_rpcapi.create_volume(
                 context,
-                CONF.volume_topic,
+                constants.VOLUME_TOPIC,
                 volume_id,
                 snapshot_id=snapshot_id,
                 image_id=image_id,
