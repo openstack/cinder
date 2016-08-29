@@ -71,14 +71,12 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.library = library.NetAppESeriesLibrary('FAKE', **kwargs)
 
         # We don't want the looping calls to run
-        self.mock_object(self.library, '_start_periodic_tasks',
-                         new_attr=mock.Mock())
+        self.mock_object(self.library, '_start_periodic_tasks')
         # Deprecated Option
         self.library.configuration.netapp_storage_pools = None
         self.library._client = eseries_fake.FakeEseriesClient()
 
-        self.mock_object(self.library, '_start_periodic_tasks',
-                         new_attr=mock.Mock())
+        self.mock_object(self.library, '_start_periodic_tasks')
 
         self.mock_object(library.cinder_utils, 'synchronized',
                          mock.Mock(return_value=lambda f: f))
@@ -193,7 +191,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
     def test_check_storage_system(self):
         system = copy.deepcopy(eseries_fake.STORAGE_SYSTEM)
         self.mock_object(self.library._client, 'list_storage_system',
-                         new_attr=mock.Mock(return_value=system))
+                         return_value=system)
         update_password = self.mock_object(self.library._client,
                                            'update_stored_system_password')
         info_log = self.mock_object(library.LOG, 'info', mock.Mock())
@@ -209,10 +207,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                 cinder_utils.ZeroIntervalLoopingCall)
     def test_check_storage_system_bad_status(self, system):
         self.mock_object(self.library._client, 'list_storage_system',
-                         new_attr=mock.Mock(return_value=system))
+                         return_value=system)
         self.mock_object(self.library._client, 'update_stored_system_password')
-        self.mock_object(time, 'time', new_attr = mock.Mock(
-            side_effect=range(0, 60, 5)))
+        self.mock_object(time, 'time', side_effect=range(0, 60, 5))
 
         self.assertRaisesRegexp(exception.NetAppDriverException,
                                 'bad.*?status',
@@ -234,10 +231,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             yield system
 
         self.mock_object(self.library._client, 'list_storage_system',
-                         new_attr=mock.Mock(side_effect=get_system_iter()))
+                         side_effect=get_system_iter())
         update_password = self.mock_object(self.library._client,
-                                           'update_stored_system_password',
-                                           new_attr=mock.Mock())
+                                           'update_stored_system_password')
         info_log = self.mock_object(library.LOG, 'info', mock.Mock())
 
         self.library._check_storage_system()
@@ -495,8 +491,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         """Validate pool capacity calculations"""
         fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
         self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
-        self.mock_object(self.library, '_ssc_stats', new_attr={fake_pool[
-            "volumeGroupRef"]: {self.library.THIN_UQ_SPEC: True}})
+        self.mock_object(self.library, '_ssc_stats',
+                         {fake_pool["volumeGroupRef"]: {
+                             self.library.THIN_UQ_SPEC: True}})
         self.library.configuration = mock.Mock()
         reserved_pct = 5
         over_subscription_ratio = 1.0
@@ -524,8 +521,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         """Validate that thin provisioning support is correctly reported"""
         fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
         self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
-        self.mock_object(self.library, '_ssc_stats', new_attr={fake_pool[
-            "volumeGroupRef"]: {self.library.THIN_UQ_SPEC: thin_provisioning}})
+        self.mock_object(self.library, '_ssc_stats',
+                         {fake_pool["volumeGroupRef"]: {
+                             self.library.THIN_UQ_SPEC: thin_provisioning}})
 
         self.library._update_volume_stats()
 
@@ -541,8 +539,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         ssc = {self.library.THIN_UQ_SPEC: True, 'key': 'val'}
         fake_pool = copy.deepcopy(eseries_fake.STORAGE_POOL)
         self.library._get_storage_pools = mock.Mock(return_value=[fake_pool])
-        self.mock_object(self.library, '_ssc_stats', new_attr={fake_pool[
-            "volumeGroupRef"]: ssc})
+        self.mock_object(self.library, '_ssc_stats',
+                         {fake_pool["volumeGroupRef"]: ssc})
 
         self.library._update_volume_stats()
 
@@ -1377,8 +1375,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
         self.mock_object(library.cinder_utils, 'synchronized',
                          mock.Mock(return_value=lambda f: f))
-        self.mock_object(self.library, '_start_periodic_tasks',
-                         new_attr=mock.Mock())
+        self.mock_object(self.library, '_start_periodic_tasks')
 
         self.ctxt = context.get_admin_context()
 
