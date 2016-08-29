@@ -292,19 +292,17 @@ class TestCase(testtools.TestCase):
         self._services.append(svc)
         return svc
 
-    def mock_object(self, obj, attr_name, new_attr=None, **kwargs):
+    def mock_object(self, obj, attr_name, *args, **kwargs):
         """Use python mock to mock an object attribute
 
         Mocks the specified objects attribute with the given value.
         Automatically performs 'addCleanup' for the mock.
 
         """
-        if not new_attr:
-            new_attr = mock.Mock()
-        patcher = mock.patch.object(obj, attr_name, new_attr, **kwargs)
-        patcher.start()
+        patcher = mock.patch.object(obj, attr_name, *args, **kwargs)
+        result = patcher.start()
         self.addCleanup(patcher.stop)
-        return new_attr
+        return result
 
     # Useful assertions
     def assertDictMatch(self, d1, d2, approx_equal=False, tolerance=0.001):
