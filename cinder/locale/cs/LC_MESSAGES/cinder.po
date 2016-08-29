@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1308,10 +1308,6 @@ msgid "Could not find config at %(path)s"
 msgstr "Nelze najít nastavení v %(path)s"
 
 #, python-format
-msgid "Could not find iSCSI export  for volume %(volumeName)s."
-msgstr "Nelze najít export iSCSI pro svazek %(volumeName)s."
-
-#, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr "Nelze najít export iSCSI pro svazek %s"
 
@@ -1364,9 +1360,6 @@ msgid ""
 msgstr ""
 "Vytvoření zálohy zrušeno, očekávaný stav svazku je %(expected_status)s ale "
 "zjištěný stav je %(actual_status)s."
-
-msgid "Create consistency group failed."
-msgstr "Vytvoření skupiny jednotnosti selhalo."
 
 #, python-format
 msgid ""
@@ -2272,10 +2265,6 @@ msgstr "Při mazání snímku skupiny jednotnosti %s nastala chyba."
 msgid "Error occurred when updating consistency group %s."
 msgstr "Při aktualizaci skupiny jednotnosti %s nastala chyba."
 
-#, python-format
-msgid "Error parsing config file: %s"
-msgstr "Nelze zpracovat soubor s nastavením: %s"
-
 msgid "Error promoting secondary volume to primary"
 msgstr "Chyba při propagování druhotného svazku na hlavní"
 
@@ -2815,9 +2804,6 @@ msgid ""
 "Failed to ensure snapshot resource area, could not locate volume for id %s"
 msgstr "Nelze zajistit oblast zdrojů snímku, nelze nalézt svazek s id %s"
 
-msgid "Failed to establish SSC connection."
-msgstr "Nelze vytvořit připojení SSC."
-
 msgid "Failed to establish connection with Coho cluster"
 msgstr "Zavedení připojení s clusterem Coho selhalo"
 
@@ -3044,27 +3030,6 @@ msgid ""
 msgstr ""
 "Nelze spravovat existující svazek %(name)s, protože nahlášená velikost "
 "%(size)s není číslo s plovoucí desetinnou čárkou."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the NFS share passed in the volume reference."
-msgstr ""
-"Nelze spravovat existující svazky protože zásoba zvoleného typu svazku "
-"neodpovídá sdílení NFS předanému v odkazu svazku."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the file system passed in the volume reference."
-msgstr ""
-"Nelze spravovat existující svazky protože zásoba zvoleného typu svazku "
-"neodpovídá souborovému systému předanému v odkazu svazku."
-
-msgid ""
-"Failed to manage existing volume because the pool of the volume type chosen "
-"does not match the pool of the host."
-msgstr ""
-"Nelze spravovat existující svazky protože zásoba zvoleného typu svazku "
-"neodpovídá zásobě hostitele."
 
 #, python-format
 msgid "Failed to manage volume %s."
@@ -7529,9 +7494,6 @@ msgstr "odpojit snímek ze vzdáleného uzle"
 
 msgid "do_setup: No configured nodes."
 msgstr "Zavedení: Nenastaveny žádné uzly."
-
-msgid "eqlx_cli_max_retries must be greater than or equal to 0"
-msgstr "eqlx_cli_max_retries musí být větší nebo rovno 0"
 
 #, python-format
 msgid ""

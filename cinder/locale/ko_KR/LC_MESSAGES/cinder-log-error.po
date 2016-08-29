@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-06 02:59+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -354,10 +354,6 @@ msgid "Connection to %s failed and no secondary!"
 msgstr "%s에 연결에 실패했으며 보조가 없습니다."
 
 #, python-format
-msgid "Consistency group %s: create failed"
-msgstr "일관성 그룹 %s: 작성 실패"
-
-#, python-format
 msgid "Controller GET failed (%d)"
 msgstr "제어기 GET 실패(%d)"
 
@@ -395,22 +391,6 @@ msgstr "이미지 볼륨 %(id)s을(를) 삭제할 수 없습니다."
 #, python-format
 msgid "Could not delete the image volume %(id)s."
 msgstr "이미지 볼륨 %(id)s을(를) 삭제할 수 없습니다."
-
-#, python-format
-msgid ""
-"Could not do delete of snapshot %s on filer, falling back to exec of \"rm\" "
-"command."
-msgstr ""
-"파일 프로그램에서 스냅샷 %s을(를) 삭제할 수 없어, \"rm\" 명령의 실행으로 장"
-"애 복구할 수 없습니다."
-
-#, python-format
-msgid ""
-"Could not do delete of volume %s on filer, falling back to exec of \"rm\" "
-"command."
-msgstr ""
-"파일 프로그램에서 볼륨 %s을(를) 삭제할 수 없어, \"rm\" 명령의 실행으로 장애 "
-"복구할 수 없습니다."
 
 #, python-format
 msgid "Could not find a host for consistency group %(group_id)s."
@@ -1980,10 +1960,6 @@ msgstr "/etc/scst.conf에 쓰지 못했습니다."
 #, python-format
 msgid "Failed to write persistence file: %(path)s."
 msgstr "영구 파일을 쓰는 데 실패: %(path)s."
-
-#, python-format
-msgid "Failed updating %(object_type)s %(object_id)s with %(update)s"
-msgstr "%(object_type)s %(object_id)s을(를) %(update)s(으)로 업데이트 실패"
 
 #, python-format
 msgid ""

@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev309\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-16 01:19+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1059,11 +1059,6 @@ msgid "Could not find config at %(path)s"
 msgstr "%(path)s'deki yapılandırma bulunamadı"
 
 #, python-format
-msgid "Could not find iSCSI export  for volume %(volumeName)s."
-msgstr ""
-"%(volumeName)s mantıksal sürücüsü için  iSCSI dışa aktarımı bulunamadı."
-
-#, python-format
 msgid "Could not find iSCSI export for volume %s"
 msgstr "%s mantıksal sürücü için iSCSI dışa aktarımı bulunamadı"
 
@@ -1798,10 +1793,6 @@ msgstr "cgsnapshot %s silinirken hata oluştu."
 #, python-format
 msgid "Error occurred when updating consistency group %s."
 msgstr "%s tutarlılık grubu güncellenirken hata oluştu."
-
-#, python-format
-msgid "Error parsing config file: %s"
-msgstr "Yapılandırma dosyasını ayrıştırmada hata: %s"
 
 msgid "Error promoting secondary volume to primary"
 msgstr "İkincil mantıksal sürücünün birincil hale getirilmesinde hata"
@@ -6176,9 +6167,6 @@ msgstr "Uzak düğümden anlık görüntüyü çıkart."
 
 msgid "do_setup: No configured nodes."
 msgstr "do_setup: Yapılandırılmış düğüm yok."
-
-msgid "eqlx_cli_max_retries must be greater than or equal to 0"
-msgstr "eqlx_cli_max_retries 0'a eşit ya da daha büyük olmalıdır"
 
 #, python-format
 msgid ""

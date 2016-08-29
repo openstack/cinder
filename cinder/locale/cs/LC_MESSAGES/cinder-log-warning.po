@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-06 02:58+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1294,13 +1294,6 @@ msgstr ""
 
 msgid "flush() not supported in this version of librbd"
 msgstr "flush() není podporován touto verzí librbd"
-
-msgid ""
-"glance_num_retries shouldn't be a negative value. The number of retries will "
-"be set to 0 until this iscorrected in the cinder.conf."
-msgstr ""
-"Počet pokusů pro glance by neměl mí zápornou hodnotu. Počet pokusů bude "
-"nastaven na 0, dokud nebude opraven v conder.conf."
 
 #, python-format
 msgid ""

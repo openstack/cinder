@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev216\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-06 02:59+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -240,10 +240,6 @@ msgstr "Flexvisor hatasına bağlan: %s."
 #, python-format
 msgid "Connect to Flexvisor failed: %s."
 msgstr "Flexvisor'a bağlanılamadı: %s."
-
-#, python-format
-msgid "Consistency group %s: create failed"
-msgstr "Tutarlılık grubu %s: oluşturma başarısız oldu"
 
 #, python-format
 msgid "Copy snapshot to volume for snapshot %(snap)s volume %(vol)s failed!"

@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev278\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-12 00:39+0000\n"
+"POT-Creation-Date: 2016-08-29 04:45+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -101,10 +101,6 @@ msgid ""
 msgstr ""
 "3PAR vlun pro svazek '%(name)s' byl smazán, ale hostitel '%(host)s' nebyl, "
 "protože: %(reason)s"
-
-#, python-format
-msgid "AUTH properties: %(authProps)s"
-msgstr "Vlastnosti ověření: %(authProps)s"
 
 #, python-format
 msgid "AUTH properties: %s."
@@ -263,20 +259,8 @@ msgstr "Kontrola původu %(origin)s svazku %(volume)s."
 
 #, python-format
 msgid ""
-"Cinder ISCSI volume with current path %(path)s is no longer being managed. "
-"The new name is %(unm)s."
-msgstr ""
-"Svazek ISCSI Cinder se současnou cestou %(path)s již není spravován. Nový "
-"název je %(unm)s."
-
-#, python-format
-msgid ""
 "Cinder NFS volume with current path \"%(cr)s\" is no longer being managed."
 msgstr "Svazek NFS Cinder se současnou cestou \"%(cr)s\" již není spravován."
-
-#, python-format
-msgid "Cinder NFS volume with current path %(cr)s is no longer being managed."
-msgstr "Svazek NFS Cinder se současnou cestou %(cr)s již není spravován."
 
 msgid "Cinder secure environment indicator file exists."
 msgstr "Soubor indikující bezpečné prostředí Cinder existuje."
@@ -370,14 +354,6 @@ msgstr ""
 #, python-format
 msgid "Connector returning fcnsinfo-%s"
 msgstr "Konektor vrací fcnsinfo-%s"
-
-#, python-format
-msgid "Consistency group %s: created successfully"
-msgstr "Skupina jednotnosti %s: úspěšně vytvořena"
-
-#, python-format
-msgid "Consistency group %s: creating"
-msgstr "Skupina jednotnosti %s: vytváření"
 
 #, python-format
 msgid "Converted %(sz).2f MB image at %(mbps).2f MB/s"
@@ -502,9 +478,6 @@ msgstr "Vytváření zálohy dokončeno. Záloha: %s."
 msgid "Create backup started, backup: %(backup_id)s volume: %(volume_id)s."
 msgstr ""
 "Vytváření zálohy bylo zahájeno: záloha: %(backup_id)s svazek:  %(volume_id)s."
-
-msgid "Create consistency group completed successfully."
-msgstr "Vytvoření skupiny jednotnosti úspěšně dokončeno."
 
 #, python-format
 msgid "Create consistency group from source-%(source)s completed successfully."
@@ -1166,16 +1139,8 @@ msgstr "Vyvolána výjimka HTTP: %s"
 msgid "Hypermetro id: %(metro_id)s. Remote lun id: %(remote_lun_id)s."
 msgstr "ID hypermetra: %(metro_id)s. ID vzdáleného LUN: %(remote_lun_id)s."
 
-#, python-format
-msgid "ISCSI properties: %(properties)s"
-msgstr "Vlastnosti ISCSI: %(properties)s"
-
 msgid "ISCSI provider_location not stored, using discovery."
 msgstr "Umístění poskytovatele ISCSI neuloženo, bude se zjišťovat."
-
-#, python-format
-msgid "ISCSI volume is: %(volume)s"
-msgstr "Svazek ISCSI je: %(volume)s"
 
 #, python-format
 msgid "Image %(pool)s/%(image)s is dependent on the snapshot %(snap)s."
@@ -2709,16 +2674,8 @@ msgstr ""
 "Volná kapacita zásoby %(pool)s je: %(free)s, celková kapacita: %(total)s."
 
 #, python-format
-msgid "iSCSI portal found for service: %s"
-msgstr "Portál iSCSI nalezen pro službu: %s"
-
-#, python-format
 msgid "igroup %(grp)s found for initiator %(iname)s"
 msgstr "Pro zavaděč %(iname)s nalezena skupina zavaděče %(grp)s"
-
-#, python-format
-msgid "initialize volume %(vol)s connector %(conn)s"
-msgstr "Zavedení konektoru %(conn)s pro svazek %(vol)s"
 
 #, python-format
 msgid "initialize_connection success. Return data: %s."
@@ -2749,16 +2706,8 @@ msgid ""
 "initialize_connection_fc, initiator: %(wwpns)s, volume name: %(volume)s."
 msgstr "Zavedení spojení s FC: Zavaděč %(wwpns)s, název svazku: %(volume)s."
 
-#, python-format
-msgid "initiate: connection %s"
-msgstr "Zavedení: Spojení %s"
-
 msgid "initiator has no password while using chap,adding it"
 msgstr "Zavaděč nemá žádné heslo při používání chap, heslo je přidáno"
-
-#, python-format
-msgid "location is: %(location)s"
-msgstr "Umístění je: %(location)s"
 
 #, python-format
 msgid ""
