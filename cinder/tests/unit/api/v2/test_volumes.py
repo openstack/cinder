@@ -54,7 +54,7 @@ class VolumeApiTest(test.TestCase):
         super(VolumeApiTest, self).setUp()
         self.ext_mgr = extensions.ExtensionManager()
         self.ext_mgr.extensions = {}
-        fake_image.stub_out_image_service(self.stubs)
+        fake_image.mock_image_service(self)
         self.controller = volumes.VolumeController(self.ext_mgr)
 
         self.stubs.Set(db, 'volume_get_all', stubs.stub_volume_get_all)

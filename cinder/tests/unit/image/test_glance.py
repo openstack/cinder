@@ -103,15 +103,14 @@ class TestGlanceImageService(test.TestCase):
         self.service = self._create_image_service(client)
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
         self.context.service_catalog = service_catalog
-        self.stubs.Set(glance.time, 'sleep', lambda s: None)
+        self.mock_object(glance.time, 'sleep', mock.Mock(return_value=None))
 
     def _create_image_service(self, client):
         def _fake_create_glance_client(context, netloc, use_ssl, version):
             return client
 
-        self.stubs.Set(glance,
-                       '_create_glance_client',
-                       _fake_create_glance_client)
+        self.mock_object(glance, '_create_glance_client',
+                         _fake_create_glance_client)
 
         client_wrapper = glance.GlanceClientWrapper('fake', 'fake_host', 9292)
         return glance.GlanceImageService(client=client_wrapper)
@@ -875,7 +874,7 @@ class TestGlanceImageServiceClient(test.TestCase):
     def setUp(self):
         super(TestGlanceImageServiceClient, self).setUp()
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
-        self.stubs.Set(glance.time, 'sleep', lambda s: None)
+        self.mock_object(glance.time, 'sleep', mock.Mock(return_value=None))
 
     def test_create_glance_client(self):
         self.flags(auth_strategy='keystone')
@@ -888,7 +887,7 @@ class TestGlanceImageServiceClient(test.TestCase):
                 self.assertTrue(kwargs['token'])
                 self.assertEqual(60, kwargs['timeout'])
 
-        self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
@@ -904,7 +903,7 @@ class TestGlanceImageServiceClient(test.TestCase):
                 self.assertNotIn('token', kwargs)
                 self.assertEqual(60, kwargs['timeout'])
 
-        self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
@@ -920,7 +919,7 @@ class TestGlanceImageServiceClient(test.TestCase):
                 self.assertTrue(kwargs['token'])
                 self.assertNotIn('timeout', kwargs)
 
-        self.stubs.Set(glance.glanceclient, 'Client', MyGlanceStubClient)
+        self.mock_object(glance.glanceclient, 'Client', MyGlanceStubClient)
         client = glance._create_glance_client(self.context, 'fake_host:9292',
                                               False)
         self.assertIsInstance(client, MyGlanceStubClient)
