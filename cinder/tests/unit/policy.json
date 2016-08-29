@@ -8,6 +8,7 @@
     "volume:get_all": "",
     "volume:get_volume_metadata": "",
     "volume:get_volume_image_metadata": "",
+    "volume:create_volume_metadata": "",
     "volume:delete_volume_metadata": "",
     "volume:update_volume_metadata": "",
     "volume:get_volume_admin_metadata": "rule:admin_api",

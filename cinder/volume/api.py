@@ -988,6 +988,15 @@ class API(base.Base):
         return dict(rv)
 
     @wrap_check_policy
+    def create_volume_metadata(self, context, volume, metadata):
+        """Creates volume metadata."""
+        db_meta = self._update_volume_metadata(context, volume, metadata)
+
+        LOG.info(_LI("Create volume metadata completed successfully."),
+                 resource=volume)
+        return db_meta
+
+    @wrap_check_policy
     def delete_volume_metadata(self, context, volume,
                                key, meta_type=common.METADATA_TYPES.user):
         """Delete the given metadata item from a volume."""
@@ -1000,26 +1009,28 @@ class API(base.Base):
         LOG.info(_LI("Delete volume metadata completed successfully."),
                  resource=volume)
 
-    @wrap_check_policy
-    def update_volume_metadata(self, context, volume,
-                               metadata, delete=False,
-                               meta_type=common.METADATA_TYPES.user):
-        """Updates or creates volume metadata.
-
-        If delete is True, metadata items that are not specified in the
-        `metadata` argument will be deleted.
-
-        """
+    def _update_volume_metadata(self, context, volume, metadata, delete=False,
+                                meta_type=common.METADATA_TYPES.user):
         if volume['status'] in ('maintenance', 'uploading'):
             msg = _('Updating volume metadata is not allowed for volumes in '
                     '%s status.') % volume['status']
             LOG.info(msg, resource=volume)
             raise exception.InvalidVolume(reason=msg)
         utils.check_metadata_properties(metadata)
-        db_meta = self.db.volume_metadata_update(context, volume['id'],
-                                                 metadata,
-                                                 delete,
-                                                 meta_type)
+        return self.db.volume_metadata_update(context, volume['id'],
+                                              metadata, delete, meta_type)
+
+    @wrap_check_policy
+    def update_volume_metadata(self, context, volume, metadata, delete=False,
+                               meta_type=common.METADATA_TYPES.user):
+        """Updates volume metadata.
+
+        If delete is True, metadata items that are not specified in the
+        `metadata` argument will be deleted.
+
+        """
+        db_meta = self._update_volume_metadata(context, volume, metadata,
+                                               delete, meta_type)
 
         # TODO(jdg): Implement an RPC call for drivers that may use this info
 
