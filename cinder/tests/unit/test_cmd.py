@@ -53,7 +53,6 @@ class TestCinderApiCmd(test.TestCase):
     def setUp(self):
         super(TestCinderApiCmd, self).setUp()
         sys.argv = ['cinder-api']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
     def tearDown(self):
         super(TestCinderApiCmd, self).tearDown()
@@ -88,7 +87,6 @@ class TestCinderBackupCmd(test.TestCase):
     def setUp(self):
         super(TestCinderBackupCmd, self).setUp()
         sys.argv = ['cinder-backup']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
     def tearDown(self):
         super(TestCinderBackupCmd, self).tearDown()
@@ -118,7 +116,6 @@ class TestCinderAllCmd(test.TestCase):
     def setUp(self):
         super(TestCinderAllCmd, self).setUp()
         sys.argv = ['cinder-all']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
     def tearDown(self):
         super(TestCinderAllCmd, self).tearDown()
@@ -296,7 +293,6 @@ class TestCinderSchedulerCmd(test.TestCase):
     def setUp(self):
         super(TestCinderSchedulerCmd, self).setUp()
         sys.argv = ['cinder-scheduler']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
     def tearDown(self):
         super(TestCinderSchedulerCmd, self).tearDown()
@@ -326,7 +322,6 @@ class TestCinderVolumeCmd(test.TestCase):
     def setUp(self):
         super(TestCinderVolumeCmd, self).setUp()
         sys.argv = ['cinder-volume']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
     def tearDown(self):
         super(TestCinderVolumeCmd, self).tearDown()
@@ -389,7 +384,6 @@ class TestCinderManageCmd(test.TestCase):
     def setUp(self):
         super(TestCinderManageCmd, self).setUp()
         sys.argv = ['cinder-manage']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
     def tearDown(self):
         super(TestCinderManageCmd, self).tearDown()
@@ -1083,7 +1077,6 @@ class TestCinderRtstoolCmd(test.TestCase):
     def setUp(self):
         super(TestCinderRtstoolCmd, self).setUp()
         sys.argv = ['cinder-rtstool']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
         self.INITIATOR_IQN = 'iqn.2015.12.com.example.openstack.i:UNIT1'
         self.TARGET_IQN = 'iqn.2015.12.com.example.openstack.i:TARGET1'
@@ -1681,7 +1674,6 @@ class TestCinderVolumeUsageAuditCmd(test.TestCase):
     def setUp(self):
         super(TestCinderVolumeUsageAuditCmd, self).setUp()
         sys.argv = ['cinder-volume-usage-audit']
-        CONF(sys.argv[1:], project='cinder', version=version.version_string())
 
     def tearDown(self):
         super(TestCinderVolumeUsageAuditCmd, self).tearDown()
