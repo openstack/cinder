@@ -144,10 +144,10 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.volume_list = ['vol0', 'vol1', 'vol2']
         self.mock_object(
             dot_utils, 'build_ems_log_message_0',
-            mock.Mock(return_value='fake_base_ems_log_message'))
+            return_value='fake_base_ems_log_message')
         self.mock_object(
             dot_utils, 'build_ems_log_message_1',
-            mock.Mock(return_value='fake_pool_ems_log_message'))
+            return_value='fake_pool_ems_log_message')
         mock_send_ems_log_message = self.mock_object(
             self.zapi_client, 'send_ems_log_message')
 
@@ -687,10 +687,8 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.vol_refresh_time = vol_refresh_time
         self.library.vol_refresh_voluntary = vol_refresh_voluntary
         self.library.vol_refresh_interval = 30
-        self.mock_object(timeutils, 'is_newer_than', mock.Mock(
-            return_value=is_newer))
-        self.mock_object(na_utils, 'set_safe_attr', mock.Mock(
-            return_value=False))
+        self.mock_object(timeutils, 'is_newer_than', return_value=is_newer)
+        self.mock_object(na_utils, 'set_safe_attr', return_value=False)
 
         retval = self.library._refresh_volume_info()
 
@@ -713,10 +711,9 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.vol_refresh_voluntary = True
         self.mock_object(timeutils, 'is_newer_than')
         self.mock_object(self.library.zapi_client, 'get_filer_volumes')
-        self.mock_object(self.library, '_get_filtered_pools', mock.Mock(
-            return_value=['vol1', 'vol2']))
-        self.mock_object(na_utils, 'set_safe_attr', mock.Mock(
-            return_value=True))
+        self.mock_object(self.library, '_get_filtered_pools',
+                         return_value=['vol1', 'vol2'])
+        self.mock_object(na_utils, 'set_safe_attr', return_value=True)
 
         retval = self.library._refresh_volume_info()
 
@@ -734,11 +731,10 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.library.vol_refresh_time = None
         self.library.vol_refresh_voluntary = True
         self.mock_object(timeutils, 'is_newer_than')
-        self.mock_object(na_utils, 'set_safe_attr', mock.Mock(
-            return_value=True))
-        self.mock_object(
-            self.library.zapi_client, 'get_filer_volumes',
-            mock.Mock(side_effect=exception.NetAppDriverException))
+        self.mock_object(na_utils, 'set_safe_attr', return_value=True)
+        self.mock_object(self.library.zapi_client,
+                         'get_filer_volumes',
+                         side_effect=exception.NetAppDriverException)
         self.mock_object(self.library, '_get_filtered_pools')
 
         retval = self.library._refresh_volume_info()

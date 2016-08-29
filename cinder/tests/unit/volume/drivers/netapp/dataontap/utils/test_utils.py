@@ -81,7 +81,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 
     def test_get_client_for_backend(self):
         self.mock_object(utils, 'get_backend_configuration',
-                         mock.Mock(return_value=self.config))
+                         return_value=self.config)
 
         utils.get_client_for_backend(self.backend)
 
@@ -92,7 +92,7 @@ class NetAppCDOTDataMotionTestCase(test.TestCase):
 
     def test_get_client_for_backend_with_vserver(self):
         self.mock_object(utils, 'get_backend_configuration',
-                         mock.Mock(return_value=self.config))
+                         return_value=self.config)
 
         CONF.set_override('netapp_vserver', 'fake_vserver',
                           group=self.backend, enforce_type=True)
@@ -112,7 +112,7 @@ class NetAppDataOntapUtilsTestCase(test.TestCase):
     def test_build_ems_log_message_0(self, driver_mode):
 
         self.mock_object(
-            socket, 'gethostname', mock.Mock(return_value='fake_hostname'))
+            socket, 'gethostname', return_value='fake_hostname')
 
         result = utils.build_ems_log_message_0(
             'fake_driver_name', 'fake_app_version', driver_mode)
@@ -134,7 +134,7 @@ class NetAppDataOntapUtilsTestCase(test.TestCase):
     def test_build_ems_log_message_1(self):
 
         self.mock_object(
-            socket, 'gethostname', mock.Mock(return_value='fake_hostname'))
+            socket, 'gethostname', return_value='fake_hostname')
         aggregate_pools = ['aggr1', 'aggr2']
         flexvol_pools = ['vol1', 'vol2']
 

@@ -16,7 +16,6 @@
 import copy
 
 import ddt
-import mock
 
 from cinder.api.views import versions
 from cinder import test
@@ -77,7 +76,7 @@ class ViewBuilderTestCase(test.TestCase):
 
         self.mock_object(versions.ViewBuilder,
                          '_build_links',
-                         mock.Mock(return_value=FAKE_LINKS))
+                         return_value=FAKE_LINKS)
 
         result = self._get_builder().build_versions(FAKE_VERSIONS)
 
@@ -90,7 +89,7 @@ class ViewBuilderTestCase(test.TestCase):
 
         self.mock_object(versions.ViewBuilder,
                          '_build_links',
-                         mock.Mock(return_value=FAKE_LINKS))
+                         return_value=FAKE_LINKS)
 
         result = self._get_builder()._build_version(FAKE_VERSIONS['v1.0'])
 
@@ -103,7 +102,7 @@ class ViewBuilderTestCase(test.TestCase):
 
         self.mock_object(versions.ViewBuilder,
                          '_generate_href',
-                         mock.Mock(return_value=FAKE_HREF))
+                         return_value=FAKE_HREF)
 
         result = self._get_builder()._build_links(FAKE_VERSIONS['v1.0'])
 
@@ -113,7 +112,7 @@ class ViewBuilderTestCase(test.TestCase):
 
         self.mock_object(versions.ViewBuilder,
                          '_get_base_url_without_version',
-                         mock.Mock(return_value=URL_BASE))
+                         return_value=URL_BASE)
 
         result = self._get_builder()._generate_href()
 
@@ -130,7 +129,7 @@ class ViewBuilderTestCase(test.TestCase):
 
         self.mock_object(versions.ViewBuilder,
                          '_get_base_url_without_version',
-                         mock.Mock(return_value=URL_BASE))
+                         return_value=URL_BASE)
 
         result = self._get_builder()._generate_href(version=version,
                                                     path=path)

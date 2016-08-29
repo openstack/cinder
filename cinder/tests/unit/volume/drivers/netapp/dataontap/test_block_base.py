@@ -123,10 +123,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(na_utils, 'get_volume_extra_specs')
         self.mock_object(na_utils, 'log_extra_spec_warnings')
         self.mock_object(block_base, 'LOG')
-        self.mock_object(volume_utils, 'extract_host', mock.Mock(
-            return_value=fake.POOL_NAME))
+        self.mock_object(volume_utils, 'extract_host',
+                         return_value=fake.POOL_NAME)
         self.mock_object(self.library, '_setup_qos_for_volume',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(self.library, '_create_lun')
         self.mock_object(self.library, '_create_lun_handle')
         self.mock_object(self.library, '_add_lun_to_table')
@@ -145,8 +145,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.assertEqual(0, block_base.LOG.error.call_count)
 
     def test_create_volume_no_pool(self):
-        self.mock_object(volume_utils, 'extract_host', mock.Mock(
-            return_value=None))
+        self.mock_object(volume_utils, 'extract_host', return_value=None)
 
         self.assertRaises(exception.InvalidHost, self.library.create_volume,
                           fake.VOLUME)
@@ -155,9 +154,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(block_base, 'LOG')
         self.mock_object(na_utils, 'get_volume_extra_specs')
         self.mock_object(self.library, '_setup_qos_for_volume',
-                         mock.Mock(return_value=None))
-        self.mock_object(self.library, '_create_lun', mock.Mock(
-            side_effect=Exception))
+                         return_value=None)
+        self.mock_object(self.library, '_create_lun', side_effect=Exception)
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -491,7 +489,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             'lun0', 'lun0', '3', {'UUID': 'fake_uuid'})
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_extract_lun_info',
-                         mock.Mock(return_value=mock_lun))
+                         return_value=mock_lun)
 
         existing_ref = {'source-name': 'fake_path'}
         lun = self.library._get_existing_vol_with_manage_ref(existing_ref)
@@ -509,7 +507,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             'lun0', 'lun0', '3', {'UUID': 'fake_uuid'})
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_extract_lun_info',
-                         mock.Mock(return_value=mock_lun))
+                         return_value=mock_lun)
 
         existing_ref = {'source-id': 'fake_uuid'}
         lun = self.library._get_existing_vol_with_manage_ref(existing_ref)
@@ -530,14 +528,14 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.zapi_client.get_lun_by_args.return_value = ['lun0', 'lun1']
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_is_lun_valid_on_storage',
-                         mock.Mock(side_effect=[False, True]))
+                         side_effect=[False, True])
         mock_lun0 = block_base.NetAppLun(
             'lun0', 'lun0', '3', {'UUID': 'src_id_0'})
         mock_lun1 = block_base.NetAppLun(
             'lun1', 'lun1', '5', {'UUID': 'src_id_1'})
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_extract_lun_info',
-                         mock.Mock(side_effect=[mock_lun0, mock_lun1]))
+                         side_effect=[mock_lun0, mock_lun1])
 
         lun = self.library._get_existing_vol_with_manage_ref(
             {'source-name': 'lun_path'})
@@ -569,18 +567,18 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
             volume['name'], volume['name'], '3',
             {'UUID': 'fake_uuid', 'Path': 'p'})
         self.mock_object(self.library, '_get_existing_vol_with_manage_ref',
-                         mock.Mock(return_value=mock_lun))
+                         return_value=mock_lun)
 
-        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
-            return_value=fake.EXTRA_SPECS))
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value=fake.EXTRA_SPECS)
         self.mock_object(self.library, '_check_volume_type_for_lun',
-                         mock.Mock(return_value=True))
+                         return_value=True)
         self.mock_object(self.library, '_setup_qos_for_volume')
         self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(self.library, '_add_lun_to_table')
         self.mock_object(self.library, '_get_volume_model_update',
-                         mock.Mock(return_value=model_update))
+                         return_value=model_update)
         mock_info_log = self.mock_object(block_base.LOG, 'info')
 
         actual_update = self.library.manage_existing(volume, existing_ref)
@@ -598,18 +596,18 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_lun = block_base.NetAppLun(
             'lun0', 'lun0', '3', {'UUID': 'fake_uuid', 'Path': fake.LUN_PATH})
         self.mock_object(self.library, '_get_existing_vol_with_manage_ref',
-                         mock.Mock(return_value=mock_lun))
+                         return_value=mock_lun)
 
-        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
-            return_value=fake.EXTRA_SPECS))
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value=fake.EXTRA_SPECS)
         self.mock_object(self.library, '_check_volume_type_for_lun',
-                         mock.Mock(return_value=True))
+                         return_value=True)
         self.mock_object(self.library, '_setup_qos_for_volume')
         self.mock_object(na_utils, 'get_qos_policy_group_name_from_info',
-                         mock.Mock(return_value=qos_policy_group_name))
+                         return_value=qos_policy_group_name)
         self.mock_object(self.library, '_add_lun_to_table')
         self.mock_object(self.library, '_get_volume_model_update',
-                         mock.Mock(return_value=expected_update))
+                         return_value=expected_update)
         self.mock_object(self.zapi_client, 'set_lun_qos_policy_group')
         mock_info_log = self.mock_object(block_base.LOG, 'info')
 
@@ -648,17 +646,17 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume = fake.ISCSI_VOLUME
         connector = fake.ISCSI_CONNECTOR
         self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
-                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+                         return_value=fake.ISCSI_LUN['lun_id'])
         self.zapi_client.get_iscsi_target_details.return_value = (
             target_details_list)
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_get_preferred_target_from_list',
-                         mock.Mock(return_value=target_details_list[1]))
+                         return_value=target_details_list[1])
         self.zapi_client.get_iscsi_service_details.return_value = (
             fake.ISCSI_SERVICE_IQN)
-        self.mock_object(
-            na_utils, 'get_iscsi_connection_properties',
-            mock.Mock(return_value=fake.ISCSI_CONNECTION_PROPERTIES))
+        self.mock_object(na_utils,
+                         'get_iscsi_connection_properties',
+                         return_value=fake.ISCSI_CONNECTION_PROPERTIES)
 
         target_info = self.library.initialize_connection_iscsi(volume,
                                                                connector)
@@ -698,13 +696,13 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume = fake.ISCSI_VOLUME
         connector = fake.ISCSI_CONNECTOR
         self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
-                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+                         return_value=fake.ISCSI_LUN['lun_id'])
         self.zapi_client.get_iscsi_target_details.return_value = None
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_get_preferred_target_from_list')
-        self.mock_object(
-            na_utils, 'get_iscsi_connection_properties',
-            mock.Mock(return_value=fake.ISCSI_CONNECTION_PROPERTIES))
+        self.mock_object(na_utils,
+                         'get_iscsi_connection_properties',
+                         return_value=fake.ISCSI_CONNECTION_PROPERTIES)
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.library.initialize_connection_iscsi,
@@ -722,11 +720,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume = fake.ISCSI_VOLUME
         connector = fake.ISCSI_CONNECTOR
         self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
-                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+                         return_value=fake.ISCSI_LUN['lun_id'])
         self.zapi_client.get_iscsi_target_details.return_value = None
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_get_preferred_target_from_list',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(na_utils, 'get_iscsi_connection_properties')
 
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -743,12 +741,12 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume = fake.ISCSI_VOLUME
         connector = fake.ISCSI_CONNECTOR
         self.mock_object(block_base.NetAppBlockStorageLibrary, '_map_lun',
-                         mock.Mock(return_value=fake.ISCSI_LUN['lun_id']))
+                         return_value=fake.ISCSI_LUN['lun_id'])
         self.zapi_client.get_iscsi_target_details.return_value = (
             target_details_list)
         self.mock_object(block_base.NetAppBlockStorageLibrary,
                          '_get_preferred_target_from_list',
-                         mock.Mock(return_value=target_details_list[1]))
+                         return_value=target_details_list[1])
         self.zapi_client.get_iscsi_service_details.return_value = None
         self.mock_object(na_utils, 'get_iscsi_connection_properties')
 
@@ -885,8 +883,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.library.zapi_client.destroy_lun.assert_called_once_with(fake.PATH)
 
     def test_delete_lun_no_metadata(self):
-        self.mock_object(self.library, '_get_lun_attr', mock.Mock(
-            return_value=None))
+        self.mock_object(self.library, '_get_lun_attr', return_value=None)
         self.library.zapi_client = mock.Mock()
         self.mock_object(self.library, 'zapi_client')
 
@@ -907,16 +904,16 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         mock_delete_lun.assert_called_once_with(fake.SNAPSHOT_NAME)
 
     def test_clone_source_to_destination(self):
-        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
-            return_value=fake.EXTRA_SPECS))
-        self.mock_object(self.library, '_setup_qos_for_volume', mock.Mock(
-            return_value=fake.QOS_POLICY_GROUP_INFO))
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value=fake.EXTRA_SPECS)
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_clone_lun')
         self.mock_object(self.library, '_extend_volume')
         self.mock_object(self.library, 'delete_volume')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
         self.mock_object(self.library, '_get_volume_model_update',
-                         mock.Mock(return_value={'key': 'value'}))
+                         return_value={'key': 'value'})
         self.library.lun_space_reservation = 'false'
 
         retval = self.library._clone_source_to_destination(
@@ -939,13 +936,12 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                          _mark_qos_policy_group_for_deletion.call_count)
 
     def test_clone_source_to_destination_exception_path(self):
-        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
-            return_value=fake.EXTRA_SPECS))
-        self.mock_object(self.library, '_setup_qos_for_volume', mock.Mock(
-            return_value=fake.QOS_POLICY_GROUP_INFO))
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value=fake.EXTRA_SPECS)
+        self.mock_object(self.library, '_setup_qos_for_volume',
+                         return_value=fake.QOS_POLICY_GROUP_INFO)
         self.mock_object(self.library, '_clone_lun')
-        self.mock_object(self.library, '_extend_volume', mock.Mock(
-            side_effect=Exception))
+        self.mock_object(self.library, '_extend_volume', side_effect=Exception)
         self.mock_object(self.library, 'delete_volume')
         self.mock_object(self.library, '_mark_qos_policy_group_for_deletion')
         self.library.lun_space_reservation = 'true'
@@ -983,9 +979,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         fake_lun = block_base.NetAppLun(fake.LUN_HANDLE, fake.LUN_ID,
                                         fake.LUN_SIZE, fake.LUN_METADATA)
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
-        self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+        self.mock_object(self.library,
+                         '_get_lun_from_table',
+                         return_value=fake_lun)
 
         self.library.create_snapshot(fake.SNAPSHOT)
 
@@ -1031,11 +1027,10 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume_copy['size'] = new_size
 
         mock_get_volume_extra_specs = self.mock_object(
-            na_utils, 'get_volume_extra_specs',
-            mock.Mock(return_value=fake.EXTRA_SPECS))
+            na_utils, 'get_volume_extra_specs', return_value=fake.EXTRA_SPECS)
         mock_setup_qos_for_volume = self.mock_object(
             self.library, '_setup_qos_for_volume',
-            mock.Mock(return_value=fake.QOS_POLICY_GROUP_INFO))
+            return_value=fake.QOS_POLICY_GROUP_INFO)
         mock_extend_volume = self.mock_object(self.library, '_extend_volume')
 
         self.library.extend_volume(fake.VOLUME, new_size)
@@ -1054,14 +1049,12 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         volume_copy['size'] = new_size
 
         mock_get_volume_extra_specs = self.mock_object(
-            na_utils, 'get_volume_extra_specs',
-            mock.Mock(return_value=fake.EXTRA_SPECS))
+            na_utils, 'get_volume_extra_specs', return_value=fake.EXTRA_SPECS)
         mock_setup_qos_for_volume = self.mock_object(
             self.library, '_setup_qos_for_volume',
-            mock.Mock(return_value=fake.QOS_POLICY_GROUP_INFO))
+            return_value=fake.QOS_POLICY_GROUP_INFO)
         mock_extend_volume = self.mock_object(
-            self.library, '_extend_volume',
-            mock.Mock(side_effect=netapp_api.NaApiError))
+            self.library, '_extend_volume', side_effect=netapp_api.NaApiError)
 
         self.assertRaises(netapp_api.NaApiError,
                           self.library.extend_volume,
@@ -1091,12 +1084,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                         current_size_bytes,
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
-            mock.Mock(return_value=fake_lun_geometry))
+            return_value=fake_lun_geometry)
         mock_do_direct_resize = self.mock_object(self.library.zapi_client,
                                                  'do_direct_resize')
         mock_do_sub_clone_resize = self.mock_object(self.library,
@@ -1130,12 +1122,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                         current_size_bytes,
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
-            mock.Mock(return_value=fake_lun_geometry))
+            return_value=fake_lun_geometry)
         mock_do_direct_resize = self.mock_object(self.library.zapi_client,
                                                  'do_direct_resize')
         mock_do_sub_clone_resize = self.mock_object(self.library,
@@ -1169,12 +1160,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
                                         current_size_bytes,
                                         fake.LUN_METADATA)
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         fake_lun_geometry = {'max_resize': six.text_type(max_size_bytes)}
         mock_get_lun_geometry = self.mock_object(
             self.library.zapi_client, 'get_lun_geometry',
-            mock.Mock(return_value=fake_lun_geometry))
+            return_value=fake_lun_geometry)
         mock_do_direct_resize = self.mock_object(self.library.zapi_client,
                                                  'do_direct_resize')
         mock_do_sub_clone_resize = self.mock_object(self.library,
@@ -1199,13 +1189,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         block_count = fake.LUN_SIZE * units.Gi / 512
 
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         mock_get_vol_option = self.mock_object(
-            self.library, '_get_vol_option', mock.Mock(return_value='off'))
+            self.library, '_get_vol_option', return_value='off')
         mock_get_lun_block_count = self.mock_object(
-            self.library, '_get_lun_block_count',
-            mock.Mock(return_value=block_count))
+            self.library, '_get_lun_block_count', return_value=block_count)
         mock_create_lun = self.mock_object(
             self.library.zapi_client, 'create_lun')
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
@@ -1239,13 +1227,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         block_count = fake.LUN_SIZE * units.Gi / 512
 
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         mock_get_vol_option = self.mock_object(
-            self.library, '_get_vol_option', mock.Mock(return_value='on'))
+            self.library, '_get_vol_option', return_value='on')
         mock_get_lun_block_count = self.mock_object(
-            self.library, '_get_lun_block_count',
-            mock.Mock(return_value=block_count))
+            self.library, '_get_lun_block_count', return_value=block_count)
         mock_create_lun = self.mock_object(
             self.library.zapi_client, 'create_lun')
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
@@ -1278,13 +1264,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         block_count = 0
 
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         mock_get_vol_option = self.mock_object(
-            self.library, '_get_vol_option', mock.Mock(return_value='off'))
+            self.library, '_get_vol_option', return_value='off')
         mock_get_lun_block_count = self.mock_object(
-            self.library, '_get_lun_block_count',
-            mock.Mock(return_value=block_count))
+            self.library, '_get_lun_block_count', return_value=block_count)
         mock_create_lun = self.mock_object(
             self.library.zapi_client, 'create_lun')
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
@@ -1318,16 +1302,14 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         block_count = fake.LUN_SIZE * units.Gi / 512
 
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         mock_get_vol_option = self.mock_object(
-            self.library, '_get_vol_option', mock.Mock(return_value='off'))
+            self.library, '_get_vol_option', return_value='off')
         mock_get_lun_block_count = self.mock_object(
-            self.library, '_get_lun_block_count',
-            mock.Mock(return_value=block_count))
+            self.library, '_get_lun_block_count', return_value=block_count)
         mock_create_lun = self.mock_object(
             self.library.zapi_client, 'create_lun',
-            mock.Mock(side_effect=netapp_api.NaApiError))
+            side_effect=netapp_api.NaApiError)
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
         mock_post_sub_clone_resize = self.mock_object(
             self.library, '_post_sub_clone_resize')
@@ -1362,18 +1344,15 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         block_count = fake.LUN_SIZE * units.Gi / 512
 
         mock_get_lun_from_table = self.mock_object(
-            self.library, '_get_lun_from_table',
-            mock.Mock(return_value=fake_lun))
+            self.library, '_get_lun_from_table', return_value=fake_lun)
         mock_get_vol_option = self.mock_object(
-            self.library, '_get_vol_option', mock.Mock(return_value='off'))
+            self.library, '_get_vol_option', return_value='off')
         mock_get_lun_block_count = self.mock_object(
-            self.library, '_get_lun_block_count',
-            mock.Mock(return_value=block_count))
+            self.library, '_get_lun_block_count', return_value=block_count)
         mock_create_lun = self.mock_object(
             self.library.zapi_client, 'create_lun')
         mock_clone_lun = self.mock_object(
-            self.library, '_clone_lun',
-            mock.Mock(side_effect=netapp_api.NaApiError))
+            self.library, '_clone_lun', side_effect=netapp_api.NaApiError)
         mock_post_sub_clone_resize = self.mock_object(
             self.library, '_post_sub_clone_resize')
         mock_destroy_lun = self.mock_object(
@@ -1426,8 +1405,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         snapshot['volume'] = fake.CG_VOLUME
 
         mock_extract_host = self.mock_object(
-            volume_utils, 'extract_host',
-            mock.Mock(return_value=fake.POOL_NAME))
+            volume_utils, 'extract_host', return_value=fake.POOL_NAME)
 
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
         mock_busy = self.mock_object(
@@ -1454,7 +1432,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
         mock_extract_host = self.mock_object(
             volume_utils, 'extract_host',
-            mock.Mock(return_value=fake.POOL_NAME))
+            return_value=fake.POOL_NAME)
         mock_clone_lun = self.mock_object(self.library, '_clone_lun')
         mock_busy = self.mock_object(
             self.zapi_client, 'wait_for_busy_snapshot')
@@ -1488,8 +1466,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_delete_cgsnapshot_not_found(self):
         self.mock_object(block_base, 'LOG')
-        self.mock_object(self.library, '_get_lun_attr',
-                         mock.Mock(return_value=None))
+        self.mock_object(self.library, '_get_lun_attr', return_value=None)
 
         self.library.delete_cgsnapshot(fake.CG_SNAPSHOT, [fake.CG_SNAPSHOT])
 
@@ -1517,9 +1494,9 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         self.mock_object(na_utils, 'log_extra_spec_warnings')
         self.mock_object(block_base, 'LOG')
         self.mock_object(volume_utils, 'extract_host',
-                         mock.Mock(return_value=fake.POOL_NAME))
+                         return_value=fake.POOL_NAME)
         self.mock_object(self.library, '_setup_qos_for_volume',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(self.library, '_create_lun')
         self.mock_object(self.library, '_create_lun_handle')
         self.mock_object(self.library, '_add_lun_to_table')
@@ -1533,8 +1510,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_delete_consistencygroup_volume_delete_failure(self):
         self.mock_object(block_base, 'LOG')
-        self.mock_object(self.library, '_delete_lun',
-                         mock.Mock(side_effect=Exception))
+        self.mock_object(self.library, '_delete_lun', side_effect=Exception)
 
         model_update, volumes = self.library.delete_consistencygroup(
             fake.CONSISTENCY_GROUP, [fake.CG_VOLUME])
@@ -1545,8 +1521,7 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
 
     def test_delete_consistencygroup_not_found(self):
         self.mock_object(block_base, 'LOG')
-        self.mock_object(self.library, '_get_lun_attr',
-                         mock.Mock(return_value=None))
+        self.mock_object(self.library, '_get_lun_attr', return_value=None)
 
         model_update, volumes = self.library.delete_consistencygroup(
             fake.CONSISTENCY_GROUP, [fake.CG_VOLUME])
@@ -1563,8 +1538,8 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
     def test_create_consistencygroup_from_src_cg_snapshot(self,
                                                           volume_model_update):
         mock_clone_source_to_destination = self.mock_object(
-            self.library, '_clone_source_to_destination', mock.Mock(
-                return_value=volume_model_update))
+            self.library, '_clone_source_to_destination',
+            return_value=volume_model_update)
 
         actual_return_value = self.library.create_consistencygroup_from_src(
             fake.CONSISTENCY_GROUP, [fake.VOLUME], cgsnapshot=fake.CG_SNAPSHOT,
@@ -1588,11 +1563,11 @@ class NetAppBlockStorageLibraryTestCase(test.TestCase):
         lun_name = fake.SOURCE_CG_VOLUME['name']
         mock_lun = block_base.NetAppLun(
             lun_name, lun_name, '3', {'UUID': 'fake_uuid'})
-        self.mock_object(self.library, '_get_lun_from_table', mock.Mock(
-            return_value=mock_lun))
+        self.mock_object(self.library, '_get_lun_from_table',
+                         return_value=mock_lun)
         mock_clone_source_to_destination = self.mock_object(
             self.library, '_clone_source_to_destination',
-            mock.Mock(return_value=volume_model_update))
+            return_value=volume_model_update)
 
         actual_return_value = self.library.create_consistencygroup_from_src(
             fake.CONSISTENCY_GROUP, [fake.VOLUME],

@@ -69,7 +69,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
             eseries_fakes.VOLUME_MAPPING
         ]
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         self.mock_object(self.client, 'delete_volume_mapping')
 
         host_mapper.unmap_volume_from_host(self.client, get_fake_volume(),
@@ -85,11 +85,10 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
             eseries_fakes.VOLUME_MAPPING
         ]
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         self.mock_object(self.client, 'delete_volume_mapping')
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(
-                             side_effect=exception.NotFound))
+                         side_effect=exception.NotFound)
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.unmap_volume_from_host,
@@ -111,11 +110,11 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
             'clusterRef']
         fake_eseries_volume['listOfMappings'] = [fake_volume_mapping]
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         fake_host = copy.deepcopy(eseries_fakes.HOST)
         fake_host['clusterRef'] = utils.NULL_REF
         self.mock_object(self.client, 'list_hosts',
-                         mock.Mock(return_value=[fake_host]))
+                         return_value=[fake_host])
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.unmap_volume_from_host,
@@ -133,7 +132,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_eseries_volume['listOfMappings'] = [fake_volume_mapping]
         self.mock_object(self.client, 'delete_volume_mapping')
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         fake_volume = get_fake_volume()
         fake_volume['status'] = 'detaching'
 
@@ -152,7 +151,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_eseries_volume['listOfMappings'] = [fake_volume_mapping]
         self.mock_object(self.client, 'delete_volume_mapping')
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         fake_volume = get_fake_volume()
         fake_volume['status'] = 'in-use'
 
@@ -174,14 +173,13 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_volume_mapping['mapRef'] = fake_ref
         fake_eseries_volume['listOfMappings'] = [fake_volume_mapping]
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         fake_host = copy.deepcopy(eseries_fakes.HOST)
         fake_host['clusterRef'] = utils.NULL_REF
         self.mock_object(self.client, 'list_hosts',
-                         mock.Mock(return_value=[fake_host]))
+                         return_value=[fake_host])
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(return_value=
-                                   eseries_fakes.FOREIGN_HOST_GROUP))
+                         return_value=eseries_fakes.FOREIGN_HOST_GROUP)
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.unmap_volume_from_host,
@@ -204,14 +202,12 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_eseries_volume['clusterRef'] = fake_ref
         fake_eseries_volume['listOfMappings'] = [fake_volume_mapping]
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         fake_host = copy.deepcopy(eseries_fakes.HOST)
         fake_host['clusterRef'] = utils.NULL_REF
-        self.mock_object(self.client, 'list_hosts',
-                         mock.Mock(return_value=[fake_host]))
+        self.mock_object(self.client, 'list_hosts', return_value=[fake_host])
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(return_value=
-                                   eseries_fakes.FOREIGN_HOST_GROUP))
+                         return_value=eseries_fakes.FOREIGN_HOST_GROUP)
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.unmap_volume_from_host,
@@ -223,8 +219,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_map_volume_to_single_host_volume_not_mapped(self):
         self.mock_object(self.client, 'create_volume_mapping',
-                         mock.Mock(
-                             return_value=eseries_fakes.VOLUME_MAPPING))
+                         return_value=eseries_fakes.VOLUME_MAPPING)
 
         host_mapper.map_volume_to_single_host(self.client, get_fake_volume(),
                                               eseries_fakes.VOLUME,
@@ -237,8 +232,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
     def test_map_volume_to_single_host_volume_already_mapped_to_target_host(
             self):
         """Should be a no-op"""
-        self.mock_object(self.client, 'create_volume_mapping',
-                         mock.Mock())
+        self.mock_object(self.client, 'create_volume_mapping')
 
         host_mapper.map_volume_to_single_host(self.client,
                                               get_fake_volume(),
@@ -262,7 +256,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_mapping_to_other_host['mapRef'] = \
             eseries_fakes.MULTIATTACH_HOST_GROUP['clusterRef']
         self.mock_object(self.client, 'move_volume_mapping_via_symbol',
-                         mock.Mock(return_value={'lun': 5}))
+                         return_value={'lun': 5})
 
         host_mapper.map_volume_to_single_host(self.client,
                                               get_fake_volume(),
@@ -333,8 +327,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
     def test_map_volume_to_multiple_hosts_volume_already_mapped_to_target_host(
             self):
         """Should be a no-op."""
-        self.mock_object(self.client, 'create_volume_mapping',
-                         mock.Mock())
+        self.mock_object(self.client, 'create_volume_mapping')
 
         host_mapper.map_volume_to_multiple_hosts(self.client,
                                                  get_fake_volume(),
@@ -357,9 +350,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
         self.mock_object(self.client, 'set_host_group_for_host')
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(
-                             return_value=eseries_fakes.MULTIATTACH_HOST_GROUP)
-                         )
+                         return_value=eseries_fakes.MULTIATTACH_HOST_GROUP)
 
         host_mapper.map_volume_to_multiple_hosts(self.client,
                                                  get_fake_volume(),
@@ -380,8 +371,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_mapping_to_host_group['mapRef'] = \
             eseries_fakes.MULTIATTACH_HOST_GROUP['clusterRef']
         self.mock_object(self.client, 'set_host_group_for_host',
-                         mock.Mock(side_effect=exception.NetAppDriverException)
-                         )
+                         side_effect=exception.NetAppDriverException)
 
         self.assertRaises(exception.NetAppDriverException,
                           host_mapper.map_volume_to_multiple_hosts,
@@ -402,11 +392,10 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         existing_host['clusterRef'] = utils.NULL_REF
         target_host = copy.deepcopy(eseries_fakes.HOST_2)
         target_host['clusterRef'] = utils.NULL_REF
-        self.mock_object(self.client, 'get_host',
-                         mock.Mock(return_value=existing_host))
+        self.mock_object(self.client, 'get_host', return_value=existing_host)
         self.mock_object(self.client, 'set_host_group_for_host')
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(side_effect=exception.NotFound))
+                         side_effect=exception.NotFound)
         mock_move_mapping = mock.Mock(
             return_value=eseries_fakes.VOLUME_MAPPING_TO_MULTIATTACH_GROUP)
         self.mock_object(self.client,
@@ -437,15 +426,11 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         existing_host['clusterRef'] = utils.NULL_REF
         target_host = copy.deepcopy(eseries_fakes.HOST_2)
         target_host['clusterRef'] = utils.NULL_REF
-        self.mock_object(self.client, 'get_host',
-                         mock.Mock(return_value=existing_host))
+        self.mock_object(self.client, 'get_host', return_value=existing_host)
         self.mock_object(self.client, 'set_host_group_for_host',
-                         mock.Mock(side_effect=[
-                             None,
-                             exception.NetAppDriverException
-                         ]))
+                         side_effect=[None, exception.NetAppDriverException])
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(side_effect=exception.NotFound))
+                         side_effect=exception.NotFound)
         mock_move_mapping = mock.Mock(
             return_value=eseries_fakes.VOLUME_MAPPING_TO_MULTIATTACH_GROUP)
         self.mock_object(self.client,
@@ -472,15 +457,11 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         existing_host['clusterRef'] = utils.NULL_REF
         target_host = copy.deepcopy(eseries_fakes.HOST_2)
         target_host['clusterRef'] = utils.NULL_REF
-        self.mock_object(self.client, 'get_host',
-                         mock.Mock(return_value=existing_host))
+        self.mock_object(self.client, 'get_host', return_value=existing_host)
         self.mock_object(self.client, 'set_host_group_for_host',
-                         mock.Mock(side_effect=[
-                             exception.NetAppDriverException,
-                             None
-                         ]))
+                         side_effect=[exception.NetAppDriverException, None])
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(side_effect=exception.NotFound))
+                         side_effect=exception.NotFound)
         mock_move_mapping = mock.Mock(
             return_value=eseries_fakes.VOLUME_MAPPING_TO_MULTIATTACH_GROUP)
         self.mock_object(self.client,
@@ -507,12 +488,11 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_ref = "8500000060080E500023C7340036035F515B78FD"
         fake_volume_mapping['mapRef'] = fake_ref
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         fake_host = copy.deepcopy(eseries_fakes.HOST)
         fake_host['clusterRef'] = utils.NULL_REF
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(return_value=
-                                   eseries_fakes.FOREIGN_HOST_GROUP))
+                         return_value=eseries_fakes.FOREIGN_HOST_GROUP)
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.map_volume_to_multiple_hosts,
@@ -538,12 +518,10 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_volume_mapping['mapRef'] = fake_host['hostRef']
         fake_eseries_volume['listOfMappings'] = [fake_volume_mapping]
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
-        self.mock_object(self.client, 'get_host',
-                         mock.Mock(return_value=fake_host))
+                         return_value=[fake_eseries_volume])
+        self.mock_object(self.client, 'get_host', return_value=fake_host)
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(side_effect=[
-                             eseries_fakes.FOREIGN_HOST_GROUP]))
+                         side_effect=[eseries_fakes.FOREIGN_HOST_GROUP])
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.map_volume_to_multiple_hosts,
@@ -568,12 +546,11 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
         fake_host['clusterRef'] = eseries_fakes.FOREIGN_HOST_GROUP[
             'clusterRef']
         self.mock_object(self.client, 'list_volumes',
-                         mock.Mock(return_value=[fake_eseries_volume]))
+                         return_value=[fake_eseries_volume])
         self.mock_object(self.client, 'get_host',
-                         mock.Mock(return_value=eseries_fakes.HOST))
+                         return_value=eseries_fakes.HOST)
         self.mock_object(self.client, 'get_host_group',
-                         mock.Mock(side_effect=[
-                             eseries_fakes.FOREIGN_HOST_GROUP]))
+                         side_effect=[eseries_fakes.FOREIGN_HOST_GROUP])
 
         err = self.assertRaises(exception.NetAppDriverException,
                                 host_mapper.map_volume_to_multiple_hosts,
@@ -611,7 +588,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
     def test_host_full(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST)
         self.mock_object(self.client, 'get_volume_mappings_for_host',
-                         mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
+                         return_value=FAKE_USED_UP_MAPPINGS)
         self.assertTrue(host_mapper._is_host_full(self.client, fake_host))
 
     def test_get_free_lun(self):
@@ -624,8 +601,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_get_free_lun_host_full(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST)
-        self.mock_object(host_mapper, '_is_host_full',
-                         mock.Mock(return_value=True))
+        self.mock_object(host_mapper, '_is_host_full', return_value=True)
         self.assertRaises(
             exception.NetAppDriverException,
             host_mapper._get_free_lun,
@@ -639,8 +615,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
 
     def test_get_free_lun_no_unused_luns_host_not_full(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST)
-        self.mock_object(host_mapper, '_is_host_full',
-                         mock.Mock(return_value=False))
+        self.mock_object(host_mapper, '_is_host_full', return_value=False)
         lun = host_mapper._get_free_lun(self.client, fake_host, False,
                                         FAKE_USED_UP_MAPPINGS)
         self.assertEqual(255, lun)
@@ -648,7 +623,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
     def test_get_free_lun_no_lun_available(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST_3)
         self.mock_object(self.client, 'get_volume_mappings_for_host',
-                         mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
+                         return_value=FAKE_USED_UP_MAPPINGS)
 
         self.assertRaises(exception.NetAppDriverException,
                           host_mapper._get_free_lun,
@@ -658,7 +633,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
     def test_get_free_lun_multiattach_enabled_no_unused_ids(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST_3)
         self.mock_object(self.client, 'get_volume_mappings',
-                         mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
+                         return_value=FAKE_USED_UP_MAPPINGS)
 
         self.assertRaises(exception.NetAppDriverException,
                           host_mapper._get_free_lun,
@@ -681,7 +656,7 @@ class NetAppEseriesHostMapperTestCase(test.TestCase):
     def test_no_lun_id_available_on_host(self):
         fake_host = copy.deepcopy(eseries_fakes.HOST_3)
         self.mock_object(self.client, 'get_volume_mappings_for_host',
-                         mock.Mock(return_value=FAKE_USED_UP_MAPPINGS))
+                         return_value=FAKE_USED_UP_MAPPINGS)
 
         self.assertFalse(host_mapper._is_lun_id_available_on_host(
             self.client, fake_host, FAKE_SINGLE_USED_LUN_ID))

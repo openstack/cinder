@@ -2303,12 +2303,12 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
     def test_login_password_expires_and_reset_fail(self, state):
         with mock.patch.object(self.driver.client, 'logout') as mock_logout:
             self.mock_object(FakeClient, 'do_call',
-                             mock.Mock(return_value={"error": {"code": 0},
-                                       "data": {
-                                       "username": "admin",
-                                       "iBaseToken": "2001031430",
-                                       "deviceid": "210235G7J20000000000",
-                                       "accountstate": state}}))
+                             return_value={"error": {"code": 0},
+                                           "data": {
+                                           "username": "admin",
+                                           "iBaseToken": "2001031430",
+                                           "deviceid": "210235G7J20000000000",
+                                           "accountstate": state}})
             self.assertRaises(exception.VolumeBackendAPIException,
                               self.driver.client.login)
             mock_logout.assert_called_once_with()
@@ -2321,13 +2321,13 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                                "accountstate": 3}}
         logout_info = {"error": {"code": 1}, "data": {}}
         self.mock_object(FakeClient, 'do_call',
-                         mock.Mock(side_effect=[login_info, logout_info]))
+                         side_effect=[login_info, logout_info])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.client.login)
 
     def test_check_volume_exist_on_array(self):
         self.mock_object(rest_client.RestClient, 'get_lun_id_by_name',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.driver._check_volume_exist_on_array(
             self.volume, constants.VOLUME_NOT_EXISTS_WARN)
 
@@ -2350,12 +2350,11 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_type',
-            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+            return_value={'extra_specs': sync_replica_specs})
         self.mock_object(rest_client.RestClient,
                          'delete_lun',
-                         mock.Mock(
-                             side_effect=exception.VolumeBackendAPIException(
-                                 data='err')))
+                         side_effect=exception.VolumeBackendAPIException(
+                             data='err'))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.delete_volume, self.replica_volume)
 
@@ -2381,7 +2380,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         moved = False
         empty_dict = {}
         self.mock_object(rest_client.RestClient, 'get_lun_migration_task',
-                         mock.Mock(side_effect=[{}, task_info]))
+                         side_effect=[{}, task_info])
         moved, model_update = self.driver.migrate_volume(None,
                                                          self.volume,
                                                          test_host,
@@ -2411,7 +2410,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         moved = False
         empty_dict = {}
         self.mock_object(rest_client.RestClient, 'get_lun_migration_task',
-                         mock.Mock(return_value=task_info))
+                         return_value=task_info)
         moved, model_update = self.driver.migrate_volume(None,
                                                          self.replica_volume,
                                                          test_host,
@@ -2439,7 +2438,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                                "description": "0"}
                      }
         self.mock_object(rest_client.RestClient, 'get_lun_migration_task',
-                         mock.Mock(return_value=task_info))
+                         return_value=task_info)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.migrate_volume,
                           None, self.volume, test_host, None)
@@ -2464,7 +2463,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                                "description": "0"}
                      }
         self.mock_object(rest_client.RestClient, 'get_lun_migration_task',
-                         mock.Mock(return_value=task_info))
+                         return_value=task_info)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.migrate_volume,
                           None, self.volume, test_host, None)
@@ -2491,9 +2490,9 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                      }
         empty_dict = {}
         self.mock_object(volume_types, 'get_volume_type',
-                         mock.Mock(return_value=test_new_type))
+                         return_value=test_new_type)
         self.mock_object(rest_client.RestClient, 'get_lun_migration_task',
-                         mock.Mock(return_value=task_info))
+                         return_value=task_info)
         moved, model_update = self.driver.migrate_volume(None,
                                                          self.volume,
                                                          test_host,
@@ -2505,25 +2504,23 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
     def test_manage_existing_fail(self, pool_data):
         self.driver.support_func = pool_data
         self.mock_object(rest_client.RestClient, 'get_lun_info',
-                         mock.Mock(return_value={'CAPACITY': 2097152,
-                                                 'ALLOCTYPE': 1}))
+                         return_value={'CAPACITY': 2097152, 'ALLOCTYPE': 1})
         self.mock_object(rest_client.RestClient, 'get_lun_id_by_name',
-                         mock.Mock(return_value='ID1'))
+                         return_value='ID1')
         self.mock_object(rest_client.RestClient, 'rename_lun')
         self.mock_object(huawei_driver.HuaweiBaseDriver,
                          '_get_lun_info_by_ref',
-                         mock.Mock(return_value={
+                         return_value={
                              'PARENTNAME': 'OpenStack_Pool',
                              'SNAPSHOTIDS': [],
                              'ID': 'ID1',
                              'HEALTHSTATUS': constants.STATUS_HEALTH,
-                             'WWN': '6643e8c1004c5f6723e9f454003'}))
+                             'WWN': '6643e8c1004c5f6723e9f454003'})
         self.mock_object(volume_types, 'get_volume_type',
-                         mock.Mock(return_value={
-                             'extra_specs': test_new_type}))
+                         return_value={'extra_specs': test_new_type})
         self.mock_object(huawei_driver.HuaweiBaseDriver,
                          '_check_needed_changes',
-                         mock.Mock(return_value={}))
+                         return_value={})
         external_ref = {'source-name': 'test1',
                         'source-id': 'ID1'}
 
@@ -2542,7 +2539,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_type',
-            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+            return_value={'extra_specs': sync_replica_specs})
         self.mock_object(replication.ReplicaCommonDriver, 'sync')
         model_update = self.driver.create_volume_from_snapshot(self.volume,
                                                                self.volume)
@@ -2571,7 +2568,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         temp_connector = copy.deepcopy(FakeConnector)
         temp_connector['multipath'] = True
         self.mock_object(rest_client.RestClient, 'get_tgt_port_group',
-                         mock.Mock(return_value = '11'))
+                         return_value = '11')
         iscsi_properties = self.driver.initialize_connection(self.volume,
                                                              temp_connector)
         self.assertEqual([1, 1], iscsi_properties['data']['target_luns'])
@@ -2580,9 +2577,9 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         temp_connector = copy.deepcopy(FakeConnector)
         temp_connector['multipath'] = True
         self.mock_object(rest_client.RestClient, 'get_tgt_port_group',
-                         mock.Mock(return_value = '12'))
+                         return_value = '12')
         self.mock_object(rest_client.RestClient, '_get_tgt_ip_from_portgroup',
-                         mock.Mock(return_value = []))
+                         return_value = [])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           self.volume, temp_connector)
@@ -2666,9 +2663,9 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         temp_connector = copy.deepcopy(FakeConnector)
         temp_connector['multipath'] = True
         self.mock_object(rest_client.RestClient, 'get_tgt_port_group',
-                         mock.Mock(return_value = '11'))
+                         return_value='11')
         self.mock_object(rest_client.RestClient, '_get_tgt_ip_from_portgroup',
-                         mock.Mock(return_value = []))
+                         return_value=[])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           self.volume, temp_connector)
@@ -2733,7 +2730,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.volume = fake_volume.fake_volume_obj(admin_contex)
         self.mock_object(rest_client.RestClient,
                          'get_lun_id_by_name',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
                           self.volume, 3)
@@ -2926,20 +2923,18 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_params',
-            mock.Mock(
-                return_value={'smarttier': 'true',
-                              'smartcache': 'true',
-                              'smartpartition': 'true',
-                              'thin_provisioning_support': 'true',
-                              'thick_provisioning_support': 'false',
-                              'policy': '2',
-                              'cachename': 'cache-test',
-                              'partitionname': 'partition-test'}))
+            return_value={'smarttier': 'true',
+                          'smartcache': 'true',
+                          'smartpartition': 'true',
+                          'thin_provisioning_support': 'true',
+                          'thick_provisioning_support': 'false',
+                          'policy': '2',
+                          'cachename': 'cache-test',
+                          'partitionname': 'partition-test'})
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_type',
-                         mock.Mock(return_value={'qos_specs_id':
-                                                 u'025ce295-15e9-41a7'}))
+                         return_value={'qos_specs_id': u'025ce295-15e9-41a7'})
         self.mock_object(qos_specs, 'get_qos_specs',
-                         mock.Mock(return_value=qos_specs_value))
+                         return_value=qos_specs_value)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, self.volume)
 
@@ -2949,22 +2944,19 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_params',
-            mock.Mock(
-                return_value={'smarttier': 'true',
-                              'smartcache': 'true',
-                              'smartpartition': 'true',
-                              'thin_provisioning_support': 'true',
-                              'thick_provisioning_support': 'false',
-                              'policy': '2',
-                              'cachename': 'cache-test',
-                              'partitionname': 'partition-test'}))
+            return_value={'smarttier': 'true',
+                          'smartcache': 'true',
+                          'smartpartition': 'true',
+                          'thin_provisioning_support': 'true',
+                          'thick_provisioning_support': 'false',
+                          'policy': '2',
+                          'cachename': 'cache-test',
+                          'partitionname': 'partition-test'})
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_type',
-                         mock.Mock(return_value={'qos_specs_id':
-                                                 u'025ce295-15e9-41a7'}))
+                         return_value={'qos_specs_id': u'025ce295-15e9-41a7'})
         self.mock_object(qos_specs, 'get_qos_specs',
-                         mock.Mock(
-                             return_value={'specs': {'fake_qos_type': '100',
-                                                     'IOType': '2'}}))
+                         return_value={'specs': {'fake_qos_type': '100',
+                                                 'IOType': '2'}})
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, self.volume)
 
@@ -3120,7 +3112,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_params',
-            mock.Mock(return_value=opts))
+            return_value=opts)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume, self.volume)
 
@@ -3693,7 +3685,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_type',
-            mock.Mock(return_value={'extra_specs': mock_type}))
+            return_value={'extra_specs': mock_type})
 
         model_update = self.driver.create_volume(self.replica_volume)
         driver_data = {'pair_id': TEST_PAIR_ID,
@@ -3795,7 +3787,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_type',
-            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+            return_value={'extra_specs': sync_replica_specs})
         self.mock_object(replication.ReplicaPairManager, '_delete_pair')
         self.mock_object(mock_module, mock_func, mock_value)
         self.assertRaises(
@@ -3809,11 +3801,11 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_type',
-            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+            return_value={'extra_specs': sync_replica_specs})
         self.driver.delete_volume(self.replica_volume)
 
         self.mock_object(rest_client.RestClient, 'check_lun_exist',
-                         mock.Mock(return_value=False))
+                         return_value=False)
         self.driver.delete_volume(self.replica_volume)
 
     @unittest.skip("Skip until bug #1578986 is fixed")
@@ -3843,10 +3835,10 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         op = replication.PairOp(self.driver.client)
         common_driver = replication.ReplicaCommonDriver(self.configuration, op)
         self.mock_object(replication.PairOp, 'get_replica_info',
-                         mock.Mock(return_value={'SECRESACCESS': access_ro}))
-        self.mock_object(huawei_utils.time, 'time', mock.Mock(
-            side_effect = utils.generate_timeout_series(
-                constants.DEFAULT_REPLICA_WAIT_TIMEOUT)))
+                         return_value={'SECRESACCESS': access_ro})
+        self.mock_object(huawei_utils.time, 'time',
+                         side_effect=utils.generate_timeout_series(
+                             constants.DEFAULT_REPLICA_WAIT_TIMEOUT))
 
         common_driver.wait_second_access(pair_id, access_ro)
         self.assertRaises(exception.VolumeBackendAPIException,
@@ -3870,17 +3862,17 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         op = replication.PairOp(self.driver.client)
         common_driver = replication.ReplicaCommonDriver(self.configuration, op)
         with mock.patch.object(replication.PairOp, 'get_replica_info',
-                               mock.Mock(return_value=normal_status)):
+                               return_value=normal_status):
             common_driver.wait_replica_ready(pair_id)
 
         with mock.patch.object(
                 replication.PairOp,
                 'get_replica_info',
-                mock.Mock(side_effect=[sync_status, normal_status])):
+                side_effect=[sync_status, normal_status]):
             common_driver.wait_replica_ready(pair_id)
 
         with mock.patch.object(replication.PairOp, 'get_replica_info',
-                               mock.Mock(return_value=split_status)):
+                               return_value=split_status):
             self.assertRaises(exception.VolumeBackendAPIException,
                               common_driver.wait_replica_ready, pair_id)
 
@@ -3968,8 +3960,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_replica = driver.replica
         self.mock_object(replication.ReplicaCommonDriver, 'failover')
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
-                         mock.Mock(
-                             return_value={'replication_enabled': 'true'}))
+                         return_value={'replication_enabled': 'true'})
         secondary_id, volumes_update = driver.failover_host(
             None, [self.replica_volume], REPLICA_BACKEND_ID)
         self.assertEqual(REPLICA_BACKEND_ID, driver.active_backend_id)
@@ -3999,8 +3990,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         old_replica_client = driver.replica_client
         old_replica = driver.replica
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
-                         mock.Mock(
-                             return_value={'replication_enabled': 'true'}))
+                         return_value={'replication_enabled': 'true'})
         secondary_id, volumes_update = driver.failover_host(
             None, [volume], REPLICA_BACKEND_ID)
         self.assertEqual(driver.active_backend_id, REPLICA_BACKEND_ID)
@@ -4019,8 +4009,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(replication.ReplicaCommonDriver, 'wait_replica_ready')
         self.mock_object(replication.ReplicaCommonDriver, 'failover')
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
-                         mock.Mock(
-                             return_value={'replication_enabled': 'true'}))
+                         return_value={'replication_enabled': 'true'})
 
         volume = self.replica_volume
 
@@ -4051,8 +4040,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
     @ddt.data({}, {'pair_id': TEST_PAIR_ID})
     def test_failback_replica_volumes_invalid_drv_data(self, mock_drv_data):
         self.mock_object(huawei_driver.HuaweiBaseDriver, '_get_volume_params',
-                         mock.Mock(
-                             return_value={'replication_enabled': 'true'}))
+                         return_value={'replication_enabled': 'true'})
 
         volume = self.replica_volume
         volume['replication_driver_data'] = replication.to_string(
@@ -4128,7 +4116,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.mock_object(
             replication.PairOp,
             'get_replica_info',
-            mock.Mock(return_value={'SECRESACCESS': mock_access}))
+            return_value={'SECRESACCESS': mock_access})
 
         common_driver.protect_second(replica_id)
         common_driver.unprotect_second(replica_id)
@@ -4146,7 +4134,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
 
         self.mock_object(replication.ReplicaCommonDriver, 'protect_second')
         self.mock_object(replication.PairOp, 'get_replica_info',
-                         mock.Mock(return_value=async_normal_status))
+                         return_value=async_normal_status)
         common_driver.sync(replica_id, True)
         common_driver.sync(replica_id, False)
 
@@ -4156,8 +4144,9 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         common_driver = replication.ReplicaCommonDriver(self.configuration, op)
 
         self.mock_object(replication.ReplicaCommonDriver, 'wait_expect_state')
-        self.mock_object(replication.PairOp, 'split', mock.Mock(
-            side_effect=exception.VolumeBackendAPIException(data='err')))
+        self.mock_object(
+            replication.PairOp, 'split',
+            side_effect=exception.VolumeBackendAPIException(data='err'))
         common_driver.split(replica_id)
 
     @mock.patch.object(replication.PairOp, 'split')
@@ -4172,8 +4161,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
 
         pair_info = json.loads(FAKE_GET_PAIR_NORMAL_RESPONSE)['data']
         pair_info['RUNNINGSTATUS'] = mock_status
-        self.mock_object(rest_client.RestClient, 'get_pair_by_id', mock.Mock(
-            return_value=pair_info))
+        self.mock_object(rest_client.RestClient, 'get_pair_by_id',
+                         return_value=pair_info)
         common_driver.split(replica_id)
         self.assertFalse(mock_op_split.called)
 
@@ -4213,7 +4202,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         ip = '111.111.111.19'
         expected_iqn = 'iqn.2006-08.com: 210048cee9d: 111.111.111.19'
         self.mock_object(rest_client.RestClient, 'call',
-                         mock.Mock(return_value=match_res))
+                         return_value=match_res)
         iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
         self.assertEqual(expected_iqn, iqn)
 
@@ -4232,7 +4221,7 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         }
         ip = '192.0.2.19'
         self.mock_object(rest_client.RestClient, 'call',
-                         mock.Mock(return_value=match_res))
+                         return_value=match_res)
         iqn = self.driver.client._get_tgt_iqn_from_rest(ip)
         self.assertIsNone(iqn)
 
@@ -4253,8 +4242,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
         self.mock_object(rest_client.RestClient, 'create_snapshot',
-                         mock.Mock(side_effect=(
-                             exception.VolumeBackendAPIException(data='err'))))
+                         side_effect=(
+                             exception.VolumeBackendAPIException(data='err')))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cgsnapshot,
                           ctxt,
@@ -4265,8 +4254,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         test_snapshots = [self.snapshot]
         ctxt = context.get_admin_context()
         self.mock_object(rest_client.RestClient, 'activate_snapshot',
-                         mock.Mock(side_effect=(
-                             exception.VolumeBackendAPIException(data='err'))))
+                         side_effect=(
+                             exception.VolumeBackendAPIException(data='err')))
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_cgsnapshot,
                           ctxt,
@@ -4344,28 +4333,28 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
 
     def test_initialize_connection_fail_no_online_wwns_in_host(self):
         self.mock_object(rest_client.RestClient, 'get_online_free_wwns',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.initialize_connection,
                           self.volume, FakeConnector)
 
     def test_initialize_connection_no_local_ini_tgt_map(self):
         self.mock_object(rest_client.RestClient, 'get_init_targ_map',
-                         mock.Mock(return_value=('', '')))
+                         return_value=('', ''))
         self.mock_object(huawei_driver.HuaweiFCDriver, '_get_same_hostid',
-                         mock.Mock(return_value=''))
+                         return_value='')
         self.mock_object(rest_client.RestClient, 'change_hostlun_id',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(rest_client.RestClient, 'do_mapping',
-                         mock.Mock(return_value={'lun_id': '1',
-                                                 'view_id': '1',
-                                                 'aval_luns': '[1]'}))
+                         return_value={'lun_id': '1',
+                                       'view_id': '1',
+                                       'aval_luns': '[1]'})
 
         self.driver.initialize_connection(self.hyper_volume, FakeConnector)
 
     def test_hypermetro_connection_success(self):
         self.mock_object(rest_client.RestClient, 'find_array_version',
-                         mock.Mock(return_value='V300R003C00'))
+                         return_value='V300R003C00')
         fc_properties = self.driver.initialize_connection(self.hyper_volume,
                                                           FakeConnector)
         self.assertEqual(1, fc_properties['data']['target_lun'])
@@ -4389,16 +4378,16 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
     def test_terminate_connection_portgroup_associated(self):
         self.mock_object(rest_client.RestClient,
                          'is_portgroup_associated_to_view',
-                         mock.Mock(return_value=True))
+                         return_value=True)
         self.mock_object(huawei_driver.HuaweiFCDriver,
                          '_delete_zone_and_remove_fc_initiators',
-                         mock.Mock(return_value=({}, 1)))
+                         return_value=({}, 1))
         self.driver.terminate_connection(self.volume, FakeConnector)
 
     def test_terminate_connection_fc_initiators_exist_in_host(self):
         self.mock_object(rest_client.RestClient,
                          'check_fc_initiators_exist_in_host',
-                         mock.Mock(return_value=True))
+                         return_value=True)
         self.driver.terminate_connection(self.volume, FakeConnector)
 
     def test_terminate_connection_hypermetro_in_metadata(self):
@@ -4411,7 +4400,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.mock_object(
             replication.ReplicaPairManager,
             'get_remote_device_by_wwn',
-            mock.Mock(return_value=remote_device_info))
+            return_value=remote_device_info)
         data = self.driver.get_volume_stats()
         self.assertEqual(self.driver.VERSION, data['driver_version'])
         self.assertTrue(data['pools'][0]['replication_enabled'])
@@ -4421,14 +4410,14 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.mock_object(
             replication.ReplicaPairManager,
             'get_remote_device_by_wwn',
-            mock.Mock(return_value={}))
+            return_value={})
         data = self.driver.get_volume_stats()
         self.assertNotIn('replication_enabled', data['pools'][0])
 
         self.mock_object(
             replication.ReplicaPairManager,
             'try_get_remote_wwn',
-            mock.Mock(return_value={}))
+            return_value={})
         data = self.driver.get_volume_stats()
         self.assertEqual(self.driver.VERSION, data['driver_version'])
         self.assertNotIn('replication_enabled', data['pools'][0])
@@ -4467,7 +4456,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         driver.replica = None
 
         self.mock_object(rest_client.RestClient, 'get_all_pools',
-                         mock.Mock(return_value=storage_pool_sas['data']))
+                         return_value=storage_pool_sas['data'])
         data = driver.get_volume_stats()
         if disk_type_value['disktype']:
             self.assertEqual(disk_type_value['disktype'],
@@ -4480,7 +4469,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         driver.do_setup()
         driver.replica = None
         self.mock_object(rest_client.RestClient, 'get_pool_info',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         data = driver.get_volume_stats()
         self.assertIsNone(data['pools'][0].get('disk_type'))
 
@@ -4685,29 +4674,29 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         [
             replication.ReplicaPairManager,
             'create_replica',
-            mock.Mock(side_effect=exception.VolumeBackendAPIException(
-                data='Can\'t support smarttier on the array.')),
+            exception.VolumeBackendAPIException(
+                data='Can\'t support smarttier on the array.'),
             FAKE_POOLS_UNSUPPORT_REPORT
         ],
         [
             replication.ReplicaPairManager,
             'create_replica',
-            mock.Mock(side_effect=exception.VolumeBackendAPIException(
-                data='Can\'t support smarttier on the array.')),
+            exception.VolumeBackendAPIException(
+                data='Can\'t support smarttier on the array.'),
             FAKE_POOLS_SUPPORT_REPORT
         ],
         [
             replication.ReplicaPairManager,
             'delete_replica',
-            mock.Mock(side_effect=exception.VolumeBackendAPIException(
-                data='Can\'t support smarttier on the array.')),
+            exception.VolumeBackendAPIException(
+                data='Can\'t support smarttier on the array.'),
             FAKE_POOLS_SUPPORT_REPORT
         ],
         [
             replication.ReplicaPairManager,
             'delete_replica',
-            mock.Mock(side_effect=exception.VolumeBackendAPIException(
-                data='Can\'t support smarttier on the array.')),
+            exception.VolumeBackendAPIException(
+                data='Can\'t support smarttier on the array.'),
             FAKE_POOLS_UNSUPPORT_REPORT
         ],
     )
@@ -4715,15 +4704,15 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
     def test_retype_replication_volume_fail(self,
                                             mock_module,
                                             mock_func,
-                                            mock_value,
+                                            side_effect,
                                             pool_data):
         self.driver.support_func = pool_data
-        self.mock_object(mock_module, mock_func, mock_value)
+        self.mock_object(mock_module, mock_func, side_effect=side_effect)
         self.mock_object(rest_client.RestClient, 'add_lun_to_partition')
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_type',
-            mock.Mock(return_value={'extra_specs': sync_replica_specs}))
+            return_value={'extra_specs': sync_replica_specs})
         retype = self.driver.retype(None, self.volume,
                                     test_new_replication_type, None, test_host)
         self.assertFalse(retype)
@@ -4773,7 +4762,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
     def test_filter_by_fabric_fail(self, ddt_map):
         self.mock_object(
             FCSanLookupService, 'get_device_mapping_from_network',
-            mock.Mock(return_value=ddt_map))
+            return_value=ddt_map)
         fake_lookup_service = FCSanLookupService()
         zone_helper = fc_zone_helper.FCZoneHelper(
             fake_lookup_service, self.driver.client)
@@ -5006,7 +4995,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.mock_object(
             huawei_driver.HuaweiBaseDriver,
             '_get_volume_type',
-            mock.Mock(return_value={'extra_specs': replica_hypermetro_specs}))
+            return_value={'extra_specs': replica_hypermetro_specs})
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           self.volume, self.snapshot)
@@ -5014,7 +5003,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
     def test_create_snapshot_fail_no_snapshot_id(self):
         self.snapshot.provider_location = None
         self.mock_object(rest_client.RestClient, 'get_snapshot_id_by_name',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_volume_from_snapshot,
                           self.volume, self.snapshot)
@@ -5105,7 +5094,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         test_volumes = [self.volume]
         self.mock_object(huawei_driver.HuaweiBaseDriver,
                          '_get_consistencygroup_type',
-                         mock.Mock(return_value={"hypermetro": "false"}))
+                         return_value={"hypermetro": "false"})
 
         model, volumes = self.driver.delete_consistencygroup(ctxt,
                                                              self.cg,
@@ -5142,7 +5131,7 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         temp_cg = copy.deepcopy(self.cg)
         temp_cg['volume_type_id'] = '550c089b-bfdd-4f7f-86e1-3ba88125555c,'
         self.mock_object(volume_types, 'get_volume_type',
-                         mock.Mock(return_value=test_hypermetro_type))
+                         return_value=test_hypermetro_type)
         model_update = self.driver.create_consistencygroup(ctxt, temp_cg)
 
         self.assertEqual('available',

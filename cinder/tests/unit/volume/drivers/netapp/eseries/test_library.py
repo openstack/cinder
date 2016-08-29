@@ -80,7 +80,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.mock_object(self.library, '_start_periodic_tasks')
 
         self.mock_object(library.cinder_utils, 'synchronized',
-                         mock.Mock(return_value=lambda f: f))
+                         return_value=lambda f: f)
 
         with mock.patch('oslo_service.loopingcall.FixedIntervalLoopingCall',
                         new = cinder_utils.ZeroIntervalLoopingCall):
@@ -136,7 +136,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             'code': expected,
         }]
         self.mock_object(self.library._client, 'list_host_types',
-                         mock.Mock(return_value=host_types))
+                         return_value=host_types)
 
         result = self.library._check_host_type()
 
@@ -180,7 +180,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         controller_ips = self.library.configuration.netapp_controller_ips
         self.library._client.list_storage_system = mock.Mock(
             side_effect=exception.NetAppDriverException(message=exc_str))
-        info_log = self.mock_object(library.LOG, 'info', mock.Mock())
+        info_log = self.mock_object(library.LOG, 'info')
 
         self.assertRaisesRegexp(exception.NetAppDriverException, exc_str,
                                 self.library._check_storage_system)
@@ -195,7 +195,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                          return_value=system)
         update_password = self.mock_object(self.library._client,
                                            'update_stored_system_password')
-        info_log = self.mock_object(library.LOG, 'info', mock.Mock())
+        info_log = self.mock_object(library.LOG, 'info')
 
         self.library._check_storage_system()
 
@@ -235,7 +235,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                          side_effect=get_system_iter())
         update_password = self.mock_object(self.library._client,
                                            'update_stored_system_password')
-        info_log = self.mock_object(library.LOG, 'info', mock.Mock())
+        info_log = self.mock_object(library.LOG, 'info')
 
         self.library._check_storage_system()
 
@@ -566,8 +566,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
     def test_terminate_connection_iscsi_no_hosts(self):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
 
-        self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[]))
+        self.mock_object(self.library._client, 'list_hosts', return_value=[])
 
         self.assertRaises(exception.NotFound,
                           self.library.terminate_connection_iscsi,
@@ -591,7 +590,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             eseries_fake.VOLUME_MAPPING
         ]
         self.mock_object(self.library._client, 'list_volume',
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
         self.mock_object(host_mapper, 'unmap_volume_from_host')
 
         self.library.terminate_connection_iscsi(get_fake_volume(), connector)
@@ -602,7 +601,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             self):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[eseries_fake.HOST_2]))
+                         return_value=[eseries_fake.HOST_2])
         self.assertRaises(exception.NotFound,
                           self.library.terminate_connection_iscsi,
                           get_fake_volume(),
@@ -612,16 +611,15 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_eseries_volume['listOfMappings'] = [
             eseries_fake.VOLUME_MAPPING
         ]
         self.mock_object(self.library._client, 'list_volume',
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
@@ -633,10 +631,10 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(host_mapper,
                          'map_volume_to_single_host',
-                         mock.Mock(return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         mock_configure_chap = self.mock_object(self.library, '_configure_chap')
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
@@ -651,20 +649,18 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
-        self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
+        self.mock_object(self.library._client, 'list_hosts', return_value=[])
         self.mock_object(self.library._client, 'create_host_with_ports',
-                         mock.Mock(return_value=eseries_fake.HOST))
+                         return_value=eseries_fake.HOST)
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_eseries_volume['listOfMappings'] = [
             eseries_fake.VOLUME_MAPPING
         ]
         self.mock_object(self.library._client, 'list_volume',
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
@@ -679,11 +675,10 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         """Should be a no-op"""
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.mock_object(self.library._client, 'list_volume',
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
 
         self.library.initialize_connection_iscsi(get_fake_volume(), connector)
 
@@ -697,8 +692,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         fake_mapping_to_other_host['mapRef'] = eseries_fake.HOST_2[
             'hostRef']
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             side_effect=exception.NetAppDriverException))
+                         side_effect=exception.NetAppDriverException)
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.initialize_connection_iscsi,
@@ -727,7 +721,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         host_list = [host, host_2]
         self.mock_object(self.library._client,
                          'list_hosts',
-                         mock.Mock(return_value=host_list))
+                         return_value=host_list)
 
         actual_host = self.library._get_host_with_matching_port(
             port_ids)
@@ -753,7 +747,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         host_list = [host, host_2]
         self.mock_object(self.library._client,
                          'list_hosts',
-                         mock.Mock(return_value=host_list))
+                         return_value=host_list)
 
         actual_host = self.library._get_host_with_matching_port(
             port_ids)
@@ -764,7 +758,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         connector = {'wwpns': [eseries_fake.WWPN]}
 
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
 
         self.assertRaises(exception.NotFound,
                           self.library.terminate_connection_fc,
@@ -781,11 +775,10 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         }]
         volume = copy.deepcopy(eseries_fake.VOLUME)
         volume['listOfMappings'] = []
-        self.mock_object(self.library, '_get_volume',
-                         mock.Mock(return_value=volume))
+        self.mock_object(self.library, '_get_volume', return_value=volume)
 
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[fake_host]))
+                         return_value=[fake_host])
 
         self.assertRaises(eseries_exc.VolumeNotMapped,
                           self.library.terminate_connection_fc,
@@ -805,9 +798,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             copy.deepcopy(eseries_fake.VOLUME_MAPPING)
         ]
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[fake_host]))
+                         return_value=[fake_host])
         self.mock_object(self.library._client, 'list_volume',
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
         self.mock_object(host_mapper, 'unmap_volume_from_host')
 
         self.library.terminate_connection_fc(get_fake_volume(), connector)
@@ -831,14 +824,13 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             copy.deepcopy(eseries_fake.VOLUME_MAPPING)
         ]
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[fake_host]))
+                         return_value=[fake_host])
         self.mock_object(self.library._client, 'list_volume',
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
         self.mock_object(host_mapper, 'unmap_volume_from_host')
         self.mock_object(self.library._client, 'get_volume_mappings_for_host',
-                         mock.Mock(return_value=[copy.deepcopy
-                                                 (eseries_fake.
-                                                  VOLUME_MAPPING)]))
+                         return_value=[
+                             copy.deepcopy(eseries_fake.VOLUME_MAPPING)])
 
         target_info = self.library.terminate_connection_fc(get_fake_volume(),
                                                            connector)
@@ -868,12 +860,12 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             copy.deepcopy(eseries_fake.VOLUME_MAPPING)
         ]
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[fake_host]))
+                         return_value=[fake_host])
         self.mock_object(self.library._client, 'list_volume',
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
         self.mock_object(host_mapper, 'unmap_volume_from_host')
         self.mock_object(self.library._client, 'get_volume_mappings_for_host',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
 
         target_info = self.library.terminate_connection_fc(get_fake_volume(),
                                                            connector)
@@ -885,7 +877,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             self):
         connector = {'wwpns': [eseries_fake.WWPN]}
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[eseries_fake.HOST_2]))
+                         return_value=[eseries_fake.HOST_2])
         self.assertRaises(exception.NotFound,
                           self.library.terminate_connection_fc,
                           get_fake_volume(),
@@ -895,10 +887,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         connector = {'wwpns': [eseries_fake.WWPN]}
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         expected_target_info = {
             'driver_volume_type': 'fibre_channel',
             'data': {
@@ -925,14 +916,13 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.library.driver_protocol = 'FC'
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(self.library._client, 'create_host_with_ports',
-                         mock.Mock(return_value=eseries_fake.HOST))
+                         return_value=eseries_fake.HOST)
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
 
         self.library.initialize_connection_fc(get_fake_volume(), connector)
 
@@ -947,8 +937,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         """Should be a no-op"""
         connector = {'wwpns': [eseries_fake.WWPN]}
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
 
         self.library.initialize_connection_fc(get_fake_volume(), connector)
 
@@ -962,8 +951,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         fake_mapping_to_other_host['mapRef'] = eseries_fake.HOST_2[
             'hostRef']
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             side_effect=exception.NetAppDriverException))
+                         side_effect=exception.NetAppDriverException)
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.initialize_connection_fc,
@@ -975,10 +963,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         """Should be a no-op"""
         connector = {'wwpns': [eseries_fake.WWPN]}
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         self.mock_object(self.library._client, 'list_target_wwpns',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.library.initialize_connection_fc,
@@ -1031,10 +1018,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         self.library._app_version = eseries_fake.FAKE_APP_VERSION
         self.mock_object(
             self.library._client, 'get_asup_info',
-            mock.Mock(return_value=eseries_fake.GET_ASUP_RETURN))
+            return_value=eseries_fake.GET_ASUP_RETURN)
         self.mock_object(
-            self.library._client, 'set_counter',
-            mock.Mock(return_value={'value': 1}))
+            self.library._client, 'set_counter', return_value={'value': 1})
         mock_invoke = self.mock_object(
             self.library._client, 'add_autosupport_data')
 
@@ -1131,7 +1117,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         expected = {'status': 'available'}
         create_cg = self.mock_object(self.library,
                                      '_create_consistency_group',
-                                     mock.Mock(return_value=expected))
+                                     return_value=expected)
 
         actual = self.library.create_consistencygroup(fake_cg)
 
@@ -1143,7 +1129,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         expected = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
         create_cg = self.mock_object(self.library._client,
                                      'create_consistency_group',
-                                     mock.Mock(return_value=expected))
+                                     return_value=expected)
 
         result = self.library._create_consistency_group(fake_cg)
 
@@ -1164,7 +1150,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             self.library, '_merge_soft_delete_changes')
         delete_vol = self.mock_object(self.library, 'delete_volume')
         self.mock_object(self.library, '_get_consistencygroup',
-                         mock.Mock(return_value=cg))
+                         return_value=cg)
 
         result = self.library.delete_consistencygroup(fake_cg, volumes)
 
@@ -1184,7 +1170,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
                                      'delete_consistency_group')
         delete_vol = self.mock_object(self.library, 'delete_volume')
         self.mock_object(self.library, '_get_consistencygroup',
-                         mock.Mock(return_value=cg))
+                         return_value=cg)
 
         result = self.library.delete_consistencygroup(fake_cg, volumes)
 
@@ -1201,7 +1187,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         delete_vol = self.mock_object(self.library, 'delete_volume')
         exc = exception.ConsistencyGroupNotFound(consistencygroup_id='')
         self.mock_object(self.library, '_get_consistencygroup',
-                         mock.Mock(side_effect=exc))
+                         side_effect=exc)
 
         self.library.delete_consistencygroup(fake_cg, [])
 
@@ -1216,7 +1202,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         cg['name'] = name
         list_cgs = self.mock_object(self.library._client,
                                     'list_consistency_groups',
-                                    mock.Mock(return_value=[cg]))
+                                    return_value=[cg])
 
         result = self.library._get_consistencygroup(fake_cg)
 
@@ -1227,7 +1213,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
         list_cgs = self.mock_object(self.library._client,
                                     'list_consistency_groups',
-                                    mock.Mock(return_value=[cg]))
+                                    return_value=[cg])
 
         self.assertRaises(exception.ConsistencyGroupNotFound,
                           self.library._get_consistencygroup,
@@ -1241,9 +1227,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         vol = copy.deepcopy(eseries_fake.VOLUME)
         volumes = [get_fake_volume()] * 3
         self.mock_object(
-            self.library, '_get_volume', mock.Mock(return_value=vol))
+            self.library, '_get_volume', return_value=vol)
         self.mock_object(self.library, '_get_consistencygroup',
-                         mock.Mock(return_value=cg))
+                         return_value=cg)
 
         self.library.update_consistencygroup(fake_cg, volumes, volumes)
 
@@ -1256,13 +1242,11 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         update_cg = self.mock_object(
             self.library, '_update_consistency_group_members')
         create_cg = self.mock_object(
-            self.library, '_create_consistency_group',
-            mock.Mock(return_value=cg))
+            self.library, '_create_consistency_group', return_value=cg)
         self.mock_object(
             self.library, '_create_volume_from_snapshot')
 
-        self.mock_object(
-            self.library, '_get_snapshot', mock.Mock(return_value=snap))
+        self.mock_object(self.library, '_get_snapshot', return_value=snap)
 
         self.library.create_consistencygroup_from_src(
             fake_cg, volumes, None, None, None, src_volumes)
@@ -1281,8 +1265,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         update_cg = self.mock_object(
             self.library, '_update_consistency_group_members')
         create_cg = self.mock_object(
-            self.library, '_create_consistency_group',
-            mock.Mock(return_value=cg))
+            self.library, '_create_consistency_group', return_value=cg)
         clone_vol = self.mock_object(
             self.library, '_create_volume_from_snapshot')
 
@@ -1314,7 +1297,7 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
             'consistencygroup']['id']
         cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
         self.mock_object(self.library, '_get_consistencygroup',
-                         mock.Mock(return_value=cg))
+                         return_value=cg)
         update_members = self.mock_object(self.library,
                                           '_update_consistency_group_members')
 
@@ -1329,9 +1312,9 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
         dst_vol = copy.deepcopy(eseries_fake.VOLUME)
         vc = copy.deepcopy(eseries_fake.VOLUME_COPY_JOB)
         self.mock_object(self.library._client, 'create_volume_copy_job',
-                         mock.Mock(return_value=vc))
+                         return_value=vc)
         self.mock_object(self.library._client, 'list_vol_copy_job',
-                         mock.Mock(return_value=vc))
+                         return_value=vc)
         delete_copy = self.mock_object(self.library._client,
                                        'delete_vol_copy_job')
 
@@ -1346,9 +1329,8 @@ class NetAppEseriesLibraryTestCase(test.TestCase):
     def test_copy_volume_high_priority_readonly_job_create_failure(self):
         src_vol = copy.deepcopy(eseries_fake.VOLUME)
         dst_vol = copy.deepcopy(eseries_fake.VOLUME)
-        self.mock_object(
-            self.library._client, 'create_volume_copy_job', mock.Mock(
-                side_effect=exception.NetAppDriverException))
+        self.mock_object(self.library._client, 'create_volume_copy_job',
+                         side_effect=exception.NetAppDriverException)
 
         self.assertRaises(
             exception.NetAppDriverException,
@@ -1375,7 +1357,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         self.library._client = eseries_fake.FakeEseriesClient()
 
         self.mock_object(library.cinder_utils, 'synchronized',
-                         mock.Mock(return_value=lambda f: f))
+                         return_value=lambda f: f)
         self.mock_object(self.library, '_start_periodic_tasks')
 
         self.ctxt = context.get_admin_context()
@@ -1390,7 +1372,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
                          '_check_mode_get_or_register_storage_system')
         fake_rest_client = eseries_fake.FakeEseriesClient()
         self.mock_object(self.library, '_create_rest_client',
-                         mock.Mock(return_value=fake_rest_client))
+                         return_value=fake_rest_client)
         mock_create = self.mock_object(fake_rest_client, 'create_host_group')
 
         self.library.do_setup(mock.Mock())
@@ -1402,10 +1384,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         mock_check_flags = self.mock_object(na_utils, 'check_flags')
         fake_rest_client = eseries_fake.FakeEseriesClient()
         self.mock_object(self.library, '_create_rest_client',
-                         mock.Mock(return_value=fake_rest_client))
+                         return_value=fake_rest_client)
         mock_get_host_group = self.mock_object(
             fake_rest_client, "get_host_group_by_name",
-            mock.Mock(side_effect=exception.NotFound))
+            side_effect=exception.NotFound)
         self.mock_object(self.library,
                          '_check_mode_get_or_register_storage_system')
 
@@ -1536,10 +1518,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         fake_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_snap = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
         self.mock_object(self.library, "_schedule_and_create_volume",
-                         mock.Mock(return_value=fake_eseries_volume))
+                         return_value=fake_eseries_volume)
         self.mock_object(self.library, "_get_snapshot",
-                         mock.Mock(return_value=copy.deepcopy(
-                             eseries_fake.SNAPSHOT_IMAGE)))
+                         return_value=copy.deepcopy(
+                             eseries_fake.SNAPSHOT_IMAGE))
 
         self.library.create_volume_from_snapshot(
             get_fake_volume(), fake_snap)
@@ -1550,15 +1532,14 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_create_volume_from_snapshot_create_fails(self):
         fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.mock_object(self.library, "_schedule_and_create_volume",
-                         mock.Mock(return_value=fake_dest_eseries_volume))
+                         return_value=fake_dest_eseries_volume)
         self.mock_object(self.library._client, "delete_volume")
         self.mock_object(self.library._client, "delete_snapshot_volume")
         self.mock_object(self.library, "_get_snapshot",
-                         mock.Mock(return_value=copy.deepcopy(
-                             eseries_fake.SNAPSHOT_IMAGE)))
+                         return_value=copy.deepcopy(
+                             eseries_fake.SNAPSHOT_IMAGE))
         self.mock_object(self.library._client, "create_snapshot_volume",
-                         mock.Mock(
-                             side_effect=exception.NetAppDriverException))
+                         side_effect=exception.NetAppDriverException)
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.create_volume_from_snapshot,
@@ -1576,23 +1557,23 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_create_volume_from_snapshot_copy_job_fails(self):
         fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         self.mock_object(self.library, "_schedule_and_create_volume",
-                         mock.Mock(return_value=fake_dest_eseries_volume))
+                         return_value=fake_dest_eseries_volume)
         self.mock_object(self.library, "_create_snapshot_volume",
-                         mock.Mock(return_value=fake_dest_eseries_volume))
+                         return_value=fake_dest_eseries_volume)
         self.mock_object(self.library._client, "delete_volume")
         self.mock_object(self.library, "_get_snapshot",
-                         mock.Mock(return_value=copy.deepcopy(
-                             eseries_fake.SNAPSHOT_IMAGE)))
+                         return_value=copy.deepcopy(
+                             eseries_fake.SNAPSHOT_IMAGE))
 
         fake_failed_volume_copy_job = copy.deepcopy(
             eseries_fake.VOLUME_COPY_JOB)
         fake_failed_volume_copy_job['status'] = 'failed'
         self.mock_object(self.library._client,
                          "create_volume_copy_job",
-                         mock.Mock(return_value=fake_failed_volume_copy_job))
+                         return_value=fake_failed_volume_copy_job)
         self.mock_object(self.library._client,
                          "list_vol_copy_job",
-                         mock.Mock(return_value=fake_failed_volume_copy_job))
+                         return_value=fake_failed_volume_copy_job)
 
         self.assertRaises(exception.NetAppDriverException,
                           self.library.create_volume_from_snapshot,
@@ -1611,19 +1592,18 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         fake_dest_eseries_volume = copy.deepcopy(eseries_fake.VOLUME)
         fake_dest_eseries_volume['volumeRef'] = 'fake_volume_ref'
         self.mock_object(self.library, "_schedule_and_create_volume",
-                         mock.Mock(return_value=fake_dest_eseries_volume))
+                         return_value=fake_dest_eseries_volume)
         self.mock_object(self.library, "_get_snapshot",
-                         mock.Mock(return_value=copy.deepcopy(
-                             eseries_fake.SNAPSHOT_IMAGE)))
+                         return_value=copy.deepcopy(
+                             eseries_fake.SNAPSHOT_IMAGE))
         self.mock_object(self.library, '_create_snapshot_volume',
-                         mock.Mock(return_value=copy.deepcopy(
-                             eseries_fake.SNAPSHOT_VOLUME)))
+                         return_value=copy.deepcopy(
+                             eseries_fake.SNAPSHOT_VOLUME))
         self.mock_object(self.library, "_create_snapshot_volume",
-                         mock.Mock(return_value=copy.deepcopy(
-                             eseries_fake.VOLUME)))
+                         return_value=copy.deepcopy(
+                             eseries_fake.VOLUME))
         self.mock_object(self.library._client, "delete_snapshot_volume",
-                         mock.Mock(side_effect=exception.NetAppDriverException)
-                         )
+                         side_effect=exception.NetAppDriverException)
         self.mock_object(self.library._client, "delete_volume")
 
         self.library.create_volume_from_snapshot(
@@ -1639,14 +1619,12 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_create_snapshot_volume_cgsnap(self):
         image = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
         grp = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
-        self.mock_object(self.library, '_get_snapshot_group', mock.Mock(
-            return_value=grp))
+        self.mock_object(self.library, '_get_snapshot_group', return_value=grp)
         expected = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
-        self.mock_object(self.library, '_is_cgsnapshot', mock.Mock(
-            return_value=True))
+        self.mock_object(self.library, '_is_cgsnapshot', return_value=True)
         create_view = self.mock_object(
             self.library._client, 'create_cg_snapshot_view',
-            mock.Mock(return_value=expected))
+            return_value=expected)
 
         result = self.library._create_snapshot_volume(image)
 
@@ -1657,14 +1635,12 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_create_snapshot_volume(self):
         image = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
         grp = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
-        self.mock_object(self.library, '_get_snapshot_group', mock.Mock(
-            return_value=grp))
+        self.mock_object(self.library, '_get_snapshot_group', return_value=grp)
         expected = copy.deepcopy(eseries_fake.SNAPSHOT_VOLUME)
-        self.mock_object(self.library, '_is_cgsnapshot', mock.Mock(
-            return_value=False))
+        self.mock_object(self.library, '_is_cgsnapshot', return_value=False)
         create_view = self.mock_object(
             self.library._client, 'create_snapshot_volume',
-            mock.Mock(return_value=expected))
+            return_value=expected)
 
         result = self.library._create_snapshot_volume(image)
 
@@ -1679,10 +1655,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         snapshot_group = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
         snapshot_group['baseVolume'] = vol['id']
         get_call = self.mock_object(
-            self.library, '_get_storage_pools', mock.Mock(return_value=None))
+            self.library, '_get_storage_pools', return_value=None)
         create_call = self.mock_object(
             self.library._client, 'create_snapshot_group',
-            mock.Mock(return_value=snapshot_group))
+            return_value=snapshot_group)
 
         actual = self.library._create_snapshot_group(label, vol)
 
@@ -1700,10 +1676,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         vol['volumeGroupRef'] = pool['id']
         pool['raidLevel'] = 'raidDiskPool'
         get_call = self.mock_object(
-            self.library, '_get_storage_pools', mock.Mock(return_value=pools))
+            self.library, '_get_storage_pools', return_value=pools)
         create_call = self.mock_object(
             self.library._client, 'create_snapshot_group',
-            mock.Mock(return_value=snapshot_group))
+            return_value=snapshot_group)
 
         actual = self.library._create_snapshot_group('label', vol)
 
@@ -1726,9 +1702,9 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
         get_call = self.mock_object(
             self.library, '_get_sorted_available_storage_pools',
-            mock.Mock(return_value=pools))
+            return_value=pools)
         self.mock_object(self.library._client, 'create_snapshot_group',
-                         mock.Mock(return_value=snapshot_group))
+                         return_value=snapshot_group)
         actual = self.library._create_snapshot_group('label', vol)
 
         get_call.assert_called_once_with(vol_size_gb)
@@ -1738,8 +1714,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         fake_snap = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
         snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
         get_snap = self.mock_object(
-            self.library._client, 'list_snapshot_image', mock.Mock(
-                return_value=snap))
+            self.library._client, 'list_snapshot_image', return_value=snap)
 
         result = self.library._get_snapshot(fake_snap)
 
@@ -1749,8 +1724,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_get_snapshot_fail(self):
         fake_snap = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
         get_snap = self.mock_object(
-            self.library._client, 'list_snapshot_image', mock.Mock(
-                side_effect=exception.NotFound))
+            self.library._client, 'list_snapshot_image',
+            side_effect=exception.NotFound)
 
         self.assertRaises(exception.NotFound, self.library._get_snapshot,
                           fake_snap)
@@ -1762,10 +1737,9 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
         grp = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
         get_snap = self.mock_object(
-            self.library, '_get_snapshot',
-            mock.Mock(return_value=snap))
+            self.library, '_get_snapshot', return_value=snap)
         get_grp = self.mock_object(self.library._client, 'list_snapshot_group',
-                                   mock.Mock(return_value=grp))
+                                   return_value=grp)
 
         result = self.library._get_snapshot_group_for_snapshot(fake_id)
 
@@ -1777,10 +1751,9 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         fake_id = 'id'
         snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
         get_snap = self.mock_object(
-            self.library, '_get_snapshot',
-            mock.Mock(return_value=snap))
+            self.library, '_get_snapshot', return_value=snap)
         get_grp = self.mock_object(self.library._client, 'list_snapshot_group',
-                                   mock.Mock(side_effect=exception.NotFound))
+                                   side_effect=exception.NotFound)
 
         self.assertRaises(exception.NotFound,
                           self.library._get_snapshot_group_for_snapshot,
@@ -1800,8 +1773,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             group['baseVolume'] = str(i)
         snapshot_groups.append(snapshot_group)
         get_call = self.mock_object(
-            self.library._client, 'list_snapshot_groups', mock.Mock(
-                return_value=snapshot_groups))
+            self.library._client, 'list_snapshot_groups',
+            return_value=snapshot_groups)
 
         groups = self.library._get_snapshot_groups_for_volume(vol)
 
@@ -1826,8 +1799,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
         snapshot_groups = [snapshot_group, reserved_group, full_group, cgroup]
         get_call = self.mock_object(
-            self.library, '_get_snapshot_groups_for_volume', mock.Mock(
-                return_value=snapshot_groups))
+            self.library, '_get_snapshot_groups_for_volume',
+            return_value=snapshot_groups)
 
         group = self.library._get_available_snapshot_group(vol)
 
@@ -1842,8 +1815,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         # Generate some snapshot groups that will not match
 
         get_call = self.mock_object(
-            self.library, '_get_snapshot_groups_for_volume', mock.Mock(
-                return_value=[snapshot_group]))
+            self.library, '_get_snapshot_groups_for_volume',
+            return_value=[snapshot_group])
 
         group = self.library._get_available_snapshot_group(vol)
 
@@ -1856,15 +1829,14 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         vol = copy.deepcopy(eseries_fake.VOLUME)
         snapshot_group = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
         fake_label = 'fakeName'
-        self.mock_object(self.library, '_get_volume', mock.Mock(
-            return_value=vol))
+        self.mock_object(self.library, '_get_volume', return_value=vol)
         create_call = self.mock_object(
-            self.library._client, 'create_snapshot_image', mock.Mock(
-                return_value=expected_snap))
+            self.library._client, 'create_snapshot_image',
+            return_value=expected_snap)
         self.mock_object(self.library, '_get_available_snapshot_group',
-                         mock.Mock(return_value=snapshot_group))
+                         return_value=snapshot_group)
         self.mock_object(utils, 'convert_uuid_to_es_fmt',
-                         mock.Mock(return_value=fake_label))
+                         return_value=fake_label)
         fake_snapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
 
         model_update = self.library.create_snapshot(fake_snapshot)
@@ -1886,22 +1858,20 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             exc_msg = cleanup_fail_exc.msg
             delete_snap_grp = self.mock_object(
                 self.library, '_delete_snapshot_group',
-                mock.Mock(side_effect=cleanup_fail_exc))
+                side_effect=cleanup_fail_exc)
         else:
             exc_msg = create_fail_exc.msg
             delete_snap_grp = self.mock_object(
                 self.library, '_delete_snapshot_group')
-        self.mock_object(self.library, '_get_volume', mock.Mock(
-            return_value=vol))
+        self.mock_object(self.library, '_get_volume', return_value=vol)
         self.mock_object(self.library._client, 'create_snapshot_image',
-                         mock.Mock(
-                             side_effect=create_fail_exc))
+                         side_effect=create_fail_exc)
         self.mock_object(self.library._client, 'create_snapshot_volume',
-                         mock.Mock(return_value=snap_vol))
+                         return_value=snap_vol)
         self.mock_object(self.library, '_get_available_snapshot_group',
-                         mock.Mock(return_value=snapshot_group))
+                         return_value=snapshot_group)
         self.mock_object(utils, 'convert_uuid_to_es_fmt',
-                         mock.Mock(return_value=fake_label))
+                         return_value=fake_label)
         fake_snapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
 
         self.assertRaisesRegexp(exception.NetAppDriverException,
@@ -1916,17 +1886,16 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         vol = copy.deepcopy(eseries_fake.VOLUME)
         snapshot_group = copy.deepcopy(eseries_fake.SNAPSHOT_GROUP)
         fake_label = 'fakeName'
-        self.mock_object(self.library, '_get_volume', mock.Mock(
-            return_value=vol))
+        self.mock_object(self.library, '_get_volume', return_value=vol)
         create_call = self.mock_object(
-            self.library._client, 'create_snapshot_image', mock.Mock(
-                return_value=expected_snap))
+            self.library._client, 'create_snapshot_image',
+            return_value=expected_snap)
         self.mock_object(self.library, '_get_snapshot_groups_for_volume',
-                         mock.Mock(return_value=[snapshot_group]))
+                         return_value=[snapshot_group])
         self.mock_object(self.library, '_get_available_snapshot_group',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(utils, 'convert_uuid_to_es_fmt',
-                         mock.Mock(return_value=fake_label))
+                         return_value=fake_label)
         fake_snapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
 
         snapshot = self.library.create_snapshot(fake_snapshot)
@@ -1946,18 +1915,17 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         grp_count = (self.library.MAX_SNAPSHOT_GROUP_COUNT -
                      self.library.RESERVED_SNAPSHOT_GROUP_COUNT)
         fake_label = 'fakeName'
-        self.mock_object(self.library, '_get_volume', mock.Mock(
-            return_value=vol))
+        self.mock_object(self.library, '_get_volume', return_value=vol)
         self.mock_object(self.library._client, 'create_snapshot_image',
-                         mock.Mock(return_value=expected_snap))
+                         return_value=expected_snap)
         self.mock_object(self.library._client, 'create_snapshot_volume',
-                         mock.Mock(return_value=snap_vol))
+                         return_value=snap_vol)
         self.mock_object(self.library, '_get_available_snapshot_group',
-                         mock.Mock(return_value=None))
+                         return_value=None)
         self.mock_object(self.library, '_get_snapshot_groups_for_volume',
-                         mock.Mock(return_value=[snapshot_group] * grp_count))
+                         return_value=[snapshot_group] * grp_count)
         self.mock_object(utils, 'convert_uuid_to_es_fmt',
-                         mock.Mock(return_value=fake_label))
+                         return_value=fake_label)
         fake_snapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
 
         # Error message should contain the maximum number of supported
@@ -1972,13 +1940,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         fake_snap = cinder_utils.create_snapshot(self.ctxt, fake_vol['id'])
         snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
         vol = copy.deepcopy(eseries_fake.VOLUME)
-        self.mock_object(self.library, '_get_volume', mock.Mock(
-            return_value=vol))
-        self.mock_object(self.library, '_get_snapshot', mock.Mock(
-            return_value=snap))
+        self.mock_object(self.library, '_get_volume', return_value=vol)
+        self.mock_object(self.library, '_get_snapshot', return_value=snap)
 
-        del_snap = self.mock_object(self.library, '_delete_es_snapshot',
-                                    mock.Mock())
+        del_snap = self.mock_object(self.library, '_delete_es_snapshot')
 
         self.library.delete_snapshot(fake_snap)
 
@@ -2008,18 +1973,15 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         filtered_snaps = [x for x in snapshots
                           if x['pitGroupRef'] == snap['pitGroupRef']]
 
-        self.mock_object(self.library, '_get_volume', mock.Mock(
-            return_value=vol))
-        self.mock_object(self.library, '_get_snapshot', mock.Mock(
-            return_value=snap))
-        self.mock_object(self.library, '_get_soft_delete_map', mock.Mock(
-            return_value={snap['pitGroupRef']: repr(bitset)}))
+        self.mock_object(self.library, '_get_volume', return_value=vol)
+        self.mock_object(self.library, '_get_snapshot', return_value=snap)
+        self.mock_object(self.library, '_get_soft_delete_map',
+                         return_value={snap['pitGroupRef']: repr(bitset)})
         self.mock_object(self.library._client, 'list_snapshot_images',
-                         mock.Mock(return_value=snapshots))
+                         return_value=snapshots)
         delete_image = self.mock_object(
             self.library, '_cleanup_snapshot_images',
-            mock.Mock(return_value=({snap['pitGroupRef']: repr(bitset)},
-                                    None)))
+            return_value=({snap['pitGroupRef']: repr(bitset)}, None))
 
         self.library._delete_es_snapshot(snap)
 
@@ -2029,17 +1991,14 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         vol = copy.deepcopy(eseries_fake.VOLUME)
         snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
         snapshots = [snap]
-        self.mock_object(self.library, '_get_volume', mock.Mock(
-            return_value=vol))
-        self.mock_object(self.library, '_get_snapshot', mock.Mock(
-            return_value=snap))
-        self.mock_object(self.library, '_get_soft_delete_map', mock.Mock(
-            return_value={}))
+        self.mock_object(self.library, '_get_volume', return_value=vol)
+        self.mock_object(self.library, '_get_snapshot', return_value=snap)
+        self.mock_object(self.library, '_get_soft_delete_map', return_value={})
         self.mock_object(self.library._client, 'list_snapshot_images',
-                         mock.Mock(return_value=snapshots))
+                         return_value=snapshots)
         delete_image = self.mock_object(
             self.library, '_cleanup_snapshot_images',
-            mock.Mock(return_value=(None, [snap['pitGroupRef']])))
+            return_value=(None, [snap['pitGroupRef']]))
 
         self.library._delete_es_snapshot(snap)
 
@@ -2048,8 +2007,8 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
 
     def test_get_soft_delete_map(self):
         fake_val = 'fake'
-        self.mock_object(self.library._client, 'list_backend_store', mock.Mock(
-            return_value=fake_val))
+        self.mock_object(self.library._client, 'list_backend_store',
+                         return_value=fake_val)
 
         actual = self.library._get_soft_delete_map()
 
@@ -2077,7 +2036,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         bitset = na_utils.BitSet(2 ** 32 - 1)
         delete_grp = self.mock_object(
             self.library._client, 'delete_snapshot_group',
-            mock.Mock(side_effect=exception.NetAppDriverException))
+            side_effect=exception.NetAppDriverException)
 
         updt, keys = self.library._cleanup_snapshot_images(
             [image], bitset)
@@ -2112,7 +2071,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
 
         self.mock_object(self.library._client, 'list_snapshot_group',
-                         mock.Mock(return_value=snap_group))
+                         return_value=snap_group)
 
         self.library._delete_snapshot_image(snap)
 
@@ -2122,14 +2081,14 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         snap = copy.deepcopy(eseries_fake.SNAPSHOT_IMAGE)
 
         self.mock_object(self.library._client, 'list_snapshot_group',
-                         mock.Mock(return_value=snap_group))
+                         return_value=snap_group)
 
         self.library._delete_snapshot_image(snap)
 
     def test_delete_snapshot_not_found(self):
         fake_snapshot = copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)
         get_snap = self.mock_object(self.library, '_get_snapshot',
-                                    mock.Mock(side_effect=exception.NotFound))
+                                    side_effect=exception.NotFound)
 
         with mock.patch.object(library, 'LOG', mock.Mock()):
             self.library.delete_snapshot(fake_snapshot)
@@ -2143,7 +2102,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             self.library._client, 'save_backend_store')
         index = {'key1': 'val'}
         get_store = self.mock_object(self.library, '_get_soft_delete_map',
-                                     mock.Mock(return_value=index))
+                                     return_value=index)
 
         self.library._merge_soft_delete_changes(None, keys_to_del)
 
@@ -2172,14 +2131,12 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         for snap in cg_snaps:
             snap['baseVol'] = vol['id']
         get_cg = self.mock_object(
-            self.library, '_get_consistencygroup_by_name',
-            mock.Mock(return_value=cg))
+            self.library, '_get_consistencygroup_by_name', return_value=cg)
         get_vol = self.mock_object(
-            self.library, '_get_volume',
-            mock.Mock(return_value=vol))
+            self.library, '_get_volume', return_value=vol)
         mk_snap = self.mock_object(
             self.library._client, 'create_consistency_group_snapshot',
-            mock.Mock(return_value=cg_snaps))
+            return_value=cg_snaps)
 
         model_update, snap_updt = self.library.create_cgsnapshot(
             fake_cgsnapshot, fake_snapshots)
@@ -2201,7 +2158,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         fake_snapshots = [copy.deepcopy(eseries_fake.FAKE_CINDER_SNAPSHOT)]
         self.mock_object(
             self.library, '_get_consistencygroup_by_name',
-            mock.Mock(side_effect=exception.NetAppDriverException))
+            side_effect=exception.NetAppDriverException)
 
         self.assertRaises(
             exception.NetAppDriverException,
@@ -2224,16 +2181,14 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         for snap in cg_snaps:
             snap['baseVol'] = vol['id']
         get_cg = self.mock_object(
-            self.library, '_get_consistencygroup_by_name',
-            mock.Mock(return_value=cg))
+            self.library, '_get_consistencygroup_by_name', return_value=cg)
         self.mock_object(
             self.library._client, 'delete_consistency_group_snapshot')
         self.mock_object(
             self.library._client, 'get_consistency_group_snapshots',
-            mock.Mock(return_value=cg_snaps))
+            return_value=cg_snaps)
         soft_del = self.mock_object(
-            self.library, '_soft_delete_cgsnapshot',
-            mock.Mock(return_value=(None, None)))
+            self.library, '_soft_delete_cgsnapshot', return_value=(None, None))
 
         # Mock the locking mechanism
         model_update, snap_updt = self.library.delete_cgsnapshot(
@@ -2258,15 +2213,14 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
             self.library._client, 'delete_consistency_group_snapshot')
         self.mock_object(
             self.library._client, 'get_consistency_group_snapshots',
-            mock.Mock(return_value=cg_snaps))
+            return_value=cg_snaps)
         bitset = na_utils.BitSet(1)
         index = {cg['id']: repr(bitset)} if bitset_exists else {}
         bitset >>= len(cg_snaps)
         updt = {cg['id']: repr(bitset)}
-        self.mock_object(self.library, '_get_soft_delete_map', mock.Mock(
-            return_value=index))
-        save_map = self.mock_object(
-            self.library, '_merge_soft_delete_changes')
+        self.mock_object(self.library, '_get_soft_delete_map',
+                         return_value=index)
+        save_map = self.mock_object(self.library, '_merge_soft_delete_changes')
 
         model_update, snap_updt = self.library._soft_delete_cgsnapshot(
             cg, seq_num)
@@ -2291,11 +2245,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         for snap in cg_snaps:
             snap['baseVol'] = vol['id']
         get_cg = self.mock_object(
-            self.library, '_get_consistencygroup_by_name',
-            mock.Mock(return_value=cg))
+            self.library, '_get_consistencygroup_by_name', return_value=cg)
         del_snap = self.mock_object(
             self.library._client, 'delete_consistency_group_snapshot',
-            mock.Mock(return_value=cg_snaps))
+            return_value=cg_snaps)
 
         model_update, snap_updt = self.library.delete_cgsnapshot(
             fake_cgsnapshot, fake_snapshots)
@@ -2316,10 +2269,10 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         cg_snaps = [cg_snap]
         cg = copy.deepcopy(eseries_fake.FAKE_CONSISTENCY_GROUP)
         self.mock_object(self.library, '_get_consistencygroup_by_name',
-                         mock.Mock(return_value=cg))
+                         return_value=cg)
         self.mock_object(
             self.library._client, 'delete_consistency_group_snapshot',
-            mock.Mock(return_value=cg_snaps))
+            return_value=cg_snaps)
 
         self.assertRaises(
             exception.CgSnapshotNotFound,
@@ -2458,10 +2411,9 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
         """Map the volume directly to destination host."""
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
 
         self.library.map_volume_to_host(get_fake_volume(),
                                         eseries_fake.VOLUME,
@@ -2474,16 +2426,14 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_map_volume_to_host_volume_not_mapped_host_does_not_exist(self):
         """Should create the host map directly to the host."""
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(self.library._client, 'create_host_with_ports',
-                         mock.Mock(
-                             return_value=eseries_fake.HOST_2))
+                         return_value=eseries_fake.HOST_2)
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
 
         self.library.map_volume_to_host(get_fake_volume(),
                                         eseries_fake.VOLUME,
@@ -2497,8 +2447,7 @@ class NetAppEseriesLibraryMultiAttachTestCase(test.TestCase):
     def test_map_volume_to_host_volume_already_mapped(self):
         """Should be a no-op."""
         self.mock_object(host_mapper, 'map_volume_to_multiple_hosts',
-                         mock.Mock(
-                             return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
 
         self.library.map_volume_to_host(get_fake_volume(),
                                         eseries_fake.VOLUME,
@@ -2533,19 +2482,18 @@ class NetAppEseriesISCSICHAPAuthenticationTestCase(test.TestCase):
     def test_initialize_connection_with_chap(self):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(self.library._client, 'get_volume_mappings',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(self.library._client, 'list_hosts',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(self.library._client, 'create_host_with_ports',
-                         mock.Mock(return_value=[eseries_fake.HOST]))
+                         return_value=[eseries_fake.HOST])
         self.mock_object(host_mapper, 'map_volume_to_single_host',
-                         mock.Mock(return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         mock_configure_chap = (
             self.mock_object(self.library,
                              '_configure_chap',
-                             mock.Mock(return_value=(
-                                 eseries_fake.FAKE_CHAP_USERNAME,
-                                 eseries_fake.FAKE_CHAP_SECRET))))
+                             return_value=(eseries_fake.FAKE_CHAP_USERNAME,
+                                           eseries_fake.FAKE_CHAP_SECRET)))
 
         properties = self.library.initialize_connection_iscsi(
             get_fake_volume(), connector)
@@ -2557,11 +2505,11 @@ class NetAppEseriesISCSICHAPAuthenticationTestCase(test.TestCase):
         mock_invoke_generate_random_secret = self.mock_object(
             volume_utils,
             'generate_password',
-            mock.Mock(return_value=eseries_fake.FAKE_CHAP_SECRET))
+            return_value=eseries_fake.FAKE_CHAP_SECRET)
         mock_invoke_set_chap_authentication = self.mock_object(
             self.library._client,
             'set_chap_authentication',
-            mock.Mock(return_value=eseries_fake.FAKE_CHAP_POST_DATA))
+            return_value=eseries_fake.FAKE_CHAP_POST_DATA)
 
         username, password = self.library._configure_chap(
             eseries_fake.FAKE_TARGET_IQN)
@@ -2576,11 +2524,11 @@ class NetAppEseriesISCSICHAPAuthenticationTestCase(test.TestCase):
         mock_invoke_generate_random_secret = self.mock_object(
             volume_utils,
             'generate_password',
-            mock.Mock(return_value=eseries_fake.FAKE_CHAP_SECRET))
+            return_value=eseries_fake.FAKE_CHAP_SECRET)
         mock_invoke_set_chap_authentication = self.mock_object(
             self.library._client,
             'set_chap_authentication',
-            mock.Mock(return_value=eseries_fake.FAKE_CHAP_POST_DATA))
+            return_value=eseries_fake.FAKE_CHAP_POST_DATA)
         mock_log = self.mock_object(library, 'LOG')
         warn_msg = 'No CHAP username found for CHAP user'
 
@@ -2598,10 +2546,10 @@ class NetAppEseriesISCSICHAPAuthenticationTestCase(test.TestCase):
         connector = {'initiator': eseries_fake.INITIATOR_NAME}
         self.mock_object(self.library._client,
                          'get_volume_mappings_for_volume',
-                         mock.Mock(return_value=[]))
+                         return_value=[])
         self.mock_object(host_mapper,
                          'map_volume_to_single_host',
-                         mock.Mock(return_value=eseries_fake.VOLUME_MAPPING))
+                         return_value=eseries_fake.VOLUME_MAPPING)
         self.library._client.features.CHAP_AUTHENTICATION.supported = False
         self.library._client.api_version = "1.52.9010.01"
 

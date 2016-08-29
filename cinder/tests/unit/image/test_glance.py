@@ -105,7 +105,7 @@ class TestGlanceImageService(test.TestCase):
         self.service = self._create_image_service(client)
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
         self.context.service_catalog = service_catalog
-        self.mock_object(glance.time, 'sleep', mock.Mock(return_value=None))
+        self.mock_object(glance.time, 'sleep', return_value=None)
 
     def _create_image_service(self, client):
         def _fake_create_glance_client(context, netloc, use_ssl, version):
@@ -906,7 +906,7 @@ class TestGlanceImageServiceClient(test.TestCase):
     def setUp(self):
         super(TestGlanceImageServiceClient, self).setUp()
         self.context = context.RequestContext('fake', 'fake', auth_token=True)
-        self.mock_object(glance.time, 'sleep', mock.Mock(return_value=None))
+        self.mock_object(glance.time, 'sleep', return_value=None)
 
     def test_create_glance_client(self):
         self.flags(auth_strategy='keystone')

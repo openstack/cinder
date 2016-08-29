@@ -466,8 +466,7 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
 
     def test_ssh_execute_error(self):
         self.mock_object(self.driver, '_ssh_execute',
-                         mock.Mock(side_effect=
-                                   processutils.ProcessExecutionError))
+                         side_effect=processutils.ProcessExecutionError)
         ssh = mock.Mock(paramiko.SSHClient)
         chan = mock.Mock(paramiko.Channel)
         transport = mock.Mock(paramiko.Transport)
@@ -490,8 +489,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         num_attempts = 3
         self.driver.configuration.eqlx_cli_max_retries = num_attempts
         self.mock_object(self.driver, '_ssh_execute',
-                         mock.Mock(side_effect=exception.
-                                   VolumeBackendAPIException("some error")))
+                         side_effect=exception.VolumeBackendAPIException(
+                             "some error"))
         # mocks for calls in _run_ssh
         self.mock_object(utils, 'check_ssh_injection')
         self.mock_object(ssh_utils, 'SSHPool')
@@ -516,9 +515,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         num_attempts = 3
         self.driver.configuration.eqlx_cli_max_retries = num_attempts
         self.mock_object(self.driver, '_ssh_execute',
-                         mock.Mock(side_effect=
-                                   processutils.ProcessExecutionError
-                                   (stdout='% Error ... some error.\n')))
+                         side_effect=processutils.ProcessExecutionError(
+                             stdout='% Error ... some error.\n'))
         # mocks for calls in _run_ssh
         self.mock_object(utils, 'check_ssh_injection')
         self.mock_object(ssh_utils, 'SSHPool')
@@ -559,8 +557,8 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
         self.driver.sshpool.item().__exit__ = mock.Mock(return_value=False)
         # mocks for _ssh_execute and _get_output
         self.mock_object(self.driver, '_get_output',
-                         mock.Mock(side_effect=exception.
-                                   VolumeBackendAPIException("some error")))
+                         side_effect=exception.VolumeBackendAPIException(
+                             "some error"))
         # now call the execute
         with mock.patch('sys.stderr', new=six.StringIO()):
             self.assertRaises(exception.VolumeBackendAPIException,

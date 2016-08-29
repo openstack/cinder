@@ -15,7 +15,6 @@ Tests for stochastic weight handler
 """
 
 import ddt
-import mock
 import random
 
 from cinder.scheduler import base_weight
@@ -43,7 +42,7 @@ class StochasticWeightHandlerTestCase(test.TestCase):
     def test_get_weighed_objects_correct(self, rand_value, expected_obj):
         self.mock_object(random,
                          'random',
-                         mock.Mock(return_value=rand_value))
+                         return_value=rand_value)
 
         class MapWeigher(base_weight.BaseWeigher):
             minval = 0

@@ -123,7 +123,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         self.configuration.hds_hnas_iscsi_config_file = 'fake.xml'
 
         self.mock_object(hnas_utils, 'read_cinder_conf',
-                         mock.Mock(return_value=self.parsed_xml))
+                         return_value=self.parsed_xml)
 
         self.driver = iscsi.HNASISCSIDriver(configuration=self.configuration)
 
@@ -155,17 +155,12 @@ class HNASiSCSIDriverTest(test.TestCase):
                    'auth': 'Enabled'}}
         iqn = 'iqn.2014-12.10.10.10.10:evstest1.cinder-default'
 
-        self.mock_object(HNASSSHBackend, 'get_evs',
-                         mock.Mock(return_value='1'))
-        self.mock_object(HNASSSHBackend, 'check_lu',
-                         mock.Mock(return_value=lu_info))
-        self.mock_object(HNASSSHBackend, 'check_target',
-                         mock.Mock(return_value=tgt))
-        self.mock_object(HNASSSHBackend, 'get_target_secret',
-                         mock.Mock(return_value=''))
+        self.mock_object(HNASSSHBackend, 'get_evs', return_value='1')
+        self.mock_object(HNASSSHBackend, 'check_lu', return_value=lu_info)
+        self.mock_object(HNASSSHBackend, 'check_target', return_value=tgt)
+        self.mock_object(HNASSSHBackend, 'get_target_secret', return_value='')
         self.mock_object(HNASSSHBackend, 'set_target_secret')
-        self.mock_object(HNASSSHBackend, 'get_target_iqn',
-                         mock.Mock(return_value=iqn))
+        self.mock_object(HNASSSHBackend, 'get_target_iqn', return_value=iqn)
 
         self.driver._get_service_target(self.volume)
 
@@ -190,14 +185,10 @@ class HNASiSCSIDriverTest(test.TestCase):
 
         self.driver.config['chap_enabled'] = False
 
-        self.mock_object(HNASSSHBackend, 'get_evs',
-                         mock.Mock(return_value='1'))
-        self.mock_object(HNASSSHBackend, 'check_lu',
-                         mock.Mock(return_value=lu_info))
-        self.mock_object(HNASSSHBackend, 'check_target',
-                         mock.Mock(return_value=tgt))
-        self.mock_object(HNASSSHBackend, 'get_target_iqn',
-                         mock.Mock(return_value=iqn))
+        self.mock_object(HNASSSHBackend, 'get_evs', return_value='1')
+        self.mock_object(HNASSSHBackend, 'check_lu', return_value=lu_info)
+        self.mock_object(HNASSSHBackend, 'check_target', return_value=tgt)
+        self.mock_object(HNASSSHBackend, 'get_target_iqn', return_value=iqn)
         self.mock_object(HNASSSHBackend, 'create_target')
 
         self.driver._get_service_target(self.volume)
@@ -217,26 +208,21 @@ class HNASiSCSIDriverTest(test.TestCase):
                        {'id': '3', 'name': 'volume-3'}, ],
                    'auth': 'Enabled'}}
 
-        self.mock_object(HNASSSHBackend, 'get_evs',
-                         mock.Mock(return_value='1'))
-        self.mock_object(HNASSSHBackend, 'check_lu',
-                         mock.Mock(return_value=lu_info))
-        self.mock_object(HNASSSHBackend, 'check_target',
-                         mock.Mock(return_value=tgt))
+        self.mock_object(HNASSSHBackend, 'get_evs', return_value='1')
+        self.mock_object(HNASSSHBackend, 'check_lu', return_value=lu_info)
+        self.mock_object(HNASSSHBackend, 'check_target', return_value=tgt)
 
         self.assertRaises(exception.NoMoreTargets,
                           self.driver._get_service_target, self.volume)
 
     def test_check_pool_and_fs(self):
-        self.mock_object(hnas_utils, 'get_pool',
-                         mock.Mock(return_value='default'))
+        self.mock_object(hnas_utils, 'get_pool', return_value='default')
         self.driver._check_pool_and_fs(self.volume, 'fs2')
 
     def test_check_pool_and_fs_no_default_configured(self):
         self.volume.volume_type = self.volume_type
 
-        self.mock_object(hnas_utils, 'get_pool',
-                         mock.Mock(return_value='default'))
+        self.mock_object(hnas_utils, 'get_pool', return_value='default')
 
         self.driver.config['services'] = {
             'silver': {
@@ -259,16 +245,14 @@ class HNASiSCSIDriverTest(test.TestCase):
                           'fs-cinder')
 
     def test_check_pool_and_fs_mismatch(self):
-        self.mock_object(hnas_utils, 'get_pool',
-                         mock.Mock(return_value='default'))
+        self.mock_object(hnas_utils, 'get_pool', return_value='default')
 
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver._check_pool_and_fs, self.volume,
                           'fs-cinder')
 
     def test_check_pool_and_fs_host_mismatch(self):
-        self.mock_object(hnas_utils, 'get_pool',
-                         mock.Mock(return_value='silver'))
+        self.mock_object(hnas_utils, 'get_pool', return_value='silver')
 
         self.assertRaises(exception.ManageExistingVolumeTypeMismatch,
                           self.driver._check_pool_and_fs, self.volume,
@@ -287,12 +271,10 @@ class HNASiSCSIDriverTest(test.TestCase):
             'serial': 'B1339109',
         }
 
-        self.mock_object(HNASSSHBackend, 'get_fs_info',
-                         mock.Mock(return_value=True))
-        self.mock_object(HNASSSHBackend, 'get_evs_info',
-                         mock.Mock(return_value=evs_info))
+        self.mock_object(HNASSSHBackend, 'get_fs_info', return_value=True)
+        self.mock_object(HNASSSHBackend, 'get_evs_info', return_value=evs_info)
         self.mock_object(HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
 
         self.driver.do_setup(None)
 
@@ -312,19 +294,16 @@ class HNASiSCSIDriverTest(test.TestCase):
             'serial': 'B1339109',
         }
 
-        self.mock_object(HNASSSHBackend, 'get_fs_info',
-                         mock.Mock(return_value=True))
-        self.mock_object(HNASSSHBackend, 'get_evs_info',
-                         mock.Mock(return_value=evs_info))
+        self.mock_object(HNASSSHBackend, 'get_fs_info', return_value=True)
+        self.mock_object(HNASSSHBackend, 'get_evs_info', return_value=evs_info)
         self.mock_object(HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
 
         self.assertRaises(exception.InvalidParameterValue,
                           self.driver.do_setup, None)
 
     def test_do_setup_umounted_filesystem(self):
-        self.mock_object(HNASSSHBackend, 'get_fs_info',
-                         mock.Mock(return_value=False))
+        self.mock_object(HNASSSHBackend, 'get_fs_info', return_value=False)
 
         self.assertRaises(exception.ParameterNotFound, self.driver.do_setup,
                           None)
@@ -344,12 +323,9 @@ class HNASiSCSIDriverTest(test.TestCase):
 
         connector = {'initiator': 'fake_initiator'}
 
-        self.mock_object(HNASSSHBackend, 'get_evs',
-                         mock.Mock(return_value=2))
-        self.mock_object(HNASSSHBackend, 'check_lu',
-                         mock.Mock(return_value=lu_info))
-        self.mock_object(HNASSSHBackend, 'add_iscsi_conn',
-                         mock.Mock(return_value=conn))
+        self.mock_object(HNASSSHBackend, 'get_evs', return_value=2)
+        self.mock_object(HNASSSHBackend, 'check_lu', return_value=lu_info)
+        self.mock_object(HNASSSHBackend, 'add_iscsi_conn', return_value=conn)
 
         self.driver.initialize_connection(self.volume, connector)
 
@@ -367,12 +343,10 @@ class HNASiSCSIDriverTest(test.TestCase):
 
         connector = {'initiator': 'fake_initiator'}
 
-        self.mock_object(HNASSSHBackend, 'get_evs',
-                         mock.Mock(return_value=2))
-        self.mock_object(HNASSSHBackend, 'check_lu',
-                         mock.Mock(return_value=lu_info))
+        self.mock_object(HNASSSHBackend, 'get_evs', return_value=2)
+        self.mock_object(HNASSSHBackend, 'check_lu', return_value=lu_info)
         self.mock_object(HNASSSHBackend, 'add_iscsi_conn',
-                         mock.Mock(side_effect=putils.ProcessExecutionError))
+                         side_effect=putils.ProcessExecutionError)
 
         self.assertRaises(exception.ISCSITargetAttachFailed,
                           self.driver.initialize_connection, self.volume,
@@ -385,10 +359,8 @@ class HNASiSCSIDriverTest(test.TestCase):
                    'tgt': {'alias': 'iscsi-test',
                            'secret': 'itEpgB5gPefGhW2'}}
 
-        self.mock_object(HNASSSHBackend, 'get_evs',
-                         mock.Mock(return_value=2))
-        self.mock_object(HNASSSHBackend, 'check_lu',
-                         mock.Mock(return_value=lu_info))
+        self.mock_object(HNASSSHBackend, 'get_evs', return_value=2)
+        self.mock_object(HNASSSHBackend, 'check_lu', return_value=lu_info)
         self.mock_object(HNASSSHBackend, 'del_iscsi_conn')
 
         self.driver.terminate_connection(self.volume, connector)
@@ -415,8 +387,7 @@ class HNASiSCSIDriverTest(test.TestCase):
             'provisioned_capacity': 0.0
         }
 
-        self.mock_object(HNASSSHBackend, 'get_fs_info',
-                         mock.Mock(return_value=fs_cinder))
+        self.mock_object(HNASSSHBackend, 'get_fs_info', return_value=fs_cinder)
 
         stats = self.driver.get_volume_stats(refresh=True)
 
@@ -432,7 +403,7 @@ class HNASiSCSIDriverTest(test.TestCase):
 
         self.mock_object(HNASSSHBackend, 'create_lu')
         self.mock_object(HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
         out = self.driver.create_volume(self.volume)
 
         self.assertEqual(expected_out, out)
@@ -473,7 +444,7 @@ class HNASiSCSIDriverTest(test.TestCase):
 
         self.mock_object(HNASSSHBackend, 'create_cloned_lu')
         self.mock_object(HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
         self.mock_object(HNASSSHBackend, 'extend_lu')
 
         out = self.driver.create_cloned_volume(self.volume_clone, self.volume)
@@ -501,12 +472,12 @@ class HNASiSCSIDriverTest(test.TestCase):
         }
 
         self.mock_object(HNASSSHBackend, 'get_existing_lu_info',
-                         mock.Mock(return_value=lu_info))
+                         return_value=lu_info)
         self.mock_object(volume_types, 'get_volume_type',
-                         mock.Mock(return_value=self.volume_type))
+                         return_value=self.volume_type)
         self.mock_object(HNASSSHBackend, 'create_cloned_lu')
         self.mock_object(HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
 
         out = self.driver.create_snapshot(self.snapshot)
         self.assertEqual(expected_out, out)
@@ -515,9 +486,9 @@ class HNASiSCSIDriverTest(test.TestCase):
         lu_info = {'filesystem': 'FS-Cinder'}
 
         self.mock_object(volume_types, 'get_volume_type',
-                         mock.Mock(return_value=self.volume_type))
+                         return_value=self.volume_type)
         self.mock_object(HNASSSHBackend, 'get_existing_lu_info',
-                         mock.Mock(return_value=lu_info))
+                         return_value=lu_info)
         self.mock_object(HNASSSHBackend, 'delete_lu')
 
         self.driver.delete_snapshot(self.snapshot)
@@ -530,7 +501,7 @@ class HNASiSCSIDriverTest(test.TestCase):
 
         self.mock_object(HNASSSHBackend, 'create_cloned_lu')
         self.mock_object(HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
 
         out = self.driver.create_volume_from_snapshot(self.volume,
                                                       self.snapshot)
@@ -552,7 +523,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         }
 
         self.mock_object(HNASSSHBackend, 'get_existing_lu_info',
-                         mock.Mock(return_value=lu_info))
+                         return_value=lu_info)
 
         out = self.driver.manage_existing_get_size(self.volume,
                                                    existing_vol_ref)
@@ -572,7 +543,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         existing_vol_ref = {'source-name': 'fs-cinder/volume/cinder'}
 
         self.mock_object(HNASSSHBackend, 'get_existing_lu_info',
-                         mock.Mock(return_value={}))
+                         return_value={})
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, self.volume,
@@ -582,7 +553,7 @@ class HNASiSCSIDriverTest(test.TestCase):
         existing_vol_ref = {'source-name': 'fs-cinder/volume-cinder'}
 
         self.mock_object(HNASSSHBackend, 'get_existing_lu_info',
-                         mock.Mock(return_value={}))
+                         return_value={})
 
         self.assertRaises(exception.ManageExistingInvalidReference,
                           self.driver.manage_existing_get_size, self.volume,
@@ -598,9 +569,9 @@ class HNASiSCSIDriverTest(test.TestCase):
         }
         self.mock_object(HNASSSHBackend, 'rename_existing_lu')
         self.mock_object(volume_types, 'get_volume_type_extra_specs',
-                         mock.Mock(return_value=metadata))
+                         return_value=metadata)
         self.mock_object(HNASSSHBackend, 'get_version',
-                         mock.Mock(return_value=version_info))
+                         return_value=version_info)
 
         out = self.driver.manage_existing(self.volume, existing_vol_ref)
 

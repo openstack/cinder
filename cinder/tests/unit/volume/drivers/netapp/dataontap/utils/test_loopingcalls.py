@@ -29,8 +29,8 @@ class LoopingCallsTestCase(test.TestCase):
         self.mock_loopingcall = self.mock_object(
             loopingcall,
             'FixedIntervalLoopingCall',
-            mock.Mock(side_effect=[self.mock_first_looping_task,
-                                   self.mock_second_looping_task])
+            side_effect=[self.mock_first_looping_task,
+                         self.mock_second_looping_task]
         )
         self.loopingcalls = loopingcalls.LoopingCalls()
 

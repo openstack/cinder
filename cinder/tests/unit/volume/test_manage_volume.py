@@ -51,7 +51,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         volume_object = self._stub_volume_object_get(self)
         mock_run_flow_engine = self.mock_object(
             self.manager, '_run_manage_existing_flow_engine',
-            mock.Mock(return_value=volume_object))
+            return_value=volume_object)
         mock_update_volume_stats = self.mock_object(
             self.manager, '_update_stats_for_managed')
 
@@ -68,7 +68,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         mock_object_volume = self.mock_object(objects.Volume, 'get_by_id')
         mock_run_flow_engine = self.mock_object(
             self.manager, '_run_manage_existing_flow_engine',
-            mock.Mock(return_value=volume_object))
+            return_value=volume_object)
         mock_update_volume_stats = self.mock_object(
             self.manager, '_update_stats_for_managed')
 
@@ -89,11 +89,9 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         mock_flow_engine = mock.Mock()
         mock_flow_engine_run = self.mock_object(mock_flow_engine, 'run')
         mock_flow_engine_fetch = self.mock_object(
-            mock_flow_engine.storage, 'fetch',
-            mock.Mock(return_value=volume_object))
+            mock_flow_engine.storage, 'fetch', return_value=volume_object)
         mock_get_flow = self.mock_object(
-            manage_existing, 'get_flow',
-            mock.Mock(return_value=mock_flow_engine))
+            manage_existing, 'get_flow', return_value=mock_flow_engine)
 
         result = self.manager._run_manage_existing_flow_engine(self.context,
                                                                mock_volume,
@@ -112,8 +110,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
 
     def test_run_manage_existing_flow_engine_exception(self):
         mock_get_flow = self.mock_object(
-            manage_existing, 'get_flow',
-            mock.Mock(side_effect=Exception))
+            manage_existing, 'get_flow', side_effect=Exception)
         volume_object = self._stub_volume_object_get(self)
         self.assertRaises(exception.CinderException,
                           self.manager._run_manage_existing_flow_engine,
@@ -142,7 +139,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
         volume_obj = self._stub_volume_object_get(self)
         mock_safe_get = self.mock_object(
             self.manager.driver.configuration, 'safe_get',
-            mock.Mock(return_value=safe_get_backend))
+            return_value=safe_get_backend)
 
         self.manager._update_stats_for_managed(volume_obj)
 
@@ -153,8 +150,7 @@ class ManageVolumeTestCase(base.BaseVolumeTestCase):
     def test_update_stats_for_managed_default_backend(self):
         volume_obj = self._stub_volume_object_get(self)
         mock_safe_get = self.mock_object(
-            self.manager.driver.configuration, 'safe_get',
-            mock.Mock(return_value=None))
+            self.manager.driver.configuration, 'safe_get', return_value=None)
 
         self.manager._update_stats_for_managed(volume_obj)
 

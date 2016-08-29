@@ -525,8 +525,8 @@ class NetAppBaseClientTestCase(test.TestCase):
                                                          asserted_api_args)
 
     def test_create_cg_snapshot(self):
-        self.mock_object(self.client, '_start_cg_snapshot', mock.Mock(
-            return_value=fake.CONSISTENCY_GROUP_ID))
+        self.mock_object(self.client, '_start_cg_snapshot',
+                         return_value=fake.CONSISTENCY_GROUP_ID)
         self.mock_object(self.client, '_commit_cg_snapshot')
 
         self.client.create_cg_snapshot([fake.CG_VOLUME_NAME],
@@ -536,8 +536,7 @@ class NetAppBaseClientTestCase(test.TestCase):
             fake.CONSISTENCY_GROUP_ID)
 
     def test_create_cg_snapshot_no_id(self):
-        self.mock_object(self.client, '_start_cg_snapshot', mock.Mock(
-            return_value=None))
+        self.mock_object(self.client, '_start_cg_snapshot', return_value=None)
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.client.create_cg_snapshot,
@@ -573,10 +572,8 @@ class NetAppBaseClientTestCase(test.TestCase):
 
         # Need to mock sleep as it is called by @utils.retry
         self.mock_object(time, 'sleep')
-        mock_get_snapshot = self.mock_object(
-            self.client, 'get_snapshot',
-            mock.Mock(return_value=BUSY_SNAPSHOT)
-        )
+        mock_get_snapshot = self.mock_object(self.client, 'get_snapshot',
+                                             return_value=BUSY_SNAPSHOT)
 
         self.assertRaises(exception.SnapshotIsBusy,
                           self.client.wait_for_busy_snapshot,

@@ -120,28 +120,20 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         mock_get_ssc_flexvol_info = self.mock_object(
             self.ssc_library, '_get_ssc_flexvol_info',
-            mock.Mock(side_effect=[
-                fake.SSC_FLEXVOL_INFO['volume1'],
-                fake.SSC_FLEXVOL_INFO['volume2']
-            ]))
+            side_effect=[fake.SSC_FLEXVOL_INFO['volume1'],
+                         fake.SSC_FLEXVOL_INFO['volume2']])
         mock_get_ssc_dedupe_info = self.mock_object(
             self.ssc_library, '_get_ssc_dedupe_info',
-            mock.Mock(side_effect=[
-                fake.SSC_DEDUPE_INFO['volume1'],
-                fake.SSC_DEDUPE_INFO['volume2']
-            ]))
+            side_effect=[fake.SSC_DEDUPE_INFO['volume1'],
+                         fake.SSC_DEDUPE_INFO['volume2']])
         mock_get_ssc_mirror_info = self.mock_object(
             self.ssc_library, '_get_ssc_mirror_info',
-            mock.Mock(side_effect=[
-                fake.SSC_MIRROR_INFO['volume1'],
-                fake.SSC_MIRROR_INFO['volume2']
-            ]))
+            side_effect=[fake.SSC_MIRROR_INFO['volume1'],
+                         fake.SSC_MIRROR_INFO['volume2']])
         mock_get_ssc_aggregate_info = self.mock_object(
             self.ssc_library, '_get_ssc_aggregate_info',
-            mock.Mock(side_effect=[
-                fake.SSC_AGGREGATE_INFO['volume1'],
-                fake.SSC_AGGREGATE_INFO['volume2']
-            ]))
+            side_effect=[fake.SSC_AGGREGATE_INFO['volume1'],
+                         fake.SSC_AGGREGATE_INFO['volume2']])
         ordered_ssc = collections.OrderedDict()
         ordered_ssc['volume1'] = fake.SSC_VOLUME_MAP['volume1']
         ordered_ssc['volume2'] = fake.SSC_VOLUME_MAP['volume2']
@@ -178,7 +170,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             'enabled' if lun_space_guarantee else 'disabled'
         self.mock_object(self.ssc_library.zapi_client,
                          'get_flexvol',
-                         mock.Mock(return_value=fake_client.VOLUME_INFO_SSC))
+                         return_value=fake_client.VOLUME_INFO_SSC)
 
         result = self.ssc_library._get_ssc_flexvol_info(
             fake_client.VOLUME_NAMES[0])
@@ -205,7 +197,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         fake_volume_info_ssc['space-guarantee'] = vol_space_guarantee
         self.mock_object(self.ssc_library.zapi_client,
                          'get_flexvol',
-                         mock.Mock(return_value=fake_volume_info_ssc))
+                         return_value=fake_volume_info_ssc)
 
         result = self.ssc_library._get_ssc_flexvol_info(
             fake_client.VOLUME_NAMES[0])
@@ -230,7 +222,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
             nfs_sparsed_volumes
         self.mock_object(self.ssc_library.zapi_client,
                          'get_flexvol',
-                         mock.Mock(return_value=fake_client.VOLUME_INFO_SSC))
+                         return_value=fake_client.VOLUME_INFO_SSC)
 
         result = self.ssc_library._get_ssc_flexvol_info(
             fake_client.VOLUME_NAMES[0])
@@ -258,7 +250,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
         fake_volume_info_ssc['space-guarantee'] = vol_space_guarantee
         self.mock_object(self.ssc_library.zapi_client,
                          'get_flexvol',
-                         mock.Mock(return_value=fake_volume_info_ssc))
+                         return_value=fake_volume_info_ssc)
 
         result = self.ssc_library._get_ssc_flexvol_info(
             fake_client.VOLUME_NAMES[0])
@@ -277,7 +269,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         self.mock_object(
             self.ssc_library.zapi_client, 'get_flexvol_dedupe_info',
-            mock.Mock(return_value=fake_client.VOLUME_DEDUPE_INFO_SSC))
+            return_value=fake_client.VOLUME_DEDUPE_INFO_SSC)
 
         result = self.ssc_library._get_ssc_dedupe_info(
             fake_client.VOLUME_NAMES[0])
@@ -295,7 +287,7 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         self.mock_object(
             self.ssc_library.zapi_client, 'is_flexvol_mirrored',
-            mock.Mock(return_value=mirrored))
+            return_value=mirrored)
 
         result = self.ssc_library._get_ssc_mirror_info(
             fake_client.VOLUME_NAMES[0])
@@ -309,10 +301,10 @@ class CapabilitiesLibraryTestCase(test.TestCase):
 
         self.mock_object(
             self.ssc_library.zapi_client, 'get_aggregate',
-            mock.Mock(return_value=fake_client.AGGR_INFO_SSC))
+            return_value=fake_client.AGGR_INFO_SSC)
         self.mock_object(
             self.ssc_library.zapi_client, 'get_aggregate_disk_types',
-            mock.Mock(return_value=fake_client.AGGREGATE_DISK_TYPES))
+            return_value=fake_client.AGGREGATE_DISK_TYPES)
 
         result = self.ssc_library._get_ssc_aggregate_info(
             fake_client.VOLUME_AGGREGATE_NAME)
@@ -331,11 +323,10 @@ class CapabilitiesLibraryTestCase(test.TestCase):
     def test_get_ssc_aggregate_info_not_found(self):
 
         self.mock_object(
-            self.ssc_library.zapi_client, 'get_aggregate',
-            mock.Mock(return_value={}))
+            self.ssc_library.zapi_client, 'get_aggregate', return_value={})
         self.mock_object(
             self.ssc_library.zapi_client, 'get_aggregate_disk_types',
-            mock.Mock(return_value=None))
+            return_value=None)
 
         result = self.ssc_library._get_ssc_aggregate_info(
             fake_client.VOLUME_AGGREGATE_NAME)

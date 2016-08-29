@@ -68,7 +68,7 @@ class MessageApiTest(test.TestCase):
 
     def test_create_swallows_exception(self):
         self.mock_object(self.message_api.db, 'create',
-                         mock.Mock(side_effect=Exception()))
+                         side_effect=Exception())
         self.message_api.create(self.ctxt,
                                 defined_messages.UNABLE_TO_ALLOCATE,
                                 "fakeproject",
@@ -99,8 +99,7 @@ class MessageApiTest(test.TestCase):
 
     def test_delete(self):
         admin_context = mock.Mock()
-        self.mock_object(self.ctxt, 'elevated',
-                         mock.Mock(return_value=admin_context))
+        self.mock_object(self.ctxt, 'elevated', return_value=admin_context)
 
         self.message_api.delete(self.ctxt, 'fake_id')
 

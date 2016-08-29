@@ -135,7 +135,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.mock_object(self.driver, '_do_create_volume')
         self.mock_object(self.driver, '_do_qos_for_volume')
         self.mock_object(self.driver, '_get_volume_model_update',
-                         mock.Mock(return_value=model_update))
+                         return_value=model_update)
         expected = {'provider_location': fake.NFS_SHARE}
         if model_update:
             expected.update(model_update)
@@ -165,16 +165,16 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     @ddt.data(None, {'key': 'value'})
     def test_clone_source_to_destination_volume(self, model_update):
-        self.mock_object(self.driver, '_get_volume_location', mock.Mock(
-            return_value=fake.POOL_NAME))
-        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
-            return_value=fake.EXTRA_SPECS))
+        self.mock_object(self.driver, '_get_volume_location',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value=fake.EXTRA_SPECS)
         self.mock_object(
             self.driver,
             '_clone_with_extension_check')
         self.mock_object(self.driver, '_do_qos_for_volume')
         self.mock_object(self.driver, '_get_volume_model_update',
-                         mock.Mock(return_value=model_update))
+                         return_value=model_update)
         expected = {'provider_location': fake.POOL_NAME}
         if model_update:
             expected.update(model_update)
@@ -185,15 +185,15 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertEqual(expected, result)
 
     def test_clone_source_to_destination_volume_with_do_qos_exception(self):
-        self.mock_object(self.driver, '_get_volume_location', mock.Mock(
-            return_value=fake.POOL_NAME))
-        self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
-            return_value=fake.EXTRA_SPECS))
+        self.mock_object(self.driver, '_get_volume_location',
+                         return_value=fake.POOL_NAME)
+        self.mock_object(na_utils, 'get_volume_extra_specs',
+                         return_value=fake.EXTRA_SPECS)
         self.mock_object(
             self.driver,
             '_clone_with_extension_check')
-        self.mock_object(self.driver, '_do_qos_for_volume', mock.Mock(
-            side_effect=Exception))
+        self.mock_object(self.driver, '_do_qos_for_volume',
+                         side_effect=Exception)
 
         self.assertRaises(
             exception.VolumeBackendAPIException,
@@ -274,7 +274,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         }
         mock_clone_call = self.mock_object(
             self.driver, '_clone_source_to_destination_volume',
-            mock.Mock(return_value='fake'))
+            return_value='fake')
 
         retval = self.driver.create_volume_from_snapshot(volume, fake.SNAPSHOT)
 
@@ -285,7 +285,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         provider_location = fake.POOL_NAME
         src_vref = fake.CLONE_SOURCE
         self.mock_object(self.driver, '_clone_source_to_destination_volume',
-                         mock.Mock(return_value=provider_location))
+                         return_value=provider_location)
 
         result = self.driver.create_cloned_volume(fake.NFS_VOLUME,
                                                   src_vref)
@@ -327,9 +327,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test__get_volume_location(self):
         volume_id = fake.VOLUME_ID
         self.mock_object(self.driver, '_get_host_ip',
-                         mock.Mock(return_value='168.124.10.12'))
+                         return_value='168.124.10.12')
         self.mock_object(self.driver, '_get_export_path',
-                         mock.Mock(return_value='/fake_mount_path'))
+                         return_value='/fake_mount_path')
 
         retval = self.driver._get_volume_location(volume_id)
 
@@ -346,8 +346,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test__get_provider_location(self):
         updates = {'provider_location': fake.PROVIDER_LOCATION}
         volume = fake_volume.fake_volume_obj(self.ctxt, **updates)
-        self.mock_object(self.driver.db, 'volume_get', mock.Mock(
-            return_value=volume))
+        self.mock_object(self.driver.db, 'volume_get', return_value=volume)
 
         retval = self.driver._get_provider_location(fake.VOLUME_ID)
 
@@ -356,8 +355,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
     @ddt.data(None, processutils.ProcessExecutionError)
     def test__volume_not_present(self, side_effect):
         self.mock_object(self.driver, '_get_volume_path')
-        self.mock_object(self.driver, '_try_execute',
-                         mock.Mock(side_effect=side_effect))
+        self.mock_object(self.driver, '_try_execute', side_effect=side_effect)
 
         retval = self.driver._volume_not_present(
             fake.MOUNT_PATH, fake.VOLUME_NAME)
@@ -366,8 +364,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     @mock.patch.object(time, 'sleep')
     def test__try_execute_exception(self, patched_sleep):
-        self.mock_object(self.driver, '_execute', mock.Mock(
-            side_effect=processutils.ProcessExecutionError))
+        self.mock_object(self.driver, '_execute',
+                         side_effect=processutils.ProcessExecutionError)
         mock_exception_log = self.mock_object(nfs_base.LOG, 'exception')
         self.driver.configuration.num_shell_tries = 3
 
@@ -389,7 +387,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test_copy_image_to_volume_base_exception(self):
         mock_info_log = self.mock_object(nfs_base.LOG, 'info')
         self.mock_object(remotefs.RemoteFSDriver, 'copy_image_to_volume',
-                         mock.Mock(side_effect=exception.NfsException))
+                         side_effect=exception.NfsException)
 
         self.assertRaises(exception.NfsException,
                           self.driver.copy_image_to_volume,
@@ -420,7 +418,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test__register_image_in_cache(self, exc):
         mock_log = self.mock_object(nfs_base, 'LOG')
         self.mock_object(self.driver, '_do_clone_rel_img_cache',
-                         mock.Mock(side_effect=exc))
+                         side_effect=exc)
 
         retval = self.driver._register_image_in_cache(
             fake.NFS_VOLUME, fake.IMAGE_FILE_ID)
@@ -432,12 +430,10 @@ class NetAppNfsDriverTestCase(test.TestCase):
     @ddt.data(True, False)
     def test_do_clone_rel_img_cache(self, path_exists):
         self.mock_object(nfs_base.LOG, 'info')
-        self.mock_object(utils, 'synchronized',
-                         mock.Mock(return_value=lambda f: f))
+        self.mock_object(utils, 'synchronized', return_value=lambda f: f)
         self.mock_object(self.driver, '_get_mount_point_for_share',
-                         mock.Mock(return_value='dir'))
-        self.mock_object(os.path, 'exists',
-                         mock.Mock(return_value=path_exists))
+                         return_value='dir')
+        self.mock_object(os.path, 'exists', return_value=path_exists)
         self.mock_object(self.driver, '_clone_backing_file_for_volume')
         self.mock_object(os, 'utime')
 
@@ -463,8 +459,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
     def test__spawn_clean_cache_job_clean_job_setup(self):
         self.driver.cleaning = True
         mock_debug_log = self.mock_object(nfs_base.LOG, 'debug')
-        self.mock_object(utils, 'synchronized',
-                         mock.Mock(return_value=lambda f: f))
+        self.mock_object(utils, 'synchronized', return_value=lambda f: f)
 
         retval = self.driver._spawn_clean_cache_job()
 
@@ -478,13 +473,11 @@ class NetAppNfsDriverTestCase(test.TestCase):
                 pass
 
         fake_timer = FakeTimer()
-        self.mock_object(utils, 'synchronized',
-                         mock.Mock(return_value=lambda f: f))
+        self.mock_object(utils, 'synchronized', return_value=lambda f: f)
         self.mock_object(fake_timer, 'start')
         self.mock_object(nfs_base.LOG, 'debug')
         self.mock_object(self.driver, '_clean_image_cache')
-        self.mock_object(threading, 'Timer',
-                         mock.Mock(return_value=fake_timer))
+        self.mock_object(threading, 'Timer', return_value=fake_timer)
 
         retval = self.driver._spawn_clean_cache_job()
 
@@ -600,12 +593,11 @@ class NetAppNfsDriverTestCase(test.TestCase):
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
         self.mock_object(self.driver,
                          'local_path',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         mock_resize_image_file = self.mock_object(self.driver,
                                                   '_resize_image_file')
         mock_get_volume_extra_specs = self.mock_object(
-            na_utils, 'get_volume_extra_specs',
-            mock.Mock(return_value=fake.EXTRA_SPECS))
+            na_utils, 'get_volume_extra_specs', return_value=fake.EXTRA_SPECS)
         mock_do_qos_for_volume = self.mock_object(self.driver,
                                                   '_do_qos_for_volume')
 
@@ -626,13 +618,12 @@ class NetAppNfsDriverTestCase(test.TestCase):
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
         self.mock_object(self.driver,
                          'local_path',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         mock_resize_image_file = self.mock_object(
             self.driver, '_resize_image_file',
-            mock.Mock(side_effect=netapp_api.NaApiError))
+            side_effect=netapp_api.NaApiError)
         mock_get_volume_extra_specs = self.mock_object(
-            na_utils, 'get_volume_extra_specs',
-            mock.Mock(return_value=fake.EXTRA_SPECS))
+            na_utils, 'get_volume_extra_specs', return_value=fake.EXTRA_SPECS)
         mock_do_qos_for_volume = self.mock_object(self.driver,
                                                   '_do_qos_for_volume')
 
@@ -654,15 +645,15 @@ class NetAppNfsDriverTestCase(test.TestCase):
         path = '%s/%s' % (fake.NFS_SHARE, fake.NFS_VOLUME['name'])
         self.mock_object(self.driver,
                          'local_path',
-                         mock.Mock(return_value=path))
+                         return_value=path)
         mock_resize_image_file = self.mock_object(self.driver,
                                                   '_resize_image_file')
         mock_get_volume_extra_specs = self.mock_object(
             na_utils, 'get_volume_extra_specs',
-            mock.Mock(return_value=fake.EXTRA_SPECS))
+            return_value=fake.EXTRA_SPECS)
         mock_do_qos_for_volume = self.mock_object(
             self.driver, '_do_qos_for_volume',
-            mock.Mock(side_effect=netapp_api.NaApiError))
+            side_effect=netapp_api.NaApiError)
 
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.extend_volume,
@@ -741,8 +732,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_get_share_mount_and_vol_from_vol_ref(self):
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(return_value='10.12.142.11'))
-        self.mock_object(os.path, 'isfile', mock.Mock(return_value=True))
+                         return_value='10.12.142.11')
+        self.mock_object(os.path, 'isfile', return_value=True)
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         vol_path = "%s/%s" % (self.fake_nfs_export_1, 'test_file_name')
         vol_ref = {'source-name': vol_path}
@@ -759,7 +750,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_get_share_mount_and_vol_from_vol_ref_with_bad_ref(self):
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(return_value='10.12.142.11'))
+                         return_value='10.12.142.11')
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         vol_ref = {'source-id': '1234546'}
 
@@ -773,7 +764,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_get_share_mount_and_vol_from_vol_ref_where_not_found(self):
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(return_value='10.12.142.11'))
+                         return_value='10.12.142.11')
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         vol_path = "%s/%s" % (self.fake_nfs_export_2, 'test_file_name')
         vol_ref = {'source-name': vol_path}
@@ -788,7 +779,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
     def test_get_share_mount_and_vol_from_vol_ref_where_is_dir(self):
         self.mock_object(na_utils, 'resolve_hostname',
-                         mock.Mock(return_value='10.12.142.11'))
+                         return_value='10.12.142.11')
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         vol_ref = {'source-name': self.fake_nfs_export_2}
 
@@ -804,7 +795,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
               {'replication_status': fields.ReplicationStatus.ENABLED})
     def test_manage_existing(self, model_update):
         self.mock_object(utils, 'get_file_size',
-                         mock.Mock(return_value=1074253824))
+                         return_value=1074253824)
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         test_file = 'test_file_name'
         volume = fake.FAKE_MANAGE_VOLUME
@@ -822,8 +813,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         mock_get_specs = self.mock_object(na_utils, 'get_volume_extra_specs')
         mock_get_specs.return_value = {}
         self.mock_object(self.driver, '_do_qos_for_volume')
-        self.mock_object(self.driver, '_get_volume_model_update', mock.Mock(
-            return_value=model_update))
+        self.mock_object(self.driver, '_get_volume_model_update',
+                         return_value=model_update)
 
         actual_model_update = self.driver.manage_existing(volume, vol_ref)
 
@@ -838,8 +829,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
             volume, self.fake_nfs_export_1, test_file, {})
 
     def test_manage_existing_move_fails(self):
-        self.mock_object(utils, 'get_file_size',
-                         mock.Mock(return_value=1074253824))
+        self.mock_object(utils, 'get_file_size', return_value=1074253824)
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         test_file = 'test_file_name'
         volume = fake.FAKE_MANAGE_VOLUME
@@ -877,8 +867,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.driver._get_share_mount_and_vol_from_vol_ref = mock.Mock(
             return_value=(self.fake_nfs_export_1, self.fake_mount_point,
                           test_file))
-        self.mock_object(utils, 'get_file_size',
-                         mock.Mock(return_value=1073741824))
+        self.mock_object(utils, 'get_file_size', return_value=1073741824)
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         volume = fake.FAKE_MANAGE_VOLUME
         vol_path = "%s/%s" % (self.fake_nfs_export_1, test_file)
@@ -897,8 +886,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.driver._get_share_mount_and_vol_from_vol_ref = mock.Mock(
             return_value=(self.fake_nfs_export_1, self.fake_mount_point,
                           test_file))
-        self.mock_object(utils, 'get_file_size',
-                         mock.Mock(return_value=1073760270))
+        self.mock_object(utils, 'get_file_size', return_value=1073760270)
         self.driver._mounted_shares = [self.fake_nfs_export_1]
         volume = fake.FAKE_MANAGE_VOLUME
         vol_path = "%s/%s" % (self.fake_nfs_export_1, test_file)
@@ -991,8 +979,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         volume_model_update.update(
             {'provider_location': fake.PROVIDER_LOCATION})
         mock_create_volume_from_snapshot = self.mock_object(
-            self.driver, 'create_volume_from_snapshot', mock.Mock(
-                return_value=volume_model_update))
+            self.driver, 'create_volume_from_snapshot',
+            return_value=volume_model_update)
 
         model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(
@@ -1019,7 +1007,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         mock_busy = self.mock_object(
             self.driver.zapi_client, 'wait_for_busy_snapshot')
         self.mock_object(self.driver, '_get_volume_model_update',
-                         mock.Mock(return_value=volume_model_update))
+                         return_value=volume_model_update)
 
         model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(
@@ -1112,8 +1100,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
             fake.CG_POOL_NAME, fake.CG_SNAPSHOT_ID)
 
     def test_delete_consistencygroup_volume_delete_failure(self):
-        self.mock_object(self.driver, '_delete_file',
-                         mock.Mock(side_effect=Exception))
+        self.mock_object(self.driver, '_delete_file', side_effect=Exception)
 
         model_update, volumes = self.driver.delete_consistencygroup(
             fake.CG_CONTEXT, fake.CONSISTENCY_GROUP, [fake.CG_VOLUME])

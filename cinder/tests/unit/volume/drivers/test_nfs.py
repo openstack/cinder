@@ -761,8 +761,7 @@ class NfsDriverTestCase(test.TestCase):
         self._driver._stats = remotefs_volume_stats
 
         mock_get_provisioned_capacity = self.mock_object(
-            self._driver, '_get_provisioned_capacity',
-            mock.Mock(return_value=25.0))
+            self._driver, '_get_provisioned_capacity', return_value=25.0)
 
         self._driver._update_volume_stats()
 
@@ -997,7 +996,7 @@ class NfsDriverTestCase(test.TestCase):
         num_attempts = 3
 
         self.mock_object(self._driver._remotefsclient, 'mount',
-                         mock.Mock(side_effect=Exception))
+                         side_effect=Exception)
         drv = self._driver
         drv.configuration.nfs_mount_attempts = num_attempts
         drv.shares = {self.TEST_NFS_EXPORT1: ''}
@@ -1013,7 +1012,7 @@ class NfsDriverTestCase(test.TestCase):
         min_num_attempts = 1
         num_attempts = 0
         self.mock_object(self._driver._remotefsclient, 'mount',
-                         mock.Mock(side_effect=Exception))
+                         side_effect=Exception)
         drv = self._driver
         drv.configuration.nfs_mount_attempts = num_attempts
         drv.shares = {self.TEST_NFS_EXPORT1: ''}

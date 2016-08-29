@@ -839,7 +839,7 @@ class NetApp7modeClientTestCase(test.TestCase):
         volume_list = [fake.SNAPSHOT['volume_id']]
         self.mock_object(self.client,
                          'send_request',
-                         mock.Mock(return_value=api_response))
+                         return_value=api_response)
 
         result = self.client.get_snapshots_marked_for_deletion(volume_list)
 

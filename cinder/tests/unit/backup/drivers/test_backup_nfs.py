@@ -66,7 +66,7 @@ class BackupNFSShareTestCase(test.TestCase):
     def test_check_configuration_no_backup_share(self):
         self.override_config('backup_share', None)
         self.mock_object(nfs.NFSBackupDriver, '_init_backup_repo_path',
-                         mock.Mock(return_value=FAKE_BACKUP_PATH))
+                         return_value=FAKE_BACKUP_PATH)
 
         with mock.patch.object(nfs.NFSBackupDriver, '_check_configuration'):
             driver = nfs.NFSBackupDriver(self.ctxt)
@@ -159,7 +159,7 @@ class BackupNFSSwiftBasedTestCase(test.TestCase):
         mock_remotefsclient.get_mount_point = mock.Mock(
             return_value=self.temp_dir)
         self.mock_object(remotefs_brick, 'RemoteFsClient',
-                         mock.Mock(return_value=mock_remotefsclient))
+                         return_value=mock_remotefsclient)
         # Remove tempdir.
         self.addCleanup(shutil.rmtree, self.temp_dir)
         for _i in range(0, 32):

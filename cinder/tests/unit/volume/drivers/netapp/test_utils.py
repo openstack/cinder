@@ -150,8 +150,8 @@ class NetAppDriverUtilsTestCase(test.TestCase):
         fake_volume_type = {'extra_specs': fake_extra_specs}
         fake_volume = {'volume_type_id': 'fake_volume_type_id'}
         self.mock_object(context, 'get_admin_context')
-        self.mock_object(volume_types, 'get_volume_type', mock.Mock(
-            return_value=fake_volume_type))
+        self.mock_object(volume_types, 'get_volume_type',
+                         return_value=fake_volume_type)
         self.mock_object(na_utils, 'log_extra_spec_warnings')
 
         result = na_utils.get_volume_extra_specs(fake_volume)
@@ -171,8 +171,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
     def test_get_volume_extra_specs_no_volume_type(self):
         fake_volume = {'volume_type_id': 'fake_volume_type_id'}
         self.mock_object(context, 'get_admin_context')
-        self.mock_object(volume_types, 'get_volume_type', mock.Mock(
-            return_value=None))
+        self.mock_object(volume_types, 'get_volume_type', return_value=None)
         self.mock_object(na_utils, 'log_extra_spec_warnings')
 
         result = na_utils.get_volume_extra_specs(fake_volume)
