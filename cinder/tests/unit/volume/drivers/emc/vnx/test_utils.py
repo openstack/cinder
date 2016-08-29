@@ -36,36 +36,33 @@ class TestUtils(test.TestCase):
         super(TestUtils, self).tearDown()
         common.DEFAULT_TIMEOUT = self.origin_timeout
 
-    @ut_utils.patch_looping_call
     def test_wait_until(self):
-        mock_testmethod = mock.Mock(side_effect=[False, True])
-        utils.wait_until(mock_testmethod)
-        mock_testmethod.assert_has_calls([mock.call(), mock.call()])
+        mock_testmethod = mock.Mock(return_value=True)
+        utils.wait_until(mock_testmethod, interval=0)
+        mock_testmethod.assert_has_calls([mock.call()])
 
-    @ut_utils.patch_looping_call
     def test_wait_until_with_exception(self):
-        mock_testmethod = mock.Mock(side_effect=[
-            False, storops_ex.VNXAttachSnapError('Unknown error')])
+        mock_testmethod = mock.Mock(
+            side_effect=storops_ex.VNXAttachSnapError('Unknown error'))
         mock_testmethod.__name__ = 'test_method'
         self.assertRaises(storops_ex.VNXAttachSnapError,
                           utils.wait_until,
                           mock_testmethod,
-                          timeout=20,
+                          timeout=1,
+                          interval=0,
                           reraise_arbiter=(
                               lambda ex: not isinstance(
                                   ex, storops_ex.VNXCreateLunError)))
-        mock_testmethod.assert_has_calls([mock.call(), mock.call()])
+        mock_testmethod.assert_has_calls([mock.call()])
 
-    @ut_utils.patch_looping_call
     def test_wait_until_with_params(self):
-        mock_testmethod = mock.Mock(side_effect=[False, True])
-        mock_testmethod.__name__ = 'test_method'
+        mock_testmethod = mock.Mock(return_value=True)
         utils.wait_until(mock_testmethod,
                          param1=1,
                          param2='test')
         mock_testmethod.assert_has_calls(
-            [mock.call(param1=1, param2='test'),
-             mock.call(param1=1, param2='test')])
+            [mock.call(param1=1, param2='test')])
+        mock_testmethod.assert_has_calls([mock.call(param1=1, param2='test')])
 
     @res_mock.mock_driver_input
     def test_retype_need_migration_when_host_changed(self, driver_in):
