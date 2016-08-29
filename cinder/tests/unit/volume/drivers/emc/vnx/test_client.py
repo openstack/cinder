@@ -105,6 +105,7 @@ class TestClient(test.TestCase):
         lun = client.vnx.get_lun()
         lun.migrate.assert_called_with(2, storops.VNXMigrationRate.HIGH)
 
+    @unittest.skip("Skip until bug #1578986 is fixed")
     @utils.patch_sleep
     @res_mock.patch_client
     def test_migrate_lun_with_retry(self, client, mocked, mock_sleep):
@@ -134,16 +135,14 @@ class TestClient(test.TestCase):
         r = client.session_finished(lun)
         self.assertTrue(r)
 
-    @utils.patch_sleep
     @res_mock.patch_client
-    def test_migrate_lun_error(self, client, mocked, mock_sleep):
+    def test_migrate_lun_error(self, client, mocked):
         lun = client.vnx.get_lun()
         self.assertRaises(storops_ex.VNXMigrationError,
                           client.migrate_lun,
                           src_id=4,
                           dst_id=5)
         lun.migrate.assert_called_with(5, storops.VNXMigrationRate.HIGH)
-        mock_sleep.assert_not_called()
 
     @res_mock.patch_client
     def test_verify_migration(self, client, mocked):

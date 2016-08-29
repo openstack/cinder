@@ -366,7 +366,6 @@ def _build_client():
 
 def patch_client(func):
     @six.wraps(func)
-    @utils.patch_looping_call
     def decorated(cls, *args, **kwargs):
         storage_res = (
             STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])
@@ -389,7 +388,6 @@ PROTOCOL_MAPPING = {
 def patch_adapter_init(protocol):
     def inner_patch_adapter(func):
         @six.wraps(func)
-        @utils.patch_looping_call
         def decorated(cls, *args, **kwargs):
             storage_res = (
                 STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])
@@ -413,7 +411,6 @@ def _patch_adapter_prop(adapter, client):
 def patch_adapter(protocol):
     def inner_patch_adapter(func):
         @six.wraps(func)
-        @utils.patch_looping_call
         def decorated(cls, *args, **kwargs):
             storage_res = (
                 STORAGE_RES_MAPPING[cls.__class__.__name__][func.__name__])
