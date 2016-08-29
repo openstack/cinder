@@ -17,40 +17,40 @@
 Test cases for the conf key manager.
 """
 
-import array
 import binascii
 
+from castellan.common.objects import symmetric_key as key
 from oslo_config import cfg
 
 from cinder import context
 from cinder import exception
 from cinder.keymgr import conf_key_mgr
-from cinder.keymgr import key
-from cinder.tests.unit.keymgr import test_key_mgr
-
+from cinder import test
 
 CONF = cfg.CONF
-CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='keymgr')
+CONF.import_opt('fixed_key', 'cinder.keymgr.conf_key_mgr', group='key_manager')
 
 
-class ConfKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
+class ConfKeyManagerTestCase(test.TestCase):
     def __init__(self, *args, **kwargs):
         super(ConfKeyManagerTestCase, self).__init__(*args, **kwargs)
 
         self._hex_key = '1' * 64
 
     def _create_key_manager(self):
-        CONF.set_default('fixed_key', default=self._hex_key, group='keymgr')
-        return conf_key_mgr.ConfKeyManager()
+        CONF.set_default('fixed_key', default=self._hex_key,
+                         group='key_manager')
+        return conf_key_mgr.ConfKeyManager(CONF)
 
     def setUp(self):
         super(ConfKeyManagerTestCase, self).setUp()
+        self.key_mgr = self._create_key_manager()
 
         self.ctxt = context.RequestContext('fake', 'fake')
 
         self.key_id = '00000000-0000-0000-0000-000000000000'
-        encoded = array.array('B', binascii.unhexlify(self._hex_key)).tolist()
-        self.key = key.SymmetricKey('AES', encoded)
+        encoded = bytes(binascii.unhexlify(self._hex_key))
+        self.key = key.SymmetricKey('AES', len(encoded) * 8, encoded)
 
     def test___init__(self):
         self.assertEqual(self.key_id, self.key_mgr.key_id)
@@ -65,60 +65,54 @@ class ConfKeyManagerTestCase(test_key_mgr.KeyManagerTestCase):
         self.assertRaises(exception.NotAuthorized,
                           self.key_mgr.create_key, None)
 
-    def test_store_key(self):
-        key_id = self.key_mgr.store_key(self.ctxt, self.key)
+    def test_create_key_pair(self):
+        self.assertRaises(NotImplementedError,
+                          self.key_mgr.create_key_pair, self.ctxt)
 
-        actual_key = self.key_mgr.get_key(self.ctxt, key_id)
+    def test_create_key_pair_null_context(self):
+        self.assertRaises(NotImplementedError,
+                          self.key_mgr.create_key_pair, None)
+
+    def test_store_key(self):
+        key_id = self.key_mgr.store(self.ctxt, self.key)
+
+        actual_key = self.key_mgr.get(self.ctxt, key_id)
         self.assertEqual(self.key, actual_key)
 
     def test_store_null_context(self):
         self.assertRaises(exception.NotAuthorized,
-                          self.key_mgr.store_key, None, self.key)
+                          self.key_mgr.store, None, self.key)
 
     def test_store_key_invalid(self):
-        encoded = self.key.get_encoded()
-        inverse_key = key.SymmetricKey('AES', [~b for b in encoded])
+        encoded = bytes(binascii.unhexlify('0' * 64))
+        inverse_key = key.SymmetricKey('AES', len(encoded) * 8, encoded)
 
         self.assertRaises(exception.KeyManagerError,
-                          self.key_mgr.store_key, self.ctxt, inverse_key)
-
-    def test_copy_key(self):
-        key_id = self.key_mgr.create_key(self.ctxt)
-        key = self.key_mgr.get_key(self.ctxt, key_id)
-
-        copied_key_id = self.key_mgr.copy_key(self.ctxt, key_id)
-        copied_key = self.key_mgr.get_key(self.ctxt, copied_key_id)
-
-        self.assertEqual(key_id, copied_key_id)
-        self.assertEqual(key, copied_key)
-
-    def test_copy_null_context(self):
-        self.assertRaises(exception.NotAuthorized,
-                          self.key_mgr.copy_key, None, None)
+                          self.key_mgr.store, self.ctxt, inverse_key)
 
     def test_delete_key(self):
         key_id = self.key_mgr.create_key(self.ctxt)
-        self.key_mgr.delete_key(self.ctxt, key_id)
+        self.key_mgr.delete(self.ctxt, key_id)
 
         # cannot delete key -- might have lingering references
         self.assertEqual(self.key,
-                         self.key_mgr.get_key(self.ctxt, self.key_id))
+                         self.key_mgr.get(self.ctxt, self.key_id))
 
     def test_delete_null_context(self):
         self.assertRaises(exception.NotAuthorized,
-                          self.key_mgr.delete_key, None, None)
+                          self.key_mgr.delete, None, None)
 
     def test_delete_unknown_key(self):
         self.assertRaises(exception.KeyManagerError,
-                          self.key_mgr.delete_key, self.ctxt, None)
+                          self.key_mgr.delete, self.ctxt, None)
 
     def test_get_key(self):
         self.assertEqual(self.key,
-                         self.key_mgr.get_key(self.ctxt, self.key_id))
+                         self.key_mgr.get(self.ctxt, self.key_id))
 
     def test_get_null_context(self):
         self.assertRaises(exception.NotAuthorized,
-                          self.key_mgr.get_key, None, None)
+                          self.key_mgr.get, None, None)
 
     def test_get_unknown_key(self):
-        self.assertRaises(KeyError, self.key_mgr.get_key, self.ctxt, None)
+        self.assertRaises(KeyError, self.key_mgr.get, self.ctxt, None)

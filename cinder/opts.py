@@ -41,9 +41,7 @@ from cinder.db import base as cinder_db_base
 from cinder import exception as cinder_exception
 from cinder.image import glance as cinder_image_glance
 from cinder.image import image_utils as cinder_image_imageutils
-import cinder.keymgr
 from cinder.keymgr import conf_key_mgr as cinder_keymgr_confkeymgr
-from cinder.keymgr import key_mgr as cinder_keymgr_keymgr
 from cinder.message import api as cinder_message_api
 from cinder import quota as cinder_quota
 from cinder.scheduler import driver as cinder_scheduler_driver
@@ -199,12 +197,6 @@ def list_opts():
                 cinder_zonemanager_drivers_brocade_brcdfczonedriver.brcd_opts,
                 cinder_zonemanager_fczonemanager.zone_manager_opts,
                 cinder_zonemanager_drivers_cisco_ciscofczonedriver.cisco_opts,
-            )),
-        ('KEYMGR',
-            itertools.chain(
-                cinder_keymgr_keymgr.encryption_opts,
-                cinder.keymgr.keymgr_opts,
-                cinder_keymgr_confkeymgr.key_mgr_opts,
             )),
         ('DEFAULT',
             itertools.chain(
@@ -379,6 +371,10 @@ def list_opts():
         ('COORDINATION',
             itertools.chain(
                 cinder_coordination.coordination_opts,
+            )),
+        ('KEY_MANAGER',
+            itertools.chain(
+                cinder_keymgr_confkeymgr.key_mgr_opts,
             )),
         ('BACKEND',
             itertools.chain(

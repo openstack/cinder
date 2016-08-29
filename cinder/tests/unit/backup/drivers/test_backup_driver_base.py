@@ -23,6 +23,7 @@ from cinder.backup import driver
 from cinder import context
 from cinder import db
 from cinder import exception
+from cinder import keymgr as key_manager
 from cinder import objects
 from cinder import test
 from cinder.tests.unit.backup import fake_service
@@ -286,8 +287,9 @@ class BackupMetadataAPITestCase(test.TestCase):
 
     def _create_encrypted_volume_db_entry(self, id, type_id, encrypted):
         if encrypted:
+            key_id = key_manager.API().key_id
             vol = {'id': id, 'size': 1, 'status': 'available',
-                   'volume_type_id': type_id, 'encryption_key_id': 'fake_id'}
+                   'volume_type_id': type_id, 'encryption_key_id': key_id}
         else:
             vol = {'id': id, 'size': 1, 'status': 'available',
                    'volume_type_id': type_id, 'encryption_key_id': None}

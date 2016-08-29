@@ -38,7 +38,7 @@ from cinder import flow_utils
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import cache as image_cache
 from cinder.image import glance
-from cinder import keymgr
+from cinder import keymgr as key_manager
 from cinder import objects
 from cinder.objects import base as objects_base
 from cinder.objects import fields
@@ -130,7 +130,7 @@ class API(base.Base):
         self.volume_rpcapi = volume_rpcapi.VolumeAPI()
         self.availability_zones = []
         self.availability_zones_last_fetched = None
-        self.key_manager = keymgr.API()
+        self.key_manager = key_manager.API(CONF)
         super(API, self).__init__(db_driver)
 
     def list_availability_zones(self, enable_cache=False):
@@ -437,7 +437,7 @@ class API(base.Base):
         encryption_key_id = volume.get('encryption_key_id', None)
         if encryption_key_id is not None:
             try:
-                self.key_manager.delete_key(context, encryption_key_id)
+                self.key_manager.delete(context, encryption_key_id)
             except Exception as e:
                 LOG.warning(_LW("Unable to delete encryption key for "
                                 "volume: %s."), e.msg, resource=volume)

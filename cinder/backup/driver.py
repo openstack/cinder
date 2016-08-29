@@ -25,7 +25,7 @@ import six
 from cinder.db import base
 from cinder import exception
 from cinder.i18n import _, _LI, _LW
-from cinder import keymgr
+from cinder import keymgr as key_manager
 
 service_opts = [
     cfg.IntOpt('backup_metadata_version', default=2,
@@ -89,7 +89,8 @@ class BackupMetadataAPI(base.Base):
                     continue
                 # Copy the encryption key uuid for backup
                 if key is 'encryption_key_id' and value is not None:
-                    value = keymgr.API().copy_key(self.context, value)
+                    km = key_manager.API(CONF)
+                    value = km.store(self.context, km.get(self.context, value))
                     LOG.debug("Copying encryption key uuid for backup.")
                 container[type_tag][key] = value
 
