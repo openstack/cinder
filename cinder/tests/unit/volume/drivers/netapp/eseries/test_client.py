@@ -165,7 +165,7 @@ class NetAppEseriesClientDriverTestCase(test.TestCase):
         groups = copy.deepcopy(eseries_fake.HOST_GROUPS)
         group = groups[0]
         self.mock_object(self.my_client, 'list_host_groups',
-                         new_attr=mock.Mock(return_value=groups))
+                         return_value=groups)
 
         result = self.my_client.get_host_group_by_name(group['label'])
 
