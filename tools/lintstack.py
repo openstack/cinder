@@ -106,6 +106,10 @@ objects_ignore_messages = [
     "Module 'cinder.objects' has no 'VolumeTypeList' member",
     "Module 'cinder.objects' has no 'Group' member",
     "Module 'cinder.objects' has no 'GroupList' member",
+    "Module 'cinder.objects' has no 'GroupSnapshot' member",
+    "Module 'cinder.objects' has no 'GroupSnapshotList' member",
+    "Class 'Group' has no '__table__' member",
+    "Class 'GroupSnapshot' has no '__table__' member",
 ]
 objects_ignore_modules = ["cinder/objects/"]
 

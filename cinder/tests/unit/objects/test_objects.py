@@ -37,7 +37,7 @@ object_data = {
     'RequestSpec': '1.1-b0bd1a28d191d75648901fa853e8a733',
     'Service': '1.4-c7d011989d1718ca0496ccf640b42712',
     'ServiceList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
-    'Snapshot': '1.1-37966f7141646eb29e9ad5298ff2ca8a',
+    'Snapshot': '1.1-d6a9d58f627bb2a5cf804b0dd7a12bc7',
     'SnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'Volume': '1.5-19919d8086d6a38ab9d3ab88139e70e0',
     'VolumeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
@@ -48,8 +48,10 @@ object_data = {
     'VolumeTypeList': '1.1-15ecf022a68ddbb8c2a6739cfc9f8f5e',
     'GroupType': '1.0-d4a7b272199d0b0d6fc3ceed58539d30',
     'GroupTypeList': '1.0-1b54e51ad0fc1f3a8878f5010e7e16dc',
-    'Group': '1.0-fd0a002ba8c1388fe9d94ec20b346f0c',
+    'Group': '1.1-bd853b1d1ee05949d9ce4b33f80ac1a0',
     'GroupList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
+    'GroupSnapshot': '1.0-9af3e994e889cbeae4427c3e351fa91d',
+    'GroupSnapshotList': '1.0-15ecf022a68ddbb8c2a6739cfc9f8f5e',
 }
 
 

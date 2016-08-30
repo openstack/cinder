@@ -428,6 +428,11 @@ def snapshot_get_all_for_cgsnapshot(context, project_id):
     return IMPL.snapshot_get_all_for_cgsnapshot(context, project_id)
 
 
+def snapshot_get_all_for_group_snapshot(context, project_id):
+    """Get all snapshots belonging to a group snapshot."""
+    return IMPL.snapshot_get_all_for_group_snapshot(context, project_id)
+
+
 def snapshot_get_all_for_volume(context, volume_id):
     """Get all snapshots for a volume."""
     return IMPL.snapshot_get_all_for_volume(context, volume_id)
@@ -1314,9 +1319,9 @@ def group_get_all(context, filters=None, marker=None, limit=None,
                               sort_dirs=sort_dirs)
 
 
-def group_create(context, values):
+def group_create(context, values, group_snapshot_id=None, group_id=None):
     """Create a group from the values dictionary."""
-    return IMPL.group_create(context, values)
+    return IMPL.group_create(context, values, group_snapshot_id, group_id)
 
 
 def group_get_all_by_project(context, project_id, filters=None,
@@ -1342,6 +1347,42 @@ def group_update(context, group_id, values):
 def group_destroy(context, group_id):
     """Destroy the group or raise if it does not exist."""
     return IMPL.group_destroy(context, group_id)
+
+
+def group_has_group_snapshot_filter():
+    """Return a filter that checks if a Group has Group Snapshots."""
+    return IMPL.group_has_group_snapshot_filter()
+
+
+def group_has_volumes_filter(attached_or_with_snapshots=False):
+    """Return a filter to check if a Group has volumes.
+
+    When attached_or_with_snapshots parameter is given a True value only
+    attached volumes or those with snapshots will be considered.
+    """
+    return IMPL.group_has_volumes_filter(attached_or_with_snapshots)
+
+
+def group_creating_from_src(group_id=None, group_snapshot_id=None):
+    """Return a filter to check if a Group is being used as creation source.
+
+    Returned filter is meant to be used in the Conditional Update mechanism and
+    checks if provided Group ID or Group Snapshot ID is currently being used to
+    create another Group.
+
+    This filter will not include Groups that have used the ID but have already
+    finished their creation (status is no longer creating).
+
+    Filter uses a subquery that allows it to be used on updates to the
+    groups table.
+    """
+    return IMPL.group_creating_from_src(group_id, group_snapshot_id)
+
+
+def group_volume_type_mapping_create(context, group_id, volume_type_id):
+    """Create a group volume_type mapping entry."""
+    return IMPL.group_volume_type_mapping_create(context, group_id,
+                                                 volume_type_id)
 
 
 ###################
@@ -1388,6 +1429,52 @@ def cgsnapshot_destroy(context, cgsnapshot_id):
 def cgsnapshot_creating_from_src():
     """Get a filter that checks if a CGSnapshot is being created from a CG."""
     return IMPL.cgsnapshot_creating_from_src()
+
+
+###################
+
+
+def group_snapshot_get(context, group_snapshot_id):
+    """Get a group snapshot or raise if it does not exist."""
+    return IMPL.group_snapshot_get(context, group_snapshot_id)
+
+
+def group_snapshot_get_all(context, filters=None):
+    """Get all group snapshots."""
+    return IMPL.group_snapshot_get_all(context, filters)
+
+
+def group_snapshot_create(context, values):
+    """Create a group snapshot from the values dictionary."""
+    return IMPL.group_snapshot_create(context, values)
+
+
+def group_snapshot_get_all_by_group(context, group_id, filters=None):
+    """Get all group snapshots belonging to a group."""
+    return IMPL.group_snapshot_get_all_by_group(context, group_id, filters)
+
+
+def group_snapshot_get_all_by_project(context, project_id, filters=None):
+    """Get all group snapshots belonging to a project."""
+    return IMPL.group_snapshot_get_all_by_project(context, project_id, filters)
+
+
+def group_snapshot_update(context, group_snapshot_id, values):
+    """Set the given properties on a group snapshot and update it.
+
+    Raises NotFound if group snapshot does not exist.
+    """
+    return IMPL.group_snapshot_update(context, group_snapshot_id, values)
+
+
+def group_snapshot_destroy(context, group_snapshot_id):
+    """Destroy the group snapshot or raise if it does not exist."""
+    return IMPL.group_snapshot_destroy(context, group_snapshot_id)
+
+
+def group_snapshot_creating_from_src():
+    """Get a filter to check if a grp snapshot is being created from a grp."""
+    return IMPL.group_snapshot_creating_from_src()
 
 
 ###################

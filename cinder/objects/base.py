@@ -114,6 +114,8 @@ OBJ_VERSIONS.add('1.8', {'RequestSpec': '1.0', 'VolumeProperties': '1.0'})
 OBJ_VERSIONS.add('1.9', {'GroupType': '1.0', 'GroupTypeList': '1.0'})
 OBJ_VERSIONS.add('1.10', {'Group': '1.0', 'GroupList': '1.0', 'Volume': '1.5',
                           'RequestSpec': '1.1', 'VolumeProperties': '1.1'})
+OBJ_VERSIONS.add('1.11', {'GroupSnapshot': '1.0', 'GroupSnapshotList': '1.0',
+                          'Group': '1.1'})
 
 
 class CinderObjectRegistry(base.VersionedObjectRegistry):

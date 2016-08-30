@@ -1003,6 +1003,47 @@ class MigrationsMixin(test_migrations.WalkVersionsMixin):
             execute().scalar()
         self.assertEqual(1, rows)
 
+    def _check_079(self, engine, data):
+        """Test adding group_snapshots tables."""
+        self.assertTrue(engine.dialect.has_table(engine.connect(),
+                                                 "group_snapshots"))
+        group_snapshots = db_utils.get_table(engine, 'group_snapshots')
+
+        self.assertIsInstance(group_snapshots.c.id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_snapshots.c.name.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_snapshots.c.description.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_snapshots.c.created_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_snapshots.c.updated_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_snapshots.c.deleted_at.type,
+                              self.TIME_TYPE)
+        self.assertIsInstance(group_snapshots.c.deleted.type,
+                              self.BOOL_TYPE)
+        self.assertIsInstance(group_snapshots.c.user_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_snapshots.c.project_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_snapshots.c.group_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_snapshots.c.group_type_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(group_snapshots.c.status.type,
+                              self.VARCHAR_TYPE)
+
+        snapshots = db_utils.get_table(engine, 'snapshots')
+        self.assertIsInstance(snapshots.c.group_snapshot_id.type,
+                              self.VARCHAR_TYPE)
+
+        groups = db_utils.get_table(engine, 'groups')
+        self.assertIsInstance(groups.c.group_snapshot_id.type,
+                              self.VARCHAR_TYPE)
+        self.assertIsInstance(groups.c.source_group_id.type,
+                              self.VARCHAR_TYPE)
+
     def test_walk_versions(self):
         self.walk_versions(False, False)
 
