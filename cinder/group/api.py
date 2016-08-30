@@ -24,6 +24,7 @@ from oslo_config import cfg
 from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import timeutils
+from oslo_utils import uuidutils
 
 from cinder.common import constants
 from cinder import db
@@ -137,7 +138,11 @@ class API(base.Base):
         req_volume_types = (self.db.volume_types_get_by_name_or_id(
             context.elevated(), volume_types))
 
-        req_group_type = self.db.group_type_get(context, group_type)
+        if not uuidutils.is_uuid_like(group_type):
+            req_group_type = self.db.group_type_get_by_name(context,
+                                                            group_type)
+        else:
+            req_group_type = self.db.group_type_get(context, group_type)
 
         availability_zone = self._extract_availability_zone(availability_zone)
         kwargs = {'user_id': context.user_id,
