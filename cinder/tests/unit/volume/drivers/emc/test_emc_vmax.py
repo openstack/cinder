@@ -1732,23 +1732,23 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         configuration.append_config_values = mock.Mock(return_value=0)
         configuration.config_group = 'ISCSINoFAST'
         configuration.cinder_emc_config_file = self.config_file_path
-        self.stubs.Set(configuration, 'safe_get',
-                       self.fake_safe_get({'driver_use_ssl':
-                                           True,
-                                           'volume_backend_name':
-                                           'ISCSINoFAST'}))
-        self.stubs.Set(emc_vmax_iscsi.EMCVMAXISCSIDriver,
-                       'smis_do_iscsi_discovery',
-                       self.fake_do_iscsi_discovery)
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(configuration, 'safe_get',
+                         self.fake_safe_get({'driver_use_ssl':
+                                             True,
+                                             'volume_backend_name':
+                                             'ISCSINoFAST'}))
+        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
+                         'smis_do_iscsi_discovery',
+                         self.fake_do_iscsi_discovery)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -3872,18 +3872,18 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         configuration.safe_get.return_value = 'ISCSIFAST'
         configuration.config_group = 'ISCSIFAST'
 
-        self.stubs.Set(emc_vmax_iscsi.EMCVMAXISCSIDriver,
-                       'smis_do_iscsi_discovery',
-                       self.fake_do_iscsi_discovery)
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
+                         'smis_do_iscsi_discovery',
+                         self.fake_do_iscsi_discovery)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -4529,15 +4529,15 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         configuration.safe_get.return_value = 'FCNoFAST'
         configuration.config_group = 'FCNoFAST'
 
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
 
         driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
         driver.db = FakeDB()
@@ -5096,15 +5096,15 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         configuration.safe_get.return_value = 'FCFAST'
         configuration.config_group = 'FCFAST'
 
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
         driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
         driver.db = FakeDB()
         driver.common.conn = FakeEcomConnection()
@@ -5767,15 +5767,15 @@ class EMCV3DriverTestCase(test.TestCase):
         configuration.safe_get.return_value = 3
         configuration.config_group = 'V3'
 
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
         self.patcher = mock.patch(
             'oslo_service.loopingcall.FixedIntervalLoopingCall',
             new=utils.ZeroIntervalLoopingCall)
@@ -6574,18 +6574,18 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
         configuration.cinder_emc_config_file = self.config_file_path
         configuration.config_group = 'MULTI_POOL'
 
-        self.stubs.Set(emc_vmax_iscsi.EMCVMAXISCSIDriver,
-                       'smis_do_iscsi_discovery',
-                       self.fake_do_iscsi_discovery)
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
+                         'smis_do_iscsi_discovery',
+                         self.fake_do_iscsi_discovery)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
 
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
@@ -6863,15 +6863,15 @@ class EMCV3MultiSloDriverTestCase(test.TestCase):
         configuration.cinder_emc_config_file = self.config_file_path
         configuration.config_group = 'MULTI_SLO_V3'
 
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
 
         driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
         driver.db = FakeDB()
@@ -7170,15 +7170,15 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
         configuration.safe_get.return_value = 'MULTI_ECOM'
         configuration.config_group = 'MULTI_ECOM'
 
-        self.stubs.Set(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
-                       self.fake_ecom_connection)
+        self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
+                         self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
-                       instancename.fake_getinstancename)
-        self.stubs.Set(time, 'sleep',
-                       self.fake_sleep)
-        self.stubs.Set(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
-                       self.fake_is_v3)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
+                         instancename.fake_getinstancename)
+        self.mock_object(time, 'sleep',
+                         self.fake_sleep)
+        self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
+                         self.fake_is_v3)
         driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
         driver.db = FakeDB()
         driver.common.conn = FakeEcomConnection()
