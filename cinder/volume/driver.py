@@ -267,7 +267,7 @@ volume_opts = [
                      'will use backup_use_temp_volume path.'),
     cfg.BoolOpt('enable_unsupported_driver',
                 default=False,
-                help="Set this to True when you want to allow an usupported "
+                help="Set this to True when you want to allow an unsupported "
                      "driver to start.  Drivers that haven't maintained a "
                      "working CI system and testing are marked as unsupported "
                      "until CI is working again.  This also marks a driver as "
