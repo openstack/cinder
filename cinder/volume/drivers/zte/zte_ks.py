@@ -83,7 +83,6 @@ CONF = cfg.CONF
 CONF.register_opts(zte_opts)
 
 
-@interface.volumedriver
 class ZTEVolumeDriver(driver.VolumeDriver):
 
     def __init__(self, *args, **kwargs):
