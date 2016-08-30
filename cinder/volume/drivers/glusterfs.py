@@ -85,6 +85,9 @@ class GlusterfsDriver(remotefs_drv.RemoteFSSnapDriverDistributed,
         """Any initialization the volume driver does while starting."""
         super(GlusterfsDriver, self).do_setup(context)
 
+        LOG.warning(_LW("The GlusterFS volume driver is deprecated and "
+                        "will be removed during the Ocata cycle."))
+
         config = self.configuration.glusterfs_shares_config
         if not config:
             msg = (_("There's no Gluster config file configured (%s)") %
