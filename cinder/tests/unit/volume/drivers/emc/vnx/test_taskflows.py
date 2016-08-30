@@ -165,7 +165,7 @@ class TestTaskflow(test.TestCase):
                                        store=store_spec)
         engine.run()
         snap_name = engine.storage.fetch('new_cg_snap_name')
-        self.assertTrue(isinstance(snap_name, res_mock.StorageObjectMock))
+        self.assertIsInstance(snap_name, res_mock.StorageObjectMock)
 
     @res_mock.patch_client
     def test_create_cg_snapshot_task_revert(self, client, mocked):

@@ -698,7 +698,7 @@ class TestCinderObjectConditionalUpdate(test.TestCase):
         # is not relevant).
         self.assertEqual(1, update.call_count)
         arg = update.call_args[0][0]
-        self.assertTrue(isinstance(arg, dict))
+        self.assertIsInstance(arg, dict)
         self.assertEqual(set(values.keys()), set(arg.keys()))
 
     def test_conditional_update_multitable_fail(self):
