@@ -99,11 +99,11 @@ class SynoISCSIDriverTestCase(test.TestCase):
         config.use_chap_auth = False
         config.iscsi_protocol = 'iscsi'
         config.iscsi_ip_address = IP
-        config.admin_port = 5000
-        config.username = 'admin'
-        config.password = 'admin'
-        config.ssl_verify = True
-        config.one_time_pass = '123456'
+        config.synology_admin_port = 5000
+        config.synology_username = 'admin'
+        config.synology_password = 'admin'
+        config.synology_ssl_verify = True
+        config.synology_one_time_pass = '123456'
         config.volume_dd_blocksize = 1
 
         return config

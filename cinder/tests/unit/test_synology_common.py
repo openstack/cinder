@@ -359,14 +359,14 @@ class SynoCommonTestCase(test.TestCase):
         config.iscsi_protocol = 'iscsi'
         config.iscsi_ip_address = IP
         config.iscsi_port = 3260
-        config.admin_port = 5000
-        config.username = 'admin'
-        config.password = 'admin'
-        config.ssl_verify = True
-        config.one_time_pass = '123456'
+        config.synology_admin_port = 5000
+        config.synology_username = 'admin'
+        config.synology_password = 'admin'
+        config.synology_ssl_verify = True
+        config.synology_one_time_pass = '123456'
+        config.synology_pool_name = POOL_NAME
         config.volume_dd_blocksize = 1
         config.iscsi_target_prefix = 'iqn.2000-01.com.synology:'
-        config.pool_name = POOL_NAME
         config.chap_username = 'abcd'
         config.chap_password = 'qwerty'
         config.reserved_percentage = 0
@@ -450,7 +450,7 @@ class SynoCommonTestCase(test.TestCase):
         self.assertRaises(exception.SynoAuthError,
                           self.common._get_pool_info)
 
-        self.conf.pool_name = ''
+        self.conf.synology_pool_name = ''
         self.assertRaises(exception.InvalidConfigurationValue,
                           self.common._get_pool_info)
 
@@ -509,7 +509,7 @@ class SynoCommonTestCase(test.TestCase):
         self.assertRaises(exception.MalformedResponse,
                           self.common._get_pool_lun_provisioned_size)
 
-        self.conf.pool_name = ''
+        self.conf.synology_pool_name = ''
         self.assertRaises(exception.InvalidConfigurationValue,
                           self.common._get_pool_lun_provisioned_size)
 
@@ -1275,7 +1275,7 @@ class SynoCommonTestCase(test.TestCase):
                                mock.ANY,
                                name=VOLUME['name'],
                                type=self.common.CINDER_LUN,
-                               location='/' + self.conf.pool_name,
+                               location='/' + self.conf.synology_pool_name,
                                size=VOLUME['size'] * units.Gi))
         self.assertIsNone(result)
 
