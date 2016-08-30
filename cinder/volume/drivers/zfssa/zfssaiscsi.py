@@ -195,36 +195,39 @@ class ZFSSAISCSIDriver(driver.ISCSIDriver):
         else:
             LOG.warning('zfssa_initiator_config not found. '
                         'Using deprecated configuration options.')
+
+            if not lcfg.zfssa_initiator_group:
+                LOG.error('zfssa_initiator_group cannot be empty. '
+                          'Explicitly set the value "default" to use '
+                          'the default initiator group.')
+                raise exception.InvalidConfigurationValue(
+                    value='', option='zfssa_initiator_group')
+
             if (not lcfg.zfssa_initiator and
-                (not lcfg.zfssa_initiator_group and
-                 lcfg.zfssa_initiator_group != 'default')):
+               lcfg.zfssa_initiator_group != 'default'):
                 LOG.error('zfssa_initiator cannot be empty when '
                           'creating a zfssa_initiator_group.')
                 raise exception.InvalidConfigurationValue(
-                    value='',
-                    option='zfssa_initiator')
+                    value='', option='zfssa_initiator')
 
-            if (lcfg.zfssa_initiator != '' and
-                (lcfg.zfssa_initiator_group == '' or
-                 lcfg.zfssa_initiator_group == 'default')):
-                LOG.warning('zfssa_initiator: %(ini)s will not be used on '
-                            'zfssa_initiator_group= %(inigrp)s.',
-                            {'ini': lcfg.zfssa_initiator,
-                             'inigrp': lcfg.zfssa_initiator_group})
+            if lcfg.zfssa_initiator != '':
+                if lcfg.zfssa_initiator_group == 'default':
+                    LOG.warning('zfssa_initiator: %(ini)s wont be used on '
+                                'zfssa_initiator_group= %(inigrp)s.',
+                                {'ini': lcfg.zfssa_initiator,
+                                 'inigrp': lcfg.zfssa_initiator_group})
 
-            # Setup initiator and initiator group
-            if (lcfg.zfssa_initiator != '' and
-               lcfg.zfssa_initiator_group != '' and
-               lcfg.zfssa_initiator_group != 'default'):
-                for initiator in lcfg.zfssa_initiator.split(','):
-                    initiator = initiator.strip()
-                    self.zfssa.create_initiator(
-                        initiator,
-                        lcfg.zfssa_initiator_group + '-' + initiator,
-                        chapuser=lcfg.zfssa_initiator_user,
-                        chapsecret=lcfg.zfssa_initiator_password)
-                    self.zfssa.add_to_initiatorgroup(
-                        initiator, lcfg.zfssa_initiator_group)
+                # Setup initiator and initiator group
+                else:
+                    for initiator in lcfg.zfssa_initiator.split(','):
+                        initiator = initiator.strip()
+                        self.zfssa.create_initiator(
+                            initiator,
+                            lcfg.zfssa_initiator_group + '-' + initiator,
+                            chapuser=lcfg.zfssa_initiator_user,
+                            chapsecret=lcfg.zfssa_initiator_password)
+                        self.zfssa.add_to_initiatorgroup(
+                            initiator, lcfg.zfssa_initiator_group)
 
         # Parse interfaces
         interfaces = []

@@ -192,6 +192,33 @@ class TestZFSSAISCSIDriver(test.TestCase):
         self.drv.zfssa.create_replication_action.return_value = 'action-123'
         self.drv.zfssa.send_repl_update.return_value = True
 
+    @mock.patch.object(iscsi.LOG, 'warning')
+    @mock.patch.object(iscsi.LOG, 'error')
+    @mock.patch.object(iscsi, 'factory_zfssa')
+    def test_parse_initiator_config(self, _factory_zfssa, elog, wlog):
+        """Test the parsing of the old style initator config variables. """
+        lcfg = self.configuration
+
+        with mock.patch.object(lcfg, 'zfssa_initiator_config', ''):
+            # Test empty zfssa_initiator_group
+            with mock.patch.object(lcfg, 'zfssa_initiator_group', ''):
+                self.assertRaises(exception.InvalidConfigurationValue,
+                                  self.drv.do_setup, {})
+
+            # Test empty zfssa_initiator with zfssa_initiator_group set to
+            # a value other than "default"
+            with mock.patch.object(lcfg, 'zfssa_initiator', ''):
+                self.assertRaises(exception.InvalidConfigurationValue,
+                                  self.drv.do_setup, {})
+
+            # Test zfssa_initiator_group set to 'default' with non-empty
+            # zfssa_initiator.
+            with mock.patch.object(lcfg, 'zfssa_initiator_group', 'default'):
+                self.drv.do_setup({})
+                wlog.assert_called_with(mock.ANY,
+                                        {'inigrp': lcfg.zfssa_initiator_group,
+                                         'ini': lcfg.zfssa_initiator})
+
     def test_migrate_volume(self):
         self._util_migrate_volume_exceptions()
 
