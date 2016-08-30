@@ -19,8 +19,6 @@ import re
 from eventlet import greenthread
 import six
 
-from cinder import utils
-
 _fake_execute_repliers = []
 _fake_execute_log = []
 
@@ -88,9 +86,3 @@ def fake_execute(*cmd_parts, **kwargs):
     # Replicate the sleep call in the real function
     greenthread.sleep(0)
     return reply
-
-
-def stub_out_utils_execute(stubs):
-    fake_execute_set_repliers([])
-    fake_execute_clear_log()
-    stubs.Set(utils, 'execute', fake_execute)
