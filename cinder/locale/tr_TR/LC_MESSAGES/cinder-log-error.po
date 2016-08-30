@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -395,12 +395,6 @@ msgstr ""
 "'%(method)s' için '%(netloc)s' glance sunucusuna bağlantı kurulurken hata, "
 "%(extra)s. "
 
-msgid "Error copying key."
-msgstr "Anahtar kopyalama hatası."
-
-msgid "Error creating Barbican client."
-msgstr "Barbican istemcisi oluşturulurken hata."
-
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr "QOS kuralı %s oluşturulurken hata"
@@ -414,18 +408,12 @@ msgstr "Mantıksal Sürücü Grubu oluşturulurken hata"
 msgid "Error creating chap record."
 msgstr "Chap kaydı oluşturulurken hata."
 
-msgid "Error creating key."
-msgstr "Anahtar oluşturma hatası."
-
 msgid "Error creating snapshot"
 msgstr "Anlık sistem görüntüsü oluşturma hatası"
 
 #, python-format
 msgid "Error creating volume. Msg - %s."
 msgstr "Mantıksal sürücü oluşturulurken hata. İleti - %s."
-
-msgid "Error deleting key."
-msgstr "Anahtar silinirken hata."
 
 #, python-format
 msgid "Error detaching volume %(volume)s, due to remove export failure."
@@ -488,17 +476,8 @@ msgstr "Dizi, havuz, SLO ve iş yükü alma hatası."
 msgid "Error getting chap record."
 msgstr "Chap kaydı alınırken hata."
 
-msgid "Error getting key."
-msgstr "Anahtar alınırken hata."
-
 msgid "Error getting name server info."
 msgstr "Ad sunucu bilgisi alınırken hata."
-
-msgid "Error getting secret data."
-msgstr "Gizli veri alırken hata."
-
-msgid "Error getting secret metadata."
-msgstr "Gizli metadata alınırken hata."
 
 msgid "Error getting show fcns database info."
 msgstr "fcns veritabanı bilgisini göster sonucu alınırken hata."
@@ -690,9 +669,6 @@ msgstr ""
 #, python-format
 msgid "Error setting Flash Cache policy to %s - exception"
 msgstr "%s için Flash Cache ilkesi ayarlanırken hata - istisna"
-
-msgid "Error storing key."
-msgstr "Anahtar depolama hatası."
 
 #, python-format
 msgid "Error unmapping volume: %s"

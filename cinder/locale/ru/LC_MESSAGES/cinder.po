@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4611,14 +4611,6 @@ msgstr "Недопустимый ключ идентификации: %(reason)s
 msgid "Invalid backup: %(reason)s"
 msgstr "Недопустимая резервная копия: %(reason)s"
 
-#, python-format
-msgid ""
-"Invalid barbican api url: version is required, e.g. 'http[s]://<ipaddr>|"
-"<fqdn>[:port]/<version>' url specified is: %s"
-msgstr ""
-"Недопустимый url barbican api: необходимо указать версию, например, "
-"'http[s]://<ip-адрес>|<полное-имя>[:порт]/<версия>'; указан url: %s"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr ""
 "Обнаружена недопустимая информация о пользователе chap в хранилище CloudByte."
@@ -4799,14 +4791,6 @@ msgstr "Недопустимый тип транспорта."
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "Недопустимый параметр обновления: '%s'"
-
-#, python-format
-msgid ""
-"Invalid url: must be in the form 'http[s]://<ipaddr>|<fqdn>[:port]/"
-"<version>', url specified is: %s"
-msgstr ""
-"Недопустимый url: вместо формата 'http[s]://<ip-адрес>|<полное-имя>[:порт]/"
-"<версия>' указан url: %s"
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -7342,9 +7326,6 @@ msgstr "Не удается выполнить переключение посл
 msgid "Unable to connect or find connection to host"
 msgstr "Не удалось подключиться к хосту или найти соединение с ним"
 
-msgid "Unable to create Barbican Client without project_id."
-msgstr "Невозможно создать Barbican Client без project_id."
-
 #, python-format
 msgid "Unable to create consistency group %s"
 msgstr "Не удалось создать группу согласования %s"
@@ -7961,9 +7942,6 @@ msgstr "ID пользователя"
 
 msgid "User does not have admin privileges"
 msgstr "Пользователь не имеет административных привилегий"
-
-msgid "User is not authorized to use key manager."
-msgstr "У пользователя нет прав на использование Администратора ключей."
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr "У пользователя нет прав доступа для выполнения операций WebDAV."
@@ -9483,9 +9461,6 @@ msgstr "Ошибка выполнения iscsiadm. "
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "ошибка администратора ключей: %(reason)s"
-
-msgid "keymgr.fixed_key not defined"
-msgstr "keymgr.fixed_key не определен"
 
 msgid "limit param must be an integer"
 msgstr "Параметр limit должен быть целым числом"

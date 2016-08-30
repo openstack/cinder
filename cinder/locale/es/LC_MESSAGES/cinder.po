@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4802,14 +4802,6 @@ msgstr "Claves de autenticación inválidas: %(reason)s"
 msgid "Invalid backup: %(reason)s"
 msgstr "Copia de seguridad no válida: %(reason)s"
 
-#, python-format
-msgid ""
-"Invalid barbican api url: version is required, e.g. 'http[s]://<ipaddr>|"
-"<fqdn>[:port]/<version>' url specified is: %s"
-msgstr ""
-"URL de API de Barbican no válido: debe tener el formato siguiente:  "
-"'http[s]://<ipaddr>|<fqdn>[:puerto]/<versión>', el URL especificado es: %s"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr ""
 "Se han encontrado detalles de usuario chap no válidos en el almacenamiento "
@@ -4994,14 +4986,6 @@ msgstr "Tipo de transporte no válido."
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "Valor de actualización no válido: '%s' "
-
-#, python-format
-msgid ""
-"Invalid url: must be in the form 'http[s]://<ipaddr>|<fqdn>[:port]/"
-"<version>', url specified is: %s"
-msgstr ""
-"URL no válido: debe tener el formato siguiente:  'http[s]://<ipaddr>|<fqdn>[:"
-"puerto]/<versión>', el URL especificado es: %s"
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -7735,9 +7719,6 @@ msgstr "No se ha podido completar la migración tras error de %s."
 msgid "Unable to connect or find connection to host"
 msgstr "No se ha podido conectar o encontrar una conexión con el host"
 
-msgid "Unable to create Barbican Client without project_id."
-msgstr "No se puede crear el cliente Barbican sin un project_id."
-
 #, python-format
 msgid "Unable to create consistency group %s"
 msgstr "No se ha podido crear el grupo de consistencia %s"
@@ -8381,9 +8362,6 @@ msgstr "ID de usuario"
 
 msgid "User does not have admin privileges"
 msgstr "El usuario no tiene privilegios de administrador"
-
-msgid "User is not authorized to use key manager."
-msgstr "El usuario no está autorizado a usar el gestor de clave."
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr "El usuario no tiene autorización para realizar operaciones WebDAV."
@@ -9979,9 +9957,6 @@ msgstr "Ha fallado la ejecución de iscsiadm."
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "error de gestor clave: %(reason)s"
-
-msgid "keymgr.fixed_key not defined"
-msgstr "keymgr:fixed_key no está definido"
 
 msgid "limit param must be an integer"
 msgstr "el parámetro de límite debe ser un entero"

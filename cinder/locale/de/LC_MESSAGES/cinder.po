@@ -10,9 +10,9 @@
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4814,14 +4814,6 @@ msgstr "Ungültiger Autorisierungsschlüssel: %(reason)s"
 msgid "Invalid backup: %(reason)s"
 msgstr "Ungültige Sicherung: %(reason)s"
 
-#, python-format
-msgid ""
-"Invalid barbican api url: version is required, e.g. 'http[s]://<ipaddr>|"
-"<fqdn>[:port]/<version>' url specified is: %s"
-msgstr ""
-"Ungültige Barbican-API-URL: Die Version ist erforderlich. Beispiel: "
-"'http[s]://<IP-Adresse>|<FQDN>[:Port]/<Version>'. Angegebene URL: %s"
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr "Ungültige Details des CHAP-Benutzers im CloudByte-Speicher gefunden."
 
@@ -5005,14 +4997,6 @@ msgstr "Ungültiger Transporttyp."
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "Ungültige Aktualisierungseinstellung: '%s'"
-
-#, python-format
-msgid ""
-"Invalid url: must be in the form 'http[s]://<ipaddr>|<fqdn>[:port]/"
-"<version>', url specified is: %s"
-msgstr ""
-"Ungültige URL: Muss das folgende Format haben: 'http[s]://<IP-Adresse>|"
-"<FQDN>[:Port]/<Version>'- Angegebene URL: %s"
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -7709,9 +7693,6 @@ msgstr ""
 "Verbindung zum Host kann nicht hergestellt werden oder es wurde keine "
 "Verbindung zum Host gefunden."
 
-msgid "Unable to create Barbican Client without project_id."
-msgstr "Barbican Client kann nicht ohne Projekt-ID erstellt werden."
-
 #, python-format
 msgid "Unable to create consistency group %s"
 msgstr "Konsistenzgruppe %s konnte nicht erstellt werden."
@@ -8349,9 +8330,6 @@ msgstr "Benutzer-ID"
 
 msgid "User does not have admin privileges"
 msgstr "Benutzer hat keine Admin-Berechtigungen."
-
-msgid "User is not authorized to use key manager."
-msgstr "Benutzer ist nicht zum Verwenden des Schlüsselmanagers berechtigt. "
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr ""
@@ -9955,9 +9933,6 @@ msgstr "Ausführen von 'iscsiadm' fehlgeschlagen."
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "Schlüsselmanagerfehler: %(reason)s"
-
-msgid "keymgr.fixed_key not defined"
-msgstr "keymgr.fixed_key nicht definiert."
 
 msgid "limit param must be an integer"
 msgstr "'limit'-Parameter muss eine Ganzzahl sein."

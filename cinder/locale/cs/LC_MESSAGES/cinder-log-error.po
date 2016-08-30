@@ -9,9 +9,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -609,12 +609,6 @@ msgstr ""
 "Chyba při kontaktování serveru glance '%(netloc)s' pro '%(method)s', "
 "%(extra)s."
 
-msgid "Error copying key."
-msgstr "Chyba při kopírování klíče."
-
-msgid "Error creating Barbican client."
-msgstr "Chyba při vytváření klienta Barbican."
-
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr "Chyba při vytváření pravidla QOS %s"
@@ -631,9 +625,6 @@ msgstr "Chyba při vytváření záznamu chap."
 msgid "Error creating cloned volume"
 msgstr "Chyba při vytváření klonovaného svazku"
 
-msgid "Error creating key."
-msgstr "Chyba při vytváření klíče."
-
 msgid "Error creating snapshot"
 msgstr "Chyba při vytváření snímku"
 
@@ -646,9 +637,6 @@ msgstr "Chyba při vytváření svazku. Zpráva - %s."
 
 msgid "Error deactivating LV"
 msgstr "Chyba při deaktivaci logického svazku"
-
-msgid "Error deleting key."
-msgstr "Chyba při mazání klíče."
 
 msgid "Error deleting snapshot"
 msgstr "Chyba při mazání snímku"
@@ -721,17 +709,8 @@ msgstr "Chyba při získávání pole, zásobu, SLO a vytížení."
 msgid "Error getting chap record."
 msgstr "Chyba při získávání záznamu chap."
 
-msgid "Error getting key."
-msgstr "Chyba při získávání klíče."
-
 msgid "Error getting name server info."
 msgstr "Při získávání informací o jmenném serveru nastala chyba."
-
-msgid "Error getting secret data."
-msgstr "Chyba při získávání tajných dat."
-
-msgid "Error getting secret metadata."
-msgstr "Chyba při získávání tajných popisných dat."
 
 msgid "Error getting show fcns database info."
 msgstr "Při získávání informací o zobrazení databáze fcns nastala chyba."
@@ -947,9 +926,6 @@ msgstr "Chyba při nastavování zásady mezipaměti Flash na %s - došlo k výj
 
 msgid "Error starting coordination backend."
 msgstr "Chyba při spouštění podpůrné vrstvy pro koordinaci."
-
-msgid "Error storing key."
-msgstr "Chyba při ukládání klíče."
 
 #, python-format
 msgid "Error unmapping volume: %s"

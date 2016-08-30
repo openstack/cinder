@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -4458,14 +4458,6 @@ msgstr "잘못된 인증 키: %(reason)s"
 msgid "Invalid backup: %(reason)s"
 msgstr "올바르지 않은 백업: %(reason)s"
 
-#, python-format
-msgid ""
-"Invalid barbican api url: version is required, e.g. 'http[s]://<ipaddr>|"
-"<fqdn>[:port]/<version>' url specified is: %s"
-msgstr ""
-"올바르지 않은 barbican api url: 버전이 필요합니다(예: 'http[s]://<ipaddr>|"
-"<fqdn>[:port]/<version>') 지정된 url은 %s입니다."
-
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr ""
 "CloudByte 스토리지에서 올바르지 않은 chap 사용자 세부사항이 발견되었습니다. "
@@ -4644,14 +4636,6 @@ msgstr "올바르지 않은 전송 유형입니다."
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "올바르지 않은 업데이트 설정: '%s'"
-
-#, python-format
-msgid ""
-"Invalid url: must be in the form 'http[s]://<ipaddr>|<fqdn>[:port]/"
-"<version>', url specified is: %s"
-msgstr ""
-"올바르지 않은 url: 'http[s]://<ipaddr>|<fqdn>[:port]/<version>' 형식이어야 "
-"함, 지정된 url은 %s입니다."
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -7135,9 +7119,6 @@ msgstr "%s의 장애 복구를 완료할 수 없습니다."
 msgid "Unable to connect or find connection to host"
 msgstr "호스트에 대한 연결을 설정하거나 찾을 수 없음"
 
-msgid "Unable to create Barbican Client without project_id."
-msgstr "project_id 없이 Barbican Client를 작성할 수 없습니다."
-
 #, python-format
 msgid "Unable to create consistency group %s"
 msgstr "일관성 그룹 %s을(를) 작성할 수 없음"
@@ -7734,9 +7715,6 @@ msgstr "사용자 ID"
 
 msgid "User does not have admin privileges"
 msgstr "사용자에게 관리자 권한이 없음"
-
-msgid "User is not authorized to use key manager."
-msgstr "사용자에게 키 관리자를 사용할 권한이 없습니다."
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr "사용자에게 WebDAV 조작을 수행할 권한이 없습니다."
@@ -9232,9 +9210,6 @@ msgstr "iscsiadm 실행에 실패했습니다."
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "주요 관리자 오류: %(reason)s"
-
-msgid "keymgr.fixed_key not defined"
-msgstr "keymgr.fixed_key가 정의되지 않음"
 
 msgid "limit param must be an integer"
 msgstr "limit 매개변수는 정수여야 함"
