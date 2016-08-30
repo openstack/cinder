@@ -6273,6 +6273,148 @@ class GenericVolumeDriverTestCase(DriverTestCase):
         db.volume_destroy(self.context, src_vol['id'])
         db.volume_destroy(self.context, dest_vol['id'])
 
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch.object(image_utils, 'fetch_to_raw')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
+    @mock.patch.object(cinder.utils, 'brick_attach_volume_encryptor')
+    @mock.patch.object(cinder.utils, 'brick_detach_volume_encryptor')
+    def test_copy_image_to_encrypted_volume(self,
+                                            mock_detach_encryptor,
+                                            mock_attach_encryptor,
+                                            mock_detach_volume,
+                                            mock_attach_volume,
+                                            mock_fetch_to_raw,
+                                            mock_get_connector_properties):
+        properties = {}
+        volume = tests_utils.create_volume(
+            self.context, status='available',
+            size=2,
+            encryption_key_id=fake.ENCRYPTION_KEY_ID)
+        volume_id = volume['id']
+        volume = db.volume_get(context.get_admin_context(), volume_id)
+        image_service = fake_image.FakeImageService()
+        local_path = 'dev/sda'
+        attach_info = {'device': {'path': local_path},
+                       'conn': {'driver_volume_type': 'iscsi',
+                                'data': {}, }}
+
+        mock_get_connector_properties.return_value = properties
+        mock_attach_volume.return_value = [attach_info, volume]
+
+        self.volume.driver.copy_image_to_encrypted_volume(
+            self.context, volume, image_service, fake.IMAGE_ID)
+
+        encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        mock_attach_volume.assert_called_once_with(
+            self.context, volume, properties)
+        mock_attach_encryptor.assert_called_once_with(
+            self.context, attach_info, encryption)
+        mock_fetch_to_raw.assert_called_once_with(
+            self.context, image_service, fake.IMAGE_ID,
+            local_path, '1M', size=2)
+        mock_detach_encryptor.assert_called_once_with(
+            attach_info, encryption)
+        mock_detach_volume.assert_called_once_with(
+            self.context, attach_info, volume, properties)
+
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch.object(image_utils, 'fetch_to_raw')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
+    @mock.patch.object(cinder.utils, 'brick_attach_volume_encryptor')
+    @mock.patch.object(cinder.utils, 'brick_detach_volume_encryptor')
+    def test_copy_image_to_encrypted_volume_failed_attach_encryptor(
+            self,
+            mock_detach_encryptor,
+            mock_attach_encryptor,
+            mock_detach_volume,
+            mock_attach_volume,
+            mock_fetch_to_raw,
+            mock_get_connector_properties):
+        properties = {}
+        volume = tests_utils.create_volume(
+            self.context, status='available',
+            size=2,
+            encryption_key_id=fake.ENCRYPTION_KEY_ID)
+        volume_id = volume['id']
+        volume = db.volume_get(context.get_admin_context(), volume_id)
+        image_service = fake_image.FakeImageService()
+        attach_info = {'device': {'path': 'dev/sda'},
+                       'conn': {'driver_volume_type': 'iscsi',
+                                'data': {}, }}
+
+        mock_get_connector_properties.return_value = properties
+        mock_attach_volume.return_value = [attach_info, volume]
+        raised_exception = os_brick.exception.VolumeEncryptionNotSupported(
+            volume_id = "123",
+            volume_type = "abc")
+        mock_attach_encryptor.side_effect = raised_exception
+
+        self.assertRaises(os_brick.exception.VolumeEncryptionNotSupported,
+                          self.volume.driver.copy_image_to_encrypted_volume,
+                          self.context, volume, image_service, fake.IMAGE_ID)
+
+        encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        mock_attach_volume.assert_called_once_with(
+            self.context, volume, properties)
+        mock_attach_encryptor.assert_called_once_with(
+            self.context, attach_info, encryption)
+        self.assertFalse(mock_fetch_to_raw.called)
+        self.assertFalse(mock_detach_encryptor.called)
+        mock_detach_volume.assert_called_once_with(
+            self.context, attach_info, volume, properties)
+
+    @mock.patch.object(os_brick.initiator.connector,
+                       'get_connector_properties')
+    @mock.patch.object(image_utils, 'fetch_to_raw')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_attach_volume')
+    @mock.patch.object(cinder.volume.driver.VolumeDriver, '_detach_volume')
+    @mock.patch.object(cinder.utils, 'brick_attach_volume_encryptor')
+    @mock.patch.object(cinder.utils, 'brick_detach_volume_encryptor')
+    def test_copy_image_to_encrypted_volume_failed_fetch(
+            self,
+            mock_detach_encryptor, mock_attach_encryptor,
+            mock_detach_volume, mock_attach_volume, mock_fetch_to_raw,
+            mock_get_connector_properties):
+        properties = {}
+        volume = tests_utils.create_volume(
+            self.context, status='available',
+            size=2,
+            encryption_key_id=fake.ENCRYPTION_KEY_ID)
+        volume_id = volume['id']
+        volume = db.volume_get(context.get_admin_context(), volume_id)
+        image_service = fake_image.FakeImageService()
+        local_path = 'dev/sda'
+        attach_info = {'device': {'path': local_path},
+                       'conn': {'driver_volume_type': 'iscsi',
+                                'data': {}, }}
+
+        mock_get_connector_properties.return_value = properties
+        mock_attach_volume.return_value = [attach_info, volume]
+        raised_exception = exception.ImageUnacceptable(reason='fake',
+                                                       image_id=fake.IMAGE_ID)
+        mock_fetch_to_raw.side_effect = raised_exception
+
+        encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        self.assertRaises(exception.ImageUnacceptable,
+                          self.volume.driver.copy_image_to_encrypted_volume,
+                          self.context, volume, image_service, fake.IMAGE_ID)
+
+        mock_attach_volume.assert_called_once_with(
+            self.context, volume, properties)
+        mock_attach_encryptor.assert_called_once_with(
+            self.context, attach_info, encryption)
+        mock_fetch_to_raw.assert_called_once_with(
+            self.context, image_service, fake.IMAGE_ID,
+            local_path, '1M', size=2)
+        mock_detach_encryptor.assert_called_once_with(
+            attach_info, encryption)
+        mock_detach_volume.assert_called_once_with(
+            self.context, attach_info, volume, properties)
+
 
 class FibreChannelTestCase(DriverTestCase):
     """Test Case for FibreChannelDriver."""
