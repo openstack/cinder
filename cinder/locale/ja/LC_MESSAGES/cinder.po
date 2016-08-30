@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-28 03:24+0000\n"
+"PO-Revision-Date: 2016-08-29 02:07+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -4883,6 +4883,12 @@ msgstr ""
 "グループ種別 %(type_id)s には、キー %(id)s に関する追加の仕様がありません。"
 
 #, python-format
+msgid "Group status must be available or error, but current status is: %s"
+msgstr ""
+"グループの状態は「使用可能」または「エラー」でなければなりませんが、現在の状"
+"況は %s です。"
+
+#, python-format
 msgid "Group type %(group_type_id)s could not be found."
 msgstr "グループ種別  %(group_type_id)s が見つかりませんでした。"
 
@@ -5279,12 +5285,10 @@ msgid "Invalid backup: %(reason)s"
 msgstr "無効なバックアップ: %(reason)s"
 
 #, python-format
-msgid ""
-"Invalid barbican api url: version is required, e.g. 'http[s]://<ipaddr>|"
-"<fqdn>[:port]/<version>' url specified is: %s"
+msgid "Invalid body provided for creating volume. Request API version: %s."
 msgstr ""
-"Barbican API の URL が無効です: バージョンが必要です ('http[s]://<ipaddr>|"
-"<fqdn>[:port]/<version>' など)。指定された URL は %s です。"
+"ボリューム作成に、無効な本文が指定されました。リクエストされた API のバージョ"
+"ン: %s"
 
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr "CloudByte のストレージで無効な chap ユーザーの詳細が見つかりました。"
@@ -5485,14 +5489,6 @@ msgstr "無効なトランスポートタイプ。"
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "無効な更新設定: '%s'"
-
-#, python-format
-msgid ""
-"Invalid url: must be in the form 'http[s]://<ipaddr>|<fqdn>[:port]/"
-"<version>', url specified is: %s"
-msgstr ""
-"URL が無効です: 'http[s]://<ipaddr>|<fqdn>[:port]/<version>' の形式である必要"
-"があります。指定された URL は %s です"
 
 #, python-format
 msgid "Invalid value '%s' for delete-volumes flag."
@@ -6261,6 +6257,10 @@ msgstr "正しい iscsi ポータルが %s の指定されたリストに見つ�
 #, python-format
 msgid "No good iscsi portals found for %s."
 msgstr "%s の正しい iscsi ポータルが見つかりません。"
+
+#, python-format
+msgid "No group with id %s"
+msgstr "ID %s のグループは存在しません。"
 
 #, python-format
 msgid "No host to create consistency group %s."
@@ -8496,9 +8496,6 @@ msgstr "%s のフェイルオーバーを完了できません。"
 msgid "Unable to connect or find connection to host"
 msgstr "ホストに接続できないか、ホストへの接続が見つかりません。"
 
-msgid "Unable to create Barbican Client without project_id."
-msgstr "project_id なしでは Barbican Client を作成できません。"
-
 #, python-format
 msgid "Unable to create consistency group %s"
 msgstr "整合性グループ %s を作成できません。"
@@ -9185,9 +9182,6 @@ msgstr "ユーザー ID"
 
 msgid "User does not have admin privileges"
 msgstr "ユーザーに管理者特権がありません。"
-
-msgid "User is not authorized to use key manager."
-msgstr "ユーザーは鍵マネージャーの使用を許可されていません。"
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr "ユーザーは WebDAV 操作の実行が許可されていません。"
@@ -10914,9 +10908,6 @@ msgstr "iscsiadm の実行が失敗しました。"
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "鍵マネージャーのエラー: %(reason)s"
-
-msgid "keymgr.fixed_key not defined"
-msgstr "keymgr.fixed_key が定義されていません"
 
 msgid "limit param must be an integer"
 msgstr "limit パラメーターは整数でなければなりません。"

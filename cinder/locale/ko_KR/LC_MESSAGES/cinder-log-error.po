@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -662,12 +662,6 @@ msgstr ""
 "'%(method)s', %(extra)s의 Glance 서버 '%(netloc)s'에 접속하는 중 오류가 발생"
 "했습니다."
 
-msgid "Error copying key."
-msgstr "키 복사 오류."
-
-msgid "Error creating Barbican client."
-msgstr "Barbican 클라이언트 생성 오류."
-
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr "QOS 규칙 %s 작성 오류"
@@ -684,9 +678,6 @@ msgstr "chap 레코드를 작성하는 중에 오류가 발생했습니다."
 msgid "Error creating cloned volume"
 msgstr "복제된 볼륨 작성 오류"
 
-msgid "Error creating key."
-msgstr "키 작성 오류."
-
 msgid "Error creating snapshot"
 msgstr "스냅샷 작성 오류"
 
@@ -699,9 +690,6 @@ msgstr "볼륨을 작성하는 중에 오류가 발생했습니다. 메시지 - 
 
 msgid "Error deactivating LV"
 msgstr "LV 비활성화 오류"
-
-msgid "Error deleting key."
-msgstr "키 삭제 오류."
 
 msgid "Error deleting snapshot"
 msgstr "스냅샷 삭제 에러"
@@ -794,17 +782,8 @@ msgstr "배열, 풀, SLO 및 워크로드를 가져오는 중 오류가 발생�
 msgid "Error getting chap record."
 msgstr "chap 레코드를 가져오는 중에 오류가 발생했습니다."
 
-msgid "Error getting key."
-msgstr "키 가져오기 오류."
-
 msgid "Error getting name server info."
 msgstr "이름 서버 정보 가져오기 오류."
-
-msgid "Error getting secret data."
-msgstr "시크릿 데이터 가져오기 오류."
-
-msgid "Error getting secret metadata."
-msgstr "시크릿 메타데이터 가져오기 오류."
 
 msgid "Error getting show fcns database info."
 msgstr "표시 fcns 데이터베이스 정보 가져오기 오류."
@@ -1035,9 +1014,6 @@ msgstr "플래시 캐시 정책을 %s(으)로 설정하는 중 오류 발생 - �
 
 msgid "Error starting coordination backend."
 msgstr "조정 백엔드를 시작하는 중에 오류가 발생했습니다."
-
-msgid "Error storing key."
-msgstr "키 저장 오류."
 
 #, python-format
 msgid "Error trying to change %(opt)s from %(old)s to %(new)s"

@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -5076,9 +5076,6 @@ msgstr "Cinder istemcisi %(space)s alanı için apphosts'a eklenemedi"
 msgid "Unable to connect or find connection to host"
 msgstr "Bağlanılamadı ya da istemci için bağlantı bulunamadı"
 
-msgid "Unable to create Barbican Client without project_id."
-msgstr "Barbican İstemcisi project_id olmadan oluşturulamadı."
-
 #, python-format
 msgid "Unable to create consistency group %s"
 msgstr "%s tutarlılık grubu oluşturulamadı"
@@ -5435,9 +5432,6 @@ msgstr "Kullanıcı ID"
 
 msgid "User does not have admin privileges"
 msgstr "Kullanıcı yönetici ayrıcalıklarına sahip değil"
-
-msgid "User is not authorized to use key manager."
-msgstr "Kullanıcı anahtar yöneticisi kullanarak yetkilendirilemez."
 
 msgid "User not authorized to perform WebDAV operations."
 msgstr "Kullanıcı WebDAV işlemleri yapmaya yetkili değil."
@@ -6310,9 +6304,6 @@ msgstr ""
 #, python-format
 msgid "key manager error: %(reason)s"
 msgstr "anahtar yönetici hatası: %(reason)s"
-
-msgid "keymgr.fixed_key not defined"
-msgstr "keymgr.fixed_key tanımlanamadı"
 
 msgid "limit param must be an integer"
 msgstr "Sınır parametresi tam sayı olmak zorunda"

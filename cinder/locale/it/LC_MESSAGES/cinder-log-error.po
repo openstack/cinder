@@ -9,9 +9,9 @@
 # Remo Mattei <remo@rm.ht>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev449\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-29 04:45+0000\n"
+"POT-Creation-Date: 2016-08-30 03:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -721,12 +721,6 @@ msgstr ""
 "Errore durante il tentativo di contattare il server glance '%(netloc)s' per "
 "'%(method)s', %(extra)s."
 
-msgid "Error copying key."
-msgstr "Errore durante la copia della chiave."
-
-msgid "Error creating Barbican client."
-msgstr "Errore durante la creazione del client Barbican."
-
 #, python-format
 msgid "Error creating QOS rule %s"
 msgstr "Errore durante la creazione della regola QOS %s"
@@ -743,9 +737,6 @@ msgstr "Errore durante la creazione del record chap."
 msgid "Error creating cloned volume"
 msgstr "Errore durante la creazione del volume clonato"
 
-msgid "Error creating key."
-msgstr "Errore durante la creazione della chiave."
-
 msgid "Error creating snapshot"
 msgstr "Errore durante la creazione dell'istantanea"
 
@@ -758,9 +749,6 @@ msgstr "Errore durante la creazione del volume. Messaggio - %s."
 
 msgid "Error deactivating LV"
 msgstr "Errore durante la disattivazione di LV"
-
-msgid "Error deleting key."
-msgstr "Errore durante l'eliminazione della chiave."
 
 msgid "Error deleting snapshot"
 msgstr "Errore durante l'eliminazione dell'istantanea"
@@ -860,17 +848,8 @@ msgstr "Errore durante il richiamo di array, pool, SLO e carico di lavoro."
 msgid "Error getting chap record."
 msgstr "Errore durante il richiamo del record chap."
 
-msgid "Error getting key."
-msgstr "Errore durante il richiamo della chiave."
-
 msgid "Error getting name server info."
 msgstr "Errore durante il richiamo delle informazioni sul server dei nomi. "
-
-msgid "Error getting secret data."
-msgstr "Errore durante il richiamo dei dati segreti."
-
-msgid "Error getting secret metadata."
-msgstr "Errore durante il richiamo dei metadati segreti."
 
 msgid "Error getting show fcns database info."
 msgstr "Impossibile ottenere le informazioni sul database show fcns. "
@@ -1119,9 +1098,6 @@ msgstr ""
 
 msgid "Error starting coordination backend."
 msgstr "Errore durante l'avvio del backend di coordinazione."
-
-msgid "Error storing key."
-msgstr "Errore durante l'archiviazione della chiave."
 
 #, python-format
 msgid "Error trying to change %(opt)s from %(old)s to %(new)s"
