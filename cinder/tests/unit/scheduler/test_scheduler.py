@@ -307,7 +307,7 @@ class SchedulerManagerTestCase(test.TestCase):
                 fake_consistencygroup.fake_consistencyobject_obj(self.context)
             self.manager.driver = filter_scheduler.FilterScheduler
             LOG = self.mock_object(manager, 'LOG')
-            self.stubs.Set(db, 'consistencygroup_update', mock.Mock())
+            self.mock_object(db, 'consistencygroup_update')
 
             ex = exception.CinderException('test')
             mock_cg.side_effect = ex
