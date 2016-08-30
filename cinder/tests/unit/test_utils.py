@@ -28,6 +28,7 @@ import webob.exc
 import cinder
 from cinder import exception
 from cinder import test
+from cinder.tests.unit import fake_constants as fake
 from cinder import utils
 
 
@@ -761,6 +762,52 @@ class BrickUtils(test.TestCase):
         mock_factory.assert_called_once_with(
             'protocol', mock_helper.return_value, driver=None,
             use_multipath=False, device_scan_attempts=3)
+
+    @mock.patch('os_brick.encryptors.get_volume_encryptor')
+    @mock.patch('cinder.utils.get_root_helper')
+    def test_brick_attach_volume_encryptor(self, mock_helper,
+                                           mock_get_encryptor):
+        attach_info = {'device': {'path': 'dev/sda'},
+                       'conn': {'driver_volume_type': 'iscsi',
+                                'data': {}, }}
+        encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        ctxt = mock.Mock(name='context')
+        mock_encryptor = mock.Mock()
+        mock_get_encryptor.return_value = mock_encryptor
+        utils.brick_attach_volume_encryptor(ctxt, attach_info, encryption)
+
+        connection_info = attach_info['conn']
+        connection_info['data']['device_path'] = attach_info['device']['path']
+        mock_helper.assert_called_once_with()
+        mock_get_encryptor.assert_called_once_with(
+            root_helper=mock_helper.return_value,
+            connection_info=connection_info,
+            keymgr=mock.ANY,
+            **encryption)
+        mock_encryptor.attach_volume.assert_called_once_with(
+            ctxt, **encryption)
+
+    @mock.patch('os_brick.encryptors.get_volume_encryptor')
+    @mock.patch('cinder.utils.get_root_helper')
+    def test_brick_detach_volume_encryptor(self,
+                                           mock_helper, mock_get_encryptor):
+        attach_info = {'device': {'path': 'dev/sda'},
+                       'conn': {'driver_volume_type': 'iscsi',
+                                'data': {}, }}
+        encryption = {'encryption_key_id': fake.ENCRYPTION_KEY_ID}
+        mock_encryptor = mock.Mock()
+        mock_get_encryptor.return_value = mock_encryptor
+        utils.brick_detach_volume_encryptor(attach_info, encryption)
+
+        mock_helper.assert_called_once_with()
+        connection_info = attach_info['conn']
+        connection_info['data']['device_path'] = attach_info['device']['path']
+        mock_get_encryptor.assert_called_once_with(
+            root_helper=mock_helper.return_value,
+            connection_info=connection_info,
+            keymgr=mock.ANY,
+            **encryption)
+        mock_encryptor.detach_volume.assert_called_once_with(**encryption)
 
 
 class StringLengthTestCase(test.TestCase):

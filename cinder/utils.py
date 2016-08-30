@@ -37,6 +37,7 @@ import tempfile
 import time
 import types
 
+from os_brick import encryptors
 from os_brick.initiator import connector
 from oslo_concurrency import lockutils
 from oslo_concurrency import processutils
@@ -53,6 +54,7 @@ import webob.exc
 
 from cinder import exception
 from cinder.i18n import _, _LE, _LW
+from cinder import keymgr
 
 
 CONF = cfg.CONF
@@ -505,6 +507,36 @@ def brick_get_connector(protocol, driver=None,
                                                 device_scan_attempts=
                                                 device_scan_attempts,
                                                 *args, **kwargs)
+
+
+def brick_get_encryptor(connection_info, *args, **kwargs):
+    """Wrapper to get a brick encryptor object."""
+
+    root_helper = get_root_helper()
+    key_manager = keymgr.API()
+    return encryptors.get_volume_encryptor(root_helper=root_helper,
+                                           connection_info=connection_info,
+                                           keymgr=key_manager,
+                                           *args, **kwargs)
+
+
+def brick_attach_volume_encryptor(context, attach_info, encryption):
+    """Attach encryption layer."""
+    connection_info = attach_info['conn']
+    connection_info['data']['device_path'] = attach_info['device']['path']
+    encryptor = brick_get_encryptor(connection_info,
+                                    **encryption)
+    encryptor.attach_volume(context, **encryption)
+
+
+def brick_detach_volume_encryptor(attach_info, encryption):
+    """Detach encryption layer."""
+    connection_info = attach_info['conn']
+    connection_info['data']['device_path'] = attach_info['device']['path']
+
+    encryptor = brick_get_encryptor(connection_info,
+                                    **encryption)
+    encryptor.detach_volume(**encryption)
 
 
 def require_driver_initialized(driver):
