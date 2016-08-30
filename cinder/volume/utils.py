@@ -520,6 +520,11 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
 
     LOG.info(_LI("Performing secure delete on volume: %s"), volume_path)
 
+    if volume_clear == 'shred':
+        LOG.warning(_LW("volume_clear=shred has been deprecated and will "
+                        "be removed in the next release. Clearing with dd."))
+        volume_clear = 'zero'
+
     # We pass sparse=False explicitly here so that zero blocks are not
     # skipped in order to clear the volume.
     if volume_clear == 'zero':
@@ -528,25 +533,10 @@ def clear_volume(volume_size, volume_path, volume_clear=None,
                            sync=True, execute=utils.execute,
                            ionice=volume_clear_ionice,
                            throttle=throttle, sparse=False)
-    elif volume_clear == 'shred':
-        clear_cmd = ['shred', '-n3']
-        if volume_clear_size:
-            clear_cmd.append('-s%dMiB' % volume_clear_size)
     else:
         raise exception.InvalidConfigurationValue(
             option='volume_clear',
             value=volume_clear)
-
-    clear_cmd.append(volume_path)
-    start_time = timeutils.utcnow()
-    utils.execute(*clear_cmd, run_as_root=True)
-    duration = timeutils.delta_seconds(start_time, timeutils.utcnow())
-
-    # NOTE(jdg): use a default of 1, mostly for unit test, but in
-    # some incredible event this is 0 (cirros image?) don't barf
-    if duration < 1:
-        duration = 1
-    LOG.info(_LI('Elapsed time for clear volume: %.2f sec'), duration)
 
 
 def supports_thin_provisioning():
