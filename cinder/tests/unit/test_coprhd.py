@@ -397,9 +397,9 @@ class EMCCoprHDISCSIDriverTest(test.TestCase):
 
         self.volume_type_id = self.create_coprhd_volume_type()
 
-        self.stubs.Set(coprhd_iscsi.EMCCoprHDISCSIDriver,
-                       '_get_common_driver',
-                       self._get_mocked_common_driver)
+        self.mock_object(coprhd_iscsi.EMCCoprHDISCSIDriver,
+                         '_get_common_driver',
+                         self._get_mocked_common_driver)
         self.driver = coprhd_iscsi.EMCCoprHDISCSIDriver(
             configuration=self.configuration)
 
@@ -564,9 +564,9 @@ class EMCCoprHDFCDriverTest(test.TestCase):
 
         self.volume_type_id = self.create_coprhd_volume_type()
 
-        self.stubs.Set(coprhd_fc.EMCCoprHDFCDriver,
-                       '_get_common_driver',
-                       self._get_mocked_common_driver)
+        self.mock_object(coprhd_fc.EMCCoprHDFCDriver,
+                         '_get_common_driver',
+                         self._get_mocked_common_driver)
         self.driver = coprhd_fc.EMCCoprHDFCDriver(
             configuration=self.configuration)
 
@@ -760,12 +760,12 @@ class EMCCoprHDScaleIODriverTest(test.TestCase):
 
         self.volume_type_id = self.create_coprhd_volume_type()
 
-        self.stubs.Set(coprhd_scaleio.EMCCoprHDScaleIODriver,
-                       '_get_common_driver',
-                       self._get_mocked_common_driver)
-        self.stubs.Set(coprhd_scaleio.EMCCoprHDScaleIODriver,
-                       '_get_client_id',
-                       self._get_client_id)
+        self.mock_object(coprhd_scaleio.EMCCoprHDScaleIODriver,
+                         '_get_common_driver',
+                         self._get_mocked_common_driver)
+        self.mock_object(coprhd_scaleio.EMCCoprHDScaleIODriver,
+                         '_get_client_id',
+                         self._get_client_id)
         self.driver = coprhd_scaleio.EMCCoprHDScaleIODriver(
             configuration=self.configuration)
 

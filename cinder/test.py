@@ -187,7 +187,7 @@ class TestCase(testtools.TestCase):
         self.injected = []
         self._services = []
 
-        fake_notifier.stub_notifier(self.stubs)
+        fake_notifier.mock_notifier(self)
 
         self.override_config('fatal_exception_format_errors', True)
         # This will be cleaned up by the NestedTempfile fixture

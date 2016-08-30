@@ -196,8 +196,8 @@ class VolumeRpcAPITestCase(test.TestCase):
             if expected_retval:
                 return expected_retval
 
-        self.stubs.Set(rpcapi.client, "prepare", _fake_prepare_method)
-        self.stubs.Set(rpcapi.client, rpc_method, _fake_rpc_method)
+        self.mock_object(rpcapi.client, "prepare", _fake_prepare_method)
+        self.mock_object(rpcapi.client, rpc_method, _fake_rpc_method)
 
         retval = getattr(rpcapi, method)(ctxt, **kwargs)
 
