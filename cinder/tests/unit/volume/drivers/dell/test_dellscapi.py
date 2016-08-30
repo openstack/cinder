@@ -4626,7 +4626,7 @@ class DellSCSanAPITestCase(test.TestCase):
         fake_scvolume = {'name': 'name', 'instanceId': 'id'}
         res = self.scapi.update_storage_profile(fake_scvolume, None)
         self.assertTrue(res)
-        self.assertTrue('fakeId' in repr(mock_put.call_args_list[0]))
+        self.assertIn('fakeId', repr(mock_put.call_args_list[0]))
         self.assertEqual(1, LOG.info.call_count)
 
     @mock.patch.object(dell_storagecenter_api.StorageCenterApi,
