@@ -15,6 +15,8 @@
 
 import webob
 
+from oslo_utils import strutils
+
 from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder import db
@@ -25,11 +27,6 @@ from cinder import quota
 from cinder import quota_utils
 from cinder import utils
 
-from oslo_config import cfg
-from oslo_utils import strutils
-
-
-CONF = cfg.CONF
 QUOTAS = quota.QUOTAS
 NON_QUOTA_KEYS = ['tenant_id', 'id']
 

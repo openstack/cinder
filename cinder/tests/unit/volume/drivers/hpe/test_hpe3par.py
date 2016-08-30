@@ -18,7 +18,6 @@ import mock
 
 import ast
 
-from oslo_config import cfg
 from oslo_utils import units
 
 from cinder import context
@@ -36,7 +35,6 @@ from cinder.volume import volume_types
 
 hpeexceptions = hpe3parclient.hpeexceptions
 
-CONF = cfg.CONF
 
 HPE3PAR_CPG = 'OpenStackCPG'
 HPE3PAR_CPG2 = 'fakepool'

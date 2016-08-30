@@ -22,7 +22,6 @@ import mock
 import six
 
 from oslo_concurrency import processutils
-from oslo_config import cfg
 
 from cinder import context
 from cinder.db.sqlalchemy import models
@@ -36,8 +35,6 @@ from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
-
-CONF = cfg.CONF
 
 
 class NotifyUsageTestCase(test.TestCase):

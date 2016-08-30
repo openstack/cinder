@@ -16,7 +16,6 @@
 import sys
 
 import mock
-from oslo_config import cfg
 from oslo_utils import units
 
 from cinder import context
@@ -28,7 +27,6 @@ from cinder.volume.drivers import nimble
 from cinder.volume import volume_types
 
 
-CONF = cfg.CONF
 NIMBLE_CLIENT = 'cinder.volume.drivers.nimble.client'
 NIMBLE_URLLIB2 = 'six.moves.urllib.request'
 NIMBLE_RANDOM = 'cinder.volume.drivers.nimble.random'

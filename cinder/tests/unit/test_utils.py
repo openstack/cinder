@@ -20,7 +20,6 @@ import time
 
 import mock
 from oslo_concurrency import processutils as putils
-from oslo_config import cfg
 from oslo_utils import timeutils
 import six
 from six.moves import range
@@ -30,9 +29,6 @@ import cinder
 from cinder import exception
 from cinder import test
 from cinder import utils
-
-
-CONF = cfg.CONF
 
 
 class ExecuteTestCase(test.TestCase):

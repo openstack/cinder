@@ -13,10 +13,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from tempest import config
 from tempest.tests import base
-
-CONF = config.CONF
 
 
 class CinderPlaceholderTest(base.TestCase):

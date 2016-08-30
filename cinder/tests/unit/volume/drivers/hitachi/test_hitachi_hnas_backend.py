@@ -20,14 +20,12 @@ import paramiko
 import time
 
 from oslo_concurrency import processutils as putils
-from oslo_config import cfg
 
 from cinder import exception
 from cinder import test
 from cinder import utils
 from cinder.volume.drivers.hitachi import hnas_backend
 
-CONF = cfg.CONF
 
 evsfs_list = "\n\
 FS ID        FS Label        FS Permanent ID     EVS ID     EVS Label\n\
