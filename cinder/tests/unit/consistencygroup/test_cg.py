@@ -65,8 +65,8 @@ class ConsistencyGroupTestCase(BaseVolumeTestCase):
             self.assertEqual('fakepool', pool)
             return {'status': 'available'}
 
-        self.stubs.Set(self.volume.driver, 'create_consistencygroup',
-                       fake_driver_create_cg)
+        self.mock_object(self.volume.driver, 'create_consistencygroup',
+                         fake_driver_create_cg)
 
         group = tests_utils.create_consistencygroup(
             self.context,
