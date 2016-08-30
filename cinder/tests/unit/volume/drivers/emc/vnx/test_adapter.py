@@ -215,8 +215,8 @@ class TestCommonAdapter(test.TestCase):
         self.assertEqual(2, len(pool_stats))
         for stat in pool_stats:
             self.assertTrue(stat['fast_cache_enabled'])
-            self.assertTrue(stat['pool_name'] in [pools[0].name,
-                                                  pools[1].name])
+            self.assertIn(stat['pool_name'], [pools[0].name,
+                                              pools[1].name])
             self.assertFalse(stat['replication_enabled'])
             self.assertEqual([], stat['replication_targets'])
 

@@ -139,8 +139,8 @@ class TestExtraSpecs(test.TestCase):
 
     def test_get_raw_data(self):
         spec_obj = common.ExtraSpecs({'key1': 'value1'})
-        self.assertTrue('key1' in spec_obj)
-        self.assertFalse('key2' in spec_obj)
+        self.assertIn('key1', spec_obj)
+        self.assertNotIn('key2', spec_obj)
         self.assertEqual('value1', spec_obj['key1'])
 
     @res_mock.mock_storage_resources

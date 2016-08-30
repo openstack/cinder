@@ -763,7 +763,7 @@ class BackupCephTestCase(test.TestCase):
 
         self.assertTrue(rbd.list.called)
         self.assertTrue(rbd.remove.called)
-        self.assertTrue(MockImageBusyException in RAISED_EXCEPTIONS)
+        self.assertIn(MockImageBusyException, RAISED_EXCEPTIONS)
 
     @common_mocks
     @mock.patch('cinder.backup.drivers.ceph.VolumeMetadataBackup', spec=True)
