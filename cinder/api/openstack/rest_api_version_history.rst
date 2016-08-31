@@ -182,3 +182,7 @@ user documentation.
 3.13
 ----
   Added create/delete/update/list/show APIs for generic volume groups.
+
+3.14
+----
+  Added group snapshots and create group from src APIs.

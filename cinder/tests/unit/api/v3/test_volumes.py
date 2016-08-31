@@ -317,7 +317,7 @@ class VolumeApiTest(test.TestCase):
         self.assertEqual(ex, res_dict)
         self.assertTrue(mock_validate.called)
 
-    @ddt.data('3.13', '3.12')
+    @ddt.data('3.14', '3.13')
     @mock.patch.object(group_api.API, 'get')
     @mock.patch.object(db.sqlalchemy.api, '_volume_type_get_full',
                        autospec=True)

@@ -30,10 +30,13 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
+from cinder.tests.unit.api.v3 import stubs
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
+from cinder.volume import api as volume_api
 
 GROUP_MICRO_VERSION = '3.13'
+GROUP_FROM_SRC_MICRO_VERSION = '3.14'
 
 
 @ddt.ddt
@@ -804,3 +807,70 @@ class GroupsAPITestCase(test.TestCase):
         self.assertRaises(webob.exc.HTTPBadRequest,
                           self.controller.update,
                           req, self.group1.id, body)
+
+    @mock.patch(
+        'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
+    def test_create_group_from_src_snap(self, mock_validate):
+        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+
+        group = utils.create_group(self.ctxt,
+                                   group_type_id=fake.GROUP_TYPE_ID)
+        volume = utils.create_volume(
+            self.ctxt,
+            group_id=group.id)
+        group_snapshot = utils.create_group_snapshot(
+            self.ctxt, group_id=group.id)
+        snapshot = utils.create_snapshot(
+            self.ctxt,
+            volume.id,
+            group_snapshot_id=group_snapshot.id,
+            status=fields.SnapshotStatus.AVAILABLE)
+
+        test_grp_name = 'test grp'
+        body = {"create-from-src": {"name": test_grp_name,
+                                    "description": "Group 1",
+                                    "group_snapshot_id": group_snapshot.id}}
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/action' %
+                                      fake.PROJECT_ID,
+                                      version=GROUP_FROM_SRC_MICRO_VERSION)
+        res_dict = self.controller.create_from_src(req, body)
+
+        self.assertIn('id', res_dict['group'])
+        self.assertEqual(test_grp_name, res_dict['group']['name'])
+        self.assertTrue(mock_validate.called)
+
+        grp_ref = objects.Group.get_by_id(
+            self.ctxt.elevated(), res_dict['group']['id'])
+
+        grp_ref.destroy()
+        snapshot.destroy()
+        volume.destroy()
+        group.destroy()
+        group_snapshot.destroy()
+
+    def test_create_group_from_src_grp(self):
+        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+
+        source_grp = utils.create_group(self.ctxt,
+                                        group_type_id=fake.GROUP_TYPE_ID)
+        volume = utils.create_volume(
+            self.ctxt,
+            group_id=source_grp.id)
+
+        test_grp_name = 'test cg'
+        body = {"create-from-src": {"name": test_grp_name,
+                                    "description": "Consistency Group 1",
+                                    "source_group_id": source_grp.id}}
+        req = fakes.HTTPRequest.blank('/v3/%s/groups/action' %
+                                      fake.PROJECT_ID,
+                                      version=GROUP_FROM_SRC_MICRO_VERSION)
+        res_dict = self.controller.create_from_src(req, body)
+
+        self.assertIn('id', res_dict['group'])
+        self.assertEqual(test_grp_name, res_dict['group']['name'])
+
+        grp = objects.Group.get_by_id(
+            self.ctxt, res_dict['group']['id'])
+        grp.destroy()
+        volume.destroy()
+        source_grp.destroy()

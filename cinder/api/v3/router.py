@@ -23,17 +23,18 @@ from cinder.api import extensions
 import cinder.api.openstack
 from cinder.api.v2 import limits
 from cinder.api.v2 import snapshot_metadata
-from cinder.api.v2 import snapshots
 from cinder.api.v2 import types
 from cinder.api.v2 import volume_metadata
 from cinder.api.v3 import backups
 from cinder.api.v3 import clusters
 from cinder.api.v3 import consistencygroups
+from cinder.api.v3 import group_snapshots
 from cinder.api.v3 import group_specs
 from cinder.api.v3 import group_types
 from cinder.api.v3 import groups
 from cinder.api.v3 import messages
 from cinder.api.v3 import snapshot_manage
+from cinder.api.v3 import snapshots
 from cinder.api.v3 import volume_manage
 from cinder.api.v3 import volumes
 from cinder.api import versions
@@ -93,6 +94,17 @@ class APIRouter(cinder.api.openstack.APIRouter):
                        controller=self.resources["groups"],
                        action="action",
                        conditions={"action": ["POST"]})
+        mapper.connect("groups/action",
+                       "/{project_id}/groups/action",
+                       controller=self.resources["groups"],
+                       action="action",
+                       conditions={"action": ["POST"]})
+
+        self.resources['group_snapshots'] = (group_snapshots.create_resource())
+        mapper.resource("group_snapshot", "group_snapshots",
+                        controller=self.resources['group_snapshots'],
+                        collection={'detail': 'GET'},
+                        member={'action': 'POST'})
 
         self.resources['snapshots'] = snapshots.create_resource(ext_mgr)
         mapper.resource("snapshot", "snapshots",
