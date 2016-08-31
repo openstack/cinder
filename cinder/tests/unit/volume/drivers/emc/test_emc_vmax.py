@@ -490,8 +490,17 @@ class EMCVMAXCommonData(object):
     test_snapshot = {'name': 'myCG1',
                      'id': '12345abcde',
                      'status': 'available',
-                     'host': fake_host
+                     'host': fake_host,
+                     'volume': test_source_volume,
+                     'provider_location': six.text_type(provider_location)
                      }
+    test_snapshot_v3 = {'name': 'myCG1',
+                        'id': '12345abcde',
+                        'status': 'available',
+                        'host': fake_host_v3,
+                        'volume': test_source_volume_v3,
+                        'provider_location': six.text_type(provider_location)
+                        }
     test_CG_snapshot = {'name': 'testSnap',
                         'id': '12345abcde',
                         'consistencygroup_id': '123456789',
@@ -3317,17 +3326,12 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         'get_volume_meta_head',
         return_value=[EMCVMAXCommonData.test_volume])
     @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'ISCSINoFAST'})
     def test_create_snapshot_different_sizes_meta_no_fast_success(
-            self, mock_volume_type, mock_volume,
+            self, mock_volume_type,
             mock_meta, mock_size, mock_pool):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
         volumeDict = {'classname': u'Symm_StorageVolume',
                       'keybindings': EMCVMAXCommonData.keybindings}
@@ -3335,13 +3339,13 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             mock.Mock(return_value=(volumeDict, 0)))
         common.provision.get_volume_dict_from_job = (
             mock.Mock(return_value=volumeDict))
-        self.driver.create_snapshot(self.data.test_volume)
+        self.driver.create_snapshot(self.data.test_snapshot)
 
     def test_create_snapshot_no_fast_failed(self):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot,
-                          self.data.test_volume)
+                          self.data.test_snapshot)
 
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
@@ -4232,15 +4236,11 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         'get_volume_meta_head',
         return_value=[EMCVMAXCommonData.test_volume])
     @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'ISCSIFAST'})
     def test_create_snapshot_different_sizes_meta_fast_success(
-            self, mock_volume_type, mock_volume,
+            self, mock_volume_type,
             mock_meta, mock_size, mock_pool, mock_policy):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
@@ -4253,13 +4253,13 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
             mock.Mock(return_value=volumeDict))
         common.fast.is_volume_in_default_SG = (
             mock.Mock(return_value=True))
-        self.driver.create_snapshot(self.data.test_volume)
+        self.driver.create_snapshot(self.data.test_snapshot)
 
     def test_create_snapshot_fast_failed(self):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot,
-                          self.data.test_volume)
+                          self.data.test_snapshot)
 
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
@@ -5458,17 +5458,12 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         'get_volume_meta_head',
         return_value=[EMCVMAXCommonData.test_volume])
     @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume)
-    @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'FCFAST'})
     def test_create_snapshot_different_sizes_meta_fast_success(
-            self, mock_volume_type, mock_volume,
+            self, mock_volume_type,
             mock_meta, mock_size, mock_pool, mock_policy):
-        self.data.test_volume['volume_name'] = "vmax-1234567"
         common = self.driver.common
 
         volumeDict = {'classname': u'Symm_StorageVolume',
@@ -5479,7 +5474,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
             mock.Mock(return_value=volumeDict))
         common.fast.is_volume_in_default_SG = (
             mock.Mock(return_value=True))
-        self.driver.create_snapshot(self.data.test_volume)
+        self.driver.create_snapshot(self.data.test_snapshot)
 
     @mock.patch.object(
         emc_vmax_common.EMCVMAXCommon,
@@ -5489,7 +5484,7 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         self.data.test_volume['volume_name'] = "vmax-1234567"
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.driver.create_snapshot,
-                          self.data.test_volume)
+                          self.data.test_snapshot)
 
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(
@@ -6065,13 +6060,8 @@ class EMCV3DriverTestCase(test.TestCase):
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'V3_BE'})
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume_v3)
     def test_create_snapshot_v3_success(
-            self, mock_volume_db, mock_type, moke_pool):
-        self.data.test_volume_v3['volume_name'] = "vmax-1234567"
+            self, mock_type, mock_pool):
         common = self.driver.common
         common.provisionv3.utils.get_v3_default_sg_instance_name = mock.Mock(
             return_value=(None, None, self.data.default_sg_instance_name))
@@ -6079,21 +6069,17 @@ class EMCV3DriverTestCase(test.TestCase):
             mock.Mock(return_value=True))
         common._initial_setup = mock.Mock(
             return_value=self.default_extraspec())
-        self.driver.create_snapshot(self.data.test_volume_v3)
+        self.driver.create_snapshot(self.data.test_snapshot_v3)
 
-    @mock.patch.object(
-        FakeDB,
-        'volume_get',
-        return_value=EMCVMAXCommonData.test_source_volume_v3)
     @mock.patch.object(
         volume_types,
         'get_volume_type_extra_specs',
         return_value={'volume_backend_name': 'V3_BE'})
-    def test_delete_snapshot_v3_success(self, mock_volume_type, mock_db):
+    def test_delete_snapshot_v3_success(self, mock_volume_type):
         self.data.test_volume_v3['volume_name'] = "vmax-1234567"
         self.driver.common._initial_setup = mock.Mock(
             return_value=self.default_extraspec())
-        self.driver.delete_snapshot(self.data.test_volume_v3)
+        self.driver.delete_snapshot(self.data.test_snapshot_v3)
 
     @unittest.skip("Skip until bug #1578986 is fixed")
     @mock.patch.object(

@@ -21,7 +21,6 @@ import os
 from oslo_log import log as logging
 import six
 
-from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI
 from cinder import interface
@@ -132,13 +131,8 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot."""
-        ctxt = context.get_admin_context()
-        volumename = snapshot['volume_name']
-        index = volumename.index('-')
-        volumeid = volumename[index + 1:]
-        volume = self.db.volume_get(ctxt, volumeid)
-
-        volpath = self.common.create_snapshot(snapshot, volume)
+        src_volume = snapshot['volume']
+        volpath = self.common.create_snapshot(snapshot, src_volume)
 
         model_update = {}
         snapshot['provider_location'] = six.text_type(volpath)
@@ -147,13 +141,9 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
 
     def delete_snapshot(self, snapshot):
         """Deletes a snapshot."""
-        ctxt = context.get_admin_context()
-        volumename = snapshot['volume_name']
-        index = volumename.index('-')
-        volumeid = volumename[index + 1:]
-        volume = self.db.volume_get(ctxt, volumeid)
+        src_volume = snapshot['volume']
 
-        self.common.delete_snapshot(snapshot, volume)
+        self.common.delete_snapshot(snapshot, src_volume)
 
     def ensure_export(self, context, volume):
         """Driver entry point to get the export info for an existing volume."""
