@@ -33,6 +33,8 @@ from cinder import quota
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 QUOTAS = quota.QUOTAS
+ENCRYPTION_IGNORED_FIELDS = ['volume_type_id', 'created_at', 'updated_at',
+                             'deleted_at']
 
 
 def create(context,
@@ -257,8 +259,7 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
     def _fix_encryption_specs(encryption):
         if encryption:
             encryption = dict(encryption)
-            for param in ['volume_type_id', 'created_at', 'updated_at',
-                          'deleted_at']:
+            for param in ENCRYPTION_IGNORED_FIELDS:
                 encryption.pop(param, None)
         return encryption
 
@@ -313,3 +314,19 @@ def volume_types_diff(context, vol_type_id1, vol_type_id2):
         all_equal = False
 
     return (diff, all_equal)
+
+
+def volume_types_encryption_changed(context, vol_type_id1, vol_type_id2):
+    """Return whether encryptions of two volume types are same."""
+    def _get_encryption(enc):
+        enc = dict(enc)
+        for param in ENCRYPTION_IGNORED_FIELDS:
+            enc.pop(param, None)
+        return enc
+
+    enc1 = get_volume_type_encryption(context, vol_type_id1)
+    enc2 = get_volume_type_encryption(context, vol_type_id2)
+
+    enc1_filtered = _get_encryption(enc1) if enc1 else None
+    enc2_filtered = _get_encryption(enc2) if enc2 else None
+    return enc1_filtered != enc2_filtered

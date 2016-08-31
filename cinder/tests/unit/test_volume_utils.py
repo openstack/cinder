@@ -22,10 +22,13 @@ import mock
 import six
 
 from oslo_concurrency import processutils
+from oslo_config import cfg
 
 from cinder import context
+from cinder import db
 from cinder.db.sqlalchemy import models
 from cinder import exception
+from cinder import keymgr
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.backup import fake_backup
@@ -35,6 +38,10 @@ from cinder.tests.unit import fake_volume
 from cinder import utils
 from cinder.volume import throttling
 from cinder.volume import utils as volume_utils
+from cinder.volume import volume_types
+
+
+CONF = cfg.CONF
 
 
 class NotifyUsageTestCase(test.TestCase):
@@ -882,3 +889,43 @@ class VolumeUtilsTestCase(test.TestCase):
         self.assertEqual(
             expected_dict,
             volume_utils.convert_config_string_to_dict(test_string))
+
+    @mock.patch('cinder.volume.volume_types.is_encrypted', return_value=False)
+    def test_create_encryption_key_unencrypted(self, is_encrypted):
+        result = volume_utils.create_encryption_key(mock.ANY,
+                                                    mock.ANY,
+                                                    fake.VOLUME_TYPE_ID)
+        self.assertIsNone(result)
+
+    @mock.patch('cinder.volume.volume_types.is_encrypted', return_value=True)
+    @mock.patch('cinder.volume.volume_types.get_volume_type_encryption')
+    @mock.patch('cinder.keymgr.conf_key_mgr.ConfKeyManager.create_key')
+    def test_create_encryption_key_encrypted(self, create_key,
+                                             get_volume_type_encryption,
+                                             is_encryption):
+        enc_key = {'cipher': 'aes-xts-plain64',
+                   'key_size': 256,
+                   'provider': 'p1',
+                   'control_location': 'front-end',
+                   'encryption_id': 'uuid1'}
+        ctxt = context.get_admin_context()
+        type_ref1 = volume_types.create(ctxt, "type1")
+        encryption = db.volume_type_encryption_create(
+            ctxt, type_ref1['id'], enc_key)
+        get_volume_type_encryption.return_value = encryption
+        CONF.set_override(
+            'api_class',
+            'cinder.keymgr.conf_key_mgr.ConfKeyManager',
+            group='key_manager')
+        key_manager = keymgr.API()
+        volume_utils.create_encryption_key(ctxt,
+                                           key_manager,
+                                           fake.VOLUME_TYPE_ID)
+        is_encryption.assert_called_once_with(ctxt,
+                                              fake.VOLUME_TYPE_ID)
+        get_volume_type_encryption.assert_called_once_with(
+            ctxt,
+            fake.VOLUME_TYPE_ID)
+        create_key.assert_called_once_with(ctxt,
+                                           algorithm='aes',
+                                           length=256)

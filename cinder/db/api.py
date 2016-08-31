@@ -372,10 +372,6 @@ def volume_has_attachments_filter():
     return IMPL.volume_has_attachments_filter()
 
 
-def volume_has_same_encryption_type(new_vol_type):
-    return IMPL.volume_has_same_encryption_type(new_vol_type)
-
-
 def volume_qos_allows_retype(new_vol_type):
     return IMPL.volume_qos_allows_retype(new_vol_type)
 

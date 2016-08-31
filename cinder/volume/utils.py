@@ -44,6 +44,7 @@ from cinder import objects
 from cinder import rpc
 from cinder import utils
 from cinder.volume import throttling
+from cinder.volume import volume_types
 
 
 CONF = cfg.CONF
@@ -820,3 +821,19 @@ def convert_config_string_to_dict(config_string):
                     {'config_string': config_string})
 
     return resultant_dict
+
+
+def create_encryption_key(context, key_manager, volume_type_id):
+    encryption_key_id = None
+    if volume_types.is_encrypted(context, volume_type_id):
+        volume_type_encryption = (
+            volume_types.get_volume_type_encryption(context,
+                                                    volume_type_id))
+        cipher = volume_type_encryption.cipher
+        length = volume_type_encryption.key_size
+        algorithm = cipher.split('-')[0] if cipher else None
+        encryption_key_id = key_manager.create_key(
+            context,
+            algorithm=algorithm,
+            length=length)
+    return encryption_key_id

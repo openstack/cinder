@@ -59,6 +59,7 @@ from cinder import context
 from cinder import coordination
 from cinder import exception
 from cinder import flow_utils
+from cinder import keymgr as key_manager
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import cache as image_cache
 from cinder.image import glance
@@ -230,6 +231,7 @@ class VolumeManager(manager.SchedulerDependentManager):
             requests.packages.urllib3.disable_warnings(
                 requests.packages.urllib3.exceptions.InsecurePlatformWarning)
 
+        self.key_manager = key_manager.API(CONF)
         self.driver = importutils.import_object(
             volume_driver,
             configuration=self.configuration,
@@ -1572,7 +1574,8 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         return {'conn': conn, 'device': vol_handle, 'connector': connector}
 
-    def _attach_volume(self, ctxt, volume, properties, remote=False):
+    def _attach_volume(self, ctxt, volume, properties, remote=False,
+                       attach_encryptor=False):
         status = volume['status']
 
         if remote:
@@ -1588,11 +1591,35 @@ class VolumeManager(manager.SchedulerDependentManager):
         else:
             conn = self.initialize_connection(ctxt, volume['id'], properties)
 
-        return self._connect_device(conn)
+        attach_info = self._connect_device(conn)
+        try:
+            if attach_encryptor and (
+                    volume_types.is_encrypted(ctxt,
+                                              volume.volume_type_id)):
+                encryption = self.db.volume_encryption_metadata_get(
+                    ctxt.elevated(), volume.id)
+                if encryption:
+                    utils.brick_attach_volume_encryptor(ctxt,
+                                                        attach_info,
+                                                        encryption)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                LOG.error(_LE("Failed to attach volume encryptor"
+                              " %(vol)s."), {'vol': volume['id']})
+                self._detach_volume(ctxt, attach_info, volume, properties)
+        return attach_info
 
     def _detach_volume(self, ctxt, attach_info, volume, properties,
-                       force=False, remote=False):
+                       force=False, remote=False,
+                       attach_encryptor=False):
         connector = attach_info['connector']
+        if attach_encryptor and (
+                volume_types.is_encrypted(ctxt,
+                                          volume.volume_type_id)):
+            encryption = self.db.volume_encryption_metadata_get(
+                ctxt.elevated(), volume.id)
+            if encryption:
+                utils.brick_detach_volume_encryptor(attach_info, encryption)
         connector.disconnect_volume(attach_info['conn']['data'],
                                     attach_info['device'])
 
@@ -1615,22 +1642,34 @@ class VolumeManager(manager.SchedulerDependentManager):
 
         LOG.debug('copy_data_between_volumes %(src)s -> %(dest)s.',
                   {'src': src_vol['name'], 'dest': dest_vol['name']})
-
+        attach_encryptor = False
+        # If the encryption method or key is changed, we have to
+        # copy data through dm-crypt.
+        if volume_types.volume_types_encryption_changed(
+                ctxt,
+                src_vol.volume_type_id,
+                dest_vol.volume_type_id):
+            attach_encryptor = True
         properties = utils.brick_get_connector_properties()
 
         dest_remote = remote in ['dest', 'both']
-        dest_attach_info = self._attach_volume(ctxt, dest_vol, properties,
-                                               remote=dest_remote)
+        dest_attach_info = self._attach_volume(
+            ctxt, dest_vol, properties,
+            remote=dest_remote,
+            attach_encryptor=attach_encryptor)
 
         try:
             src_remote = remote in ['src', 'both']
-            src_attach_info = self._attach_volume(ctxt, src_vol, properties,
-                                                  remote=src_remote)
+            src_attach_info = self._attach_volume(
+                ctxt, src_vol, properties,
+                remote=src_remote,
+                attach_encryptor=attach_encryptor)
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE("Failed to attach source volume for copy."))
                 self._detach_volume(ctxt, dest_attach_info, dest_vol,
-                                    properties, remote=dest_remote)
+                                    properties, remote=dest_remote,
+                                    attach_encryptor=attach_encryptor)
 
         # Check the backend capabilities of migration destination host.
         rpcapi = volume_rpcapi.VolumeAPI()
@@ -1657,11 +1696,13 @@ class VolumeManager(manager.SchedulerDependentManager):
             try:
                 self._detach_volume(ctxt, dest_attach_info, dest_vol,
                                     properties, force=copy_error,
-                                    remote=dest_remote)
+                                    remote=dest_remote,
+                                    attach_encryptor=attach_encryptor)
             finally:
                 self._detach_volume(ctxt, src_attach_info, src_vol,
                                     properties, force=copy_error,
-                                    remote=src_remote)
+                                    remote=src_remote,
+                                    attach_encryptor=attach_encryptor)
 
     def _migrate_volume_generic(self, ctxt, volume, host, new_type_id):
         rpcapi = volume_rpcapi.VolumeAPI()
@@ -1671,6 +1712,12 @@ class VolumeManager(manager.SchedulerDependentManager):
         new_vol_values = {k: volume[k] for k in set(volume.keys()) - skip}
         if new_type_id:
             new_vol_values['volume_type_id'] = new_type_id
+            if volume_types.volume_types_encryption_changed(
+                    ctxt, volume.volume_type_id, new_type_id):
+                encryption_key_id = vol_utils.create_encryption_key(
+                    ctxt, self.key_manager, new_type_id)
+                new_vol_values['encryption_key_id'] = encryption_key_id
+
         new_volume = objects.Volume(
             context=ctxt,
             host=host['host'],
@@ -2154,7 +2201,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         LOG.info(_LI("Extend volume completed successfully."),
                  resource=volume)
 
-    def retype(self, ctxt, volume_id, new_type_id, host,
+    def retype(self, context, volume_id, new_type_id, host,
                migration_policy='never', reservations=None,
                volume=None, old_reservations=None):
 
@@ -2166,8 +2213,6 @@ class VolumeManager(manager.SchedulerDependentManager):
             finally:
                 QUOTAS.rollback(context, old_reservations)
                 QUOTAS.rollback(context, new_reservations)
-
-        context = ctxt.elevated()
 
         # FIXME(dulek): Remove this in v3.0 of RPC API.
         if volume is None:
@@ -2242,6 +2287,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # We assume that those that support pools do this internally
         # so we strip off the pools designation
         if (not retyped and
+                diff.get('encryption') is None and
                 vol_utils.hosts_are_equivalent(self.driver.host,
                                                host['host'])):
             try:
