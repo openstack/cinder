@@ -16,6 +16,7 @@
 from mock import Mock
 
 from cinder import context
+from cinder import exception
 from cinder.objects import fields
 from cinder import test
 from cinder.volume.drivers.coprhd import common as coprhd_common
@@ -263,7 +264,8 @@ def get_test_CG_snap_data(volume_type_id):
                         'consistencygroup_id': '123456789',
                         'status': fields.ConsistencyGroupStatus.AVAILABLE,
                         'snapshots': [],
-                        'consistencygroup': get_test_CG_data(volume_type_id)
+                        'consistencygroup': get_test_CG_data(volume_type_id),
+                        'cgsnapshot_id': '1',
                         }
     return test_CG_snapshot
 
@@ -639,6 +641,20 @@ class EMCCoprHDFCDriverTest(test.TestCase):
 
         self.driver.delete_snapshot(snapshot_data)
         self.driver.delete_volume(src_vol_data)
+        self.driver.delete_volume(volume_data)
+
+    def test_create_volume_from_cg_snapshot(self):
+        ctx = context.get_admin_context()
+
+        volume_data = get_test_volume_data(self.volume_type_id)
+        cg_snap_data = get_test_CG_snap_data(self.volume_type_id)
+
+        self.driver.create_cgsnapshot(ctx, cg_snap_data, [])
+        self.assertRaises(exception.VolumeBackendAPIException,
+                          self.driver.create_volume_from_snapshot,
+                          volume_data, cg_snap_data)
+
+        self.driver.delete_cgsnapshot(ctx, cg_snap_data, [])
         self.driver.delete_volume(volume_data)
 
     def test_extend_volume(self):

@@ -750,6 +750,12 @@ class EMCCoprHDDriverCommon(object):
             self.create_cloned_volume(volume, snapshot, truncate_name)
             return
 
+        if snapshot.get('cgsnapshot_id'):
+            raise coprhd_utils.CoprHdError(
+                coprhd_utils.CoprHdError.SOS_FAILURE_ERR,
+                _("Volume cannot be created individually from a snapshot "
+                  "that is part of a Consistency Group"))
+
         src_snapshot_name = None
         src_vol_ref = snapshot['volume']
         new_volume_name = self._get_resource_name(volume, truncate_name)
