@@ -1205,7 +1205,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
 
         cg = objects.ConsistencyGroup.get_by_id(
             self.ctxt, res_dict['consistencygroup']['id'])
-        cg.destroy
+        cg.destroy()
         db.volume_destroy(self.ctxt.elevated(), volume_id)
         source_cg.destroy()
 
