@@ -81,11 +81,22 @@ class CapacityFilter(filters.BaseHostFilter):
                     "requested": volume_size,
                     "available": free}
 
+        # NOTE(xyang): If 'provisioning:type' is 'thick' in extra_specs,
+        # we will not use max_over_subscription_ratio and
+        # provisioned_capacity_gb to determine whether a volume can be
+        # provisioned. Instead free capacity will be used to evaluate.
+        thin = True
+        vol_type = filter_properties.get('volume_type', {})
+        provision_type = vol_type.get('extra_specs', {}).get(
+            'provisioning:type')
+        if provision_type == 'thick':
+            thin = False
+
         # Only evaluate using max_over_subscription_ratio if
         # thin_provisioning_support is True. Check if the ratio of
         # provisioned capacity over total capacity has exceeded over
         # subscription ratio.
-        if (host_state.thin_provisioning_support and
+        if (thin and host_state.thin_provisioning_support and
                 host_state.max_over_subscription_ratio >= 1):
             provisioned_ratio = ((host_state.provisioned_capacity_gb +
                                   volume_size) / total)
@@ -110,7 +121,7 @@ class CapacityFilter(filters.BaseHostFilter):
                 adjusted_free_virtual = (
                     free * host_state.max_over_subscription_ratio)
                 return adjusted_free_virtual >= volume_size
-        elif host_state.thin_provisioning_support:
+        elif thin and host_state.thin_provisioning_support:
             LOG.warning(_LW("Filtering out host %(host)s with an invalid "
                             "maximum over subscription ratio of "
                             "%(oversub_ratio).2f. The ratio should be a "

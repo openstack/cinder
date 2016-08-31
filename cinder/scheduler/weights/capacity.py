@@ -114,13 +114,25 @@ class CapacityWeigher(weights.BaseHostWeigher):
             # capacity anymore.
             free = -1 if CONF.capacity_weight_multiplier > 0 else float('inf')
         else:
+            # NOTE(xyang): If 'provisioning:type' is 'thick' in extra_specs,
+            # we will not use max_over_subscription_ratio and
+            # provisioned_capacity_gb to determine whether a volume can be
+            # provisioned. Instead free capacity will be used to evaluate.
+            thin = True
+            vol_type = weight_properties.get('volume_type', {})
+            provision_type = vol_type.get('extra_specs', {}).get(
+                'provisioning:type')
+            if provision_type == 'thick':
+                thin = False
+
             free = utils.calculate_virtual_free_capacity(
                 total_space,
                 free_space,
                 host_state.provisioned_capacity_gb,
                 host_state.thin_provisioning_support,
                 host_state.max_over_subscription_ratio,
-                host_state.reserved_percentage)
+                host_state.reserved_percentage,
+                thin)
 
         return free
 

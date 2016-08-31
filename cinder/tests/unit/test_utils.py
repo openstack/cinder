@@ -18,6 +18,7 @@ import functools
 import os
 import time
 
+import ddt
 import mock
 from oslo_concurrency import processutils as putils
 from oslo_utils import timeutils
@@ -1078,6 +1079,7 @@ class TestRetryDecorator(test.TestCase):
             self.assertFalse(mock_sleep.called)
 
 
+@ddt.ddt
 class LogTracingTestCase(test.TestCase):
 
     def test_utils_setup_tracing(self):
@@ -1346,43 +1348,42 @@ class LogTracingTestCase(test.TestCase):
         self.assertIn("'adminPass': '***'",
                       str(mock_log.debug.call_args_list[1]))
 
-    def test_utils_calculate_virtual_free_capacity_with_thick(self):
-        host_stat = {'total_capacity_gb': 30.01,
-                     'free_capacity_gb': 28.01,
-                     'provisioned_capacity_gb': 2.0,
-                     'max_over_subscription_ratio': 1.0,
-                     'thin_provisioning_support': False,
-                     'thick_provisioning_support': True,
+    @ddt.data(
+        {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 1.0,
+         'thin_support': False, 'thick_support': True,
+         'is_thin_lun': False, 'expected': 27.01},
+        {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': False,
+         'is_thin_lun': True, 'expected': 37.02},
+        {'total': 20.01, 'free': 18.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': True,
+         'is_thin_lun': True, 'expected': 37.02},
+        {'total': 30.01, 'free': 28.01, 'provisioned': 2.0, 'max_ratio': 2.0,
+         'thin_support': True, 'thick_support': True,
+         'is_thin_lun': False, 'expected': 27.01},
+    )
+    @ddt.unpack
+    def test_utils_calculate_virtual_free_capacity_provision_type(
+            self, total, free, provisioned, max_ratio, thin_support,
+            thick_support, is_thin_lun, expected):
+        host_stat = {'total_capacity_gb': total,
+                     'free_capacity_gb': free,
+                     'provisioned_capacity_gb': provisioned,
+                     'max_over_subscription_ratio': max_ratio,
+                     'thin_provisioning_support': thin_support,
+                     'thick_provisioning_support': thick_support,
                      'reserved_percentage': 5}
 
-        free = utils.calculate_virtual_free_capacity(
+        free_capacity = utils.calculate_virtual_free_capacity(
             host_stat['total_capacity_gb'],
             host_stat['free_capacity_gb'],
             host_stat['provisioned_capacity_gb'],
             host_stat['thin_provisioning_support'],
             host_stat['max_over_subscription_ratio'],
-            host_stat['reserved_percentage'])
+            host_stat['reserved_percentage'],
+            is_thin_lun)
 
-        self.assertEqual(27.01, free)
-
-    def test_utils_calculate_virtual_free_capacity_with_thin(self):
-        host_stat = {'total_capacity_gb': 20.01,
-                     'free_capacity_gb': 18.01,
-                     'provisioned_capacity_gb': 2.0,
-                     'max_over_subscription_ratio': 2.0,
-                     'thin_provisioning_support': True,
-                     'thick_provisioning_support': False,
-                     'reserved_percentage': 5}
-
-        free = utils.calculate_virtual_free_capacity(
-            host_stat['total_capacity_gb'],
-            host_stat['free_capacity_gb'],
-            host_stat['provisioned_capacity_gb'],
-            host_stat['thin_provisioning_support'],
-            host_stat['max_over_subscription_ratio'],
-            host_stat['reserved_percentage'])
-
-        self.assertEqual(37.02, free)
+        self.assertEqual(expected, free_capacity)
 
 
 class Comparable(utils.ComparableMixin):
