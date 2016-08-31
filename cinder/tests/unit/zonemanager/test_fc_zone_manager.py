@@ -49,11 +49,17 @@ class TestFCZoneManager(test.TestCase):
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     def setUp(self, opt_mock):
         super(TestFCZoneManager, self).setUp()
+
+    def __init__(self, *args, **kwargs):
+        super(TestFCZoneManager, self).__init__(*args, **kwargs)
+
+    def setup_fake_driver(self):
         config = conf.Configuration(None)
         config.fc_fabric_names = fabric_name
 
         def fake_build_driver(self):
             self.driver = mock.Mock(fc_zone_driver.FCZoneDriver)
+            self.set_initialized(True)
 
         self.mock_object(fc_zone_manager.ZoneManager, '_build_driver',
                          fake_build_driver)
@@ -61,13 +67,48 @@ class TestFCZoneManager(test.TestCase):
         self.zm = fc_zone_manager.ZoneManager(configuration=config)
         self.configuration = conf.Configuration(None)
         self.configuration.fc_fabric_names = fabric_name
-        self.driver = mock.Mock(fc_zone_driver.FCZoneDriver)
 
-    def __init__(self, *args, **kwargs):
-        super(TestFCZoneManager, self).__init__(*args, **kwargs)
+    def test_unsupported_driver_disabled(self):
+        config = conf.Configuration(fc_zone_manager.zone_manager_opts,
+                                    'fc-zone-manager')
+        config.fc_fabric_names = fabric_name
+        config.enable_unsupported_driver = False
+
+        def fake_import(self, *args, **kwargs):
+            fake_driver = mock.Mock(fc_zone_driver.FCZoneDriver)
+            fake_driver.supported = False
+            return fake_driver
+
+        self.patch('oslo_utils.importutils.import_object',
+                   fake_import)
+
+        zm = fc_zone_manager.ZoneManager(configuration=config)
+        self.assertFalse(zm.driver.supported)
+        self.assertFalse(zm.initialized)
+
+    def test_unsupported_driver_enabled(self):
+        config = conf.Configuration(None)
+        config.fc_fabric_names = fabric_name
+
+        def fake_import(self, *args, **kwargs):
+            fake_driver = mock.Mock(fc_zone_driver.FCZoneDriver)
+            fake_driver.supported = False
+            return fake_driver
+
+        self.patch('oslo_utils.importutils.import_object',
+                   fake_import)
+
+        with mock.patch(
+                'cinder.volume.configuration.Configuration') as mock_config:
+            mock_config.return_value.zone_driver = 'test'
+            mock_config.return_value.enable_unsupported_driver = True
+            zm = fc_zone_manager.ZoneManager(configuration=config)
+            self.assertFalse(zm.driver.supported)
+            self.assertTrue(zm.initialized)
 
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     def test_add_connection(self, opt_mock):
+        self.setup_fake_driver()
         with mock.patch.object(self.zm.driver, 'add_connection')\
                 as add_connection_mock:
             self.zm.driver.get_san_context.return_value = fabric_map
@@ -80,6 +121,7 @@ class TestFCZoneManager(test.TestCase):
 
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     def test_add_connection_error(self, opt_mock):
+        self.setup_fake_driver()
         with mock.patch.object(self.zm.driver, 'add_connection')\
                 as add_connection_mock:
             add_connection_mock.side_effect = exception.FCZoneDriverException
@@ -88,6 +130,7 @@ class TestFCZoneManager(test.TestCase):
 
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     def test_delete_connection(self, opt_mock):
+        self.setup_fake_driver()
         with mock.patch.object(self.zm.driver, 'delete_connection')\
                 as delete_connection_mock:
             self.zm.driver.get_san_context.return_value = fabric_map
@@ -100,6 +143,7 @@ class TestFCZoneManager(test.TestCase):
 
     @mock.patch('oslo_config.cfg._is_opt_registered', return_value=False)
     def test_delete_connection_error(self, opt_mock):
+        self.setup_fake_driver()
         with mock.patch.object(self.zm.driver, 'delete_connection')\
                 as del_connection_mock:
             del_connection_mock.side_effect = exception.FCZoneDriverException

@@ -1014,6 +1014,10 @@ class FCSanLookupServiceException(CinderException):
     message = _("Fibre Channel SAN Lookup failure: %(reason)s")
 
 
+class ZoneManagerNotInitialized(CinderException):
+    message = _("Fibre Channel Zone Manager not initialized")
+
+
 class BrocadeZoningCliException(CinderException):
     message = _("Brocade Fibre Channel Zoning CLI error: %(reason)s")
 
