@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev522\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-30 03:16+0000\n"
+"POT-Creation-Date: 2016-08-31 10:23+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-29 02:07+0000\n"
+"PO-Revision-Date: 2016-08-30 02:23+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1134,6 +1134,54 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because it has no "
+"volume type."
+msgstr ""
+"ボリューム %(volume_id)s にはボリュームタイプがないため、このボリュームをグ"
+"ループ %(group_id)s に追加できません。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because it is already "
+"in group %(orig_group)s."
+msgstr ""
+"ボリューム %(volume_id)s が既にグループ %(orig_group)s 内に存在するため、この"
+"ボリュームをグループ %(group_id)s に追加することはできません。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume cannot "
+"be found."
+msgstr ""
+"ボリューム %(volume_id)s は見つからないため、グループ %(group_id)s に追加でき"
+"ません。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume does "
+"not exist."
+msgstr ""
+"ボリューム %(volume_id)s は存在しないため、グループ %(group_id)s に追加できま"
+"せん。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume is in "
+"an invalid state: %(status)s. Valid states are: %(valid)s."
+msgstr ""
+"ボリューム %(volume_id)s は無効な状態 %(status)s であるため、グルー"
+"プ%(group_id)s に追加できません。有効な状態は %(valid)s です。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume type "
+"%(volume_type)s is not supported by the group."
+msgstr ""
+"ボリュームタイプ %(volume_type)s はグループ %(group_id)s ではサポートされてい"
+"ないため、ボリューム %(volume_id)s をこのグループに追加できません。"
+
+#, python-format
+msgid ""
 "Cannot attach already attached volume %s; multiattach is disabled via the "
 "'netapp_enable_multiattach' configuration option."
 msgstr ""
@@ -1404,6 +1452,22 @@ msgstr ""
 "プ%(group_id)s から削除できません。有効な状態は %(valid)s です。"
 
 #, python-format
+msgid ""
+"Cannot remove volume %(volume_id)s from group %(group_id)s because it is not "
+"in the group."
+msgstr ""
+"ボリューム %(volume_id)s はグループ %(group_id)s 内に存在しないため、このグ"
+"ループから削除できません。"
+
+#, python-format
+msgid ""
+"Cannot remove volume %(volume_id)s from group %(group_id)s because volume is "
+"in an invalid state: %(status)s. Valid states are: %(valid)s."
+msgstr ""
+"ボリューム %(volume_id)s は無効な状態 %(status)s であるため、グループ "
+"%(group_id)s から削除できません。有効な状態は %(valid)s です。"
+
+#, python-format
 msgid "Cannot retype from HPE3PARDriver to %s."
 msgstr "HPE3PARDriver から %s にタイプ変更することはできません。"
 
@@ -1452,6 +1516,14 @@ msgstr ""
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "暗号化仕様を更新できません。ボリュームタイプは使用中です。"
+
+#, python-format
+msgid ""
+"Cannot update group %(group_id)s because no valid name, description, "
+"add_volumes, or remove_volumes were provided."
+msgstr ""
+"有効な名前、説明、add_volumes 、または remove_volumes が指定されなかったた"
+"め、グループ %(group_id)s を更新できません。"
 
 #, python-format
 msgid "Cannot update group_type %(id)s"
@@ -1908,14 +1980,6 @@ msgid ""
 msgstr ""
 "バックアップの作成が中止しました。予期していたボリュームの状態は "
 "%(expected_status)s ですが、%(actual_status)s を受け取りました。"
-
-#, python-format
-msgid ""
-"Create encrypted volumes with type %(type)s from image %(image)s is not "
-"supported."
-msgstr ""
-"イメージ %(image)s からのタイプ %(type)s の暗号化されたボリュームの作成はサ"
-"ポートされません。"
 
 msgid "Create export for volume failed."
 msgstr "ボリュームのエクスポートの作成に失敗しました。"
@@ -4861,6 +4925,14 @@ msgstr "グループ  %(group_id)s が見つかりませんでした。"
 
 #, python-format
 msgid ""
+"Group %s still contains volumes. The delete-volumes flag is required to "
+"delete it."
+msgstr ""
+"グループ %s にはまだボリュームがあります。これを削除するには delete-volumes "
+"フラグが必要です。"
+
+#, python-format
+msgid ""
 "Group Type %(group_type_id)s deletion is not allowed with groups present "
 "with the type."
 msgstr ""
@@ -4886,7 +4958,12 @@ msgstr ""
 msgid "Group status must be available or error, but current status is: %s"
 msgstr ""
 "グループの状態は「使用可能」または「エラー」でなければなりませんが、現在の状"
-"況は %s です。"
+"態は %s です。"
+
+#, python-format
+msgid "Group status must be available, but current status is: %s."
+msgstr ""
+"グループの状態は「使用可能」でなければなりませんが、現在の状態は %s です。"
 
 #, python-format
 msgid "Group type %(group_type_id)s could not be found."
@@ -9596,6 +9673,13 @@ msgstr ""
 
 msgid "Volume has children and cannot be deleted!"
 msgstr "ボリュームには子が含まれており、削除できません。"
+
+#, python-format
+msgid "Volume in group %s is attached. Need to detach first."
+msgstr "グループ %s のボリュームが接続されています。まず切り離してください。"
+
+msgid "Volume in group still has dependent snapshots."
+msgstr "グループ内のボリュームには、まだ従属スナップショットがあります。"
 
 #, python-format
 msgid "Volume is attached to a server.  (%s)"
