@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev522\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-30 03:16+0000\n"
+"POT-Creation-Date: 2016-08-31 10:23+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1685,14 +1685,6 @@ msgid ""
 msgstr ""
 "La creación de copia de seguridad ha terminado anormalmente, se esperaba el "
 "estado de volumen %(expected_status)s pero se ha obtenido %(actual_status)s."
-
-#, python-format
-msgid ""
-"Create encrypted volumes with type %(type)s from image %(image)s is not "
-"supported."
-msgstr ""
-"No se admite la creación de volúmenes cifrados con el tipo %(type)s de la "
-"imagen %(image)s ."
 
 msgid "Create export for volume failed."
 msgstr "Error al crear la exportación de volumen."
