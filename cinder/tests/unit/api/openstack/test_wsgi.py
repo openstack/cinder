@@ -76,12 +76,8 @@ class RequestTest(test.TestCase):
         accepted = 'unknown-lang'
         request.headers = {'Accept-Language': accepted}
 
-        def fake_best_match(self, offers, default_match=None):
-            # Match would return None, if requested lang is not found
-            return None
-
-        self.stubs.SmartSet(request.accept_language,
-                            'best_match', fake_best_match)
+        self.mock_object(request.accept_language,
+                         'best_match', return_value=None)
 
         self.assertIsNone(request.best_match_language())
         # If accept-language is not included or empty, match should be None
