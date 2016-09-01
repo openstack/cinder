@@ -1,0 +1,3 @@
+---
+features:
+  - Added using etags to avoid the lost update problem during deleting volume metadata.
