@@ -86,7 +86,7 @@ class CapacityFilter(filters.BaseHostFilter):
         # provisioned_capacity_gb to determine whether a volume can be
         # provisioned. Instead free capacity will be used to evaluate.
         thin = True
-        vol_type = filter_properties.get('volume_type', {})
+        vol_type = filter_properties.get('volume_type', {}) or {}
         provision_type = vol_type.get('extra_specs', {}).get(
             'provisioning:type')
         if provision_type == 'thick':
