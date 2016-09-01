@@ -61,8 +61,9 @@ class TestMisc(scaleio.TestScaleIODriver):
                 ): '"{}"'.format(self.POOL_NAME).encode('ascii', 'ignore'),
                 'types/StoragePool/instances/action/querySelectedStatistics': {
                     '"{}"'.format(self.POOL_NAME): {
-                        'capacityInUseInKb': 502,
-                        'capacityLimitInKb': 1024,
+                        'capacityAvailableForVolumeAllocationInKb': 5000000,
+                        'capacityLimitInKb': 16000000,
+                        'spareCapacityInKb': 6000000,
                     },
                 },
                 'instances/Volume::{}/action/setVolumeName'.format(
