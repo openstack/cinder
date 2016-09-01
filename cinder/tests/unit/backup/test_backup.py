@@ -640,10 +640,18 @@ class BackupTestCase(BaseBackupTest):
                                                'secure_enabled': False,
                                                'is_snapshot': True, }
 
+        # TODO(walter-boring) This is to account for the missing FakeConnector
+        # in os-brick 1.6.0 and >
+        connector = None
+        if hasattr(os_brick.initiator.connector, 'FakeConnector'):
+            connector = os_brick.initiator.connector.FakeConnector(None)
+        else:
+            connector = os_brick.initiator.connectors.fake.FakeConnector(None)
+
         attach_info = {
             'device': {'path': '/dev/null'},
             'conn': {'data': {}},
-            'connector': os_brick.initiator.connector.FakeConnector(None)}
+            'connector': connector}
         mock_detach_snapshot = self.mock_object(driver.BaseVD,
                                                 '_detach_snapshot')
         mock_attach_snapshot = self.mock_object(driver.BaseVD,
