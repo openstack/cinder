@@ -849,6 +849,16 @@ class EMCXIODriverISCSITestCase(BaseEMCXIODriverTestCase):
                                             [snapshot_obj])
         self.assertEqual((None, None), res)
 
+    def test_delete_cgsnapshot(self, req):
+        d = self.data
+        snapshot_obj = fake_snapshot.fake_snapshot_obj(d.context)
+        snapshot_obj.consistencygroup_id = d.group['id']
+        self.driver.delete_cgsnapshot(d.context, d.cgsnapshot,
+                                      [snapshot_obj])
+        req.assert_called_once_with('snapshot-sets', 'DELETE', None,
+                                    '192eb39b6c2f420cbae33cfd117f0345192eb39'
+                                    'b6c2f420cbae33cfd117f9876', None, 'v2')
+
     @mock.patch('cinder.objects.snapshot.SnapshotList.get_all_for_cgsnapshot')
     def test_cg_from_src_snapshot(self, get_all_for_cgsnapshot, req):
         req.side_effect = xms_request

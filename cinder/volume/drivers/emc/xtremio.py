@@ -782,7 +782,7 @@ class XtremIOVolumeDriver(san.SanDriver):
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
-        self.client.req('snapshot-sets', fields.SnapshotStatus.DELETED,
+        self.client.req('snapshot-sets', 'DELETE',
                         name=self._get_cgsnap_name(cgsnapshot), ver='v2')
 
         return None, None
