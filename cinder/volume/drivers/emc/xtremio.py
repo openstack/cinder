@@ -45,7 +45,6 @@ from cinder import context
 from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import interface
-from cinder import objects
 from cinder.objects import fields
 from cinder import utils
 from cinder.volume import driver
@@ -779,30 +778,14 @@ class XtremIOVolumeDriver(san.SanDriver):
                 'snapshot-set-name': self._get_cgsnap_name(cgsnapshot)}
         self.client.req('snapshots', 'POST', data, ver='v2')
 
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot['id'])
-
-        for snapshot in snapshots:
-            snapshot.status = fields.SnapshotStatus.AVAILABLE
-
-        model_update = {'status': 'available'}
-
-        return model_update, snapshots
+        return None, None
 
     def delete_cgsnapshot(self, context, cgsnapshot, snapshots):
         """Deletes a cgsnapshot."""
-        self.client.req('snapshot-sets', 'DELETE',
+        self.client.req('snapshot-sets', fields.SnapshotStatus.DELETED,
                         name=self._get_cgsnap_name(cgsnapshot), ver='v2')
 
-        snapshots = objects.SnapshotList().get_all_for_cgsnapshot(
-            context, cgsnapshot['id'])
-
-        for snapshot in snapshots:
-            snapshot.status = fields.SnapshotStatus.DELETED
-
-        model_update = {'status': cgsnapshot.status}
-
-        return model_update, snapshots
+        return None, None
 
     def _get_ig(self, name):
         try:
