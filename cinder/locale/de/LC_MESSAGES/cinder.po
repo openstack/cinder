@@ -10,9 +10,9 @@
 # Monika Wolf <vcomas3@de.ibm.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev522\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev544\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-31 10:23+0000\n"
+"POT-Creation-Date: 2016-09-01 04:08+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6785,10 +6785,6 @@ msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
 msgstr ""
 "Schattenkopie %(snapshot_id)s enthält keine Metadaten mit dem Schlüssel "
 "%(metadata_key)s."
-
-#, python-format
-msgid "Snapshot %s must not be part of a consistency group."
-msgstr "Schattenkopie %s darf nicht Teil einer Konsistenzgruppe sein."
 
 #, python-format
 msgid "Snapshot '%s' doesn't exist on array."
