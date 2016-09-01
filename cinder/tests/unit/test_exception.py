@@ -23,6 +23,20 @@ import six
 import webob.util
 
 
+class ExceptionTestCase(test.TestCase):
+    @staticmethod
+    def _raise_exc(exc):
+        raise exc()
+
+    def test_exceptions_raise(self):
+        # NOTE(dprince): disable format errors since we are not passing kwargs
+        self.flags(fatal_exception_format_errors=False)
+        for name in dir(exception):
+            exc = getattr(exception, name)
+            if isinstance(exc, type):
+                self.assertRaises(exc, self._raise_exc, exc)
+
+
 class CinderExceptionTestCase(test.TestCase):
     def test_default_error_msg(self):
         class FakeCinderException(exception.CinderException):
