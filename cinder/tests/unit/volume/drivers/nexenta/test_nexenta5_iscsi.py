@@ -86,8 +86,8 @@ class TestNexentaISCSIDriver(test.TestCase):
         self.cfg.nexenta_volume = 'pool'
         self.cfg.nexenta_volume_group = 'dsg'
         self.nef_mock = mock.Mock()
-        self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
-                       lambda *_, **__: self.nef_mock)
+        self.mock_object(jsonrpc, 'NexentaJSONProxy',
+                         return_value=self.nef_mock)
         self.drv = iscsi.NexentaISCSIDriver(
             configuration=self.cfg)
         self.drv.db = db

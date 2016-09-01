@@ -809,7 +809,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         vol_ref = {'source-name': vol_path}
         self.driver._check_volume_type = mock.Mock()
         shutil.move = mock.Mock()
-        self.stubs.Set(self.driver, '_execute', mock.Mock())
+        self.mock_object(self.driver, '_execute')
         self.driver._ensure_shares_mounted = mock.Mock()
         self.driver._get_mount_point_for_share = mock.Mock(
             return_value=self.fake_mount_point)

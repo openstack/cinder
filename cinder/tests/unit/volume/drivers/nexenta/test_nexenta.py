@@ -89,8 +89,8 @@ class TestNexentaISCSIDriver(test.TestCase):
         for mod in ['volume', 'zvol', 'iscsitarget', 'appliance',
                     'stmf', 'scsidisk', 'snapshot']:
             setattr(self.nms_mock, mod, mock.Mock())
-        self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
-                       lambda *_, **__: self.nms_mock)
+        self.mock_object(jsonrpc, 'NexentaJSONProxy',
+                         return_value=self.nms_mock)
         self.drv = iscsi.NexentaISCSIDriver(
             configuration=self.cfg)
         self.drv.db = db
@@ -393,8 +393,8 @@ class TestNexentaNfsDriver(test.TestCase):
                     'snapshot', 'netsvc'):
             setattr(self.nms_mock, mod, mock.Mock())
         self.nms_mock.__hash__ = lambda *_, **__: 1
-        self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
-                       lambda *_, **__: self.nms_mock)
+        self.mock_object(jsonrpc, 'NexentaJSONProxy',
+                         return_value=self.nms_mock)
         self.drv = nfs.NexentaNfsDriver(configuration=self.cfg)
         self.drv.shares = {}
         self.drv.share2nms = {}

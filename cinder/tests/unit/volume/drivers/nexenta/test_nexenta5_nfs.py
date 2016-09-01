@@ -79,8 +79,8 @@ class TestNexentaNfsDriver(test.TestCase):
         self.cfg.nas_host = '1.1.1.1'
         self.cfg.nas_share_path = 'pool/share'
         self.nef_mock = mock.Mock()
-        self.stubs.Set(jsonrpc, 'NexentaJSONProxy',
-                       lambda *_, **__: self.nef_mock)
+        self.mock_object(jsonrpc, 'NexentaJSONProxy',
+                         return_value=self.nef_mock)
         self.drv = nfs.NexentaNfsDriver(configuration=self.cfg)
         self.drv.db = db
         self.drv.do_setup(self.ctxt)
