@@ -14,6 +14,7 @@
 
 import eventlet
 from oslo_config import cfg
+from oslo_config import types
 from oslo_log import log as logging
 from oslo_utils import excutils
 import six
@@ -55,7 +56,11 @@ common_opts = [
                secret=True),
     cfg.PortOpt('secondary_sc_api_port',
                 default=3033,
-                help='Secondary Dell API port')
+                help='Secondary Dell API port'),
+    cfg.MultiOpt('excluded_domain_ip',
+                 item_type=types.IPAddress(),
+                 default=None,
+                 help='Domain IP to be excluded from iSCSI returns.')
 ]
 
 LOG = logging.getLogger(__name__)

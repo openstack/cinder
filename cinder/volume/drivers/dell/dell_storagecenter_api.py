@@ -319,6 +319,9 @@ class StorageCenterApiHelper(object):
         # about.
         connection.vfname = self.config.dell_sc_volume_folder
         connection.sfname = self.config.dell_sc_server_folder
+        connection.excluded_domain_ips = self.config.excluded_domain_ip
+        if not connection.excluded_domain_ips:
+            connection.excluded_domain_ips = []
         # Our primary SSN doesn't change
         connection.primaryssn = self.primaryssn
         if self.storage_protocol == 'FC':
@@ -413,6 +416,7 @@ class StorageCenterApi(object):
         self.failed_over = False
         self.vfname = 'openstack'
         self.sfname = 'openstack'
+        self.excluded_domain_ips = []
         self.legacypayloadfilters = False
         self.consisgroups = True
         self.protocol = 'Iscsi'
@@ -1674,19 +1678,20 @@ class StorageCenterApi(object):
                            controller or not.
             :return: Nothing
             """
-            portals.append(address + ':' + six.text_type(port))
-            iqns.append(iqn)
-            luns.append(lun)
+            if self.excluded_domain_ips.count(address) == 0:
+                portals.append(address + ':' + six.text_type(port))
+                iqns.append(iqn)
+                luns.append(lun)
 
-            # We need to point to the best link.
-            # So state active and status up is preferred
-            # but we don't actually need the state to be
-            # up at this point.
-            if pdata['up'] == -1:
-                if active:
-                    pdata['active'] = len(iqns) - 1
-                    if status == 'Up':
-                        pdata['up'] = pdata['active']
+                # We need to point to the best link.
+                # So state active and status up is preferred
+                # but we don't actually need the state to be
+                # up at this point.
+                if pdata['up'] == -1:
+                    if active:
+                        pdata['active'] = len(iqns) - 1
+                        if status == 'Up':
+                            pdata['up'] = pdata['active']
 
         # Start by getting our mappings.
         mappings = self._find_mappings(scvolume)
