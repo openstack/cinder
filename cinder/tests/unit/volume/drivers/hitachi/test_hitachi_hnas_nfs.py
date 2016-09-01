@@ -501,3 +501,86 @@ class HNASNFSDriverTest(test.TestCase):
                          mock.Mock(side_effect=ValueError))
 
         self.driver.unmanage(self.volume)
+
+    def test_manage_existing_snapshot(self):
+        nfs_share = "172.24.49.21:/fs-cinder"
+        nfs_mount = "/opt/stack/data/cinder/mnt/" + fake.SNAPSHOT_ID
+        path = "unmanage-snapshot-" + fake.SNAPSHOT_ID
+        loc = {'provider_location': '172.24.49.21:/fs-cinder'}
+        existing_ref = {'source-name': '172.24.49.21:/fs-cinder/'
+                                       + fake.SNAPSHOT_ID}
+
+        self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
+                         mock.Mock(return_value=(nfs_share, nfs_mount, path)))
+        self.mock_object(backend.HNASSSHBackend, 'check_snapshot_parent',
+                         mock.Mock(return_value=True))
+        self.mock_object(self.driver, '_execute')
+        self.mock_object(backend.HNASSSHBackend, 'get_export_path',
+                         mock.Mock(return_value='fs-cinder'))
+
+        out = self.driver.manage_existing_snapshot(self.snapshot,
+                                                   existing_ref)
+
+        self.assertEqual(loc, out)
+
+    def test_manage_existing_snapshot_not_parent_exception(self):
+        nfs_share = "172.24.49.21:/fs-cinder"
+        nfs_mount = "/opt/stack/data/cinder/mnt/" + fake.SNAPSHOT_ID
+        path = "unmanage-snapshot-" + fake.SNAPSHOT_ID
+
+        existing_ref = {'source-name': '172.24.49.21:/fs-cinder/'
+                                       + fake.SNAPSHOT_ID}
+
+        self.mock_object(self.driver, '_get_share_mount_and_vol_from_vol_ref',
+                         mock.Mock(return_value=(nfs_share, nfs_mount, path)))
+        self.mock_object(backend.HNASSSHBackend, 'check_snapshot_parent',
+                         mock.Mock(return_value=False))
+        self.mock_object(backend.HNASSSHBackend, 'get_export_path',
+                         mock.Mock(return_value='fs-cinder'))
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_snapshot, self.snapshot,
+                          existing_ref)
+
+    def test_manage_existing_snapshot_get_size(self):
+        existing_ref = {
+            'source-name': '172.24.49.21:/fs-cinder/cinder-snapshot',
+        }
+        self.driver._mounted_shares = ['172.24.49.21:/fs-cinder']
+        expected_size = 1
+
+        self.mock_object(self.driver, '_ensure_shares_mounted')
+        self.mock_object(utils, 'resolve_hostname',
+                         mock.Mock(return_value='172.24.49.21'))
+        self.mock_object(base_nfs.NfsDriver, '_get_mount_point_for_share',
+                         mock.Mock(return_value='/mnt/silver'))
+        self.mock_object(os.path, 'isfile',
+                         mock.Mock(return_value=True))
+        self.mock_object(utils, 'get_file_size',
+                         mock.Mock(return_value=expected_size))
+
+        out = self.driver.manage_existing_snapshot_get_size(
+            self.snapshot, existing_ref)
+
+        self.assertEqual(1, out)
+        utils.get_file_size.assert_called_once_with(
+            '/mnt/silver/cinder-snapshot')
+        utils.resolve_hostname.assert_called_with('172.24.49.21')
+
+    def test_unmanage_snapshot(self):
+        path = '/opt/stack/cinder/mnt/826692dfaeaf039b1f4dcc1dacee2c2e'
+        snapshot_name = 'snapshot-' + self.snapshot.id
+        old_path = os.path.join(path, snapshot_name)
+        new_path = os.path.join(path, 'unmanage-' + snapshot_name)
+
+        self.mock_object(self.driver, '_get_mount_point_for_share',
+                         mock.Mock(return_value=path))
+        self.mock_object(self.driver, '_execute')
+
+        self.driver.unmanage_snapshot(self.snapshot)
+
+        self.driver._execute.assert_called_with('mv', old_path, new_path,
+                                                run_as_root=False,
+                                                check_exit_code=True)
+        self.driver._get_mount_point_for_share.assert_called_with(
+            self.snapshot.provider_location)

@@ -79,6 +79,7 @@ class HNASNFSDriver(nfs.NfsDriver):
                        Updated to use versioned objects
                        Changed the class name to HNASNFSDriver
                        Deprecated XML config file
+                       Added support to manage/unmanage snapshots features
     """
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Hitachi_HNAS_CI"
@@ -494,7 +495,8 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         raise exception.ManageExistingInvalidReference(
             existing_ref=vol_ref,
-            reason=_('Volume not found on configured storage backend.'))
+            reason=_('Volume/Snapshot not found on configured storage '
+                     'backend.'))
 
     @cutils.trace
     def manage_existing(self, volume, existing_vol_ref):
@@ -590,33 +592,7 @@ class HNASNFSDriver(nfs.NfsDriver):
         :returns: the size of the volume or raise error
         :raises: VolumeBackendAPIException
         """
-
-        # Attempt to find NFS share, NFS mount, and volume path from vol_ref.
-        (nfs_share, nfs_mount, vol_name
-         ) = self._get_share_mount_and_vol_from_vol_ref(existing_vol_ref)
-
-        LOG.debug("Asked to get size of NFS vol_ref %(ref)s.",
-                  {'ref': existing_vol_ref['source-name']})
-
-        if utils.check_already_managed_volume(vol_name):
-            raise exception.ManageExistingAlreadyManaged(volume_ref=vol_name)
-
-        try:
-            file_path = os.path.join(nfs_mount, vol_name)
-            file_size = float(cutils.get_file_size(file_path)) / units.Gi
-            vol_size = int(math.ceil(file_size))
-        except (OSError, ValueError):
-            exception_message = (_("Failed to manage existing volume "
-                                   "%(name)s, because of error in getting "
-                                   "volume size."),
-                                 {'name': existing_vol_ref['source-name']})
-            LOG.exception(exception_message)
-            raise exception.VolumeBackendAPIException(data=exception_message)
-
-        LOG.debug("Reporting size of NFS volume ref %(ref)s as %(size)d GB.",
-                  {'ref': existing_vol_ref['source-name'], 'size': vol_size})
-
-        return vol_size
+        return self._manage_existing_get_size(existing_vol_ref)
 
     @cutils.trace
     def unmanage(self, volume):
@@ -647,4 +623,112 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         except (OSError, ValueError):
             LOG.exception(_LE("The NFS Volume %(cr)s does not exist."),
-                          {'cr': vol_path})
+                          {'cr': new_path})
+
+    def _manage_existing_get_size(self, existing_ref):
+        # Attempt to find NFS share, NFS mount, and path from vol_ref.
+        (nfs_share, nfs_mount, path
+         ) = self._get_share_mount_and_vol_from_vol_ref(existing_ref)
+
+        try:
+            LOG.debug("Asked to get size of NFS ref %(ref)s.",
+                      {'ref': existing_ref['source-name']})
+
+            file_path = os.path.join(nfs_mount, path)
+            file_size = float(cutils.get_file_size(file_path)) / units.Gi
+            # Round up to next Gb
+            size = int(math.ceil(file_size))
+        except (OSError, ValueError):
+            exception_message = (_("Failed to manage existing volume/snapshot "
+                                   "%(name)s, because of error in getting "
+                                   "its size."),
+                                 {'name': existing_ref['source-name']})
+            LOG.exception(exception_message)
+            raise exception.VolumeBackendAPIException(data=exception_message)
+
+        LOG.debug("Reporting size of NFS ref %(ref)s as %(size)d GB.",
+                  {'ref': existing_ref['source-name'], 'size': size})
+
+        return size
+
+    def _check_snapshot_parent(self, volume, old_snap_name, share):
+
+        volume_name = 'volume-' + volume.id
+        (fs, path, fs_label) = self._get_service(volume)
+        # 172.24.49.34:/nfs_cinder
+
+        export_path = self.backend.get_export_path(share.split(':')[1],
+                                                   fs_label)
+        volume_path = os.path.join(export_path, volume_name)
+
+        return self.backend.check_snapshot_parent(volume_path, old_snap_name,
+                                                  fs_label)
+
+    def manage_existing_snapshot(self, snapshot, existing_ref):
+        # Attempt to find NFS share, NFS mount, and volume path from ref.
+        (nfs_share, nfs_mount, src_snapshot_name
+         ) = self._get_share_mount_and_vol_from_vol_ref(existing_ref)
+
+        LOG.info(_LI("Asked to manage NFS snapshot %(snap)s for volume "
+                     "%(vol)s, with vol ref %(ref)s."),
+                 {'snap': snapshot.id,
+                  'vol': snapshot.volume_id,
+                  'ref': existing_ref['source-name']})
+
+        volume = snapshot.volume
+
+        # Check if the snapshot belongs to the volume
+        real_parent = self._check_snapshot_parent(volume, src_snapshot_name,
+                                                  nfs_share)
+
+        if not real_parent:
+            msg = (_("This snapshot %(snap)s doesn't belong "
+                     "to the volume parent %(vol)s.") %
+                   {'snap': snapshot.id, 'vol': volume.id})
+            raise exception.ManageExistingInvalidReference(
+                existing_ref=existing_ref, reason=msg)
+
+        if src_snapshot_name == snapshot.name:
+            LOG.debug("New Cinder snapshot %(snap)s name matches reference "
+                      "name. No need to rename.", {'snap': snapshot.name})
+        else:
+            src_snap = os.path.join(nfs_mount, src_snapshot_name)
+            dst_snap = os.path.join(nfs_mount, snapshot.name)
+            try:
+                self._try_execute("mv", src_snap, dst_snap, run_as_root=False,
+                                  check_exit_code=True)
+                LOG.info(_LI("Setting newly managed Cinder snapshot name "
+                         "to %(snap)s."), {'snap': snapshot.name})
+                self._set_rw_permissions_for_all(dst_snap)
+            except (OSError, processutils.ProcessExecutionError) as err:
+                msg = (_("Failed to manage existing snapshot "
+                         "%(name)s, because rename operation "
+                         "failed: Error msg: %(msg)s.") %
+                       {'name': existing_ref['source-name'],
+                        'msg': six.text_type(err)})
+                LOG.error(msg)
+                raise exception.VolumeBackendAPIException(data=msg)
+        return {'provider_location': nfs_share}
+
+    def manage_existing_snapshot_get_size(self, snapshot, existing_ref):
+        return self._manage_existing_get_size(existing_ref)
+
+    def unmanage_snapshot(self, snapshot):
+        path = self._get_mount_point_for_share(snapshot.provider_location)
+
+        new_name = "unmanage-" + snapshot.name
+
+        old_path = os.path.join(path, snapshot.name)
+        new_path = os.path.join(path, new_name)
+
+        try:
+            self._execute("mv", old_path, new_path,
+                          run_as_root=False, check_exit_code=True)
+            LOG.info(_LI("The snapshot with path %(old)s is no longer being "
+                         "managed by Cinder. However, it was not deleted and "
+                         "can be found in the new path %(cr)s."),
+                     {'old': old_path, 'cr': new_path})
+
+        except (OSError, ValueError):
+            LOG.exception(_LE("The NFS snapshot %(old)s does not exist."),
+                          {'old': old_path})

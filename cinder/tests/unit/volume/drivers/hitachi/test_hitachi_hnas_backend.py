@@ -212,6 +212,31 @@ Logical units       : No logical units.                               \n\
 Access configuration:                                                 \n\
 "
 
+file_clone_stat = "Clone: /nfs_cinder/cinder-lu                      \n\
+  SnapshotFile: FileHandle[00000000004010000d20116826ffffffffffffff] \n\
+\n\
+  SnapshotFile: FileHandle[00000000004029000d81f26826ffffffffffffff] \n\
+"
+
+file_clone_stat_snap_file1 = "\
+FileHandle[00000000004010000d20116826ffffffffffffff]                  \n\n\
+References:                                                           \n\
+  Clone: /nfs_cinder/cinder-lu                                        \n\
+  Clone: /nfs_cinder/snapshot-lu-1                                    \n\
+  Clone: /nfs_cinder/snapshot-lu-2                                    \n\
+"
+
+file_clone_stat_snap_file2 = "\
+FileHandle[00000000004010000d20116826ffffffffffffff]                  \n\n\
+References:                                                           \n\
+  Clone: /nfs_cinder/volume-not-used                                  \n\
+  Clone: /nfs_cinder/snapshot-1                                       \n\
+  Clone: /nfs_cinder/snapshot-2                                       \n\
+"
+
+not_a_clone = "\
+file-clone-stat: failed to get predecessor snapshot-files: File is not a clone"
+
 
 class HDSHNASBackendTest(test.TestCase):
 
@@ -782,3 +807,68 @@ Thin  ThinSize  ThinAvail               FS Type\n\
 
         self.hnas_backend.create_target('cinder-default', 'fs-cinder',
                                         'pxr6U37LZZJBoMc')
+
+    def test_check_snapshot_parent_true(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(
+                             side_effect=[(evsfs_list, ''),
+                                          (file_clone_stat, ''),
+                                          (file_clone_stat_snap_file1, ''),
+                                          (file_clone_stat_snap_file2, '')]))
+        out = self.hnas_backend.check_snapshot_parent('cinder-lu',
+                                                      'snapshot-lu-1',
+                                                      'fs-cinder')
+
+        self.assertTrue(out)
+        self.hnas_backend._run_cmd.assert_called_with('console-context',
+                                                      '--evs', '2',
+                                                      'file-clone-stat'
+                                                      '-snapshot-file', '-f',
+                                                      'fs-cinder',
+                                                      '00000000004010000d2011'
+                                                      '6826ffffffffffffff]')
+
+    def test_check_snapshot_parent_false(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(
+                             side_effect=[(evsfs_list, ''),
+                                          (file_clone_stat, ''),
+                                          (file_clone_stat_snap_file1, ''),
+                                          (file_clone_stat_snap_file2, '')]))
+        out = self.hnas_backend.check_snapshot_parent('cinder-lu',
+                                                      'snapshot-lu-3',
+                                                      'fs-cinder')
+
+        self.assertFalse(out)
+        self.hnas_backend._run_cmd.assert_called_with('console-context',
+                                                      '--evs', '2',
+                                                      'file-clone-stat'
+                                                      '-snapshot-file', '-f',
+                                                      'fs-cinder',
+                                                      '00000000004029000d81f26'
+                                                      '826ffffffffffffff]')
+
+    def test_check_a_not_cloned_file(self):
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(
+                             side_effect=[(evsfs_list, ''),
+                                          (not_a_clone, '')]))
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.hnas_backend.check_snapshot_parent,
+                          'cinder-lu', 'snapshot-name', 'fs-cinder')
+
+    def test_get_export_path(self):
+        export_out = '/export01-husvm'
+
+        self.mock_object(self.hnas_backend, '_run_cmd',
+                         mock.Mock(side_effect=[(evsfs_list, ''),
+                                                (nfs_export, '')]))
+
+        out = self.hnas_backend.get_export_path(export_out, 'fs-cinder')
+
+        self.assertEqual(export_out, out)
+        self.hnas_backend._run_cmd.assert_called_with('console-context',
+                                                      '--evs', '2',
+                                                      'nfs-export', 'list',
+                                                      export_out)
