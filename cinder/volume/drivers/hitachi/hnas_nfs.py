@@ -80,6 +80,7 @@ class HNASNFSDriver(nfs.NfsDriver):
                        Changed the class name to HNASNFSDriver
                        Deprecated XML config file
                        Added support to manage/unmanage snapshots features
+                       Fixed driver stats reporting
     """
     # ThirdPartySystems wiki page
     CI_WIKI_NAME = "Hitachi_HNAS_CI"
@@ -274,12 +275,13 @@ class HNASNFSDriver(nfs.NfsDriver):
 
         :param refresh: if it is True, update the stats first.
         :returns: dictionary with the stats from HNAS
-        _stats['pools']={
+        _stats['pools'] = {
             'total_capacity_gb': total size of the pool,
             'free_capacity_gb': the available size,
-            'allocated_capacity_gb': current allocated size,
             'QoS_support': bool to indicate if QoS is supported,
-            'reserved_percentage': percentage of size reserved
+            'reserved_percentage': percentage of size reserved,
+            'max_over_subscription_ratio': oversubscription rate,
+            'thin_provisioning_support': thin support (True),
             }
         """
         LOG.info(_LI("Getting volume stats"))
@@ -289,13 +291,17 @@ class HNASNFSDriver(nfs.NfsDriver):
         _stats["driver_version"] = HNAS_NFS_VERSION
         _stats["storage_protocol"] = 'NFS'
 
+        max_osr = self.max_over_subscription_ratio
+
         for pool in self.pools:
-            capacity, free, used = self._get_capacity_info(pool['fs'])
+            capacity, free, provisioned = self._get_capacity_info(pool['fs'])
             pool['total_capacity_gb'] = capacity / float(units.Gi)
             pool['free_capacity_gb'] = free / float(units.Gi)
-            pool['allocated_capacity_gb'] = used / float(units.Gi)
+            pool['provisioned_capacity_gb'] = provisioned / float(units.Gi)
             pool['QoS_support'] = 'False'
-            pool['reserved_percentage'] = 0
+            pool['reserved_percentage'] = self.reserved_percentage
+            pool['max_over_subscription_ratio'] = max_osr
+            pool['thin_provisioning_support'] = True
 
         _stats['pools'] = self.pools
 

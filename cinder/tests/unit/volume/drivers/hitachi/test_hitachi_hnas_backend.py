@@ -73,6 +73,15 @@ Thin  ThinSize  ThinAvail               FS Type\n\
   No                       32 KB,WFS-2,128 DSBs\n\
 \n"
 
+df_f_tb = "\n\
+ID       Label   EVS    Size          Used  Snapshots  Deduped         Avail  \
+Thin  ThinSize  ThinAvail               FS Type\n\
+----  ---------- ---  ------  ------------  ---------  -------  ------------  \
+----  --------  ---------  --------------------\n\
+1025  fs-cinder   2  250 TB  21.4 TB (9%)   0 B (0%)       NA  228 TB (91%)  \
+  No                       32 KB,WFS-2,128 DSBs\n\
+\n"
+
 nfs_export = "\n\
 Export name: /export01-husvm                \n\
 Export path: /export01-husvm                \n\
@@ -162,6 +171,9 @@ Size   : 2 TB                         \n\
 File System : fs-cinder               \n\
 File System Mounted : YES             \n\
 Logical Unit Mounted: No"
+
+hnas_fs_list = "%(l1)s\n\n%(l2)s\n\n " % {'l1': iscsilu_list,
+                                          'l2': iscsilu_list_tb}
 
 add_targetsecret = "Target created successfully."
 
@@ -454,7 +466,9 @@ class HDSHNASBackendTest(test.TestCase):
 
     def test_get_fs_info(self):
         self.mock_object(self.hnas_backend, '_run_cmd',
-                         mock.Mock(return_value=(df_f, '')))
+                         mock.Mock(side_effect=[(df_f, ''),
+                                                (evsfs_list, ''),
+                                                (hnas_fs_list, '')]))
 
         out = self.hnas_backend.get_fs_info('fs-cinder')
 
@@ -462,7 +476,7 @@ class HDSHNASBackendTest(test.TestCase):
         self.assertEqual('fs-cinder', out['label'])
         self.assertEqual('228', out['available_size'])
         self.assertEqual('250', out['total_size'])
-        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+        self.assertEqual(2050.0, out['provisioned_capacity'])
 
     def test_get_fs_empty_return(self):
         self.mock_object(self.hnas_backend, '_run_cmd',
@@ -473,59 +487,48 @@ class HDSHNASBackendTest(test.TestCase):
 
     def test_get_fs_info_single_evs(self):
         self.mock_object(self.hnas_backend, '_run_cmd',
-                         mock.Mock(return_value=(df_f_single_evs, '')))
+                         mock.Mock(side_effect=[(df_f_single_evs, ''),
+                                                (evsfs_list, ''),
+                                                (hnas_fs_list, '')]))
 
         out = self.hnas_backend.get_fs_info('fs-cinder')
 
         self.assertEqual('fs-cinder', out['label'])
         self.assertEqual('228', out['available_size'])
         self.assertEqual('250', out['total_size'])
-        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+        self.assertEqual(2050.0, out['provisioned_capacity'])
 
     def test_get_fs_tb(self):
         available_size = float(228 * 1024 ** 2)
         total_size = float(250 * 1024 ** 2)
 
-        df_f_tb = "\n\
-ID       Label   EVS    Size          Used  Snapshots  Deduped         Avail  \
-Thin  ThinSize  ThinAvail               FS Type\n\
-----  ---------- ---  ------  ------------  ---------  -------  ------------  \
-----  --------  ---------  --------------------\n\
-1025  fs-cinder   2  250 TB  21.4 TB (9%)   0 B (0%)       NA  228 TB (91%)  \
-  No                       32 KB,WFS-2,128 DSBs\n\
-\n"
         self.mock_object(self.hnas_backend, '_run_cmd',
-                         mock.Mock(return_value=(df_f_tb, '')))
+                         mock.Mock(side_effect=[(df_f_tb, ''),
+                                                (evsfs_list, ''),
+                                                (hnas_fs_list, '')]))
 
         out = self.hnas_backend.get_fs_info('fs-cinder')
 
-        self.assertEqual('2', out['evs_id'])
         self.assertEqual('fs-cinder', out['label'])
         self.assertEqual(str(available_size), out['available_size'])
         self.assertEqual(str(total_size), out['total_size'])
-        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+        self.assertEqual(2050.0, out['provisioned_capacity'])
 
     def test_get_fs_single_evs_tb(self):
         available_size = float(228 * 1024 ** 2)
         total_size = float(250 * 1024 ** 2)
 
-        df_f_tb = "\n\
-ID       Label      Size          Used  Snapshots  Deduped         Avail  \
-Thin  ThinSize  ThinAvail               FS Type\n\
-----  ----------  ------  ------------  ---------  -------  ------------  \
-----  --------  ---------  --------------------\n\
-1025  fs-cinder  250 TB  21.4 TB (9%)   0 B (0%)       NA  228 TB (91%)  \
-  No                       32 KB,WFS-2,128 DSBs\n\
-\n"
         self.mock_object(self.hnas_backend, '_run_cmd',
-                         mock.Mock(return_value=(df_f_tb, '')))
+                         mock.Mock(side_effect=[(df_f_tb, ''),
+                                                (evsfs_list, ''),
+                                                (hnas_fs_list, '')]))
 
         out = self.hnas_backend.get_fs_info('fs-cinder')
 
         self.assertEqual('fs-cinder', out['label'])
         self.assertEqual(str(available_size), out['available_size'])
         self.assertEqual(str(total_size), out['total_size'])
-        self.hnas_backend._run_cmd.assert_called_with('df', '-af', 'fs-cinder')
+        self.assertEqual(2050.0, out['provisioned_capacity'])
 
     def test_create_lu(self):
         self.mock_object(self.hnas_backend, '_run_cmd',

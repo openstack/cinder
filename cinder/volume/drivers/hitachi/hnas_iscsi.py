@@ -93,6 +93,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                        Updated to use versioned objects
                        Changed the class name to HNASISCSIDriver
                        Deprecated XML config file
+                       Fixed driver stats reporting
 """
 
     # ThirdPartySystems wiki page
@@ -101,6 +102,7 @@ class HNASISCSIDriver(driver.ISCSIDriver):
 
     def __init__(self, *args, **kwargs):
         """Initializes and reads different config parameters."""
+        super(HNASISCSIDriver, self).__init__(*args, **kwargs)
         self.configuration = kwargs.get('configuration', None)
         self.context = {}
         self.config = {}
@@ -126,7 +128,11 @@ class HNASISCSIDriver(driver.ISCSIDriver):
                     service_parameters,
                     optional_parameters)
 
-        super(HNASISCSIDriver, self).__init__(*args, **kwargs)
+            self.reserved_percentage = (
+                self.configuration.safe_get('reserved_percentage'))
+            self.max_osr = (
+                self.configuration.safe_get('max_over_subscription_ratio'))
+
         self.backend = hnas_backend.HNASSSHBackend(self.config)
 
     def _get_service(self, volume):
@@ -274,6 +280,15 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         """Get FS stats from HNAS.
 
         :returns: dictionary with the stats from HNAS
+        _stats['pools'] = {
+            'total_capacity_gb': total size of the pool,
+            'free_capacity_gb': the available size,
+            'QoS_support': bool to indicate if QoS is supported,
+            'reserved_percentage': percentage of size reserved,
+            'max_over_subscription_ratio': oversubscription rate,
+            'thin_provisioning_support': thin support (True),
+            'reserved_percentage': reserved percentage
+            }
         """
         hnas_stat = {}
         be_name = self.configuration.safe_get('volume_backend_name')
@@ -281,17 +296,17 @@ class HNASISCSIDriver(driver.ISCSIDriver):
         hnas_stat["vendor_name"] = 'Hitachi'
         hnas_stat["driver_version"] = HNAS_ISCSI_VERSION
         hnas_stat["storage_protocol"] = 'iSCSI'
-        hnas_stat['reserved_percentage'] = 0
 
         for pool in self.pools:
             fs_info = self.backend.get_fs_info(pool['fs'])
-
+            pool['provisioned_capacity_gb'] = fs_info['provisioned_capacity']
             pool['total_capacity_gb'] = (float(fs_info['total_size']))
             pool['free_capacity_gb'] = (
                 float(fs_info['total_size']) - float(fs_info['used_size']))
-            pool['allocated_capacity_gb'] = (float(fs_info['total_size']))
             pool['QoS_support'] = 'False'
-            pool['reserved_percentage'] = 0
+            pool['reserved_percentage'] = self.reserved_percentage
+            pool['max_over_subscription_ratio'] = self.max_osr
+            pool['thin_provisioning_support'] = True
 
         hnas_stat['pools'] = self.pools
 

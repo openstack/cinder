@@ -220,6 +220,20 @@ class HNASSSHBackend(object):
                 fs_info['available_size'] = _convert_size(
                     fs_info['available_size'])
 
+        # Get the iSCSI LUs in the FS
+        evs_id = self.get_evs(fs_label)
+        out, err = self._run_cmd('console-context', '--evs', evs_id,
+                                 'iscsi-lu', 'list')
+        all_lus = [self._parse_lu_info(lu_raw)
+                   for lu_raw in out.split('\n\n')[:-1]]
+
+        provisioned_cap = 0
+        for lu in all_lus:
+            if lu['filesystem'] == fs_label:
+                provisioned_cap += lu['size']
+
+        fs_info['provisioned_capacity'] = provisioned_cap
+
         LOG.debug("File system info of %(fs)s (sizes in GB): %(info)s.",
                   {'fs': fs_label, 'info': fs_info})
 
@@ -613,6 +627,29 @@ class HNASSSHBackend(object):
 
         return lu_info
 
+    def _parse_lu_info(self, output):
+        lu_info = {}
+        if 'does not exist.' not in output:
+            aux = output.split('\n')
+            lu_info['name'] = aux[0].split(':')[1].strip()
+            lu_info['comment'] = aux[1].split(':')[1].strip()
+            lu_info['path'] = aux[2].split(':')[1].strip()
+            lu_info['size'] = aux[3].split(':')[1].strip()
+            lu_info['filesystem'] = aux[4].split(':')[1].strip()
+            lu_info['fs_mounted'] = aux[5].split(':')[1].strip()
+            lu_info['lu_mounted'] = aux[6].split(':')[1].strip()
+
+            if 'TB' in lu_info['size']:
+                sz_convert = float(lu_info['size'].split()[0]) * units.Ki
+                lu_info['size'] = sz_convert
+            elif 'MB' in lu_info['size']:
+                sz_convert = float(lu_info['size'].split()[0]) / units.Ki
+                lu_info['size'] = sz_convert
+            else:
+                lu_info['size'] = float(lu_info['size'].split()[0])
+
+        return lu_info
+
     def get_existing_lu_info(self, lu_name, fs_label=None, evs_id=None):
         """Gets the information for the specified Logical Unit.
 
@@ -635,30 +672,14 @@ class HNASSSHBackend(object):
             (mounted or not)
             }
         """
-        lu_info = {}
+
         if evs_id is None:
             evs_id = self.get_evs(fs_label)
 
         lu_name = "'{}'".format(lu_name)
         out, err = self._run_cmd("console-context", "--evs", evs_id,
                                  'iscsi-lu', 'list', lu_name)
-
-        if 'does not exist.' not in out:
-            aux = out.split('\n')
-            lu_info['name'] = aux[0].split(':')[1].strip()
-            lu_info['comment'] = aux[1].split(':')[1].strip()
-            lu_info['path'] = aux[2].split(':')[1].strip()
-            lu_info['size'] = aux[3].split(':')[1].strip()
-            lu_info['filesystem'] = aux[4].split(':')[1].strip()
-            lu_info['fs_mounted'] = aux[5].split(':')[1].strip()
-            lu_info['lu_mounted'] = aux[6].split(':')[1].strip()
-
-            if 'TB' in lu_info['size']:
-                sz_convert = float(lu_info['size'].split()[0]) * units.Ki
-                lu_info['size'] = sz_convert
-            else:
-                lu_info['size'] = float(lu_info['size'].split()[0])
-
+        lu_info = self._parse_lu_info(out)
         LOG.debug('get_existing_lu_info: LU info: %(lu)s', {'lu': lu_info})
 
         return lu_info
