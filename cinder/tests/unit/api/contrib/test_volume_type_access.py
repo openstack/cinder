@@ -115,10 +115,10 @@ class VolumeTypeAccessTest(test.TestCase):
         self.type_action_controller = type_access.VolumeTypeActionController()
         self.req = FakeRequest()
         self.context = self.req.environ['cinder.context']
-        self.stubs.Set(db, 'volume_type_get',
-                       fake_volume_type_get)
-        self.stubs.Set(db, 'volume_type_get_all',
-                       fake_volume_type_get_all)
+        self.mock_object(db, 'volume_type_get',
+                         fake_volume_type_get)
+        self.mock_object(db, 'volume_type_get_all',
+                         fake_volume_type_get_all)
 
     def assertVolumeTypeListEqual(self, expected, observed):
         self.assertEqual(len(expected), len(observed))
@@ -152,7 +152,7 @@ class VolumeTypeAccessTest(test.TestCase):
 
         def fake_authorize(context, target=None, action=None):
             raise exception.PolicyNotAuthorized(action='index')
-        self.stubs.Set(type_access, 'authorize', fake_authorize)
+        self.mock_object(type_access, 'authorize', fake_authorize)
 
         self.assertRaises(exception.PolicyNotAuthorized,
                           self.type_access_controller.index,
@@ -286,11 +286,11 @@ class VolumeTypeAccessTest(test.TestCase):
                          resp.obj['volume_type'])
 
     def test_add_project_access(self):
-        def stub_add_volume_type_access(context, type_id, project_id):
+        def fake_add_volume_type_access(context, type_id, project_id):
             self.assertEqual(fake.VOLUME_TYPE4_ID, type_id, "type_id")
             self.assertEqual(PROJ2_UUID, project_id, "project_id")
-        self.stubs.Set(db, 'volume_type_access_add',
-                       stub_add_volume_type_access)
+        self.mock_object(db, 'volume_type_access_add',
+                         fake_add_volume_type_access)
         body = {'addProjectAccess': {'project': PROJ2_UUID}}
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID),
@@ -309,11 +309,11 @@ class VolumeTypeAccessTest(test.TestCase):
                           req, fake.VOLUME_TYPE3_ID, body)
 
     def test_add_project_access_with_already_added_access(self):
-        def stub_add_volume_type_access(context, type_id, project_id):
+        def fake_add_volume_type_access(context, type_id, project_id):
             raise exception.VolumeTypeAccessExists(volume_type_id=type_id,
                                                    project_id=project_id)
-        self.stubs.Set(db, 'volume_type_access_add',
-                       stub_add_volume_type_access)
+        self.mock_object(db, 'volume_type_access_add',
+                         fake_add_volume_type_access)
         body = {'addProjectAccess': {'project': PROJ2_UUID}}
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID), use_admin_context=True)
@@ -322,11 +322,11 @@ class VolumeTypeAccessTest(test.TestCase):
                           req, fake.VOLUME_TYPE3_ID, body)
 
     def test_remove_project_access_with_bad_access(self):
-        def stub_remove_volume_type_access(context, type_id, project_id):
+        def fake_remove_volume_type_access(context, type_id, project_id):
             raise exception.VolumeTypeAccessNotFound(volume_type_id=type_id,
                                                      project_id=project_id)
-        self.stubs.Set(db, 'volume_type_access_remove',
-                       stub_remove_volume_type_access)
+        self.mock_object(db, 'volume_type_access_remove',
+                         fake_remove_volume_type_access)
         body = {'removeProjectAccess': {'project': PROJ2_UUID}}
         req = fakes.HTTPRequest.blank('/v2/%s/types/%s/action' % (
             fake.PROJECT_ID, fake.VOLUME_TYPE3_ID), use_admin_context=True)

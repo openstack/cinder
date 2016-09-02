@@ -445,7 +445,7 @@ class VolumeTransferAPITestCase(test.TestCase):
                                                             consumed='2',
                                                             quota='3')
 
-        self.stubs.Set(
+        self.mock_object(
             cinder.transfer.API,
             'accept',
             fake_transfer_api_accept_throwing_VolumeSizeExceedsAvailableQuota)
@@ -480,8 +480,8 @@ class VolumeTransferAPITestCase(test.TestCase):
                                                                   volume_id):
             raise exception.VolumeLimitExceeded(allowed=1)
 
-        self.stubs.Set(cinder.transfer.API, 'accept',
-                       fake_transfer_api_accept_throwing_VolumeLimitExceeded)
+        self.mock_object(cinder.transfer.API, 'accept',
+                         fake_transfer_api_accept_throwing_VolumeLimitExceeded)
 
         volume_id = self._create_volume()
         transfer = self._create_transfer(volume_id)
