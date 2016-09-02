@@ -1287,6 +1287,7 @@ class StorageCenterApi(object):
         best for Red Hat and Ubuntu.  So we use that.
 
         :param osname: The name of the OS to look for.
+        :param ssn: ssn of the backend SC to use. Default if -1.
         :returns: InstanceId of the ScServerOperatingSystem object.
         """
         ssn = self._vet_ssn(ssn)
@@ -1306,19 +1307,22 @@ class StorageCenterApi(object):
 
         return None
 
-    def create_server(self, wwnlist, ssn=-1):
+    def create_server(self, wwnlist, serveros, ssn=-1):
         """Creates a server with multiple WWNS associated with it.
 
         Same as create_server except it can take a list of HBAs.
 
         :param wwnlist: A list of FC WWNs or iSCSI IQNs associated with this
                         server.
+        :param serveros: Name of server OS to use when creating the server.
+        :param ssn: ssn of the backend SC to use. Default if -1.
         :returns: Dell server object.
         """
         # Find our folder or make it
         folder = self._find_server_folder(True, ssn)
         # Create our server.
-        scserver = self._create_server('Server_' + wwnlist[0], folder, ssn)
+        scserver = self._create_server('Server_' + wwnlist[0], folder,
+                                       serveros, ssn)
         if not scserver:
             return None
         # Add our HBAs.
@@ -1331,7 +1335,7 @@ class StorageCenterApi(object):
                     return None
         return scserver
 
-    def _create_server(self, servername, folder, ssn):
+    def _create_server(self, servername, folder, serveros, ssn):
         ssn = self._vet_ssn(ssn)
 
         LOG.info(_LI('Creating server %s'), servername)
@@ -1341,7 +1345,9 @@ class StorageCenterApi(object):
         payload['Notes'] = self.notes
         # We pick Red Hat Linux 6.x because it supports multipath and
         # will attach luns to paths as they are found.
-        scserveros = self._find_serveros('Red Hat Linux 6.x', ssn)
+        scserveros = self._find_serveros(serveros, ssn)
+        if not scserveros:
+            scserveros = self._find_serveros(ssn=ssn)
         if scserveros is not None:
             payload['OperatingSystem'] = scserveros
 
@@ -1494,7 +1500,6 @@ class StorageCenterApi(object):
         LOG.info(_LI('Volume mappings for %(name)s: %(mappings)s'),
                  {'name': scvolume.get('name'),
                   'mappings': mappings})
-
         return mappings
 
     def _find_mapping_profiles(self, scvolume):

@@ -94,7 +94,8 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
 
                 # No? Create it.
                 if scserver is None:
-                    scserver = api.create_server(wwpns)
+                    scserver = api.create_server(
+                        wwpns, self.configuration.dell_server_os)
                 # Find the volume on the storage center.
                 scvolume = api.find_volume(volume_name, provider_id, islivevol)
                 if scserver is not None and scvolume is not None:
@@ -164,7 +165,8 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
         # No? Create it.
         if secondary is None:
             secondary = api.create_server(
-                wwns, sclivevolume['secondaryScSerialNumber'])
+                wwns, self.configuration.dell_server_os,
+                sclivevolume['secondaryScSerialNumber'])
         if secondary:
             if api.map_secondary_volume(sclivevolume, secondary):
                 # Get mappings.
