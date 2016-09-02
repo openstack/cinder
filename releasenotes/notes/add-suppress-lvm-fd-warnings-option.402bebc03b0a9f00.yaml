@@ -1,0 +1,17 @@
+---
+upgrade:
+    - |
+      In certain environments (Kubernetes for example) indirect calls to the LVM
+      commands result in file descriptor leak warning messages which in turn cause
+      the process_execution method to raise and exception.
+
+      To accommodate these environments, and to maintain backward compatibility
+      in Newton we add a ``lvm_suppress_fd_warnings`` bool config to the LVM driver.
+      Setting this to True will append the LVM env vars to include the variable
+      ``LVM_SUPPRESS_FD_WARNINGS=1``.
+
+      This is made an optional configuration because it only applies to very specific
+      environments.  If we were to make this global that would require a rootwrap/privsep
+      update that could break compatibility when trying to do rolling upgrades of the
+      volume service.
+
