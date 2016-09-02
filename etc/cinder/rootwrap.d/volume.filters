@@ -16,11 +16,24 @@ vgs: EnvFilter, env, root, LC_ALL=C, vgs
 lvs: EnvFilter, env, root, LC_ALL=C, lvs
 lvdisplay: EnvFilter, env, root, LC_ALL=C, lvdisplay
 
-# LVM conf var
+# -LVM related show commands with suppress fd warnings
+pvs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
+vgs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
+lvs_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
+lvdisplay_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
+
+
+# -LVM related show commands conf var
 pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, pvs
 vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, vgs
 lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvs
 lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvdisplay
+
+# -LVM conf var with suppress fd_warnings
+pvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, pvs
+vgs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, vgs
+lvs_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvs
+lvdisplay_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvdisplay
 
 # os-brick library commands
 # os_brick.privileged.run_as_root oslo.privsep context
@@ -40,6 +53,8 @@ vgcreate: CommandFilter, vgcreate, root
 # cinder/brick/local_dev/lvm.py: 'lvcreate', '-L', ...
 lvcreate: EnvFilter, env, root, LC_ALL=C, lvcreate
 lvcreate_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvcreate
+lvcreate_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvcreate
+lvcreate_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LVM_SUPPRESS_FD_WARNINGS=, LC_ALL=C, lvcreate
 
 # cinder/volume/driver.py: 'dd', 'if=%s' % srcstr, 'of=%s' % deststr,...
 dd: CommandFilter, dd, root
@@ -54,6 +69,8 @@ lvrename: CommandFilter, lvrename, root
 # cinder/brick/local_dev/lvm.py: 'lvextend', '-L' '%(new_size)s', '%(thin_pool)s' ...
 lvextend: EnvFilter, env, root, LC_ALL=C, lvextend
 lvextend_lvmconf: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, lvextend
+lvextend_fdwarn: EnvFilter, env, root, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
+lvextend_lvmconf_fdwarn: EnvFilter, env, root, LVM_SYSTEM_DIR=, LC_ALL=C, LVM_SUPPRESS_FD_WARNINGS=, lvextend
 
 # cinder/brick/local_dev/lvm.py: 'lvchange -a y -K <lv>'
 lvchange: CommandFilter, lvchange, root
