@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev544\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev566\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-01 04:08+0000\n"
+"POT-Creation-Date: 2016-09-02 02:50+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-08-31 02:37+0000\n"
+"PO-Revision-Date: 2016-09-01 02:11+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -308,6 +308,9 @@ msgstr "snap_info の書き込み時には 'active' が存在しなければな�
 
 msgid "'consistencygroup_id' must be specified"
 msgstr "'consistencygroup_id' を指定する必要があります。"
+
+msgid "'group_id' must be specified"
+msgstr "'group_id' の指定は必須です"
 
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info' の解析に失敗しました。"
@@ -1428,6 +1431,14 @@ msgstr ""
 "ソースから整合性グループ  %(name)s を作成するために、'cgsnapshot_id' または "
 "'source_cgid' の両方を提供することができません。"
 
+#, python-format
+msgid ""
+"Cannot provide both 'group_snapshot_id' and 'source_group_id' to create "
+"group %(name)s from source."
+msgstr ""
+"ソースからグループ  %(name)s を作成するために、 'group_snapshot_id' または "
+"'source_group_id' の両方を提供することができません。"
+
 msgid "Cannot register resource"
 msgstr "リソースを登録できません。"
 
@@ -2404,6 +2415,14 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Either 'group_snapshot_id' or 'source_group_id' must be provided to create "
+"group %(name)s from source."
+msgstr ""
+"ソースからグループ  %(name)s を作成するには、 'group_snapshot_id'  または "
+"'source_group_id' を指定する必要があります。"
+
+#, python-format
+msgid ""
 "Either SLO: %(slo)s or workload %(workload)s is invalid. Examine previous "
 "error statement for valid values."
 msgstr ""
@@ -3077,6 +3096,10 @@ msgstr "cgsnapshot %s を作成中にエラーが発生しました。"
 #, python-format
 msgid "Error occurred when deleting cgsnapshot %s."
 msgstr "cgsnapshot %s を削除中にエラーが発生しました。"
+
+#, python-format
+msgid "Error occurred when deleting group snapshot %s."
+msgstr "グループスナップショット %s を削除中にエラーが発生しました。"
 
 #, python-format
 msgid "Error occurred when updating consistency group %s."
@@ -6353,12 +6376,20 @@ msgid "No good iscsi portals found for %s."
 msgstr "%s の正しい iscsi ポータルが見つかりません。"
 
 #, python-format
+msgid "No group snapshot with id %s"
+msgstr "id %s のグループスナップショットは存在しません。"
+
+#, python-format
 msgid "No group with id %s"
 msgstr "ID %s のグループは存在しません。"
 
 #, python-format
 msgid "No host to create consistency group %s."
 msgstr "整合性グループ %s を作成するためのホストがありません。"
+
+#, python-format
+msgid "No host to create group %s."
+msgstr "グループ %s を作成するためのホストがありません。"
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "ターゲット配列に iSCSI に対応するポートがありません。"
@@ -7983,14 +8014,6 @@ msgstr "フェイルオーバーされたボリュームを削除することが
 #, python-format
 msgid "The following elements are required: %s"
 msgstr "次の要素が必要です: %s"
-
-#, python-format
-msgid ""
-"The following migrations have a downgrade, which are not allowed: \n"
-"\t%s"
-msgstr ""
-"以下の移行にはダウングレードがありますが、これは許容されません: \n"
-"\t%s"
 
 msgid ""
 "The given pool info must include the storage pool and naming start with "
@@ -10910,6 +10933,9 @@ msgstr ""
 "gpfs_images_share_mode は copy_on_write に設定されていますが、%(vol)s と "
 "%(img)s は異なるファイルセットに属しています。"
 
+msgid "group_snapshots assigned"
+msgstr "割り当てられたグループスナップショット"
+
 #, python-format
 msgid "group_type must be provided to create group %(name)s."
 msgstr ""
@@ -11385,6 +11411,9 @@ msgstr ""
 
 msgid "volume_type_id cannot be None"
 msgstr "volume_type_id を None に設定することはできません。"
+
+msgid "volume_types assigned"
+msgstr "割り当てられたボリュームタイプ"
 
 #, python-format
 msgid "volume_types must be provided to create consistency group %(name)s."

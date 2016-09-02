@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev522\n"
+"Project-Id-Version: cinder 9.0.0.0b3.dev566\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-31 10:23+0000\n"
+"POT-Creation-Date: 2016-09-02 02:51+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -3045,10 +3045,6 @@ msgstr "extend_volume, 사용된 풀 이름: %s, 메소드를 종료합니다."
 #, python-format
 msgid "extend_volume, volume id: %s, Enter method."
 msgstr "extend_volume, 볼륨 id: %s, 메소드를 입력합니다."
-
-#, python-format
-msgid "free capacity of pool %(pool)s is: %(free)s, total capacity: %(total)s."
-msgstr "풀 %(pool)s의 사용 가능한 용량: %(free)s, 총 용량: %(total)s."
 
 #, python-format
 msgid "igroup %(grp)s found for initiator %(iname)s"
