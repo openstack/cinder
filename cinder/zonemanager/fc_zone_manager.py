@@ -37,7 +37,7 @@ from oslo_utils import importutils
 import six
 
 from cinder import exception
-from cinder.i18n import _, _LI
+from cinder.i18n import _, _LE, _LI, _LW
 from cinder.volume import configuration as config
 from cinder.zonemanager import fc_common
 import cinder.zonemanager.fczm_constants as zone_constant
@@ -61,7 +61,16 @@ zone_manager_opts = [
     cfg.StrOpt('fc_san_lookup_service',
                default='cinder.zonemanager.drivers.brocade'
                '.brcd_fc_san_lookup_service.BrcdFCSanLookupService',
-               help='FC SAN Lookup Service')
+               help='FC SAN Lookup Service'),
+    cfg.BoolOpt('enable_unsupported_driver',
+                default=False,
+                help="Set this to True when you want to allow an unsupported "
+                     "zone manager driver to start.  Drivers that haven't "
+                     "maintained a working CI system and testing are marked "
+                     "as unsupported until CI is working again.  This also "
+                     "marks a driver as deprecated and may be removed in the "
+                     "next release."),
+
 ]
 
 CONF = cfg.CONF
@@ -81,6 +90,7 @@ class ZoneManager(fc_common.FCCommon):
 
     VERSION = "1.0.2"
     driver = None
+    _initialized = False
     fabric_names = []
 
     def __new__(class_, *args, **kwargs):
@@ -94,6 +104,7 @@ class ZoneManager(fc_common.FCCommon):
 
         self.configuration = config.Configuration(zone_manager_opts,
                                                   'fc-zone-manager')
+        self.set_initialized(False)
         self._build_driver()
 
     def _build_driver(self):
@@ -102,10 +113,51 @@ class ZoneManager(fc_common.FCCommon):
                   {'driver': zone_driver})
 
         zm_config = config.Configuration(zone_manager_opts, 'fc-zone-manager')
-        # Initialize vendor specific implementation of  FCZoneDriver
+        # Initialize vendor specific implementation of FCZoneDriver
         self.driver = importutils.import_object(
             zone_driver,
             configuration=zm_config)
+
+        if not self.driver.supported:
+            self._log_unsupported_driver_warning()
+
+            if not self.configuration.enable_unsupported_driver:
+                LOG.error(_LE("Unsupported drivers are disabled."
+                              " You can re-enable by adding "
+                              "enable_unsupported_driver=True to the "
+                              "fc-zone-manager section in cinder.conf"),
+                          resource={'type': 'zone_manager',
+                                    'id': self.__class__.__name__})
+                return
+
+        self.set_initialized(True)
+
+    @property
+    def initialized(self):
+        return self._initialized
+
+    def set_initialized(self, value=True):
+        self._initialized = value
+
+    def _require_initialized(self):
+        """Verifies that the zone manager has been properly initialized."""
+        if not self.initialized:
+            LOG.error(_LE("Fibre Channel Zone Manager is not initialized."""))
+            raise exception.ZoneManagerNotInitialized()
+        else:
+            self._log_unsupported_driver_warning()
+
+    def _log_unsupported_driver_warning(self):
+        """Annoy the log about unsupported fczm drivers."""
+        if not self.driver.supported:
+            LOG.warning(_LW("Zone Manager driver (%(driver_name)s %(version)s)"
+                            " is currently unsupported and may be removed in "
+                            "the next release of OpenStack. Use at your own "
+                            "risk."),
+                        {'driver_name': self.driver.__class__.__name__,
+                         'version': self.driver.get_version()},
+                        resource={'type': 'zone_manager',
+                                  'id': self.driver.__class__.__name__})
 
     def get_zoning_state_ref_count(self, initiator_wwn, target_wwn):
         """Zone management state check.
@@ -135,6 +187,17 @@ class ZoneManager(fc_common.FCCommon):
         connected_fabric = None
         host_name = None
         storage_system = None
+
+        try:
+            # Make sure the driver is loaded and we are initialized
+            self._log_unsupported_driver_warning()
+            self._require_initialized()
+        except exception.ZoneManagerNotInitialized:
+            LOG.error(_LE("Cannot add Fibre Channel Zone because the "
+                          "Zone Manager is not initialized properly."),
+                      resource={'type': 'zone_manager',
+                                'id': self.__class__.__name__})
+            return
 
         try:
             initiator_target_map = (
@@ -201,6 +264,17 @@ class ZoneManager(fc_common.FCCommon):
         connected_fabric = None
         host_name = None
         storage_system = None
+
+        try:
+            # Make sure the driver is loaded and we are initialized
+            self._log_unsupported_driver_warning()
+            self._require_initialized()
+        except exception.ZoneManagerNotInitialized:
+            LOG.error(_LE("Cannot delete fibre channel zone because the "
+                          "Zone Manager is not initialized properly."),
+                      resource={'type': 'zone_manager',
+                                'id': self.__class__.__name__})
+            return
 
         try:
             initiator_target_map = (

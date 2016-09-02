@@ -35,12 +35,18 @@ def create_zone_manager():
     if config.safe_get('zoning_mode') == 'fabric':
         LOG.debug("FC Zone Manager enabled.")
         zm = fc_zone_manager.ZoneManager()
-        LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
-                     " Driver %(drv_name)s %(drv_version)s."),
-                 {'zm_version': zm.get_version(),
-                  'drv_name': zm.driver.__class__.__name__,
-                  'drv_version': zm.driver.get_version()})
-        return zm
+        if zm.initialized:
+            LOG.info(_LI("Using FC Zone Manager %(zm_version)s,"
+                         " Driver %(drv_name)s %(drv_version)s."),
+                     {'zm_version': zm.get_version(),
+                      'drv_name': zm.driver.__class__.__name__,
+                      'drv_version': zm.driver.get_version()})
+            return zm
+        else:
+            LOG.debug("FC Zone Manager %(zm_version)s disabled",
+                      {"zm_version": zm.get_version()})
+            return None
+
     else:
         LOG.debug("FC Zone Manager not enabled in cinder.conf.")
         return None
