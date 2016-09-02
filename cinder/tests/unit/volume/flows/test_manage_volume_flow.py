@@ -11,7 +11,9 @@
 #    under the License.
 """ Tests for manage_existing TaskFlow """
 
+import inspect
 import mock
+import taskflow.engines
 
 from cinder import context
 from cinder import test
@@ -95,3 +97,59 @@ class ManageVolumeFlowTestCase(test.TestCase):
 
         task.revert(self.ctxt, mock_result, mock_flow_failures, volume_ref)
         mock_error_out.assert_called_once_with(volume_ref, reason=mock.ANY)
+
+    def test_get_flow(self):
+        mock_volume_flow = mock.Mock()
+        mock_linear_flow = self.mock_object(manager.linear_flow, 'Flow')
+        mock_linear_flow.return_value = mock_volume_flow
+        mock_taskflow_engine = self.mock_object(taskflow.engines, 'load')
+        expected_store = {
+            'context': mock.sentinel.context,
+            'volume': mock.sentinel.volume,
+            'manage_existing_ref': mock.sentinel.ref,
+            'optional_args': {'is_quota_committed': False},
+        }
+
+        manager.get_flow(
+            mock.sentinel.context, mock.sentinel.db, mock.sentinel.driver,
+            mock.sentinel.host, mock.sentinel.volume, mock.sentinel.ref)
+
+        mock_linear_flow.assert_called_once_with(
+            'volume_manage_existing_manager')
+        mock_taskflow_engine.assert_called_once_with(
+            mock_volume_flow, store=expected_store)
+
+    def test_get_flow_volume_flow_tasks(self):
+        """Test that all expected parameter names exist for added tasks."""
+        mock_taskflow_engine = self.mock_object(taskflow.engines, 'load')
+        mock_taskflow_engine.side_effect = self._verify_volume_flow_tasks
+
+        manager.get_flow(
+            mock.sentinel.context, mock.sentinel.db, mock.sentinel.driver,
+            mock.sentinel.host, mock.sentinel.volume, mock.sentinel.ref)
+
+    def _verify_volume_flow_tasks(self, volume_flow, store=None):
+        param_names = [
+            'context',
+            'volume',
+            'manage_existing_ref',
+            'optional_args',
+        ]
+
+        provides = {'self'}
+        revert_provides = ['self', 'result', 'flow_failures']
+        for node in volume_flow.iter_nodes():
+            task = node[0]
+            # Subsequent tasks may use parameters defined in a previous task's
+            # default_provides list. Add these names to the provides set.
+            if task.default_provides:
+                for p in task.default_provides:
+                    provides.add(p)
+
+            execute_args = inspect.getargspec(task.execute)[0]
+            execute_args = [x for x in execute_args if x not in provides]
+            [self.assertIn(arg, param_names) for arg in execute_args]
+
+            revert_args = inspect.getargspec(task.revert)[0]
+            revert_args = [x for x in revert_args if x not in revert_provides]
+            [self.assertIn(arg, param_names) for arg in revert_args]
