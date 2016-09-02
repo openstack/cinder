@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import collections
 import os
 import subprocess
 import textwrap
@@ -22,7 +23,7 @@ BASEDIR = os.path.split(os.path.realpath(__file__))[0] + "/../../"
 if __name__ == "__main__":
     os.chdir(BASEDIR)
     opt_file = open("cinder/opts.py", 'w')
-    opt_dict = {}
+    opt_dict = collections.OrderedDict()
     dir_trees_list = []
     REGISTER_OPTS_STR = "CONF.register_opts("
     REGISTER_OPT_STR = "CONF.register_opt("
