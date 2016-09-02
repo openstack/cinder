@@ -32,7 +32,7 @@ from cinder.volume.drivers.nexenta import options
 from cinder.volume.drivers.nexenta import utils
 from cinder.volume.drivers import nfs
 
-VERSION = '1.3.0'
+VERSION = '1.3.1'
 LOG = logging.getLogger(__name__)
 
 
@@ -53,6 +53,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 RemoteFsDriver.
         1.2.0 - Added migrate and retype methods.
         1.3.0 - Extend volume method.
+        1.3.1 - Cache capacity info and check shared folders on setup.
     """
 
     driver_prefix = 'nexenta'
@@ -89,6 +90,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         self._nms2volroot = {}
         self.share2nms = {}
         self.nfs_versions = {}
+        self.shares_with_capacities = {}
 
     @property
     def backend_name(self):
@@ -124,7 +126,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 if not nms.folder.object_exists(folder):
                     raise LookupError(_("Folder %s does not exist in Nexenta "
                                         "Store appliance"), folder)
-                self._share_folder(nms, volume_name, dataset)
+                if (folder not in nms.netstorsvc.get_shared_folders(
+                        'svc:/network/nfs/server:default', '')):
+                    self._share_folder(nms, volume_name, dataset)
+                self._get_capacity_info(nfs_share)
 
     def migrate_volume(self, ctxt, volume, host):
         """Migrate if volume and host are managed by Nexenta appliance.
@@ -356,6 +361,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                 sub_share, mnt_path = self._get_subshare_mount_point(nfs_share,
                                                                      volume)
                 self._ensure_share_mounted(sub_share, mnt_path)
+            self._get_capacity_info(nfs_share)
         except exception.NexentaException:
             try:
                 nms.folder.destroy('%s/%s' % (vol, folder))
@@ -456,6 +462,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                  'already deleted.'), folder)
                     return
                 raise
+            self._get_capacity_info(nfs_share)
             origin = props.get('origin')
             if origin and self._is_clone_snapshot_name(origin):
                 try:
@@ -747,6 +754,9 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
                                                   'used|available')
         free = utils.str2size(folder_props['available'])
         allocated = utils.str2size(folder_props['used'])
+        self.shares_with_capacities[nfs_share] = {
+            'free': utils.str2gib_size(free),
+            'total': utils.str2gib_size(free + allocated)}
         return free + allocated, free, allocated
 
     def _get_nms_for_url(self, url):
@@ -790,15 +800,12 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         LOG.debug('Updating volume stats')
         total_space = 0
         free_space = 0
-        shares_with_capacities = {}
-        for mounted_share in self._mounted_shares:
-            total, free, allocated = self._get_capacity_info(mounted_share)
-            shares_with_capacities[mounted_share] = utils.str2gib_size(total)
-            if total_space < utils.str2gib_size(total):
-                total_space = utils.str2gib_size(total)
-            if free_space < utils.str2gib_size(free):
-                free_space = utils.str2gib_size(free)
-                share = mounted_share
+        share = None
+        for _share in self._mounted_shares:
+            if self.shares_with_capacities[_share]['free'] > free_space:
+                free_space = self.shares_with_capacities[_share]['free']
+                total_space = self.shares_with_capacities[_share]['total']
+                share = _share
 
         location_info = '%(driver)s:%(share)s' % {
             'driver': self.__class__.__name__,
@@ -811,7 +818,7 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
             'compression': self.volume_compression,
             'description': self.volume_description,
             'nms_url': nms_url,
-            'ns_shares': shares_with_capacities,
+            'ns_shares': self.shares_with_capacities,
             'driver_version': self.VERSION,
             'storage_protocol': 'NFS',
             'total_capacity_gb': total_space,
