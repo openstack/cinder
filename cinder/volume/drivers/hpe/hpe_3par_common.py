@@ -593,7 +593,7 @@ class HPE3PARCommon(object):
                 volume_update['status'] = 'deleted'
             except Exception as ex:
                 LOG.error(_LE("There was an error deleting volume %(id)s: "
-                              "%(error)."),
+                              "%(error)s."),
                           {'id': volume.id,
                            'error': six.text_type(ex)})
                 volume_update['status'] = 'error'
@@ -693,7 +693,7 @@ class HPE3PARCommon(object):
                 snapshot_update['status'] = fields.SnapshotStatus.ERROR
             except Exception as ex:
                 LOG.error(_LE("There was an error deleting snapshot %(id)s: "
-                              "%(error)."),
+                              "%(error)s."),
                           {'id': snapshot['id'],
                            'error': six.text_type(ex)})
                 snapshot_update['status'] = fields.SnapshotStatus.ERROR
