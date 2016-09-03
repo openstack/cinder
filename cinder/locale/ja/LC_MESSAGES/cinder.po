@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev566\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev11\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-02 02:50+0000\n"
+"POT-Creation-Date: 2016-09-02 20:46+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-01 02:11+0000\n"
+"PO-Revision-Date: 2016-09-02 02:16+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1498,6 +1498,16 @@ msgstr ""
 "vgc-cluster コマンドを実行できません。ソフトウェアが実装済みで、権限が適切に"
 "設定されていることを確認してください。"
 
+msgid "Cannot save group_snapshots changes in group object update."
+msgstr ""
+"グループオブジェクトの更新で、 group_snapshots  の変更を保存できません。"
+
+msgid "Cannot save volume_types changes in group object update."
+msgstr "グループオブジェクトの更新で、 volume_types の変更を保存できません。"
+
+msgid "Cannot save volumes changes in group object update."
+msgstr "グループオブジェクトの更新で、 ボリュームの変更を保存できません。"
+
 msgid "Cannot set both hitachi_serial_number and hitachi_unit_name."
 msgstr ""
 "hitachi_serial_number と hitachi_unit_name の両方を設定することはできません。"
@@ -1994,6 +2004,9 @@ msgstr ""
 
 msgid "Create export for volume failed."
 msgstr "ボリュームのエクスポートの作成に失敗しました。"
+
+msgid "Create group failed."
+msgstr "グループの作成に失敗しました。"
 
 msgid "Create hostgroup error."
 msgstr "ホストグループ作成のエラー。"
@@ -4517,6 +4530,9 @@ msgstr ""
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
 msgstr "ファイバーチャネル SAN ルックアップ障害: %(reason)s"
 
+msgid "Fibre Channel Zone Manager not initialized"
+msgstr "ファイバーチャネルゾーンマネージャーが初期化されていません。"
+
 #, python-format
 msgid "Fibre Channel Zone operation failed: %(reason)s"
 msgstr "ファイバーチャネルゾーン操作が失敗しました: %(reason)s"
@@ -5738,6 +5754,14 @@ msgstr ""
 "でサポートされていなければなりません)。"
 
 #, python-format
+msgid ""
+"Invalid volume_type provided: %s (requested type must be supported by this "
+"group)."
+msgstr ""
+"無効な volume_type %s が指定されました (要求するタイプは、このグループでサ"
+"ポートされていなければなりません)。"
+
+#, python-format
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "wwpn 形式 %(wwpns)s は無効です"
 
@@ -6108,6 +6132,9 @@ msgstr "host_passes_filters を実装する必要があります。"
 
 msgid "Must implement schedule_create_consistencygroup"
 msgstr "schedule_create_consistencygroup を実装する必要があります"
+
+msgid "Must implement schedule_create_group"
+msgstr "schedule_create_group の実装が必要です。"
 
 msgid "Must implement schedule_create_volume"
 msgstr "schedule_create_volume を実装する必要があります。"
@@ -6700,6 +6727,13 @@ msgstr ""
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr ""
 "ホスト、ポート、またはスキーマからの必須の入力の 1 つが見つかりませんでした。"
+
+msgid ""
+"One of the services is in Liberty version. We do not provide backward "
+"compatibility with Liberty now, you need to upgrade to Mitaka first."
+msgstr ""
+"サービスの一つが Liberty バージョンです。現在、 Liberty への後方互換性は提供"
+"していません。 先に Mitaka へのアップグレードが必要です。"
 
 #, python-format
 msgid ""
@@ -7584,6 +7618,10 @@ msgstr ""
 #, python-format
 msgid "Snapshot %s : Delete Failed\n"
 msgstr "スナップショット %s : 削除が失敗しました。\n"
+
+#, python-format
+msgid "Snapshot %s must not be part of a group."
+msgstr "スナップショット %s はグループの一部であってはなりません。"
 
 #, python-format
 msgid "Snapshot '%s' doesn't exist on array."
@@ -9601,6 +9639,14 @@ msgstr ""
 "ムをオフラインに設定してください。"
 
 #, python-format
+msgid ""
+"Volume %s must not be migrating, attached, belong to a group or have "
+"snapshots."
+msgstr ""
+"ボリューム %s の移行と追加を行うことはできず、グループに含めることはできず、"
+"スナップショットを持つこともできません。"
+
+#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "ボリューム %s は整合性グループの一部であってはなりません。"
 
@@ -9611,6 +9657,17 @@ msgstr "ボリューム %s が見つかりません。"
 #, python-format
 msgid "Volume %s not found."
 msgstr "ボリューム %s が見つかりません。"
+
+#, python-format
+msgid ""
+"Volume %s status must be available or in-use, must not be migrating, have "
+"snapshots, be replicated, be part of a group and destination host must be "
+"different than the current host"
+msgstr ""
+"ボリューム %s の状態は「利用可能」もしくは「使用中」である必要があります。ま"
+"た、マイグレーション中でないこと、スナップショットを持たないこと、複製されて"
+"いないこと、グループの一部ではないことも必要で、移行先ホストは現在とは異なる"
+"ホストでなければいけません。"
 
 #, python-format
 msgid "Volume %s: Error trying to extend volume"
@@ -10933,6 +10990,22 @@ msgstr ""
 "gpfs_images_share_mode は copy_on_write に設定されていますが、%(vol)s と "
 "%(img)s は異なるファイルセットに属しています。"
 
+msgid "group assigned"
+msgstr "割り当てられたグループ"
+
+msgid "group changed"
+msgstr "変更されたグループ"
+
+#, python-format
+msgid "group-%s"
+msgstr "グループ - %s"
+
+msgid "group_snapshot assigned"
+msgstr "割り当てられた group_snapshot "
+
+msgid "group_snapshot changed"
+msgstr "変更された group_snapshot "
+
 msgid "group_snapshots assigned"
 msgstr "割り当てられたグループスナップショット"
 
@@ -11408,6 +11481,10 @@ msgid ""
 msgstr ""
 "ボリュームを整合性グループに作成する場合は、volume_type を指定する必要があり"
 "ます。"
+
+msgid "volume_type must be provided when creating a volume in a group."
+msgstr ""
+"ボリュームをグループに作成する場合は、volume_type を指定する必要があります。"
 
 msgid "volume_type_id cannot be None"
 msgstr "volume_type_id を None に設定することはできません。"
