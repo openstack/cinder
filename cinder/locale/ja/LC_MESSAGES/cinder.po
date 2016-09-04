@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev11\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev12\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-02 20:46+0000\n"
+"POT-Creation-Date: 2016-09-03 10:11+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-02 02:16+0000\n"
+"PO-Revision-Date: 2016-09-03 01:52+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -2218,6 +2218,9 @@ msgstr ""
 
 msgid "Delete consistency group failed."
 msgstr "整合性グループの削除に失敗しました。"
+
+msgid "Delete group failed."
+msgstr "グループの削除に失敗しました。"
 
 msgid "Delete hostgroup error."
 msgstr "ホストグループ削除のエラー。"
@@ -4993,6 +4996,9 @@ msgid "Group Type %(type_id)s has no extra spec with key %(id)s."
 msgstr ""
 "グループ種別 %(type_id)s には、キー %(id)s に関する追加の仕様がありません。"
 
+msgid "Group snapshot is empty. No group will be created."
+msgstr "グループスナップショット が空です。グループは作成されません。"
+
 #, python-format
 msgid "Group status must be available or error, but current status is: %s"
 msgstr ""
@@ -7739,6 +7745,16 @@ msgstr ""
 
 msgid "Source CG is empty. No consistency group will be created."
 msgstr "ソース CG が空です。整合性グループは作成されません。"
+
+msgid "Source Group is empty. No group will be created."
+msgstr "ソースグループが空です。グループは作成されません。"
+
+msgid ""
+"Source group cannot be empty or in 'creating' or 'updating' state. No group "
+"snapshot will be created."
+msgstr ""
+"ソース グループ が空もしくは 'creating'  や 'updating' の状態ではいけませ"
+"ん。 グループスナップショット は作成されません。"
 
 msgid "Source host details not found."
 msgstr "ソースホスト詳細が見つかりません"
@@ -10999,6 +11015,13 @@ msgstr "変更されたグループ"
 #, python-format
 msgid "group-%s"
 msgstr "グループ - %s"
+
+msgid ""
+"group_creating_from_src must be called with group_id or group_snapshot_id "
+"parameter."
+msgstr ""
+"group_creating_from_src は group_id または group_snapshot_id パラメーターと共"
+"に呼び出す必要があります。"
 
 msgid "group_snapshot assigned"
 msgstr "割り当てられた group_snapshot "
