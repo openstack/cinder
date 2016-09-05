@@ -216,6 +216,7 @@ volume_opts = [
                      'developers. Valid values are method and api.'),
     cfg.MultiOpt('replication_device',
                  item_type=types.Dict(),
+                 secret=True,
                  help="Multi opt of dictionaries to represent a replication "
                       "target device.  This option may be specified multiple "
                       "times in a single config section to specify multiple "
