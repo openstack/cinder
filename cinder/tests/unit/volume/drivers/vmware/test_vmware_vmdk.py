@@ -321,10 +321,10 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_validate_disk_format')
-    def test_copy_image_to_volume_with_ova_container(self,
-                                                     validate_disk_format):
+    def test_copy_image_to_volume_with_invalid_container(self,
+                                                         validate_disk_format):
         image_service = mock.Mock()
-        image_meta = self._create_image_meta(container_format='ova')
+        image_meta = self._create_image_meta(container_format='ami')
         image_service.show.return_value = image_meta
 
         context = mock.sentinel.context
@@ -359,10 +359,12 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
                                    validate_disk_format,
                                    vmware_disk_type='streamOptimized',
                                    backing_disk_size=VOL_SIZE,
-                                   call_extend_backing=False):
+                                   call_extend_backing=False,
+                                   container_format='bare'):
 
         image_service = mock.Mock()
-        image_meta = self._create_image_meta(vmware_disktype=vmware_disk_type)
+        image_meta = self._create_image_meta(vmware_disktype=vmware_disk_type,
+                                             container_format=container_format)
         image_service.show.return_value = image_meta
 
         backing = mock.sentinel.backing
@@ -406,6 +408,9 @@ class VMwareVcVmdkDriverTestCase(test.TestCase):
         self._test_copy_image_to_volume(vmware_disk_type=vmware_disk_type,
                                         backing_disk_size=1,
                                         call_extend_backing=True)
+
+    def test_copy_image_to_volume_with_ova_container(self):
+        self._test_copy_image_to_volume(container_format='ova')
 
     @mock.patch('cinder.volume.drivers.vmware.vmdk.VMwareVcVmdkDriver.'
                 '_get_disk_type')
