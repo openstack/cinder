@@ -19,7 +19,6 @@ import ddt
 import math
 import os
 import tempfile
-import unittest
 
 import mock
 from oslo_utils import imageutils
@@ -72,19 +71,24 @@ def common_mocks(f):
     The point of doing these mocks here is so that we don't accidentally set
     mocks that can't/don't get unset.
     """
+    def _FakeRetrying(wait_func=None,
+                      original_retrying = driver.utils.retrying.Retrying,
+                      *args, **kwargs):
+        return original_retrying(wait_func=lambda *a, **k: 0,
+                                 *args, **kwargs)
+
     def _common_inner_inner1(inst, *args, **kwargs):
-        @mock.patch('time.sleep')
+        @mock.patch('retrying.Retrying', _FakeRetrying)
         @mock.patch('cinder.volume.drivers.rbd.RBDVolumeProxy')
         @mock.patch('cinder.volume.drivers.rbd.RADOSClient')
         @mock.patch('cinder.backup.drivers.ceph.rbd')
         @mock.patch('cinder.backup.drivers.ceph.rados')
         def _common_inner_inner2(mock_rados, mock_rbd, mock_client,
-                                 mock_proxy, mock_sleep):
+                                 mock_proxy):
             inst.mock_rbd = mock_rbd
             inst.mock_rados = mock_rados
             inst.mock_client = mock_client
             inst.mock_proxy = mock_proxy
-            inst.mock_sleep = mock_sleep
             inst.mock_rbd.RBD.Error = Exception
             inst.mock_rados.Error = Exception
             inst.mock_rbd.ImageBusy = MockImageBusyException
@@ -185,7 +189,6 @@ class RBDTestCase(test.TestCase):
             self.assertRaises(exception.InvalidConfigurationValue,
                               self.driver.check_for_setup_error)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_create_volume(self):
         client = self.mock_client.return_value
@@ -204,7 +207,6 @@ class RBDTestCase(test.TestCase):
         client.__enter__.assert_called_once_with()
         client.__exit__.assert_called_once_with(None, None, None)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_manage_existing_get_size(self):
         with mock.patch.object(self.driver.rbd.Image(), 'size') as \
@@ -220,7 +222,6 @@ class RBDTestCase(test.TestCase):
                 mock_rbd_image_size.assert_called_once_with()
                 mock_rbd_image_close.assert_called_once_with()
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_manage_existing_get_non_integer_size(self):
         rbd_image = self.driver.rbd.Image.return_value
@@ -248,7 +249,6 @@ class RBDTestCase(test.TestCase):
                 mock_rbd_image_size.assert_called_once_with()
                 mock_rbd_image_close.assert_called_once_with()
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_manage_existing(self):
         client = self.mock_client.return_value
@@ -265,7 +265,6 @@ class RBDTestCase(test.TestCase):
                 exist_volume,
                 self.volume_a.name)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_manage_existing_with_exist_rbd_image(self):
         client = self.mock_client.return_value
@@ -310,7 +309,6 @@ class RBDTestCase(test.TestCase):
             self.assertTrue(
                 self.driver.rbd.Image.return_value.remove_snap.called)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_delete_volume(self):
         client = self.mock_client.return_value
@@ -348,7 +346,6 @@ class RBDTestCase(test.TestCase):
         # Make sure the exception was raised
         self.assertEqual(RAISED_EXCEPTIONS, [self.mock_rbd.ImageNotFound])
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_delete_busy_volume(self):
         self.mock_rbd.Image.return_value.list_snaps.return_value = []
@@ -383,7 +380,6 @@ class RBDTestCase(test.TestCase):
                     # Make sure the exception was raised
                     self.assertIn(self.mock_rbd.ImageBusy, RAISED_EXCEPTIONS)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_delete_volume_not_found(self):
         self.mock_rbd.Image.return_value.list_snaps.return_value = []
@@ -593,7 +589,6 @@ class RBDTestCase(test.TestCase):
         self.assertFalse(volume.set_snap.called)
         volume.parent_info.assert_called_once_with()
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_create_cloned_volume_same_size(self):
         self.cfg.rbd_max_clone_depth = 2
@@ -620,7 +615,6 @@ class RBDTestCase(test.TestCase):
                 self.assertEqual(
                     0, mock_resize.call_count)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_create_cloned_volume_different_size(self):
         self.cfg.rbd_max_clone_depth = 2
@@ -648,7 +642,6 @@ class RBDTestCase(test.TestCase):
                 self.assertEqual(
                     1, mock_resize.call_count)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_create_cloned_volume_w_flatten(self):
         self.cfg.rbd_max_clone_depth = 1
@@ -685,7 +678,6 @@ class RBDTestCase(test.TestCase):
                     2, self.mock_rbd.Image.return_value.close.call_count)
                 self.assertTrue(mock_get_clone_depth.called)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_create_cloned_volume_w_clone_exception(self):
         self.cfg.rbd_max_clone_depth = 2
@@ -738,7 +730,6 @@ class RBDTestCase(test.TestCase):
             self.assertFalse(
                 self.driver._is_cloneable(loc, {'disk_format': 'raw'}))
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_cloneable(self):
         with mock.patch.object(self.driver, '_get_fsid') as mock_get_fsid:
@@ -900,7 +891,6 @@ class RBDTestCase(test.TestCase):
             self.assertDictMatch(expected, actual)
             self.assertTrue(mock_get_mon_addrs.called)
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @ddt.data({'rbd_chunk_size': 1, 'order': 20},
               {'rbd_chunk_size': 8, 'order': 23},
               {'rbd_chunk_size': 32, 'order': 25})
@@ -975,7 +965,6 @@ class RBDTestCase(test.TestCase):
         self.assertTrue(self.driver.retype(context, volume,
                                            fake_type, diff, host))
 
-    @unittest.skip("Skip until bug #1578986 is fixed")
     @common_mocks
     def test_update_migrated_volume(self):
         client = self.mock_client.return_value
@@ -1014,8 +1003,7 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(1, mock_driver._disconnect_from_rados.call_count)
 
     @common_mocks
-    @mock.patch('time.sleep')
-    def test_connect_to_rados(self, sleep_mock):
+    def test_connect_to_rados(self):
         # Default
         self.cfg.rados_connect_timeout = -1
 
