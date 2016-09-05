@@ -133,11 +133,12 @@ class VolumeTransferTestCase(test.TestCase):
                           tx_api.accept,
                           self.ctxt, transfer['id'], transfer['auth_key'])
 
+    @mock.patch.object(QUOTAS, "limit_check")
     @mock.patch.object(QUOTAS, "reserve")
     @mock.patch.object(QUOTAS, "add_volume_type_opts")
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
     def test_transfer_accept(self, mock_notify, mock_quota_voltype,
-                             mock_quota_reserve):
+                             mock_quota_reserve, mock_quota_limit):
         svc = self.start_service('volume', host='test_host')
         self.addCleanup(svc.stop)
         tx_api = transfer_api.API()
@@ -181,6 +182,12 @@ class VolumeTransferTestCase(test.TestCase):
                            **release_opt)]
         mock_quota_reserve.assert_has_calls(calls)
 
+        # QUOTAS.limit_check
+        values = {'per_volume_gigabytes': 1}
+        mock_quota_limit.assert_called_once_with(self.ctxt,
+                                                 project_id=fake.PROJECT2_ID,
+                                                 **values)
+
     @mock.patch.object(QUOTAS, "reserve")
     @mock.patch.object(QUOTAS, "add_volume_type_opts")
     @mock.patch('cinder.volume.utils.notify_about_volume_usage')
@@ -211,6 +218,40 @@ class VolumeTransferTestCase(test.TestCase):
                           self.ctxt,
                           transfer['id'],
                           transfer['auth_key'])
+        # notification of transfer.accept is sent only after quota check
+        # passes
+        self.assertEqual(2, mock_notify.call_count)
+
+    @mock.patch.object(QUOTAS, "limit_check")
+    @mock.patch('cinder.volume.utils.notify_about_volume_usage')
+    def test_transfer_accept_over_quota_check_limit(self, mock_notify,
+                                                    mock_quota_limit):
+        svc = self.start_service('volume', host='test_host')
+        self.addCleanup(svc.stop)
+        tx_api = transfer_api.API()
+        volume = utils.create_volume(self.ctxt,
+                                     volume_type_id=fake.VOLUME_TYPE_ID,
+                                     updated_at=self.updated_at)
+        transfer = tx_api.create(self.ctxt, volume.id, 'Description')
+        fake_overs = ['per_volume_gigabytes']
+        fake_quotas = {'per_volume_gigabytes': 1}
+        fake_usages = {}
+
+        mock_quota_limit.side_effect = exception.OverQuota(
+            overs=fake_overs,
+            quotas=fake_quotas,
+            usages=fake_usages)
+
+        self.ctxt.user_id = fake.USER2_ID
+        self.ctxt.project_id = fake.PROJECT2_ID
+        self.assertRaises(exception.VolumeSizeExceedsLimit,
+                          tx_api.accept,
+                          self.ctxt,
+                          transfer['id'],
+                          transfer['auth_key'])
+        # notification of transfer.accept is sent only after quota check
+        # passes
+        self.assertEqual(2, mock_notify.call_count)
 
     def test_transfer_get(self):
         tx_api = transfer_api.API()
