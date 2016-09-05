@@ -263,12 +263,17 @@ def load_standard_extensions(ext_mgr, logger, path, package, ext_list=None):
         else:
             relpkg = '.%s' % '.'.join(relpath.split(os.sep))
 
-        # Now, consider each file in turn, only considering .py files
+        # Now, consider each file in turn, only considering .py and .pyc files
         for fname in filenames:
             root, ext = os.path.splitext(fname)
 
-            # Skip __init__ and anything that's not .py
-            if ext != '.py' or root == '__init__' or fname in FILES_TO_SKIP:
+            # Skip __init__ and anything that's not .py and .pyc
+            if ((ext not in ('.py', '.pyc')) or root == '__init__' or
+                    fname in FILES_TO_SKIP):
+                continue
+
+            # If .pyc and .py both exist, skip .pyc
+            if ext == '.pyc' and ((root + '.py') in filenames):
                 continue
 
             # Try loading it
