@@ -34,7 +34,8 @@ class DellStorageCenterFCDriver(dell_storagecenter_common.DellCommonDriver,
     """Implements commands for Dell Storage Center FC management.
 
     To enable the driver add the following line to the cinder configuration:
-        volume_driver=cinder.volume.drivers.dell.DellStorageCenterFCDriver
+        volume_driver=cinder.volume.drivers.dell.dell_storagecenter_fc.\
+        DellStorageCenterFCDriver
 
     Version history:
 
