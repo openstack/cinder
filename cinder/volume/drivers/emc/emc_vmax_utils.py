@@ -1894,7 +1894,7 @@ class EMCVMAXUtils(object):
         kwargs['EcomCACert'] = connargs['EcomCACert']
         kwargs['EcomNoVerification'] = connargs['EcomNoVerification']
 
-        slo = self._process_tag(element, 'SLO')
+        slo = self._process_tag(element, 'ServiceLevel')
         kwargs['SLO'] = slo
         workload = self._process_tag(element, 'Workload')
         if workload is None and slo:
