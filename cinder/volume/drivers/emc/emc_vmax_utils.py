@@ -2330,10 +2330,9 @@ class EMCVMAXUtils(object):
         return foundSyncInstanceName
 
     def get_volume_model_updates(
-            self, context, volumes, cgId, status='available'):
+            self, volumes, cgId, status='available'):
         """Update the volume model's status and return it.
 
-        :param context: the context
         :param volumes: volumes object api
         :param cgId: cg id
         :param status: string value reflects the status of the member volume
