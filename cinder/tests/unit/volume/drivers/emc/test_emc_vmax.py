@@ -1150,7 +1150,7 @@ class FakeEcomConnection(object):
         replicationgroup = {}
         replicationgroup['CreationClassName'] = (
             self.data.replicationgroup_creationclass)
-        replicationgroup['ElementName'] = '1234bcde'
+        replicationgroup['ElementName'] = '12345abcde'
         return replicationgroup
 
     def _getinstance_srpstoragepool(self, objectpath):
@@ -8623,6 +8623,20 @@ class EMCVMAXCommonTest(test.TestCase):
         self.assertEqual(self.data.extra_specs, extraSpecs)
         self.assertEqual(common.conn.EnumerateInstanceNames(
             'EMC_ReplicationService')[0], replicationService)
+
+    def test_update_consistency_group_name(self):
+        common = self.driver.common
+        cg_name = common._update_consistency_group_name(
+            EMCVMAXCommonData.test_CG)
+        self.assertEqual('myCG1_12345abcde', cg_name)
+
+    def test_update_consistency_group_name_truncate_name(self):
+        common = self.driver.common
+        test_cg = {'name': 'This_is_too_long_a_name_for_a_consistency_group',
+                   'id': '12345abcde', 'volume_type_id': 'abc',
+                   'status': fields.ConsistencyGroupStatus.AVAILABLE}
+        cg_name = common._update_consistency_group_name(test_cg)
+        self.assertEqual('This_is_too_listency_group_12345abcde', cg_name)
 
 
 class EMCVMAXProvisionTest(test.TestCase):
