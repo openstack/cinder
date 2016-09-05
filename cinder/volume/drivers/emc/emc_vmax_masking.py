@@ -883,9 +883,11 @@ class EMCVMAXMasking(object):
                 "Created new initiator group name: %(igGroupName)s."),
                 {'igGroupName': igGroupName})
         else:
+            initiatorGroupInstance = conn.GetInstance(
+                foundInitiatorGroupInstanceName, LocalOnly=False)
             LOG.info(_LI(
                 "Using existing initiator group name: %(igGroupName)s."),
-                {'igGroupName': igGroupName})
+                {'igGroupName': initiatorGroupInstance['ElementName']})
 
         return foundInitiatorGroupInstanceName
 
@@ -1977,6 +1979,7 @@ class EMCVMAXMasking(object):
         """
         isV3 = extraSpecs[ISV3]
         fastPolicyName = extraSpecs.get(FASTPOLICY, None)
+        host = maskingViewName.split("-")[1]
 
         storageSystemInstanceName = self.utils.find_storage_system(
             conn, controllerConfigService)
@@ -1987,7 +1990,7 @@ class EMCVMAXMasking(object):
             maskingViewName, extraSpecs)
         self._last_volume_delete_initiator_group(
             conn, controllerConfigService,
-            initiatorGroupInstanceName, extraSpecs)
+            initiatorGroupInstanceName, extraSpecs, host)
 
         if not isV3:
             isTieringPolicySupported, tierPolicyServiceInstanceName = (
@@ -2570,40 +2573,56 @@ class EMCVMAXMasking(object):
 
     def _last_volume_delete_initiator_group(
             self, conn, controllerConfigService,
-            initiatorGroupInstanceName, extraSpecs):
-        """Delete the initiator group
+            initiatorGroupInstanceName, extraSpecs, host=None):
+        """Delete the initiator group.
 
-        Delete the Initiator group if there are no masking views associated
-        with the initiator group.
+        Delete the Initiator group if it has been created by the VMAX driver,
+        and if there are no masking views associated with it.
 
         :param conn: the ecom connection
         :param controllerConfigService: controller config service
         :param igInstanceNames: initiator group instance name
         :param extraSpecs: extra specifications
+        :param host: the short name of the host
         """
-        maskingViewInstanceNames = self.get_masking_views_by_initiator_group(
-            conn, initiatorGroupInstanceName)
+        defaultInitiatorGroupName = None
         initiatorGroupInstance = conn.GetInstance(initiatorGroupInstanceName)
         initiatorGroupName = initiatorGroupInstance['ElementName']
+        protocol = self.utils.get_short_protocol_type(self.protocol)
+        if host:
+            defaultInitiatorGroupName = ((
+                "OS-%(shortHostName)s-%(protocol)s-IG"
+                % {'shortHostName': host,
+                   'protocol': protocol}))
 
-        if len(maskingViewInstanceNames) == 0:
-            LOG.debug(
-                "Last volume is associated with the initiator group, deleting "
-                "the associated initiator group %(initiatorGroupName)s.",
-                {'initiatorGroupName': initiatorGroupName})
-            self._delete_initiators_from_initiator_group(
-                conn, controllerConfigService, initiatorGroupInstanceName,
-                initiatorGroupName)
-            self._delete_initiator_group(conn, controllerConfigService,
-                                         initiatorGroupInstanceName,
-                                         initiatorGroupName, extraSpecs)
+        if initiatorGroupName == defaultInitiatorGroupName:
+            maskingViewInstanceNames = (
+                self.get_masking_views_by_initiator_group(
+                    conn, initiatorGroupInstanceName))
+            if len(maskingViewInstanceNames) == 0:
+                LOG.debug(
+                    "Last volume associated with the initiator group - "
+                    "deleting the associated initiator group "
+                    "%(initiatorGroupName)s.",
+                    {'initiatorGroupName': initiatorGroupName})
+                self._delete_initiators_from_initiator_group(
+                    conn, controllerConfigService, initiatorGroupInstanceName,
+                    initiatorGroupName)
+                self._delete_initiator_group(conn, controllerConfigService,
+                                             initiatorGroupInstanceName,
+                                             initiatorGroupName, extraSpecs)
+            else:
+                LOG.warning(_LW("Initiator group %(initiatorGroupName)s is "
+                                "associated with masking views and can't be "
+                                "deleted. Number of associated masking view "
+                                "is: %(nmv)d."),
+                            {'initiatorGroupName': initiatorGroupName,
+                             'nmv': len(maskingViewInstanceNames)})
         else:
-            LOG.warning(_LW("Initiator group %(initiatorGroupName)s is "
-                            "associated with masking views and can't be "
-                            "deleted. Number of associated masking view is: "
-                            "%(nmv)d."),
-                        {'initiatorGroupName': initiatorGroupName,
-                         'nmv': len(maskingViewInstanceNames)})
+            LOG.warning(_LW("Initiator group %(initiatorGroupName)s was "
+                            "not created by the VMAX driver so will "
+                            "not be deleted by the VMAX driver."),
+                        {'initiatorGroupName': initiatorGroupName})
 
     def _create_hardware_ids(
             self, conn, initiatorNames, storageSystemName):

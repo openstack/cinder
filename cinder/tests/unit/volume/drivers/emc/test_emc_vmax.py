@@ -270,7 +270,7 @@ class EMCVMAXCommonData(object):
 
     initiatorgroup_id = (
         'SYMMETRIX+000195900551+OS-fakehost-IG')
-    initiatorgroup_name = 'OS-fakehost-IG'
+    initiatorgroup_name = 'OS-fakehost-I-IG'
     initiatorgroup_creationclass = 'SE_InitiatorMaskingGroup'
     iscsi_initiator = 'iqn.1993-08.org.debian'
     storageextent_creationclass = 'CIM_StorageExtent'
@@ -2578,6 +2578,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def test_last_volume_delete_initiator_group_exception(self):
         extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
         conn = self.fake_ecom_connection()
+        host = self.data.lunmaskctrl_name.split("-")[1]
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
                 conn, self.data.storage_system))
@@ -2598,13 +2599,14 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
             exception.VolumeBackendAPIException,
             self.driver.common.masking._last_volume_delete_initiator_group,
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs)
+            extraSpecs, host)
 
     # Bug 1504192 - if the last volume is being unmapped and the masking view
     # goes away, cleanup the initiators and associated initiator group.
     def test_last_volume_delete_initiator_group(self):
         extraSpecs = {'volume_backend_name': 'ISCSINoFAST'}
         conn = self.fake_ecom_connection()
+        host = self.data.lunmaskctrl_name.split("-")[1]
         controllerConfigService = (
             self.driver.utils.find_controller_configuration_service(
                 conn, self.data.storage_system))
@@ -2615,20 +2617,28 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         self.assertEqual(initiatorGroupName,
                          conn.GetInstance(
                              initiatorGroupInstanceName)['ElementName'])
-        # masking view is associated with the initiator group and initiator
-        # group will not be deleted.
+        # Path 1: masking view is associated with the initiator group and
+        # initiator group will not be deleted.
         self.driver.common.masking._last_volume_delete_initiator_group(
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs)
+            extraSpecs, host)
+        # Path 2: initiator group name is not the default name so the
+        # initiator group will not be deleted.
+        initGroup2 = initiatorGroupInstanceName
+        initGroup2['ElementName'] = "different-name-ig"
+        self.driver.common.masking._last_volume_delete_initiator_group(
+            conn, controllerConfigService, initGroup2,
+            extraSpecs, host)
+        # Path 3: No Masking view and IG is the default IG, so initiators
+        # associated with the Initiator group and the initiator group will
+        # be deleted.
         self.driver.common.masking.get_masking_views_by_initiator_group = (
             mock.Mock(return_value=[]))
         self.driver.common.masking._delete_initiators_from_initiator_group = (
             mock.Mock(return_value=True))
-        # No Masking view and initiators associated with the Initiator group
-        # and initiator group will be deleted.
         self.driver.common.masking._last_volume_delete_initiator_group(
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs)
+            extraSpecs, host)
         job = {
             'Job': {'InstanceID': '9999', 'status': 'success', 'type': None}}
         conn.InvokeMethod = mock.Mock(return_value=(4096, job))
@@ -2638,7 +2648,7 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
         # to complete.
         self.driver.common.masking._last_volume_delete_initiator_group(
             conn, controllerConfigService, initiatorGroupInstanceName,
-            extraSpecs)
+            extraSpecs, host)
 
     # Tests removal of last volume in a storage group V2
     def test_remove_and_reset_members(self):
