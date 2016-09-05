@@ -165,7 +165,7 @@ class VolumeTypeEncryptionController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=expl)
         else:
             # Not found exception will be handled at the wsgi level
-                db.volume_type_encryption_delete(context, type_id)
+            db.volume_type_encryption_delete(context, type_id)
 
         return webob.Response(status_int=202)
 

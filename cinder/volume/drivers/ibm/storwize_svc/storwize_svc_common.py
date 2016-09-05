@@ -2139,9 +2139,9 @@ class StorwizeSVCCommonDriver(san.SanDriver,
                             command,
                             check_exit_code=check_exit_code)
                     except Exception as e:
-                            LOG.error(_LE('Error has occurred: %s'), e)
-                            last_exception = e
-                            greenthread.sleep(self.DEFAULT_GR_SLEEP)
+                        LOG.error(_LE('Error has occurred: %s'), e)
+                        last_exception = e
+                        greenthread.sleep(self.DEFAULT_GR_SLEEP)
                     try:
                         raise processutils.ProcessExecutionError(
                             exit_code=last_exception.exit_code,

@@ -1313,12 +1313,12 @@ class Client(client_base.Client):
 
         for storage_disk_info in attributes_list.get_children():
 
-                disk_raid_info = storage_disk_info.get_child_by_name(
-                    'disk-raid-info') or netapp_api.NaElement('none')
-                disk_type = disk_raid_info.get_child_content(
-                    'effective-disk-type')
-                if disk_type:
-                    disk_types.add(disk_type)
+            disk_raid_info = storage_disk_info.get_child_by_name(
+                'disk-raid-info') or netapp_api.NaElement('none')
+            disk_type = disk_raid_info.get_child_content(
+                'effective-disk-type')
+            if disk_type:
+                disk_types.add(disk_type)
 
         return disk_types
 

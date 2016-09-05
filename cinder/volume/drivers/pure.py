@@ -1387,63 +1387,63 @@ class PureBaseVolumeDriver(san.SanDriver):
     @pure_driver_debug_trace
     def _setup_replicated_pgroups(self, primary, secondaries, pg_name,
                                   replication_interval, retention_policy):
-            self._create_protection_group_if_not_exist(
-                primary, pg_name)
+        self._create_protection_group_if_not_exist(
+            primary, pg_name)
 
-            # Apply retention policies to a protection group.
-            # These retention policies will be applied on the replicated
-            # snapshots on the target array.
-            primary.set_pgroup(pg_name, **retention_policy)
+        # Apply retention policies to a protection group.
+        # These retention policies will be applied on the replicated
+        # snapshots on the target array.
+        primary.set_pgroup(pg_name, **retention_policy)
 
-            # Configure replication propagation frequency on a
-            # protection group.
-            primary.set_pgroup(pg_name,
-                               replicate_frequency=replication_interval)
-            for target_array in secondaries:
-                try:
-                    # Configure PG to replicate to target_array.
-                    primary.set_pgroup(pg_name,
-                                       addtargetlist=[target_array.array_name])
-                except purestorage.PureHTTPError as err:
-                    with excutils.save_and_reraise_exception() as ctxt:
-                        if err.code == 400 and (
-                                ERR_MSG_ALREADY_INCLUDES
-                                in err.text):
-                            ctxt.reraise = False
-                            LOG.info(_LI("Skipping add target %(target_array)s"
-                                         " to protection group %(pgname)s"
-                                         " since it's already added."),
-                                     {"target_array": target_array.array_name,
-                                      "pgname": pg_name})
+        # Configure replication propagation frequency on a
+        # protection group.
+        primary.set_pgroup(pg_name,
+                           replicate_frequency=replication_interval)
+        for target_array in secondaries:
+            try:
+                # Configure PG to replicate to target_array.
+                primary.set_pgroup(pg_name,
+                                   addtargetlist=[target_array.array_name])
+            except purestorage.PureHTTPError as err:
+                with excutils.save_and_reraise_exception() as ctxt:
+                    if err.code == 400 and (
+                            ERR_MSG_ALREADY_INCLUDES
+                            in err.text):
+                        ctxt.reraise = False
+                        LOG.info(_LI("Skipping add target %(target_array)s"
+                                     " to protection group %(pgname)s"
+                                     " since it's already added."),
+                                 {"target_array": target_array.array_name,
+                                  "pgname": pg_name})
 
-            # Wait until "Target Group" setting propagates to target_array.
-            pgroup_name_on_target = self._get_pgroup_name_on_target(
-                primary.array_name, pg_name)
+        # Wait until "Target Group" setting propagates to target_array.
+        pgroup_name_on_target = self._get_pgroup_name_on_target(
+            primary.array_name, pg_name)
 
-            for target_array in secondaries:
-                self._wait_until_target_group_setting_propagates(
-                    target_array,
-                    pgroup_name_on_target)
-                try:
-                    # Configure the target_array to allow replication from the
-                    # PG on source_array.
-                    target_array.set_pgroup(pgroup_name_on_target,
-                                            allowed=True)
-                except purestorage.PureHTTPError as err:
-                    with excutils.save_and_reraise_exception() as ctxt:
-                        if (err.code == 400 and
-                                ERR_MSG_ALREADY_ALLOWED in err.text):
-                            ctxt.reraise = False
-                            LOG.info(_LI("Skipping allow pgroup %(pgname)s on "
-                                         "target array %(target_array)s since "
-                                         "it is already allowed."),
-                                     {"pgname": pg_name,
-                                      "target_array": target_array.array_name})
+        for target_array in secondaries:
+            self._wait_until_target_group_setting_propagates(
+                target_array,
+                pgroup_name_on_target)
+            try:
+                # Configure the target_array to allow replication from the
+                # PG on source_array.
+                target_array.set_pgroup(pgroup_name_on_target,
+                                        allowed=True)
+            except purestorage.PureHTTPError as err:
+                with excutils.save_and_reraise_exception() as ctxt:
+                    if (err.code == 400 and
+                            ERR_MSG_ALREADY_ALLOWED in err.text):
+                        ctxt.reraise = False
+                        LOG.info(_LI("Skipping allow pgroup %(pgname)s on "
+                                     "target array %(target_array)s since "
+                                     "it is already allowed."),
+                                 {"pgname": pg_name,
+                                  "target_array": target_array.array_name})
 
-            # Wait until source array acknowledges previous operation.
-            self._wait_until_source_array_allowed(primary, pg_name)
-            # Start replication on the PG.
-            primary.set_pgroup(pg_name, replicate_enabled=True)
+        # Wait until source array acknowledges previous operation.
+        self._wait_until_source_array_allowed(primary, pg_name)
+        # Start replication on the PG.
+        primary.set_pgroup(pg_name, replicate_enabled=True)
 
     @pure_driver_debug_trace
     def _generate_replication_retention(self):

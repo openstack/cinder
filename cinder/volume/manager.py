@@ -457,9 +457,9 @@ class VolumeManager(manager.SchedulerDependentManager):
                     volume.status = 'error'
                     volume.save()
                 elif volume.status == 'uploading':
-                        # Set volume status to available or in-use.
-                        self.db.volume_update_status_based_on_attachment(
-                            ctxt, volume.id)
+                    # Set volume status to available or in-use.
+                    self.db.volume_update_status_based_on_attachment(
+                        ctxt, volume.id)
                 else:
                     pass
             snapshots = objects.SnapshotList.get_by_host(

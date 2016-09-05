@@ -1655,7 +1655,7 @@ class RestClient(object):
                 qos_flag = 0
                 extra_flag = False
                 if 'LATENCY' not in qos and items['LATENCY'] != '0':
-                        extra_flag = True
+                    extra_flag = True
                 else:
                     for item in items:
                         if item in extra_qos:

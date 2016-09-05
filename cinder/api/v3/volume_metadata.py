@@ -63,7 +63,7 @@ class Controller(volume_meta_v2.Controller):
     def update(self, req, volume_id, id, body):
         self._ensure_min_version(req, METADATA_MICRO_VERSION)
         if not self._validate_etag(req, volume_id):
-                    return webob.Response(status_int=412)
+            return webob.Response(status_int=412)
         return super(Controller, self).update(req, volume_id,
                                               id, body)
 

@@ -1085,6 +1085,6 @@ class V7000Common(object):
                copying the lun is not possible.
         """
         if lun_type != CONCERTO_LUN_TYPE_THICK:
-                msg = _('Lun copy currently only supported for thick luns')
-                LOG.error(msg)
-                raise exception.ViolinBackendErr(message=msg)
+            msg = _('Lun copy currently only supported for thick luns')
+            LOG.error(msg)
+            raise exception.ViolinBackendErr(message=msg)

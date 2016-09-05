@@ -724,10 +724,10 @@ class NexentaNfsDriver(nfs.NfsDriver):  # pylint: disable=R0921
         for vol in vol_entries:
             nfs_share = vol['provider_location']
             if ((nfs_share in self.shares) and
-               (self._get_nfs_server_version(nfs_share) < 4)):
-                    sub_share, mnt_path = self._get_subshare_mount_point(
-                        nfs_share, vol)
-                    self._ensure_share_mounted(sub_share, mnt_path)
+                    (self._get_nfs_server_version(nfs_share) < 4)):
+                sub_share, mnt_path = self._get_subshare_mount_point(
+                    nfs_share, vol)
+                self._ensure_share_mounted(sub_share, mnt_path)
 
     def _get_nfs_server_version(self, share):
         if not self.nfs_versions.get(share):

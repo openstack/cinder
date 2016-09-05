@@ -493,12 +493,8 @@ class TegileISCSIDriver(TegileIntelliFlashVolumeDriver, san.SanISCSIDriver):
         """Driver entry point to attach a volume to an instance."""
 
         if getattr(self.configuration, 'use_chap_auth', False):
-                chap_username = getattr(self.configuration,
-                                        'chap_username',
-                                        '')
-                chap_password = getattr(self.configuration,
-                                        'chap_password',
-                                        '')
+            chap_username = getattr(self.configuration, 'chap_username', '')
+            chap_password = getattr(self.configuration, 'chap_password', '')
         else:
             chap_username = ''
             chap_password = ''
