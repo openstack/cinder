@@ -271,7 +271,7 @@ class NexentaEdgeNBDDriver(driver.VolumeDriver):
                 LOG.exception(_LE('Error creating cloned volume'))
 
     def migrate_volume(self, ctxt, volume, host, thin=False, mirror_count=0):
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_volume_stats(self, refresh=False):
         LOG.debug('Get volume stats')
