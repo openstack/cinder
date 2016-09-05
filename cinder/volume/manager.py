@@ -1103,11 +1103,6 @@ class VolumeManager(manager.SchedulerDependentManager):
                     context, attachment.get('id'),
                     {'attach_status': 'error_detaching'})
 
-        self.db.volume_detached(context.elevated(), volume_id,
-                                attachment.get('id'))
-        self.db.volume_admin_metadata_delete(context.elevated(), volume_id,
-                                             'attached_mode')
-
         # NOTE(jdg): We used to do an ensure export here to
         # catch upgrades while volumes were attached (E->F)
         # this was necessary to convert in-use volumes from
@@ -1130,6 +1125,11 @@ class VolumeManager(manager.SchedulerDependentManager):
                           resource=volume)
             raise exception.RemoveExportException(volume=volume_id,
                                                   reason=six.text_type(ex))
+
+        self.db.volume_detached(context.elevated(), volume_id,
+                                attachment.get('id'))
+        self.db.volume_admin_metadata_delete(context.elevated(), volume_id,
+                                             'attached_mode')
 
         self._notify_about_volume_usage(context, volume, "detach.end")
         LOG.info(_LI("Detach volume completed successfully."), resource=volume)
