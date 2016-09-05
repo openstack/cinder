@@ -683,6 +683,20 @@ class TestCommonAdapter(test.TestCase):
             common_adapter.client.register_initiator.assert_called_once_with(
                 sg, host, initiator_port_map)
 
+    @res_mock.mock_driver_input
+    @res_mock.patch_common_adapter
+    def test_auto_register_initiator_no_port_to_reg(
+            self, common_adapter, mocked_res, mocked_input):
+        common_adapter.config.io_port_list = ['a-0-0']
+        allowed_ports = mocked_res['allowed_ports']
+        common_adapter.allowed_ports = allowed_ports
+        sg = mocked_res['sg']
+        host = common.Host('host', ['iqn-reg-1', 'iqn-reg-2'])
+        with mock.patch.object(common_adapter.client, 'register_initiator'):
+            common_adapter.auto_register_initiator(sg, host)
+            common_adapter.client.register_initiator.assert_called_once_with(
+                sg, host, {})
+
     @res_mock.patch_common_adapter
     def test_build_provider_location(self, common_adapter, mocked_res):
         common_adapter.serial_number = 'vnx-serial'
