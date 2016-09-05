@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev12\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev15\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-03 10:11+0000\n"
+"POT-Creation-Date: 2016-09-05 04:15+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-03 01:52+0000\n"
+"PO-Revision-Date: 2016-09-04 12:26+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1227,6 +1227,22 @@ msgstr "ディレクトリー %s を作成できません。"
 
 msgid "Cannot create encryption specs. Volume type in use."
 msgstr "暗号化仕様を作成できません。ボリュームタイプは使用中です。"
+
+#, python-format
+msgid ""
+"Cannot create group %(group)s because snapshot %(snap)s is not in a valid "
+"state. Valid states are: %(valid)s."
+msgstr ""
+"スナップショット %(snap)s は有効な状態ではないため、グループ%(group)s を作成"
+"できません。有効な状態は %(valid)s です。"
+
+#, python-format
+msgid ""
+"Cannot create group %(group)s because source volume %(source_vol)s is not in "
+"a valid state. Valid states are: %(valid)s."
+msgstr ""
+"ソースボリューム %(source_vol)s が有効な状態にないため、グループ %(group)s を"
+"作成できません。有効な状態は %(valid)s です。"
 
 #, python-format
 msgid "Cannot create group_type with name %(name)s and specs %(group_specs)s"
@@ -9505,6 +9521,12 @@ msgstr "ボリューム %(vol)s をプール %(pool)s に作成できません�
 #, python-format
 msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
 msgstr "ボリューム%(vol1)s が snapshot.volume_id %(vol2)s と一致しません。"
+
+#, python-format
+msgid "Volume %(vol_id)s is not local to this node %(host)s"
+msgstr ""
+"ボリューム %(vol_id)s は、このノード %(host)s に対してローカルではありませ"
+"ん。"
 
 #, python-format
 msgid "Volume %(vol_id)s status must be %(statuses)s"
