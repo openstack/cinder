@@ -681,6 +681,9 @@ class ZTEVolumeDriver(driver.VolumeDriver):
 class ZteISCSIDriver(ZTEVolumeDriver, driver.ISCSIDriver):
     """Zte iSCSI volume driver."""
 
+    # ThirdPartySystems wiki page
+    WIKI_CI_NAME = "ZTE_cinder2_CI"
+
     def __init__(self, *args, **kwargs):
         super(ZteISCSIDriver, self).__init__(*args, **kwargs)
 
