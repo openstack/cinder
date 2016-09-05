@@ -43,30 +43,30 @@ from cinder.volume import utils as volutils
 
 
 cinder_opts = [
-    cfg.StrOpt('pool_name',
+    cfg.StrOpt('synology_pool_name',
                default='',
                help='Volume on Synology storage to be used for creating lun.'),
-    cfg.PortOpt('admin_port',
+    cfg.PortOpt('synology_admin_port',
                 default=5000,
                 help='Management port for Synology storage.'),
-    cfg.StrOpt('username',
+    cfg.StrOpt('synology_username',
                default='admin',
                help='Administrator of Synology storage.'),
-    cfg.StrOpt('password',
+    cfg.StrOpt('synology_password',
                default='',
                help='Password of administrator for logging in '
                     'Synology storage.',
                secret=True),
-    cfg.BoolOpt('ssl_verify',
+    cfg.BoolOpt('synology_ssl_verify',
                 default=True,
                 help='Do certificate validation or not if '
                      '$driver_use_ssl is True'),
-    cfg.StrOpt('one_time_pass',
+    cfg.StrOpt('synology_one_time_pass',
                default=None,
                help='One time password of administrator for logging in '
                     'Synology storage if OTP is enabled.',
                secret=True),
-    cfg.StrOpt('device_id',
+    cfg.StrOpt('synology_device_id',
                default=None,
                help='Device id for skip one time password check for '
                     'logging in Synology storage if OTP is enabled.'),
@@ -388,9 +388,9 @@ class SynoCommon(object):
             raise exception.InvalidConfigurationValue(
                 option='iscsi_ip_address',
                 value='')
-        if not config.safe_get('pool_name'):
+        if not config.safe_get('synology_pool_name'):
             raise exception.InvalidConfigurationValue(
-                option='pool_name',
+                option='synology_pool_name',
                 value='')
 
         self.config = config
@@ -400,13 +400,13 @@ class SynoCommon(object):
         self.iscsi_port = self.config.safe_get('iscsi_port')
 
         api = APIRequest(self.config.iscsi_ip_address,
-                         self.config.admin_port,
-                         self.config.username,
-                         self.config.password,
+                         self.config.synology_admin_port,
+                         self.config.synology_username,
+                         self.config.synology_password,
                          self.config.safe_get('driver_use_ssl'),
-                         self.config.safe_get('ssl_verify'),
-                         self.config.safe_get('one_time_pass'),
-                         self.config.safe_get('device_id'),)
+                         self.config.safe_get('synology_ssl_verify'),
+                         self.config.safe_get('synology_one_time_pass'),
+                         self.config.safe_get('synology_device_id'),)
         self.synoexec = api.request
         self.host_uuid = self._get_node_uuid()
 
@@ -433,7 +433,7 @@ class SynoCommon(object):
         return out['data']['nodes'][0]['uuid']
 
     def _get_pool_info(self):
-        pool_name = self.config.pool_name
+        pool_name = self.config.synology_pool_name
         if not pool_name:
             raise exception.InvalidConfigurationValue(option='pool_name',
                                                       value='')
@@ -472,7 +472,7 @@ class SynoCommon(object):
         return free_capacity_gb, total_capacity_gb, other_user_data_gb
 
     def _get_pool_lun_provisioned_size(self):
-        pool_name = self.config.pool_name
+        pool_name = self.config.synology_pool_name
         if not pool_name:
             raise exception.InvalidConfigurationValue(option='pool_name',
                                                       value=pool_name)
@@ -822,7 +822,8 @@ class SynoCommon(object):
                                               reason=_('no readonly found'))
 
         if pool_info['readonly']:
-            message = _('pool [%s] is not writable') % self.config.pool_name
+            message = (_('pool [%s] is not writable') %
+                       self.config.synology_pool_name)
             raise exception.VolumeDriverException(message=message)
 
     def _check_ds_version(self):
@@ -1023,7 +1024,7 @@ class SynoCommon(object):
                                                max_over_subscription_ratio)
 
         data['iscsi_ip_address'] = self.config.iscsi_ip_address
-        data['pool_name'] = self.config.pool_name
+        data['pool_name'] = self.config.synology_pool_name
         data['backend_info'] = ('%s:%s:%s' %
                                 (self.vendor_name,
                                  self.driver_type,
@@ -1038,7 +1039,8 @@ class SynoCommon(object):
                                    1,
                                    name=volume['name'],
                                    type=self.CINDER_LUN,
-                                   location='/' + self.config.pool_name,
+                                   location=('/' +
+                                             self.config.synology_pool_name),
                                    size=volume['size'] * units.Gi)
 
             self.check_response(out)
