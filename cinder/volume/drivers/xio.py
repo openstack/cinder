@@ -1388,6 +1388,9 @@ class XIOISEDriver(driver.VolumeDriver):
 class XIOISEISCSIDriver(driver.ISCSIDriver):
 
     """Requires ISE Running FW version 3.1.0 or higher"""
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = 'X-IO_technologies_CI'
     VERSION = XIOISEDriver.VERSION
 
     def __init__(self, *args, **kwargs):
@@ -1516,6 +1519,9 @@ class XIOISEISCSIDriver(driver.ISCSIDriver):
 class XIOISEFCDriver(driver.FibreChannelDriver):
 
     """Requires ISE Running FW version 2.8.0 or higher"""
+
+    # ThirdPartySystems wiki page
+    CI_WIKI_NAME = 'X-IO_technologies_CI'
     VERSION = XIOISEDriver.VERSION
 
     def __init__(self, *args, **kwargs):
