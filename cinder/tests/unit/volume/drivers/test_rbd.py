@@ -285,6 +285,20 @@ class RBDTestCase(test.TestCase):
                          [self.mock_rbd.ImageExists])
 
     @common_mocks
+    def test_manage_existing_with_invalid_rbd_image(self):
+        self.mock_rbd.Image.side_effect = self.mock_rbd.ImageNotFound
+
+        invalid_volume = 'vol-invalid'
+        invalid_ref = {'source-name': invalid_volume}
+
+        self.assertRaises(exception.ManageExistingInvalidReference,
+                          self.driver.manage_existing_get_size,
+                          self.volume_a, invalid_ref)
+        # Make sure the exception was raised
+        self.assertEqual([self.mock_rbd.ImageNotFound],
+                         RAISED_EXCEPTIONS)
+
+    @common_mocks
     def test_delete_backup_snaps(self):
         self.driver.rbd.Image.remove_snap = mock.Mock()
         with mock.patch.object(self.driver, '_get_backup_snaps') as \
