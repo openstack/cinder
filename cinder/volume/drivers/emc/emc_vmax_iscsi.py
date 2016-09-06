@@ -242,9 +242,10 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
             return targets
         outList = []
         for iscsi_ip_address in self.iscsi_ip_addresses:
-            out, _err, ex = self._call_iscsiadm(iscsi_ip_address)
-            if out:
-                outList.append(out)
+            if iscsi_ip_address:
+                out, _err, ex = self._call_iscsiadm(iscsi_ip_address)
+                if out:
+                    outList.append(out)
 
         if len(outList) == 0:
             if ex:
