@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev566\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev38\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-02 02:50+0000\n"
+"POT-Creation-Date: 2016-09-05 16:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1418,14 +1418,6 @@ msgstr "Группа согласования %(consistencygroup_id)s не на�
 
 msgid "Container"
 msgstr "контейнер"
-
-#, python-format
-msgid ""
-"Container format: %s is unsupported by the VMDK driver, only 'bare' is "
-"supported."
-msgstr ""
-"Формат контейнера %s не поддерживается драйвером VMDK. Только 'bare' "
-"поддерживается."
 
 msgid "Container size smaller than required file size."
 msgstr "Размер контейнера меньше размера требуемого файла."
