@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev38\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-30 03:16+0000\n"
+"POT-Creation-Date: 2016-09-05 16:35+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -993,14 +993,6 @@ msgstr "TutarlılıkGrubu %(consistencygroup_id)s bulunamadı."
 
 msgid "Container"
 msgstr "Kap"
-
-#, python-format
-msgid ""
-"Container format: %s is unsupported by the VMDK driver, only 'bare' is "
-"supported."
-msgstr ""
-"Kap biçimi: %s VMDK sürücüsü tarafından desteklenmiyor, yalnızca 'bare' "
-"desteklenir."
 
 msgid "Container size smaller than required file size."
 msgstr "Kap boyutu gerekli dosya boyutundan küçük."
