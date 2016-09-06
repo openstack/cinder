@@ -1543,6 +1543,11 @@ class EMCVMAXUtils(object):
         isValidSLO = False
         isValidWorkload = False
 
+        if not slo:
+            isValidSLO = True
+        if not workload:
+            isValidWorkload = True
+
         validSLOs = ['Bronze', 'Silver', 'Gold',
                      'Platinum', 'Diamond', 'Optimized',
                      'NONE']
@@ -1579,10 +1584,13 @@ class EMCVMAXUtils(object):
         :param workload: the workload string e.g DSS
         :returns: storageGroupName
         """
-        storageGroupName = ("OS-%(poolName)s-%(slo)s-%(workload)s-SG"
-                            % {'poolName': poolName,
-                               'slo': slo,
-                               'workload': workload})
+        if slo and workload:
+            storageGroupName = ("OS-%(poolName)s-%(slo)s-%(workload)s-SG"
+                                % {'poolName': poolName,
+                                   'slo': slo,
+                                   'workload': workload})
+        else:
+            storageGroupName = ("OS-no_SLO-SG")
         return storageGroupName
 
     def _get_fast_settings_from_storage_group(self, storageGroupInstance):
@@ -1884,12 +1892,11 @@ class EMCVMAXUtils(object):
         kwargs['EcomNoVerification'] = connargs['EcomNoVerification']
 
         slo = self._process_tag(element, 'SLO')
-        if slo is None:
-            slo = 'NONE'
         kwargs['SLO'] = slo
         workload = self._process_tag(element, 'Workload')
-        if workload is None:
+        if workload is None and slo:
             workload = 'NONE'
+
         kwargs['Workload'] = workload
         fastPolicy = self._process_tag(element, 'FastPolicy')
         kwargs['FastPolicy'] = fastPolicy

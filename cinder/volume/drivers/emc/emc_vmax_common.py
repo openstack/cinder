@@ -1841,12 +1841,17 @@ class EMCVMAXCommon(object):
             maskingViewDict['slo'] = slo
             maskingViewDict['workload'] = workload
             maskingViewDict['pool'] = uniqueName
-            prefix = (
-                ("OS-%(shortHostName)s-%(poolName)s-%(slo)s-%(workload)s"
-                 % {'shortHostName': shortHostName,
-                    'poolName': uniqueName,
-                    'slo': slo,
-                    'workload': workload}))
+            if slo:
+                prefix = (
+                    ("OS-%(shortHostName)s-%(poolName)s-%(slo)s-%(workload)s"
+                     % {'shortHostName': shortHostName,
+                        'poolName': uniqueName,
+                        'slo': slo,
+                        'workload': workload}))
+            else:
+                prefix = (
+                    ("OS-%(shortHostName)s-No_SLO"
+                     % {'shortHostName': shortHostName}))
         else:
             maskingViewDict['fastPolicy'] = extraSpecs[FASTPOLICY]
             if maskingViewDict['fastPolicy']:
@@ -2940,15 +2945,27 @@ class EMCVMAXCommon(object):
         # Check to see if SLO and Workload are configured on the array.
         storagePoolCapability = self.provisionv3.get_storage_pool_capability(
             self.conn, poolInstanceName)
-        if storagePoolCapability:
-            self.provisionv3.get_storage_pool_setting(
-                self.conn, storagePoolCapability, extraSpecs[SLO],
-                extraSpecs[WORKLOAD])
-        else:
-            exceptionMessage = (_(
-                "Cannot determine storage pool settings."))
-            LOG.error(exceptionMessage)
-            raise exception.VolumeBackendAPIException(data=exceptionMessage)
+        if extraSpecs[SLO]:
+            if storagePoolCapability:
+                storagePoolSetting = self.provisionv3.get_storage_pool_setting(
+                    self.conn, storagePoolCapability, extraSpecs[SLO],
+                    extraSpecs[WORKLOAD])
+                if not storagePoolSetting:
+                    exceptionMessage = (_(
+                        "The array does not support the storage pool setting "
+                        "for SLO %(slo)s or workload %(workload)s. Please "
+                        "check the array for valid SLOs and workloads.")
+                        % {'slo': extraSpecs[SLO],
+                           'workload': extraSpecs[WORKLOAD]})
+                    LOG.error(exceptionMessage)
+                    raise exception.VolumeBackendAPIException(
+                        data=exceptionMessage)
+            else:
+                exceptionMessage = (_(
+                    "Cannot determine storage pool settings."))
+                LOG.error(exceptionMessage)
+                raise exception.VolumeBackendAPIException(
+                    data=exceptionMessage)
 
         LOG.debug("Create Volume: %(volume)s  Pool: %(pool)s "
                   "Storage System: %(storageSystem)s "
