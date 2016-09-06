@@ -368,17 +368,15 @@ FAKE_LUN_GET_SUCCESS_RESPONSE = """
 }
 """
 
-FAKE_QUERY_ALL_LUN_RESPONSE = """
-{
+FAKE_QUERY_ALL_LUN_RESPONSE = {
     "error": {
         "code": 0
     },
     "data": [{
         "ID": "1",
-        "NAME": "IexzQZJWSXuX2e9I7c8GNQ"
+        "NAME": huawei_utils.encode_name(ID)
     }]
 }
-"""
 
 FAKE_LUN_ASSOCIATE_RESPONSE = """
 {
@@ -1206,7 +1204,7 @@ MAP_COMMAND_TO_FAKE_RESPONSE['/lun/11/PUT'] = (
     FAKE_COMMON_SUCCESS_RESPONSE)
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun?range=[0-65535]/GET'] = (
-    FAKE_QUERY_ALL_LUN_RESPONSE)
+    json.dumps(FAKE_QUERY_ALL_LUN_RESPONSE))
 
 MAP_COMMAND_TO_FAKE_RESPONSE['/lun/associate?TYPE=11&ASSOCIATEOBJTYPE=256'
                              '&ASSOCIATEOBJID=11/GET'] = (
@@ -2184,6 +2182,24 @@ class HuaweiTestBase(test.TestCase):
         self.cg = fake_consistencygroup.fake_consistencyobject_obj(
             admin_contex, id=ID, status='available')
 
+    def test_encode_name(self):
+        lun_name = huawei_utils.encode_name(self.volume.id)
+
+        # The hash value is different between py27 and py34.
+        # So we use assertIn.
+        self.assertIn(lun_name, ('21ec7341-4687000622165227970',
+                                 '21ec7341-7953146827712520106'))
+
+    @mock.patch.object(rest_client, 'RestClient')
+    def test_create_snapshot_success(self, mock_client):
+        lun_info = self.driver.create_snapshot(self.snapshot)
+        self.assertEqual(11, lun_info['provider_location'])
+
+        self.snapshot.volume_id = ID
+        self.snapshot.volume = self.volume
+        lun_info = self.driver.create_snapshot(self.snapshot)
+        self.assertEqual(11, lun_info['provider_location'])
+
 
 @ddt.ddt
 class HuaweiISCSIDriverTestCase(HuaweiTestBase):
@@ -2277,16 +2293,6 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
 
     def test_delete_volume_success(self):
         self.driver.delete_volume(self.volume)
-
-    def test_create_snapshot_success(self):
-        lun_info = self.driver.create_snapshot(self.snapshot)
-        self.assertEqual(11, lun_info['provider_location'])
-
-        tmp_volume = fake_volume.fake_volume_obj(admin_contex)
-        self.snapshot.volume_id = ID
-        self.snapshot.volume = tmp_volume
-        lun_info = self.driver.create_snapshot(self.snapshot)
-        self.assertEqual(11, lun_info['provider_location'])
 
     def test_delete_snapshot_success(self):
         self.driver.delete_snapshot(self.snapshot)
@@ -3061,14 +3067,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
             'provider_location': 'ID1'}
         self.assertEqual(expected_val, model_update)
 
-    @ddt.data([None, 0], ['ID1', 1])
-    @mock.patch.object(rest_client.RestClient, 'rename_lun')
-    def test_unmanage(self, ddt_data, mock_rename):
-        with mock.patch.object(huawei_driver.HuaweiBaseDriver,
-                               '_check_volume_exist_on_array',
-                               return_value=ddt_data[0]):
-            self.driver.unmanage(self.volume)
-            self.assertEqual(ddt_data[1], mock_rename.call_count)
+    def test_unmanage(self):
+        self.driver.unmanage(self.volume)
 
     def test_manage_existing_snapshot_abnormal(self):
         with mock.patch.object(huawei_driver.HuaweiBaseDriver,
@@ -3163,19 +3163,8 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
                                                              external_ref)
         self.assertEqual(2, size)
 
-    @mock.patch.object(rest_client.RestClient, 'rename_snapshot')
-    def test_unmanage_snapshot(self, mock_rename):
-        with mock.patch.object(rest_client.RestClient,
-                               'get_snapshot_id_by_name',
-                               return_value=None):
-            self.driver.unmanage_snapshot(self.snapshot)
-            self.assertEqual(0, mock_rename.call_count)
-
-        with mock.patch.object(rest_client.RestClient,
-                               'get_snapshot_id_by_name',
-                               return_value='ID1'):
-            self.driver.unmanage_snapshot(self.snapshot)
-            self.assertEqual(1, mock_rename.call_count)
+    def test_unmanage_snapshot(self):
+        self.driver.unmanage_snapshot(self.snapshot)
 
     @ddt.data(sync_replica_specs, async_replica_specs)
     def test_create_replication_success(self, mock_type):
@@ -3751,16 +3740,6 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
 
     def test_delete_volume_success(self):
         self.driver.delete_volume(self.volume)
-
-    @mock.patch.object(rest_client, 'RestClient')
-    def test_create_snapshot_success(self, mock_client):
-        lun_info = self.driver.create_snapshot(self.snapshot)
-        self.assertEqual(11, lun_info['provider_location'])
-
-        self.snapshot.volume.provider_location = None
-        self.snapshot.volume_id = ID
-        lun_info = self.driver.create_snapshot(self.snapshot)
-        self.assertEqual(11, lun_info['provider_location'])
 
     def test_delete_snapshot_success(self):
         self.driver.delete_snapshot(self.snapshot)

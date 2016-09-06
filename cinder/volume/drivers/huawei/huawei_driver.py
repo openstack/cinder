@@ -1411,23 +1411,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         """Export Huawei volume from Cinder."""
         LOG.debug("Unmanage volume: %s.", volume.id)
 
-        lun_id = self._check_volume_exist_on_array(
-            volume, constants.VOLUME_NOT_EXISTS_WARN)
-        if not lun_id:
-            return
-
-        lun_name = huawei_utils.encode_name(volume.id)
-        new_name = 'unmged_' + lun_name
-        LOG.debug("Rename LUN %(lun_name)s to %(new_name)s.",
-                  {'lun_name': lun_name,
-                   'new_name': new_name})
-        try:
-            self.client.rename_lun(lun_id, new_name)
-        except Exception:
-            LOG.warning(_LW("Rename lun %(lun_id)s fails when "
-                            "unmanaging volume %(volume)s."),
-                        {"lun_id": lun_id, "volume": volume.id})
-
     def manage_existing_get_size(self, volume, external_ref):
         """Get the size of the existing volume."""
         lun_info = self._get_lun_info_by_ref(external_ref)
@@ -1508,24 +1491,6 @@ class HuaweiBaseDriver(driver.VolumeDriver):
     def unmanage_snapshot(self, snapshot):
         """Unmanage the specified snapshot from Cinder management."""
         LOG.debug("Unmanage snapshot: %s.", snapshot.id)
-        snapshot_name = huawei_utils.encode_name(snapshot.id)
-        snapshot_id = self.client.get_snapshot_id_by_name(snapshot_name)
-        if not snapshot_id:
-            LOG.warning(_LW("Can't find snapshot on the array: %s."),
-                        snapshot_name)
-            return
-        new_name = 'unmged_' + snapshot_name
-        LOG.debug("Rename snapshot %(snapshot_name)s to %(new_name)s.",
-                  {'snapshot_name': snapshot_name,
-                   'new_name': new_name})
-
-        try:
-            self.client.rename_snapshot(snapshot_id, new_name)
-        except Exception:
-            LOG.warning(_LW("Failed to rename snapshot %(snapshot_id)s, "
-                            "snapshot name on array is %(snapshot_name)s."),
-                        {'snapshot_id': snapshot.id,
-                         'snapshot_name': snapshot_name})
 
     def remove_host_with_check(self, host_id):
         wwns_in_host = (
