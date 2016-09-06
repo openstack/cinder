@@ -1037,18 +1037,6 @@ os-force_detach:
   in: body
   required: true
   type: object
-os-promote-replica:
-  description: |
-    The ``os-promote-replica`` action.
-  in: body
-  required: true
-  type: object
-os-reenable-replica:
-  description: |
-    The ``os-reenable-replica`` action.
-  in: body
-  required: true
-  type: object
 os-reset_status:
   description: |
     The ``os-reset_status`` action.
