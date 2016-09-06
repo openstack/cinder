@@ -84,7 +84,8 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self.name_field = self.special_fields['name_field']
         params = {self.name_field: vol_name,
                   'volume_type': volume_type['id'],
-                  'consistencygroup_id': cg['id']}
+                  'consistencygroup_id': cg['id'],
+                  'size': CONF.volume.volume_size}
 
         # Create volume
         volume = self.admin_volume_client.create_volume(**params)['volume']
@@ -127,7 +128,8 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self.name_field = self.special_fields['name_field']
         params = {self.name_field: vol_name,
                   'volume_type': volume_type['id'],
-                  'consistencygroup_id': cg['id']}
+                  'consistencygroup_id': cg['id'],
+                  'size': CONF.volume.volume_size}
 
         # Create volume
         volume = self.admin_volume_client.create_volume(**params)['volume']
@@ -186,7 +188,8 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self.name_field = self.special_fields['name_field']
         params = {self.name_field: vol_name,
                   'volume_type': volume_type['id'],
-                  'consistencygroup_id': cg['id']}
+                  'consistencygroup_id': cg['id'],
+                  'size': CONF.volume.volume_size}
 
         # Create volume
         volume = self.admin_volume_client.create_volume(**params)['volume']
@@ -251,7 +254,8 @@ class ConsistencyGroupsV2Test(base.BaseVolumeAdminTest):
         self.name_field = self.special_fields['name_field']
         params = {self.name_field: vol_name,
                   'volume_type': volume_type['id'],
-                  'consistencygroup_id': cg['id']}
+                  'consistencygroup_id': cg['id'],
+                  'size': CONF.volume.volume_size}
 
         # Create volume
         volume = self.admin_volume_client.create_volume(**params)['volume']

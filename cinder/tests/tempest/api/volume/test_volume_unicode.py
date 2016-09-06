@@ -17,6 +17,9 @@
 from tempest.api.volume import base as volume_base
 from tempest.common.utils import data_utils
 from tempest.common import waiters
+from tempest import config
+
+CONF = config.CONF
 
 
 class CinderUnicodeTest(volume_base.BaseVolumeTest):
@@ -37,6 +40,7 @@ class CinderUnicodeTest(volume_base.BaseVolumeTest):
 
         name_field = cls.special_fields['name_field']
         kwargs[name_field] = name
+        kwargs['size'] = CONF.volume.volume_size
 
         volume = cls.volumes_client.create_volume(**kwargs)['volume']
         cls.volumes.append(volume)
