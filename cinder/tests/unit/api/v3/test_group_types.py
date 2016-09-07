@@ -112,8 +112,8 @@ class GroupTypesApiTest(test.TestCase):
                                                 [fake.PROJECT_ID])
 
     def test_group_types_index(self):
-        self.stubs.Set(group_types, 'get_all_group_types',
-                       return_group_types_get_all_types)
+        self.mock_object(group_types, 'get_all_group_types',
+                         return_group_types_get_all_types)
 
         req = fakes.HTTPRequest.blank('/v3/%s/group_types' % fake.PROJECT_ID,
                                       use_admin_context=True,
@@ -129,8 +129,8 @@ class GroupTypesApiTest(test.TestCase):
             self.assertEqual('value1', entry['group_specs']['key1'])
 
     def test_group_types_index_no_data(self):
-        self.stubs.Set(group_types, 'get_all_group_types',
-                       return_empty_group_types_get_all_types)
+        self.mock_object(group_types, 'get_all_group_types',
+                         return_empty_group_types_get_all_types)
 
         req = fakes.HTTPRequest.blank('/v3/%s/group_types' % fake.PROJECT_ID,
                                       version=GROUP_TYPE_MICRO_VERSION)
@@ -254,8 +254,8 @@ class GroupTypesApiTest(test.TestCase):
         self.assertEqual(expect_result[2], res['group_types'][2]['id'])
 
     def test_group_types_show(self):
-        self.stubs.Set(group_types, 'get_group_type',
-                       return_group_types_get_group_type)
+        self.mock_object(group_types, 'get_group_type',
+                         return_group_types_get_group_type)
 
         type_id = six.text_type(uuid.uuid4())
         req = fakes.HTTPRequest.blank('/v3/%s/group_types/' % fake.PROJECT_ID
@@ -269,8 +269,8 @@ class GroupTypesApiTest(test.TestCase):
         self.assertEqual(type_name, res_dict['group_type']['name'])
 
     def test_group_types_show_pre_microversion(self):
-        self.stubs.Set(group_types, 'get_group_type',
-                       return_group_types_get_group_type)
+        self.mock_object(group_types, 'get_group_type',
+                         return_group_types_get_group_type)
 
         type_id = six.text_type(uuid.uuid4())
         req = fakes.HTTPRequest.blank('/v3/%s/group_types/' % fake.PROJECT_ID
@@ -281,8 +281,8 @@ class GroupTypesApiTest(test.TestCase):
                           self.controller.show, req, type_id)
 
     def test_group_types_show_not_found(self):
-        self.stubs.Set(group_types, 'get_group_type',
-                       return_group_types_get_group_type)
+        self.mock_object(group_types, 'get_group_type',
+                         return_group_types_get_group_type)
 
         req = fakes.HTTPRequest.blank('/v3/%s/group_types/%s' %
                                       (fake.PROJECT_ID,
@@ -292,8 +292,8 @@ class GroupTypesApiTest(test.TestCase):
                           req, fake.WILL_NOT_BE_FOUND_ID)
 
     def test_get_default(self):
-        self.stubs.Set(group_types, 'get_default_group_type',
-                       return_group_types_get_default)
+        self.mock_object(group_types, 'get_default_group_type',
+                         return_group_types_get_default)
         req = fakes.HTTPRequest.blank('/v3/%s/group_types/default' %
                                       fake.PROJECT_ID,
                                       version=GROUP_TYPE_MICRO_VERSION)
@@ -305,8 +305,8 @@ class GroupTypesApiTest(test.TestCase):
                          res_dict['group_type']['description'])
 
     def test_get_default_not_found(self):
-        self.stubs.Set(group_types, 'get_default_group_type',
-                       return_group_types_get_default_not_found)
+        self.mock_object(group_types, 'get_default_group_type',
+                         return_group_types_get_default_not_found)
         req = fakes.HTTPRequest.blank('/v3/%s/group_types/default' %
                                       fake.PROJECT_ID,
                                       version=GROUP_TYPE_MICRO_VERSION)

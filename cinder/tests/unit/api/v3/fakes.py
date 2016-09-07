@@ -28,7 +28,7 @@ DEFAULT_VOL_ID = fake.VOLUME_ID
 DEFAULT_AZ = "fakeaz"
 
 
-def stub_message(id, **kwargs):
+def fake_message(id, **kwargs):
     message = {
         'id': id,
         'event_id': defined_messages.UNABLE_TO_ALLOCATE,
@@ -46,11 +46,11 @@ def stub_message(id, **kwargs):
     return message
 
 
-def stub_message_get(self, context, message_id):
-    return stub_message(message_id)
+def fake_message_get(self, context, message_id):
+    return fake_message(message_id)
 
 
-def stub_volume(id, **kwargs):
+def create_volume(id, **kwargs):
     volume = {
         'id': id,
         'user_id': fake.USER_ID,
@@ -94,9 +94,9 @@ def stub_volume(id, **kwargs):
     return volume
 
 
-def stub_volume_create(self, context, size, name, description, snapshot=None,
+def fake_volume_create(self, context, size, name, description, snapshot=None,
                        group_id=None, **param):
-    vol = stub_volume(DEFAULT_VOL_ID)
+    vol = create_volume(DEFAULT_VOL_ID)
     vol['size'] = size
     vol['display_name'] = name
     vol['display_description'] = description

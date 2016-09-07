@@ -30,7 +30,7 @@ from cinder import objects
 from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit.api import fakes
-from cinder.tests.unit.api.v3 import stubs
+from cinder.tests.unit.api.v3 import fakes as v3_fakes
 from cinder.tests.unit import fake_constants as fake
 from cinder.tests.unit import utils
 from cinder.volume import api as volume_api
@@ -811,7 +811,7 @@ class GroupsAPITestCase(test.TestCase):
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_create_group_from_src_snap(self, mock_validate):
-        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+        self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         group = utils.create_group(self.ctxt,
                                    group_type_id=fake.GROUP_TYPE_ID)
@@ -849,7 +849,7 @@ class GroupsAPITestCase(test.TestCase):
         group_snapshot.destroy()
 
     def test_create_group_from_src_grp(self):
-        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
+        self.mock_object(volume_api.API, "create", v3_fakes.fake_volume_create)
 
         source_grp = utils.create_group(self.ctxt,
                                         group_type_id=fake.GROUP_TYPE_ID)
