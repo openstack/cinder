@@ -109,6 +109,35 @@ class GroupAPITestCase(test.TestCase):
         mock_volumes_update.assert_called_once_with(self.ctxt, [])
         mock_rpc_delete_group.assert_called_once_with(self.ctxt, ret_group)
 
+    @mock.patch('cinder.group.api.API._cast_create_group')
+    @mock.patch('cinder.group.api.API.update_quota')
+    @mock.patch('cinder.objects.Group')
+    @mock.patch('cinder.db.group_type_get_by_name')
+    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.group.api.check_policy')
+    def test_create_with_group_name(self, mock_policy, mock_volume_types_get,
+                                    mock_group_type_get, mock_group,
+                                    mock_update_quota, mock_cast_create_group):
+        mock_volume_types_get.return_value = [{'id': fake.VOLUME_TYPE_ID}]
+        mock_group_type_get.return_value = {'id': fake.GROUP_TYPE_ID}
+        name = "test_group"
+        description = "this is a test group"
+        grp = utils.create_group(self.ctxt, group_type_id=fake.GROUP_TYPE_ID,
+                                 volume_type_ids=[fake.VOLUME_TYPE_ID],
+                                 availability_zone='nova', host=None,
+                                 name=name, description=description,
+                                 status=fields.GroupStatus.CREATING)
+        mock_group.return_value = grp
+
+        ret_group = self.group_api.create(self.ctxt, name, description,
+                                          "fake-grouptype-name",
+                                          [fake.VOLUME_TYPE_ID],
+                                          availability_zone='nova')
+        self.assertEqual(grp.obj_to_primitive(), ret_group.obj_to_primitive())
+
+        mock_group_type_get.assert_called_once_with(self.ctxt,
+                                                    "fake-grouptype-name")
+
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.update_group')
     @mock.patch('cinder.db.volume_get_all_by_generic_group')
     @mock.patch('cinder.group.api.API._cast_create_group')
