@@ -12,6 +12,7 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import ddt
 import mock
 from oslo_utils import timeutils
 import pytz
@@ -24,6 +25,7 @@ from cinder.tests.unit import fake_volume
 from cinder.tests.unit import objects as test_objects
 
 
+@ddt.ddt
 class TestVolumeType(test_objects.BaseObjectsTestCase):
 
     @mock.patch('cinder.db.sqlalchemy.api._volume_type_get_full')
@@ -63,13 +65,17 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                                    fake.VOLUME_TYPE_ID)
         self._compare(self, db_volume_type, volume_type)
 
-    def test_obj_make_compatible(self):
+    @ddt.data('1.0', '1.1')
+    def test_obj_make_compatible(self, version):
         volume_type = objects.VolumeType(context=self.context)
         volume_type.extra_specs = {'foo': None, 'bar': 'baz'}
-        primitive = volume_type.obj_to_primitive('1.0')
+        volume_type.qos_specs_id = fake.QOS_SPEC_ID
+        primitive = volume_type.obj_to_primitive(version)
         volume_type = objects.VolumeType.obj_from_primitive(primitive)
-        self.assertEqual('', volume_type.extra_specs['foo'])
+        foo = '' if version == '1.0' else None
+        self.assertEqual(foo, volume_type.extra_specs['foo'])
         self.assertEqual('baz', volume_type.extra_specs['bar'])
+        self.assertFalse(volume_type.obj_attr_is_set('qos_specs_id'))
 
     @mock.patch('cinder.volume.volume_types.create')
     def test_create(self, volume_type_create):
@@ -145,6 +151,56 @@ class TestVolumeType(test_objects.BaseObjectsTestCase):
                                           call_bool,
                                           mock.call(self.context,
                                                     fake.VOLUME_TYPE_ID)])
+
+    @mock.patch('cinder.objects.QualityOfServiceSpecs.get_by_id')
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
+    def test_lazy_loading_qos(self, get_mock, qos_get_mock):
+        qos_get_mock.return_value = objects.QualityOfServiceSpecs(
+            id=fake.QOS_SPEC_ID)
+        vol_type = fake_volume.fake_db_volume_type(
+            qos_specs_id=fake.QOS_SPEC_ID)
+        get_mock.return_value = vol_type
+
+        volume_type = objects.VolumeType.get_by_id(self.context,
+                                                   vol_type['id'])
+        self._compare(self, qos_get_mock.return_value, volume_type.qos_specs)
+        qos_get_mock.assert_called_once_with(self.context, fake.QOS_SPEC_ID)
+
+    @mock.patch('cinder.db.volume_type_access_get_all')
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
+    def test_lazy_loading_projects(self, get_mock, get_projects_mock):
+        vol_type = fake_volume.fake_db_volume_type(
+            qos_specs_id=fake.QOS_SPEC_ID)
+        get_mock.return_value = vol_type
+
+        projects = [models.VolumeTypeProjects(project_id=fake.PROJECT_ID),
+                    models.VolumeTypeProjects(project_id=fake.PROJECT2_ID)]
+        get_projects_mock.return_value = projects
+
+        volume_type = objects.VolumeType.get_by_id(self.context,
+                                                   vol_type['id'])
+        # Simulate this type has been loaded by a volume get_all method
+        del volume_type.projects
+
+        self.assertEqual([p.project_id for p in projects],
+                         volume_type.projects)
+        get_projects_mock.assert_called_once_with(self.context, vol_type['id'])
+
+    @mock.patch('cinder.db.volume_type_extra_specs_get')
+    @mock.patch('cinder.db.sqlalchemy.api._volume_type_get')
+    def test_lazy_loading_extra_specs(self, get_mock, get_specs_mock):
+        get_specs_mock.return_value = {'key': 'value', 'key2': 'value2'}
+        vol_type = fake_volume.fake_db_volume_type(
+            qos_specs_id=fake.QOS_SPEC_ID)
+        get_mock.return_value = vol_type
+
+        volume_type = objects.VolumeType.get_by_id(self.context,
+                                                   vol_type['id'])
+        # Simulate this type has been loaded by a volume get_all method
+        del volume_type.extra_specs
+
+        self.assertEqual(get_specs_mock.return_value, volume_type.extra_specs)
+        get_specs_mock.assert_called_once_with(self.context, vol_type['id'])
 
 
 class TestVolumeTypeList(test_objects.BaseObjectsTestCase):
