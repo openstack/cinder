@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev38\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev54\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-05 16:35+0000\n"
+"POT-Creation-Date: 2016-09-06 23:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -766,10 +766,6 @@ msgstr "CPG (%s) non esiste nell'array"
 msgid "Cache name is None, please set smartcache:cachename in key."
 msgstr ""
 "Il nome della cache è Nessuno, impostare smartcache:cachename nella chiave. "
-
-#, python-format
-msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
-msgstr "Volume cache %(cache_vol)s non ha istantanea %(cache_snap)s."
 
 #, python-format
 msgid "Cache volume %s does not have required properties"
@@ -2720,14 +2716,6 @@ msgstr ""
 msgid "Error unbinding volume %(vol)s from pool. %(error)s."
 msgstr ""
 "Errore durante lo scollegamento del volume %(vol)s dal pool. %(error)s."
-
-#, python-format
-msgid ""
-"Error verifying clone size on Volume clone: %(clone)s Size: %(size)d "
-"onSnapshot: %(snapshot)s"
-msgstr ""
-"Errore durante la verifica della dimensione del clone sul clone del volume: "
-"%(clone)s Dimensione: %(size)d sull'istantanea: %(snapshot)s"
 
 #, python-format
 msgid "Error while authenticating with switch: %s."

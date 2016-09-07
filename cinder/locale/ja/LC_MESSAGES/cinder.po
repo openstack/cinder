@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev38\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev54\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-05 16:35+0000\n"
+"POT-Creation-Date: 2016-09-06 23:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-05 02:27+0000\n"
+"PO-Revision-Date: 2016-09-06 02:01+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -888,12 +888,6 @@ msgstr "CPG (%s) がアレイ上に存在しません"
 msgid "Cache name is None, please set smartcache:cachename in key."
 msgstr ""
 "キャッシュ名がありません。キーで smartcache:cachename を設定してください。"
-
-#, python-format
-msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
-msgstr ""
-"キャッシュボリューム %(cache_vol)s にスナップショット %(cache_snap)s がありま"
-"せん。"
 
 #, python-format
 msgid "Cache volume %s does not have required properties"
@@ -3195,14 +3189,6 @@ msgstr ""
 #, python-format
 msgid "Error unbinding volume %(vol)s from pool. %(error)s."
 msgstr "プールからのボリューム %(vol)s のアンバインドエラー。%(error)s。"
-
-#, python-format
-msgid ""
-"Error verifying clone size on Volume clone: %(clone)s Size: %(size)d "
-"onSnapshot: %(snapshot)s"
-msgstr ""
-"スナップショット: %(snapshot)s のボリュームクローン: %(clone)s サイズ: "
-"%(size)d のクローンサイズの検証中にエラーが発生しました。"
 
 #, python-format
 msgid "Error while authenticating with switch: %s."
@@ -6039,6 +6025,28 @@ msgstr ""
 msgid "Masking view %(maskingViewName)s was not deleted successfully"
 msgstr "マスキングビュー %(maskingViewName)s は正常に削除されませんでした"
 
+msgid "Max read bandwidth setting for volume qos, use 0 for unlimited"
+msgstr ""
+"ボリューム QoS の最大読み出し帯域幅設定。無制限にする場合は0を指定します。"
+
+msgid "Max read iops setting for volume qos, use 0 for unlimited"
+msgstr "ボリューム QoS の読み出し iops 設定。無制限にする場合は0を指定します。"
+
+msgid "Max total bandwidth setting for volume qos, use 0 for unlimited"
+msgstr ""
+"ボリューム QoS のトータルの最大帯域幅設定。無制限にする場合は0を指定します。"
+
+msgid "Max total iops setting for volume qos, use 0 for unlimited"
+msgstr ""
+"ボリューム QoS のトータルの iops 設定。無制限にする場合は0を指定します。"
+
+msgid "Max write bandwidth setting for volume qos, use 0 for unlimited"
+msgstr ""
+"ボリューム QoS の最大書き込み帯域幅設定。無制限にする場合は0を指定します。"
+
+msgid "Max write iops setting for volume qos, use 0 for unlimited"
+msgstr "ボリューム QoS の書き込み iops 設定。無制限にする場合は0を指定します。"
+
 msgid "Maximum age is count of days since epoch."
 msgstr "最長存続時間は、エポック以降の日数です。"
 
@@ -7822,6 +7830,9 @@ msgid "Specified snapshot group with id %s could not be found."
 msgstr ""
 "ID %s の指定されたスナップショットグループを見つけることができませんでした。"
 
+msgid "Specifies IP pool to use for volume"
+msgstr "ボリュームに用いる IP プールを指定します。"
+
 msgid "Specify a password or private_key"
 msgstr "パスワードまたは private_key を指定してください。"
 
@@ -8178,6 +8189,12 @@ msgid ""
 msgstr ""
 "マウント %(mount_path)s は有効な Quobyte USP ボリュームではありません。エ"
 "ラー: %(exc)s"
+
+msgid "The name to use for storage instances created"
+msgstr "作成したストレージインスタンスにも用いる名前"
+
+msgid "The name to use for volumes created"
+msgstr "作成したボリュームに用いる名前"
 
 #, python-format
 msgid "The parameter of the storage backend. (config_group: %(config_group)s)"

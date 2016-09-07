@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev38\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev54\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-05 16:35+0000\n"
+"POT-Creation-Date: 2016-09-06 23:16+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -701,10 +701,6 @@ msgstr "Společná skupiny poskytování (%s) neexistuje v poli"
 msgid "Cache name is None, please set smartcache:cachename in key."
 msgstr ""
 "Název mezipaměti je None, prosím nastavte  smartcache:cachename v klíči."
-
-#, python-format
-msgid "Cache volume %(cache_vol)sdoes not have snapshot %(cache_snap)s."
-msgstr "Svazek mezipaměti %(cache_vol)s nemá snímek %(cache_snap)s."
 
 #, python-format
 msgid "Cache volume %s does not have required properties"
@@ -2297,14 +2293,6 @@ msgstr ""
 #, python-format
 msgid "Error unbinding volume %(vol)s from pool. %(error)s."
 msgstr "Chyba při rozvazování svazku %(vol)s ze zásoby. %(error)s."
-
-#, python-format
-msgid ""
-"Error verifying clone size on Volume clone: %(clone)s Size: %(size)d "
-"onSnapshot: %(snapshot)s"
-msgstr ""
-"Chyba při ověřování velikosti klonu svazku: %(clone)s, velikost: %(size)d ve "
-"snímku: %(snapshot)s"
 
 #, python-format
 msgid "Error while checking transaction status: %s"

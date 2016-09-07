@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev487\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev54\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-08-30 03:17+0000\n"
+"POT-Creation-Date: 2016-09-06 23:17+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1185,10 +1185,6 @@ msgid "Volume %s does not have provider_location specified, skipping."
 msgstr "Svazek %s nemá zadáno umístění poskytovatele, je přeskočen."
 
 #, python-format
-msgid "Volume %s exists but can't be deleted"
-msgstr "Svazek %s existuje ale nemůže být smazán"
-
-#, python-format
 msgid "Volume %s is not found!, it may have been deleted."
 msgstr "Svazek %s nenalezen! Mohl být smazán."
 
@@ -1208,14 +1204,6 @@ msgstr "Úkol kopírování svazku pro zdrojový svazek %s nenalezen."
 #, python-format
 msgid "Volume deletion failed with message: %s"
 msgstr "Smazání svazku selhalo se zprávou: %s"
-
-#, python-format
-msgid ""
-"Volume is masked but not to host %(host)s as expected. Returning empty "
-"dictionary."
-msgstr ""
-"Svazek je zamaskován ale ne vůči hostiteli %(host)s jak se očekávalo. "
-"Vracení prázdného slovníku."
 
 #, python-format
 msgid "Volume is not writable. Please broaden the file permissions. Mount: %s"
