@@ -202,6 +202,7 @@ class TestKaminarioISCSI(test.TestCase):
         """Test create_volume_from_snapshot."""
         mock_brick_get.return_value = CONNECTOR
         mock_copy_volume.return_value = None
+        self.driver._kaminario_disconnect_volume = mock.Mock()
         result = self.driver.create_volume_from_snapshot(self.vol, self.snap)
         self.assertIsNone(result)
 
@@ -223,6 +224,7 @@ class TestKaminarioISCSI(test.TestCase):
         """Test create_cloned_volume."""
         mock_brick_get.return_value = CONNECTOR
         mock_copy_volume.return_value = None
+        self.driver._kaminario_disconnect_volume = mock.Mock()
         result = self.driver.create_cloned_volume(self.vol, self.vol)
         self.assertIsNone(result)
 

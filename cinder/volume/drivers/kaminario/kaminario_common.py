@@ -600,9 +600,14 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                   snapshot.volume.size * units.Ki,
                                   self.configuration.volume_dd_blocksize,
                                   sparse=True)
+            self._kaminario_disconnect_volume(src_attach_info,
+                                              dest_attach_info)
             self.terminate_connection(volume, properties)
             self.terminate_connection(cview, properties)
+            cview.delete()
         except Exception as ex:
+            self._kaminario_disconnect_volume(src_attach_info,
+                                              dest_attach_info)
             self.terminate_connection(cview, properties)
             self.terminate_connection(volume, properties)
             cview.delete()
@@ -625,6 +630,7 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
         src_name = self.get_volume_name(src_vref.id)
         src_vol = self.client.search("volumes", name=src_name)
         src_map = self.client.search("mappings", volume=src_vol)
+        src_attach_info = dest_attach_info = None
         if src_map.total != 0:
             msg = _("K2 driver does not support clone of a attached volume. "
                     "To get this done, create a snapshot from the attached "
@@ -643,10 +649,13 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
                                   src_vref.size * units.Ki,
                                   self.configuration.volume_dd_blocksize,
                                   sparse=True)
-
+            self._kaminario_disconnect_volume(src_attach_info,
+                                              dest_attach_info)
             self.terminate_connection(volume, properties)
             self.terminate_connection(src_vref, properties)
         except Exception as ex:
+            self._kaminario_disconnect_volume(src_attach_info,
+                                              dest_attach_info)
             self.terminate_connection(src_vref, properties)
             self.terminate_connection(volume, properties)
             self.delete_volume(volume)
@@ -1139,3 +1148,10 @@ class KaminarioCinderDriver(cinder.volume.driver.ISCSIDriver):
             self._delete_failover_volume_replica(volume, vg_name, vol_name)
         else:
             self._delete_volume_replica(volume, vg_name, vol_name)
+
+    def _kaminario_disconnect_volume(self, *attach_info):
+        for info in attach_info:
+            if (info and info.get('connector') and
+                    info.get('conn', {}).get('data') and info.get('device')):
+                info['connector'].disconnect_volume(info['conn']['data'],
+                                                    info['device'])
