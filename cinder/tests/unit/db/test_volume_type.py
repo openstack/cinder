@@ -18,6 +18,7 @@ from cinder import context
 from cinder import db
 from cinder import test
 from cinder.tests.unit import fake_constants as fake
+from cinder.tests.unit import utils
 from cinder.volume import volume_types
 
 
@@ -39,3 +40,32 @@ class VolumeTypeTestCase(test.TestCase):
             self.ctxt, vol_type_ref.id, updates)
         self.assertEqual('test_volume_type_update', updated_vol_type.name)
         volume_types.destroy(self.ctxt, vol_type_ref.id)
+
+    def test_volume_type_get_with_qos_specs(self):
+        """Ensure volume types get can load qos_specs."""
+        qos_data = {'name': 'qos', 'consumer': 'front-end',
+                    'specs': {'key': 'value', 'key2': 'value2'}}
+        qos = utils.create_qos(self.ctxt, **qos_data)
+        vol_type = db.volume_type_create(self.ctxt,
+                                         {'name': 'my-vol-type',
+                                          'qos_specs_id': qos['id']})
+
+        db_vol_type = db.volume_type_get(self.ctxt, vol_type.id,
+                                         expected_fields=['qos_specs'])
+
+        expected = {('QoS_Specs_Name', 'qos'), ('consumer', 'front-end'),
+                    ('key', 'value'), ('key2', 'value2')}
+        actual = {(spec.key, spec.value) for spec in db_vol_type['qos_specs']}
+        self.assertEqual(expected, actual)
+
+    def test_volume_type_get_with_projects(self):
+        """Ensure volume types get can load projects."""
+        projects = [fake.PROJECT_ID, fake.PROJECT2_ID, fake.PROJECT3_ID]
+        vol_type = db.volume_type_create(self.ctxt,
+                                         {'name': 'my-vol-type'},
+                                         projects=projects)
+
+        db_vol_type = db.volume_type_get(self.ctxt, vol_type.id,
+                                         expected_fields=['projects'])
+
+        self.assertEqual(set(projects), set(db_vol_type['projects']))
