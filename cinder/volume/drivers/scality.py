@@ -85,6 +85,10 @@ class ScalityDriver(remotefs_drv.RemoteFSSnapDriver):
         # as a config switch to customers.
         self.configuration.scality_sofs_sparsed_volumes = True
 
+        # TODO(smcginnis) Either remove this if CI requirements are met, or
+        # remove this driver in the Ocata release per normal deprecation
+        self._supported = False
+
     def check_for_setup_error(self):
         """Sanity checks before attempting to mount SOFS."""
 
