@@ -12,9 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-"""
-Client side of the volume RPC API.
-"""
 
 from oslo_serialization import jsonutils
 
