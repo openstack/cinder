@@ -1,3 +1,4 @@
 ---
 features:
-  - Added using etags to avoid the lost update problem during deleting volume metadata.
+  - Added using etags in API calls to avoid the lost update problem during
+    deleting volume metadata.
