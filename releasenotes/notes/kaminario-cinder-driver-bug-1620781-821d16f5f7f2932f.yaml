@@ -1,6 +1,5 @@
 ---
 fixes:
-  - Fixed orphan view in "create_volume_from_snapshot" method
-    and multipath_devices in "create_volume_from_snapshot" and
-    "create_cloned_volume" methods in Kaminario iSCSI and FC Cinder Drivers.
+  - Fixed orphan view and multipath devices when creating a volume from a
+    snapshot or cloning in the Kaminario iSCSI and FC Cinder Drivers.
 

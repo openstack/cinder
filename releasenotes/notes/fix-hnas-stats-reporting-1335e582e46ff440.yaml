@@ -1,4 +1,4 @@
 ---
 fixes:
-  - Fixes HNAS stats reporting. HNAS driver was not correctly reporting THIN
+  - Fixed issue where the HNAS driver was not correctly reporting THIN
     provisioning and related stats.
