@@ -845,12 +845,7 @@ class API(base.Base):
                                group_snapshot_id=None):
         snapshot_list = []
         for volume in volume_list:
-            self._create_snapshot_in_db_validate(context, volume, True)
-            if volume['status'] == 'error':
-                msg = _("The snapshot cannot be created when the volume is "
-                        "in error status.")
-                LOG.error(msg)
-                raise exception.InvalidVolume(reason=msg)
+            self._create_snapshot_in_db_validate(context, volume)
 
         reservations = self._create_snapshots_in_db_reserve(
             context, volume_list)
@@ -879,7 +874,7 @@ class API(base.Base):
 
         return snapshot_list
 
-    def _create_snapshot_in_db_validate(self, context, volume, force):
+    def _create_snapshot_in_db_validate(self, context, volume):
         check_policy(context, 'create_snapshot', volume)
 
         if volume['status'] == 'maintenance':
@@ -892,12 +887,10 @@ class API(base.Base):
             # Volume is migrating, wait until done
             msg = _("Snapshot cannot be created while volume is migrating.")
             raise exception.InvalidVolume(reason=msg)
-
-        if ((not force) and (volume['status'] != "available")):
-            msg = _("Snapshot cannot be created because volume %(vol_id)s "
-                    "is not available, current volume status: "
-                    "%(vol_status)s.") % {'vol_id': volume['id'],
-                                          'vol_status': volume['status']}
+        if volume['status'] == 'error':
+            msg = _("The snapshot cannot be created when the volume is "
+                    "in error status.")
+            LOG.error(msg)
             raise exception.InvalidVolume(reason=msg)
 
     def _create_snapshots_in_db_reserve(self, context, volume_list):
