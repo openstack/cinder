@@ -200,6 +200,7 @@ global_opts = [
                     'account.'),
 ]
 
+CONF.register_opts(core_opts)
 CONF.register_opts(global_opts)
 
 

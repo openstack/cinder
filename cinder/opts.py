@@ -240,6 +240,7 @@ def list_opts():
                 cinder_volume_drivers_nexenta_options.NEXENTA_RRMGR_OPTS,
                 cinder_volume_drivers_nexenta_options.NEXENTA_EDGE_OPTS,
                 cinder_exception.exc_log_opts,
+                cinder_common_config.core_opts,
                 cinder_common_config.global_opts,
                 cinder_scheduler_weights_capacity.capacity_weight_opts,
                 cinder_volume_drivers_sheepdog.sheepdog_opts,
