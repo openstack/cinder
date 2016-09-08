@@ -50,12 +50,12 @@ class SolidFireVolumeTestCase(test.TestCase):
         self.configuration.replication_device = []
 
         super(SolidFireVolumeTestCase, self).setUp()
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_build_endpoint_info',
-                       self.fake_build_endpoint_info)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_build_endpoint_info',
+                         self.fake_build_endpoint_info)
 
         self.expected_qos_results = {'minIOPS': 1000,
                                      'maxIOPS': 10000,
@@ -458,21 +458,21 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_create_volume_fails(self):
         # NOTE(JDG) This test just fakes update_cluster_status
         # this is inentional for this test
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_update_cluster_status',
-                       self.fake_update_cluster_status)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_update_cluster_status',
+                         self.fake_update_cluster_status)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'testvol',
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request_fails)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request_fails)
         try:
             sfv.create_volume(testvol)
             self.fail("Should have thrown Error")
@@ -481,33 +481,33 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_create_sfaccount(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         account = sfv._create_sfaccount('project-id')
         self.assertIsNotNone(account)
 
     def test_create_sfaccount_fails(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request_fails)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request_fails)
         self.assertRaises(exception.SolidFireAPIException,
                           sfv._create_sfaccount, 'project-id')
 
     def test_get_sfaccount_by_name(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         account = sfv._get_sfaccount_by_name('some-name')
         self.assertIsNotNone(account)
 
     def test_get_sfaccount_by_name_fails(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request_fails)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request_fails)
         self.assertRaises(exception.SolidFireAPIException,
                           sfv._get_sfaccount_by_name, 'some-name')
 
@@ -604,9 +604,9 @@ class SolidFireVolumeTestCase(test.TestCase):
             sfv.delete_snapshot(testsnap)
 
     def test_extend_volume(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
@@ -617,9 +617,9 @@ class SolidFireVolumeTestCase(test.TestCase):
         sfv.extend_volume(testvol, 2)
 
     def test_extend_volume_fails_no_volume(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
@@ -632,12 +632,12 @@ class SolidFireVolumeTestCase(test.TestCase):
     def test_extend_volume_fails_account_lookup(self):
         # NOTE(JDG) This test just fakes update_cluster_status
         # this is intentional for this test
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_update_cluster_status',
-                       self.fake_update_cluster_status)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_update_cluster_status',
+                         self.fake_update_cluster_status)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
@@ -645,9 +645,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'created_at': timeutils.utcnow()}
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request_fails)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request_fails)
         self.assertRaises(exception.SolidFireAPIException,
                           sfv.extend_volume,
                           testvol, 2)
@@ -697,9 +697,9 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_accept_transfer(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
@@ -713,9 +713,9 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_accept_transfer_volume_not_found_raises(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
@@ -730,9 +730,9 @@ class SolidFireVolumeTestCase(test.TestCase):
 
     def test_retype(self):
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         type_ref = volume_types.create(self.ctxt,
                                        "type1", {"qos:minIOPS": "500",
                                                  "qos:burstIOPS": "2000",
@@ -773,13 +773,13 @@ class SolidFireVolumeTestCase(test.TestCase):
         def _fake_get_qos_spec(ctxt, spec_id):
             return test_qos_spec
 
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
-        self.stubs.Set(volume_types, 'get_volume_type',
-                       _fake_get_volume_type)
-        self.stubs.Set(qos_specs, 'get_qos_specs',
-                       _fake_get_qos_spec)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
+        self.mock_object(volume_types, 'get_volume_type',
+                         _fake_get_volume_type)
+        self.mock_object(qos_specs, 'get_qos_specs',
+                         _fake_get_qos_spec)
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
 
@@ -800,9 +800,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                                    test_type, diff, host))
 
     def test_update_cluster_status(self):
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         sfv._update_cluster_status()
         self.assertEqual(99.0, sfv.cluster_stats['free_capacity_gb'])
@@ -815,9 +815,9 @@ class SolidFireVolumeTestCase(test.TestCase):
                    'size': 1,
                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
                    'created_at': timeutils.utcnow()}
-        self.stubs.Set(solidfire.SolidFireDriver,
-                       '_issue_api_request',
-                       self.fake_issue_api_request)
+        self.mock_object(solidfire.SolidFireDriver,
+                         '_issue_api_request',
+                         self.fake_issue_api_request)
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
         model_update = sfv.manage_existing(testvol, external_ref)
         self.assertIsNotNone(model_update)

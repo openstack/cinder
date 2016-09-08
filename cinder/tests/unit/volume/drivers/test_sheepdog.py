@@ -1191,14 +1191,13 @@ class SheepdogDriverTestCase(test.TestCase):
         def fake_try_execute(obj, *command, **kwargs):
             return True
 
-        self.stubs.Set(image_utils, 'temporary_file', fake_temp_file)
-        self.stubs.Set(image_utils, 'fetch_verify_image',
-                       lambda w, x, y, z: None)
-        self.stubs.Set(image_utils, 'convert_image',
-                       lambda x, y, z: None)
-        self.stubs.Set(sheepdog.SheepdogDriver,
-                       '_try_execute',
-                       fake_try_execute)
+        self.mock_object(image_utils, 'temporary_file', fake_temp_file)
+        self.mock_object(image_utils, 'fetch_verify_image',
+                         return_value=None)
+        self.mock_object(image_utils, 'convert_image',
+                         return_value=None)
+        self.mock_object(sheepdog.SheepdogDriver, '_try_execute',
+                         fake_try_execute)
         fake_run_dog.return_value = ('fake_stdout', 'fake_stderr')
         self.driver.copy_image_to_volume(None, self.test_data.TEST_VOLUME,
                                          FakeImageService(), None)
