@@ -75,8 +75,6 @@ class URIHelper(object):
                 operationType)
         )
 
-        return None
-
 """Defining the singleton instance.
 
 Use this instance any time the access is required for this module/class
