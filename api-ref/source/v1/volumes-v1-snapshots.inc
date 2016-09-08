@@ -41,7 +41,7 @@ Delete snapshot (v1)
 
 Deletes a snapshot.
 
-Error response codes:202,
+Normal response codes:202,
 
 
 Request
@@ -85,7 +85,7 @@ Create snapshot (v1)
 
 Creates a snapshot.
 
-Error response codes:201,
+Normal response codes:201
 
 Request
 -------

@@ -206,7 +206,7 @@ Delete volume type (v1)
 
 Deletes a volume type.
 
-Error response codes:202,
+Normal response codes: 202
 
 
 Request
