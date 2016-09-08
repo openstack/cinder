@@ -566,6 +566,9 @@ class DellEQLSanISCSIDriver(san.SanISCSIDriver):
         try:
             self._eql_execute('volume', 'select', snapshot['volume_name'],
                               'snapshot', 'delete', snapshot['name'])
+        except processutils.ProcessExecutionError as err:
+            if err.stdout.find('does not exist') > -1:
+                LOG.debug('Snapshot %s could not be found.', snapshot['name'])
         except Exception:
             with excutils.save_and_reraise_exception():
                 LOG.error(_LE('Failed to delete snapshot %(snap)s of '

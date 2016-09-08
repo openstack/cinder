@@ -238,6 +238,17 @@ class DellEQLSanISCSIDriverTestCase(test.TestCase):
             mock_eql_execute.configure_mock(**mock_attrs)
             self.driver.delete_snapshot(snapshot)
 
+    def test_delete_absent_snapshot(self):
+        snapshot = {'name': 'fakesnap', 'volume_name': 'fakevolume_name'}
+        mock_attrs = {'args': ['volume', 'select', snapshot['volume_name'],
+                               'snapshot', 'delete', snapshot['name']]}
+        with mock.patch.object(self.driver,
+                               '_eql_execute') as mock_eql_execute:
+            mock_eql_execute.configure_mock(**mock_attrs)
+            mock_eql_execute.side_effect = processutils.ProcessExecutionError(
+                stdout='% Error ..... does not exist.\n')
+            self.driver.delete_snapshot(snapshot)
+
     def test_extend_volume(self):
         new_size = '200'
         volume = {'name': self.volume_name, 'size': 100}
