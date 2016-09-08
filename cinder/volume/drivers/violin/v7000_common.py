@@ -781,7 +781,7 @@ class V7000Common(object):
                 raise loopingcall.LoopingCallDone(retvalue=True)
             elif mb_copied is not None:
                 # copy is in progress
-                LOG.debug("MB copied: %{copied}d, percent done: %{percent}d.",
+                LOG.debug("MB copied: %(copied)d, percent done: %(percent)d.",
                           {'copied': mb_copied, 'percent': percent})
                 pass
             elif percent == 0:
@@ -794,7 +794,7 @@ class V7000Common(object):
                 raise loopingcall.LoopingCallDone(retvalue=True)
             else:
                 # unexpected case
-                LOG.debug("unexpected case (%{id}s, %{bytes}s, %{percent}s)",
+                LOG.debug("unexpected case (%(id)s, %(bytes)s, %(percent)s)",
                           {'id': target_id,
                            'bytes': mb_copied,
                            'percent': six.text_type(percent)})

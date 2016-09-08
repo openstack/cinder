@@ -139,7 +139,7 @@ class CxtAdm(iscsi.ISCSITarget):
         old_name = kwargs.get('old_name', None)
         if old_name:
             LOG.debug('Detected old persistence file for volume '
-                      '%{vol}s at %{old_name}s',
+                      '%(vol)s at %(old_name)s',
                       {'vol': vol_id, 'old_name': old_name})
             old_persist_file = os.path.join(volumes_dir, old_name)
 
