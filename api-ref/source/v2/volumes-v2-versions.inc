@@ -15,8 +15,7 @@ List API versions
 Lists information for all Block Storage API versions.
 
 
-Normal response codes: 200
-Error response codes:300,
+Normal response codes: 200, 300
 
 
 Request
@@ -41,7 +40,6 @@ Shows details for Block Storage API v2.
 
 
 Normal response codes: 200
-Error response codes:203,
 
 
 Request

@@ -148,7 +148,7 @@ Troubleshooting
 - The storage node needs enough free storage space to match the size
   of the volume creation request.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -429,7 +429,7 @@ Troubleshooting
 - The volume managed by OpenStack Block Storage is not deleted from
   the storage system.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -452,7 +452,7 @@ Create volume metadata
 
 Creates metadata for a volume.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request

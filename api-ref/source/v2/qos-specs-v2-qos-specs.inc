@@ -18,7 +18,7 @@ Disassociate QoS specification from all associations
 
 Disassociates a QoS specification from all associations.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -101,7 +101,7 @@ Associate QoS specification with volume type
 
 Associates a QoS specification with a volume type.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -120,7 +120,7 @@ Disassociate QoS specification from volume type
 
 Disassociates a QoS specification from a volume type.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -141,7 +141,7 @@ Shows details for a QoS specification.
 
 
 Normal response codes: 200
-Error response codes:413,405,404,403,401,400,503,
+Error response codes: 413, 405, 404, 403, 401, 400, 503,
 
 
 Request
@@ -216,7 +216,7 @@ Delete QoS specification
 
 Deletes a QoS specification.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -238,7 +238,7 @@ Creates a QoS specification.
 
 Specify one or more key and value pairs in the request body.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -280,8 +280,7 @@ List QoS specs
 Lists quality of service (QoS) specifications.
 
 
-Normal response codes: 200
-Error response codes:300,
+Normal response codes: 200, 300,
 
 
 Request

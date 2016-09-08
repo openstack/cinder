@@ -19,7 +19,9 @@ This operations deletes the backup and any backup data.
 The backup driver returns the ``405`` status code if it does not
 support this operation.
 
-Error response codes:404,405,202,
+Normal response codes: 202,
+
+Error response codes:404,405,
 
 
 Request

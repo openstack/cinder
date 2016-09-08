@@ -21,7 +21,7 @@ Add private volume type access
 
 Adds private volume type access to a project.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
@@ -47,7 +47,7 @@ Remove private volume type access
 
 Removes private volume type access from a project.
 
-Error response codes:202,
+Normal response codes: 202,
 
 
 Request
