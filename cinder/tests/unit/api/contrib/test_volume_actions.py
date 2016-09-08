@@ -347,8 +347,8 @@ class VolumeActionsTest(test.TestCase):
     def test_begin_detaching(self):
         def fake_begin_detaching(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.api.API, 'begin_detaching',
-                       fake_begin_detaching)
+        self.mock_object(volume.api.API, 'begin_detaching',
+                         fake_begin_detaching)
 
         body = {'os-begin_detaching': {'fake': 'fake'}}
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
@@ -364,8 +364,8 @@ class VolumeActionsTest(test.TestCase):
     def test_roll_detaching(self):
         def fake_roll_detaching(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.api.API, 'roll_detaching',
-                       fake_roll_detaching)
+        self.mock_object(volume.api.API, 'roll_detaching',
+                         fake_roll_detaching)
 
         body = {'os-roll_detaching': {'fake': 'fake'}}
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
@@ -381,8 +381,8 @@ class VolumeActionsTest(test.TestCase):
     def test_extend_volume(self):
         def fake_extend_volume(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.api.API, 'extend',
-                       fake_extend_volume)
+        self.mock_object(volume.api.API, 'extend',
+                         fake_extend_volume)
 
         body = {'os-extend': {'new_size': 5}}
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
@@ -399,8 +399,8 @@ class VolumeActionsTest(test.TestCase):
         def fake_extend_volume(*args, **kwargs):
             msg = "Volume status must be available"
             raise exception.InvalidVolume(reason=msg)
-        self.stubs.Set(volume.api.API, 'extend',
-                       fake_extend_volume)
+        self.mock_object(volume.api.API, 'extend',
+                         fake_extend_volume)
 
         body = {'os-extend': {'new_size': 5}}
         req = webob.Request.blank('/v2/%s/volumes/%s/action' %
@@ -415,8 +415,8 @@ class VolumeActionsTest(test.TestCase):
     def test_update_readonly_flag(self):
         def fake_update_readonly_flag(*args, **kwargs):
             return {}
-        self.stubs.Set(volume.api.API, 'update_readonly_flag',
-                       fake_update_readonly_flag)
+        self.mock_object(volume.api.API, 'update_readonly_flag',
+                         fake_update_readonly_flag)
 
         def make_update_readonly_flag_test(self, readonly, return_code):
             body = {"os-update_readonly_flag": {"readonly": readonly}}
@@ -751,7 +751,7 @@ class VolumeRetypeActionsTest(test.TestCase):
         self._retype_volume_encryption('available', 202)
 
 
-def stub_volume_get(self, context, volume_id):
+def fake_volume_get(self, context, volume_id):
     volume = stubs.stub_volume(volume_id)
     if volume_id == fake.VOLUME3_ID:
         volume['status'] = 'in-use'
@@ -760,7 +760,7 @@ def stub_volume_get(self, context, volume_id):
     return volume
 
 
-def stub_upload_volume_to_image_service(self, context, volume, metadata,
+def fake_upload_volume_to_image_service(self, context, volume, metadata,
                                         force):
     ret = {"id": volume['id'],
            "updated_at": datetime.datetime(1, 1, 1, 1, 1, 1),
@@ -779,8 +779,6 @@ class VolumeImageActionsTest(test.TestCase):
     def setUp(self):
         super(VolumeImageActionsTest, self).setUp()
         self.controller = volume_actions.VolumeActionsController()
-
-        self.stubs.Set(volume_api.API, 'get', stub_volume_get)
         self.context = context.RequestContext(fake.USER_ID, fake.PROJECT_ID,
                                               is_admin=False)
 
@@ -836,11 +834,10 @@ class VolumeImageActionsTest(test.TestCase):
     def fake_rpc_copy_volume_to_image(self, *args):
         pass
 
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get)
+    @mock.patch.object(volume_api.API, "copy_volume_to_image",
+                       fake_upload_volume_to_image_service)
     def test_copy_volume_to_image(self):
-        self.stubs.Set(volume_api.API,
-                       "copy_volume_to_image",
-                       stub_upload_volume_to_image_service)
-
         id = fake.VOLUME_ID
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
@@ -865,10 +862,10 @@ class VolumeImageActionsTest(test.TestCase):
         self.assertDictMatch(expected, res_dict)
 
     def test_copy_volume_to_image_volumenotfound(self):
-        def stub_volume_get_raise_exc(self, context, volume_id):
+        def fake_volume_get_raise_exc(self, context, volume_id):
             raise exception.VolumeNotFound(volume_id=volume_id)
 
-        self.stubs.Set(volume_api.API, 'get', stub_volume_get_raise_exc)
+        self.mock_object(volume_api.API, 'get', fake_volume_get_raise_exc)
 
         id = fake.WILL_NOT_BE_FOUND_ID
         vol = {"container_format": 'bare',
@@ -884,14 +881,10 @@ class VolumeImageActionsTest(test.TestCase):
                           id,
                           body)
 
-    def test_copy_volume_to_image_invalidvolume(self):
-        def stub_upload_volume_to_image_service_raise(self, context, volume,
-                                                      metadata, force):
-            raise exception.InvalidVolume(reason='blah')
-        self.stubs.Set(volume_api.API,
-                       "copy_volume_to_image",
-                       stub_upload_volume_to_image_service_raise)
-
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get)
+    @mock.patch.object(volume_api.API, 'copy_volume_to_image',
+                       side_effect=exception.InvalidVolume(reason='blah'))
+    def test_copy_volume_to_image_invalidvolume(self, mock_copy):
         id = fake.VOLUME2_ID
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
@@ -906,6 +899,7 @@ class VolumeImageActionsTest(test.TestCase):
                           id,
                           body)
 
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get)
     def test_copy_volume_to_image_invalid_disk_format(self):
         id = fake.IMAGE_ID
         vol = {"container_format": 'bare',
@@ -921,14 +915,10 @@ class VolumeImageActionsTest(test.TestCase):
                           id,
                           body)
 
-    def test_copy_volume_to_image_valueerror(self):
-        def stub_upload_volume_to_image_service_raise(self, context, volume,
-                                                      metadata, force):
-            raise ValueError
-        self.stubs.Set(volume_api.API,
-                       "copy_volume_to_image",
-                       stub_upload_volume_to_image_service_raise)
-
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get)
+    @mock.patch.object(volume_api.API, 'copy_volume_to_image',
+                       side_effect=ValueError)
+    def test_copy_volume_to_image_valueerror(self, mock_copy):
         id = fake.VOLUME2_ID
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
@@ -943,14 +933,10 @@ class VolumeImageActionsTest(test.TestCase):
                           id,
                           body)
 
-    def test_copy_volume_to_image_remoteerror(self):
-        def stub_upload_volume_to_image_service_raise(self, context, volume,
-                                                      metadata, force):
-            raise messaging.RemoteError
-        self.stubs.Set(volume_api.API,
-                       "copy_volume_to_image",
-                       stub_upload_volume_to_image_service_raise)
-
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get)
+    @mock.patch.object(volume_api.API, 'copy_volume_to_image',
+                       side_effect=messaging.RemoteError)
+    def test_copy_volume_to_image_remoteerror(self, mock_copy):
         id = fake.VOLUME2_ID
         vol = {"container_format": 'bare',
                "disk_format": 'raw',
@@ -991,6 +977,7 @@ class VolumeImageActionsTest(test.TestCase):
         res = req.get_response(fakes.wsgi_app(fake_auth_context=self.context))
         self.assertEqual(400, res.status_int)
 
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get)
     def test_extend_volume_valueerror(self):
         id = fake.VOLUME2_ID
         body = {'os-extend': {'new_size': 'fake'}}
@@ -1019,8 +1006,6 @@ class VolumeImageActionsTest(test.TestCase):
 
     def _create_volume_with_type(self, status='available',
                                  display_description='displaydesc', **kwargs):
-        self.stubs.UnsetAll()
-
         admin_ctxt = context.get_admin_context()
         vol_type = db.volume_type_create(admin_ctxt, {'name': 'vol_name'})
         self.addCleanup(db.volume_type_destroy, admin_ctxt, vol_type.id)
@@ -1071,6 +1056,7 @@ class VolumeImageActionsTest(test.TestCase):
         self.assertEqual('uploading', vol_db.status)
         self.assertEqual('available', vol_db.previous_status)
 
+    @mock.patch.object(volume_api.API, 'get', fake_volume_get)
     def test_copy_volume_to_image_public_not_authorized(self):
         """Test unauthorized create public image from volume."""
         id = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'

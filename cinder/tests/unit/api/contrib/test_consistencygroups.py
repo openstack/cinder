@@ -574,13 +574,10 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         name = 'mycg'
         description = 'consistency group 1'
         fake_type = {'id': fake.CONSISTENCY_GROUP_ID, 'name': 'fake_type'}
-        self.stubs.Set(db, 'volume_types_get_by_name_or_id',
-                       mock.Mock(return_value=[fake_type]))
-        self.stubs.Set(self.cg_api,
-                       '_cast_create_consistencygroup',
-                       mock.Mock())
-        self.stubs.Set(self.cg_api, 'update_quota',
-                       mock.Mock())
+        self.mock_object(db, 'volume_types_get_by_name_or_id',
+                         return_value=[fake_type])
+        self.mock_object(self.cg_api, '_cast_create_consistencygroup')
+        self.mock_object(self.cg_api, 'update_quota')
         cg = self.cg_api.create(self.ctxt, name, description,
                                 fake_type['name'])
         self.cg_api.update_quota.assert_called_once_with(
@@ -1135,7 +1132,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
     @mock.patch(
         'cinder.api.openstack.wsgi.Controller.validate_name_and_description')
     def test_create_consistencygroup_from_src(self, mock_validate):
-        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
 
         consistencygroup = utils.create_consistencygroup(self.ctxt)
         volume_id = utils.create_volume(
@@ -1210,7 +1207,7 @@ class ConsistencyGroupsAPITestCase(test.TestCase):
         source_cg.destroy()
 
     def test_create_consistencygroup_from_src_both_snap_cg(self):
-        self.stubs.Set(volume_api.API, "create", stubs.stub_volume_create)
+        self.mock_object(volume_api.API, "create", stubs.stub_volume_create)
 
         consistencygroup = utils.create_consistencygroup(self.ctxt)
         volume_id = utils.create_volume(
