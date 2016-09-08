@@ -152,16 +152,18 @@ class TestBlockDeviceDriver(cinder.test.TestCase):
                     gud_mocked:
                 self.drv._update_volume_stats()
 
-                self.assertEqual({'total_capacity_gb': 2,
-                                  'free_capacity_gb': 2,
-                                  'reserved_percentage':
-                                  self.configuration.reserved_percentage,
-                                  'QoS_support': False,
-                                  'vendor_name': "Open Source",
-                                  'driver_version': self.drv.VERSION,
-                                  'storage_protocol': 'unknown',
-                                  'volume_backend_name': 'BlockDeviceDriver',
-                                  }, self.drv._stats)
+                reserved_percentage = self.configuration.reserved_percentage
+                self.assertEqual({
+                    'vendor_name': "Open Source",
+                    'driver_version': self.drv.VERSION,
+                    'volume_backend_name': 'BlockDev',
+                    'storage_protocol': 'unknown',
+                    'pools': [{
+                        'QoS_support': False,
+                        'total_capacity_gb': 2,
+                        'free_capacity_gb': 2,
+                        'reserved_percentage': reserved_percentage,
+                        'pool_name': 'BlockDev'}]}, self.drv._stats)
                 gud_mocked.assert_called_once_with()
                 ds_mocked.assert_called_once_with()
 
