@@ -26,7 +26,6 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import strutils
 from oslo_utils import timeutils
-from oslo_utils import uuidutils
 import six
 
 from cinder.api import common
@@ -1455,12 +1454,8 @@ class API(base.Base):
 
         # Support specifying volume type by ID or name
         try:
-            if uuidutils.is_uuid_like(new_type):
-                vol_type = volume_types.get_volume_type(context.elevated(),
-                                                        new_type)
-            else:
-                vol_type = volume_types.get_volume_type_by_name(
-                    context.elevated(), new_type)
+            vol_type = (
+                volume_types.get_by_name_or_id(context.elevated(), new_type))
         except exception.InvalidVolumeType:
             msg = _('Invalid volume_type passed: %s.') % new_type
             LOG.error(msg)

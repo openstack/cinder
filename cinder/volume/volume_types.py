@@ -23,6 +23,7 @@
 from oslo_config import cfg
 from oslo_db import exception as db_exc
 from oslo_log import log as logging
+from oslo_utils import uuidutils
 
 from cinder import context
 from cinder import db
@@ -128,6 +129,13 @@ def get_volume_type(ctxt, id, expected_fields=None):
         ctxt = context.get_admin_context()
 
     return db.volume_type_get(ctxt, id, expected_fields=expected_fields)
+
+
+def get_by_name_or_id(context, identity):
+    """Retrieves volume type by id or name"""
+    if not uuidutils.is_uuid_like(identity):
+        return get_volume_type_by_name(context, identity)
+    return get_volume_type(context, identity)
 
 
 def get_volume_type_by_name(context, name):
