@@ -151,7 +151,7 @@ class BackupManager(manager.SchedulerDependentManager):
 
     def _setup_volume_drivers(self):
         if CONF.enabled_backends:
-            for backend in CONF.enabled_backends:
+            for backend in filter(None, CONF.enabled_backends):
                 host = "%s@%s" % (CONF.host, backend)
                 mgr = importutils.import_object(CONF.volume_manager,
                                                 host=host,

@@ -84,7 +84,7 @@ def main():
     service_started = False
 
     if CONF.enabled_backends:
-        for backend in CONF.enabled_backends:
+        for backend in filter(None, CONF.enabled_backends):
             CONF.register_opt(host_opt, group=backend)
             backend_host = getattr(CONF, backend).backend_host
             host = "%s@%s" % (backend_host or CONF.host, backend)

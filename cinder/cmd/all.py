@@ -89,7 +89,7 @@ def main():
     # cinder-volume
     try:
         if CONF.enabled_backends:
-            for backend in CONF.enabled_backends:
+            for backend in filter(None, CONF.enabled_backends):
                 CONF.register_opt(volume_cmd.host_opt, group=backend)
                 backend_host = getattr(CONF, backend).backend_host
                 host = "%s@%s" % (backend_host or CONF.host, backend)

@@ -171,7 +171,7 @@ class TestCinderAllCmd(test.TestCase):
     def test_main_with_backend(self, log_setup, get_logger, monkey_patch,
                                process_launcher, wsgi_service, service_create,
                                rpc_init):
-        CONF.set_override('enabled_backends', ['backend1'])
+        CONF.set_override('enabled_backends', ['', 'backend1', ''])
         CONF.set_override('host', 'host')
         launcher = process_launcher.return_value
         server = wsgi_service.return_value
@@ -356,7 +356,7 @@ class TestCinderVolumeCmd(test.TestCase):
     @mock.patch('oslo_log.log.setup')
     def test_main_with_backends(self, log_setup, monkey_patch, service_create,
                                 get_launcher):
-        backends = ['backend1', 'backend2']
+        backends = ['', 'backend1', 'backend2', '']
         CONF.set_override('enabled_backends', backends)
         CONF.set_override('host', 'host')
         launcher = get_launcher.return_value
@@ -375,7 +375,7 @@ class TestCinderVolumeCmd(test.TestCase):
                        service_name='backend2', coordination=True,
                        cluster=None)
         service_create.assert_has_calls([c1, c2])
-        self.assertEqual(len(backends), launcher.launch_service.call_count)
+        self.assertEqual(2, launcher.launch_service.call_count)
         launcher.wait.assert_called_once_with()
 
 
