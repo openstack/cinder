@@ -116,7 +116,7 @@ class SchedulerRpcAPITestCase(test.TestCase):
                                  volume_id=self.volume_id,
                                  snapshot_id='snapshot_id',
                                  image_id='image_id',
-                                 request_spec='fake_request_spec',
+                                 request_spec={'volume_type': {}},
                                  filter_properties='filter_properties',
                                  volume=fake_volume.fake_volume_obj(
                                      self.context),
