@@ -31,6 +31,7 @@ from cinder import utils
 from cinder.i18n import _, _LE, _LI
 from cinder.image import image_utils
 from cinder import interface
+from cinder.objects.volume import Volume
 from cinder.volume.drivers import nfs
 from cinder.volume.drivers.san import san
 from cinder.volume.drivers.zfssa import zfssarest
@@ -216,8 +217,9 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         self.zfssa.verify_service('nfs')
 
     def create_volume(self, volume):
-        super(ZFSSANFSDriver, self).create_volume(volume)
-        self.zfssa.set_file_props(volume['name'], {'cinder_managed': 'True'})
+        ret = super(ZFSSANFSDriver, self).create_volume(volume)
+        self.zfssa.set_file_props(volume.name, {'cinder_managed': 'True'})
+        return ret
 
     def create_snapshot(self, snapshot):
         """Creates a snapshot of a volume."""
@@ -275,7 +277,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                                'snap_size': snapshot['volume_size']})
                     self._execute('rm', '-f', vol_path, run_as_root=True)
 
-        volume_origin = {'origin': snapshot['volume_name']}
+        volume_origin = {'origin': snapshot['volume_name'],
+                         'cinder_managed': 'True'}
         self.zfssa.set_file_props(volume['name'], volume_origin)
 
         return {'provider_location': volume['provider_location']}
@@ -295,10 +298,10 @@ class ZFSSANFSDriver(nfs.NfsDriver):
                                                 method='MOVE')
 
     def delete_volume(self, volume):
-        LOG.debug('Deleting volume %s.', volume['name'])
+        LOG.debug('Deleting volume %s.', volume.name)
         lcfg = self.configuration
         try:
-            vol_props = self.zfssa.get_volume(volume['name'])
+            vol_props = self.zfssa.get_volume(volume.name)
         except exception.VolumeNotFound:
             return
         super(ZFSSANFSDriver, self).delete_volume(volume)
@@ -306,7 +309,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         if vol_props['origin'].startswith(lcfg.zfssa_cache_directory):
             LOG.info(_LI('Checking origin %(origin)s of volume %(volume)s.'),
                      {'origin': vol_props['origin'],
-                      'volume': volume['name']})
+                      'volume': volume.name})
             self._check_origin(vol_props['origin'])
 
     @utils.synchronized('zfssanfs', external=True)
@@ -353,11 +356,9 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             LOG.error(exception_msg)
             return None, False
 
-        cache_dir = '%s/' % lcfg.zfssa_cache_directory
         updated_at = six.text_type(image_meta['updated_at'].isoformat())
         cachevol_props = {
-            'name': '%sos-cache-vol-%s' % (cache_dir,
-                                           image_meta['id']),
+            'id': image_meta['id'],
             'size': cachevol_size,
             'updated_at': updated_at,
             'image_id': image_meta['id'],
@@ -402,8 +403,13 @@ class ZFSSANFSDriver(nfs.NfsDriver):
         After the function returns, there should be a cache volume available,
         ready for cloning.
         """
-        cachevol_name = cachevol_props['name']
-        cache_vol = None
+        lcfg = self.configuration
+        cache_dir = '%s/' % lcfg.zfssa_cache_directory
+        cache_vol_obj = Volume()
+        cache_vol_obj.provider_location = self.mount_path + '/' + cache_dir
+        cache_vol_obj._name_id = cachevol_props['id']
+        cachevol_name = cache_dir + cache_vol_obj.name
+
         LOG.debug('Verifying cache volume %s:', cachevol_name)
 
         try:
@@ -434,11 +440,7 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
             # The cache volume is updated, but has no clone, so we delete it
             # and re-create a new one:
-            cache_vol = {
-                'provider_location': self.mount_path,
-                'name': cachevol_name,
-            }
-            self.delete_volume(cache_vol)
+            super(ZFSSANFSDriver, self).delete_volume(cache_vol_obj)
             return self._create_cache_volume(context,
                                              img_meta,
                                              img_service,
@@ -452,28 +454,33 @@ class ZFSSANFSDriver(nfs.NfsDriver):
 
         Returns name of the cache volume.
         """
-        cache_vol = {
-            'provider_location': self.mount_path,
-            'size': cachevol_props['size'],
-            'name': cachevol_props['name'],
-        }
-        LOG.debug('Creating cache volume %s', cache_vol['name'])
+        lcfg = self.configuration
+        cache_dir = '%s/' % lcfg.zfssa_cache_directory
+        cache_vol = Volume()
+        cache_vol.provider_location = self.mount_path
+        cache_vol._name_id = cachevol_props['id']
+        cache_vol.size = cachevol_props['size']
+        cache_vol_name = cache_dir + cache_vol.name
 
+        LOG.debug('Creating cache volume %s', cache_vol_name)
         try:
-            super(ZFSSANFSDriver, self).create_volume(cache_vol)
+            self.create_volume(cache_vol)
             LOG.debug('Copying image data:')
             super(ZFSSANFSDriver, self).copy_image_to_volume(context,
                                                              cache_vol,
                                                              img_service,
                                                              img_meta['id'])
+            self.zfssa.webdavclient.request(src_file=cache_vol.name,
+                                            dst_file=cache_vol_name,
+                                            method='MOVE')
 
         except Exception as exc:
             exc_msg = (_('Fail to create cache volume %(volume)s. '
                          'Error: %(err)s'),
-                       {'volume': cache_vol['name'],
+                       {'volume': cache_vol_name,
                         'err': six.text_type(exc)})
             LOG.error(exc_msg)
-            self.zfssa.delete_file(cache_vol['name'])
+            self.zfssa.delete_file(cache_vol_name)
             raise exception.VolumeBackendAPIException(data=exc_msg)
 
         cachevol_meta = {
@@ -481,8 +488,8 @@ class ZFSSANFSDriver(nfs.NfsDriver):
             'image_id': cachevol_props['image_id'],
         }
         cachevol_meta.update({'numclones': '0'})
-        self.zfssa.set_file_props(cache_vol['name'], cachevol_meta)
-        return cache_vol['name']
+        self.zfssa.set_file_props(cache_vol_name, cachevol_meta)
+        return cache_vol_name
 
     def _create_snapshot_name(self):
         """Creates a snapshot name from the date and time."""
