@@ -137,7 +137,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         else:
             rpcapi_class = volume_rpcapi.VolumeAPI
         rpcapi = rpcapi_class()
-        expected_retval = 'foo' if method == 'call' else None
+        expected_retval = {} if rpc_method == 'call' else None
 
         target = {
             "version": kwargs.pop('version', rpcapi.RPC_API_VERSION)
@@ -210,7 +210,7 @@ class VolumeRpcAPITestCase(test.TestCase):
         def _fake_rpc_method(*args, **kwargs):
             self.fake_args = args
             self.fake_kwargs = kwargs
-            if expected_retval:
+            if expected_retval is not None:
                 return expected_retval
 
         self.mock_object(rpcapi.client, "prepare", _fake_prepare_method)
