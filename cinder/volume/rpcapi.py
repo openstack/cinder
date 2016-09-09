@@ -16,6 +16,7 @@
 from oslo_serialization import jsonutils
 
 from cinder.common import constants
+from cinder import objects
 from cinder import quota
 from cinder import rpc
 from cinder.volume import utils
@@ -320,7 +321,19 @@ class VolumeAPI(rpc.RPCAPI):
 
     def get_backup_device(self, ctxt, backup, volume):
         cctxt = self._get_cctxt(volume.host, '2.0')
-        return cctxt.call(ctxt, 'get_backup_device', backup=backup)
+        backup_dict = cctxt.call(ctxt, 'get_backup_device', backup=backup)
+
+        # FIXME(dulek): Snippet below converts received raw dicts to o.vo. This
+        # is only for a case when Mitaka's c-vol will answer us with volume
+        # dict instead of an o.vo and should go away in early Ocata.
+        if isinstance(backup_dict.get('backup_device'), dict):
+            is_snapshot = backup_dict.get('is_snapshot')
+            obj_class = objects.Snapshot if is_snapshot else objects.Volume
+            obj = obj_class()
+            obj_class._from_db_object(ctxt, obj, backup_dict['backup_device'])
+            backup_dict['backup_device'] = obj
+
+        return backup_dict
 
     def secure_file_operations_enabled(self, ctxt, volume):
         cctxt = self._get_cctxt(volume.host, '2.0')
