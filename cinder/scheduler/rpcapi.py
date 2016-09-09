@@ -112,6 +112,10 @@ class SchedulerAPI(rpc.RPCAPI):
             # Send request_spec as dict
             version = '2.0'
             msg_args['request_spec'] = jsonutils.to_primitive(request_spec)
+            # NOTE(dulek): This is to keep supporting Mitaka's scheduler which
+            # expects a dictionary when creating a typeless volume.
+            if msg_args['request_spec'].get('volume_type') is None:
+                msg_args['request_spec']['volume_type'] = {}
 
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'create_volume', **msg_args)
