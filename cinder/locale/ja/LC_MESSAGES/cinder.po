@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev64\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev85\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-08 05:16+0000\n"
+"POT-Creation-Date: 2016-09-08 23:37+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-07 02:16+0000\n"
+"PO-Revision-Date: 2016-09-08 02:54+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -8656,6 +8656,13 @@ msgstr ""
 "転送 %(transfer_id)s: ボリューム ID %(volume_id)s が予期しない状態%(status)s "
 "です。awaiting-transfer が予期されていました"
 
+msgid ""
+"True to set acl 'allow_all' on volumes created.  Cannot be changed on volume "
+"once set"
+msgstr ""
+"ボリューム作成時に acl 'allow_all'  を True に設定します。一度ボリュームに設"
+"定すると変更することはできません。"
+
 #, python-format
 msgid ""
 "Trying to import backup metadata from id %(meta_id)s into backup %(id)s."
@@ -9817,6 +9824,10 @@ msgstr "この名前のボリュームは既に存在します"
 
 msgid "Volume cannot be restored since it contains snapshots."
 msgstr "スナップショットが含まれているため、ボリュームを復元できません。"
+
+#, python-format
+msgid "Volume connected to host %s."
+msgstr "ボリュームがホスト %s に接続されました。"
 
 msgid "Volume create failed while extracting volume ref."
 msgstr "ボリューム参照の抽出中にボリュームの作成に失敗しました。"

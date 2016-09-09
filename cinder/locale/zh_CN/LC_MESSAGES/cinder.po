@@ -16,13 +16,13 @@
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev64\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev85\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-08 05:16+0000\n"
+"POT-Creation-Date: 2016-09-08 23:37+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-08 06:30+0000\n"
+"PO-Revision-Date: 2016-09-09 06:50+0000\n"
 "Last-Translator: howard lee <howard@mail.ustc.edu.cn>\n"
 "Language: zh-CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -128,6 +128,10 @@ msgid "%(message)s, subjectAltName: %(sanList)s."
 msgstr "%(message)s，subjectAltName：%(sanList)s。"
 
 #, python-format
+msgid "%(msg)s And %(num)s services from the cluster were also removed."
+msgstr "源于集群的 %(msg)s 和 %(num)s 服务也被删除。"
+
+#, python-format
 msgid ""
 "%(msg_type)s: creating NetworkPortal: ensure port %(port)d on ip %(ip)s is "
 "not in use by another service."
@@ -143,6 +147,10 @@ msgid ""
 msgstr ""
 "%(op)s：备份 %(bck_id)s（针对卷 %(vol_id)s）失败。备份对象具有意外方式。支持"
 "映像或文件备份，实际方式为 %(vol_mode)s。"
+
+#, python-format
+msgid "%(reason)s"
+msgstr "%(reason)s"
 
 #, python-format
 msgid "%(service)s Service is not %(status)s on storage appliance: %(host)s"
@@ -249,6 +257,9 @@ msgstr "写入 snap_info 时，状态必须为“活动”。"
 
 msgid "'consistencygroup_id' must be specified"
 msgstr "必须指定“consistencygroup_id”"
+
+msgid "'group_id' must be specified"
+msgstr "必须指定\"group_id\""
 
 msgid "'qemu-img info' parsing failed."
 msgstr "'qemu-img info'解析失败"
@@ -408,6 +419,10 @@ msgstr "必须将 API 版本请求与 VersionedMethod 对象进行比较。"
 
 msgid "An error has occurred during backup operation"
 msgstr "在备份过程中出现一个错误"
+
+#, python-format
+msgid "An error has occurred in SheepdogDriver. (Reason: %(reason)s)"
+msgstr "SheepdogDriver中发生了错误。（原因:%(reason)s）"
 
 #, python-format
 msgid ""
@@ -608,6 +623,10 @@ msgstr "备份状态必须为“可用”或“错误”"
 
 msgid "Backup to be restored has invalid size"
 msgstr "要复原的备份具有无效大小"
+
+#, python-format
+msgid "Bad HTTP response status %(status)s"
+msgstr "错误的HTTP响应状态 %(status)s"
 
 #, python-format
 msgid "Bad Status line returned: %(arg)s."
@@ -930,6 +949,10 @@ msgid "Cannot create encryption specs. Volume type in use."
 msgstr "无法创建加密规范。卷类型在使用中。"
 
 #, python-format
+msgid "Cannot create group_type with name %(name)s and specs %(group_specs)s"
+msgstr "无法创建名称为 %(name)s 且规格为 %(group_specs)s 的组类型。"
+
+#, python-format
 msgid ""
 "Cannot create image of disk format: %s. Only vmdk disk format is accepted."
 msgstr "无法创建磁盘格式为 %s 映像。仅接受 vmdk 磁盘格式。"
@@ -1092,6 +1115,13 @@ msgid ""
 msgstr ""
 "无法同时提供“cgsnapshot_id”和“source_cgid”以从源创建一致性组 %(name)s。"
 
+#, python-format
+msgid ""
+"Cannot provide both 'group_snapshot_id' and 'source_group_id' to create "
+"group %(name)s from source."
+msgstr ""
+"无法同时提供“group_snapshot_id”和“source_group_id”以通过源创建组 %(name)s。"
+
 msgid "Cannot register resource"
 msgstr "无法注册资源"
 
@@ -1150,6 +1180,10 @@ msgstr ""
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "无法更新加密规范。卷类型在使用中。"
+
+#, python-format
+msgid "Cannot update group_type %(id)s"
+msgstr "无法更新组类型 %(id)s。"
 
 #, python-format
 msgid "Cannot update volume_type %(id)s"
@@ -1223,6 +1257,9 @@ msgid ""
 msgstr ""
 "克隆“%(clone_type)s”无效；有效值为：“%(full_clone)s”和“%(linked_clone)s”。"
 
+msgid "Cluster"
+msgstr "集群"
+
 #, python-format
 msgid "Cluster %(id)s could not be found."
 msgstr "无法找到标识为 %(id)s 的集群。"
@@ -1234,6 +1271,10 @@ msgstr "集群 %(id)s 仍存在主机。"
 #, python-format
 msgid "Cluster %(name)s already exists."
 msgstr "集群 %(name)s 已存在。"
+
+#, python-format
+msgid "Cluster %s successfully removed."
+msgstr "成功删除集群 %s。"
 
 msgid ""
 "Cluster is not formatted. You should probably perform \"dog cluster format\"."
@@ -1309,6 +1350,18 @@ msgstr "连接器没有必需信息：%(missing)s"
 
 msgid "Consistency group is empty. No cgsnapshot will be created."
 msgstr "一致性组为空组。将不创建任何 cg 快照。"
+
+msgid ""
+"Consistency group must not have attached volumes, volumes with snapshots, or "
+"dependent cgsnapshots"
+msgstr "一致性组一定不能包含已被挂载的卷、具有快照的卷或者从属的cgsnapshots。"
+
+msgid ""
+"Consistency group status must be available or error and must not have "
+"volumes or dependent cgsnapshots"
+msgstr ""
+"一致性组状态必须为“available”或“error”，而且一定不能包含卷或者从属的"
+"cgsnapshots。"
 
 #, python-format
 msgid "ConsistencyGroup %(consistencygroup_id)s could not be found."
@@ -1452,6 +1505,14 @@ msgstr "未能将配置保存到 %(file_path)s：%(exc)s"
 #, python-format
 msgid "Could not start consistency group snapshot %s."
 msgstr "无法启动一致性组快照 %s。"
+
+#, python-format
+msgid "Couldn't remove cluster %s because it doesn't exist."
+msgstr "无法删除集群 %s，因为它不存在。"
+
+#, python-format
+msgid "Couldn't remove cluster %s because it still has hosts."
+msgstr "无法删除集群 %s，因为它仍存在主机。"
 
 #, python-format
 msgid "Counter %s not found"
@@ -1624,6 +1685,9 @@ msgstr ""
 
 msgid "Dedup luns cannot be extended"
 msgstr "无法扩展 Dedup lun"
+
+msgid "Default group type can not be found."
+msgstr "找不到缺省组类型。"
 
 #, python-format
 msgid ""
@@ -1813,6 +1877,13 @@ msgid ""
 "consistency group %(name)s from source."
 msgstr ""
 "必须提供“cgsnapshot_id”或者“source_cgid”，以从源创建一致性组 %(name)s。"
+
+#, python-format
+msgid ""
+"Either 'group_snapshot_id' or 'source_group_id' must be provided to create "
+"group %(name)s from source."
+msgstr ""
+"必须提供“group_snapshot_id”或者“source_group_id”，才能通过源创建组 %(name)s。"
 
 #, python-format
 msgid ""
@@ -2412,6 +2483,10 @@ msgstr "创建 cg 快照 %s 时发生了错误。"
 #, python-format
 msgid "Error occurred when deleting cgsnapshot %s."
 msgstr "删除 cg 快照 %s 时发生了错误。"
+
+#, python-format
+msgid "Error occurred when deleting group snapshot %s."
+msgstr "删除组快照%s 时出现错误。"
 
 #, python-format
 msgid "Error occurred when updating consistency group %s."
@@ -3442,6 +3517,10 @@ msgid "Failed to retrieve active zoning configuration %s"
 msgstr "无法检索处于活动状态的分区配置 %s"
 
 #, python-format
+msgid "Failed to retrieve attachments for volume %(name)s"
+msgstr "获取卷 %(name)s 的挂载信息失败。"
+
+#, python-format
 msgid ""
 "Failed to set CHAP authentication for target IQN %(iqn)s. Details: %(ex)s"
 msgstr "无法为目标 IQN %(iqn)s 设置 CHAP 认证。详细信息：%(ex)s"
@@ -3563,6 +3642,9 @@ msgstr "由于 %(reason)s，Fexvisor 未能移除卷 %(id)s。"
 #, python-format
 msgid "Fibre Channel SAN Lookup failure: %(reason)s"
 msgstr "光纤通道 SAN 查找失败：%(reason)s"
+
+msgid "Fibre Channel Zone Manager not initialized"
+msgstr "光纤通道区域管理器未初始化。"
 
 #, python-format
 msgid "Fibre Channel Zone operation failed: %(reason)s"
@@ -3936,12 +4018,20 @@ msgid "Got bad path information from DRBDmanage! (%s)"
 msgstr "从 DRBDmanage 中获得了错误路径信息！(%s)"
 
 #, python-format
+msgid "Group %(group_id)s could not be found."
+msgstr "无法找到名为 %(group_id)s 的组。"
+
+#, python-format
 msgid "Group Type %(group_type_id)s has no specs with key %(group_specs_key)s."
 msgstr "组类型 %(group_type_id)s 没有键 %(group_specs_key)s 对应的规格说明。"
 
 #, python-format
 msgid "Group Type %(id)s already exists."
 msgstr "组类型 %(id)s 已存在。"
+
+#, python-format
+msgid "Group Type %(type_id)s has no extra spec with key %(id)s."
+msgstr "组类型%(type_id)s没有与键%(id)s对应的额外规格。"
 
 #, python-format
 msgid "Group type %(group_type_id)s could not be found."
@@ -3967,6 +4057,9 @@ msgstr "针对类型为 %(type_id)s 的组类型加密方式已存在。"
 msgid "Group type encryption for type %(type_id)s does not exist."
 msgstr "针对组类型 %(type_id)s 加密方式不存在。"
 
+msgid "Group type name can not be empty."
+msgstr "组类型名称不能为空。"
+
 #, python-format
 msgid "Group type with name %(group_type_name)s could not be found."
 msgstr "名为 %(group_type_name)s 的组类型无法找到。"
@@ -3977,11 +4070,19 @@ msgid ""
 "already exists."
 msgstr "已存在映射 %(group_id)s / %(volume_type_id)s 组合的卷组类型。"
 
+#, python-format
+msgid "GroupSnapshot %(group_snapshot_id)s could not be found."
+msgstr "无法找到组快照 %(group_snapshot_id)s。"
+
 msgid "HBSD error occurs."
 msgstr "发生 HBSD 错误。"
 
 msgid "HPELeftHand url not found"
 msgstr "找不到 HPELeftHand URL"
+
+#, python-format
+msgid "HTTP exit code: [%(code)s]"
+msgstr "HTTP退出码:[%(code)s]"
 
 #, python-format
 msgid ""
@@ -3994,6 +4095,9 @@ msgstr ""
 #, python-format
 msgid "Have not created %(tier_levels)s tier(s)."
 msgstr "尚未创建 %(tier_levels)s 层。"
+
+msgid "Heartbeat"
+msgstr "心跳"
 
 #, python-format
 msgid "Hint \"%s\" not supported."
@@ -4030,6 +4134,9 @@ msgstr "主机未冻结。"
 msgid "Host is already Frozen."
 msgstr "主机已冻结。"
 
+msgid "Host must be specified in query parameters"
+msgstr "主机必须在查询参数中指定"
+
 #, python-format
 msgid "Host not found. Failed to remove %(service)s on %(host)s."
 msgstr "找不到主机。未能在 %(host)s 上移除 %(service)s。"
@@ -4045,6 +4152,9 @@ msgstr "不支持主机类型 %s。"
 #, python-format
 msgid "Host with ports %(ports)s not found."
 msgstr "找不到具有端口 %(ports)s 的主机。"
+
+msgid "Hosts"
+msgstr "主机"
 
 msgid "Hypermetro and Replication can not be used in the same volume_type."
 msgstr "Hypermetro 和复制不能用于同一 volume_type。"
@@ -4183,6 +4293,14 @@ msgid "Invalid ConsistencyGroup: No host to create consistency group"
 msgstr "一致性组无效：没有任何主机用于创建一致性组"
 
 #, python-format
+msgid "Invalid Group: %(reason)s"
+msgstr "无效的组: %(reason)s"
+
+#, python-format
+msgid "Invalid GroupSnapshot: %(reason)s"
+msgstr "无效的组快照: %(reason)s"
+
+#, python-format
 msgid ""
 "Invalid HPELeftHand API version found: %(found)s. Version %(minimum)s or "
 "greater required for manage/unmanage support."
@@ -4238,12 +4356,20 @@ msgid "Invalid attaching mode '%(mode)s' for volume %(volume_id)s."
 msgstr "加载模式 '%(mode)s' 对于卷 %(volume_id)s 无效。"
 
 #, python-format
+msgid "Invalid attachment info for volume %(name)s: %(reason)s"
+msgstr "卷 %(name)s 的无效挂载信息: %(reason)s"
+
+#, python-format
 msgid "Invalid auth key: %(reason)s"
 msgstr "认证密钥无效：%(reason)s"
 
 #, python-format
 msgid "Invalid backup: %(reason)s"
 msgstr "备份无效：%(reason)s"
+
+#, python-format
+msgid "Invalid body provided for creating volume. Request API version: %s."
+msgstr "创建卷时提供了无效请求主体。请求API版本：%s。"
 
 msgid "Invalid chap user details found in CloudByte storage."
 msgstr "在 CloudByte 存储器中找到了无效 chap 用户详细信息。"
@@ -4283,6 +4409,18 @@ msgstr "无效磁盘类型：%(disk_type)s。"
 #, python-format
 msgid "Invalid disk type: %s."
 msgstr "无效磁盘类型：%s。"
+
+#, python-format
+msgid ""
+"Invalid disk-format '%(disk_format)s' is specified. Allowed disk-formats are "
+"%(allowed_disk_formats)s."
+msgstr ""
+"指定的磁盘格式\"%(disk_format)s\"无效。允许的磁盘格式"
+"为%(allowed_disk_formats)s。"
+
+#, python-format
+msgid "Invalid filter keys: %s"
+msgstr "无效的筛选键:%s"
 
 #, python-format
 msgid "Invalid group type: %(reason)s"
@@ -4399,6 +4537,14 @@ msgid "Invalid snapshot: %(reason)s"
 msgstr "快照无效: %(reason)s"
 
 #, python-format
+msgid "Invalid sort dirs passed: %s"
+msgstr "传递的无效排序目录:%s"
+
+#, python-format
+msgid "Invalid sort keys passed: %s"
+msgstr "传递的无效排序码:%s"
+
+#, python-format
 msgid "Invalid status: '%s'"
 msgstr "无效的状态：'%s'"
 
@@ -4419,6 +4565,10 @@ msgstr "无效传输类型。"
 #, python-format
 msgid "Invalid update setting: '%s'"
 msgstr "无效的更新设置：'%s'"
+
+#, python-format
+msgid "Invalid value '%s' for delete-volumes flag."
+msgstr "删除卷标志的值\"%s\"无效。"
 
 #, python-format
 msgid "Invalid value '%s' for force."
@@ -4564,6 +4714,14 @@ msgstr "在 CloudByte 的创建卷 [%s] 响应中找不到作业标识。"
 msgid "Job id not found in CloudByte's delete volume [%s] response."
 msgstr "在 CloudByte 的删除卷 [%s] 响应中找不到作业标识。"
 
+#, python-format
+msgid "Kaminario retryable exception: %(reason)s"
+msgstr "Kaminario可重试异常:%(reason)s"
+
+#, python-format
+msgid "KaminarioCinderDriver failure: %(reason)s"
+msgstr "Kaminario Cinder 驱动程序故障:%(reason)s"
+
 msgid ""
 "Key names can only contain alphanumeric characters, underscores, periods, "
 "colons and hyphens."
@@ -4585,6 +4743,10 @@ msgstr "LUN 导出失败！"
 
 msgid "LUN map overflow on every channel."
 msgstr "LUN 映射在每个通道上溢出。"
+
+#, python-format
+msgid "LUN not found by UUID: %(uuid)s."
+msgstr "无法通过UUID:%(uuid)s找到LUN。"
 
 #, python-format
 msgid "LUN not found with given ref %s."
@@ -4737,6 +4899,9 @@ msgstr "映射 %(id)s 准备未能在已分配的 %(to)d 秒超时内完成。�
 msgid "Masking view %(maskingViewName)s was not deleted successfully"
 msgstr "未成功删除掩码视图 %(maskingViewName)s"
 
+msgid "Maximum age is count of days since epoch."
+msgstr "最大年龄是自新纪元开始计算的天数。"
+
 #, python-format
 msgid "Maximum number of backups allowed (%(allowed)d) exceeded"
 msgstr "已超过允许的最大备份数 (%(allowed)d)"
@@ -4765,6 +4930,14 @@ msgstr "对于此卷，已存在元数据备份"
 #, python-format
 msgid "Metadata backup object '%s' already exists"
 msgstr "元数据备份对象“%s”已存在"
+
+#, python-format
+msgid "Metadata property key %s greater than 255 characters."
+msgstr "元数据属性关键字%s超过255个字符。"
+
+#, python-format
+msgid "Metadata property key %s value greater than 255 characters."
+msgstr "元数据属性关键字%s值超过255个字符。"
 
 msgid "Metadata property key blank."
 msgstr "元数据属性关键字为空白。"
@@ -4803,6 +4976,9 @@ msgstr "请求主体中缺少必需元素“%s”。"
 
 msgid "Missing required element 'consistencygroup' in request body."
 msgstr "请求主体中缺少必需元素“consistencygroup”。"
+
+msgid "Missing required element 'delete' in request body."
+msgstr "请求主体中缺少必需元素\"delete\"。"
 
 msgid "Missing required element quota_class_set in request body."
 msgstr "在请求主体中缺少必需元素 quota_class_set。"
@@ -4899,6 +5075,11 @@ msgstr "必须明确一个ExtensionManager类"
 msgid "Must specify bootable in request."
 msgstr "必须在请求中指定 bootable。"
 
+msgid ""
+"Must specify one or more of the following keys to update: name, description, "
+"add_volumes, remove_volumes."
+msgstr "更新时必须指定如下的一个或多个键:名称，描述，添加卷，删除卷。"
+
 msgid "Must specify protection domain name or protection domain id."
 msgstr "必须指定保护域名或者保护域标识。"
 
@@ -4935,6 +5116,9 @@ msgstr "未发现 NFS 文件 %s。"
 
 msgid "NFS file could not be discovered."
 msgstr "未能发现 NFS 文件。"
+
+msgid "NULL host not allowed for volume backend lookup."
+msgstr "对于卷后端查找，主机不允许为NULL。"
 
 msgid "NaElement name cannot be null."
 msgstr "NaElement 名称不能为空。"
@@ -5221,6 +5405,10 @@ msgstr "当创建测试副本时，不应该提供任何 volume_type。"
 msgid "No volumes found in CloudByte storage."
 msgstr "在 CloudByte 存储器中找不到任何卷。"
 
+#, python-format
+msgid "No volumes or consistency groups exist in cluster %(current)s."
+msgstr "集群 %(current)s 中不存在卷或者一致性组。"
+
 msgid "No weighed hosts available"
 msgstr "没有加权主机可用"
 
@@ -5468,6 +5656,9 @@ msgstr "提供程序信息 w.r.t：找不到对应 OpenStack 卷 [%s] 的 CloudB
 #, python-format
 msgid "Pure Storage Cinder driver failure: %(reason)s"
 msgstr "Pure Storage Cinder 驱动程序故障：%(reason)s"
+
+msgid "Purge command failed, check cinder-manage logs for more details."
+msgstr "Pure命令执行失败，更多详细信息请查看cinder-manage日志。"
 
 #, python-format
 msgid "QoS Specs %(specs_id)s already exists."
@@ -5832,6 +6023,12 @@ msgstr ""
 msgid "Retry count exceeded for command: %s"
 msgstr "对于命令，超过重试次数：%s"
 
+msgid "Retryable Dell Exception encountered"
+msgstr "遇到可重试的Dell异常。"
+
+msgid "Retryable Pure Storage Exception encountered"
+msgstr "遇到可重试的Pure Storage异常。"
+
 msgid "Retryable SolidFire Exception encountered"
 msgstr "遇到可重试的 SolidFire 异常"
 
@@ -6103,6 +6300,9 @@ msgstr "找不到标识为 %s 的指定快照组。"
 msgid "Specify a password or private_key"
 msgstr "请指定密码或 private_key"
 
+msgid "Specify group type name, description or a combination thereof."
+msgstr "在其中指定组类型的名称、描述或者两者的组合。"
+
 msgid "Specify san_password or san_private_key"
 msgstr "指定san_password或者san_private_key"
 
@@ -6200,6 +6400,10 @@ msgid "Synchronizing secondary volume to primary failed."
 msgstr "使辅助卷与主卷同步失败。"
 
 #, python-format
+msgid "Synology driver authentication failed: %(reason)s."
+msgstr "Synology驱动认证失败:%(reason)s。"
+
+#, python-format
 msgid "System %(id)s found with bad password status - %(pass_status)s."
 msgstr "发现系统 %(id)s 的密码状态无效 - %(pass_status)s。"
 
@@ -6217,6 +6421,9 @@ msgstr "系统繁忙，请重试操作。"
 msgid ""
 "TSM [%(tsm)s] was not found in CloudByte storage for account [%(account)s]."
 msgstr "在帐户 [%(account)s] 的 CloudByte 存储器中找不到 TSM [%(tsm)s]。"
+
+msgid "Target group type is still in use."
+msgstr "目标组类型仍在使用中。"
 
 msgid "Target volume type is still in use."
 msgstr "目标卷类型仍在使用中。"
@@ -6779,6 +6986,10 @@ msgid "Unable to create replica clone for volume %s."
 msgstr "无法为卷 %s 创建副本克隆。"
 
 #, python-format
+msgid "Unable to create server object for initiator %(name)s"
+msgstr "无法为发起者 %(name)s 创建服务器对象"
+
+#, python-format
 msgid "Unable to create the relationship for %s."
 msgstr "无法为 %s 创建该关系。"
 
@@ -6890,11 +7101,18 @@ msgstr "找不到名称为 %s 的 Purity ref"
 msgid "Unable to find Volume Group: %(vg_name)s"
 msgstr "找不到卷组: %(vg_name)s"
 
+msgid "Unable to find any active VPSA controller"
+msgstr "无法找到任何活跃的VPSA控制器。"
+
 msgid "Unable to find failover target, no secondary targets configured."
 msgstr "找不到故障转移目标，未配置辅助目标。"
 
 msgid "Unable to find iSCSI mappings."
 msgstr "找不到 iSCSI 映射。"
+
+#, python-format
+msgid "Unable to find server object for initiator %(name)s"
+msgstr "无法找到发起者为 %(name)s 的服务器对象。"
 
 #, python-format
 msgid "Unable to find ssh_hosts_key_file: %s"
@@ -7262,6 +7480,10 @@ msgid "Unsupported backup verify driver"
 msgstr "不支持备份验证驱动程序"
 
 #, python-format
+msgid "Unsupported fields %s."
+msgstr "不支持的域%s。"
+
+#, python-format
 msgid ""
 "Unsupported firmware on switch %s. Make sure switch is running firmware v6.4 "
 "or higher"
@@ -7405,6 +7627,10 @@ msgstr "数组中找不到卷 %(name)s。无法确定是否存在已映射的卷
 #, python-format
 msgid "Volume %(name)s was created in VNX, but in %(state)s state."
 msgstr "在 VNX 中创建了卷 %(name)s，但此卷处于 %(state)s 状态。"
+
+#, python-format
+msgid "Volume %(name)s was not deactivated in time."
+msgstr "卷 %(name)s 没有被及时释放。"
 
 #, python-format
 msgid "Volume %(vol)s could not be created in pool %(pool)s."
@@ -7629,6 +7855,10 @@ msgstr "卷不是此节点的本地卷"
 
 msgid "Volume is not local to this node."
 msgstr "该卷不是此节点的本地卷。"
+
+#, python-format
+msgid "Volume manager for backend '%s' does not exist."
+msgstr "用于后端'%s'的卷管理器不存在。"
 
 msgid ""
 "Volume metadata backup requested but this driver does not yet support this "
@@ -8371,6 +8601,9 @@ msgstr "check_for_setup_error：无法确定系统名称。"
 msgid "check_hypermetro_exist error."
 msgstr "check_hypermetro_exist 错误。"
 
+msgid "cinder-all is deprecated in Newton and will be removed in Ocata."
+msgstr "在Newton中已不推荐使用cinder-all，它将在Ocata版本中移除。"
+
 #, python-format
 msgid "clone depth exceeds limit of %s"
 msgstr "克隆深度超过 %s 的限制"
@@ -8672,6 +8905,10 @@ msgstr ""
 "文件集。"
 
 #, python-format
+msgid "group_type must be provided to create group %(name)s."
+msgstr "创建组%(name)s时必须提供group_type。"
+
+#, python-format
 msgid ""
 "hgst_group %(grp)s and hgst_user %(usr)s must map to valid users/groups in "
 "cinder.conf"
@@ -8942,6 +9179,9 @@ msgstr "source-name 不能为空。"
 msgid "source-name format should be: 'vmdk_path@vm_inventory_path'."
 msgstr "source-name 格式应为“vmdk_path@vm_inventory_path”。"
 
+msgid "specs must be a dictionary."
+msgstr "规格说明必须是字典。"
+
 #, python-format
 msgid "status must be %s and"
 msgstr "状态必须为 %s，并且"
@@ -9055,6 +9295,10 @@ msgstr "必须提供 volume_types，才能创建一致性组 %(name)s。"
 #, python-format
 msgid "volume_types must be provided to create consistency group %s."
 msgstr "必须提供 volume_types，才能创建一致性组 %s。"
+
+#, python-format
+msgid "volume_types must be provided to create group %(name)s."
+msgstr "必须提供volume_types，才能创建组 %(name)s。"
 
 msgid "volumes assigned"
 msgstr "已分配卷"
