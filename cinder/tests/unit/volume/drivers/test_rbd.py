@@ -1031,6 +1031,8 @@ class RBDTestCase(test.TestCase):
         self.assertEqual(self.mock_rados.Rados.return_value.ioctx, ret[1])
         self.mock_rados.Rados.return_value.open_ioctx.assert_called_with(
             self.cfg.rbd_pool)
+        conf_set = self.mock_rados.Rados.return_value.conf_set
+        conf_set.assert_not_called()
 
         # different pool
         ret = self.driver._connect_to_rados('alt_pool')
@@ -1044,8 +1046,10 @@ class RBDTestCase(test.TestCase):
         self.cfg.rados_connect_timeout = 1
         self.mock_rados.Rados.return_value.connect.reset_mock()
         self.driver._connect_to_rados()
-        self.mock_rados.Rados.return_value.connect.assert_called_once_with(
-            timeout=1)
+        conf_set.assert_has_calls((mock.call('rados_osd_op_timeout', '1'),
+                                   mock.call('rados_mon_op_timeout', '1'),
+                                   mock.call('client_mount_timeout', '1')))
+        self.mock_rados.Rados.return_value.connect.assert_called_once_with()
 
         # error
         self.mock_rados.Rados.return_value.open_ioctx.reset_mock()
