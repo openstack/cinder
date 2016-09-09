@@ -41,7 +41,6 @@ If the following applies to the patch, a release note is required:
 
 * APIs
 
-  * The storage or backup driver interface changes
   * REST API changes
 
 Cinder uses `reno <http://docs.openstack.org/developer/reno/usage.html>`_ to
