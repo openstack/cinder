@@ -4,7 +4,7 @@
 Quality of service (QoS) specifications (qos-specs)
 ===================================================
 
-Administrators only, depending on policy settings.
+Administrators only.
 
 Creates, lists, shows details for, associates, disassociates, sets
 keys, unsets keys, and deletes quality of service (QoS)
