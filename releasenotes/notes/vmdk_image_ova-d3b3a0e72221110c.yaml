@@ -1,0 +1,5 @@
+---
+fixes:
+  - Fixed the VMware VMDK driver to create volume from image
+    in ova container.
+
