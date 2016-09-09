@@ -1,16 +1,15 @@
 ---
 features:
-  - Adds VNX new Cinder driver which is based on storops.
-    storops is a library released to pypi.
+  - New Cinder driver based on storops library (available in pypi)
+    for EMC VNX.
 
 upgrade:
   - For EMC VNX backends, please upgrade to use
-    'cinder.volume.drivers.emc.vnx.driver.EMCVNXDriver'.
-    new option
-      For FC driver, adds 'storage_protocol = fc' to driver section.
-      For iSCSI driver, adds 'storage_protocol = iscsi' to driver section.
+    ``cinder.volume.drivers.emc.vnx.driver.EMCVNXDriver``. Add config option
+    ``storage_protocol = fc`` or ``storage_protocol = iscsi`` to the driver
+    section to enable the FC or iSCSI driver respectively.
 deprecations:
-  - Old VNX FC(cinder.volume.drivers.emc.emc_cli_fc.EMCCLIFCDriver)/
-    iSCSI(cinder.volume.drivers.emc.emc_cli_iscsi.EMCCLIISCSIDriver) drivers
-    were deprecated. Please refer to upgrade section for information about
-    new driver.
+  - Old VNX FC (``cinder.volume.drivers.emc.emc_cli_fc.EMCCLIFCDriver``)/
+    iSCSI (``cinder.volume.drivers.emc.emc_cli_iscsi.EMCCLIISCSIDriver``)
+    drivers are deprecated. Please refer to upgrade section for information
+    about the new driver.

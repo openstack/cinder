@@ -1,3 +1,3 @@
 ---
 features:
-  - VMAX driver iSCSI Multipathing.
+  - Support for iSCSI multipathing in EMC VMAX driver.

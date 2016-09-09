@@ -1,3 +1,4 @@
 ---
 features:
-  - Huawei support backup snapshot optimal path
+  - Support for snapshot backup using the optimal path in
+    Huawei driver.
