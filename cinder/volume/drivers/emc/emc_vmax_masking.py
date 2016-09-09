@@ -2376,33 +2376,37 @@ class EMCVMAXMasking(object):
                 # Get maskingview from storage group.
                 mvInstanceName = self.get_masking_view_from_storage_group(
                     conn, sgInstanceName)
-                LOG.debug("Found masking view associated with SG "
-                          "%(storageGroup)s: %(maskingview)s",
-                          {'maskingview': mvInstanceName,
-                           'storageGroup': sgInstanceName})
                 # Get initiator group from masking view.
-                igInstanceName = (
-                    self.get_initiator_group_from_masking_view(
-                        conn, mvInstanceName))
-                LOG.debug("Initiator Group in masking view %(ig)s: "
-                          "IG associated with connector%(igFromConnector)s",
-                          {'ig': igInstanceName,
-                           'igFromConnector': igInstanceNameFromConnector})
-                if igInstanceName == igInstanceNameFromConnector:
-                    if getSG is True:
-                        foundInstanceName = sgInstanceName
-                        LOG.debug("Found the storage group associated with "
-                                  "initiator %(initiator)s: %(storageGroup)s",
-                                  {'initiator': initiatorNames,
-                                   'storageGroup': foundInstanceName})
-                    else:
-                        foundInstanceName = mvInstanceName
-                        LOG.debug("Found the masking view associated with "
-                                  "initiator %(initiator)s: %(maskingview)s.",
-                                  {'initiator': initiatorNames,
-                                   'maskingview': foundInstanceName})
+                if mvInstanceName:
+                    LOG.debug("Found masking view associated with SG "
+                              "%(storageGroup)s: %(maskingview)s",
+                              {'maskingview': mvInstanceName,
+                               'storageGroup': sgInstanceName})
+                    igInstanceName = (
+                        self.get_initiator_group_from_masking_view(
+                            conn, mvInstanceName))
+                    LOG.debug("Initiator Group in masking view %(ig)s: "
+                              "IG associated with connector "
+                              "%(igFromConnector)s.",
+                              {'ig': igInstanceName,
+                               'igFromConnector': igInstanceNameFromConnector})
+                    if igInstanceName == igInstanceNameFromConnector:
+                        if getSG is True:
+                            foundInstanceName = sgInstanceName
+                            LOG.debug("Found the storage group associated "
+                                      "with initiator %(initiator)s: "
+                                      "%(storageGroup)s",
+                                      {'initiator': initiatorNames,
+                                       'storageGroup': foundInstanceName})
+                        else:
+                            foundInstanceName = mvInstanceName
+                            LOG.debug("Found the masking view associated with "
+                                      "initiator %(initiator)s: "
+                                      "%(maskingview)s.",
+                                      {'initiator': initiatorNames,
+                                       'maskingview': foundInstanceName})
 
-                    break
+                        break
         return foundInstanceName
 
     def _remove_last_vol_and_delete_sg(self, conn, controllerConfigService,

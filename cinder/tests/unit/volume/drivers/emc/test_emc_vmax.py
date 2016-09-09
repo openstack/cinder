@@ -8309,6 +8309,58 @@ class EMCVMAXCommonTest(test.TestCase):
             sourceInstance, cloneName, extraSpecs)
         self.assertIsNotNone(duplicateVolumeInstance)
 
+    def test_get_target_wwn(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        targetWwns = common.get_target_wwns(
+            EMCVMAXCommonData.storage_system, EMCVMAXCommonData.connector)
+        self.assertListEqual(["5000090000000000"], targetWwns)
+
+    @mock.patch.object(
+        emc_vmax_utils.EMCVMAXUtils,
+        'get_target_endpoints',
+        return_value=None)
+    def test_get_target_wwn_all_invalid(self, mock_target_ep):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+
+        self.assertRaises(
+            exception.VolumeBackendAPIException,
+            common.get_target_wwns, EMCVMAXCommonData.storage_system,
+            EMCVMAXCommonData.connector)
+
+    def test_get_target_wwn_one_invalid(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        targetEndpoints = [{'CreationClassName': 'EMC_FCSCSIProtocolEndpoint',
+                            'Name': '5000090000000000'}]
+        hardwareInstanceNames = (
+            [{'CreationClassName': 'EMC_StorageHardwareID'}] * 3)
+        e = exception.VolumeBackendAPIException('Get target endpoint ex')
+        with mock.patch.object(common, '_find_storage_hardwareids',
+                               return_value=hardwareInstanceNames):
+            with mock.patch.object(common.utils, 'get_target_endpoints',
+                                   side_effect=[e, None, targetEndpoints]):
+                targetWwns = common.get_target_wwns(
+                    EMCVMAXCommonData.storage_system,
+                    EMCVMAXCommonData.connector)
+                self.assertListEqual(["5000090000000000"], targetWwns)
+
+    def test_get_target_wwn_all_invalid_endpoints(self):
+        common = self.driver.common
+        common.conn = FakeEcomConnection()
+        hardwareInstanceNames = (
+            [{'CreationClassName': 'EMC_StorageHardwareID'}] * 3)
+        e = exception.VolumeBackendAPIException('Get target endpoint ex')
+        with mock.patch.object(common, '_find_storage_hardwareids',
+                               return_value=hardwareInstanceNames):
+            with mock.patch.object(common.utils, 'get_target_endpoints',
+                                   side_effect=[e, None, None]):
+                self.assertRaises(
+                    exception.VolumeBackendAPIException,
+                    common.get_target_wwns, EMCVMAXCommonData.storage_system,
+                    EMCVMAXCommonData.connector)
+
     def test_cleanup_target(self):
         common = self.driver.common
         common.conn = FakeEcomConnection()
