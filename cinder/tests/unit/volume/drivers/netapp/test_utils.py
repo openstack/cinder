@@ -135,7 +135,7 @@ class NetAppDriverUtilsTestCase(test.TestCase):
 
         actual_properties_mapped = actual_properties['data']
 
-        self.assertIs(type(actual_properties_mapped['target_lun']), int)
+        self.assertIs(int, type(actual_properties_mapped['target_lun']))
 
     def test_iscsi_connection_lun_id_type_dict(self):
         FAKE_LUN_ID = {'id': 'fake_id'}
