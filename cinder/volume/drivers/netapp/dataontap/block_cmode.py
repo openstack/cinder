@@ -236,7 +236,9 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             filter_function=filter_function,
             goodness_function=goodness_function)
         data['sparse_copy_volume'] = True
-        data.update(self.get_replication_backend_stats(self.configuration))
+
+        # Used for service state report
+        data['replication_enabled'] = self.replication_enabled
 
         self.zapi_client.provide_ems(self, self.driver_name, self.app_version)
         self._stats = data
@@ -301,6 +303,10 @@ class NetAppBlockStorageCmodeLibrary(block_base.NetAppBlockStorageLibrary,
             pool['utilization'] = na_utils.round_down(utilization)
             pool['filter_function'] = filter_function
             pool['goodness_function'] = goodness_function
+
+            # Add replication capabilities/stats
+            pool.update(
+                self.get_replication_backend_stats(self.configuration))
 
             pools.append(pool)
 
