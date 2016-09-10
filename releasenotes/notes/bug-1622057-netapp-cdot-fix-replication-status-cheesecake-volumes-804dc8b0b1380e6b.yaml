@@ -1,0 +1,5 @@
+---
+fixes:
+  - The NetApp cDOT driver now sets the ``replication_status`` attribute
+    appropriately on volumes created within replicated backends when using host
+    level replication.

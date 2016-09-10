@@ -49,13 +49,13 @@ class NetAppCmodeFibreChannelDriver(driver.BaseVD,
         self.library.check_for_setup_error()
 
     def create_volume(self, volume):
-        self.library.create_volume(volume)
+        return self.library.create_volume(volume)
 
     def create_volume_from_snapshot(self, volume, snapshot):
-        self.library.create_volume_from_snapshot(volume, snapshot)
+        return self.library.create_volume_from_snapshot(volume, snapshot)
 
     def create_cloned_volume(self, volume, src_vref):
-        self.library.create_cloned_volume(volume, src_vref)
+        return self.library.create_cloned_volume(volume, src_vref)
 
     def delete_volume(self, volume):
         self.library.delete_volume(volume)

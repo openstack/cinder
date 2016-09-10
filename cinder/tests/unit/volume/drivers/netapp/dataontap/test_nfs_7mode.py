@@ -176,6 +176,11 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
 
         self.assertEqual(expected, result)
 
+    def test__get_volume_model_update(self):
+        """Driver is not expected to return a model update."""
+        self.assertIsNone(
+            self.driver._get_volume_model_update(fake.VOLUME_REF))
+
     def test_delete_cgsnapshot(self):
         mock_delete_file = self.mock_object(self.driver, '_delete_file')
 
