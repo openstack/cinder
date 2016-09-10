@@ -228,6 +228,9 @@ class NetApp7modeNfsDriver(nfs_base.NetAppNfsDriver):
         # 7-mode DOT does not support QoS.
         return
 
+    def _get_volume_model_update(self, volume):
+        """Provide any updates necessary for a volume being created/managed."""
+
     def _get_backing_flexvol_names(self):
         """Returns a list of backing flexvol names."""
         flexvol_names = []

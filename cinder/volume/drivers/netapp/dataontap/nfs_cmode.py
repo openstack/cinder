@@ -32,6 +32,7 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder.image import image_utils
 from cinder import interface
+from cinder.objects import fields
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
@@ -161,6 +162,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
                 if cleanup:
                     LOG.debug("Cleaning volume %s", volume['id'])
                     self._cleanup_volume_on_failure(volume)
+
+    def _get_volume_model_update(self, volume):
+        """Provide model updates for a volume being created."""
+        if self.replication_enabled:
+            return {'replication_status': fields.ReplicationStatus.ENABLED}
 
     def _set_qos_policy_group_on_volume(self, volume, qos_policy_group_info):
         if qos_policy_group_info is None:

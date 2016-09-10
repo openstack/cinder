@@ -145,7 +145,9 @@ class NetAppNfsDriver(driver.ManageableVD,
             LOG.debug('Using pool %s.', pool_name)
             self._do_create_volume(volume)
             self._do_qos_for_volume(volume, extra_specs)
-            return {'provider_location': volume['provider_location']}
+            model_update = self._get_volume_model_update(volume) or {}
+            model_update['provider_location'] = volume['provider_location']
+            return model_update
         except Exception:
             LOG.exception(_LE("Exception creating vol %(name)s on "
                           "pool %(pool)s."),
@@ -186,8 +188,13 @@ class NetAppNfsDriver(driver.ManageableVD,
             self._clone_with_extension_check(
                 source, destination_volume)
             self._do_qos_for_volume(destination_volume, extra_specs)
-            return {'provider_location': destination_volume[
-                'provider_location']}
+
+            model_update = (
+                self._get_volume_model_update(destination_volume) or {})
+            model_update['provider_location'] = destination_volume[
+                'provider_location']
+
+            return model_update
         except Exception:
             LOG.exception(_LE("Exception creating volume %(name)s from source "
                               "%(source)s on share %(share)s."),
@@ -235,6 +242,10 @@ class NetAppNfsDriver(driver.ManageableVD,
 
     def _do_qos_for_volume(self, volume, extra_specs, cleanup=False):
         """Set QoS policy on backend from volume type information."""
+        raise NotImplementedError()
+
+    def _get_volume_model_update(self, volume):
+        """Provide any updates necessary for a volume being created/managed."""
         raise NotImplementedError()
 
     def create_snapshot(self, snapshot):
@@ -981,7 +992,11 @@ class NetAppNfsDriver(driver.ManageableVD,
                              {'name': existing_vol_ref['source-name'],
                               'msg': six.text_type(err)})
             raise exception.VolumeBackendAPIException(data=exception_msg)
-        return {'provider_location': nfs_share}
+
+        model_update = self._get_volume_model_update(volume) or {}
+        model_update['provider_location'] = nfs_share
+
+        return model_update
 
     def manage_existing_get_size(self, volume, existing_vol_ref):
         """Returns the size of volume to be managed by manage_existing.
@@ -1140,7 +1155,8 @@ class NetAppNfsDriver(driver.ManageableVD,
             vols = zip(volumes, snapshots)
 
             for volume, snapshot in vols:
-                update = self.create_volume_from_snapshot(volume, snapshot)
+                update = self.create_volume_from_snapshot(
+                    volume, snapshot)
                 update['id'] = volume['id']
                 volumes_model_update.append(update)
 
@@ -1158,10 +1174,13 @@ class NetAppNfsDriver(driver.ManageableVD,
                 self._clone_backing_file_for_volume(
                     source_vol['name'], volume['name'],
                     source_vol['id'], source_snapshot=snapshot_name)
-            update = {'id': volume['id'],
-                      'provider_location': source_vol['provider_location'],
-                      }
-            volumes_model_update.append(update)
+                volume_model_update = (
+                    self._get_volume_model_update(volume) or {})
+                volume_model_update.update({
+                    'id': volume['id'],
+                    'provider_location': source_vol['provider_location'],
+                })
+                volumes_model_update.append(volume_model_update)
 
             # Delete backing flexvol snapshots
             for flexvol_name in flexvols:

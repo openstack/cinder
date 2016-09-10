@@ -141,6 +141,11 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.assertRaises(exception.VolumeBackendAPIException,
                           self.library.check_for_setup_error)
 
+    def test__get_volume_model_update(self):
+        """Driver is not expected to return a model update."""
+        self.assertIsNone(
+            self.library._get_volume_model_update(fake.VOLUME_REF))
+
     @ddt.data(None, fake.VFILER)
     def test__get_owner(self, vfiler):
         self.library.configuration.netapp_server_hostname = 'openstack'

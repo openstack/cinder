@@ -30,6 +30,7 @@ import shutil
 
 from cinder import context
 from cinder import exception
+from cinder.objects import fields
 from cinder import test
 from cinder.tests.unit import fake_snapshot
 from cinder.tests.unit import fake_volume
@@ -126,16 +127,22 @@ class NetAppNfsDriverTestCase(test.TestCase):
 
         self.assertEqual('fake-share', pool)
 
-    def test_create_volume(self):
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_create_volume(self, model_update):
         self.mock_object(self.driver, '_ensure_shares_mounted')
         self.mock_object(na_utils, 'get_volume_extra_specs')
         self.mock_object(self.driver, '_do_create_volume')
         self.mock_object(self.driver, '_do_qos_for_volume')
+        self.mock_object(self.driver, '_get_volume_model_update',
+                         mock.Mock(return_value=model_update))
         expected = {'provider_location': fake.NFS_SHARE}
+        if model_update:
+            expected.update(model_update)
 
-        result = self.driver.create_volume(fake.NFS_VOLUME)
+        actual = self.driver.create_volume(fake.NFS_VOLUME)
 
-        self.assertEqual(expected, result)
+        self.assertEqual(expected, actual)
 
     def test_create_volume_no_pool(self):
         volume = copy.deepcopy(fake.NFS_VOLUME)
@@ -156,7 +163,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           self.driver.create_volume,
                           fake.NFS_VOLUME)
 
-    def test_clone_source_to_destination_volume(self):
+    @ddt.data(None, {'key': 'value'})
+    def test_clone_source_to_destination_volume(self, model_update):
         self.mock_object(self.driver, '_get_volume_location', mock.Mock(
             return_value=fake.POOL_NAME))
         self.mock_object(na_utils, 'get_volume_extra_specs', mock.Mock(
@@ -165,7 +173,11 @@ class NetAppNfsDriverTestCase(test.TestCase):
             self.driver,
             '_clone_with_extension_check')
         self.mock_object(self.driver, '_do_qos_for_volume')
+        self.mock_object(self.driver, '_get_volume_model_update',
+                         mock.Mock(return_value=model_update))
         expected = {'provider_location': fake.POOL_NAME}
+        if model_update:
+            expected.update(model_update)
 
         result = self.driver._clone_source_to_destination_volume(
             fake.CLONE_SOURCE, fake.CLONE_DESTINATION)
@@ -783,7 +795,9 @@ class NetAppNfsDriverTestCase(test.TestCase):
                           self.driver._get_share_mount_and_vol_from_vol_ref,
                           vol_ref)
 
-    def test_manage_existing(self):
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_manage_existing(self, model_update):
         self.mock_object(utils, 'get_file_size',
                          mock.Mock(return_value=1074253824))
         self.driver._mounted_shares = [self.fake_nfs_export_1]
@@ -803,10 +817,18 @@ class NetAppNfsDriverTestCase(test.TestCase):
         mock_get_specs = self.mock_object(na_utils, 'get_volume_extra_specs')
         mock_get_specs.return_value = {}
         self.mock_object(self.driver, '_do_qos_for_volume')
+        self.mock_object(self.driver, '_get_volume_model_update', mock.Mock(
+            return_value=model_update))
 
-        location = self.driver.manage_existing(volume, vol_ref)
+        actual_model_update = self.driver.manage_existing(volume, vol_ref)
 
-        self.assertEqual(self.fake_nfs_export_1, location['provider_location'])
+        self.assertEqual(
+            self.fake_nfs_export_1, actual_model_update['provider_location'])
+        if model_update:
+            self.assertEqual(model_update['replication_status'],
+                             actual_model_update['replication_status'])
+        else:
+            self.assertFalse('replication_status' in actual_model_update)
         self.driver._check_volume_type.assert_called_once_with(
             volume, self.fake_nfs_export_1, test_file, {})
 
@@ -957,28 +979,32 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.assertIsNone(add_volumes_update)
         self.assertIsNone(remove_volumes_update)
 
-    def test_create_consistencygroup_from_src(self):
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_create_consistencygroup_from_src(self, volume_model_update):
+        volume_model_update = volume_model_update or {}
+        volume_model_update.update(
+            {'provider_location': fake.PROVIDER_LOCATION})
         mock_create_volume_from_snapshot = self.mock_object(
-            self.driver, 'create_volume_from_snapshot',
-            mock.Mock(return_value={
-                'provider_location': fake.PROVIDER_LOCATION
-            }))
+            self.driver, 'create_volume_from_snapshot', mock.Mock(
+                return_value=volume_model_update))
 
         model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(
                 fake.CG_CONTEXT, fake.CONSISTENCY_GROUP, [fake.VOLUME],
                 cgsnapshot=fake.CG_SNAPSHOT, snapshots=[fake.SNAPSHOT]))
 
+        expected_volumes_model_updates = [{'id': fake.VOLUME['id']}]
+        expected_volumes_model_updates[0].update(volume_model_update)
         mock_create_volume_from_snapshot.assert_called_once_with(
             fake.VOLUME, fake.SNAPSHOT)
         self.assertIsNone(model_update)
-        expected_update = [{
-            'id': fake.VOLUME['id'],
-            'provider_location': fake.PROVIDER_LOCATION,
-        }]
-        self.assertEqual(expected_update, volumes_model_update)
+        self.assertEqual(expected_volumes_model_updates, volumes_model_update)
 
-    def test_create_consistencygroup_from_src_source_vols(self):
+    @ddt.data(None,
+              {'replication_status': fields.ReplicationStatus.ENABLED})
+    def test_create_consistencygroup_from_src_source_vols(
+            self, volume_model_update):
         mock_get_snapshot_flexvols = self.mock_object(
             self.driver, '_get_flexvol_names_from_hosts')
         mock_get_snapshot_flexvols.return_value = (set([fake.CG_POOL_NAME]))
@@ -987,6 +1013,8 @@ class NetAppNfsDriverTestCase(test.TestCase):
         fake_snapshot_name = 'snapshot-temp-' + fake.CONSISTENCY_GROUP['id']
         mock_busy = self.mock_object(
             self.driver.zapi_client, 'wait_for_busy_snapshot')
+        self.mock_object(self.driver, '_get_volume_model_update',
+                         mock.Mock(return_value=volume_model_update))
 
         model_update, volumes_model_update = (
             self.driver.create_consistencygroup_from_src(
@@ -994,6 +1022,12 @@ class NetAppNfsDriverTestCase(test.TestCase):
                 source_cg=fake.CONSISTENCY_GROUP,
                 source_vols=[fake.NFS_VOLUME]))
 
+        expected_volumes_model_updates = [{
+            'id': fake.NFS_VOLUME['id'],
+            'provider_location': fake.PROVIDER_LOCATION,
+        }]
+        if volume_model_update:
+            expected_volumes_model_updates[0].update(volume_model_update)
         mock_get_snapshot_flexvols.assert_called_once_with(
             [fake.NFS_VOLUME['host']])
         self.driver.zapi_client.create_cg_snapshot.assert_called_once_with(
@@ -1006,11 +1040,7 @@ class NetAppNfsDriverTestCase(test.TestCase):
         self.driver.zapi_client.delete_snapshot.assert_called_once_with(
             fake.CG_POOL_NAME, fake_snapshot_name)
         self.assertIsNone(model_update)
-        expected_update = [{
-            'id': fake.NFS_VOLUME['id'],
-            'provider_location': fake.PROVIDER_LOCATION,
-        }]
-        self.assertEqual(expected_update, volumes_model_update)
+        self.assertEqual(expected_volumes_model_updates, volumes_model_update)
 
     def test_create_consistencygroup_from_src_invalid_parms(self):
 
