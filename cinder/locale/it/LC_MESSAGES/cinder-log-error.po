@@ -9,9 +9,9 @@
 # Remo Mattei <remo@rm.ht>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev54\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev97\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-06 23:17+0000\n"
+"POT-Creation-Date: 2016-09-09 22:18+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2696,12 +2696,6 @@ msgstr "Replica del volume di sincronizzazione non riuscita."
 #, python-format
 msgid "TSM [%s] not found in CloudByte storage."
 msgstr "TSM [%s] non trovato nella memoria CloudByte."
-
-#, python-format
-msgid "Target end points do not exist for hardware Id: %(hardwareIdInstance)s."
-msgstr ""
-"I punti finali di destinazione non esistono per l'ID hardware: "
-"%(hardwareIdInstance)s."
 
 msgid "The Flexvisor service is unavailable."
 msgstr "Il servizio Flexvisor non è disponibile."

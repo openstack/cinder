@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev54\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev97\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-06 23:17+0000\n"
+"POT-Creation-Date: 2016-09-09 22:18+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -2539,10 +2539,6 @@ msgstr "볼륨 복제본 동기화에 실패했습니다."
 #, python-format
 msgid "TSM [%s] not found in CloudByte storage."
 msgstr "CloudByte 스토리지에서 TSM [%s]을(를) 찾을 수 없습니다."
-
-#, python-format
-msgid "Target end points do not exist for hardware Id: %(hardwareIdInstance)s."
-msgstr "하드웨어 Id: %(hardwareIdInstance)s의 대상 엔드포인트가 없습니다."
 
 msgid "The Flexvisor service is unavailable."
 msgstr "Flexvisor 서비스를 사용할 수 없습니다."
