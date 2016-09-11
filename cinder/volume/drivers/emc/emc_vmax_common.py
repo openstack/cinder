@@ -432,7 +432,7 @@ class EMCVMAXCommon(object):
                     volume, connector, extraSpecs, maskingViewDict))
 
         if self.protocol.lower() == 'iscsi':
-            deviceInfoDict['iscsi_ip_addresses'] = (
+            deviceInfoDict['ip_and_iqn'] = (
                 self._find_ip_protocol_endpoints(
                     self.conn, deviceInfoDict['storagesystem'],
                     portGroupName))
@@ -4484,12 +4484,12 @@ class EMCVMAXCommon(object):
                 ipendpointinstancenames = (
                     self.utils.get_ip_protocol_endpoints(
                         conn, tcpendpointinstancename))
+                endpoint = {}
                 for ipendpointinstancename in ipendpointinstancenames:
-                    ipaddress = (
-                        self.utils.get_iscsi_ip_address(
-                            conn, ipendpointinstancename))
-                    if ipaddress:
-                        foundipaddresses.append(ipaddress)
+                    endpoint = self.get_ip_and_iqn(conn, endpoint,
+                                                   ipendpointinstancename)
+                if bool(endpoint):
+                    foundipaddresses.append(endpoint)
         return foundipaddresses
 
     def _extend_v3_volume(self, volumeInstance, volumeName, newSize,
@@ -4538,3 +4538,26 @@ class EMCVMAXCommon(object):
                   {'sourceVol': sourceInstance.path,
                    'targetVol': targetInstance.path})
         return targetInstance
+
+    def get_ip_and_iqn(self, conn, endpoint, ipendpointinstancename):
+        """Get ip and iqn from the endpoint.
+
+        :param conn: ecom connection
+        :param endpoint: end point
+        :param ipendpointinstancename: ip endpoint
+        :returns: endpoint
+        """
+        if ('iSCSIProtocolEndpoint' in six.text_type(
+                ipendpointinstancename['CreationClassName'])):
+            iqn = self.utils.get_iqn(conn, ipendpointinstancename)
+            if iqn:
+                endpoint['iqn'] = iqn
+        elif ('IPProtocolEndpoint' in six.text_type(
+                ipendpointinstancename['CreationClassName'])):
+            ipaddress = (
+                self.utils.get_iscsi_ip_address(
+                    conn, ipendpointinstancename))
+            if ipaddress:
+                endpoint['ip'] = ipaddress
+
+        return endpoint

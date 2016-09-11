@@ -17,7 +17,6 @@ import os
 import shutil
 import sys
 import tempfile
-import time
 import unittest
 from xml.dom import minidom
 
@@ -157,6 +156,13 @@ class Fake_CIMProperty(object):
         cimproperty = Fake_CIMProperty()
         cimproperty.key = 'IPv4Address'
         cimproperty.value = '10.10.10.10'
+        return cimproperty
+
+    def fake_getiqn(self):
+        cimproperty = Fake_CIMProperty()
+        cimproperty.key = 'Name'
+        cimproperty.value = (
+            'iqn.1992-04.com.emc:600009700bca30c01b9c012000000003,t,0x0001')
         return cimproperty
 
     def fake_getSupportedReplicationTypesCIMProperty(self, reptypes):
@@ -1725,6 +1731,17 @@ class FakeEcomConnection(object):
         ipprotocolendpoint.properties = properties
         ipprotocolendpoint.path = ipprotocolendpoint
         ipprotocolendpoints.append(ipprotocolendpoint)
+        iqnprotocolendpoint = CIM_IPProtocolEndpoint()
+        iqnprotocolendpoint['CreationClassName'] = (
+            'Symm_VirtualiSCSIProtocolEndpoint')
+        iqnprotocolendpoint['SystemName'] = self.data.storage_system
+        classcimproperty = Fake_CIMProperty()
+        iqncimproperty = (
+            classcimproperty.fake_getiqn())
+        properties = {u'Name': iqncimproperty}
+        iqnprotocolendpoint.properties = properties
+        iqnprotocolendpoint.path = iqnprotocolendpoint
+        ipprotocolendpoints.append(iqnprotocolendpoint)
         return ipprotocolendpoints
 
     def _default_enum(self):
@@ -1754,16 +1771,11 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
                                              True,
                                              'volume_backend_name':
                                              'ISCSINoFAST'}))
-        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
-                         'smis_do_iscsi_discovery',
-                         self.fake_do_iscsi_discovery)
         self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
                          self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
@@ -1935,17 +1947,6 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
     def fake_ecom_connection(self):
         conn = FakeEcomConnection()
         return conn
-
-    def fake_do_iscsi_discovery(self, volume):
-        output = []
-        properties = {}
-        properties['target_portal'] = '10.10.0.50:3260'
-        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
-        output.append(properties)
-        return output
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return False
@@ -2178,9 +2179,9 @@ class EMCVMAXISCSIDriverNoFastTestCase(test.TestCase):
 
     def test_find_ip_protocol_endpoints(self):
         conn = self.fake_ecom_connection()
-        foundIpAddresses = self.driver.common._find_ip_protocol_endpoints(
+        endpoint = self.driver.common._find_ip_protocol_endpoints(
             conn, self.data.storage_system, self.data.port_group)
-        self.assertEqual('10.10.10.10', foundIpAddresses[0])
+        self.assertEqual('10.10.10.10', endpoint[0]['ip'])
 
     def test_find_device_number(self):
         host = 'fakehost'
@@ -3954,17 +3955,11 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
         configuration.cinder_emc_config_file = self.config_file_path
         configuration.safe_get.return_value = 'ISCSIFAST'
         configuration.config_group = 'ISCSIFAST'
-
-        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
-                         'smis_do_iscsi_discovery',
-                         self.fake_do_iscsi_discovery)
         self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
                          self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
@@ -4040,17 +4035,6 @@ class EMCVMAXISCSIDriverFastTestCase(test.TestCase):
     def fake_ecom_connection(self):
         conn = FakeEcomConnection()
         return conn
-
-    def fake_do_iscsi_discovery(self, volume):
-        output = []
-        properties = {}
-        properties['target_portal'] = '10.10.0.50:3260'
-        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
-        output.append(properties)
-        return output
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return False
@@ -4613,8 +4597,6 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
 
@@ -4685,9 +4667,6 @@ class EMCVMAXFCDriverNoFastTestCase(test.TestCase):
     def fake_ecom_connection(self):
         conn = FakeEcomConnection()
         return conn
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return False
@@ -5180,8 +5159,6 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
         driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
@@ -5257,9 +5234,6 @@ class EMCVMAXFCDriverFastTestCase(test.TestCase):
     def fake_ecom_connection(self):
         conn = FakeEcomConnection()
         return conn
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return False
@@ -5846,8 +5820,6 @@ class EMCV3DriverTestCase(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
         self.patcher = mock.patch(
@@ -5929,9 +5901,6 @@ class EMCV3DriverTestCase(test.TestCase):
     def fake_ecom_connection(self):
         self.conn = FakeEcomConnection()
         return self.conn
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return True
@@ -6699,19 +6668,13 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
         configuration.cinder_emc_config_file = self.config_file_path
         configuration.config_group = 'MULTI_POOL'
 
-        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
-                         'smis_do_iscsi_discovery',
-                         self.fake_do_iscsi_discovery)
         self.mock_object(emc_vmax_common.EMCVMAXCommon, '_get_ecom_connection',
                          self.fake_ecom_connection)
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
-
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
@@ -6798,17 +6761,6 @@ class EMCV2MultiPoolDriverTestCase(test.TestCase):
     def fake_ecom_connection(self):
         self.conn = FakeEcomConnection()
         return self.conn
-
-    def fake_do_iscsi_discovery(self, volume):
-        output = []
-        properties = {}
-        properties['target_portal'] = '10.10.0.50:3260'
-        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
-        output.append(properties)
-        return output
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return False
@@ -6993,8 +6945,6 @@ class EMCV3MultiSloDriverTestCase(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
 
@@ -7095,9 +7045,6 @@ class EMCV3MultiSloDriverTestCase(test.TestCase):
     def fake_ecom_connection(self):
         self.conn = FakeEcomConnection()
         return self.conn
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return True
@@ -7300,8 +7247,6 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
         instancename = FakeCIMInstanceName()
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'get_instance_name',
                          instancename.fake_getinstancename)
-        self.mock_object(time, 'sleep',
-                         self.fake_sleep)
         self.mock_object(emc_vmax_utils.EMCVMAXUtils, 'isArrayV3',
                          self.fake_is_v3)
         driver = emc_vmax_fc.EMCVMAXFCDriver(configuration=configuration)
@@ -7455,9 +7400,6 @@ class EMCV2MultiPoolDriverMultipleEcomsTestCase(test.TestCase):
     def fake_ecom_connection(self):
         self.conn = FakeEcomConnection()
         return self.conn
-
-    def fake_sleep(self, seconds):
-        return
 
     def fake_is_v3(self, conn, serialNumber):
         return False
@@ -8268,6 +8210,13 @@ class EMCVMAXUtilsTest(test.TestCase):
         os.remove(emc_vmax_utils.LIVE_MIGRATION_FILE)
         shutil.rmtree(tempdir)
 
+    def test_get_iqn(self):
+        conn = FakeEcomConnection()
+        iqn = "iqn.1992-04.com.emc:600009700bca30c01b9c012000000003,t,0x0001"
+        ipprotocolendpoints = conn._enum_ipprotocolendpoint()
+        foundIqn = self.driver.utils.get_iqn(conn, ipprotocolendpoints[1])
+        self.assertEqual(iqn, foundIqn)
+
 
 class EMCVMAXCommonTest(test.TestCase):
     def setUp(self):
@@ -8381,6 +8330,20 @@ class EMCVMAXCommonTest(test.TestCase):
         self.driver.common._cleanup_target(
             repServiceInstanceName, targetInstance, extraSpecs)
 
+    def test_get_ip_and_iqn(self):
+        conn = FakeEcomConnection()
+        endpoint = {}
+        ipprotocolendpoints = conn._enum_ipprotocolendpoint()
+        ip_and_iqn = self.driver.common.get_ip_and_iqn(conn, endpoint,
+                                                       ipprotocolendpoints[0])
+        ip_and_iqn = self.driver.common.get_ip_and_iqn(conn, endpoint,
+                                                       ipprotocolendpoints[1])
+        self.assertEqual(
+            'iqn.1992-04.com.emc:600009700bca30c01b9c012000000003,t,0x0001',
+            ip_and_iqn['iqn'])
+        self.assertEqual(
+            '10.10.10.10', ip_and_iqn['ip'])
+
 
 class EMCVMAXProvisionTest(test.TestCase):
     def setUp(self):
@@ -8464,42 +8427,22 @@ class EMCVMAXISCSITest(test.TestCase):
         configuration = mock.Mock()
         configuration.safe_get.return_value = 'iSCSITests'
         configuration.config_group = 'iSCSITests'
-        self.mock_object(emc_vmax_iscsi.EMCVMAXISCSIDriver,
-                         'smis_do_iscsi_discovery',
-                         self.fake_do_iscsi_discovery)
         emc_vmax_common.EMCVMAXCommon._gather_info = mock.Mock()
         driver = emc_vmax_iscsi.EMCVMAXISCSIDriver(configuration=configuration)
         driver.db = FakeDB()
         self.driver = driver
 
-    def fake_do_iscsi_discovery(self, volume):
-        output = []
-        properties = {}
-        properties['target_portal'] = '10.10.0.50:3260'
-        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd80'
-        output.append(properties)
-        properties = {}
-        properties['target_portal'] = '10.10.0.51:3260'
-        properties['target_iqn'] = 'iqn.1992-04.com.emc:50000973f006dd81'
-        output.append(properties)
-        return output
-
-    def test_parse_target_list(self):
-        targets = ["10.10.10.31:3260,0 iqn.1f:29.ID2",
-                   "10.10.10.32:3260,0 iqn.2f:29.ID2"]
-        out_targets = self.driver._parse_target_list(targets)
-        self.assertEqual('10.10.10.31:3260', out_targets[0]['target_portal'])
-        self.assertEqual('iqn.1f:29.ID2', out_targets[0]['target_iqn'])
-        self.assertEqual('10.10.10.32:3260', out_targets[1]['target_portal'])
-        self.assertEqual('iqn.2f:29.ID2', out_targets[1]['target_iqn'])
-
     def test_smis_get_iscsi_properties(self):
-        self.driver.iscsi_ip_addresses = ['10.10.0.50', '10.10.0.51']
         device_info = {'hostlunid': 1}
         self.driver.common.find_device_number = (
             mock.Mock(return_value=device_info))
+        iqns_and_ips = (
+            [{'iqn': 'iqn.1992-04.com.emc:50000973f006dd80,t,0x0001',
+              'ip': '10.10.0.50'},
+             {'iqn': 'iqn.1992-04.com.emc:50000973f006dd81,t,0x0001',
+              'ip': '10.10.0.51'}])
         properties = self.driver.smis_get_iscsi_properties(
-            self.data.test_volume, self.data.connector, True)
+            self.data.test_volume, self.data.connector, iqns_and_ips, True)
         self.assertEqual([1, 1], properties['target_luns'])
         self.assertEqual(['iqn.1992-04.com.emc:50000973f006dd80',
                           'iqn.1992-04.com.emc:50000973f006dd81'],
