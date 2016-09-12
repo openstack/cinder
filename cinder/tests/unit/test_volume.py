@@ -5302,7 +5302,11 @@ class VolumeMigrationTestCase(BaseVolumeTestCase):
                 mock.patch.object(db.sqlalchemy.api, 'volume_get') as mock_get:
             mock_get.return_value = volume
             _retype.return_value = driver
-            returned_diff = {}
+            returned_diff = {
+                'encryption': {},
+                'qos_specs': {},
+                'extra_specs': {},
+            }
             if encryption_changed:
                 returned_diff = {'encryption': 'fake'}
             _diff.return_value = (returned_diff, diff_equal)

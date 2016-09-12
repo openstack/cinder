@@ -2287,7 +2287,7 @@ class VolumeManager(manager.SchedulerDependentManager):
         # We assume that those that support pools do this internally
         # so we strip off the pools designation
         if (not retyped and
-                diff.get('encryption') is None and
+                not diff.get('encryption') and
                 vol_utils.hosts_are_equivalent(self.driver.host,
                                                host['host'])):
             try:
