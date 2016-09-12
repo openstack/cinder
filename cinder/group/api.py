@@ -151,8 +151,8 @@ class API(base.Base):
                   'status': c_fields.GroupStatus.CREATING,
                   'name': name,
                   'description': description,
-                  'volume_type_ids': volume_types,
-                  'group_type_id': group_type}
+                  'volume_type_ids': [t['id'] for t in req_volume_types],
+                  'group_type_id': req_group_type['id']}
         group = None
         try:
             group = objects.Group(context=context, **kwargs)
