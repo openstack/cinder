@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev54\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-06 23:16+0000\n"
+"POT-Creation-Date: 2016-09-11 18:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -7600,10 +7600,6 @@ msgstr "인식되지 않는 read_deleted 값 '%s'"
 msgid "Unset gcs options: %s"
 msgstr "gcs 옵션 설정 해제: %s"
 
-#, python-format
-msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
-msgstr "실패한 iscsiadm. 예외는 %(ex)s입니다. "
-
 msgid "Unsupported Content-Type"
 msgstr "지원되지 않는 Content-Type"
 
@@ -9164,9 +9160,6 @@ msgid ""
 "iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
 msgstr ""
 "프로토콜 'iSCSI' 사용 시 구성 파일에서 iscsi_ip_address를 설정해야 합니다. "
-
-msgid "iscsiadm execution failed. "
-msgstr "iscsiadm 실행에 실패했습니다."
 
 #, python-format
 msgid "key manager error: %(reason)s"

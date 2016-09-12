@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev98\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-10 20:41+0000\n"
+"POT-Creation-Date: 2016-09-11 18:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-10 01:20+0000\n"
+"PO-Revision-Date: 2016-09-11 01:26+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -1895,11 +1895,6 @@ msgstr "GPFS ファイルシステムデバイスが見つかりませんでし�
 #, python-format
 msgid "Could not find config at %(path)s"
 msgstr "%(path)s で config が見つかりませんでした。"
-
-#, python-format
-msgid "Could not find iSCSI export for volume %(volumeName)s."
-msgstr ""
-"ボリューム %(volumeName)s の iSCSI エクスポートが見つかりませんでした。"
 
 #, python-format
 msgid "Could not find iSCSI export for volume %s"
@@ -8074,6 +8069,14 @@ msgstr ""
 "配列が SLO %(slo)s とワークロード %(workload)s のストレージプール設置をサポー"
 "トしません。配列で有効な SLO とワークロードを確認してください。"
 
+#, python-format
+msgid ""
+"The array does not support the storage pool setting for SLO %(slo)s or "
+"workload %(workload)s. Please check the array for valid SLOs and workloads."
+msgstr ""
+"アレイが SLO %(slo)s またはワークロード %(workload)s のストレージプール設置を"
+"サポートしません。アレイで有効な SLO とワークロードを確認してください。"
+
 msgid ""
 "The authentication service failed to provide the location of the service URI "
 "when redirecting back"
@@ -9336,10 +9339,6 @@ msgstr ""
 #, python-format
 msgid "Unset gcs options: %s"
 msgstr "gcs オプションの設定を解除します: %s"
-
-#, python-format
-msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
-msgstr "iscsiadm が正常に終了しませんでした。例外は %(ex)s です。 "
 
 msgid "Unsupported Content-Type"
 msgstr "サポートされない Content-Type"
@@ -11230,9 +11229,6 @@ msgid ""
 msgstr ""
 "プロトコル 'iSCSI' を使用する場合、設定ファイルに iscsi_ip_address を設定しな"
 "ければなりません。"
-
-msgid "iscsiadm execution failed. "
-msgstr "iscsiadm の実行が失敗しました。"
 
 #, python-format
 msgid "key manager error: %(reason)s"

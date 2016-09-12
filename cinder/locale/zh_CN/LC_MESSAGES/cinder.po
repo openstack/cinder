@@ -16,9 +16,9 @@
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev97\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-09 22:17+0000\n"
+"POT-Creation-Date: 2016-09-11 18:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -7461,10 +7461,6 @@ msgstr "无法识别的 read_deleted 取值”%s“"
 msgid "Unset gcs options: %s"
 msgstr "取消设置 gcs 选项：%s"
 
-#, python-format
-msgid "Unsuccessful iscsiadm. Exception is %(ex)s. "
-msgstr "iscsiadm 失败。异常为 %(ex)s。 "
-
 msgid "Unsupported Content-Type"
 msgstr "不支持的Content-Type"
 
@@ -8981,9 +8977,6 @@ msgstr "找不到 iscsi 门户网站 %s"
 msgid ""
 "iscsi_ip_address must be set in config file when using protocol 'iSCSI'."
 msgstr "使用“iSCSI”协议时，必须在配置文件中设置 iscsi_ip_address。"
-
-msgid "iscsiadm execution failed. "
-msgstr "iscsiadm 执行失败。"
 
 #, python-format
 msgid "key manager error: %(reason)s"

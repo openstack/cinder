@@ -8,9 +8,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b3.dev566\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-02 02:51+0000\n"
+"POT-Creation-Date: 2016-09-11 18:24+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -1297,9 +1297,6 @@ msgstr "Generata eccezione HTTP: %s"
 msgid "Hypermetro id: %(metro_id)s. Remote lun id: %(remote_lun_id)s."
 msgstr "ID hypermetro: %(metro_id)s. ID lun remota: %(remote_lun_id)s."
 
-msgid "ISCSI provider_location not stored, using discovery."
-msgstr "provider_location ISCSI non archiviato, utilizzare il rilevamento."
-
 #, python-format
 msgid "Ignored LU creation error \"%s\" while ensuring export."
 msgstr ""
@@ -1914,14 +1911,6 @@ msgstr "Ripresa dell'eliminazione al backup: %s."
 #, python-format
 msgid "Return FC info is: %s."
 msgstr "Le informazioni FC restituite sono: %s."
-
-#, python-format
-msgid ""
-"Returning connection_info: %(info)s for volume: %(volume)s with connector: "
-"%(connector)s."
-msgstr ""
-"Restituzione di connection_info: %(info)s per il volume: %(volume)s con "
-"connettore: %(connector)s."
 
 #, python-format
 msgid "Returning random Port Group: %(portGroupName)s."
@@ -3313,10 +3302,6 @@ msgid "setting volume %s to error_restoring (was restoring-backup)."
 msgstr ""
 "impostazione del volume %s su error_restoring (era in fase di ripristino del "
 "backup)."
-
-#, python-format
-msgid "smis_do_iscsi_discovery is: %(out)s."
-msgstr "smis_do_iscsi_discovery è: %(out)s."
 
 #, python-format
 msgid "snapshot %s doesn't exist"
