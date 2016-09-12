@@ -138,6 +138,36 @@ class GroupAPITestCase(test.TestCase):
         mock_group_type_get.assert_called_once_with(self.ctxt,
                                                     "fake-grouptype-name")
 
+    @mock.patch('cinder.group.api.API._cast_create_group')
+    @mock.patch('cinder.group.api.API.update_quota')
+    @mock.patch('cinder.db.group_type_get_by_name')
+    @mock.patch('cinder.db.volume_types_get_by_name_or_id')
+    @mock.patch('cinder.group.api.check_policy')
+    def test_create_with_multi_types(self, mock_policy, mock_volume_types_get,
+                                     mock_group_type_get,
+                                     mock_update_quota,
+                                     mock_cast_create_group):
+        volume_types = [{'id': fake.VOLUME_TYPE_ID},
+                        {'id': fake.VOLUME_TYPE2_ID}]
+        mock_volume_types_get.return_value = volume_types
+        mock_group_type_get.return_value = {'id': fake.GROUP_TYPE_ID}
+        volume_type_names = ['fake-volume-type1', 'fake-volume-type2']
+        name = "test_group"
+        description = "this is a test group"
+
+        group = self.group_api.create(self.ctxt, name, description,
+                                      "fake-grouptype-name",
+                                      volume_type_names,
+                                      availability_zone='nova')
+        self.assertEqual(group["volume_type_ids"],
+                         [t['id'] for t in volume_types])
+        self.assertEqual(group["group_type_id"], fake.GROUP_TYPE_ID)
+
+        mock_group_type_get.assert_called_once_with(self.ctxt,
+                                                    "fake-grouptype-name")
+        mock_volume_types_get.assert_called_once_with(mock.ANY,
+                                                      volume_type_names)
+
     @mock.patch('cinder.volume.rpcapi.VolumeAPI.update_group')
     @mock.patch('cinder.db.volume_get_all_by_generic_group')
     @mock.patch('cinder.group.api.API._cast_create_group')
