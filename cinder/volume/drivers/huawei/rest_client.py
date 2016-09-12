@@ -360,13 +360,20 @@ class RestClient(object):
 
         return self._get_id_from_result(result, name, 'NAME')
 
-    def create_luncopy(self, luncopyname, srclunid, tgtlunid):
+    def create_luncopy(self, luncopyname, srclunid, tgtlunid, copyspeed):
         """Create a luncopy."""
         url = "/luncopy"
+        if copyspeed not in constants.LUN_COPY_SPEED_TYPES:
+            LOG.warning(_LW('The copy speed %(copyspeed)s is not valid, '
+                            'using default value %(default)s instead.'),
+                        {'copyspeed': copyspeed,
+                         'default': constants.LUN_COPY_SPEED_MEDIUM})
+            copyspeed = constants.LUN_COPY_SPEED_MEDIUM
+
         data = {"TYPE": 219,
                 "NAME": luncopyname,
                 "DESCRIPTION": luncopyname,
-                "COPYSPEED": 2,
+                "COPYSPEED": copyspeed,
                 "LUNCOPYTYPE": "1",
                 "SOURCELUN": ("INVALID;%s;INVALID;INVALID;INVALID"
                               % srclunid),

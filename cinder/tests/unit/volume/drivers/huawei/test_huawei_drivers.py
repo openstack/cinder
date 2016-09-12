@@ -2139,6 +2139,7 @@ class FakeFCStorage(huawei_driver.HuaweiFCDriver):
                                               self.configuration)
 
 
+@ddt.ddt
 class HuaweiTestBase(test.TestCase):
     """Base class for Huawei test cases.
 
@@ -2200,6 +2201,55 @@ class HuaweiTestBase(test.TestCase):
         lun_info = self.driver.create_snapshot(self.snapshot)
         self.assertEqual(11, lun_info['provider_location'])
 
+    @ddt.data('1', '', '0')
+    def test_copy_volume(self, input_speed):
+        self.driver.configuration.lun_copy_wait_interval = 0
+        self.volume.metadata = {'copyspeed': input_speed}
+
+        mocker = self.mock_object(
+            self.driver.client, 'create_luncopy',
+            mock.Mock(wraps=self.driver.client.create_luncopy))
+
+        self.driver._copy_volume(self.volume,
+                                 'fake_copy_name',
+                                 'fake_src_lun',
+                                 'fake_tgt_lun')
+
+        mocker.assert_called_once_with('fake_copy_name',
+                                       'fake_src_lun',
+                                       'fake_tgt_lun',
+                                       input_speed)
+
+    @ddt.data({'input_speed': '1',
+               'actual_speed': '1'},
+              {'input_speed': '',
+               'actual_speed': '2'},
+              {'input_speed': None,
+               'actual_speed': '2'},
+              {'input_speed': '5',
+               'actual_speed': '2'})
+    @ddt.unpack
+    def test_client_create_luncopy(self, input_speed, actual_speed):
+        mocker = self.mock_object(
+            self.driver.client, 'call',
+            mock.Mock(wraps=self.driver.client.call))
+
+        self.driver.client.create_luncopy('fake_copy_name',
+                                          'fake_src_lun',
+                                          'fake_tgt_lun',
+                                          input_speed)
+
+        mocker.assert_called_once_with(
+            mock.ANY,
+            {"TYPE": 219,
+             "NAME": 'fake_copy_name',
+             "DESCRIPTION": 'fake_copy_name',
+             "COPYSPEED": actual_speed,
+             "LUNCOPYTYPE": "1",
+             "SOURCELUN": "INVALID;fake_src_lun;INVALID;INVALID;INVALID",
+             "TARGETLUN": "INVALID;fake_tgt_lun;INVALID;INVALID;INVALID"}
+        )
+
 
 @ddt.ddt
 class HuaweiISCSIDriverTestCase(HuaweiTestBase):
@@ -2209,7 +2259,6 @@ class HuaweiISCSIDriverTestCase(HuaweiTestBase):
         self.configuration = mock.Mock(spec=conf.Configuration)
         self.configuration.hypermetro_devices = hypermetro_devices
         self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
-        self.stubs.Set(time, 'sleep', Fake_sleep)
         self.driver = FakeISCSIStorage(configuration=self.configuration)
         self.driver.do_setup()
         self.portgroup = 'portgroup-test'
@@ -3724,7 +3773,6 @@ class HuaweiFCDriverTestCase(HuaweiTestBase):
         self.flags(rpc_backend='oslo_messaging._drivers.impl_fake')
         self.huawei_conf = FakeHuaweiConf(self.configuration, 'FC')
         self.configuration.hypermetro_devices = hypermetro_devices
-        self.stubs.Set(time, 'sleep', Fake_sleep)
         driver = FakeFCStorage(configuration=self.configuration)
         self.driver = driver
         self.driver.do_setup()

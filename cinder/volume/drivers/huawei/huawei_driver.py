@@ -1176,9 +1176,12 @@ class HuaweiBaseDriver(driver.VolumeDriver):
         return self.configuration.safe_get("backup_use_temp_snapshot")
 
     def _copy_volume(self, volume, copy_name, src_lun, tgt_lun):
+        metadata = huawei_utils.get_volume_metadata(volume)
+        copyspeed = metadata.get('copyspeed')
         luncopy_id = self.client.create_luncopy(copy_name,
                                                 src_lun,
-                                                tgt_lun)
+                                                tgt_lun,
+                                                copyspeed)
         wait_interval = self.configuration.lun_copy_wait_interval
 
         try:
