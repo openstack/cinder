@@ -645,6 +645,17 @@ class FakeEcomConnection(object):
                                   self.data.meta_volume1,
                                   self.data.meta_volume2]
             return rc, ret
+        if (MethodName == 'CreateGroup' and
+                GroupName == self.data.initiatorgroup_name):
+            rc = 0
+            job = {}
+            job['MaskingGroup'] = GroupName
+            return rc, job
+        if MethodName == 'CreateGroup' and GroupName == 'IG_unsuccessful':
+            rc = 10
+            job = {}
+            job['status'] = 'failure'
+            return rc, job
 
         job = {'Job': myjob}
         return rc, job
@@ -8005,6 +8016,34 @@ class EMCVMAXMaskingTest(test.TestCase):
             volumeInstance, extraSpecs)
         masking.get_devices_from_storage_group.assert_called_with(
             conn, storageGroupInstanceName)
+
+    # bug 1555728: _create_initiator_Group uses multiple CIM calls
+    # where one suffices
+    def test_create_initiator_group(self):
+        utils = self.driver.common.utils
+        masking = self.driver.common.masking
+        conn = self.fake_ecom_connection()
+        controllerConfigService = (utils.
+                                   find_controller_configuration_service(
+                                       conn, self.data.storage_system))
+        igGroupName = self.data.initiatorgroup_name
+        hardwareIdinstanceNames = self.data.initiatorNames
+        extraSpecs = self.data.extra_specs
+        # path 1: Initiator Group created successfully
+        foundInitiatorGroupName = (masking._create_initiator_Group(
+                                   conn, controllerConfigService,
+                                   igGroupName, hardwareIdinstanceNames,
+                                   extraSpecs))
+        self.assertEqual(foundInitiatorGroupName, igGroupName)
+        # path 2: Unsuccessful Initiator Group creation
+        with mock.patch.object(utils, 'wait_for_job_complete',
+                               return_value=(10, None)):
+            igGroupName = 'IG_unsuccessful'
+            self.assertRaises(exception.VolumeBackendAPIException,
+                              masking._create_initiator_Group,
+                              conn, controllerConfigService,
+                              igGroupName, hardwareIdinstanceNames,
+                              extraSpecs)
 
 
 class EMCVMAXFCTest(test.TestCase):
