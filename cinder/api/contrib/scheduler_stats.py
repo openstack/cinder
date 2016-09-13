@@ -18,6 +18,7 @@ from cinder.api import extensions
 from cinder.api.openstack import wsgi
 from cinder.api.views import scheduler_stats as scheduler_stats_view
 from cinder.scheduler import rpcapi
+from cinder import utils
 
 
 def authorize(context, action_name):
@@ -40,7 +41,7 @@ class SchedulerStatsController(wsgi.Controller):
         authorize(context, 'get_pools')
 
         # TODO(zhiteng) Add filters support
-        detail = req.params.get('detail', False)
+        detail = utils.get_bool_param('detail', req.params)
         pools = self.scheduler_api.get_pools(context, filters=None)
 
         return self._view_builder.pools(req, pools, detail)

@@ -18,6 +18,7 @@ import mock
 
 from cinder.api.contrib import scheduler_stats
 from cinder import context
+from cinder import exception
 from cinder import test
 from cinder.tests.unit.api import fakes
 from cinder.tests.unit import fake_constants as fake
@@ -111,3 +112,12 @@ class SchedulerStatsAPITest(test.TestCase):
         }
 
         self.assertDictMatch(expected, res)
+
+    def test_get_pools_detail_invalid_bool(self):
+        req = fakes.HTTPRequest.blank(
+            '/v2/%s/scheduler_stats?detail=InvalidBool' %
+            fake.PROJECT_ID)
+        req.environ['cinder.context'] = self.ctxt
+        self.assertRaises(exception.InvalidParameterValue,
+                          self.controller.get_pools,
+                          req)
