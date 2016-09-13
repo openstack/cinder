@@ -1,7 +1,0 @@
----
-fixes:
-  - Fixed _delete_volume_replica and _get_replica_status in
-    Kaminario K2 iSCSI and FC Cinder drivers with different source
-    and target K2 arrays while testing replication.
-    Removed hard-coding of RPO and fixed volume_type.name issue.
-

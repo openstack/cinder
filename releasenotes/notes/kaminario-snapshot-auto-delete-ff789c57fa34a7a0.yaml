@@ -1,6 +1,0 @@
----
-fixes:
-  - Add "is_auto_deleteable=False" to the snapshot properties
-    in Kaminario K2 iSCSI and FC Cinder drivers, in order to
-    avoid auto deleting the snapshot.
-
