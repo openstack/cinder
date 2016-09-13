@@ -1,4 +1,4 @@
 ---
 features:
-  - Allow to retype volumes with different encryptions, including
+  - Support for retype volumes with different encryptions including
     changes from unencrypted types to encrypted types and vice-versa.
