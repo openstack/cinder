@@ -113,7 +113,7 @@ class Service(base.CinderPersistentObject, base.CinderObject,
         # If this service doesn't belong to a cluster (cluster_name is empty),
         # then cluster field will be None.
         if self.cluster_name:
-            self.cluster = objects.Cluster.get_by_id(self._context,
+            self.cluster = objects.Cluster.get_by_id(self._context, None,
                                                      name=self.cluster_name)
         else:
             self.cluster = None
