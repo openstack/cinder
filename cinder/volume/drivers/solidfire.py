@@ -1124,7 +1124,7 @@ class SolidFireDriver(san.SanISCSIDriver):
 
         for acc in accounts:
             vols = self._get_volumes_for_account(acc['accountID'],
-                                                 volume['id'])
+                                                 volume['name_id'])
             if vols:
                 sf_vol = vols[0]
                 break

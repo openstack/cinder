@@ -502,10 +502,12 @@ class SolidFireVolumeTestCase(test.TestCase):
                           sfv._get_sfaccount_by_name, 'some-name')
 
     def test_delete_volume(self):
+        vol_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
         testvol = {'project_id': 'testprjid',
                    'name': 'test_volume',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'id': vol_id,
+                   'name_id': vol_id,
                    'created_at': timeutils.utcnow(),
                    'provider_id': '1 5 None',
                    'multiattach': True
@@ -550,10 +552,12 @@ class SolidFireVolumeTestCase(test.TestCase):
                             'targetSecret': 'shhhh',
                             'username': 'john-wayne'}]
         fake_no_volumes = []
+        vol_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
         testvol = {'project_id': 'testprjid',
                    'name': 'no-name',
                    'size': 1,
-                   'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                   'id': vol_id,
+                   'name_id': vol_id,
                    'created_at': timeutils.utcnow()}
 
         sfv = solidfire.SolidFireDriver(configuration=self.configuration)
@@ -571,10 +575,12 @@ class SolidFireVolumeTestCase(test.TestCase):
                             'targetSecret': 'shhhh',
                             'username': 'john-wayne'}]
         fake_no_volumes = []
+        snap_id = 'a720b3c0-d1f0-11e1-9b23-0800200c9a66'
         testsnap = {'project_id': 'testprjid',
                     'name': 'no-name',
                     'size': 1,
-                    'id': 'a720b3c0-d1f0-11e1-9b23-0800200c9a66',
+                    'id': snap_id,
+                    'name_id': snap_id,
                     'volume_id': 'b831c4d1-d1f0-11e1-9b23-0800200c9a66',
                     'created_at': timeutils.utcnow()}
 
