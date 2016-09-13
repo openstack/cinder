@@ -17,6 +17,7 @@
 import mock
 
 from oslo_concurrency import processutils
+from oslo_utils import units
 
 from cinder import context
 from cinder import exception
@@ -229,6 +230,8 @@ class HGSTTestCase(test.TestCase):
             for p in cmdlist:
                 if 'count=' in p:
                     self.dd_count = int(p[6:])
+                elif 'bs=' in p:
+                    self.bs = p[3:]
             return DD_OUTPUT, ''
         else:
             return '', ''
@@ -472,7 +475,8 @@ class HGSTTestCase(test.TestCase):
                     'volume': {'provider_id': 'space10'}}
         ret = self.driver.create_snapshot(snapshot)
         # We must copy entier underlying storage, ~12GB, not just 10GB
-        self.assertEqual(11444, self.dd_count)
+        self.assertEqual(11444 * units.Mi, self.dd_count)
+        self.assertEqual('1M', self.bs)
         # Check space-create command
         expected = {'redundancy': '0', 'group': 'xanadu',
                     'name': snapshot['display_name'], 'mode': '0777',
@@ -497,7 +501,8 @@ class HGSTTestCase(test.TestCase):
                  'volume_type_id': type_ref['id'], 'size': 10}
         pid = self.driver.create_cloned_volume(clone, orig)
         # We must copy entier underlying storage, ~12GB, not just 10GB
-        self.assertEqual(11444, self.dd_count)
+        self.assertEqual(11444 * units.Mi, self.dd_count)
+        self.assertEqual('1M', self.bs)
         # Check space-create command
         expected = {'redundancy': '0', 'group': 'xanadu',
                     'name': 'clone1', 'mode': '0777',
@@ -537,7 +542,8 @@ class HGSTTestCase(test.TestCase):
                   'volume_type_id': type_ref['id'], 'size': 10}
         pid = self.driver.create_volume_from_snapshot(volume, snap)
         # We must copy entier underlying storage, ~12GB, not just 10GB
-        self.assertEqual(11444, self.dd_count)
+        self.assertEqual(11444 * units.Mi, self.dd_count)
+        self.assertEqual('1M', self.bs)
         # Check space-create command
         expected = {'redundancy': '0', 'group': 'xanadu',
                     'name': 'volume2', 'mode': '0777',
