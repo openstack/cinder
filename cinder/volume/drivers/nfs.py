@@ -335,7 +335,7 @@ class NfsDriver(driver.ExtendVD, remotefs.RemoteFSDriver):
         """Checks if file size at path is equal to size."""
         data = image_utils.qemu_img_info(path,
                                          run_as_root=self._execute_as_root)
-        virt_size = data.virtual_size / units.Gi
+        virt_size = int(data.virtual_size / units.Gi)
         return virt_size == size
 
     def set_nas_security_options(self, is_new_cinder_install):
