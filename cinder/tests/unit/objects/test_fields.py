@@ -66,13 +66,16 @@ class TestBackupStatus(TestField):
     def setUp(self):
         super(TestBackupStatus, self).setUp()
         self.field = fields.BackupStatusField()
-        self.coerce_good_values = [('error', 'error'),
-                                   ('error_deleting', 'error_deleting'),
-                                   ('creating', 'creating'),
-                                   ('available', 'available'),
-                                   ('deleting', 'deleting'),
-                                   ('deleted', 'deleted'),
-                                   ('restoring', 'restoring')]
+        self.coerce_good_values = [('error', fields.BackupStatus.ERROR),
+                                   ('error_deleting',
+                                    fields.BackupStatus.ERROR_DELETING),
+                                   ('creating', fields.BackupStatus.CREATING),
+                                   ('available',
+                                    fields.BackupStatus.AVAILABLE),
+                                   ('deleting', fields.BackupStatus.DELETING),
+                                   ('deleted', fields.BackupStatus.DELETED),
+                                   ('restoring',
+                                    fields.BackupStatus.RESTORING)]
         self.coerce_bad_values = ['acme']
         self.to_primitive_values = self.coerce_good_values[0:1]
         self.from_primitive_values = self.coerce_good_values[0:1]
@@ -88,13 +91,14 @@ class TestConsistencyGroupStatus(TestField):
     def setUp(self):
         super(TestConsistencyGroupStatus, self).setUp()
         self.field = fields.ConsistencyGroupStatusField()
-        self.coerce_good_values = [('error', 'error'),
-                                   ('available', 'available'),
-                                   ('creating', 'creating'),
-                                   ('deleting', 'deleting'),
-                                   ('deleted', 'deleted'),
-                                   ('updating', 'updating'),
-                                   ('error_deleting', 'error_deleting')]
+        self.coerce_good_values = [
+            ('error', fields.ConsistencyGroupStatus.ERROR),
+            ('available', fields.ConsistencyGroupStatus.AVAILABLE),
+            ('creating', fields.ConsistencyGroupStatus.CREATING),
+            ('deleting', fields.ConsistencyGroupStatus.DELETING),
+            ('deleted', fields.ConsistencyGroupStatus.DELETED),
+            ('updating', fields.ConsistencyGroupStatus.UPDATING),
+            ('error_deleting', fields.ConsistencyGroupStatus.ERROR_DELETING)]
         self.coerce_bad_values = ['acme']
         self.to_primitive_values = self.coerce_good_values[0:1]
         self.from_primitive_values = self.coerce_good_values[0:1]
@@ -110,13 +114,14 @@ class TestSnapshotStatus(TestField):
     def setUp(self):
         super(TestSnapshotStatus, self).setUp()
         self.field = fields.SnapshotStatusField()
-        self.coerce_good_values = [('error', 'error'),
-                                   ('available', 'available'),
-                                   ('creating', 'creating'),
-                                   ('deleting', 'deleting'),
-                                   ('deleted', 'deleted'),
-                                   ('updating', 'updating'),
-                                   ('error_deleting', 'error_deleting')]
+        self.coerce_good_values = [
+            ('error', fields.SnapshotStatus.ERROR),
+            ('available', fields.SnapshotStatus.AVAILABLE),
+            ('creating', fields.SnapshotStatus.CREATING),
+            ('deleting', fields.SnapshotStatus.DELETING),
+            ('deleted', fields.SnapshotStatus.DELETED),
+            ('updating', fields.SnapshotStatus.UPDATING),
+            ('error_deleting', fields.SnapshotStatus.ERROR_DELETING)]
         self.coerce_bad_values = ['acme']
         self.to_primitive_values = self.coerce_good_values[0:1]
         self.from_primitive_values = self.coerce_good_values[0:1]
