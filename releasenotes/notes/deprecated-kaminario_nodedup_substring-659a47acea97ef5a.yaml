@@ -1,5 +1,0 @@
----
-deprecations:
-  - Deprecated Kaminario iSCSI and FC Cinder drivers 'kaminario_nodedup_substring'
-    option in favour of 'kaminario:thin_prov_type' in extra-specs.
-

@@ -1,5 +1,0 @@
----
-fixes:
-  - Fixed orphan view and multipath devices when creating a volume from a
-    snapshot or cloning in the Kaminario iSCSI and FC Cinder Drivers.
-

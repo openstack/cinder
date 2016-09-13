@@ -1,6 +1,0 @@
----
-fixes:
-  - Fixed concurrency issue in K2 iSCSI and FC Cinder drivers
-    due to possible race conditions between attach and detach
-    volumes and due to limitation from Kaminario K2 iSCSI and
-    FC arrays on concurrent operations.
