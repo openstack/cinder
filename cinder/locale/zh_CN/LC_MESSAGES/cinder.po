@@ -16,13 +16,13 @@
 # howard lee <howard@mail.ustc.edu.cn>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev109\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-11 18:24+0000\n"
+"POT-Creation-Date: 2016-09-13 01:58+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-09 07:26+0000\n"
+"PO-Revision-Date: 2016-09-13 03:32+0000\n"
 "Last-Translator: howard lee <howard@mail.ustc.edu.cn>\n"
 "Language: zh-CN\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -178,6 +178,10 @@ msgid "%s \"data\" is not in result."
 msgstr "结果中没有 %s “数据”。"
 
 #, python-format
+msgid "%s assigned"
+msgstr "%s 已分配"
+
+#, python-format
 msgid ""
 "%s cannot be accessed. Verify that GPFS is active and file system is mounted."
 msgstr "%s 无法访问。请验证 GPFS 是否处于活动状态并且文件系统是否已安装。"
@@ -191,6 +195,10 @@ msgid ""
 "%s cannot be resized using clone operation as it is hosted on compressed "
 "volume"
 msgstr "%s 无法使用克隆操作来调整大小，因为它托管于压缩卷上"
+
+#, python-format
+msgid "%s changed"
+msgstr "%s 已更改"
 
 #, python-format
 msgid "%s configuration option is not set."
@@ -278,6 +286,18 @@ msgstr ""
 "（命令：%(cmd)s）（返回码：%(exit_code)s）（标准输出：%(stdout)s）（标准错"
 "误：%(stderr)s）"
 
+msgid "400 Bad Request"
+msgstr "400 错误请求"
+
+msgid "401 Unauthorized Error"
+msgstr "401 未授权错误"
+
+msgid "404 Not Found Error"
+msgstr "404 资源未找到错误"
+
+msgid "413 Request entity too large"
+msgstr "413 请求实体过大"
+
 #, python-format
 msgid "A LUN (HLUN) was not found. (LDEV: %(ldev)s)"
 msgstr "找不到 LUN (HLUN)。（逻辑设备：%(ldev)s）"
@@ -326,6 +346,9 @@ msgstr "参数值无效。(%(meta)s)"
 #, python-format
 msgid "A pool could not be found. (pool id: %(pool_id)s)"
 msgstr "找不到池。（池标识：%(pool_id)s）"
+
+msgid "A readonly volume must be attached as readonly."
+msgstr "只读卷必须以只读方式进行挂载。"
 
 #, python-format
 msgid "A snapshot status is invalid. (status: %(status)s)"
@@ -462,6 +485,9 @@ msgid ""
 "%(alias)s)"
 msgstr ""
 "未能删除 iSCSI 目标。（端口为 %(port)s，目标号为 %(tno)s，别名为 %(alias)s）"
+
+msgid "An unknown error occurred."
+msgstr "发生未知错误。"
 
 msgid "An unknown exception occurred."
 msgstr "发生未知异常。"
@@ -907,6 +933,48 @@ msgstr ""
 
 #, python-format
 msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because it has no "
+"volume type."
+msgstr "无法将卷 %(volume_id)s 添加至组 %(group_id)s，因为它没有任何卷类型。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because it is already "
+"in group %(orig_group)s."
+msgstr ""
+"无法将卷 %(volume_id)s 添加至组 %(group_id)s，因为它已经存在于组 "
+"%(orig_group)s 中。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume cannot "
+"be found."
+msgstr "无法将卷 %(volume_id)s 添加至组 %(group_id)s，因为找不到该卷。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume does "
+"not exist."
+msgstr "无法将卷 %(volume_id)s 添加至组 %(group_id)s，因为该卷不存在。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume is in "
+"an invalid state: %(status)s. Valid states are: %(valid)s."
+msgstr ""
+"无法将卷 %(volume_id)s 添加至组 %(group_id)s，因为该卷处于无效状态："
+"%(status)s。以下是有效状态：%(valid)s。"
+
+#, python-format
+msgid ""
+"Cannot add volume %(volume_id)s to group %(group_id)s because volume type "
+"%(volume_type)s is not supported by the group."
+msgstr ""
+"无法将卷 %(volume_id)s 添加至组 %(group_id)s，因为该组不支持卷类型 "
+"%(volume_type)s。"
+
+#, python-format
+msgid ""
 "Cannot attach already attached volume %s; multiattach is disabled via the "
 "'netapp_enable_multiattach' configuration option."
 msgstr ""
@@ -1144,6 +1212,20 @@ msgstr ""
 "%(status)s。以下是有效状态：%(valid)s。"
 
 #, python-format
+msgid ""
+"Cannot remove volume %(volume_id)s from group %(group_id)s because it is not "
+"in the group."
+msgstr "无法从组 %(group_id)s 移除卷 %(volume_id)s，因为它不在该组中。"
+
+#, python-format
+msgid ""
+"Cannot remove volume %(volume_id)s from group %(group_id)s because volume is "
+"in an invalid state: %(status)s. Valid states are: %(valid)s."
+msgstr ""
+"无法从组 %(group_id)s 移除卷 %(volume_id)s，因为该卷处于无效状态："
+"%(status)s。以下是有效状态：%(valid)s。"
+
+#, python-format
 msgid "Cannot retype from HPE3PARDriver to %s."
 msgstr "无法将 HPE3PARDriver 转型为 %s。"
 
@@ -1160,6 +1242,15 @@ msgid ""
 "Cannot run vgc-cluster command, please ensure software is installed and "
 "permissions are set properly."
 msgstr "无法运行 vgc-cluster 命令，请确保已安装软件，并且正确设置了许可权。"
+
+msgid "Cannot save group_snapshots changes in group object update."
+msgstr "组对象更新时无法保存组快照变更。"
+
+msgid "Cannot save volume_types changes in group object update."
+msgstr "组对象更新时无法保存卷类型变更。"
+
+msgid "Cannot save volumes changes in group object update."
+msgstr "组对象更新时无法保存卷变更。"
 
 msgid "Cannot set both hitachi_serial_number and hitachi_unit_name."
 msgstr "无法同时设置 hitachi_serial_number 和 hitachi_unit_name。"
@@ -1180,6 +1271,14 @@ msgstr ""
 
 msgid "Cannot update encryption specs. Volume type in use."
 msgstr "无法更新加密规范。卷类型在使用中。"
+
+#, python-format
+msgid ""
+"Cannot update group %(group_id)s because no valid name, description, "
+"add_volumes, or remove_volumes were provided."
+msgstr ""
+"无法更新组 %(group_id)s，因为未提供任何有效名称、描述、add_volumes 或 "
+"remove_volumes。"
 
 #, python-format
 msgid "Cannot update group_type %(id)s"
@@ -1766,6 +1865,10 @@ msgstr ""
 
 msgid "Deleting volume from database and skipping rpc."
 msgstr "正在从数据库删除卷并跳过 RPC。"
+
+#, python-format
+msgid "Deleting volume metadata is not allowed for volumes in %s status."
+msgstr "当卷状态为 %s 时，不允许删除该卷的元数据。"
 
 #, python-format
 msgid "Deleting zones failed: (command=%(cmd)s error=%(err)s)."
@@ -2871,6 +2974,13 @@ msgstr "未能将映像复制到卷：%(reason)s"
 msgid "Failed to copy metadata to volume: %(reason)s"
 msgstr "未能复制元数据到卷：%(reason)s"
 
+msgid ""
+"Failed to copy volume to image as image quota has been met. Please delete "
+"images or have your limit increased, then try again."
+msgstr ""
+"由于镜像配额限制，将卷拷贝到镜像中的操作失败。请删除镜像或增加镜像配额，然后"
+"再尝试。"
+
 msgid "Failed to copy volume, destination device unavailable."
 msgstr "未能复制卷，目标设备不可用。"
 
@@ -3457,6 +3567,13 @@ msgstr ""
 "标准错误：%(err)s。"
 
 msgid ""
+"Failed to parse the configuration option 'glance_catalog_info', must be in "
+"the form <service_type>:<service_name>:<endpoint_type>"
+msgstr ""
+"解析配置选项“glance_catalog_info”失败，必须为以下格式：<service_type>:"
+"<service_name>:<endpoint_type>"
+
+msgid ""
 "Failed to parse the configuration option 'keystone_catalog_info', must be in "
 "the form <service_type>:<service_name>:<endpoint_type>"
 msgstr ""
@@ -4022,6 +4139,18 @@ msgid "Group %(group_id)s could not be found."
 msgstr "无法找到名为 %(group_id)s 的组。"
 
 #, python-format
+msgid ""
+"Group %s still contains volumes. The delete-volumes flag is required to "
+"delete it."
+msgstr "组 %s 仍然包含卷。需要 delete-volumes 标记，以将其删除。"
+
+#, python-format
+msgid ""
+"Group Type %(group_type_id)s deletion is not allowed with groups present "
+"with the type."
+msgstr "当存在类型为 %(group_type_id)s 的组时，不允许删除该组类型。"
+
+#, python-format
 msgid "Group Type %(group_type_id)s has no specs with key %(group_specs_key)s."
 msgstr "组类型 %(group_type_id)s 没有键 %(group_specs_key)s 对应的规格说明。"
 
@@ -4032,6 +4161,17 @@ msgstr "组类型 %(id)s 已存在。"
 #, python-format
 msgid "Group Type %(type_id)s has no extra spec with key %(id)s."
 msgstr "组类型%(type_id)s没有与键%(id)s对应的额外规格。"
+
+msgid "Group snapshot is empty. No group will be created."
+msgstr "组快照为空。将不会创建任何组。"
+
+#, python-format
+msgid "Group status must be available or error, but current status is: %s"
+msgstr "组状态必须为“available”或“error”，但当前状态为：%s"
+
+#, python-format
+msgid "Group status must be available, but current status is: %s."
+msgstr "组状态必须为“available”，但当前状态为：%s。"
 
 #, python-format
 msgid "Group type %(group_type_id)s could not be found."
@@ -4073,6 +4213,13 @@ msgstr "已存在映射 %(group_id)s / %(volume_type_id)s 组合的卷组类型�
 #, python-format
 msgid "GroupSnapshot %(group_snapshot_id)s could not be found."
 msgstr "无法找到组快照 %(group_snapshot_id)s。"
+
+msgid ""
+"GroupSnapshot status must be available or error, and no Group can be "
+"currently using it as source for its creation."
+msgstr ""
+"组快照状态必须为“avaliable”或“error”，而且当前没有任何组可以使用该快照作为源"
+"来创建。"
 
 msgid "HBSD error occurs."
 msgstr "发生 HBSD 错误。"
@@ -4690,6 +4837,12 @@ msgid ""
 msgstr "提供的以下 volume_type 无效：%s（所请求类型必须受此一致性组支持）。"
 
 #, python-format
+msgid ""
+"Invalid volume_type provided: %s (requested type must be supported by this "
+"group)."
+msgstr "提供的以下 volume_type 无效：%s（所请求类型必须被该组支持）。"
+
+#, python-format
 msgid "Invalid wwpns format %(wwpns)s"
 msgstr "无效 WWPN 格式 %(wwpns)s"
 
@@ -5015,6 +5168,9 @@ msgstr "必须实现 host_passes_filters"
 msgid "Must implement schedule_create_consistencygroup"
 msgstr "必须实现 schedule_create_consistencygroup"
 
+msgid "Must implement schedule_create_group"
+msgstr "必须实现 schedule_create_group"
+
 msgid "Must implement schedule_create_volume"
 msgstr "必须实现 schedule_create_volume"
 
@@ -5247,12 +5403,20 @@ msgid "No good iscsi portals found for %s."
 msgstr "对于 %s，找不到任何有用的 iSCSI 门户网站。"
 
 #, python-format
+msgid "No group snapshot with id %s"
+msgstr "不存在任何具有标识 %s 的组快照"
+
+#, python-format
 msgid "No group with id %s"
 msgstr "不存在任何具有标识 %s 的组"
 
 #, python-format
 msgid "No host to create consistency group %s."
 msgstr "没有任何主机用于创建一致性组 %s。"
+
+#, python-format
+msgid "No host to create group %s."
+msgstr "没有任何主机用于创建组 %s。"
 
 msgid "No iSCSI-enabled ports on target array."
 msgstr "目标阵列上没有可支持 iSCSI 的端口。"
@@ -5349,6 +5513,11 @@ msgstr "在卷 %s 上找不到快照。"
 #, python-format
 msgid "No source snapshots provided to create consistency group %s."
 msgstr "未提供源快照，无法创建一致性组 %s。"
+
+msgid ""
+"No storage could be allocated for this volume request. You may be able to "
+"try another size or volume type."
+msgstr "无法为该卷请求分配存储。可以尝试其他大小或卷类型。"
 
 #, python-format
 msgid "No storage path found for export path %s"
@@ -5495,6 +5664,13 @@ msgstr "执行扩展操作期间，向组合卷 %(volumename)s 添加卷时出�
 
 msgid "One of the required inputs from host, port or scheme was not found."
 msgstr "找不到来自主机、端口或方案的必需输入之一。"
+
+msgid ""
+"One of the services is in Liberty version. We do not provide backward "
+"compatibility with Liberty now, you need to upgrade to Mitaka first."
+msgstr ""
+"某一服务属于Liberty版本。目前不提供支持Liberty的后向兼容，请首先升级至"
+"Mitaka。"
 
 #, python-format
 msgid ""
@@ -6213,6 +6389,10 @@ msgid "Snapshot %(snapshot_id)s has no metadata with key %(metadata_key)s."
 msgstr "快照 %(snapshot_id)s 没有任何具有键 %(metadata_key)s 的元数据。"
 
 #, python-format
+msgid "Snapshot %s must not be part of a group."
+msgstr "快照 %s 不能属于某个组。"
+
+#, python-format
 msgid "Snapshot '%s' doesn't exist on array."
 msgstr "快照“%s”在阵列上不存在。"
 
@@ -6272,8 +6452,22 @@ msgstr "发生“SolidFire Cinder 驱动程序”异常"
 msgid "Sort direction array size exceeds sort key array size."
 msgstr "排序方向阵列大小超过排序键阵列大小。"
 
+msgid ""
+"Source CG cannot be empty or in 'creating' or 'updating' state. No "
+"cgsnapshot will be created."
+msgstr ""
+"源CG不能为空，也不能是“creating”或“updating”状态。将不会创建cgsnapshot。"
+
 msgid "Source CG is empty. No consistency group will be created."
 msgstr "源 CG 为空。将不会创建任何一致性组。"
+
+msgid "Source Group is empty. No group will be created."
+msgstr "源组为空。将不会创建任何组。"
+
+msgid ""
+"Source group cannot be empty or in 'creating' or 'updating' state. No group "
+"snapshot will be created."
+msgstr "源组不能为空，也不能是“creating”或“updating”状态。将不会创建组快照。"
 
 msgid "Source host details not found."
 msgstr "找不到源主机详细信息。"
@@ -6626,6 +6820,9 @@ msgstr "结果无效。"
 #, python-format
 msgid "The retention count must be %s or less."
 msgstr "保留计数不得高于 %s。"
+
+msgid "The snapshot cannot be created when the volume is in error status."
+msgstr "当卷处于错误状态时，无法创建快照。"
 
 msgid "The snapshot cannot be created when the volume is in maintenance mode."
 msgstr "当卷处于维护方式时，无法创建快照。"
@@ -7515,6 +7712,10 @@ msgstr "更新列表未包含 volume_id"
 msgid "Updated At"
 msgstr "已更新于"
 
+#, python-format
+msgid "Updating volume metadata is not allowed for volumes in %s status."
+msgstr "当卷状态为 %s 时，不允许更新该卷的元数据。"
+
 msgid "Upload to glance of attached volume is not supported."
 msgstr "不支持上载至所连接卷的 Glance。"
 
@@ -7641,6 +7842,14 @@ msgid "Volume %(vol1)s does not match with snapshot.volume_id %(vol2)s."
 msgstr "卷 %(vol1)s 与 snapshot.volume_id %(vol2)s 不匹配。"
 
 #, python-format
+msgid "Volume %(vol_id)s status must be %(statuses)s"
+msgstr "卷 %(vol_id)s 的状态必须为 %(statuses)s"
+
+#, python-format
+msgid "Volume %(vol_id)s status must be available to extend."
+msgstr "卷 %(vol_id)s 的状态必须是可扩展的。"
+
+#, python-format
 msgid ""
 "Volume %(vol_id)s status must be available to update readonly flag, but "
 "current status is: %(vol_status)s."
@@ -7744,6 +7953,12 @@ msgid ""
 msgstr "卷 %s 已联机。将该卷设置为脱机以便使用 OpenStack 进行管理。"
 
 #, python-format
+msgid ""
+"Volume %s must not be migrating, attached, belong to a group or have "
+"snapshots."
+msgstr "卷 %s 不能正在迁移、已挂载、属于某个组或具有快照。"
+
+#, python-format
 msgid "Volume %s must not be part of a consistency group."
 msgstr "卷 %s 不得是一致性组的一部分。"
 
@@ -7839,6 +8054,13 @@ msgstr "卷具有此时不能删除的临时快照。"
 
 msgid "Volume has children and cannot be deleted!"
 msgstr "卷具有子代，不能删除！"
+
+#, python-format
+msgid "Volume in group %s is attached. Need to detach first."
+msgstr "已连接组 %s 中的卷。需要先拆离。"
+
+msgid "Volume in group still has dependent snapshots."
+msgstr "组中的卷仍然具有从属快照。"
 
 #, python-format
 msgid "Volume is attached to a server.  (%s)"
@@ -8608,6 +8830,15 @@ msgstr "在Newton中已不推荐使用cinder-all，它将在Ocata版本中移除
 msgid "clone depth exceeds limit of %s"
 msgstr "克隆深度超过 %s 的限制"
 
+msgid "cluster assigned"
+msgstr "已分配集群"
+
+msgid "cluster changed"
+msgstr "已更改集群"
+
+msgid "config option key_manager.fixed_key is not defined"
+msgstr "配置选项 key_manager.fixed_key 为定义。"
+
 msgid "consistencygroup assigned"
 msgstr "已分配 consistencygroup"
 
@@ -8903,6 +9134,27 @@ msgid ""
 msgstr ""
 "gpfs_images_share_mode 已设置为 copy_on_write，但 %(vol)s 和 %(img)s 属于不同"
 "文件集。"
+
+msgid "group assigned"
+msgstr "已分配组"
+
+msgid "group changed"
+msgstr "已更改组"
+
+msgid ""
+"group_creating_from_src must be called with group_id or group_snapshot_id "
+"parameter."
+msgstr ""
+"group_creating_from_src必须被调用，参数为group_id或者group_snapshot_id。"
+
+msgid "group_snapshot assigned"
+msgstr "已分配组快照"
+
+msgid "group_snapshot changed"
+msgstr "已更改组快照"
+
+msgid "group_snapshots assigned"
+msgstr "已分配组快照"
 
 #, python-format
 msgid "group_type must be provided to create group %(name)s."
@@ -9282,8 +9534,14 @@ msgid ""
 "volume_type must be provided when creating a volume in a consistency group."
 msgstr "在一致性组中创建卷时，必须提供 volume_type。"
 
+msgid "volume_type must be provided when creating a volume in a group."
+msgstr "在组中创建卷时，必须提供 volume_type。"
+
 msgid "volume_type_id cannot be None"
 msgstr "volume_type_id 不能为“无”"
+
+msgid "volume_types assigned"
+msgstr "已分配卷类型"
 
 #, python-format
 msgid "volume_types must be provided to create consistency group %(name)s."
