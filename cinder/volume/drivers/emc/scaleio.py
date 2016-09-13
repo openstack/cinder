@@ -100,6 +100,7 @@ VOLUME_NOT_FOUND_ERROR = 79
 # This code belongs to older versions of ScaleIO
 OLD_VOLUME_NOT_FOUND_ERROR = 78
 VOLUME_NOT_MAPPED_ERROR = 84
+ILLEGAL_SYNTAX = 0
 VOLUME_ALREADY_MAPPED_ERROR = 81
 MIN_BWS_SCALING_SIZE = 128
 SIO_MAX_OVERSUBSCRIPTION_RATIO = 10.0
@@ -1142,8 +1143,10 @@ class ScaleIODriver(driver.VolumeDriver):
 
         if r.status_code != OK_STATUS_CODE:
             response = r.json()
-            if ((response['errorCode'] == VOLUME_NOT_FOUND_ERROR or
-                 response['errorCode'] == OLD_VOLUME_NOT_FOUND_ERROR)):
+            error_code = response['errorCode']
+            if ((error_code == VOLUME_NOT_FOUND_ERROR or
+                 error_code == OLD_VOLUME_NOT_FOUND_ERROR or
+                 error_code == ILLEGAL_SYNTAX)):
                 LOG.info(_LI("Ignoring renaming action because the volume "
                              "%(vol)s is not a ScaleIO volume."),
                          {'vol': vol_id})

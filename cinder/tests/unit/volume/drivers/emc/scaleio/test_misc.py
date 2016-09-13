@@ -193,14 +193,11 @@ class TestMisc(scaleio.TestScaleIODriver):
             self.volume, self.new_volume['id'])
         self.assertIsNone(rc)
 
-    def test_fail_rename_volume(self):
+    def test_rename_volume_illegal_syntax(self):
         self.set_https_response_mode(self.RESPONSE_MODE.Invalid)
-        self.assertRaises(
-            exception.VolumeBackendAPIException,
-            self.driver._rename_volume,
-            self.volume,
-            self.new_volume['id']
-        )
+        rc = self.driver._rename_volume(
+            self.volume, self.new_volume['id'])
+        self.assertIsNone(rc)
 
     def test_rename_volume_non_sio(self):
         self.set_https_response_mode(self.RESPONSE_MODE.BadStatus)
