@@ -8,5 +8,5 @@ upgrade:
     not be able to utilize this new driver since they still
     function on v1 of the Datera DataFabric API
 deprecations:
-  - datera_api_token -- this has been replaced by
-    san_login and san_password
+  - Config option ``datera_api_token`` has been replaced by
+    options ``san_login`` and ``san_password``
