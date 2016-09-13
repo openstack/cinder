@@ -88,7 +88,6 @@ class EMCVMAXMasking(object):
         maskingViewDict['extraSpecs'] = extraSpecs
         defaultStorageGroupInstanceName = None
         fastPolicyName = None
-        assocStorageGroupName = None
         storageGroupInstanceName = None
         if isLiveMigration is False:
             if isV3:
@@ -153,7 +152,9 @@ class EMCVMAXMasking(object):
         rollbackDict['fastPolicyName'] = fastPolicyName
         rollbackDict['isV3'] = isV3
         rollbackDict['extraSpecs'] = extraSpecs
-        rollbackDict['sgName'] = maskingViewDict['sgGroupName']
+        rollbackDict['sgGroupName'] = maskingViewDict['sgGroupName']
+        rollbackDict['igGroupName'] = maskingViewDict['igGroupName']
+        rollbackDict['connector'] = maskingViewDict['connector']
 
         if errorMessage:
             # Rollback code if we cannot complete any of the steps above
@@ -165,11 +166,19 @@ class EMCVMAXMasking(object):
                 self._check_if_rollback_action_for_masking_required(
                     conn, rollbackDict)
             if isV3:
-                rollbackDict['sgGroupName'] = assocStorageGroupName
-                rollbackDict['storageSystemName'] = (
-                    maskingViewDict['storageSystemName'])
-                self._check_if_rollback_action_for_masking_required(
-                    conn, rollbackDict)
+                if maskingViewDict['slo'] is not None:
+                    rollbackDict['storageSystemName'] = (
+                        maskingViewDict['storageSystemName'])
+                    rollbackDict['slo'] = maskingViewDict['slo']
+                    self._check_if_rollback_action_for_masking_required(
+                        conn, rollbackDict)
+
+                else:
+                    errorMessage = self._check_adding_volume_to_storage_group(
+                        conn, rollbackDict,
+                        rollbackDict['defaultStorageGroupInstanceName'])
+                    if errorMessage:
+                        LOG.error(errorMessage)
 
             exceptionMessage = (_(
                 "Failed to get, create or add volume %(volumeName)s "
@@ -1271,7 +1280,8 @@ class EMCVMAXMasking(object):
         We need to be able to return the volume to the default storage group
         if anything has gone wrong. The volume can also potentially belong to
         a storage group that is not the default depending on where
-        the exception occurred.
+        the exception occurred. We also may need to clean up any unused
+        initiator groups.
 
         :param conn: the connection to the ecom server
         :param rollbackDict: the rollback dictionary
@@ -1279,23 +1289,29 @@ class EMCVMAXMasking(object):
         :raises: VolumeBackendAPIException
         """
         message = None
+        # Check if ig has been created. If so, check for other
+        # masking views associated with the ig. If none, remove
+        # initiators and delete ig.
+        self._check_ig_rollback(
+            conn, rollbackDict['controllerConfigService'],
+            rollbackDict['igGroupName'], rollbackDict['connector'],
+            rollbackDict['extraSpecs'])
         try:
-            if rollbackDict['isV3']:
-                errorMessage = self._check_adding_volume_to_storage_group(
-                    conn, rollbackDict,
-                    rollbackDict['defaultStorageGroupInstanceName'])
-                if errorMessage:
-                    LOG.error(errorMessage)
-                message = (_("V3 rollback"))
-
-            else:
-                foundStorageGroupInstanceName = (
-                    self.utils.get_storage_group_from_volume(
-                        conn, rollbackDict['volumeInstance'].path,
-                        rollbackDict['sgName']))
-                # Volume is not associated with any storage group so add
-                # it back to the default.
-                if not foundStorageGroupInstanceName:
+            foundStorageGroupInstanceName = (
+                self.utils.get_storage_group_from_volume(
+                    conn, rollbackDict['volumeInstance'].path,
+                    rollbackDict['sgGroupName']))
+            # Volume is not associated with any storage group so add
+            # it back to the default.
+            if not foundStorageGroupInstanceName:
+                if rollbackDict['isV3']:
+                    errorMessage = self._check_adding_volume_to_storage_group(
+                        conn, rollbackDict,
+                        rollbackDict['defaultStorageGroupInstanceName'])
+                    if errorMessage:
+                        LOG.error(errorMessage)
+                    message = (_("V3 rollback"))
+                else:
                     LOG.warning(_LW(
                         "No storage group found. "
                         "Performing rollback on Volume: %(volumeName)s "
@@ -1323,35 +1339,35 @@ class EMCVMAXMasking(object):
                              'fastPolicyName': rollbackDict['fastPolicyName']})
                     message = (_("V2 rollback, volume is not in any storage "
                                  "group."))
-                else:
-                    LOG.info(_LI(
-                        "The storage group found is "
-                        "%(foundStorageGroupInstanceName)s."),
-                        {'foundStorageGroupInstanceName':
-                         foundStorageGroupInstanceName})
+            else:
+                LOG.info(_LI(
+                    "The storage group found is "
+                    "%(foundStorageGroupInstanceName)s."),
+                    {'foundStorageGroupInstanceName':
+                     foundStorageGroupInstanceName})
 
-                    # Check the name, see is it the default storage group
-                    # or another.
-                    if (foundStorageGroupInstanceName !=
-                            rollbackDict['defaultStorageGroupInstanceName']):
-                        # Remove it from its current masking view and return it
-                        # to its default masking view if fast is enabled.
-                        self.remove_and_reset_members(
-                            conn,
-                            rollbackDict['controllerConfigService'],
-                            rollbackDict['volumeInstance'],
-                            rollbackDict['volumeName'],
-                            rollbackDict['extraSpecs'])
-                    message = (_("V2 rollback - Volume in another storage "
+                # Check the name, see if it is the default storage group
+                # or another.
+                if (foundStorageGroupInstanceName !=
+                        rollbackDict['defaultStorageGroupInstanceName']):
+                    # Remove it from its current masking view and return it
+                    # to its default masking view if fast is enabled or slo
+                    # is defined.
+                    self.remove_and_reset_members(
+                        conn,
+                        rollbackDict['controllerConfigService'],
+                        rollbackDict['volumeInstance'],
+                        rollbackDict['volumeName'],
+                        rollbackDict['extraSpecs'])
+                    message = (_("Rollback - Volume in another storage "
                                  "group besides default storage group."))
         except Exception:
             errorMessage = (_(
                 "Rollback for Volume: %(volumeName)s has failed. "
                 "Please contact your system administrator to manually return "
-                "your volume to the default storage group for fast policy "
-                "%(fastPolicyName)s failed.")
-                % {'volumeName': rollbackDict['volumeName'],
-                   'fastPolicyName': rollbackDict['fastPolicyName']})
+                "your volume to the default storage group for fast policy/ "
+                "slo.")
+                % {'volumeName': rollbackDict['volumeName']})
             LOG.exception(errorMessage)
             raise exception.VolumeBackendAPIException(data=errorMessage)
         return message
@@ -1550,6 +1566,38 @@ class EMCVMAXMasking(object):
                 j = j + 1
 
         return foundInitiatorGroupInstanceName
+
+    def _check_ig_rollback(
+            self, conn, controllerConfigService,
+            igGroupName, connector, extraSpecs):
+        """Check if rollback action is required on an initiator group.
+
+        If anything goes wrong on a masking view creation, we need to check if
+        the process created a now-stale initiator group before failing, i.e.
+        an initiator group a) matching the name used in the mv process and
+        b) not associated with any other masking views.
+        If a stale ig exists, remove the initiators and delete the ig.
+
+        :param conn: the ecom connection
+        :param controllerConfigService: controller config service
+        :param igGroupName: the initiator group name
+        :param connector: the connector object
+        :param extraSpecs: extra specifications
+        """
+        initiatorNames = self._find_initiator_names(conn, connector)
+        foundInitiatorGroupInstanceName = self._find_initiator_masking_group(
+            conn, controllerConfigService, initiatorNames)
+        if foundInitiatorGroupInstanceName:
+            initiatorGroupInstance = conn.GetInstance(
+                foundInitiatorGroupInstanceName, LocalOnly=False)
+            if initiatorGroupInstance['ElementName'] == igGroupName:
+                host = igGroupName.split("-")[1]
+                LOG.debug("Searching for masking views associated with "
+                          "%(igGroupName)s",
+                          {'igGroupName': igGroupName})
+                self._last_volume_delete_initiator_group(
+                    conn, controllerConfigService,
+                    foundInitiatorGroupInstanceName, extraSpecs, host)
 
     def _get_port_group_from_masking_view(
             self, conn, maskingViewName, storageSystemName):
