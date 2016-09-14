@@ -1343,6 +1343,8 @@ class StorageCenterApi(object):
         payload['Name'] = servername
         payload['StorageCenter'] = ssn
         payload['Notes'] = self.notes
+        payload['AlertOnConnectivity'] = False
+
         # We pick Red Hat Linux 6.x because it supports multipath and
         # will attach luns to paths as they are found.
         scserveros = self._find_serveros(serveros, ssn)
