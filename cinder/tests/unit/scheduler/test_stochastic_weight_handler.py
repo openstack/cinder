@@ -27,9 +27,6 @@ from cinder import test
 class StochasticWeightHandlerTestCase(test.TestCase):
     """Test case for StochasticHostWeightHandler."""
 
-    def setUp(self):
-        super(StochasticWeightHandlerTestCase, self).setUp()
-
     @ddt.data(
         (0.0, 'A'),
         (0.1, 'A'),
