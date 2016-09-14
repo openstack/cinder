@@ -91,7 +91,6 @@ class KaminarioISCSIDriver(common.KaminarioCinderDriver):
         if temp_client:
             self.client = temp_client
 
-    @kaminario_logger
     def get_target_info(self, volume):
         LOG.debug("Searching first iscsi port ip without wan in K2.")
         iscsi_ip_rs = self.client.search("system/net_ips", wan_port="")
