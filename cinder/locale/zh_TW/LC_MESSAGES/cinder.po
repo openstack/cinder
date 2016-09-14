@@ -7,9 +7,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev139\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-11 18:24+0000\n"
+"POT-Creation-Date: 2016-09-14 04:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -5806,15 +5806,6 @@ msgid "Retype requires migration but is not allowed."
 msgstr "Retype 需要移轉，但系統不容許。"
 
 #, python-format
-msgid ""
-"Rollback for Volume: %(volumeName)s has failed. Please contact your system "
-"administrator to manually return your volume to the default storage group "
-"for fast policy %(fastPolicyName)s failed."
-msgstr ""
-"對磁區 %(volumeName)s 進行的回復失敗。請與系統管理者聯絡，以手動將磁區傳回至"
-"FAST 原則 %(fastPolicyName)s 的預設儲存體群組。"
-
-#, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "正在透過刪除 %(volumeName)s 來將其回復。"
 
@@ -7286,10 +7277,6 @@ msgstr "未配置 UserName。"
 msgid "UserPassword is not configured."
 msgstr "未配置 UserPassword。"
 
-msgid ""
-"V2 rollback - Volume in another storage group besides default storage group."
-msgstr "第 2 版回復 - 磁區位於預設儲存體群組旁邊的另一個儲存體群組中。"
-
 msgid "V2 rollback, volume is not in any storage group."
 msgstr "第 2 版回復，磁區不在任何儲存體群組中。"
 
@@ -7807,9 +7794,6 @@ msgstr "正在等待所有節點結合叢集。請確保所有 sheep 常駐程�
 
 msgid "We should not do switch over on primary array."
 msgstr "我們不應切換到主要陣列上。"
-
-msgid "Wrong resource call syntax"
-msgstr "資源呼叫語法錯誤"
 
 msgid "X-IO Volume Driver exception!"
 msgstr "X-IO 磁區驅動程式異常狀況！"
