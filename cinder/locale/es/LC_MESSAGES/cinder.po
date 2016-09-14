@@ -10,9 +10,9 @@
 # Jose Porrua <jose.porrua@netapp.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev139\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-11 18:24+0000\n"
+"POT-Creation-Date: 2016-09-14 04:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6592,17 +6592,6 @@ msgid "Retype requires migration but is not allowed."
 msgstr "La reescritura requiere migración, pero no está permitido."
 
 #, python-format
-msgid ""
-"Rollback for Volume: %(volumeName)s has failed. Please contact your system "
-"administrator to manually return your volume to the default storage group "
-"for fast policy %(fastPolicyName)s failed."
-msgstr ""
-"La retrotracción del volumen: %(volumeName)s ha fallado. Póngase en contacto "
-"con el administrador del sistema para devolver manualmente el volumen al "
-"grupo de almacenamiento predeterminado para la política fast "
-"%(fastPolicyName)s que ha fallado."
-
-#, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "Retrotrayendo %(volumeName)s mediante su supresión."
 
@@ -8325,12 +8314,6 @@ msgstr "Nombre de usuario no está configurado."
 msgid "UserPassword is not configured."
 msgstr "Contraseña de usuario no está configurada."
 
-msgid ""
-"V2 rollback - Volume in another storage group besides default storage group."
-msgstr ""
-"Retrotracción V2 - El volumen de otro grupo de almacenamiento además del "
-"grupo de almacenamiento predeterminado."
-
 msgid "V2 rollback, volume is not in any storage group."
 msgstr ""
 "Retrotracción V2, el volumen no está en ningún grupo de almacenamiento."
@@ -8921,9 +8904,6 @@ msgstr ""
 
 msgid "We should not do switch over on primary array."
 msgstr "No deberíamos hace conmutación en la matriz principal."
-
-msgid "Wrong resource call syntax"
-msgstr "Sintaxis de llamada a recurso incorrecta"
 
 msgid "X-IO Volume Driver exception!"
 msgstr "Excepción del controlador de volumen X-IO"

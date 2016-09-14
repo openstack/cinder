@@ -10,9 +10,9 @@
 # Andreas Jaeger <jaegerandi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev103\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev139\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-11 18:24+0000\n"
+"POT-Creation-Date: 2016-09-14 04:25+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
@@ -6087,16 +6087,6 @@ msgid "Retype requires migration but is not allowed."
 msgstr "다시 입력에 마이그레이션이 필요하지만 허용되지 않습니다."
 
 #, python-format
-msgid ""
-"Rollback for Volume: %(volumeName)s has failed. Please contact your system "
-"administrator to manually return your volume to the default storage group "
-"for fast policy %(fastPolicyName)s failed."
-msgstr ""
-"%(volumeName)s 볼륨 롤백이 실패했습니다. 시스템 관리자에게 문의하여 실패한 "
-"fast 정책 %(fastPolicyName)s에 대한 기본 스토리지 그룹에 볼륨을 수동으로 리턴"
-"하도록 하십시오. "
-
-#, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
 msgstr "%(volumeName)s을(를) 삭제하여 롤백하는 중입니다. "
 
@@ -7682,11 +7672,6 @@ msgstr "UserName이 구성되지 않았습니다."
 msgid "UserPassword is not configured."
 msgstr "UserPassword가 구성되지 않았습니다."
 
-msgid ""
-"V2 rollback - Volume in another storage group besides default storage group."
-msgstr ""
-"V2 롤백 - 볼륨이 기본 스토리지 그룹 옆의 다른 스토리지 그룹에 있습니다. "
-
 msgid "V2 rollback, volume is not in any storage group."
 msgstr "V2 롤백, 볼륨이 스토리지 그룹에 없습니다. "
 
@@ -8233,9 +8218,6 @@ msgstr ""
 
 msgid "We should not do switch over on primary array."
 msgstr "기본 배열로 전환할 수 없습니다."
-
-msgid "Wrong resource call syntax"
-msgstr "잘못된 자원 호출 구문"
 
 msgid "X-IO Volume Driver exception!"
 msgstr "X-IO 볼륨 드라이버 예외 발생!"
