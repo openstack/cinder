@@ -1684,7 +1684,15 @@ class StorageCenterApi(object):
             :return: Nothing
             """
             if self.excluded_domain_ips.count(address) == 0:
-                portals.append(address + ':' + six.text_type(port))
+                # Make sure this isn't a duplicate.
+                newportal = address + ':' + six.text_type(port)
+                for idx, portal in enumerate(portals):
+                    if portal == newportal and iqns[idx] == iqn:
+                        LOG.debug('Skipping duplicate portal %(ptrl)s and'
+                                  'iqn %(iqn)s.', {'ptrl': portal, 'iqn': iqn})
+                        return
+                # It isn't in the list so process it.
+                portals.append(newportal)
                 iqns.append(iqn)
                 luns.append(lun)
 
@@ -1776,13 +1784,17 @@ class StorageCenterApi(object):
                       'Volume is not yet active on any controller.')
             pdata['active'] = 0
 
+        # Make sure we have a good item at the top of the list.
+        iqns.insert(0, iqns.pop(pdata['active']))
+        portals.insert(0, portals.pop(pdata['active']))
+        luns.insert(0, luns.pop(pdata['active']))
         data = {'target_discovered': False,
-                'target_iqn': iqns[pdata['active']],
+                'target_iqn': iqns[0],
                 'target_iqns': iqns,
-                'target_portal': portals[pdata['active']],
+                'target_portal': portals[0],
                 'target_portals': portals,
-                'target_lun': luns[pdata['active']],
-                'target_luns': luns,
+                'target_lun': luns[0],
+                'target_luns': luns
                 }
         LOG.debug('find_iscsi_properties: %s', data)
         return data
