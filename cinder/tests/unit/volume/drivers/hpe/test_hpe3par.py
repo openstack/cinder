@@ -24,6 +24,7 @@ from cinder import context
 from cinder import exception
 from cinder.objects import fields
 from cinder import test
+from cinder.tests.unit import fake_volume
 from cinder.tests.unit.volume.drivers.hpe \
     import fake_hpe_3par_client as hpe3parclient
 from cinder.volume.drivers.hpe import hpe_3par_common as hpecommon
@@ -3954,6 +3955,45 @@ class HPE3PARBaseDriver(object):
                 self.standard_login +
                 expected +
                 self.standard_logout)
+
+    def test_delete_consistency_group_exceptions(self):
+        mock_client = self.setup_driver()
+        mock_client.getStorageSystemInfo.return_value = {'id': self.CLIENT_ID}
+
+        with mock.patch.object(hpecommon.HPE3PARCommon,
+                               '_create_client') as mock_create_client:
+            mock_create_client.return_value = mock_client
+            mock_client.getCPG.return_value = {'domain': None}
+
+            # create a consistency group
+            group = self.fake_consistencygroup_object()
+            volume = fake_volume.fake_volume_obj(context.get_admin_context())
+            self.driver.create_consistencygroup(context.get_admin_context(),
+                                                group)
+
+            # remove the consistency group
+            group.status = fields.ConsistencyGroupStatus.DELETING
+
+            # mock HTTPConflict in delete volume set
+            mock_client.deleteVolumeSet.side_effect = (
+                hpeexceptions.HTTPConflict())
+            # no exception should escape method
+            self.driver.delete_consistencygroup(context.get_admin_context(),
+                                                group, [])
+
+            # mock HTTPNotFound in delete volume set
+            mock_client.deleteVolumeSet.side_effect = (
+                hpeexceptions.HTTPNotFound())
+            # no exception should escape method
+            self.driver.delete_consistencygroup(context.get_admin_context(),
+                                                group, [])
+
+            # mock HTTPConflict in delete volume
+            mock_client.deleteVolume.side_effect = (
+                hpeexceptions.HTTPConflict())
+            # no exception should escape method
+            self.driver.delete_consistencygroup(context.get_admin_context(),
+                                                group, [volume])
 
     def test_update_consistency_group_add_vol(self):
         mock_client = self.setup_driver()
