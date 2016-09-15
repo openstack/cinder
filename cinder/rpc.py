@@ -198,6 +198,13 @@ class RPCAPI(object):
         self.client = get_client(target, version_cap=rpc_version_cap,
                                  serializer=serializer)
 
+    def _compat_ver(self, current, *legacy):
+        versions = (current,) + legacy
+        for version in versions[:-1]:
+            if self.client.can_send_version(version):
+                return version
+        return versions[-1]
+
     @classmethod
     def determine_rpc_version_cap(cls):
         global LAST_RPC_VERSIONS

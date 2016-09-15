@@ -1,0 +1,8 @@
+---
+upgrade:
+  - Deployments doing continuous live upgrades from master branch should not
+    upgrade into Ocata before doing an upgrade which includes all the Newton's
+    RPC API version bump commits (scheduler, volume). If you're upgrading
+    deployment in a release-to-release manner, then you can safely ignore this
+    note.
+
