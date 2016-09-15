@@ -11,13 +11,13 @@
 # Yoshiki Eguchi <yoshiki.eguchi@gmail.com>, 2016. #zanata
 msgid ""
 msgstr ""
-"Project-Id-Version: cinder 9.0.0.0b4.dev139\n"
+"Project-Id-Version: cinder 9.0.0.0b4.dev152\n"
 "Report-Msgid-Bugs-To: https://bugs.launchpad.net/openstack-i18n/\n"
-"POT-Creation-Date: 2016-09-14 04:25+0000\n"
+"POT-Creation-Date: 2016-09-15 02:36+0000\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-13 02:03+0000\n"
+"PO-Revision-Date: 2016-09-14 02:08+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -7442,6 +7442,22 @@ msgstr ""
 
 msgid "Retype requires migration but is not allowed."
 msgstr "タイプ変更するにはマイグレーションが必要ですが、許可されていません。"
+
+msgid ""
+"Rollback - Volume in another storage group besides default storage group."
+msgstr ""
+"ロールバック - デフォルトのストレージグループとは別のストレージグループのボ"
+"リューム。"
+
+#, python-format
+msgid ""
+"Rollback for Volume: %(volumeName)s has failed. Please contact your system "
+"administrator to manually return your volume to the default storage group "
+"for fast policy/ slo."
+msgstr ""
+"ボリューム %(volumeName)s のロールバックに失敗しました。システム管理者に連絡"
+"して、ボリュームを失敗した FAST ポリシー / slo のデフォルトのストレージグルー"
+"プに手動で戻してください。"
 
 #, python-format
 msgid "Rolling back %(volumeName)s by deleting it."
