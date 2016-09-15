@@ -52,38 +52,44 @@ class SchedulerAPI(rpc.RPCAPI):
         2.1 - Adds support for sending objects over RPC in manage_existing()
         2.2 - Sends request_spec as object in create_volume()
         2.3 - Add create_group method
+
+        ... Newton supports messaging 2.3. Any changes to existing methods in
+        2.x after this point should be done so that they can handle version cap
+        set to 2.3.
+
+        3.0 - Remove 2.x compatibility
     """
 
-    RPC_API_VERSION = '2.3'
+    RPC_API_VERSION = '3.0'
     TOPIC = constants.SCHEDULER_TOPIC
     BINARY = 'cinder-scheduler'
-
-    # FIXME(caosf): Remove unused argument 'topic' from functions
-    # create_consistencygroup(), create_volume(), migrate_volume_to_host(),
-    # retype() and manage_existing() in v3.0 of RPC API.
 
     def create_consistencygroup(self, ctxt, topic, group,
                                 request_spec_list=None,
                                 filter_properties_list=None):
-        version = '2.1'
+        version = self._compat_ver('3.0', '2.0')
         cctxt = self.client.prepare(version=version)
         request_spec_p_list = []
         for request_spec in request_spec_list:
             request_spec_p = jsonutils.to_primitive(request_spec)
             request_spec_p_list.append(request_spec_p)
 
-        return cctxt.cast(ctxt, 'create_consistencygroup',
-                          topic=topic,
-                          group=group,
-                          request_spec_list=request_spec_p_list,
-                          filter_properties_list=filter_properties_list)
+        msg_args = {
+            'group': group, 'request_spec_list': request_spec_p_list,
+            'filter_properties_list': filter_properties_list,
+        }
+
+        if version == '2.0':
+            msg_args['topic'] = topic
+
+        return cctxt.cast(ctxt, 'create_consistencygroup', **msg_args)
 
     def create_group(self, ctxt, topic, group,
                      group_spec=None,
                      request_spec_list=None,
                      group_filter_properties=None,
                      filter_properties_list=None):
-        version = '2.3'
+        version = self._compat_ver('3.0', '2.3')
         cctxt = self.client.prepare(version=version)
         request_spec_p_list = []
         for request_spec in request_spec_list:
@@ -91,26 +97,31 @@ class SchedulerAPI(rpc.RPCAPI):
             request_spec_p_list.append(request_spec_p)
         group_spec_p = jsonutils.to_primitive(group_spec)
 
-        return cctxt.cast(ctxt, 'create_group',
-                          topic=topic,
-                          group=group,
-                          group_spec=group_spec_p,
-                          request_spec_list=request_spec_p_list,
-                          group_filter_properties=group_filter_properties,
-                          filter_properties_list=filter_properties_list)
+        msg_args = {
+            'group': group, 'group_spec': group_spec_p,
+            'request_spec_list': request_spec_p_list,
+            'group_filter_properties': group_filter_properties,
+            'filter_properties_list': filter_properties_list,
+        }
+
+        if version == '2.3':
+            msg_args['topic'] = topic
+
+        return cctxt.cast(ctxt, 'create_group', **msg_args)
 
     def create_volume(self, ctxt, topic, volume_id, snapshot_id=None,
                       image_id=None, request_spec=None,
                       filter_properties=None, volume=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        msg_args = {'topic': topic, 'volume_id': volume_id,
-                    'snapshot_id': snapshot_id, 'image_id': image_id,
+        msg_args = {'snapshot_id': snapshot_id, 'image_id': image_id,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = '2.2'
-        if not self.client.can_send_version('2.2'):
+        version = self._compat_ver('3.0', '2.2', '2.0')
+        if version in ('2.2', '2.0'):
+            msg_args['volume_id'] = volume.id
+            msg_args['topic'] = topic
+        if version == '2.0':
             # Send request_spec as dict
-            version = '2.0'
             msg_args['request_spec'] = jsonutils.to_primitive(request_spec)
 
         cctxt = self.client.prepare(version=version)
@@ -120,23 +131,29 @@ class SchedulerAPI(rpc.RPCAPI):
                                force_host_copy=False, request_spec=None,
                                filter_properties=None, volume=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
-        msg_args = {'topic': topic, 'volume_id': volume_id,
-                    'host': host, 'force_host_copy': force_host_copy,
+        msg_args = {'host': host, 'force_host_copy': force_host_copy,
                     'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = '2.0'
+        version = self._compat_ver('3.0', '2.0')
+
+        if version == '2.0':
+            msg_args['volume_id'] = volume.id
+            msg_args['topic'] = topic
 
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'migrate_volume_to_host', **msg_args)
 
-    def retype(self, ctxt, topic, volume_id,
-               request_spec=None, filter_properties=None, volume=None):
+    def retype(self, ctxt, topic, volume_id, request_spec=None,
+               filter_properties=None, volume=None):
 
         request_spec_p = jsonutils.to_primitive(request_spec)
-        msg_args = {'topic': topic, 'volume_id': volume_id,
-                    'request_spec': request_spec_p,
+        msg_args = {'request_spec': request_spec_p,
                     'filter_properties': filter_properties, 'volume': volume}
-        version = '2.0'
+        version = self._compat_ver('3.0', '2.0')
+
+        if version == '2.0':
+            msg_args['volume_id'] = volume.id
+            msg_args['topic'] = topic
 
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'retype', **msg_args)
@@ -146,19 +163,20 @@ class SchedulerAPI(rpc.RPCAPI):
                         volume=None):
         request_spec_p = jsonutils.to_primitive(request_spec)
         msg_args = {
-            'topic': topic, 'volume_id': volume_id,
             'request_spec': request_spec_p,
             'filter_properties': filter_properties, 'volume': volume,
         }
-        version = '2.1'
-        if not self.client.can_send_version('2.1'):
-            version = '2.0'
+        version = self._compat_ver('3.0', '2.1', '2.0')
+        if version in ('2.1', '2.0'):
+            msg_args['volume_id'] = volume.id
+            msg_args['topic'] = topic
+        if version == '2.0':
             msg_args.pop('volume')
         cctxt = self.client.prepare(version=version)
         return cctxt.cast(ctxt, 'manage_existing', **msg_args)
 
     def get_pools(self, ctxt, filters=None):
-        version = '2.0'
+        version = self._compat_ver('3.0', '2.0')
         cctxt = self.client.prepare(version=version)
         return cctxt.call(ctxt, 'get_pools',
                           filters=filters)
@@ -166,7 +184,7 @@ class SchedulerAPI(rpc.RPCAPI):
     def update_service_capabilities(self, ctxt,
                                     service_name, host,
                                     capabilities):
-        version = '2.0'
+        version = self._compat_ver('3.0', '2.0')
         cctxt = self.client.prepare(fanout=True, version=version)
         cctxt.cast(ctxt, 'update_service_capabilities',
                    service_name=service_name, host=host,
