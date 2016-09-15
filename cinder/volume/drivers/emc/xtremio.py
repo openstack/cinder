@@ -27,7 +27,7 @@ supported XtremIO version 2.4 and up
   1.0.6 - add support for iSCSI multipath, CA validation, consistency groups,
           R/O snapshots, CHAP discovery authentication
   1.0.7 - cache glance images on the array
-
+  1.0.8 - support for volume retype, CG fixes
 """
 
 import json
@@ -359,7 +359,7 @@ class XtremIOClient4(XtremIOClient):
 class XtremIOVolumeDriver(san.SanDriver):
     """Executes commands relating to Volumes."""
 
-    VERSION = '1.0.7'
+    VERSION = '1.0.8'
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_XIO_CI"
