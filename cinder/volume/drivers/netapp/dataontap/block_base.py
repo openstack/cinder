@@ -32,7 +32,6 @@ import uuid
 
 from oslo_log import log as logging
 from oslo_log import versionutils
-from oslo_service import loopingcall
 from oslo_utils import excutils
 from oslo_utils import units
 import six
@@ -41,13 +40,13 @@ from cinder import exception
 from cinder.i18n import _, _LE, _LI, _LW
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume import utils as volume_utils
 from cinder.zonemanager import utils as fczm_utils
 
 LOG = logging.getLogger(__name__)
-HOUSEKEEPING_INTERVAL_SECONDS = 600  # ten minutes
 
 
 class NetAppLun(object):
@@ -118,6 +117,7 @@ class NetAppBlockStorageLibrary(object):
         self.max_over_subscription_ratio = (
             self.configuration.max_over_subscription_ratio)
         self.reserved_percentage = self._get_reserved_percentage()
+        self.loopingcalls = loopingcalls.LoopingCalls()
 
     def _get_reserved_percentage(self):
         # If the legacy config option if it is set to the default
@@ -170,21 +170,26 @@ class NetAppBlockStorageLibrary(object):
         lun_list = self.zapi_client.get_lun_list()
         self._extract_and_populate_luns(lun_list)
         LOG.debug("Success getting list of LUNs from server.")
+        self.loopingcalls.start_tasks()
 
-        self._start_periodic_tasks()
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval.
 
-    def _start_periodic_tasks(self):
-        """Start recurring tasks common to all Data ONTAP block drivers."""
+        Inheriting class overrides and then explicitly calls this method.
+        """
+        # Add the task that deletes snapshots marked for deletion.
+        self.loopingcalls.add_task(
+            self._delete_snapshots_marked_for_deletion,
+            loopingcalls.ONE_MINUTE,
+            loopingcalls.ONE_MINUTE)
 
-        # Start the task that runs other housekeeping tasks, such as deletion
-        # of previously soft-deleted storage artifacts.
-        housekeeping_periodic_task = loopingcall.FixedIntervalLoopingCall(
-            self._handle_housekeeping_tasks)
-        housekeeping_periodic_task.start(
-            interval=HOUSEKEEPING_INTERVAL_SECONDS, initial_delay=0)
-
-    def _handle_housekeeping_tasks(self):
-        """Handle various cleanup activities."""
+    def _delete_snapshots_marked_for_deletion(self):
+        volume_list = self._get_backing_flexvol_names()
+        snapshots = self.zapi_client.get_snapshots_marked_for_deletion(
+            volume_list)
+        for snapshot in snapshots:
+            self.zapi_client.delete_snapshot(
+                snapshot['volume_name'], snapshot['name'])
 
     def get_pool(self, volume):
         """Return pool name where volume resides.
@@ -1081,8 +1086,14 @@ class NetAppBlockStorageLibrary(object):
                             source_snapshot=cgsnapshot['id'])
 
         for flexvol in flexvols:
-            self.zapi_client.wait_for_busy_snapshot(flexvol, cgsnapshot['id'])
-            self.zapi_client.delete_snapshot(flexvol, cgsnapshot['id'])
+            try:
+                self.zapi_client.wait_for_busy_snapshot(
+                    flexvol, cgsnapshot['id'])
+                self.zapi_client.delete_snapshot(
+                    flexvol, cgsnapshot['id'])
+            except exception.SnapshotIsBusy:
+                self.zapi_client.mark_snapshot_for_deletion(
+                    flexvol, cgsnapshot['id'])
 
         return None, None
 
@@ -1127,3 +1138,7 @@ class NetAppBlockStorageLibrary(object):
                 self._clone_source_to_destination(source, volume)
 
         return None, None
+
+    def _get_backing_flexvol_names(self):
+        """Returns a list of backing flexvol names."""
+        raise NotImplementedError()

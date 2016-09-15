@@ -25,6 +25,7 @@ from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.tests.unit.volume.drivers.netapp import fakes as na_fakes
 from cinder import utils
 from cinder.volume.drivers.netapp.dataontap import nfs_7mode
+from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp import utils as na_utils
 
 
@@ -196,9 +197,37 @@ class NetApp7modeNfsDriverTestCase(test.TestCase):
         ]
 
         hosts = [snap['volume']['host'] for snap in snapshots]
-        flexvols = self.driver._get_backing_flexvol_names(hosts)
+        flexvols = self.driver._get_flexvol_names_from_hosts(hosts)
 
         self.assertEqual(3, len(flexvols))
         self.assertIn('volume1', flexvols)
         self.assertIn('volume2', flexvols)
         self.assertIn('volume3', flexvols)
+
+    def test_check_for_setup_error(self):
+        mock_get_ontapi_version = self.mock_object(
+            self.driver.zapi_client, 'get_ontapi_version')
+        mock_get_ontapi_version.return_value = ['1', '10']
+        mock_add_looping_tasks = self.mock_object(
+            self.driver, '_add_looping_tasks')
+        mock_super_check_for_setup_error = self.mock_object(
+            nfs_base.NetAppNfsDriver, 'check_for_setup_error')
+
+        self.driver.check_for_setup_error()
+
+        mock_get_ontapi_version.assert_called_once_with()
+        mock_add_looping_tasks.assert_called_once_with()
+        mock_super_check_for_setup_error.assert_called_once_with()
+
+    def test_add_looping_tasks(self):
+        mock_super_add_looping_tasks = self.mock_object(
+            nfs_base.NetAppNfsDriver, '_add_looping_tasks')
+
+        self.driver._add_looping_tasks()
+        mock_super_add_looping_tasks.assert_called_once_with()
+
+    def test_get_backing_flexvol_names(self):
+
+        result = self.driver._get_backing_flexvol_names()
+
+        self.assertEqual('path', result[0])

@@ -25,7 +25,6 @@ import os
 import uuid
 
 from oslo_log import log as logging
-from oslo_service import loopingcall
 from oslo_utils import excutils
 import six
 
@@ -38,6 +37,7 @@ from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import capabilities
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as cmode_utils
 from cinder.volume.drivers.netapp import options as na_opts
 from cinder.volume.drivers.netapp import utils as na_utils
@@ -45,7 +45,6 @@ from cinder.volume import utils as volume_utils
 
 
 LOG = logging.getLogger(__name__)
-SSC_UPDATE_INTERVAL_SECONDS = 3600  # hourly
 
 
 @interface.volumedriver
@@ -96,28 +95,39 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
     @utils.trace_method
     def check_for_setup_error(self):
         """Check that the driver is working and can communicate."""
-        super(NetAppCmodeNfsDriver, self).check_for_setup_error()
         self.ssc_library.check_api_permissions()
+        self._add_looping_tasks()
+        super(NetAppCmodeNfsDriver, self).check_for_setup_error()
 
-    def _start_periodic_tasks(self):
-        """Start recurring tasks for NetApp cDOT NFS driver."""
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval."""
 
-        # Note(cknight): Run the task once in the current thread to prevent a
+        # Note(cknight): Run the update once in the current thread to prevent a
         # race with the first invocation of _update_volume_stats.
         self._update_ssc()
 
-        # Start the task that updates the slow-changing storage service catalog
-        ssc_periodic_task = loopingcall.FixedIntervalLoopingCall(
-            self._update_ssc)
-        ssc_periodic_task.start(
-            interval=SSC_UPDATE_INTERVAL_SECONDS,
-            initial_delay=SSC_UPDATE_INTERVAL_SECONDS)
+        # Add the task that updates the slow-changing storage service catalog
+        self.loopingcalls.add_task(self._update_ssc,
+                                   loopingcalls.ONE_HOUR,
+                                   loopingcalls.ONE_HOUR)
 
-        super(NetAppCmodeNfsDriver, self)._start_periodic_tasks()
+        # Add the task that harvests soft-deleted QoS policy groups.
+        self.loopingcalls.add_task(
+            self.zapi_client.remove_unused_qos_policy_groups,
+            loopingcalls.ONE_MINUTE,
+            loopingcalls.ONE_MINUTE)
+
+        # Add the task that runs other housekeeping tasks, such as deletion
+        # of previously soft-deleted storage artifacts.
+        self.loopingcalls.add_task(
+            self._handle_housekeeping_tasks,
+            loopingcalls.TEN_MINUTES,
+            0)
+
+        super(NetAppCmodeNfsDriver, self)._add_looping_tasks()
 
     def _handle_housekeeping_tasks(self):
         """Handle various cleanup activities."""
-        super(NetAppCmodeNfsDriver, self)._handle_housekeeping_tasks()
 
         # Harvest soft-deleted QoS policy groups
         self.zapi_client.remove_unused_qos_policy_groups()
@@ -682,7 +692,11 @@ class NetAppCmodeNfsDriver(nfs_base.NetAppNfsDriver,
 
         return self._failover_host(volumes, secondary_id=secondary_id)
 
-    def _get_backing_flexvol_names(self, hosts):
+    def _get_backing_flexvol_names(self):
+        """Returns a list of backing flexvol names."""
+        return self.ssc_library.get_ssc().keys()
+
+    def _get_flexvol_names_from_hosts(self, hosts):
         """Returns a set of flexvol names."""
         flexvols = set()
         ssc = self.ssc_library.get_ssc()

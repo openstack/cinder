@@ -34,7 +34,6 @@ from oslo_utils import strutils
 
 
 LOG = logging.getLogger(__name__)
-DELETED_PREFIX = 'deleted_cinder_'
 DEFAULT_MAX_PAGE_LENGTH = 50
 
 
@@ -546,7 +545,7 @@ class Client(client_base.Client):
         # matching that pattern.
         if spec is not None:
             current_name = spec['policy_name']
-            new_name = DELETED_PREFIX + current_name
+            new_name = client_base.DELETED_PREFIX + current_name
             try:
                 self.qos_policy_group_rename(current_name, new_name)
             except netapp_api.NaApiError as ex:
@@ -562,7 +561,7 @@ class Client(client_base.Client):
         api_args = {
             'query': {
                 'qos-policy-group-info': {
-                    'policy-group': '%s*' % DELETED_PREFIX,
+                    'policy-group': '%s*' % client_base.DELETED_PREFIX,
                     'vserver': self.vserver,
                 }
             },
@@ -1449,6 +1448,51 @@ class Client(client_base.Client):
                 })
 
         return counter_data
+
+    def get_snapshots_marked_for_deletion(self, volume_list=None):
+        """Get a list of snapshots marked for deletion.
+
+        :param volume_list: placeholder parameter to match 7mode client method
+        signature.
+        """
+
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': client_base.DELETED_PREFIX + '*',
+                    'vserver': self.vserver,
+                    'busy': 'false',
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'volume': None,
+                    'snapshot-instance-uuid': None,
+                }
+            },
+        }
+
+        result = self.send_request('snapshot-get-iter', api_args)
+
+        snapshots = []
+
+        attributes = result.get_child_by_name(
+            'attributes-list') or netapp_api.NaElement('none')
+        snapshot_info_list = attributes.get_children()
+        for snapshot_info in snapshot_info_list:
+            snapshot_name = snapshot_info.get_child_content('name')
+            snapshot_id = snapshot_info.get_child_content(
+                'snapshot-instance-uuid')
+            snapshot_volume = snapshot_info.get_child_content('volume')
+
+            snapshots.append({
+                'name': snapshot_name,
+                'instance_id': snapshot_id,
+                'volume_name': snapshot_volume,
+            })
+
+        return snapshots
 
     def get_snapshot(self, volume_name, snapshot_name):
         """Gets a single snapshot."""

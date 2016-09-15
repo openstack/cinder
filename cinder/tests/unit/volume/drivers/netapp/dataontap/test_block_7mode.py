@@ -119,9 +119,12 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
         self.zapi_client.get_ontapi_version.return_value = (1, 9)
         self.mock_object(self.library, '_refresh_volume_info')
         self.library.volume_list = ['open1', 'open2']
+        mock_add_looping_tasks = self.mock_object(
+            self.library, '_add_looping_tasks')
 
         self.library.check_for_setup_error()
 
+        mock_add_looping_tasks.assert_called_once_with()
         super_check_for_setup_error.assert_called_once_with()
 
     def test_check_for_setup_error_no_filtered_pools(self):
@@ -746,3 +749,18 @@ class NetAppBlockStorage7modeLibraryTestCase(test.TestCase):
 
         mock_super_delete_snapshot.assert_called_once_with(fake.SNAPSHOT)
         self.assertTrue(self.library.vol_refresh_voluntary)
+
+    def test_add_looping_tasks(self):
+        mock_super_add_looping_tasks = self.mock_object(
+            block_base.NetAppBlockStorageLibrary, '_add_looping_tasks')
+
+        self.library._add_looping_tasks()
+
+        mock_super_add_looping_tasks.assert_called_once_with()
+
+    def test_get_backing_flexvol_names(self):
+        self.library.volume_list = ['vol0', 'vol1', 'vol2']
+
+        result = self.library._get_backing_flexvol_names()
+
+        self.assertEqual('vol2', result[2])

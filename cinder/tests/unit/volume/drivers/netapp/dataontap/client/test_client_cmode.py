@@ -23,6 +23,7 @@ from lxml import etree
 import mock
 import paramiko
 import six
+import time
 
 from cinder import exception
 from cinder import ssh_utils
@@ -31,6 +32,7 @@ from cinder.tests.unit.volume.drivers.netapp.dataontap.client import (
     fakes as fake_client)
 from cinder.tests.unit.volume.drivers.netapp.dataontap import fakes as fake
 from cinder.volume.drivers.netapp.dataontap.client import api as netapp_api
+from cinder.volume.drivers.netapp.dataontap.client import client_base
 from cinder.volume.drivers.netapp.dataontap.client import client_cmode
 from cinder.volume.drivers.netapp import utils as netapp_utils
 
@@ -3153,6 +3155,8 @@ class NetAppCmodeClientTestCase(test.TestCase):
         self.assertEqual(expected_prov_opts, actual_prov_opts)
 
     def test_wait_for_busy_snapshot(self):
+        # Need to mock sleep as it is called by @utils.retry
+        self.mock_object(time, 'sleep')
         mock_get_snapshot = self.mock_object(
             self.client, 'get_snapshot',
             mock.Mock(return_value=fake.SNAPSHOT)
@@ -3162,3 +3166,66 @@ class NetAppCmodeClientTestCase(test.TestCase):
 
         mock_get_snapshot.assert_called_once_with(fake.FLEXVOL,
                                                   fake.SNAPSHOT_NAME)
+
+    def test_wait_for_busy_snapshot_raise_exception(self):
+        # Need to mock sleep as it is called by @utils.retry
+        self.mock_object(time, 'sleep')
+        BUSY_SNAPSHOT = dict(fake.SNAPSHOT)
+        BUSY_SNAPSHOT['busy'] = True
+        mock_get_snapshot = self.mock_object(
+            self.client, 'get_snapshot',
+            mock.Mock(return_value=BUSY_SNAPSHOT)
+        )
+
+        self.assertRaises(exception.SnapshotIsBusy,
+                          self.client.wait_for_busy_snapshot,
+                          fake.FLEXVOL, fake.SNAPSHOT_NAME)
+
+        calls = [
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+            mock.call(fake.FLEXVOL, fake.SNAPSHOT_NAME),
+        ]
+        mock_get_snapshot.assert_has_calls(calls)
+
+    @ddt.data({
+        'mock_return':
+            fake_client.SNAPSHOT_INFO_FOR_PRESENT_NOT_BUSY_SNAPSHOT_CMODE,
+        'expected': [{
+            'name': fake.SNAPSHOT_NAME,
+            'instance_id': 'abcd-ef01-2345-6789',
+            'volume_name': fake.SNAPSHOT['volume_id'],
+        }]
+    }, {
+        'mock_return': fake_client.NO_RECORDS_RESPONSE,
+        'expected': [],
+    })
+    @ddt.unpack
+    def test_get_snapshots_marked_for_deletion(self, mock_return, expected):
+        api_response = netapp_api.NaElement(mock_return)
+        self.mock_object(self.client,
+                         'send_request',
+                         mock.Mock(return_value=api_response))
+
+        result = self.client.get_snapshots_marked_for_deletion()
+
+        api_args = {
+            'query': {
+                'snapshot-info': {
+                    'name': client_base.DELETED_PREFIX + '*',
+                    'vserver': self.vserver,
+                    'busy': 'false'
+                },
+            },
+            'desired-attributes': {
+                'snapshot-info': {
+                    'name': None,
+                    'volume': None,
+                    'snapshot-instance-uuid': None,
+                }
+            },
+        }
+
+        self.client.send_request.assert_called_once_with(
+            'snapshot-get-iter', api_args)
+        self.assertListEqual(expected, result)

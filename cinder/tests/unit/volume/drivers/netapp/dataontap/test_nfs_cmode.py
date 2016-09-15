@@ -19,7 +19,6 @@ Mock unit tests for the NetApp cmode nfs storage driver
 import ddt
 import mock
 from os_brick.remotefs import remotefs as remotefs_brick
-from oslo_service import loopingcall
 from oslo_utils import units
 
 from cinder import exception
@@ -36,6 +35,7 @@ from cinder.volume.drivers.netapp.dataontap import nfs_base
 from cinder.volume.drivers.netapp.dataontap import nfs_cmode
 from cinder.volume.drivers.netapp.dataontap.performance import perf_cmode
 from cinder.volume.drivers.netapp.dataontap.utils import data_motion
+from cinder.volume.drivers.netapp.dataontap.utils import loopingcalls
 from cinder.volume.drivers.netapp.dataontap.utils import utils as config_utils
 from cinder.volume.drivers.netapp import utils as na_utils
 from cinder.volume.drivers import nfs
@@ -396,30 +396,15 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
             nfs_base.NetAppNfsDriver, 'check_for_setup_error')
         mock_check_api_permissions = self.mock_object(
             self.driver.ssc_library, 'check_api_permissions')
+        mock_add_looping_tasks = self.mock_object(
+            self.driver, '_add_looping_tasks')
 
         self.driver.check_for_setup_error()
 
         self.assertEqual(1, super_check_for_setup_error.call_count)
         mock_check_api_permissions.assert_called_once_with()
-
-    def test_start_periodic_tasks(self):
-
-        mock_update_ssc = self.mock_object(
-            self.driver, '_update_ssc')
-        super_start_periodic_tasks = self.mock_object(
-            nfs_base.NetAppNfsDriver, '_start_periodic_tasks')
-
-        update_ssc_periodic_task = mock.Mock()
-        mock_loopingcall = self.mock_object(
-            loopingcall, 'FixedIntervalLoopingCall',
-            mock.Mock(return_value=update_ssc_periodic_task))
-
-        self.driver._start_periodic_tasks()
-
-        mock_loopingcall.assert_called_once_with(mock_update_ssc)
-        self.assertTrue(update_ssc_periodic_task.start.called)
-        mock_update_ssc.assert_called_once_with()
-        super_start_periodic_tasks.assert_called_once_with()
+        self.assertEqual(1, mock_add_looping_tasks.call_count)
+        mock_add_looping_tasks.assert_called_once_with()
 
     @ddt.data({'replication_enabled': True, 'failed_over': False},
               {'replication_enabled': True, 'failed_over': True},
@@ -432,12 +417,9 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
                          mock.Mock(return_value=fake_ssc.SSC.keys()))
         self.driver.replication_enabled = replication_enabled
         self.driver.failed_over = failed_over
-        super_handle_housekeeping_tasks = self.mock_object(
-            nfs_base.NetAppNfsDriver, '_handle_housekeeping_tasks')
 
         self.driver._handle_housekeeping_tasks()
 
-        super_handle_housekeeping_tasks.assert_called_once_with()
         (self.driver.zapi_client.remove_unused_qos_policy_groups.
          assert_called_once_with())
         if replication_enabled and not failed_over:
@@ -921,6 +903,26 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_info.assert_has_calls([mock.call(fake.NFS_VOLUME)])
         super_unmanage.assert_has_calls([mock.call(fake.NFS_VOLUME)])
 
+    def test_add_looping_tasks(self):
+        mock_update_ssc = self.mock_object(self.driver, '_update_ssc')
+        mock_remove_unused_qos_policy_groups = self.mock_object(
+            self.driver.zapi_client, 'remove_unused_qos_policy_groups')
+        mock_add_task = self.mock_object(self.driver.loopingcalls, 'add_task')
+        mock_super_add_looping_tasks = self.mock_object(
+            nfs_base.NetAppNfsDriver, '_add_looping_tasks')
+
+        self.driver._add_looping_tasks()
+
+        mock_update_ssc.assert_called_once_with()
+        mock_add_task.assert_has_calls([
+            mock.call(mock_update_ssc,
+                      loopingcalls.ONE_HOUR,
+                      loopingcalls.ONE_HOUR),
+            mock.call(mock_remove_unused_qos_policy_groups,
+                      loopingcalls.ONE_MINUTE,
+                      loopingcalls.ONE_MINUTE)])
+        mock_super_add_looping_tasks.assert_called_once_with()
+
     @ddt.data({'has_space': True, 'type_match': True, 'expected': True},
               {'has_space': True, 'type_match': False, 'expected': False},
               {'has_space': False, 'type_match': True, 'expected': False},
@@ -1379,10 +1381,18 @@ class NetAppCmodeNfsDriverTestCase(test.TestCase):
         mock_get_ssc.return_value = ssc
 
         hosts = [snap['volume']['host'] for snap in snapshots]
-        flexvols = self.driver._get_backing_flexvol_names(hosts)
+        flexvols = self.driver._get_flexvol_names_from_hosts(hosts)
 
         mock_get_ssc.assert_called_once_with()
         self.assertEqual(3, len(flexvols))
         self.assertIn('volume1', flexvols)
         self.assertIn('volume2', flexvols)
         self.assertIn('volume3', flexvols)
+
+    def test_get_backing_flexvol_names(self):
+        mock_ssc_library = self.mock_object(
+            self.driver.ssc_library, 'get_ssc')
+
+        self.driver._get_backing_flexvol_names()
+
+        mock_ssc_library.assert_called_once_with()

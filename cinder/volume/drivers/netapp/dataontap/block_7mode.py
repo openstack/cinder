@@ -119,7 +119,12 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
                     'Ensure that the configuration option '
                     'netapp_pool_name_search_pattern is set correctly.')
             raise exception.NetAppDriverException(msg)
+        self._add_looping_tasks()
         super(NetAppBlockStorage7modeLibrary, self).check_for_setup_error()
+
+    def _add_looping_tasks(self):
+        """Add tasks that need to be executed at a fixed interval."""
+        super(NetAppBlockStorage7modeLibrary, self)._add_looping_tasks()
 
     def _create_lun(self, volume_name, lun_name, size,
                     metadata, qos_policy_group_name=None):
@@ -444,3 +449,7 @@ class NetAppBlockStorage7modeLibrary(block_base.NetAppBlockStorageLibrary):
 
         return (super(NetAppBlockStorage7modeLibrary, self)
                 ._get_preferred_target_from_list(target_details_list))
+
+    def _get_backing_flexvol_names(self):
+        """Returns a list of backing flexvol names."""
+        return self.volume_list or []
