@@ -69,14 +69,23 @@ Request
 
 .. rest_parameters:: parameters.yaml
 
-   - status: status
-   - user_id: user_id
-   - description: description
+   - description: description_6
    - availability_zone: availability_zone
+   - volume_types: volume_types_2
+   - name: name_15
+
+Response
+--------
+
+.. rest_parameters:: parameters.yaml
+
+   - status: status_1
+   - description: description_11
+   - availability_zone: availability_zone
+   - created_at: created_at
    - volume_types: volume_types
-   - project_id: project_id
-   - name: name
-   - tenant_id: tenant_id
+   - name: name_15
+   - id: consistencygroup_id_1
 
 Request Example
 ---------------
@@ -84,6 +93,11 @@ Request Example
 .. literalinclude:: ./samples/consistency-group-create-request.json
    :language: javascript
 
+Response Example
+----------------
+
+.. literalinclude:: ./samples/consistency-group-create-response.json
+   :language: javascript
 
 Show consistency group details
 ==============================
