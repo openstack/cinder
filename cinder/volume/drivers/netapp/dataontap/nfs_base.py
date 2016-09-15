@@ -407,7 +407,7 @@ class NetAppNfsDriver(driver.ManageableVD,
                 try:
                     total_size, total_avl = \
                         self._get_capacity_info(share)
-                    avl_percent = int((total_avl / total_size) * 100)
+                    avl_percent = int((float(total_avl) / total_size) * 100)
                     if avl_percent <= thres_size_perc_start:
                         LOG.info(_LI('Cleaning cache for share %s.'), share)
                         eligible_files = self._find_old_cache_files(share)
