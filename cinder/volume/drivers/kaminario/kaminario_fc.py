@@ -112,7 +112,6 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
             self.client = temp_client
         return properties
 
-    @kaminario_logger
     def get_target_info(self, volume):
         LOG.debug("Searching target wwpns in K2.")
         fc_ports_rs = self.client.search("system/fc_ports")
@@ -168,7 +167,6 @@ class KaminarioFCDriver(common.KaminarioCinderDriver):
                         reason=six.text_type(ex.message))
         return host, host_rs, host_name
 
-    @kaminario_logger
     def _build_initiator_target_map(self, connector, all_target_wwns):
         """Build the target_wwns and the initiator target map."""
         target_wwns = []
