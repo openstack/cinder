@@ -538,6 +538,18 @@ class TestWSGIService(test.TestCase):
                           service.WSGIService, "osapi_volume")
         self.assertTrue(mock_loader.called)
 
+    @mock.patch('oslo_service.wsgi.Server')
+    @mock.patch('oslo_service.wsgi.Loader')
+    def test_ssl_enabled(self, mock_loader, mock_server):
+        self.override_config('osapi_volume_use_ssl', True)
+
+        service.WSGIService("osapi_volume")
+        mock_server.assert_called_once_with(mock.ANY, mock.ANY, mock.ANY,
+                                            port=mock.ANY, host=mock.ANY,
+                                            use_ssl=True)
+
+        self.assertTrue(mock_loader.called)
+
 
 class OSCompatibilityTestCase(test.TestCase):
     def _test_service_launcher(self, fake_os):

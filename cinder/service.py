@@ -73,7 +73,11 @@ service_opts = [
                 help='Port on which OpenStack Volume API listens'),
     cfg.IntOpt('osapi_volume_workers',
                help='Number of workers for OpenStack Volume API service. '
-                    'The default is equal to the number of CPUs available.'), ]
+                    'The default is equal to the number of CPUs available.'),
+    cfg.BoolOpt('osapi_volume_use_ssl',
+                default=False,
+                help='Wraps the socket in a SSL context if True is set. '
+                     'A certificate file and key file must be specified.'), ]
 
 
 CONF = cfg.CONF
@@ -495,6 +499,7 @@ class WSGIService(service.ServiceBase):
         self.app = self.loader.load_app(name)
         self.host = getattr(CONF, '%s_listen' % name, "0.0.0.0")
         self.port = getattr(CONF, '%s_listen_port' % name, 0)
+        self.use_ssl = getattr(CONF, '%s_use_ssl' % name, False)
         self.workers = (getattr(CONF, '%s_workers' % name, None) or
                         processutils.get_worker_count())
         if self.workers and self.workers < 1:
@@ -510,7 +515,8 @@ class WSGIService(service.ServiceBase):
                                   name,
                                   self.app,
                                   host=self.host,
-                                  port=self.port)
+                                  port=self.port,
+                                  use_ssl=self.use_ssl)
 
     def _get_manager(self):
         """Initialize a Manager object appropriate for this service.
