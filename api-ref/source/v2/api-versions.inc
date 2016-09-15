@@ -22,7 +22,7 @@ Response
 **Example List Api Versions: JSON request**
 
 
-.. literalinclude:: ./samples/versions-resp.json
+.. literalinclude:: ./samples/versions-response.json
    :language: javascript
 
 **Example List Api Versions: XML request**
