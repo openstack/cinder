@@ -21,6 +21,7 @@ import webob
 from webob import exc
 
 from cinder.api.contrib import admin_actions
+from cinder.backup import rpcapi as backup_rpcapi
 from cinder.common import constants
 from cinder import context
 from cinder import db
@@ -28,6 +29,7 @@ from cinder import exception
 from cinder import objects
 from cinder.objects import base as obj_base
 from cinder.objects import fields
+from cinder.scheduler import rpcapi as scheduler_rpcapi
 from cinder import test
 from cinder.tests.unit.api.contrib import test_backups
 from cinder.tests.unit.api import fakes
@@ -87,8 +89,17 @@ class AdminActionsTest(BaseAdminTest):
         self.patch(
             'cinder.objects.Service.get_minimum_obj_version',
             return_value=obj_base.OBJ_VERSIONS.get_current())
+
+        def _get_minimum_rpc_version_mock(ctxt, binary):
+            binary_map = {
+                'cinder-volume': rpcapi.VolumeAPI,
+                'cinder-backup': backup_rpcapi.BackupAPI,
+                'cinder-scheduler': scheduler_rpcapi.SchedulerAPI,
+            }
+            return binary_map[binary].RPC_API_VERSION
+
         self.patch('cinder.objects.Service.get_minimum_rpc_version',
-                   return_value=rpcapi.VolumeAPI.RPC_API_VERSION)
+                   side_effect=_get_minimum_rpc_version_mock)
 
     def tearDown(self):
         self.svc.stop()
