@@ -290,7 +290,6 @@ SNAPSHOT_MOUNT = '/fake/mount/path'
 
 SNAPSHOT = {
     'name': SNAPSHOT_NAME,
-    'volume_name': 'volume-fake_volume_id',
     'volume_size': SIZE,
     'volume_id': VOLUME_ID,
     'volume_name': VOLUME_NAME,
