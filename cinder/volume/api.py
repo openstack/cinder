@@ -1385,12 +1385,10 @@ class API(base.Base):
                         'volume_type': volume_type,
                         'volume_id': volume.id}
         self.scheduler_rpcapi.migrate_volume_to_host(context,
-                                                     constants.VOLUME_TOPIC,
-                                                     volume.id,
+                                                     volume,
                                                      host,
                                                      force_host_copy,
-                                                     request_spec,
-                                                     volume=volume)
+                                                     request_spec)
         LOG.info(_LI("Migrate volume request issued successfully."),
                  resource=volume)
 
@@ -1530,10 +1528,9 @@ class API(base.Base):
                         'quota_reservations': reservations,
                         'old_reservations': old_reservations}
 
-        self.scheduler_rpcapi.retype(context, constants.VOLUME_TOPIC,
-                                     volume.id,
+        self.scheduler_rpcapi.retype(context, volume,
                                      request_spec=request_spec,
-                                     filter_properties={}, volume=volume)
+                                     filter_properties={})
         LOG.info(_LI("Retype volume request issued successfully."),
                  resource=volume)
 

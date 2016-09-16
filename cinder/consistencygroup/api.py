@@ -25,7 +25,6 @@ from oslo_log import log as logging
 from oslo_utils import excutils
 from oslo_utils import timeutils
 
-from cinder.common import constants
 from cinder import db
 from cinder.db import base
 from cinder import exception
@@ -396,7 +395,6 @@ class API(base.Base):
         # to select the target host for this group.
         self.scheduler_rpcapi.create_consistencygroup(
             context,
-            constants.VOLUME_TOPIC,
             group,
             request_spec_list=request_spec_list,
             filter_properties_list=filter_properties_list)

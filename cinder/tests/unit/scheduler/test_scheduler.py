@@ -129,17 +129,15 @@ class SchedulerManagerTestCase(test.TestCase):
         # Puts the volume in 'error' state and eats the exception.
         _mock_sched_create.side_effect = exception.NoValidHost(reason="")
         volume = fake_volume.fake_volume_obj(self.context)
-        topic = 'fake_topic'
         request_spec = {'volume_id': volume.id,
                         'volume': {'id': volume.id, '_name_id': None,
                                    'metadata': {}, 'admin_metadata': {},
                                    'glance_metadata': {}}}
         request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
-        self.manager.create_volume(self.context, topic, volume.id,
-                                   request_spec=request_spec,
-                                   filter_properties={},
-                                   volume=volume)
+        self.manager.create_volume(self.context, volume,
+                                   request_spec=request_spec_obj,
+                                   filter_properties={})
         _mock_volume_update.assert_called_once_with(self.context,
                                                     volume.id,
                                                     {'status': 'error'})
@@ -155,15 +153,13 @@ class SchedulerManagerTestCase(test.TestCase):
     @mock.patch('eventlet.sleep')
     def test_create_volume_no_delay(self, _mock_sleep, _mock_sched_create):
         volume = fake_volume.fake_volume_obj(self.context)
-        topic = 'fake_topic'
 
         request_spec = {'volume_id': volume.id}
         request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
-        self.manager.create_volume(self.context, topic, volume.id,
-                                   request_spec=request_spec,
-                                   filter_properties={},
-                                   volume=volume)
+        self.manager.create_volume(self.context, volume,
+                                   request_spec=request_spec_obj,
+                                   filter_properties={})
         _mock_sched_create.assert_called_once_with(self.context,
                                                    request_spec_obj, {})
         self.assertFalse(_mock_sleep.called)
@@ -176,17 +172,15 @@ class SchedulerManagerTestCase(test.TestCase):
                                                          _mock_sched_create):
         self.manager._startup_delay = True
         volume = fake_volume.fake_volume_obj(self.context)
-        topic = 'fake_topic'
 
         request_spec = {'volume_id': volume.id}
         request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
         _mock_is_ready.side_effect = [False, False, True]
 
-        self.manager.create_volume(self.context, topic, volume.id,
-                                   request_spec=request_spec,
-                                   filter_properties={},
-                                   volume=volume)
+        self.manager.create_volume(self.context, volume,
+                                   request_spec=request_spec_obj,
+                                   filter_properties={})
         _mock_sched_create.assert_called_once_with(self.context,
                                                    request_spec_obj, {})
         calls = [mock.call(1)] * 2
@@ -201,17 +195,15 @@ class SchedulerManagerTestCase(test.TestCase):
                                                     _mock_sched_create):
         self.manager._startup_delay = True
         volume = fake_volume.fake_volume_obj(self.context)
-        topic = 'fake_topic'
 
         request_spec = {'volume_id': volume.id}
         request_spec_obj = objects.RequestSpec.from_primitives(request_spec)
 
         _mock_is_ready.return_value = True
 
-        self.manager.create_volume(self.context, topic, volume.id,
-                                   request_spec=request_spec,
-                                   filter_properties={},
-                                   volume=volume)
+        self.manager.create_volume(self.context, volume,
+                                   request_spec=request_spec_obj,
+                                   filter_properties={})
         _mock_sched_create.assert_called_once_with(self.context,
                                                    request_spec_obj, {})
         self.assertFalse(_mock_sleep.called)
@@ -248,16 +240,13 @@ class SchedulerManagerTestCase(test.TestCase):
                                            status=status,
                                            previous_status='available')
         fake_volume_id = volume.id
-        topic = 'fake_topic'
         request_spec = {'volume_id': fake_volume_id}
         _mock_host_passes.side_effect = exception.NoValidHost(reason="")
         _mock_volume_get.return_value = volume
 
-        self.manager.migrate_volume_to_host(self.context, topic,
-                                            fake_volume_id, 'host', True,
+        self.manager.migrate_volume_to_host(self.context, volume, 'host', True,
                                             request_spec=request_spec,
-                                            filter_properties={},
-                                            volume=volume)
+                                            filter_properties={})
         _mock_volume_update.assert_called_once_with(self.context,
                                                     fake_volume_id,
                                                     fake_updates)
@@ -279,7 +268,6 @@ class SchedulerManagerTestCase(test.TestCase):
                                                   instance_uuid, None,
                                                   '/dev/fake')
         _mock_vol_attachment_get.return_value = [volume_attach]
-        topic = 'fake_topic'
         reservations = mock.sentinel.reservations
         request_spec = {'volume_id': volume.id, 'volume_type': {'id': 3},
                         'migration_policy': 'on-demand',
@@ -290,10 +278,8 @@ class SchedulerManagerTestCase(test.TestCase):
         orig_retype = self.manager.driver.find_retype_host
         self.manager.driver.find_retype_host = _mock_find_retype_host
 
-        self.manager.retype(self.context, topic, volume.id,
-                            request_spec=request_spec,
-                            filter_properties={},
-                            volume=volume)
+        self.manager.retype(self.context, volume, request_spec=request_spec,
+                            filter_properties={})
 
         _mock_find_retype_host.assert_called_once_with(self.context,
                                                        request_spec, {},
@@ -319,7 +305,6 @@ class SchedulerManagerTestCase(test.TestCase):
             self.assertRaises(exception.CinderException,
                               self.manager.create_consistencygroup,
                               self.context,
-                              'volume',
                               consistencygroup_obj)
             self.assertGreater(LOG.exception.call_count, 0)
             db.consistencygroup_update.assert_called_once_with(
@@ -333,7 +318,7 @@ class SchedulerManagerTestCase(test.TestCase):
             mock_cg.side_effect = exception.NoValidHost(
                 reason="No weighed hosts available")
             self.manager.create_consistencygroup(
-                self.context, 'volume', consistencygroup_obj)
+                self.context, consistencygroup_obj)
             self.assertGreater(LOG.error.call_count, 0)
             db.consistencygroup_update.assert_called_once_with(
                 self.context, group_id, {'status': (
