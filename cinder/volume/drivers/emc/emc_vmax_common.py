@@ -1528,7 +1528,7 @@ class EMCVMAXCommon(object):
         :returns: foundVolumeinstance
         """
         foundVolumeinstance = None
-        volumename = volume['name']
+        volumename = volume['id']
 
         loc = volume['provider_location']
         if self.conn is None:
@@ -1548,12 +1548,16 @@ class EMCVMAXCommon(object):
 
             instancename = self.utils.get_instance_name(
                 name['classname'], name['keybindings'])
-            # Allow for an external app to delete the volume.
             LOG.debug("Volume instance name: %(in)s",
                       {'in': instancename})
+            # Allow for an external app to delete the volume.
             try:
                 foundVolumeinstance = self.conn.GetInstance(instancename)
-            except Exception:
+                if not (volumename in foundVolumeinstance['ElementName']):
+                    foundVolumeinstance = None
+            except Exception as e:
+                LOG.info(_LI("Exception in retrieving volume: %(e)s."),
+                         {'e': e})
                 foundVolumeinstance = None
 
         if foundVolumeinstance is None:

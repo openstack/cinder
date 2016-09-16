@@ -79,9 +79,11 @@ class EMCVMAXISCSIDriver(driver.ISCSIDriver):
         2.4.1 - Pre-zoned port group fix (bug #456285)
         2.4.2 - Rollback error on Live Migration (bug #1686174)
         2.4.3 - Detaching volumes if part of two or more MVs (bug #1684595)
+        2.4.4 - Adding amended (bug #1401297) so no backward compatibility
+                issues
     """
 
-    VERSION = "2.4.3"
+    VERSION = "2.4.4"
 
     # ThirdPartySystems wiki
     CI_WIKI_NAME = "EMC_VMAX_CI"
