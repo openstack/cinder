@@ -1,0 +1,10 @@
+{
+    "os-set_image_metadata": {
+        "metadata": {
+            "image_id": "521752a6-acf6-4b2d-bc7a-119f9148cd8c",
+            "image_name": "image",
+            "kernel_id": "155d900f-4e14-4e4c-a73d-069cbf4541e6",
+            "ramdisk_id": "somedisk"
+        }
+    }
+}

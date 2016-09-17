@@ -1,0 +1,102 @@
+{
+    "volumes": [
+        {
+            "migration_status": null,
+            "attachments": [
+                {
+                    "server_id": "f4fda93b-06e0-4743-8117-bc8bcecd651b",
+                    "attachment_id": "3b4db356-253d-4fab-bfa0-e3626c0b8405",
+                    "host_name": null,
+                    "volume_id": "6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
+                    "device": "/dev/vdb",
+                    "id": "6edbc2f4-1507-44f8-ac0d-eed1d2608d38"
+                }
+            ],
+            "links": [
+                {
+                    "href": "http://23.253.248.171:8776/v3/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://23.253.248.171:8776/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
+                    "rel": "bookmark"
+                }
+            ],
+            "availability_zone": "nova",
+            "os-vol-host-attr:host": "difleming@lvmdriver-1#lvmdriver-1",
+            "encrypted": false,
+            "os-volume-replication:extended_status": null,
+            "replication_status": "disabled",
+            "snapshot_id": null,
+            "id": "6edbc2f4-1507-44f8-ac0d-eed1d2608d38",
+            "size": 2,
+            "user_id": "32779452fcd34ae1a53a797ac8a1e064",
+            "os-vol-tenant-attr:tenant_id": "bab7d5c60cd041a0a36f7c4b6e1dd978",
+            "os-vol-mig-status-attr:migstat": null,
+            "metadata": {
+                "readonly": false,
+                "attached_mode": "rw"
+            },
+            "status": "in-use",
+            "description": null,
+            "multiattach": true,
+            "os-volume-replication:driver_data": null,
+            "source_volid": null,
+            "consistencygroup_id": null,
+            "os-vol-mig-status-attr:name_id": null,
+            "name": "test-volume-attachments",
+            "bootable": "false",
+            "created_at": "2015-11-29T03:01:44.000000",
+            "volume_type": "lvmdriver-1"
+        },
+        {
+            "migration_status": null,
+            "attachments": [],
+            "links": [
+                {
+                    "href": "http://23.253.248.171:8776/v3/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/173f7b48-c4c1-4e70-9acc-086b39073506",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://23.253.248.171:8776/bab7d5c60cd041a0a36f7c4b6e1dd978/volumes/173f7b48-c4c1-4e70-9acc-086b39073506",
+                    "rel": "bookmark"
+                }
+            ],
+            "availability_zone": "nova",
+            "os-vol-host-attr:host": "difleming@lvmdriver-1#lvmdriver-1",
+            "encrypted": false,
+            "os-volume-replication:extended_status": null,
+            "replication_status": "disabled",
+            "snapshot_id": null,
+            "id": "173f7b48-c4c1-4e70-9acc-086b39073506",
+            "size": 1,
+            "user_id": "32779452fcd34ae1a53a797ac8a1e064",
+            "os-vol-tenant-attr:tenant_id": "bab7d5c60cd041a0a36f7c4b6e1dd978",
+            "os-vol-mig-status-attr:migstat": null,
+            "metadata": {},
+            "status": "available",
+            "volume_image_metadata": {
+                "kernel_id": "8a55f5f1-78f7-4477-8168-977d8519342c",
+                "checksum": "eb9139e4942121f22bbc2afc0400b2a4",
+                "min_ram": "0",
+                "ramdisk_id": "5f6bdf8a-92db-4988-865b-60bdd808d9ef",
+                "disk_format": "ami",
+                "image_name": "cirros-0.3.4-x86_64-uec",
+                "image_id": "b48c53e1-9a96-4a5a-a630-2e74ec54ddcc",
+                "container_format": "ami",
+                "min_disk": "0",
+                "size": "25165824"
+            },
+            "description": "",
+            "multiattach": false,
+            "os-volume-replication:driver_data": null,
+            "source_volid": null,
+            "consistencygroup_id": null,
+            "os-vol-mig-status-attr:name_id": null,
+            "name": "test-volume",
+            "bootable": "true",
+            "created_at": "2015-11-29T02:25:18.000000",
+            "volume_type": "lvmdriver-1"
+        }
+    ]
+}

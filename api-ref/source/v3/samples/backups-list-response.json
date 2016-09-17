@@ -1,0 +1,32 @@
+{
+    "backups": [
+        {
+            "id": "2ef47aee-8844-490c-804d-2a8efe561c65",
+            "links": [
+                {
+                    "href": "http://localhost:8776/v1/c95fc3e4afe248a49a28828f286a7b38/backups/2ef47aee-8844-490c-804d-2a8efe561c65",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://localhost:8776/c95fc3e4afe248a49a28828f286a7b38/backups/2ef47aee-8844-490c-804d-2a8efe561c65",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": "backup001"
+        },
+        {
+            "id": "4dbf0ec2-0b57-4669-9823-9f7c76f2b4f8",
+            "links": [
+                {
+                    "href": "http://localhost:8776/v1/c95fc3e4afe248a49a28828f286a7b38/backups/4dbf0ec2-0b57-4669-9823-9f7c76f2b4f8",
+                    "rel": "self"
+                },
+                {
+                    "href": "http://localhost:8776/c95fc3e4afe248a49a28828f286a7b38/backups/4dbf0ec2-0b57-4669-9823-9f7c76f2b4f8",
+                    "rel": "bookmark"
+                }
+            ],
+            "name": "backup002"
+        }
+    ]
+}

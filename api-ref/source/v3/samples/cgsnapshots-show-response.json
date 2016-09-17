@@ -1,0 +1,10 @@
+{
+    "cgsnapshot": {
+        "id": "6f519a48-3183-46cf-a32f-41815f813986",
+        "consistencygroup_id": "6f519a48-3183-46cf-a32f-41815f814444",
+        "status": "available",
+        "created_at": "2015-09-16T09:28:52.000000",
+        "name": "my-cg1",
+        "description": "my first consistency group"
+    }
+}

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<qos_associations>
+    <associations association_type="volume_type"
+        name="reliability-type"
+        id="a12983c2-83bd-4afa-be9f-ad796573ead6"/>
+</qos_associations>
