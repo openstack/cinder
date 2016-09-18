@@ -300,7 +300,7 @@ class SchedulerManager(manager.Manager):
             volume = objects.Volume.get_by_id(context, volume_id)
 
         def _manage_existing_set_error(self, context, ex, request_spec):
-            volume_state = {'volume_state': {'status': 'error'}}
+            volume_state = {'volume_state': {'status': 'error_managing'}}
             self._set_volume_state_and_notify('manage_existing', volume_state,
                                               context, ex, request_spec)
 
@@ -342,6 +342,9 @@ class SchedulerManager(manager.Manager):
 
         if volume_id:
             db.volume_update(context, volume_id, volume_state)
+
+        if volume_state.get('status') == 'error_managing':
+            volume_state['status'] = 'error'
 
         payload = dict(request_spec=request_spec,
                        volume_properties=properties,

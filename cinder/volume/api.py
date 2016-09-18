@@ -368,15 +368,18 @@ class API(base.Base):
             # NOTE(vish): scheduling failed, so delete it
             # Note(zhiteng): update volume quota reservation
             try:
-                reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
-                QUOTAS.add_volume_type_opts(context,
-                                            reserve_opts,
-                                            volume.volume_type_id)
-                reservations = QUOTAS.reserve(context,
-                                              project_id=project_id,
-                                              **reserve_opts)
-            except Exception:
                 reservations = None
+                if volume.status != 'error_managing':
+                    LOG.debug("Decrease volume quotas only if status is not "
+                              "error_managing.")
+                    reserve_opts = {'volumes': -1, 'gigabytes': -volume.size}
+                    QUOTAS.add_volume_type_opts(context,
+                                                reserve_opts,
+                                                volume.volume_type_id)
+                    reservations = QUOTAS.reserve(context,
+                                                  project_id=project_id,
+                                                  **reserve_opts)
+            except Exception:
                 LOG.exception(_LE("Failed to update quota while "
                                   "deleting volume."))
             volume.destroy()
@@ -400,7 +403,7 @@ class API(base.Base):
         # If not force deleting we have status conditions
         if not force:
             expected['status'] = ('available', 'error', 'error_restoring',
-                                  'error_extending')
+                                  'error_extending', 'error_managing')
 
         if cascade:
             # Allow deletion if all snapshots are in an expected state
@@ -409,6 +412,8 @@ class API(base.Base):
             # Don't allow deletion of volume with snapshots
             filters = [~db.volume_has_snapshots_filter()]
         values = {'status': 'deleting', 'terminated_at': timeutils.utcnow()}
+        if volume.status == 'error_managing':
+            values['status'] = 'error_managing_deleting'
 
         result = volume.conditional_update(values, expected, filters)
 
