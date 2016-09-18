@@ -17,7 +17,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"PO-Revision-Date: 2016-09-16 02:23+0000\n"
+"PO-Revision-Date: 2016-09-18 01:33+0000\n"
 "Last-Translator: Yoshiki Eguchi <yoshiki.eguchi@gmail.com>\n"
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
@@ -626,6 +626,15 @@ msgstr ""
 "ホスト  (%(hostname)s)  、イニシエーター  (%(initiatorport)s)  へのボリュー"
 "ム (%(name)s) の接続が失敗しました。\n"
 "%(err)s"
+
+#, python-format
+msgid "Attach volume to host failed in copy volume to image, retcode: %s."
+msgstr ""
+"ホストへのボリュームの接続が、イメージからのボリュームのコピー中に失敗しまし"
+"た。retcode: %s"
+
+msgid "Attach_volume failed."
+msgstr "ボリュームの接続に失敗しました。"
 
 #, python-format
 msgid "Attempt to transfer %s with invalid auth key."
@@ -2372,6 +2381,10 @@ msgstr ""
 "ドライバーがインポートされたバックアップデータを正常に復号化しましたが、欠け"
 "ているフィールド (%s) があります。"
 
+#, python-format
+msgid "Dsware Create Snapshot failed! Result: %s."
+msgstr "Dsware でのスナップショットの作成に失敗しました。結果: %s"
+
 msgid "Dsware clone volume failed: volume can not be found from Dsware."
 msgstr ""
 "Dsware でのボリュームのクローンが失敗しました: ボリュームが Dsware 内に見つか"
@@ -2392,8 +2405,20 @@ msgid "Dsware create volume failed! Result is: %s."
 msgstr "Dsware でボリュームの作成に失敗しました。 結果は %s です。"
 
 #, python-format
+msgid "Dsware delete volume failed: %s!"
+msgstr "Dsware でのボリュームの削除に失敗しました: %s"
+
+#, python-format
 msgid "Dsware detach volume from host failed: %s!"
 msgstr "Dsware でホストからのボリュームの切り離しに失敗しました: %s "
+
+#, python-format
+msgid ""
+"Dsware extend Volume failed! New size %(new_size)s should be greater than "
+"old size %(old_size)s!"
+msgstr ""
+"Dsware で、ボリュームの拡張に失敗しました。変更後のサイズ %(new_size)s は現在"
+"のサイズ %(old_size)s より大きくなければいけません。"
 
 #, python-format
 msgid "Dsware fails to start cloning volume %s."
@@ -2402,6 +2427,16 @@ msgstr "Dsware がボリューム %s のクローニングの開始に失敗し�
 msgid "Dsware get manager ip failed, volume provider_id is None!"
 msgstr ""
 "Dsware が管理 ip の取得に失敗しました。 volume provider_id が None です。"
+
+msgid "Dsware get snapshot failed!"
+msgstr "Dsware でのスナップショットの取得に失敗しました。"
+
+msgid "Dsware query Dsware version failed!"
+msgstr "Dsware で、 Dsware バージョンの問い合わせに失敗しました。"
+
+#, python-format
+msgid "Dsware query volume %s failed!"
+msgstr "Dsware でのボリューム %s の問い合わせに失敗しました。"
 
 #, python-format
 msgid "Dsware: create volume from snap failed. Result: %s."
